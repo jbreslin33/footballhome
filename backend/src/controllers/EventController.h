@@ -39,6 +39,8 @@ private:
     // Game Day Roster endpoints
     Response handleGetGameRoster(const Request& request);
     Response handleUpdateGameRoster(const Request& request);
+    Response handleAddToLineup(const Request& request);
+    Response handleRemoveFromLineup(const Request& request);
     Response handleGetEligiblePlayers(const Request& request);
     
     // SMS Reminder endpoint

@@ -16,100 +16,150 @@
   margin-bottom: var(--space-4);
 }
 .gdr-card-inner {
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f2027 100%);
+  background: linear-gradient(145deg, #0a1628 0%, #1a2d4a 40%, #0d1f3c 100%);
   color: #ffffff;
   border-radius: 16px;
-  padding: 24px 20px;
+  padding: 28px 24px 20px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.gdr-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #8b5cf6);
 }
 .gdr-card-header {
-  font-size: 0.75em;
+  font-size: 0.7em;
   text-transform: uppercase;
-  letter-spacing: 3px;
-  color: rgba(255,255,255,0.7);
-  margin-bottom: 16px;
+  letter-spacing: 5px;
+  color: #f59e0b;
+  margin-bottom: 20px;
+  font-weight: 700;
 }
 .gdr-card-logos {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 .gdr-team {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
 }
-.gdr-logo-wrap img {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  border-radius: 8px;
-}
-.gdr-logo-placeholder {
-  width: 64px;
-  height: 64px;
+.gdr-logo-wrap {
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.gdr-logo-wrap img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+.gdr-logo-placeholder {
   font-size: 2em;
-  background: rgba(255,255,255,0.1);
-  border-radius: 8px;
 }
 .gdr-team-name {
-  font-size: 0.85em;
-  font-weight: 600;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.8em;
+  font-weight: 700;
+  max-width: 130px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.gdr-vs-block {
+  flex-shrink: 0;
 }
 .gdr-vs {
-  font-size: 1.4em;
+  font-size: 1.1em;
   font-weight: 800;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 2px;
+}
+.gdr-card-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  margin: 16px 0;
 }
 .gdr-card-details {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px 16px;
-  font-size: 0.85em;
-  color: rgba(255,255,255,0.85);
+  gap: 6px 20px;
+  font-size: 0.8em;
+  color: rgba(255,255,255,0.75);
 }
 .gdr-detail {
   white-space: nowrap;
 }
 
-/* Card roster list (shown when players selected) */
+/* Card roster list */
 .gdr-card-roster {
-  margin-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.15);
-  padding-top: 12px;
+  text-align: left;
 }
 .gdr-roster-title {
-  font-size: 0.75em;
+  font-size: 0.65em;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  color: rgba(255,255,255,0.6);
-  margin-bottom: 8px;
+  letter-spacing: 3px;
+  color: #f59e0b;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: 700;
 }
-.gdr-roster-names {
+.gdr-roster-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 16px;
+}
+.gdr-roster-entry {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-}
-.gdr-roster-chip {
-  display: inline-block;
-  background: rgba(255,255,255,0.15);
-  padding: 2px 8px;
-  border-radius: 10px;
+  align-items: center;
+  gap: 6px;
   font-size: 0.72em;
+  padding: 2px 0;
+  color: rgba(255,255,255,0.9);
+}
+.gdr-roster-num {
+  color: #f59e0b;
+  font-weight: 700;
+  font-size: 0.9em;
+  min-width: 24px;
+}
+.gdr-roster-pname {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gdr-roster-gk {
+  font-size: 0.7em;
+  background: rgba(245,158,11,0.25);
+  color: #f59e0b;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+.gdr-card-footer {
+  margin-top: 16px;
+  padding-top: 8px;
+}
+.gdr-card-brand {
+  font-size: 0.6em;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
 }
 
 /* Share buttons */
@@ -453,6 +503,43 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* Practice dots in selected player list */
+.gdr-sel-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 4px;
+}
+.gdr-sel-header-spacer { flex: 1; }
+.gdr-sel-header-x { width: 28px; }
+.gdr-sel-prac-headers {
+  display: flex;
+  gap: 2px;
+}
+.gdr-sel-prac-hdr {
+  width: 14px;
+  text-align: center;
+  font-size: 0.55em;
+  font-weight: 600;
+  color: var(--gray-400);
+  text-transform: uppercase;
+}
+.gdr-sel-practice {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+.gdr-prac-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.gdr-dot-yes { background: #16a34a; }
+.gdr-dot-no { background: #dc2626; }
+.gdr-dot-maybe { background: #ca8a04; }
+.gdr-dot-none { background: var(--gray-200); }
 
 /* Mobile responsive: scroll table horizontally */
 @media (max-width: 600px) {

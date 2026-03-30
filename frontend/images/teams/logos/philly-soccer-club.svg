@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="96" fill="#1565c0" stroke="#64b5f6" stroke-width="4"/>
+  <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+  <text x="100" y="110" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="48" font-weight="800">PSC</text>
+  <text x="100" y="145" text-anchor="middle" fill="#64b5f6" font-family="Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1">PHILLY SOCCER CLUB</text>
+  <text x="100" y="162" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-family="Arial,sans-serif" font-size="8" letter-spacing="2">APSL</text>
+</svg>

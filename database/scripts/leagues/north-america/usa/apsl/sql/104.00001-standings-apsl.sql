@@ -5,7 +5,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 6, 6, 0, 0, 34, 12, 22, 18, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 1, 7, 7, 0, 0, 42, 14, 28, 21, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -25,7 +25,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 7, 4, 0, 3, 21, 25, -4, 12, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 8, 4, 0, 4, 23, 31, -8, 12, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -45,7 +45,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 6, 1, 1, 4, 10, 24, -14, 4, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 8, 2, 2, 4, 17, 27, -10, 8, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -65,7 +65,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 1, 1, 0, 0, 5, 0, 5, 3, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 3, 2, 1, 0, 9, 1, 8, 7, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -85,7 +85,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 6, 0, 1, 5, 10, 19, -9, 1, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 8, 0, 1, 7, 12, 30, -18, 1, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -105,7 +105,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 12, 12, 0, 0, 69, 10, 59, 36, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 1, 13, 13, 0, 0, 75, 11, 64, 39, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -125,27 +125,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 14, 9, 0, 5, 29, 21, 8, 27, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Real Central NJ Soccer'
-  AND d.name = 'Delaware River Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 14, 8, 3, 3, 47, 31, 16, 27, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 16, 10, 3, 3, 58, 33, 25, 33, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -165,27 +145,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 12, 7, 3, 2, 32, 25, 7, 24, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Philadelphia Soccer Club'
-  AND d.name = 'Delaware River Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 12, 8, 0, 4, 27, 22, 5, 24, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 14, 10, 0, 4, 38, 23, 15, 30, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -205,7 +165,47 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 13, 6, 2, 5, 27, 23, 4, 20, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 15, 9, 0, 6, 30, 23, 7, 27, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Real Central NJ Soccer'
+  AND d.name = 'Delaware River Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 5, 13, 7, 3, 3, 33, 27, 6, 24, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Philadelphia Soccer Club'
+  AND d.name = 'Delaware River Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 6, 15, 7, 2, 6, 29, 25, 4, 23, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -225,27 +225,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 14, 5, 2, 7, 35, 35, 0, 17, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Vidas United FC'
-  AND d.name = 'Delaware River Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 14, 5, 1, 8, 22, 30, -8, 16, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 7, 16, 6, 1, 9, 27, 39, -12, 19, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -265,11 +245,11 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 9, 13, 4, 0, 9, 19, 55, -36, 12, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 8, 16, 5, 2, 9, 37, 43, -6, 17, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'GAK'
+WHERE t.name = 'Vidas United FC'
   AND d.name = 'Delaware River Conference'
   AND s.name = '2025/2026'
   AND s.league_id = 1
@@ -285,7 +265,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 10, 12, 3, 2, 7, 17, 28, -11, 11, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 9, 14, 4, 2, 8, 19, 31, -12, 14, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -305,11 +285,11 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 11, 15, 3, 1, 11, 26, 46, -20, 10, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 10, 15, 4, 0, 11, 20, 68, -48, 12, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Medford Strikers'
+WHERE t.name = 'GAK'
   AND d.name = 'Delaware River Conference'
   AND s.name = '2025/2026'
   AND s.league_id = 1
@@ -325,7 +305,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 12, 13, 1, 2, 10, 12, 36, -24, 5, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 11, 15, 3, 2, 10, 17, 38, -21, 11, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -345,7 +325,27 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 8, 6, 2, 0, 28, 5, 23, 20, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 12, 16, 3, 1, 12, 26, 48, -22, 10, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Medford Strikers'
+  AND d.name = 'Delaware River Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 1, 10, 8, 2, 0, 35, 8, 27, 26, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -365,7 +365,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 8, 5, 2, 1, 23, 8, 15, 17, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 10, 6, 2, 2, 26, 12, 14, 20, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -385,7 +385,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 8, 5, 1, 2, 20, 8, 12, 16, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 10, 5, 2, 3, 26, 15, 11, 17, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -405,27 +405,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 8, 4, 0, 4, 16, 25, -9, 12, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Project Football'
-  AND d.name = 'Mayflower Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 8, 3, 1, 4, 21, 16, 5, 10, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 9, 4, 1, 4, 23, 16, 7, 13, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -445,7 +425,27 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 3, 3, 0, 0, 9, 0, 9, 9, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 10, 4, 1, 5, 21, 31, -10, 13, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Project Football'
+  AND d.name = 'Mayflower Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 6, 6, 4, 0, 2, 13, 7, 6, 12, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -465,27 +465,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 9, 2, 0, 7, 10, 39, -29, 6, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Fitchburg FC'
-  AND d.name = 'Mayflower Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 14, 1, 2, 11, 13, 39, -26, 5, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 7, 14, 1, 2, 11, 13, 39, -26, 5, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -505,7 +485,27 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 13, 11, 2, 0, 43, 15, 28, 35, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 8, 9, 2, 0, 7, 10, 39, -29, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Fitchburg FC'
+  AND d.name = 'Mayflower Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 1, 16, 13, 3, 0, 59, 19, 40, 42, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -525,7 +525,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 14, 10, 2, 2, 41, 13, 28, 32, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 15, 11, 2, 2, 43, 13, 30, 35, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -545,27 +545,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 12, 8, 2, 2, 44, 18, 26, 26, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Hoboken FC 1912'
-  AND d.name = 'Metropolitan Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 12, 8, 0, 4, 31, 15, 16, 24, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 15, 11, 0, 4, 39, 17, 22, 33, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -585,7 +565,27 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 13, 7, 2, 4, 34, 24, 10, 23, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 14, 9, 2, 3, 49, 21, 28, 29, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Hoboken FC 1912'
+  AND d.name = 'Metropolitan Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 5, 15, 8, 2, 5, 38, 27, 11, 26, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -605,7 +605,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 14, 5, 3, 6, 25, 28, -3, 18, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 6, 15, 6, 3, 6, 31, 29, 2, 21, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -625,7 +625,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 14, 5, 3, 6, 28, 40, -12, 18, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 7, 16, 6, 3, 7, 34, 42, -8, 21, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -645,7 +645,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 13, 4, 1, 8, 19, 37, -18, 13, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 8, 16, 4, 3, 9, 24, 44, -20, 15, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -665,7 +665,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 9, 14, 4, 1, 9, 22, 42, -20, 13, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 9, 15, 4, 1, 10, 22, 52, -30, 13, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -685,7 +685,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 10, 13, 4, 0, 9, 17, 38, -21, 9, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 10, 16, 4, 1, 11, 20, 50, -30, 10, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -705,27 +705,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 11, 13, 2, 2, 9, 19, 40, -21, 8, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Central Park Rangers FC'
-  AND d.name = 'Metropolitan Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 12, 13, 2, 0, 11, 22, 35, -13, 6, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 11, 15, 3, 0, 12, 27, 40, -13, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -745,7 +725,27 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 7, 7, 0, 0, 34, 10, 24, 21, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 12, 16, 2, 2, 12, 21, 53, -32, 8, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Central Park Rangers FC'
+  AND d.name = 'Metropolitan Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 1, 7, 7, 0, 0, 34, 10, 24, 21, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -765,7 +765,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 9, 6, 0, 3, 20, 13, 7, 18, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 9, 6, 0, 3, 20, 13, 7, 18, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -785,7 +785,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 7, 5, 0, 2, 25, 7, 18, 15, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 7, 5, 0, 2, 25, 7, 18, 15, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -805,7 +805,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 6, 3, 0, 3, 20, 20, 0, 9, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 6, 3, 0, 3, 20, 20, 0, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -825,7 +825,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 8, 3, 0, 5, 17, 18, -1, 9, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 8, 3, 0, 5, 17, 18, -1, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -845,7 +845,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 5, 2, 0, 3, 6, 10, -4, 6, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 6, 5, 2, 0, 3, 6, 10, -4, 6, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -865,7 +865,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 8, 2, 0, 6, 13, 31, -18, 6, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 7, 8, 2, 0, 6, 13, 31, -18, 6, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -885,7 +885,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 8, 1, 0, 7, 7, 33, -26, 3, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 8, 8, 1, 0, 7, 7, 33, -26, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -905,87 +905,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Baltimore City FC'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'CF Armada'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Chiefs United'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Christos FC'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 1, 1, 1, 0, 0, 4, 0, 4, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1005,27 +925,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'DMV Rangers'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 1, 1, 0, 0, 4, 1, 3, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1045,47 +945,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Germantown City FC'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 9, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Grove Soccer United'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 10, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 1, 1, 0, 0, 3, 0, 3, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1105,67 +965,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 11, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'PFA APSL'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 12, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'PW Nova'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 13, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'VA Marauders FC'
-  AND d.name = 'Mid-Atlantic Conference Spring'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 14, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 1, 1, 0, 0, 3, 0, 3, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1185,7 +985,207 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 1, 1, 0, 0, 5, 4, 1, 3, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Baltimore City FC'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 6, 1, 0, 0, 1, 4, 5, -1, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'DMV Rangers'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 7, 1, 0, 0, 1, 1, 4, -3, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'PFA APSL'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 8, 1, 0, 0, 1, 0, 3, -3, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Grove Soccer United'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 9, 1, 0, 0, 1, 0, 3, -3, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'VA Marauders FC'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 10, 1, 0, 0, 1, 0, 4, -4, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'PW Nova'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 11, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Baltimore City Academy'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 12, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Chiefs United'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 13, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Christos FC'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 14, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Germantown City FC'
+  AND d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 1, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1205,7 +1205,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1225,7 +1225,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1245,7 +1245,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1265,7 +1265,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1285,7 +1285,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 6, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1305,7 +1305,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 7, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1325,7 +1325,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 8, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1345,7 +1345,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 9, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 9, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1365,7 +1365,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 10, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 10, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1385,7 +1385,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 12, 7, 4, 1, 56, 21, 35, 25, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 1, 13, 8, 4, 1, 59, 21, 38, 28, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1405,7 +1405,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 12, 8, 1, 3, 40, 25, 15, 25, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 13, 9, 1, 3, 43, 26, 17, 28, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1425,7 +1425,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 11, 7, 2, 2, 45, 15, 30, 23, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 3, 11, 7, 2, 2, 45, 15, 30, 23, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1445,7 +1445,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 11, 6, 1, 4, 48, 23, 25, 19, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 4, 12, 7, 1, 4, 55, 23, 32, 22, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1465,7 +1465,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 11, 6, 1, 4, 28, 21, 7, 19, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 11, 6, 1, 4, 28, 21, 7, 19, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1485,7 +1485,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 6, 7, 3, 1, 3, 19, 18, 1, 10, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 6, 9, 4, 1, 4, 20, 25, -5, 13, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1505,7 +1505,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 7, 10, 3, 0, 7, 24, 22, 2, 9, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 7, 12, 3, 0, 9, 25, 26, -1, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1525,7 +1525,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 8, 11, 3, 0, 8, 23, 39, -16, 9, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 8, 12, 3, 0, 9, 23, 42, -19, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1545,7 +1545,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 9, 11, 0, 0, 11, 4, 103, -99, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 9, 11, 0, 0, 11, 4, 103, -99, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1565,47 +1565,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 2, 2, 0, 0, 11, 4, 7, 6, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'Carrollton Old Boyz'
-  AND d.name = 'Trinity Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 2, 1, 1, 0, 0, 12, 2, 10, 3, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
-FROM teams t
-JOIN divisions d ON t.division_id = d.id
-JOIN seasons s ON d.season_id = s.id
-WHERE t.name = 'AC Arlington FC'
-  AND d.name = 'Trinity Conference'
-  AND s.name = '2025/2026'
-  AND s.league_id = 1
-ON CONFLICT (team_id) DO UPDATE SET
-  position = EXCLUDED.position,
-  played = EXCLUDED.played,
-  wins = EXCLUDED.wins,
-  draws = EXCLUDED.draws,
-  losses = EXCLUDED.losses,
-  goals_for = EXCLUDED.goals_for,
-  goals_against = EXCLUDED.goals_against,
-  goal_diff = EXCLUDED.goal_diff,
-  points = EXCLUDED.points,
-  fetched_at = EXCLUDED.fetched_at;
-INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 3, 1, 1, 0, 0, 10, 0, 10, 3, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 1, 3, 3, 0, 0, 20, 2, 18, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1625,7 +1585,47 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 4, 2, 0, 0, 2, 5, 17, -12, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 2, 4, 3, 0, 1, 19, 10, 9, 9, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'Carrollton Old Boyz'
+  AND d.name = 'Trinity Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 3, 3, 2, 0, 1, 17, 7, 10, 6, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
+JOIN seasons s ON d.season_id = s.id
+WHERE t.name = 'AC Arlington FC'
+  AND d.name = 'Trinity Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;
+INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, 4, 4, 0, 1, 3, 6, 23, -17, 1, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1645,7 +1645,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 5, 2, 0, 0, 2, 1, 16, -15, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 5, 4, 0, 1, 3, 1, 21, -20, 1, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
@@ -1665,7 +1665,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 1, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-24T18:08:28.747Z', 'APSL Scraper'
+SELECT t.id, 1, 0, 0, 0, 0, 0, 0, 0, 0, '2026-03-30T20:25:52.149Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id

@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Players - APSL
 -- Player roster data from team pages
--- Total Records: 1600
+-- Total Records: 1857
 -- 
 -- Architecture: Auto-generated IDs, name-based deduplication
 -- Same name = same person across all sources (curation overrides via name change)
@@ -17064,6 +17064,326 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Bilal', 'Ahmed', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Bilal' AND last_name = 'Ahmed' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-bilal-ahmed', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Bilal' AND per.last_name = 'Ahmed' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tim', 'Amoui', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tim' AND last_name = 'Amoui' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-tim-amoui', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tim' AND per.last_name = 'Amoui' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Badr', 'El Yazami', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Badr' AND last_name = 'El Yazami' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-badr-el-yazami', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Badr' AND per.last_name = 'El Yazami' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Stan-Lee', 'Etienne', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Stan-Lee' AND last_name = 'Etienne' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-stan-lee-etienne', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Stan-Lee' AND per.last_name = 'Etienne' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sylvi', 'Mahmood', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sylvi' AND last_name = 'Mahmood' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-sylvi-mahmood', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sylvi' AND per.last_name = 'Mahmood' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Pedro', 'Marinho', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Pedro' AND last_name = 'Marinho' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-pedro-marinho', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Pedro' AND per.last_name = 'Marinho' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juan', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juan' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-juan-martinez', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juan' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('David', 'Michaelson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'David' AND last_name = 'Michaelson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-david-michaelson', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'David' AND per.last_name = 'Michaelson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Metsantika', 'Mokgoatsana', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Metsantika' AND last_name = 'Mokgoatsana' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-metsantika-mokgoatsana', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Metsantika' AND per.last_name = 'Mokgoatsana' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ali', 'Niang', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ali' AND last_name = 'Niang' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-ali-niang', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ali' AND per.last_name = 'Niang' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Javier', 'Pace', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Javier' AND last_name = 'Pace' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-javier-pace', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Javier' AND per.last_name = 'Pace' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Osman', 'Rodriguez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Osman' AND last_name = 'Rodriguez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-osman-rodriguez', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Osman' AND per.last_name = 'Rodriguez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Aaron', 'Shiffman', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Aaron' AND last_name = 'Shiffman' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-aaron-shiffman', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Aaron' AND per.last_name = 'Shiffman' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Miwoned', 'Siraj', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Miwoned' AND last_name = 'Siraj' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-miwoned-siraj', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Miwoned' AND per.last_name = 'Siraj' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tyler', 'Swinehart', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tyler' AND last_name = 'Swinehart' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-tyler-swinehart', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tyler' AND per.last_name = 'Swinehart' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gabriel', 'Villar', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gabriel' AND last_name = 'Villar' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-gabriel-villar', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gabriel' AND per.last_name = 'Villar' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Walsh', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Walsh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-michael-walsh', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Walsh' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joshua', 'Warde', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joshua' AND last_name = 'Warde' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-joshua-warde', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joshua' AND per.last_name = 'Warde' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Wilson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Wilson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-christopher-wilson', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Wilson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kyle', 'Xhajanka', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kyle' AND last_name = 'Xhajanka' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'peachtree-fc-kyle-xhajanka', '115101'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kyle' AND per.last_name = 'Xhajanka' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Joshua', 'Adejokun', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
@@ -17508,6 +17828,2326 @@ SELECT pl.id, 1, 'ny-international-fc-maurice-vermeulen', '115102'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Maurice' AND per.last_name = 'Vermeulen' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jonathan', 'Adabi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jonathan' AND last_name = 'Adabi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-jonathan-adabi', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jonathan' AND per.last_name = 'Adabi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tishe', 'Adekanmbi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tishe' AND last_name = 'Adekanmbi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-tishe-adekanmbi', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tishe' AND per.last_name = 'Adekanmbi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Abdoulmalik', 'Adesanya', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Abdoulmalik' AND last_name = 'Adesanya' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-abdoulmalik-adesanya', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Abdoulmalik' AND per.last_name = 'Adesanya' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Caleb', 'Ayan', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Caleb' AND last_name = 'Ayan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-caleb-ayan', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Caleb' AND per.last_name = 'Ayan' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Olumide', 'Ayo-Ajibike', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Olumide' AND last_name = 'Ayo-Ajibike' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-olumide-ayo-ajibike', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Olumide' AND per.last_name = 'Ayo-Ajibike' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Elad', 'Khaleef Bogle', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Elad' AND last_name = 'Khaleef Bogle' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-elad-khaleef-bogle', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Elad' AND per.last_name = 'Khaleef Bogle' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tobias', 'Ciho', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tobias' AND last_name = 'Ciho' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-tobias-ciho', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tobias' AND per.last_name = 'Ciho' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nixon', 'Manuel Condolo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nixon' AND last_name = 'Manuel Condolo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-nixon-manuel-condolo', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nixon' AND per.last_name = 'Manuel Condolo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Felipe', 'Correa', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Felipe' AND last_name = 'Correa' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-felipe-correa', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Felipe' AND per.last_name = 'Correa' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Dardis', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Dardis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-michael-dardis', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Dardis' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Abdoulaye', 'Diba', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Abdoulaye' AND last_name = 'Diba' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-abdoulaye-diba', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Abdoulaye' AND per.last_name = 'Diba' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Lech', 'Dunser', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Lech' AND last_name = 'Dunser' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-lech-dunser', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Lech' AND per.last_name = 'Dunser' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Daniel', 'Duran Gonzalez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Daniel' AND last_name = 'Duran Gonzalez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-daniel-duran-gonzalez', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'Duran Gonzalez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('David', 'Alejandro Fierro', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'David' AND last_name = 'Alejandro Fierro' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-david-alejandro-fierro', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'David' AND per.last_name = 'Alejandro Fierro' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Caleb', 'Johnson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Caleb' AND last_name = 'Johnson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-caleb-johnson', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Caleb' AND per.last_name = 'Johnson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ian', 'Thomas Kunkel', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ian' AND last_name = 'Thomas Kunkel' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-ian-thomas-kunkel', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ian' AND per.last_name = 'Thomas Kunkel' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jelle', 'Lansdaal', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jelle' AND last_name = 'Lansdaal' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-jelle-lansdaal', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jelle' AND per.last_name = 'Lansdaal' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ruari', 'Eamonn O’Rourke', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ruari' AND last_name = 'Eamonn O’Rourke' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-ruari-eamonn-o-rourke', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ruari' AND per.last_name = 'Eamonn O’Rourke' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Siddharth', 'Rajesh', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Siddharth' AND last_name = 'Rajesh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-siddharth-rajesh', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Siddharth' AND per.last_name = 'Rajesh' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Anel', 'Ramic', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Anel' AND last_name = 'Ramic' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-anel-ramic', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Anel' AND per.last_name = 'Ramic' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sumner', 'Richardson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sumner' AND last_name = 'Richardson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-sumner-richardson', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sumner' AND per.last_name = 'Richardson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('George', 'Bishop Rodi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'George' AND last_name = 'Bishop Rodi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-george-bishop-rodi', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'George' AND per.last_name = 'Bishop Rodi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Connor', 'Rosenthal', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Connor' AND last_name = 'Rosenthal' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-connor-rosenthal', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Connor' AND per.last_name = 'Rosenthal' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Godfred', 'Nii Tettey', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Godfred' AND last_name = 'Nii Tettey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-godfred-nii-tettey', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Godfred' AND per.last_name = 'Nii Tettey' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joshua', 'Parbie Tettey', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joshua' AND last_name = 'Parbie Tettey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-joshua-parbie-tettey', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joshua' AND per.last_name = 'Parbie Tettey' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Robert', 'A Thomas', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Robert' AND last_name = 'A Thomas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-robert-a-thomas', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Robert' AND per.last_name = 'A Thomas' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Chris', 'Arturo Vitela', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Chris' AND last_name = 'Arturo Vitela' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-chris-arturo-vitela', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Chris' AND per.last_name = 'Arturo Vitela' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Noah', 'Wieland', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Noah' AND last_name = 'Wieland' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-noah-wieland', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Noah' AND per.last_name = 'Wieland' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Olanrewaju', 'Yusuff', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Olanrewaju' AND last_name = 'Yusuff' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'buckhead-sc-olanrewaju-yusuff', '115104'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Olanrewaju' AND per.last_name = 'Yusuff' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Zackeriah', 'Aday-Nicholson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Zackeriah' AND last_name = 'Aday-Nicholson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-zackeriah-aday-nicholson', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Zackeriah' AND per.last_name = 'Aday-Nicholson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gabriel', 'Alvarez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gabriel' AND last_name = 'Alvarez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-gabriel-alvarez', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gabriel' AND per.last_name = 'Alvarez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dylan', 'Bapst', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dylan' AND last_name = 'Bapst' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-dylan-bapst', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dylan' AND per.last_name = 'Bapst' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mitchell', 'Barry', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mitchell' AND last_name = 'Barry' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-mitchell-barry', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mitchell' AND per.last_name = 'Barry' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Charles', 'Blakenship', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Charles' AND last_name = 'Blakenship' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-charles-blakenship', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Charles' AND per.last_name = 'Blakenship' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Davis', 'Bryan', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Davis' AND last_name = 'Bryan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-davis-bryan', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Davis' AND per.last_name = 'Bryan' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kevin', 'Carvalho', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kevin' AND last_name = 'Carvalho' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-kevin-carvalho', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kevin' AND per.last_name = 'Carvalho' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('John', 'Fragakis', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'John' AND last_name = 'Fragakis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-john-fragakis', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'John' AND per.last_name = 'Fragakis' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Stefan', 'Gojic', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Stefan' AND last_name = 'Gojic' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-stefan-gojic', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Stefan' AND per.last_name = 'Gojic' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Andrew', 'Grodhaus', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Andrew' AND last_name = 'Grodhaus' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-andrew-grodhaus', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Andrew' AND per.last_name = 'Grodhaus' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Colton', 'Huebner', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Colton' AND last_name = 'Huebner' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-colton-huebner', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Colton' AND per.last_name = 'Huebner' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joshua', 'James', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joshua' AND last_name = 'James' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-joshua-james', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joshua' AND per.last_name = 'James' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('William', 'Keegan', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'William' AND last_name = 'Keegan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-william-keegan', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'William' AND per.last_name = 'Keegan' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Konrad', 'Knap', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Konrad' AND last_name = 'Knap' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-konrad-knap', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Konrad' AND per.last_name = 'Knap' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jordan', 'Locke', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jordan' AND last_name = 'Locke' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-jordan-locke', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jordan' AND per.last_name = 'Locke' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Marshall', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Marshall' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-christopher-marshall', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Marshall' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Javier', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Javier' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-javier-martinez', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Javier' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Cain', 'McMillan', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Cain' AND last_name = 'McMillan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-cain-mcmillan', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Cain' AND per.last_name = 'McMillan' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Anthony', 'Norman', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Anthony' AND last_name = 'Norman' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-anthony-norman', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Anthony' AND per.last_name = 'Norman' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sampson', 'Nsemoh', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sampson' AND last_name = 'Nsemoh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-sampson-nsemoh', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sampson' AND per.last_name = 'Nsemoh' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thomas', 'Powers', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thomas' AND last_name = 'Powers' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-thomas-powers', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thomas' AND per.last_name = 'Powers' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Seth', 'Prieto', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Seth' AND last_name = 'Prieto' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-seth-prieto', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Seth' AND per.last_name = 'Prieto' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adam', 'Rooney', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adam' AND last_name = 'Rooney' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-adam-rooney', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adam' AND per.last_name = 'Rooney' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jacob', 'Sayer', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jacob' AND last_name = 'Sayer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-jacob-sayer', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jacob' AND per.last_name = 'Sayer' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Zachary', 'Smith', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Zachary' AND last_name = 'Smith' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-zachary-smith', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Zachary' AND per.last_name = 'Smith' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christian', 'Waeglin', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christian' AND last_name = 'Waeglin' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-christian-waeglin', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christian' AND per.last_name = 'Waeglin' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Witmond', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Witmond' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'prima-fc-christopher-witmond', '115105'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Witmond' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nathan', 'Bio', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nathan' AND last_name = 'Bio' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-nathan-bio', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nathan' AND per.last_name = 'Bio' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Rob', 'Bonet', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Rob' AND last_name = 'Bonet' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-rob-bonet', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Rob' AND per.last_name = 'Bonet' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Aziymu', 'Shamil Burns', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Aziymu' AND last_name = 'Shamil Burns' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-aziymu-shamil-burns', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Aziymu' AND per.last_name = 'Shamil Burns' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jackson', 'Cavenaugh', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jackson' AND last_name = 'Cavenaugh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-jackson-cavenaugh', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jackson' AND per.last_name = 'Cavenaugh' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kyle', 'Crawford', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kyle' AND last_name = 'Crawford' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-kyle-crawford', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kyle' AND per.last_name = 'Crawford' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eduardo', 'Delgado', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eduardo' AND last_name = 'Delgado' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-eduardo-delgado', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eduardo' AND per.last_name = 'Delgado' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Matheus', 'Fineto', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Matheus' AND last_name = 'Fineto' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-matheus-fineto', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Matheus' AND per.last_name = 'Fineto' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Enrique', 'Gonzalez Plaza', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Enrique' AND last_name = 'Gonzalez Plaza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-enrique-gonzalez-plaza', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Enrique' AND per.last_name = 'Gonzalez Plaza' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Chris', 'Griffith', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Chris' AND last_name = 'Griffith' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-chris-griffith', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Chris' AND per.last_name = 'Griffith' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Philip', 'Harris', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Philip' AND last_name = 'Harris' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-philip-harris', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Philip' AND per.last_name = 'Harris' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Justin', 'Heimerl', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Justin' AND last_name = 'Heimerl' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-justin-heimerl', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Justin' AND per.last_name = 'Heimerl' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Lucas', 'Horton', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Lucas' AND last_name = 'Horton' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-lucas-horton', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Lucas' AND per.last_name = 'Horton' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Karson', 'Reese Kendall', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Karson' AND last_name = 'Reese Kendall' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-karson-reese-kendall', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Karson' AND per.last_name = 'Reese Kendall' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Konner', 'Kendall', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Konner' AND last_name = 'Kendall' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-konner-kendall', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Konner' AND per.last_name = 'Kendall' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mouad', 'Labied', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mouad' AND last_name = 'Labied' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-mouad-labied', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mouad' AND per.last_name = 'Labied' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jake', 'Langton', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jake' AND last_name = 'Langton' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-jake-langton', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jake' AND per.last_name = 'Langton' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Myles', 'Levelle', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Myles' AND last_name = 'Levelle' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-myles-levelle', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Myles' AND per.last_name = 'Levelle' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Randy', 'Mallar-Calvillo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Randy' AND last_name = 'Mallar-Calvillo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-randy-mallar-calvillo', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Randy' AND per.last_name = 'Mallar-Calvillo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Matt', 'Mitchell', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Matt' AND last_name = 'Mitchell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-matt-mitchell', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Matt' AND per.last_name = 'Mitchell' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nikos', 'Papanikolopoulos', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nikos' AND last_name = 'Papanikolopoulos' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-nikos-papanikolopoulos', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nikos' AND per.last_name = 'Papanikolopoulos' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Cade', 'Quinto', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Cade' AND last_name = 'Quinto' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-cade-quinto', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Cade' AND per.last_name = 'Quinto' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juandi', 'Riley', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juandi' AND last_name = 'Riley' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-juandi-riley', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juandi' AND per.last_name = 'Riley' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Luis', 'Romero', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Luis' AND last_name = 'Romero' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-luis-romero', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Romero' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eduardo', 'Ernesto Salmeron', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eduardo' AND last_name = 'Ernesto Salmeron' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-eduardo-ernesto-salmeron', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eduardo' AND per.last_name = 'Ernesto Salmeron' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Aswin', 'Sembu', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Aswin' AND last_name = 'Sembu' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-aswin-sembu', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Aswin' AND per.last_name = 'Sembu' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adam', 'Sole', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adam' AND last_name = 'Sole' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-adam-sole', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adam' AND per.last_name = 'Sole' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Zaid', 'Takrouri', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Zaid' AND last_name = 'Takrouri' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-zaid-takrouri', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Zaid' AND per.last_name = 'Takrouri' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Touihri', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Touihri' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-michael-touihri', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Touihri' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ivan', 'Verdezoto', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ivan' AND last_name = 'Verdezoto' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-ivan-verdezoto', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ivan' AND per.last_name = 'Verdezoto' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Min', 'Yoo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Min' AND last_name = 'Yoo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'bel-calcio-fc-min-yoo', '115106'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Min' AND per.last_name = 'Yoo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Roberto', 'Carlos Calix', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Roberto' AND last_name = 'Carlos Calix' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-roberto-carlos-calix', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Roberto' AND per.last_name = 'Carlos Calix' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eli', 'Francisco Carrasco', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eli' AND last_name = 'Francisco Carrasco' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-eli-francisco-carrasco', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eli' AND per.last_name = 'Francisco Carrasco' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Axel', 'Castrejon', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Axel' AND last_name = 'Castrejon' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-axel-castrejon', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Axel' AND per.last_name = 'Castrejon' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gael', 'Jared Castrejon', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gael' AND last_name = 'Jared Castrejon' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-gael-jared-castrejon', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gael' AND per.last_name = 'Jared Castrejon' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jared', 'Scott Childs', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jared' AND last_name = 'Scott Childs' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-jared-scott-childs', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jared' AND per.last_name = 'Scott Childs' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dylan', 'Bright Edmonds', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dylan' AND last_name = 'Bright Edmonds' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-dylan-bright-edmonds', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dylan' AND per.last_name = 'Bright Edmonds' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mason', 'McGill Fifer', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mason' AND last_name = 'McGill Fifer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-mason-mcgill-fifer', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mason' AND per.last_name = 'McGill Fifer' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Omar', 'Guadarrama', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Omar' AND last_name = 'Guadarrama' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-omar-guadarrama', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Omar' AND per.last_name = 'Guadarrama' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brandon', 'Gutierrez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brandon' AND last_name = 'Gutierrez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-brandon-gutierrez', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brandon' AND per.last_name = 'Gutierrez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Maury', 'Ibarra', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Maury' AND last_name = 'Ibarra' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-maury-ibarra', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Maury' AND per.last_name = 'Ibarra' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sebastian', 'Tyler Jones', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sebastian' AND last_name = 'Tyler Jones' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-sebastian-tyler-jones', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sebastian' AND per.last_name = 'Tyler Jones' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dino', 'Kalac', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dino' AND last_name = 'Kalac' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-dino-kalac', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dino' AND per.last_name = 'Kalac' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Taylor', 'Benjamin Lemmon', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Taylor' AND last_name = 'Benjamin Lemmon' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-taylor-benjamin-lemmon', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Taylor' AND per.last_name = 'Benjamin Lemmon' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ivan', 'Israel Lopez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ivan' AND last_name = 'Israel Lopez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-ivan-israel-lopez', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ivan' AND per.last_name = 'Israel Lopez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sebastian', 'Lopez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sebastian' AND last_name = 'Lopez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-sebastian-lopez', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sebastian' AND per.last_name = 'Lopez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juanes', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juanes' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-juanes-martinez', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juanes' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sebastian', 'Nuñez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sebastian' AND last_name = 'Nuñez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-sebastian-nunez', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sebastian' AND per.last_name = 'Nuñez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ashton', 'Thomas Parnell', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ashton' AND last_name = 'Thomas Parnell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-ashton-thomas-parnell', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ashton' AND per.last_name = 'Thomas Parnell' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tyler', 'Pineda', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tyler' AND last_name = 'Pineda' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-tyler-pineda', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tyler' AND per.last_name = 'Pineda' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Voshon', 'Ramcharan', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Voshon' AND last_name = 'Ramcharan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-voshon-ramcharan', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Voshon' AND per.last_name = 'Ramcharan' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Marvin', 'Rodriguez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Marvin' AND last_name = 'Rodriguez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-marvin-rodriguez', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Marvin' AND per.last_name = 'Rodriguez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Fabian', 'Rodriguez-Escobedo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Fabian' AND last_name = 'Rodriguez-Escobedo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-fabian-rodriguez-escobedo', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Fabian' AND per.last_name = 'Rodriguez-Escobedo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Blair', 'Springhall', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Blair' AND last_name = 'Springhall' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-blair-springhall', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Blair' AND per.last_name = 'Springhall' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Bradley', 'Hamilton Tidwell', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Bradley' AND last_name = 'Hamilton Tidwell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-bradley-hamilton-tidwell', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Bradley' AND per.last_name = 'Hamilton Tidwell' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Edward', 'Trejo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Edward' AND last_name = 'Trejo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-edward-trejo', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Edward' AND per.last_name = 'Trejo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Johan', 'Miguel Trigo-Rios', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Johan' AND last_name = 'Miguel Trigo-Rios' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-johan-miguel-trigo-rios', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Johan' AND per.last_name = 'Miguel Trigo-Rios' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Luis', 'Albert Ventura', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Luis' AND last_name = 'Albert Ventura' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-luis-albert-ventura', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Albert Ventura' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Patrick', 'Ventura', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Patrick' AND last_name = 'Ventura' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-patrick-ventura', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Patrick' AND per.last_name = 'Ventura' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nicholas', 'Wheeler', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nicholas' AND last_name = 'Wheeler' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'alliance-sc-nicholas-wheeler', '115107'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nicholas' AND per.last_name = 'Wheeler' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Rashid', 'Alarape', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Rashid' AND last_name = 'Alarape' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-rashid-alarape', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Rashid' AND per.last_name = 'Alarape' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alex', 'Archambeau', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alex' AND last_name = 'Archambeau' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-alex-archambeau', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alex' AND per.last_name = 'Archambeau' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Avery', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Avery' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-christopher-avery', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Avery' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Carlos', 'Ayala-Viera', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Carlos' AND last_name = 'Ayala-Viera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-carlos-ayala-viera', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Carlos' AND per.last_name = 'Ayala-Viera' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Carlos', 'Becerra-Gomez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Carlos' AND last_name = 'Becerra-Gomez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-carlos-becerra-gomez', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Carlos' AND per.last_name = 'Becerra-Gomez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Oskar', 'Bringle', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Oskar' AND last_name = 'Bringle' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-oskar-bringle', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Oskar' AND per.last_name = 'Bringle' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Elliot', 'Curtin', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Elliot' AND last_name = 'Curtin' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-elliot-curtin', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Elliot' AND per.last_name = 'Curtin' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eli', 'Dent', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eli' AND last_name = 'Dent' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-eli-dent', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eli' AND per.last_name = 'Dent' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jackson', 'Eskay', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jackson' AND last_name = 'Eskay' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-jackson-eskay', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jackson' AND per.last_name = 'Eskay' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Andrew', 'Fitton', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Andrew' AND last_name = 'Fitton' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-andrew-fitton', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Andrew' AND per.last_name = 'Fitton' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mike', 'Foutsop', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mike' AND last_name = 'Foutsop' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-mike-foutsop', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mike' AND per.last_name = 'Foutsop' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Neema', 'Gharib', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Neema' AND last_name = 'Gharib' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-neema-gharib', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Neema' AND per.last_name = 'Gharib' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Andrew', 'Halloran', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Andrew' AND last_name = 'Halloran' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-andrew-halloran', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Andrew' AND per.last_name = 'Halloran' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thierno', 'Issabre', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thierno' AND last_name = 'Issabre' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-thierno-issabre', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thierno' AND per.last_name = 'Issabre' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Johnson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Johnson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-michael-johnson', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Johnson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brennan', 'Koslow', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brennan' AND last_name = 'Koslow' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-brennan-koslow', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brennan' AND per.last_name = 'Koslow' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mitchell', 'Kupstas', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mitchell' AND last_name = 'Kupstas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-mitchell-kupstas', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mitchell' AND per.last_name = 'Kupstas' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Boland', 'Lekeaka', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Boland' AND last_name = 'Lekeaka' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-boland-lekeaka', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Boland' AND per.last_name = 'Lekeaka' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adrian', 'Lollar', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adrian' AND last_name = 'Lollar' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-adrian-lollar', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adrian' AND per.last_name = 'Lollar' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('McKinley', 'Mercer III', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'McKinley' AND last_name = 'Mercer III' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-mckinley-mercer-iii', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'McKinley' AND per.last_name = 'Mercer III' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Luke', 'Narker', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Luke' AND last_name = 'Narker' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-luke-narker', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Luke' AND per.last_name = 'Narker' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Hassan', 'Pinto', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Hassan' AND last_name = 'Pinto' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-hassan-pinto', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Hassan' AND per.last_name = 'Pinto' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Cory', 'Plasker', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Cory' AND last_name = 'Plasker' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-cory-plasker', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Cory' AND per.last_name = 'Plasker' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Max', 'Poore', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Max' AND last_name = 'Poore' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-max-poore', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Max' AND per.last_name = 'Poore' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kevin', 'Reyes', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kevin' AND last_name = 'Reyes' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-kevin-reyes', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kevin' AND per.last_name = 'Reyes' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sharpe', 'Sablon', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sharpe' AND last_name = 'Sablon' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-sharpe-sablon', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sharpe' AND per.last_name = 'Sablon' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Iain', 'Smith', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Iain' AND last_name = 'Smith' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-iain-smith', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Iain' AND per.last_name = 'Smith' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thor', 'Svienbjorsson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thor' AND last_name = 'Svienbjorsson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-thor-svienbjorsson', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thor' AND per.last_name = 'Svienbjorsson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thomas', 'Toney', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thomas' AND last_name = 'Toney' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-thomas-toney', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thomas' AND per.last_name = 'Toney' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Zachary', 'Paul Young', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Zachary' AND last_name = 'Paul Young' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'majestic-sc-zachary-paul-young', '115108'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Zachary' AND per.last_name = 'Paul Young' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
@@ -18484,6 +21124,406 @@ SELECT pl.id, 1, 'leros-sc-george-yusuff', '115315'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'George' AND per.last_name = 'Yusuff' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nour', 'Alamri', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nour' AND last_name = 'Alamri' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-nour-alamri', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nour' AND per.last_name = 'Alamri' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Henry', 'Asbill', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Henry' AND last_name = 'Asbill' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-henry-asbill', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Henry' AND per.last_name = 'Asbill' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Asad', 'Bashir', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Asad' AND last_name = 'Bashir' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-asad-bashir', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Asad' AND per.last_name = 'Bashir' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kai', 'Bennett', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kai' AND last_name = 'Bennett' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-kai-bennett', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kai' AND per.last_name = 'Bennett' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alex', 'Caskey', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alex' AND last_name = 'Caskey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-alex-caskey', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alex' AND per.last_name = 'Caskey' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Damian', 'Charles', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Damian' AND last_name = 'Charles' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-damian-charles', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Damian' AND per.last_name = 'Charles' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jamie', 'Gleeson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jamie' AND last_name = 'Gleeson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-jamie-gleeson', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jamie' AND per.last_name = 'Gleeson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Noah', 'Goodman', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Noah' AND last_name = 'Goodman' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-noah-goodman', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Noah' AND per.last_name = 'Goodman' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Anthony', 'Gourdine', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Anthony' AND last_name = 'Gourdine' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-anthony-gourdine', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Anthony' AND per.last_name = 'Gourdine' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Morgan', 'Hall', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Morgan' AND last_name = 'Hall' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-morgan-hall', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Morgan' AND per.last_name = 'Hall' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Josh', 'Hughes', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Josh' AND last_name = 'Hughes' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-josh-hughes', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Josh' AND per.last_name = 'Hughes' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gad', 'Kabwende', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gad' AND last_name = 'Kabwende' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-gad-kabwende', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gad' AND per.last_name = 'Kabwende' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jason', 'Kayne', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jason' AND last_name = 'Kayne' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-jason-kayne', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jason' AND per.last_name = 'Kayne' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('JT', 'Keiffer', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'JT' AND last_name = 'Keiffer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-jt-keiffer', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'JT' AND per.last_name = 'Keiffer' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jean', 'Malilo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jean' AND last_name = 'Malilo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-jean-malilo', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jean' AND per.last_name = 'Malilo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Zion', 'Jediah-Jason McClean', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Zion' AND last_name = 'Jediah-Jason McClean' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-zion-jediah-jason-mcclean', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Zion' AND per.last_name = 'Jediah-Jason McClean' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gregg', 'McPheely', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gregg' AND last_name = 'McPheely' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-gregg-mcpheely', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gregg' AND per.last_name = 'McPheely' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nathan', 'Miles', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nathan' AND last_name = 'Miles' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-nathan-miles', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nathan' AND per.last_name = 'Miles' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alex', 'Rotoloni', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alex' AND last_name = 'Rotoloni' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-alex-rotoloni', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alex' AND per.last_name = 'Rotoloni' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jack', 'Snyder', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jack' AND last_name = 'Snyder' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-jack-snyder', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jack' AND per.last_name = 'Snyder' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brynn', 'Thompson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brynn' AND last_name = 'Thompson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-brynn-thompson', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brynn' AND per.last_name = 'Thompson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tyler', 'Vogt', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tyler' AND last_name = 'Vogt' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-tyler-vogt', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tyler' AND per.last_name = 'Vogt' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Renaldo', 'Walters', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Renaldo' AND last_name = 'Walters' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-renaldo-walters', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Renaldo' AND per.last_name = 'Walters' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Matt', 'Williams', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Matt' AND last_name = 'Williams' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-matt-williams', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Matt' AND per.last_name = 'Williams' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nick', 'York', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nick' AND last_name = 'York' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'terminus-fc-nick-york', '115815'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nick' AND per.last_name = 'York' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
@@ -20968,6 +24008,566 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adam', 'Abdullahi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adam' AND last_name = 'Abdullahi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-adam-abdullahi', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adam' AND per.last_name = 'Abdullahi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mohammed', 'Al-Asady', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mohammed' AND last_name = 'Al-Asady' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-mohammed-al-asady', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mohammed' AND per.last_name = 'Al-Asady' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Malek', 'Almariri', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Malek' AND last_name = 'Almariri' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-malek-almariri', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Malek' AND per.last_name = 'Almariri' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mario', 'Arreguin', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mario' AND last_name = 'Arreguin' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-mario-arreguin', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mario' AND per.last_name = 'Arreguin' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ali', 'Bazz', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ali' AND last_name = 'Bazz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-ali-bazz', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ali' AND per.last_name = 'Bazz' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Monchu', 'Camara', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Monchu' AND last_name = 'Camara' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-monchu-camara', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Monchu' AND per.last_name = 'Camara' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Steven', 'Carrillo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Steven' AND last_name = 'Carrillo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-steven-carrillo', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Steven' AND per.last_name = 'Carrillo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Karl', 'Christiansen', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Karl' AND last_name = 'Christiansen' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-karl-christiansen', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Karl' AND per.last_name = 'Christiansen' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Franklin', 'Contreras', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Franklin' AND last_name = 'Contreras' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-franklin-contreras', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Franklin' AND per.last_name = 'Contreras' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Vitor', 'De Souza', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Vitor' AND last_name = 'De Souza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-vitor-de-souza', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Vitor' AND per.last_name = 'De Souza' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adrian', 'Garcia', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adrian' AND last_name = 'Garcia' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-adrian-garcia', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adrian' AND per.last_name = 'Garcia' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Josue', 'Gomez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Josue' AND last_name = 'Gomez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-josue-gomez', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Josue' AND per.last_name = 'Gomez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jafet', 'Higuera', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jafet' AND last_name = 'Higuera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-jafet-higuera', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jafet' AND per.last_name = 'Higuera' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Rui', 'James-Pereira', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Rui' AND last_name = 'James-Pereira' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-rui-james-pereira', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Rui' AND per.last_name = 'James-Pereira' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kendrick', 'Jean', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kendrick' AND last_name = 'Jean' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-kendrick-jean', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kendrick' AND per.last_name = 'Jean' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sanaa', 'Listenbee', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sanaa' AND last_name = 'Listenbee' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-sanaa-listenbee', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sanaa' AND per.last_name = 'Listenbee' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Chris', 'Louissaint', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Chris' AND last_name = 'Louissaint' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-chris-louissaint', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Chris' AND per.last_name = 'Louissaint' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('David', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'David' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-david-martinez', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'David' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ramsis', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ramsis' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-ramsis-martinez', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ramsis' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ruben', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ruben' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-ruben-martinez', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ruben' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jonathan', 'May', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jonathan' AND last_name = 'May' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-jonathan-may', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jonathan' AND per.last_name = 'May' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jaylen', 'McCray', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jaylen' AND last_name = 'McCray' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-jaylen-mccray', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jaylen' AND per.last_name = 'McCray' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tariq', 'Mohammed', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tariq' AND last_name = 'Mohammed' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-tariq-mohammed', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tariq' AND per.last_name = 'Mohammed' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Geovanni', 'Oboh', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Geovanni' AND last_name = 'Oboh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-geovanni-oboh', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Geovanni' AND per.last_name = 'Oboh' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jordan', 'Paul', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jordan' AND last_name = 'Paul' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-jordan-paul', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jordan' AND per.last_name = 'Paul' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nicolas', 'Pegorer', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nicolas' AND last_name = 'Pegorer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-nicolas-pegorer', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nicolas' AND per.last_name = 'Pegorer' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Pablo', 'Piraquive', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Pablo' AND last_name = 'Piraquive' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-pablo-piraquive', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Pablo' AND per.last_name = 'Piraquive' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Roney', 'Rubio', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Roney' AND last_name = 'Rubio' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-roney-rubio', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Roney' AND per.last_name = 'Rubio' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Anakin', 'Ruiz', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Anakin' AND last_name = 'Ruiz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-anakin-ruiz', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Anakin' AND per.last_name = 'Ruiz' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jazeime', 'Russell', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jazeime' AND last_name = 'Russell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-jazeime-russell', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jazeime' AND per.last_name = 'Russell' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jonathan', 'Sandoval', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jonathan' AND last_name = 'Sandoval' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-jonathan-sandoval', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jonathan' AND per.last_name = 'Sandoval' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ayman', 'Saudin', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ayman' AND last_name = 'Saudin' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-ayman-saudin', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ayman' AND per.last_name = 'Saudin' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Manuel', 'Simental', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Manuel' AND last_name = 'Simental' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-manuel-simental', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Manuel' AND per.last_name = 'Simental' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mahmoud', 'Tasslak', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mahmoud' AND last_name = 'Tasslak' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-mahmoud-tasslak', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mahmoud' AND per.last_name = 'Tasslak' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Myles', 'Williams', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Myles' AND last_name = 'Williams' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sc-gwinnett-myles-williams', '119159'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Myles' AND per.last_name = 'Williams' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Geovany', 'Acevedo', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
@@ -21976,6 +25576,1782 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('José', 'Alexander Aviles Lainez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'José' AND last_name = 'Alexander Aviles Lainez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'germantown-city-fc-jose-alexander-aviles-lainez', '136127'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'José' AND per.last_name = 'Alexander Aviles Lainez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Geovanny', 'Alejandro Bueso', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Geovanny' AND last_name = 'Alejandro Bueso' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'germantown-city-fc-geovanny-alejandro-bueso', '136127'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Geovanny' AND per.last_name = 'Alejandro Bueso' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jamil', 'Josua Dominguez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jamil' AND last_name = 'Josua Dominguez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'germantown-city-fc-jamil-josua-dominguez', '136127'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jamil' AND per.last_name = 'Josua Dominguez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brian', 'Allen Nolasco', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brian' AND last_name = 'Allen Nolasco' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'germantown-city-fc-brian-allen-nolasco', '136127'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brian' AND per.last_name = 'Allen Nolasco' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Daniel', 'G Plaza', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Daniel' AND last_name = 'G Plaza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'germantown-city-fc-daniel-g-plaza', '136127'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'G Plaza' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Luis', 'Melchor Santiago', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Luis' AND last_name = 'Melchor Santiago' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'germantown-city-fc-luis-melchor-santiago', '136127'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Melchor Santiago' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Miguel', 'Guillermo Abbud', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Miguel' AND last_name = 'Guillermo Abbud' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-miguel-guillermo-abbud', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Miguel' AND per.last_name = 'Guillermo Abbud' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ishaan', 'Akhtar', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ishaan' AND last_name = 'Akhtar' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-ishaan-akhtar', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ishaan' AND per.last_name = 'Akhtar' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Abdulrahman', 'Al Gabri', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Abdulrahman' AND last_name = 'Al Gabri' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-abdulrahman-al-gabri', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Abdulrahman' AND per.last_name = 'Al Gabri' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Femi', 'Aladetimi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Femi' AND last_name = 'Aladetimi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-femi-aladetimi', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Femi' AND per.last_name = 'Aladetimi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Octavio', 'Avila Gutierrez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Octavio' AND last_name = 'Avila Gutierrez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-octavio-avila-gutierrez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Octavio' AND per.last_name = 'Avila Gutierrez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Oluwatobi', 'Ayedun', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Oluwatobi' AND last_name = 'Ayedun' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-oluwatobi-ayedun', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Oluwatobi' AND per.last_name = 'Ayedun' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Freddy', 'Rafael Carranza', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Freddy' AND last_name = 'Rafael Carranza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-freddy-rafael-carranza', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Freddy' AND per.last_name = 'Rafael Carranza' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alan', 'De La Torre', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alan' AND last_name = 'De La Torre' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-alan-de-la-torre', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alan' AND per.last_name = 'De La Torre' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jorge', 'Delgado Rodríguez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jorge' AND last_name = 'Delgado Rodríguez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-jorge-delgado-rodriguez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jorge' AND per.last_name = 'Delgado Rodríguez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thomas', 'Harland', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thomas' AND last_name = 'Harland' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-thomas-harland', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thomas' AND per.last_name = 'Harland' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Travis', 'Harland', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Travis' AND last_name = 'Harland' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-travis-harland', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Travis' AND per.last_name = 'Harland' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Angel', 'Steven Lizardo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Angel' AND last_name = 'Steven Lizardo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-angel-steven-lizardo', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Angel' AND per.last_name = 'Steven Lizardo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jesus', 'Lucio', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jesus' AND last_name = 'Lucio' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-jesus-lucio', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jesus' AND per.last_name = 'Lucio' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Diego', 'Manuel Mares', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Diego' AND last_name = 'Manuel Mares' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-diego-manuel-mares', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Diego' AND per.last_name = 'Manuel Mares' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jonathan', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jonathan' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-jonathan-martinez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jonathan' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Randy', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Randy' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-randy-martinez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Randy' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yecson', 'Martinez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yecson' AND last_name = 'Martinez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-yecson-martinez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yecson' AND per.last_name = 'Martinez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Anthony', 'Nguyen', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Anthony' AND last_name = 'Nguyen' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-anthony-nguyen', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Anthony' AND per.last_name = 'Nguyen' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('James', 'Olvera', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'James' AND last_name = 'Olvera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-james-olvera', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'James' AND per.last_name = 'Olvera' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Godfrey', 'Victor Ponce', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Godfrey' AND last_name = 'Victor Ponce' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-godfrey-victor-ponce', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Godfrey' AND per.last_name = 'Victor Ponce' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Francisco', 'Prestefelipe', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Francisco' AND last_name = 'Prestefelipe' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-francisco-prestefelipe', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Francisco' AND per.last_name = 'Prestefelipe' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ignacio', 'Esteban Quevedo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ignacio' AND last_name = 'Esteban Quevedo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-ignacio-esteban-quevedo', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ignacio' AND per.last_name = 'Esteban Quevedo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Rahol', 'Rai', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Rahol' AND last_name = 'Rai' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-rahol-rai', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Rahol' AND per.last_name = 'Rai' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juan', 'Pablo Ramirez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juan' AND last_name = 'Pablo Ramirez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-juan-pablo-ramirez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juan' AND per.last_name = 'Pablo Ramirez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Allen', 'Randle', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Allen' AND last_name = 'Randle' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-allen-randle', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Allen' AND per.last_name = 'Randle' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Rocco', 'Von Reyna', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Rocco' AND last_name = 'Von Reyna' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-rocco-von-reyna', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Rocco' AND per.last_name = 'Von Reyna' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joseph', 'Rodriguez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joseph' AND last_name = 'Rodriguez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-joseph-rodriguez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joseph' AND per.last_name = 'Rodriguez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Angel', 'Jesus Sanchez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Angel' AND last_name = 'Jesus Sanchez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-angel-jesus-sanchez', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Angel' AND per.last_name = 'Jesus Sanchez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Osman', 'Sani', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Osman' AND last_name = 'Sani' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-osman-sani', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Osman' AND per.last_name = 'Sani' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Diorgis', 'Solano Vinas', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Diorgis' AND last_name = 'Solano Vinas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-diorgis-solano-vinas', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Diorgis' AND per.last_name = 'Solano Vinas' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Justin', 'Uribe', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Justin' AND last_name = 'Uribe' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-justin-uribe', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Justin' AND per.last_name = 'Uribe' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nicolas', 'Anthony Ybarra', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nicolas' AND last_name = 'Anthony Ybarra' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-nicolas-anthony-ybarra', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nicolas' AND per.last_name = 'Anthony Ybarra' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yeabsira', 'Zegeye', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yeabsira' AND last_name = 'Zegeye' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'foro-sc-yeabsira-zegeye', '136241'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yeabsira' AND per.last_name = 'Zegeye' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jasmin', 'Mohammed Ali', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jasmin' AND last_name = 'Mohammed Ali' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-jasmin-mohammed-ali', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jasmin' AND per.last_name = 'Mohammed Ali' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Badr', 'Attar', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Badr' AND last_name = 'Attar' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-badr-attar', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Badr' AND per.last_name = 'Attar' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Davon', 'Marvin Bailey', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Davon' AND last_name = 'Marvin Bailey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-davon-marvin-bailey', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Davon' AND per.last_name = 'Marvin Bailey' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Pedro', 'Martin Castillares Anchirayco', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Pedro' AND last_name = 'Martin Castillares Anchirayco' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-pedro-martin-castillares-anchirayco', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Pedro' AND per.last_name = 'Martin Castillares Anchirayco' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Seth', 'Donaghey', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Seth' AND last_name = 'Donaghey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-seth-donaghey', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Seth' AND per.last_name = 'Donaghey' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eric', 'Garza', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eric' AND last_name = 'Garza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-eric-garza', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eric' AND per.last_name = 'Garza' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jaylon', 'Ray Hatcher', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jaylon' AND last_name = 'Ray Hatcher' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-jaylon-ray-hatcher', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jaylon' AND per.last_name = 'Ray Hatcher' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nicholas', 'Christopher Johns', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nicholas' AND last_name = 'Christopher Johns' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-nicholas-christopher-johns', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nicholas' AND per.last_name = 'Christopher Johns' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Camron', 'Johnson', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Camron' AND last_name = 'Johnson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-camron-johnson', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Camron' AND per.last_name = 'Johnson' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sebatian', 'Alexander Loyola Romero', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sebatian' AND last_name = 'Alexander Loyola Romero' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-sebatian-alexander-loyola-romero', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sebatian' AND per.last_name = 'Alexander Loyola Romero' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Isaac', 'May Burgos', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Isaac' AND last_name = 'May Burgos' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-isaac-may-burgos', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Isaac' AND per.last_name = 'May Burgos' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Oscar', 'Morales', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Oscar' AND last_name = 'Morales' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-oscar-morales', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Oscar' AND per.last_name = 'Morales' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jaxer', 'Bismarck Munoz', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jaxer' AND last_name = 'Bismarck Munoz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-jaxer-bismarck-munoz', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jaxer' AND per.last_name = 'Bismarck Munoz' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Humberto', 'Narvaez Rodriquez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Humberto' AND last_name = 'Narvaez Rodriquez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-humberto-narvaez-rodriquez', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Humberto' AND per.last_name = 'Narvaez Rodriquez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christian', 'Vasquez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christian' AND last_name = 'Vasquez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'texas-rage-fc-christian-vasquez', '136242'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christian' AND per.last_name = 'Vasquez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Preston', 'Anthony Baker', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Preston' AND last_name = 'Anthony Baker' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-preston-anthony-baker', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Preston' AND per.last_name = 'Anthony Baker' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Cesar', 'Octavio Becerra', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Cesar' AND last_name = 'Octavio Becerra' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-cesar-octavio-becerra', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Cesar' AND per.last_name = 'Octavio Becerra' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brandon', 'Elias Bernal', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brandon' AND last_name = 'Elias Bernal' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-brandon-elias-bernal', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brandon' AND per.last_name = 'Elias Bernal' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Carter', 'Bolser', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Carter' AND last_name = 'Bolser' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-carter-bolser', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Carter' AND per.last_name = 'Bolser' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Leonardo', 'Centeno', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Leonardo' AND last_name = 'Centeno' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-leonardo-centeno', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Leonardo' AND per.last_name = 'Centeno' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Devlin', 'Maryan Dayo Dze Iboubi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Devlin' AND last_name = 'Maryan Dayo Dze Iboubi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-devlin-maryan-dayo-dze-iboubi', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Devlin' AND per.last_name = 'Maryan Dayo Dze Iboubi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Fernando', 'Diaz', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Fernando' AND last_name = 'Diaz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-fernando-diaz', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Fernando' AND per.last_name = 'Diaz' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Robert', 'Feist', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Robert' AND last_name = 'Feist' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-robert-feist', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Robert' AND per.last_name = 'Feist' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juan', 'Marcus Flores', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juan' AND last_name = 'Marcus Flores' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-juan-marcus-flores', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juan' AND per.last_name = 'Marcus Flores' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adrian', 'Fraide', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adrian' AND last_name = 'Fraide' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-adrian-fraide', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adrian' AND per.last_name = 'Fraide' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Leo', 'Jimison', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Leo' AND last_name = 'Jimison' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-leo-jimison', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Leo' AND per.last_name = 'Jimison' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Beau', 'Laufer', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Beau' AND last_name = 'Laufer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-beau-laufer', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Beau' AND per.last_name = 'Laufer' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Daniel', 'Luna', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Daniel' AND last_name = 'Luna' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-daniel-luna', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'Luna' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jose', 'Ortega', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jose' AND last_name = 'Ortega' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-jose-ortega', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jose' AND per.last_name = 'Ortega' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Anthony', 'Daniel Padilla', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Anthony' AND last_name = 'Daniel Padilla' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-anthony-daniel-padilla', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Anthony' AND per.last_name = 'Daniel Padilla' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Thaddeus Raimondi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Thaddeus Raimondi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-michael-thaddeus-raimondi', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Thaddeus Raimondi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mitchell', 'Rutigliano', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mitchell' AND last_name = 'Rutigliano' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-mitchell-rutigliano', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mitchell' AND per.last_name = 'Rutigliano' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Miguel', 'Angel Villalobos', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Miguel' AND last_name = 'Angel Villalobos' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-miguel-angel-villalobos', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Miguel' AND per.last_name = 'Angel Villalobos' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Erick', 'Jaiden Vivian', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Erick' AND last_name = 'Jaiden Vivian' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-erick-jaiden-vivian', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Erick' AND per.last_name = 'Jaiden Vivian' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Evan', 'Peter Vogue', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Evan' AND last_name = 'Peter Vogue' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ac-arlington-fc-evan-peter-vogue', '136243'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Evan' AND per.last_name = 'Peter Vogue' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yostin', 'Leonel Aguirre Fuenmayor', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yostin' AND last_name = 'Leonel Aguirre Fuenmayor' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-yostin-leonel-aguirre-fuenmayor', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yostin' AND per.last_name = 'Leonel Aguirre Fuenmayor' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ezequiel', 'Aldaco', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ezequiel' AND last_name = 'Aldaco' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-ezequiel-aldaco', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ezequiel' AND per.last_name = 'Aldaco' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eduardo', 'Camacho', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eduardo' AND last_name = 'Camacho' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-eduardo-camacho', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eduardo' AND per.last_name = 'Camacho' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kevin', 'Alberto Canales Zamora', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kevin' AND last_name = 'Alberto Canales Zamora' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-kevin-alberto-canales-zamora', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kevin' AND per.last_name = 'Alberto Canales Zamora' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Daniel', 'Cardenas', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Daniel' AND last_name = 'Cardenas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-daniel-cardenas', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'Cardenas' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Miguel', 'David Carrizo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Miguel' AND last_name = 'David Carrizo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-miguel-david-carrizo', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Miguel' AND per.last_name = 'David Carrizo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Marvin', 'Escobar', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Marvin' AND last_name = 'Escobar' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-marvin-escobar', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Marvin' AND per.last_name = 'Escobar' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ernesto', 'Flores-Demeza', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ernesto' AND last_name = 'Flores-Demeza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-ernesto-flores-demeza', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ernesto' AND per.last_name = 'Flores-Demeza' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ninrod', 'Missael Galindo Lozano', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ninrod' AND last_name = 'Missael Galindo Lozano' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-ninrod-missael-galindo-lozano', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ninrod' AND per.last_name = 'Missael Galindo Lozano' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yorvi', 'Garcia', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yorvi' AND last_name = 'Garcia' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-yorvi-garcia', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yorvi' AND per.last_name = 'Garcia' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Henry', 'Guerrero', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Henry' AND last_name = 'Guerrero' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-henry-guerrero', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Henry' AND per.last_name = 'Guerrero' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Luis', 'Jaramillo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Luis' AND last_name = 'Jaramillo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-luis-jaramillo', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Jaramillo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Angel', 'Miguel Medrano', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Angel' AND last_name = 'Miguel Medrano' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-angel-miguel-medrano', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Angel' AND per.last_name = 'Miguel Medrano' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Molina', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Molina' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-christopher-molina', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Molina' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Damir', 'Orellana', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Damir' AND last_name = 'Orellana' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-damir-orellana', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Damir' AND per.last_name = 'Orellana' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alejandro', 'Orozco', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alejandro' AND last_name = 'Orozco' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-alejandro-orozco', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alejandro' AND per.last_name = 'Orozco' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Carlos', 'Portillo', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Carlos' AND last_name = 'Portillo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-carlos-portillo', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Carlos' AND per.last_name = 'Portillo' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('John', 'Carlos Quintanilla Perez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'John' AND last_name = 'Carlos Quintanilla Perez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-john-carlos-quintanilla-perez', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'John' AND per.last_name = 'Carlos Quintanilla Perez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ricardo', 'Alexei Soto', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ricardo' AND last_name = 'Alexei Soto' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'carrollton-old-boyz-ricardo-alexei-soto', '137416'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ricardo' AND per.last_name = 'Alexei Soto' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Peter', 'Andrei Arton', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Peter' AND last_name = 'Andrei Arton' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-peter-andrei-arton', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Peter' AND per.last_name = 'Andrei Arton' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Francesco', 'Cusumano', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Francesco' AND last_name = 'Cusumano' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-francesco-cusumano', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Francesco' AND per.last_name = 'Cusumano' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thomas', 'Dono', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thomas' AND last_name = 'Dono' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-thomas-dono', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thomas' AND per.last_name = 'Dono' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Caleb', 'DuPree', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Caleb' AND last_name = 'DuPree' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-caleb-dupree', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Caleb' AND per.last_name = 'DuPree' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nyle', 'Ellis', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nyle' AND last_name = 'Ellis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-nyle-ellis', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nyle' AND per.last_name = 'Ellis' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Roddy', 'Green', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Roddy' AND last_name = 'Green' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-roddy-green', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Roddy' AND per.last_name = 'Green' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mbaye', 'Gueye', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mbaye' AND last_name = 'Gueye' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-mbaye-gueye', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mbaye' AND per.last_name = 'Gueye' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mitchell', 'Jones', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mitchell' AND last_name = 'Jones' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-mitchell-jones', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mitchell' AND per.last_name = 'Jones' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jacob', 'Kunnath', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jacob' AND last_name = 'Kunnath' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-jacob-kunnath', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jacob' AND per.last_name = 'Kunnath' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kristian', 'Milicaj', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kristian' AND last_name = 'Milicaj' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-kristian-milicaj', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kristian' AND per.last_name = 'Milicaj' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brendan', 'J Murphy', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brendan' AND last_name = 'J Murphy' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-brendan-j-murphy', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brendan' AND per.last_name = 'J Murphy' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Matthew', 'Rafferty', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Matthew' AND last_name = 'Rafferty' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-matthew-rafferty', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Matthew' AND per.last_name = 'Rafferty' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Khalid', 'Suleiman', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Khalid' AND last_name = 'Suleiman' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-khalid-suleiman', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Khalid' AND per.last_name = 'Suleiman' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('David', 'Mark Turner', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'David' AND last_name = 'Mark Turner' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-david-mark-turner', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'David' AND per.last_name = 'Mark Turner' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dylan', 'Turner', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dylan' AND last_name = 'Turner' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-dylan-turner', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dylan' AND per.last_name = 'Turner' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Matthew', 'Versteeg', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Matthew' AND last_name = 'Versteeg' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-matthew-versteeg', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Matthew' AND per.last_name = 'Versteeg' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dante', 'White', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dante' AND last_name = 'White' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-dante-white', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dante' AND per.last_name = 'White' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Florian', 'Wolfgang Wimmer', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Florian' AND last_name = 'Wolfgang Wimmer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'livonia-city-fc-florian-wolfgang-wimmer', '137729'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Florian' AND per.last_name = 'Wolfgang Wimmer' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Youssef', 'Naciri', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
@@ -22008,3602 +27384,2338 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Bilal', 'Ahmed', NULL) 
+VALUES ('Max', 'Olivier Arthur Aris', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Bilal' AND last_name = 'Ahmed' 
+WHERE first_name = 'Max' AND last_name = 'Olivier Arthur Aris' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-bilal-ahmed', '115101'
+SELECT pl.id, 1, 'delmarva-thunder-max-olivier-arthur-aris', '140730'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Bilal' AND per.last_name = 'Ahmed' 
+WHERE per.first_name = 'Max' AND per.last_name = 'Olivier Arthur Aris' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tim', 'Amoui', NULL) 
+VALUES ('ryan', 'Andrew carey', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Tim' AND last_name = 'Amoui' 
+WHERE first_name = 'ryan' AND last_name = 'Andrew carey' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-tim-amoui', '115101'
+SELECT pl.id, 1, 'delmarva-thunder-ryan-andrew-carey', '140730'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tim' AND per.last_name = 'Amoui' 
+WHERE per.first_name = 'ryan' AND per.last_name = 'Andrew carey' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Badr', 'El Yazami', NULL) 
+VALUES ('Paul', 'Xavier Chamberland', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Badr' AND last_name = 'El Yazami' 
+WHERE first_name = 'Paul' AND last_name = 'Xavier Chamberland' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-badr-el-yazami', '115101'
+SELECT pl.id, 1, 'delmarva-thunder-paul-xavier-chamberland', '140730'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Badr' AND per.last_name = 'El Yazami' 
+WHERE per.first_name = 'Paul' AND per.last_name = 'Xavier Chamberland' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Stan-Lee', 'Etienne', NULL) 
+VALUES ('Herley', 'Fevrier', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Stan-Lee' AND last_name = 'Etienne' 
+WHERE first_name = 'Herley' AND last_name = 'Fevrier' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-stan-lee-etienne', '115101'
+SELECT pl.id, 1, 'delmarva-thunder-herley-fevrier', '140730'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Stan-Lee' AND per.last_name = 'Etienne' 
+WHERE per.first_name = 'Herley' AND per.last_name = 'Fevrier' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sylvi', 'Mahmood', NULL) 
+VALUES ('Jean', 'Georges', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Sylvi' AND last_name = 'Mahmood' 
+WHERE first_name = 'Jean' AND last_name = 'Georges' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-sylvi-mahmood', '115101'
+SELECT pl.id, 1, 'delmarva-thunder-jean-georges', '140730'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sylvi' AND per.last_name = 'Mahmood' 
+WHERE per.first_name = 'Jean' AND per.last_name = 'Georges' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Pedro', 'Marinho', NULL) 
+VALUES ('Jhonatan', 'Javier Ramirez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Pedro' AND last_name = 'Marinho' 
+WHERE first_name = 'Jhonatan' AND last_name = 'Javier Ramirez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-pedro-marinho', '115101'
+SELECT pl.id, 1, 'delmarva-thunder-jhonatan-javier-ramirez', '140730'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Pedro' AND per.last_name = 'Marinho' 
+WHERE per.first_name = 'Jhonatan' AND per.last_name = 'Javier Ramirez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Juan', 'Martinez', NULL) 
+VALUES ('Samuel', 'Chamale Ramirez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Juan' AND last_name = 'Martinez' 
+WHERE first_name = 'Samuel' AND last_name = 'Chamale Ramirez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-juan-martinez', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-samuel-chamale-ramirez', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Juan' AND per.last_name = 'Martinez' 
+WHERE per.first_name = 'Samuel' AND per.last_name = 'Chamale Ramirez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('David', 'Michaelson', NULL) 
+VALUES ('Bakary', 'Dibba', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'David' AND last_name = 'Michaelson' 
+WHERE first_name = 'Bakary' AND last_name = 'Dibba' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-david-michaelson', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-bakary-dibba', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'David' AND per.last_name = 'Michaelson' 
+WHERE per.first_name = 'Bakary' AND per.last_name = 'Dibba' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Metsantika', 'Mokgoatsana', NULL) 
+VALUES ('Ubong', 'Ekop', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Metsantika' AND last_name = 'Mokgoatsana' 
+WHERE first_name = 'Ubong' AND last_name = 'Ekop' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-metsantika-mokgoatsana', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-ubong-ekop', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Metsantika' AND per.last_name = 'Mokgoatsana' 
+WHERE per.first_name = 'Ubong' AND per.last_name = 'Ekop' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ali', 'Niang', NULL) 
+VALUES ('Sebastian', 'Ford', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Ali' AND last_name = 'Niang' 
+WHERE first_name = 'Sebastian' AND last_name = 'Ford' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-ali-niang', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-sebastian-ford', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ali' AND per.last_name = 'Niang' 
+WHERE per.first_name = 'Sebastian' AND per.last_name = 'Ford' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Javier', 'Pace', NULL) 
+VALUES ('Richard', 'B Franzen', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Javier' AND last_name = 'Pace' 
+WHERE first_name = 'Richard' AND last_name = 'B Franzen' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-javier-pace', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-richard-b-franzen', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Javier' AND per.last_name = 'Pace' 
+WHERE per.first_name = 'Richard' AND per.last_name = 'B Franzen' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Osman', 'Rodriguez', NULL) 
+VALUES ('Cadribo', 'Godfrey', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Osman' AND last_name = 'Rodriguez' 
+WHERE first_name = 'Cadribo' AND last_name = 'Godfrey' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-osman-rodriguez', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-cadribo-godfrey', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Osman' AND per.last_name = 'Rodriguez' 
+WHERE per.first_name = 'Cadribo' AND per.last_name = 'Godfrey' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Aaron', 'Shiffman', NULL) 
+VALUES ('Lakpo', 'Gomys Gonomy', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Aaron' AND last_name = 'Shiffman' 
+WHERE first_name = 'Lakpo' AND last_name = 'Gomys Gonomy' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-aaron-shiffman', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-lakpo-gomys-gonomy', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Aaron' AND per.last_name = 'Shiffman' 
+WHERE per.first_name = 'Lakpo' AND per.last_name = 'Gomys Gonomy' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Miwoned', 'Siraj', NULL) 
+VALUES ('Walter', 'Gonzalez Claros', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Miwoned' AND last_name = 'Siraj' 
+WHERE first_name = 'Walter' AND last_name = 'Gonzalez Claros' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-miwoned-siraj', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-walter-gonzalez-claros', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Miwoned' AND per.last_name = 'Siraj' 
+WHERE per.first_name = 'Walter' AND per.last_name = 'Gonzalez Claros' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tyler', 'Swinehart', NULL) 
+VALUES ('Christian', 'Lesperance', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Tyler' AND last_name = 'Swinehart' 
+WHERE first_name = 'Christian' AND last_name = 'Lesperance' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-tyler-swinehart', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-christian-lesperance', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tyler' AND per.last_name = 'Swinehart' 
+WHERE per.first_name = 'Christian' AND per.last_name = 'Lesperance' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gabriel', 'Villar', NULL) 
+VALUES ('Momen', 'Mohamed', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Gabriel' AND last_name = 'Villar' 
+WHERE first_name = 'Momen' AND last_name = 'Mohamed' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-gabriel-villar', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-momen-mohamed', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gabriel' AND per.last_name = 'Villar' 
+WHERE per.first_name = 'Momen' AND per.last_name = 'Mohamed' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michael', 'Walsh', NULL) 
+VALUES ('Farouq', 'Abdul Rahman', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Michael' AND last_name = 'Walsh' 
+WHERE first_name = 'Farouq' AND last_name = 'Abdul Rahman' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-michael-walsh', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-farouq-abdul-rahman', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michael' AND per.last_name = 'Walsh' 
+WHERE per.first_name = 'Farouq' AND per.last_name = 'Abdul Rahman' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joshua', 'Warde', NULL) 
+VALUES ('Obrian', 'Reid', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Joshua' AND last_name = 'Warde' 
+WHERE first_name = 'Obrian' AND last_name = 'Reid' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-joshua-warde', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-obrian-reid', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joshua' AND per.last_name = 'Warde' 
+WHERE per.first_name = 'Obrian' AND per.last_name = 'Reid' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Wilson', NULL) 
+VALUES ('Drequan', 'Wilkerson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Wilson' 
+WHERE first_name = 'Drequan' AND last_name = 'Wilkerson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-christopher-wilson', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-drequan-wilkerson', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Wilson' 
+WHERE per.first_name = 'Drequan' AND per.last_name = 'Wilkerson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kyle', 'Xhajanka', NULL) 
+VALUES ('Hamed', 'Zakiri', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Kyle' AND last_name = 'Xhajanka' 
+WHERE first_name = 'Hamed' AND last_name = 'Zakiri' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'peachtree-fc-kyle-xhajanka', '115101'
+SELECT pl.id, 1, 'grove-soccer-united-hamed-zakiri', '140739'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kyle' AND per.last_name = 'Xhajanka' 
+WHERE per.first_name = 'Hamed' AND per.last_name = 'Zakiri' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jonathan', 'Adabi', NULL) 
+VALUES ('Gyuwon', 'Chong', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jonathan' AND last_name = 'Adabi' 
+WHERE first_name = 'Gyuwon' AND last_name = 'Chong' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-jonathan-adabi', '115104'
+SELECT pl.id, 1, 'nova-fc-gyuwon-chong', '140753'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jonathan' AND per.last_name = 'Adabi' 
+WHERE per.first_name = 'Gyuwon' AND per.last_name = 'Chong' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tishe', 'Adekanmbi', NULL) 
+VALUES ('Zach', 'Johnson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Tishe' AND last_name = 'Adekanmbi' 
+WHERE first_name = 'Zach' AND last_name = 'Johnson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-tishe-adekanmbi', '115104'
+SELECT pl.id, 1, 'nova-fc-zach-johnson', '140753'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tishe' AND per.last_name = 'Adekanmbi' 
+WHERE per.first_name = 'Zach' AND per.last_name = 'Johnson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Abdoulmalik', 'Adesanya', NULL) 
+VALUES ('George', 'Khalif', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Abdoulmalik' AND last_name = 'Adesanya' 
+WHERE first_name = 'George' AND last_name = 'Khalif' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-abdoulmalik-adesanya', '115104'
+SELECT pl.id, 1, 'nova-fc-george-khalif', '140753'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Abdoulmalik' AND per.last_name = 'Adesanya' 
+WHERE per.first_name = 'George' AND per.last_name = 'Khalif' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Caleb', 'Ayan', NULL) 
+VALUES ('Iliass', 'Laghjibi', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Caleb' AND last_name = 'Ayan' 
+WHERE first_name = 'Iliass' AND last_name = 'Laghjibi' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-caleb-ayan', '115104'
+SELECT pl.id, 1, 'nova-fc-iliass-laghjibi', '140753'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Caleb' AND per.last_name = 'Ayan' 
+WHERE per.first_name = 'Iliass' AND per.last_name = 'Laghjibi' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Olumide', 'Ayo-Ajibike', NULL) 
+VALUES ('James', 'Quill', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Olumide' AND last_name = 'Ayo-Ajibike' 
+WHERE first_name = 'James' AND last_name = 'Quill' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-olumide-ayo-ajibike', '115104'
+SELECT pl.id, 1, 'nova-fc-james-quill', '140753'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Olumide' AND per.last_name = 'Ayo-Ajibike' 
+WHERE per.first_name = 'James' AND per.last_name = 'Quill' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Elad', 'Khaleef Bogle', NULL) 
+VALUES ('Jaques', 'Aristhenes', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Elad' AND last_name = 'Khaleef Bogle' 
+WHERE first_name = 'Jaques' AND last_name = 'Aristhenes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-elad-khaleef-bogle', '115104'
+SELECT pl.id, 1, 'pfa-apsl-jaques-aristhenes', '140760'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Elad' AND per.last_name = 'Khaleef Bogle' 
+WHERE per.first_name = 'Jaques' AND per.last_name = 'Aristhenes' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tobias', 'Ciho', NULL) 
+VALUES ('Timothy', 'Bettes', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Tobias' AND last_name = 'Ciho' 
+WHERE first_name = 'Timothy' AND last_name = 'Bettes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-tobias-ciho', '115104'
+SELECT pl.id, 1, 'pfa-apsl-timothy-bettes', '140760'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tobias' AND per.last_name = 'Ciho' 
+WHERE per.first_name = 'Timothy' AND per.last_name = 'Bettes' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nixon', 'Manuel Condolo', NULL) 
+VALUES ('Isaias', 'Flores Saravia', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Nixon' AND last_name = 'Manuel Condolo' 
+WHERE first_name = 'Isaias' AND last_name = 'Flores Saravia' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-nixon-manuel-condolo', '115104'
+SELECT pl.id, 1, 'pfa-apsl-isaias-flores-saravia', '140760'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nixon' AND per.last_name = 'Manuel Condolo' 
+WHERE per.first_name = 'Isaias' AND per.last_name = 'Flores Saravia' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Felipe', 'Correa', NULL) 
+VALUES ('Junior', 'Alexander Ramos-Bonilla', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Felipe' AND last_name = 'Correa' 
+WHERE first_name = 'Junior' AND last_name = 'Alexander Ramos-Bonilla' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-felipe-correa', '115104'
+SELECT pl.id, 1, 'pfa-apsl-junior-alexander-ramos-bonilla', '140760'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Felipe' AND per.last_name = 'Correa' 
+WHERE per.first_name = 'Junior' AND per.last_name = 'Alexander Ramos-Bonilla' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michael', 'Dardis', NULL) 
+VALUES ('Josue', 'Rodriguez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Michael' AND last_name = 'Dardis' 
+WHERE first_name = 'Josue' AND last_name = 'Rodriguez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-michael-dardis', '115104'
+SELECT pl.id, 1, 'pfa-apsl-josue-rodriguez', '140760'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michael' AND per.last_name = 'Dardis' 
+WHERE per.first_name = 'Josue' AND per.last_name = 'Rodriguez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Abdoulaye', 'Diba', NULL) 
+VALUES ('Alijah', 'Guzman', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Abdoulaye' AND last_name = 'Diba' 
+WHERE first_name = 'Alijah' AND last_name = 'Guzman' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-abdoulaye-diba', '115104'
+SELECT pl.id, 1, 'pw-nova-alijah-guzman', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Abdoulaye' AND per.last_name = 'Diba' 
+WHERE per.first_name = 'Alijah' AND per.last_name = 'Guzman' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Lech', 'Dunser', NULL) 
+VALUES ('Jim', 'Alan Hinojosa', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Lech' AND last_name = 'Dunser' 
+WHERE first_name = 'Jim' AND last_name = 'Alan Hinojosa' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-lech-dunser', '115104'
+SELECT pl.id, 1, 'pw-nova-jim-alan-hinojosa', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Lech' AND per.last_name = 'Dunser' 
+WHERE per.first_name = 'Jim' AND per.last_name = 'Alan Hinojosa' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Daniel', 'Duran Gonzalez', NULL) 
+VALUES ('Jose', 'Martinez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Daniel' AND last_name = 'Duran Gonzalez' 
+WHERE first_name = 'Jose' AND last_name = 'Martinez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-daniel-duran-gonzalez', '115104'
+SELECT pl.id, 1, 'pw-nova-jose-martinez', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Daniel' AND per.last_name = 'Duran Gonzalez' 
+WHERE per.first_name = 'Jose' AND per.last_name = 'Martinez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('David', 'Alejandro Fierro', NULL) 
+VALUES ('Tendo', 'Matovu', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'David' AND last_name = 'Alejandro Fierro' 
+WHERE first_name = 'Tendo' AND last_name = 'Matovu' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-david-alejandro-fierro', '115104'
+SELECT pl.id, 1, 'pw-nova-tendo-matovu', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'David' AND per.last_name = 'Alejandro Fierro' 
+WHERE per.first_name = 'Tendo' AND per.last_name = 'Matovu' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Caleb', 'Johnson', NULL) 
+VALUES ('Dimas', 'Pena', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Caleb' AND last_name = 'Johnson' 
+WHERE first_name = 'Dimas' AND last_name = 'Pena' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-caleb-johnson', '115104'
+SELECT pl.id, 1, 'pw-nova-dimas-pena', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Caleb' AND per.last_name = 'Johnson' 
+WHERE per.first_name = 'Dimas' AND per.last_name = 'Pena' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ian', 'Thomas Kunkel', NULL) 
+VALUES ('Elvin', 'Pena', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Ian' AND last_name = 'Thomas Kunkel' 
+WHERE first_name = 'Elvin' AND last_name = 'Pena' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-ian-thomas-kunkel', '115104'
+SELECT pl.id, 1, 'pw-nova-elvin-pena', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ian' AND per.last_name = 'Thomas Kunkel' 
+WHERE per.first_name = 'Elvin' AND per.last_name = 'Pena' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jelle', 'Lansdaal', NULL) 
+VALUES ('Joseph', 'Ventura', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jelle' AND last_name = 'Lansdaal' 
+WHERE first_name = 'Joseph' AND last_name = 'Ventura' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-jelle-lansdaal', '115104'
+SELECT pl.id, 1, 'pw-nova-joseph-ventura', '140766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jelle' AND per.last_name = 'Lansdaal' 
+WHERE per.first_name = 'Joseph' AND per.last_name = 'Ventura' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ruari', 'Eamonn O’Rourke', NULL) 
+VALUES ('Rene', 'Frank', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Ruari' AND last_name = 'Eamonn O’Rourke' 
+WHERE first_name = 'Rene' AND last_name = 'Frank' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-ruari-eamonn-o-rourke', '115104'
+SELECT pl.id, 1, 'va-marauders-fc-rene-frank', '140777'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ruari' AND per.last_name = 'Eamonn O’Rourke' 
+WHERE per.first_name = 'Rene' AND per.last_name = 'Frank' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Siddharth', 'Rajesh', NULL) 
+VALUES ('John', 'Tondo', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Siddharth' AND last_name = 'Rajesh' 
+WHERE first_name = 'John' AND last_name = 'Tondo' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-siddharth-rajesh', '115104'
+SELECT pl.id, 1, 'va-marauders-fc-john-tondo', '140777'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Siddharth' AND per.last_name = 'Rajesh' 
+WHERE per.first_name = 'John' AND per.last_name = 'Tondo' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Anel', 'Ramic', NULL) 
+VALUES ('Sasha', 'Blazanovic', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Anel' AND last_name = 'Ramic' 
+WHERE first_name = 'Sasha' AND last_name = 'Blazanovic' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-anel-ramic', '115104'
+SELECT pl.id, 1, 'wave-fc-sasha-blazanovic', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Anel' AND per.last_name = 'Ramic' 
+WHERE per.first_name = 'Sasha' AND per.last_name = 'Blazanovic' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sumner', 'Richardson', NULL) 
+VALUES ('D’Andre', 'Clarke-Temple', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Sumner' AND last_name = 'Richardson' 
+WHERE first_name = 'D’Andre' AND last_name = 'Clarke-Temple' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-sumner-richardson', '115104'
+SELECT pl.id, 1, 'wave-fc-d-andre-clarke-temple', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sumner' AND per.last_name = 'Richardson' 
+WHERE per.first_name = 'D’Andre' AND per.last_name = 'Clarke-Temple' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('George', 'Bishop Rodi', NULL) 
+VALUES ('Soleil', 'Davis', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'George' AND last_name = 'Bishop Rodi' 
+WHERE first_name = 'Soleil' AND last_name = 'Davis' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-george-bishop-rodi', '115104'
+SELECT pl.id, 1, 'wave-fc-soleil-davis', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'George' AND per.last_name = 'Bishop Rodi' 
+WHERE per.first_name = 'Soleil' AND per.last_name = 'Davis' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Connor', 'Rosenthal', NULL) 
+VALUES ('Chris', 'House', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Connor' AND last_name = 'Rosenthal' 
+WHERE first_name = 'Chris' AND last_name = 'House' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-connor-rosenthal', '115104'
+SELECT pl.id, 1, 'wave-fc-chris-house', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Connor' AND per.last_name = 'Rosenthal' 
+WHERE per.first_name = 'Chris' AND per.last_name = 'House' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Godfred', 'Nii Tettey', NULL) 
+VALUES ('Jaine', 'Lindo', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Godfred' AND last_name = 'Nii Tettey' 
+WHERE first_name = 'Jaine' AND last_name = 'Lindo' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-godfred-nii-tettey', '115104'
+SELECT pl.id, 1, 'wave-fc-jaine-lindo', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Godfred' AND per.last_name = 'Nii Tettey' 
+WHERE per.first_name = 'Jaine' AND per.last_name = 'Lindo' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joshua', 'Parbie Tettey', NULL) 
+VALUES ('Griffin', 'Marl', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Joshua' AND last_name = 'Parbie Tettey' 
+WHERE first_name = 'Griffin' AND last_name = 'Marl' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-joshua-parbie-tettey', '115104'
+SELECT pl.id, 1, 'wave-fc-griffin-marl', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joshua' AND per.last_name = 'Parbie Tettey' 
+WHERE per.first_name = 'Griffin' AND per.last_name = 'Marl' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Robert', 'A Thomas', NULL) 
+VALUES ('Nate', 'Newberry', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Robert' AND last_name = 'A Thomas' 
+WHERE first_name = 'Nate' AND last_name = 'Newberry' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-robert-a-thomas', '115104'
+SELECT pl.id, 1, 'wave-fc-nate-newberry', '140779'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Robert' AND per.last_name = 'A Thomas' 
+WHERE per.first_name = 'Nate' AND per.last_name = 'Newberry' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Chris', 'Arturo Vitela', NULL) 
+VALUES ('Yesael', 'Vargas Hernández', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Chris' AND last_name = 'Arturo Vitela' 
+WHERE first_name = 'Yesael' AND last_name = 'Vargas Hernández' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-chris-arturo-vitela', '115104'
+SELECT pl.id, 1, 'monroe-united-yesael-vargas-hernandez', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Chris' AND per.last_name = 'Arturo Vitela' 
+WHERE per.first_name = 'Yesael' AND per.last_name = 'Vargas Hernández' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Noah', 'Wieland', NULL) 
+VALUES ('Jacari', 'Kentrell Jearl Jackson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Noah' AND last_name = 'Wieland' 
+WHERE first_name = 'Jacari' AND last_name = 'Kentrell Jearl Jackson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-noah-wieland', '115104'
+SELECT pl.id, 1, 'monroe-united-jacari-kentrell-jearl-jackson', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Noah' AND per.last_name = 'Wieland' 
+WHERE per.first_name = 'Jacari' AND per.last_name = 'Kentrell Jearl Jackson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Olanrewaju', 'Yusuff', NULL) 
+VALUES ('Logan', 'Anthony Janes', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Olanrewaju' AND last_name = 'Yusuff' 
+WHERE first_name = 'Logan' AND last_name = 'Anthony Janes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'buckhead-sc-olanrewaju-yusuff', '115104'
+SELECT pl.id, 1, 'monroe-united-logan-anthony-janes', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Olanrewaju' AND per.last_name = 'Yusuff' 
+WHERE per.first_name = 'Logan' AND per.last_name = 'Anthony Janes' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Zackeriah', 'Aday-Nicholson', NULL) 
+VALUES ('Jvon', 'Tyrell Miller', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Zackeriah' AND last_name = 'Aday-Nicholson' 
+WHERE first_name = 'Jvon' AND last_name = 'Tyrell Miller' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-zackeriah-aday-nicholson', '115105'
+SELECT pl.id, 1, 'monroe-united-jvon-tyrell-miller', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Zackeriah' AND per.last_name = 'Aday-Nicholson' 
+WHERE per.first_name = 'Jvon' AND per.last_name = 'Tyrell Miller' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gabriel', 'Alvarez', NULL) 
+VALUES ('Jonathan', 'David Pederson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Gabriel' AND last_name = 'Alvarez' 
+WHERE first_name = 'Jonathan' AND last_name = 'David Pederson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-gabriel-alvarez', '115105'
+SELECT pl.id, 1, 'monroe-united-jonathan-david-pederson', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gabriel' AND per.last_name = 'Alvarez' 
+WHERE per.first_name = 'Jonathan' AND per.last_name = 'David Pederson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dylan', 'Bapst', NULL) 
+VALUES ('Eric', 'Jerome Perilla', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Dylan' AND last_name = 'Bapst' 
+WHERE first_name = 'Eric' AND last_name = 'Jerome Perilla' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-dylan-bapst', '115105'
+SELECT pl.id, 1, 'monroe-united-eric-jerome-perilla', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dylan' AND per.last_name = 'Bapst' 
+WHERE per.first_name = 'Eric' AND per.last_name = 'Jerome Perilla' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mitchell', 'Barry', NULL) 
+VALUES ('Krenar', 'Ziberi', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Mitchell' AND last_name = 'Barry' 
+WHERE first_name = 'Krenar' AND last_name = 'Ziberi' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-mitchell-barry', '115105'
+SELECT pl.id, 1, 'monroe-united-krenar-ziberi', '141493'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mitchell' AND per.last_name = 'Barry' 
+WHERE per.first_name = 'Krenar' AND per.last_name = 'Ziberi' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Charles', 'Blakenship', NULL) 
+VALUES ('Rodney', 'Aguirre', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Charles' AND last_name = 'Blakenship' 
+WHERE first_name = 'Rodney' AND last_name = 'Aguirre' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-charles-blakenship', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-rodney-aguirre', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Charles' AND per.last_name = 'Blakenship' 
+WHERE per.first_name = 'Rodney' AND per.last_name = 'Aguirre' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Davis', 'Bryan', NULL) 
+VALUES ('Alex', 'Avendano', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Davis' AND last_name = 'Bryan' 
+WHERE first_name = 'Alex' AND last_name = 'Avendano' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-davis-bryan', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-alex-avendano', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Davis' AND per.last_name = 'Bryan' 
+WHERE per.first_name = 'Alex' AND per.last_name = 'Avendano' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kevin', 'Carvalho', NULL) 
+VALUES ('Kyle', 'Barrett', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Kevin' AND last_name = 'Carvalho' 
+WHERE first_name = 'Kyle' AND last_name = 'Barrett' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-kevin-carvalho', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-kyle-barrett', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kevin' AND per.last_name = 'Carvalho' 
+WHERE per.first_name = 'Kyle' AND per.last_name = 'Barrett' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('John', 'Fragakis', NULL) 
+VALUES ('Evan', 'Carabelli', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'John' AND last_name = 'Fragakis' 
+WHERE first_name = 'Evan' AND last_name = 'Carabelli' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-john-fragakis', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-evan-carabelli', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'John' AND per.last_name = 'Fragakis' 
+WHERE per.first_name = 'Evan' AND per.last_name = 'Carabelli' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Stefan', 'Gojic', NULL) 
+VALUES ('Federico', 'Diaz', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Stefan' AND last_name = 'Gojic' 
+WHERE first_name = 'Federico' AND last_name = 'Diaz' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-stefan-gojic', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-federico-diaz', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Stefan' AND per.last_name = 'Gojic' 
+WHERE per.first_name = 'Federico' AND per.last_name = 'Diaz' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Andrew', 'Grodhaus', NULL) 
+VALUES ('Ahmed', 'Faik', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Andrew' AND last_name = 'Grodhaus' 
+WHERE first_name = 'Ahmed' AND last_name = 'Faik' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-andrew-grodhaus', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-ahmed-faik', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Andrew' AND per.last_name = 'Grodhaus' 
+WHERE per.first_name = 'Ahmed' AND per.last_name = 'Faik' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Colton', 'Huebner', NULL) 
+VALUES ('Henry', 'Gonzalez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Colton' AND last_name = 'Huebner' 
+WHERE first_name = 'Henry' AND last_name = 'Gonzalez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-colton-huebner', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-henry-gonzalez', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Colton' AND per.last_name = 'Huebner' 
+WHERE per.first_name = 'Henry' AND per.last_name = 'Gonzalez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joshua', 'James', NULL) 
+VALUES ('Dino', 'Guastella', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Joshua' AND last_name = 'James' 
+WHERE first_name = 'Dino' AND last_name = 'Guastella' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-joshua-james', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-dino-guastella', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joshua' AND per.last_name = 'James' 
+WHERE per.first_name = 'Dino' AND per.last_name = 'Guastella' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('William', 'Keegan', NULL) 
+VALUES ('Matthew', 'Hull', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'William' AND last_name = 'Keegan' 
+WHERE first_name = 'Matthew' AND last_name = 'Hull' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-william-keegan', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-matthew-hull', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'William' AND per.last_name = 'Keegan' 
+WHERE per.first_name = 'Matthew' AND per.last_name = 'Hull' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Konrad', 'Knap', NULL) 
+VALUES ('Ryan', 'McElroy', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Konrad' AND last_name = 'Knap' 
+WHERE first_name = 'Ryan' AND last_name = 'McElroy' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-konrad-knap', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-ryan-mcelroy', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Konrad' AND per.last_name = 'Knap' 
+WHERE per.first_name = 'Ryan' AND per.last_name = 'McElroy' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jordan', 'Locke', NULL) 
+VALUES ('Ryan', 'Nelson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jordan' AND last_name = 'Locke' 
+WHERE first_name = 'Ryan' AND last_name = 'Nelson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-jordan-locke', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-ryan-nelson', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jordan' AND per.last_name = 'Locke' 
+WHERE per.first_name = 'Ryan' AND per.last_name = 'Nelson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Marshall', NULL) 
+VALUES ('Luca', 'Ruggiero', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Marshall' 
+WHERE first_name = 'Luca' AND last_name = 'Ruggiero' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-christopher-marshall', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-luca-ruggiero', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Marshall' 
+WHERE per.first_name = 'Luca' AND per.last_name = 'Ruggiero' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Javier', 'Martinez', NULL) 
+VALUES ('Shaq', 'Stephenson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Javier' AND last_name = 'Martinez' 
+WHERE first_name = 'Shaq' AND last_name = 'Stephenson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-javier-martinez', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-shaq-stephenson', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Javier' AND per.last_name = 'Martinez' 
+WHERE per.first_name = 'Shaq' AND per.last_name = 'Stephenson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Cain', 'McMillan', NULL) 
+VALUES ('Caleb', 'Vila', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Cain' AND last_name = 'McMillan' 
+WHERE first_name = 'Caleb' AND last_name = 'Vila' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-cain-mcmillan', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-caleb-vila', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Cain' AND per.last_name = 'McMillan' 
+WHERE per.first_name = 'Caleb' AND per.last_name = 'Vila' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Anthony', 'Norman', NULL) 
+VALUES ('Michael', 'Wambold', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Anthony' AND last_name = 'Norman' 
+WHERE first_name = 'Michael' AND last_name = 'Wambold' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-anthony-norman', '115105'
+SELECT pl.id, 1, 'philadelphia-sc-over-30-michael-wambold', '142479'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Anthony' AND per.last_name = 'Norman' 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Wambold' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sampson', 'Nsemoh', NULL) 
+VALUES ('Marco', 'Antonio Benitez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Sampson' AND last_name = 'Nsemoh' 
+WHERE first_name = 'Marco' AND last_name = 'Antonio Benitez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-sampson-nsemoh', '115105'
+SELECT pl.id, 1, 'texas-coyotes-marco-antonio-benitez', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sampson' AND per.last_name = 'Nsemoh' 
+WHERE per.first_name = 'Marco' AND per.last_name = 'Antonio Benitez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Thomas', 'Powers', NULL) 
+VALUES ('Omari', 'Caldwell', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Thomas' AND last_name = 'Powers' 
+WHERE first_name = 'Omari' AND last_name = 'Caldwell' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-thomas-powers', '115105'
+SELECT pl.id, 1, 'texas-coyotes-omari-caldwell', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Thomas' AND per.last_name = 'Powers' 
+WHERE per.first_name = 'Omari' AND per.last_name = 'Caldwell' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Seth', 'Prieto', NULL) 
+VALUES ('Nicolas', 'Von Chamleunsouk', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Seth' AND last_name = 'Prieto' 
+WHERE first_name = 'Nicolas' AND last_name = 'Von Chamleunsouk' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-seth-prieto', '115105'
+SELECT pl.id, 1, 'texas-coyotes-nicolas-von-chamleunsouk', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Seth' AND per.last_name = 'Prieto' 
+WHERE per.first_name = 'Nicolas' AND per.last_name = 'Von Chamleunsouk' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Adam', 'Rooney', NULL) 
+VALUES ('Andrew', 'Chancey', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Adam' AND last_name = 'Rooney' 
+WHERE first_name = 'Andrew' AND last_name = 'Chancey' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-adam-rooney', '115105'
+SELECT pl.id, 1, 'texas-coyotes-andrew-chancey', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Adam' AND per.last_name = 'Rooney' 
+WHERE per.first_name = 'Andrew' AND per.last_name = 'Chancey' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jacob', 'Sayer', NULL) 
+VALUES ('Benjamin', 'Contreras', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jacob' AND last_name = 'Sayer' 
+WHERE first_name = 'Benjamin' AND last_name = 'Contreras' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-jacob-sayer', '115105'
+SELECT pl.id, 1, 'texas-coyotes-benjamin-contreras', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jacob' AND per.last_name = 'Sayer' 
+WHERE per.first_name = 'Benjamin' AND per.last_name = 'Contreras' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Zachary', 'Smith', NULL) 
+VALUES ('Samuel', 'Takeh-Mvo Fogwe', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Zachary' AND last_name = 'Smith' 
+WHERE first_name = 'Samuel' AND last_name = 'Takeh-Mvo Fogwe' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-zachary-smith', '115105'
+SELECT pl.id, 1, 'texas-coyotes-samuel-takeh-mvo-fogwe', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Zachary' AND per.last_name = 'Smith' 
+WHERE per.first_name = 'Samuel' AND per.last_name = 'Takeh-Mvo Fogwe' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christian', 'Waeglin', NULL) 
+VALUES ('Rocky', 'Guevara Benitez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Christian' AND last_name = 'Waeglin' 
+WHERE first_name = 'Rocky' AND last_name = 'Guevara Benitez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-christian-waeglin', '115105'
+SELECT pl.id, 1, 'texas-coyotes-rocky-guevara-benitez', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christian' AND per.last_name = 'Waeglin' 
+WHERE per.first_name = 'Rocky' AND per.last_name = 'Guevara Benitez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Witmond', NULL) 
+VALUES ('Nolvin', 'Donair Hernandez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Witmond' 
+WHERE first_name = 'Nolvin' AND last_name = 'Donair Hernandez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'prima-fc-christopher-witmond', '115105'
+SELECT pl.id, 1, 'texas-coyotes-nolvin-donair-hernandez', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Witmond' 
+WHERE per.first_name = 'Nolvin' AND per.last_name = 'Donair Hernandez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nathan', 'Bio', NULL) 
+VALUES ('Mostapha', 'Khazem', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Nathan' AND last_name = 'Bio' 
+WHERE first_name = 'Mostapha' AND last_name = 'Khazem' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-nathan-bio', '115106'
+SELECT pl.id, 1, 'texas-coyotes-mostapha-khazem', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nathan' AND per.last_name = 'Bio' 
+WHERE per.first_name = 'Mostapha' AND per.last_name = 'Khazem' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Rob', 'Bonet', NULL) 
+VALUES ('Melkin', 'Anderson Magana', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Rob' AND last_name = 'Bonet' 
+WHERE first_name = 'Melkin' AND last_name = 'Anderson Magana' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-rob-bonet', '115106'
+SELECT pl.id, 1, 'texas-coyotes-melkin-anderson-magana', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Rob' AND per.last_name = 'Bonet' 
+WHERE per.first_name = 'Melkin' AND per.last_name = 'Anderson Magana' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Aziymu', 'Shamil Burns', NULL) 
+VALUES ('Neliyou', 'Makanzu', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Aziymu' AND last_name = 'Shamil Burns' 
+WHERE first_name = 'Neliyou' AND last_name = 'Makanzu' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-aziymu-shamil-burns', '115106'
+SELECT pl.id, 1, 'texas-coyotes-neliyou-makanzu', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Aziymu' AND per.last_name = 'Shamil Burns' 
+WHERE per.first_name = 'Neliyou' AND per.last_name = 'Makanzu' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jackson', 'Cavenaugh', NULL) 
+VALUES ('Gabriel', 'Mateos', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jackson' AND last_name = 'Cavenaugh' 
+WHERE first_name = 'Gabriel' AND last_name = 'Mateos' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-jackson-cavenaugh', '115106'
+SELECT pl.id, 1, 'texas-coyotes-gabriel-mateos', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jackson' AND per.last_name = 'Cavenaugh' 
+WHERE per.first_name = 'Gabriel' AND per.last_name = 'Mateos' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kyle', 'Crawford', NULL) 
+VALUES ('Elneem', 'Muzamil Mohamed', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Kyle' AND last_name = 'Crawford' 
+WHERE first_name = 'Elneem' AND last_name = 'Muzamil Mohamed' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-kyle-crawford', '115106'
+SELECT pl.id, 1, 'texas-coyotes-elneem-muzamil-mohamed', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kyle' AND per.last_name = 'Crawford' 
+WHERE per.first_name = 'Elneem' AND per.last_name = 'Muzamil Mohamed' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eduardo', 'Delgado', NULL) 
+VALUES ('Jesus', 'Moncada', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Eduardo' AND last_name = 'Delgado' 
+WHERE first_name = 'Jesus' AND last_name = 'Moncada' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-eduardo-delgado', '115106'
+SELECT pl.id, 1, 'texas-coyotes-jesus-moncada', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eduardo' AND per.last_name = 'Delgado' 
+WHERE per.first_name = 'Jesus' AND per.last_name = 'Moncada' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Matheus', 'Fineto', NULL) 
+VALUES ('Raul', 'Moncada', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Matheus' AND last_name = 'Fineto' 
+WHERE first_name = 'Raul' AND last_name = 'Moncada' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-matheus-fineto', '115106'
+SELECT pl.id, 1, 'texas-coyotes-raul-moncada', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Matheus' AND per.last_name = 'Fineto' 
+WHERE per.first_name = 'Raul' AND per.last_name = 'Moncada' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Enrique', 'Gonzalez Plaza', NULL) 
+VALUES ('Alexis', 'Montoya', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Enrique' AND last_name = 'Gonzalez Plaza' 
+WHERE first_name = 'Alexis' AND last_name = 'Montoya' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-enrique-gonzalez-plaza', '115106'
+SELECT pl.id, 1, 'texas-coyotes-alexis-montoya', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Enrique' AND per.last_name = 'Gonzalez Plaza' 
+WHERE per.first_name = 'Alexis' AND per.last_name = 'Montoya' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Chris', 'Griffith', NULL) 
+VALUES ('Timmy', 'Nguyen', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Chris' AND last_name = 'Griffith' 
+WHERE first_name = 'Timmy' AND last_name = 'Nguyen' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-chris-griffith', '115106'
+SELECT pl.id, 1, 'texas-coyotes-timmy-nguyen', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Chris' AND per.last_name = 'Griffith' 
+WHERE per.first_name = 'Timmy' AND per.last_name = 'Nguyen' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Philip', 'Harris', NULL) 
+VALUES ('Jonathan', 'Ortiz', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Philip' AND last_name = 'Harris' 
+WHERE first_name = 'Jonathan' AND last_name = 'Ortiz' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-philip-harris', '115106'
+SELECT pl.id, 1, 'texas-coyotes-jonathan-ortiz', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Philip' AND per.last_name = 'Harris' 
+WHERE per.first_name = 'Jonathan' AND per.last_name = 'Ortiz' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Justin', 'Heimerl', NULL) 
+VALUES ('Michael', 'Perez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Justin' AND last_name = 'Heimerl' 
+WHERE first_name = 'Michael' AND last_name = 'Perez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-justin-heimerl', '115106'
+SELECT pl.id, 1, 'texas-coyotes-michael-perez', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Justin' AND per.last_name = 'Heimerl' 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Perez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Lucas', 'Horton', NULL) 
+VALUES ('Kevin', 'Rangel', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Lucas' AND last_name = 'Horton' 
+WHERE first_name = 'Kevin' AND last_name = 'Rangel' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-lucas-horton', '115106'
+SELECT pl.id, 1, 'texas-coyotes-kevin-rangel', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Lucas' AND per.last_name = 'Horton' 
+WHERE per.first_name = 'Kevin' AND per.last_name = 'Rangel' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Karson', 'Reese Kendall', NULL) 
+VALUES ('Jesus', 'Ruiz', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Karson' AND last_name = 'Reese Kendall' 
+WHERE first_name = 'Jesus' AND last_name = 'Ruiz' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-karson-reese-kendall', '115106'
+SELECT pl.id, 1, 'texas-coyotes-jesus-ruiz', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Karson' AND per.last_name = 'Reese Kendall' 
+WHERE per.first_name = 'Jesus' AND per.last_name = 'Ruiz' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Konner', 'Kendall', NULL) 
+VALUES ('Denilson', 'Sanchez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Konner' AND last_name = 'Kendall' 
+WHERE first_name = 'Denilson' AND last_name = 'Sanchez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-konner-kendall', '115106'
+SELECT pl.id, 1, 'texas-coyotes-denilson-sanchez', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Konner' AND per.last_name = 'Kendall' 
+WHERE per.first_name = 'Denilson' AND per.last_name = 'Sanchez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mouad', 'Labied', NULL) 
+VALUES ('Jose', 'Torres', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Mouad' AND last_name = 'Labied' 
+WHERE first_name = 'Jose' AND last_name = 'Torres' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-mouad-labied', '115106'
+SELECT pl.id, 1, 'texas-coyotes-jose-torres', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mouad' AND per.last_name = 'Labied' 
+WHERE per.first_name = 'Jose' AND per.last_name = 'Torres' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jake', 'Langton', NULL) 
+VALUES ('Mario', 'Santiago Vargas Jimenez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jake' AND last_name = 'Langton' 
+WHERE first_name = 'Mario' AND last_name = 'Santiago Vargas Jimenez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-jake-langton', '115106'
+SELECT pl.id, 1, 'texas-coyotes-mario-santiago-vargas-jimenez', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jake' AND per.last_name = 'Langton' 
+WHERE per.first_name = 'Mario' AND per.last_name = 'Santiago Vargas Jimenez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Myles', 'Levelle', NULL) 
+VALUES ('Julio', 'Vizcarra Medina', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Myles' AND last_name = 'Levelle' 
+WHERE first_name = 'Julio' AND last_name = 'Vizcarra Medina' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-myles-levelle', '115106'
+SELECT pl.id, 1, 'texas-coyotes-julio-vizcarra-medina', '142766'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Myles' AND per.last_name = 'Levelle' 
+WHERE per.first_name = 'Julio' AND per.last_name = 'Vizcarra Medina' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Randy', 'Mallar-Calvillo', NULL) 
+VALUES ('ABDULAI', 'BANGURA', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Randy' AND last_name = 'Mallar-Calvillo' 
+WHERE first_name = 'ABDULAI' AND last_name = 'BANGURA' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-randy-mallar-calvillo', '115106'
+SELECT pl.id, 1, 'dmv-rangers-abdulai-bangura', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Randy' AND per.last_name = 'Mallar-Calvillo' 
+WHERE per.first_name = 'ABDULAI' AND per.last_name = 'BANGURA' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Matt', 'Mitchell', NULL) 
+VALUES ('Alhassan', 'Munineah Bangura', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Matt' AND last_name = 'Mitchell' 
+WHERE first_name = 'Alhassan' AND last_name = 'Munineah Bangura' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-matt-mitchell', '115106'
+SELECT pl.id, 1, 'dmv-rangers-alhassan-munineah-bangura', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Matt' AND per.last_name = 'Mitchell' 
+WHERE per.first_name = 'Alhassan' AND per.last_name = 'Munineah Bangura' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nikos', 'Papanikolopoulos', NULL) 
+VALUES ('Alpha', 'Bangura', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Nikos' AND last_name = 'Papanikolopoulos' 
+WHERE first_name = 'Alpha' AND last_name = 'Bangura' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-nikos-papanikolopoulos', '115106'
+SELECT pl.id, 1, 'dmv-rangers-alpha-bangura', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nikos' AND per.last_name = 'Papanikolopoulos' 
+WHERE per.first_name = 'Alpha' AND per.last_name = 'Bangura' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Cade', 'Quinto', NULL) 
+VALUES ('Shaka', 'BANGURA', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Cade' AND last_name = 'Quinto' 
+WHERE first_name = 'Shaka' AND last_name = 'BANGURA' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-cade-quinto', '115106'
+SELECT pl.id, 1, 'dmv-rangers-shaka-bangura', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Cade' AND per.last_name = 'Quinto' 
+WHERE per.first_name = 'Shaka' AND per.last_name = 'BANGURA' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Juandi', 'Riley', NULL) 
+VALUES ('Sulaiman', 'Barrie', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Juandi' AND last_name = 'Riley' 
+WHERE first_name = 'Sulaiman' AND last_name = 'Barrie' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-juandi-riley', '115106'
+SELECT pl.id, 1, 'dmv-rangers-sulaiman-barrie', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Juandi' AND per.last_name = 'Riley' 
+WHERE per.first_name = 'Sulaiman' AND per.last_name = 'Barrie' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Luis', 'Romero', NULL) 
+VALUES ('Ibrahim', 'Conteh', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Luis' AND last_name = 'Romero' 
+WHERE first_name = 'Ibrahim' AND last_name = 'Conteh' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-luis-romero', '115106'
+SELECT pl.id, 1, 'dmv-rangers-ibrahim-conteh', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Luis' AND per.last_name = 'Romero' 
+WHERE per.first_name = 'Ibrahim' AND per.last_name = 'Conteh' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eduardo', 'Ernesto Salmeron', NULL) 
+VALUES ('Mamoud', 'Fofanah', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Eduardo' AND last_name = 'Ernesto Salmeron' 
+WHERE first_name = 'Mamoud' AND last_name = 'Fofanah' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-eduardo-ernesto-salmeron', '115106'
+SELECT pl.id, 1, 'dmv-rangers-mamoud-fofanah', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eduardo' AND per.last_name = 'Ernesto Salmeron' 
+WHERE per.first_name = 'Mamoud' AND per.last_name = 'Fofanah' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Aswin', 'Sembu', NULL) 
+VALUES ('Mohamed', 'Jabbie', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Aswin' AND last_name = 'Sembu' 
+WHERE first_name = 'Mohamed' AND last_name = 'Jabbie' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-aswin-sembu', '115106'
+SELECT pl.id, 1, 'dmv-rangers-mohamed-jabbie', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Aswin' AND per.last_name = 'Sembu' 
+WHERE per.first_name = 'Mohamed' AND per.last_name = 'Jabbie' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Adam', 'Sole', NULL) 
+VALUES ('Alhaji', 'Jalloh', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Adam' AND last_name = 'Sole' 
+WHERE first_name = 'Alhaji' AND last_name = 'Jalloh' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-adam-sole', '115106'
+SELECT pl.id, 1, 'dmv-rangers-alhaji-jalloh', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Adam' AND per.last_name = 'Sole' 
+WHERE per.first_name = 'Alhaji' AND per.last_name = 'Jalloh' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Zaid', 'Takrouri', NULL) 
+VALUES ('Mohamed', 'Kamanoh', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Zaid' AND last_name = 'Takrouri' 
+WHERE first_name = 'Mohamed' AND last_name = 'Kamanoh' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-zaid-takrouri', '115106'
+SELECT pl.id, 1, 'dmv-rangers-mohamed-kamanoh', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Zaid' AND per.last_name = 'Takrouri' 
+WHERE per.first_name = 'Mohamed' AND per.last_name = 'Kamanoh' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michael', 'Touihri', NULL) 
+VALUES ('Mohamed', 'Kamara', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Michael' AND last_name = 'Touihri' 
+WHERE first_name = 'Mohamed' AND last_name = 'Kamara' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-michael-touihri', '115106'
+SELECT pl.id, 1, 'dmv-rangers-mohamed-kamara', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michael' AND per.last_name = 'Touihri' 
+WHERE per.first_name = 'Mohamed' AND per.last_name = 'Kamara' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ivan', 'Verdezoto', NULL) 
+VALUES ('Charles', 'King', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Ivan' AND last_name = 'Verdezoto' 
+WHERE first_name = 'Charles' AND last_name = 'King' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-ivan-verdezoto', '115106'
+SELECT pl.id, 1, 'dmv-rangers-charles-king', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ivan' AND per.last_name = 'Verdezoto' 
+WHERE per.first_name = 'Charles' AND per.last_name = 'King' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Min', 'Yoo', NULL) 
+VALUES ('Malone', 'Koroma', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Min' AND last_name = 'Yoo' 
+WHERE first_name = 'Malone' AND last_name = 'Koroma' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'bel-calcio-fc-min-yoo', '115106'
+SELECT pl.id, 1, 'dmv-rangers-malone-koroma', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Min' AND per.last_name = 'Yoo' 
+WHERE per.first_name = 'Malone' AND per.last_name = 'Koroma' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Roberto', 'Carlos Calix', NULL) 
+VALUES ('Eric', 'Mannah', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Roberto' AND last_name = 'Carlos Calix' 
+WHERE first_name = 'Eric' AND last_name = 'Mannah' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-roberto-carlos-calix', '115107'
+SELECT pl.id, 1, 'dmv-rangers-eric-mannah', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Roberto' AND per.last_name = 'Carlos Calix' 
+WHERE per.first_name = 'Eric' AND per.last_name = 'Mannah' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eli', 'Francisco Carrasco', NULL) 
+VALUES ('Kelly', 'Marah', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Eli' AND last_name = 'Francisco Carrasco' 
+WHERE first_name = 'Kelly' AND last_name = 'Marah' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-eli-francisco-carrasco', '115107'
+SELECT pl.id, 1, 'dmv-rangers-kelly-marah', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eli' AND per.last_name = 'Francisco Carrasco' 
+WHERE per.first_name = 'Kelly' AND per.last_name = 'Marah' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Axel', 'Castrejon', NULL) 
+VALUES ('Bismark', 'Marfo', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Axel' AND last_name = 'Castrejon' 
+WHERE first_name = 'Bismark' AND last_name = 'Marfo' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-axel-castrejon', '115107'
+SELECT pl.id, 1, 'dmv-rangers-bismark-marfo', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Axel' AND per.last_name = 'Castrejon' 
+WHERE per.first_name = 'Bismark' AND per.last_name = 'Marfo' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gael', 'Jared Castrejon', NULL) 
+VALUES ('Samuel', 'Meindy', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Gael' AND last_name = 'Jared Castrejon' 
+WHERE first_name = 'Samuel' AND last_name = 'Meindy' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-gael-jared-castrejon', '115107'
+SELECT pl.id, 1, 'dmv-rangers-samuel-meindy', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gael' AND per.last_name = 'Jared Castrejon' 
+WHERE per.first_name = 'Samuel' AND per.last_name = 'Meindy' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jared', 'Scott Childs', NULL) 
+VALUES ('George', 'Nelson', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jared' AND last_name = 'Scott Childs' 
+WHERE first_name = 'George' AND last_name = 'Nelson' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-jared-scott-childs', '115107'
+SELECT pl.id, 1, 'dmv-rangers-george-nelson', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jared' AND per.last_name = 'Scott Childs' 
+WHERE per.first_name = 'George' AND per.last_name = 'Nelson' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dylan', 'Bright Edmonds', NULL) 
+VALUES ('Chris', 'Quamina', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Dylan' AND last_name = 'Bright Edmonds' 
+WHERE first_name = 'Chris' AND last_name = 'Quamina' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-dylan-bright-edmonds', '115107'
+SELECT pl.id, 1, 'dmv-rangers-chris-quamina', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dylan' AND per.last_name = 'Bright Edmonds' 
+WHERE per.first_name = 'Chris' AND per.last_name = 'Quamina' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mason', 'McGill Fifer', NULL) 
+VALUES ('Musa', 'Shyllon', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Mason' AND last_name = 'McGill Fifer' 
+WHERE first_name = 'Musa' AND last_name = 'Shyllon' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-mason-mcgill-fifer', '115107'
+SELECT pl.id, 1, 'dmv-rangers-musa-shyllon', '143012'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mason' AND per.last_name = 'McGill Fifer' 
+WHERE per.first_name = 'Musa' AND per.last_name = 'Shyllon' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Omar', 'Guadarrama', NULL) 
+VALUES ('Brian', 'Alexiev', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Omar' AND last_name = 'Guadarrama' 
+WHERE first_name = 'Brian' AND last_name = 'Alexiev' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-omar-guadarrama', '115107'
+SELECT pl.id, 1, 'drita-sc-brian-alexiev', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Omar' AND per.last_name = 'Guadarrama' 
+WHERE per.first_name = 'Brian' AND per.last_name = 'Alexiev' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Brandon', 'Gutierrez', NULL) 
+VALUES ('Anton', 'Cacaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Brandon' AND last_name = 'Gutierrez' 
+WHERE first_name = 'Anton' AND last_name = 'Cacaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-brandon-gutierrez', '115107'
+SELECT pl.id, 1, 'drita-sc-anton-cacaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Brandon' AND per.last_name = 'Gutierrez' 
+WHERE per.first_name = 'Anton' AND per.last_name = 'Cacaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Maury', 'Ibarra', NULL) 
+VALUES ('Luke', 'Frank Cacaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Maury' AND last_name = 'Ibarra' 
+WHERE first_name = 'Luke' AND last_name = 'Frank Cacaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-maury-ibarra', '115107'
+SELECT pl.id, 1, 'drita-sc-luke-frank-cacaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Maury' AND per.last_name = 'Ibarra' 
+WHERE per.first_name = 'Luke' AND per.last_name = 'Frank Cacaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sebastian', 'Tyler Jones', NULL) 
+VALUES ('Dennis', 'Cali', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Sebastian' AND last_name = 'Tyler Jones' 
+WHERE first_name = 'Dennis' AND last_name = 'Cali' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-sebastian-tyler-jones', '115107'
+SELECT pl.id, 1, 'drita-sc-dennis-cali', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sebastian' AND per.last_name = 'Tyler Jones' 
+WHERE per.first_name = 'Dennis' AND per.last_name = 'Cali' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dino', 'Kalac', NULL) 
+VALUES ('Alan', 'Cetkovic', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Dino' AND last_name = 'Kalac' 
+WHERE first_name = 'Alan' AND last_name = 'Cetkovic' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-dino-kalac', '115107'
+SELECT pl.id, 1, 'drita-sc-alan-cetkovic', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dino' AND per.last_name = 'Kalac' 
+WHERE per.first_name = 'Alan' AND per.last_name = 'Cetkovic' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Taylor', 'Benjamin Lemmon', NULL) 
+VALUES ('Anthony', 'Gjokaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Taylor' AND last_name = 'Benjamin Lemmon' 
+WHERE first_name = 'Anthony' AND last_name = 'Gjokaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-taylor-benjamin-lemmon', '115107'
+SELECT pl.id, 1, 'drita-sc-anthony-gjokaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Taylor' AND per.last_name = 'Benjamin Lemmon' 
+WHERE per.first_name = 'Anthony' AND per.last_name = 'Gjokaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ivan', 'Israel Lopez', NULL) 
+VALUES ('Gabriel', 'Gjokaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Ivan' AND last_name = 'Israel Lopez' 
+WHERE first_name = 'Gabriel' AND last_name = 'Gjokaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-ivan-israel-lopez', '115107'
+SELECT pl.id, 1, 'drita-sc-gabriel-gjokaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ivan' AND per.last_name = 'Israel Lopez' 
+WHERE per.first_name = 'Gabriel' AND per.last_name = 'Gjokaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sebastian', 'Lopez', NULL) 
+VALUES ('Mario', 'Gjonaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Sebastian' AND last_name = 'Lopez' 
+WHERE first_name = 'Mario' AND last_name = 'Gjonaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-sebastian-lopez', '115107'
+SELECT pl.id, 1, 'drita-sc-mario-gjonaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sebastian' AND per.last_name = 'Lopez' 
+WHERE per.first_name = 'Mario' AND per.last_name = 'Gjonaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Juanes', 'Martinez', NULL) 
+VALUES ('Nikoll', 'Gjonaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Juanes' AND last_name = 'Martinez' 
+WHERE first_name = 'Nikoll' AND last_name = 'Gjonaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-juanes-martinez', '115107'
+SELECT pl.id, 1, 'drita-sc-nikoll-gjonaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Juanes' AND per.last_name = 'Martinez' 
+WHERE per.first_name = 'Nikoll' AND per.last_name = 'Gjonaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sebastian', 'Nuñez', NULL) 
+VALUES ('Vasel', 'Gjonaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Sebastian' AND last_name = 'Nuñez' 
+WHERE first_name = 'Vasel' AND last_name = 'Gjonaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-sebastian-nunez', '115107'
+SELECT pl.id, 1, 'drita-sc-vasel-gjonaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sebastian' AND per.last_name = 'Nuñez' 
+WHERE per.first_name = 'Vasel' AND per.last_name = 'Gjonaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ashton', 'Thomas Parnell', NULL) 
+VALUES ('Mateo', 'Gjurashaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Ashton' AND last_name = 'Thomas Parnell' 
+WHERE first_name = 'Mateo' AND last_name = 'Gjurashaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-ashton-thomas-parnell', '115107'
+SELECT pl.id, 1, 'drita-sc-mateo-gjurashaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ashton' AND per.last_name = 'Thomas Parnell' 
+WHERE per.first_name = 'Mateo' AND per.last_name = 'Gjurashaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tyler', 'Pineda', NULL) 
+VALUES ('Mikel', 'Hysa', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Tyler' AND last_name = 'Pineda' 
+WHERE first_name = 'Mikel' AND last_name = 'Hysa' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-tyler-pineda', '115107'
+SELECT pl.id, 1, 'drita-sc-mikel-hysa', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tyler' AND per.last_name = 'Pineda' 
+WHERE per.first_name = 'Mikel' AND per.last_name = 'Hysa' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Voshon', 'Ramcharan', NULL) 
+VALUES ('Adrian', 'Ivezaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Voshon' AND last_name = 'Ramcharan' 
+WHERE first_name = 'Adrian' AND last_name = 'Ivezaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-voshon-ramcharan', '115107'
+SELECT pl.id, 1, 'drita-sc-adrian-ivezaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Voshon' AND per.last_name = 'Ramcharan' 
+WHERE per.first_name = 'Adrian' AND per.last_name = 'Ivezaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Marvin', 'Rodriguez', NULL) 
+VALUES ('David', 'Ivezaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Marvin' AND last_name = 'Rodriguez' 
+WHERE first_name = 'David' AND last_name = 'Ivezaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-marvin-rodriguez', '115107'
+SELECT pl.id, 1, 'drita-sc-david-ivezaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Marvin' AND per.last_name = 'Rodriguez' 
+WHERE per.first_name = 'David' AND per.last_name = 'Ivezaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Fabian', 'Rodriguez-Escobedo', NULL) 
+VALUES ('Domenik', 'Ivezaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Fabian' AND last_name = 'Rodriguez-Escobedo' 
+WHERE first_name = 'Domenik' AND last_name = 'Ivezaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-fabian-rodriguez-escobedo', '115107'
+SELECT pl.id, 1, 'drita-sc-domenik-ivezaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Fabian' AND per.last_name = 'Rodriguez-Escobedo' 
+WHERE per.first_name = 'Domenik' AND per.last_name = 'Ivezaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Blair', 'Springhall', NULL) 
+VALUES ('Giovanni', 'Ivezaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Blair' AND last_name = 'Springhall' 
+WHERE first_name = 'Giovanni' AND last_name = 'Ivezaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-blair-springhall', '115107'
+SELECT pl.id, 1, 'drita-sc-giovanni-ivezaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Blair' AND per.last_name = 'Springhall' 
+WHERE per.first_name = 'Giovanni' AND per.last_name = 'Ivezaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Bradley', 'Hamilton Tidwell', NULL) 
+VALUES ('Viktor', 'Juncaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Bradley' AND last_name = 'Hamilton Tidwell' 
+WHERE first_name = 'Viktor' AND last_name = 'Juncaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-bradley-hamilton-tidwell', '115107'
+SELECT pl.id, 1, 'drita-sc-viktor-juncaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Bradley' AND per.last_name = 'Hamilton Tidwell' 
+WHERE per.first_name = 'Viktor' AND per.last_name = 'Juncaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Edward', 'Trejo', NULL) 
+VALUES ('Daniel', 'Kadiu', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Edward' AND last_name = 'Trejo' 
+WHERE first_name = 'Daniel' AND last_name = 'Kadiu' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-edward-trejo', '115107'
+SELECT pl.id, 1, 'drita-sc-daniel-kadiu', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Edward' AND per.last_name = 'Trejo' 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'Kadiu' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Johan', 'Miguel Trigo-Rios', NULL) 
+VALUES ('Calvin', 'Kalemaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Johan' AND last_name = 'Miguel Trigo-Rios' 
+WHERE first_name = 'Calvin' AND last_name = 'Kalemaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-johan-miguel-trigo-rios', '115107'
+SELECT pl.id, 1, 'drita-sc-calvin-kalemaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Johan' AND per.last_name = 'Miguel Trigo-Rios' 
+WHERE per.first_name = 'Calvin' AND per.last_name = 'Kalemaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Luis', 'Albert Ventura', NULL) 
+VALUES ('Jusuf', 'Kercishta', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Luis' AND last_name = 'Albert Ventura' 
+WHERE first_name = 'Jusuf' AND last_name = 'Kercishta' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-luis-albert-ventura', '115107'
+SELECT pl.id, 1, 'drita-sc-jusuf-kercishta', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Luis' AND per.last_name = 'Albert Ventura' 
+WHERE per.first_name = 'Jusuf' AND per.last_name = 'Kercishta' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Patrick', 'Ventura', NULL) 
+VALUES ('Luis', 'Koleci', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Patrick' AND last_name = 'Ventura' 
+WHERE first_name = 'Luis' AND last_name = 'Koleci' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-patrick-ventura', '115107'
+SELECT pl.id, 1, 'drita-sc-luis-koleci', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Patrick' AND per.last_name = 'Ventura' 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Koleci' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nicholas', 'Wheeler', NULL) 
+VALUES ('Adrian', 'Lekocaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Nicholas' AND last_name = 'Wheeler' 
+WHERE first_name = 'Adrian' AND last_name = 'Lekocaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'alliance-sc-nicholas-wheeler', '115107'
+SELECT pl.id, 1, 'drita-sc-adrian-lekocaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nicholas' AND per.last_name = 'Wheeler' 
+WHERE per.first_name = 'Adrian' AND per.last_name = 'Lekocaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Rashid', 'Alarape', NULL) 
+VALUES ('Luis', 'Lera', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Rashid' AND last_name = 'Alarape' 
+WHERE first_name = 'Luis' AND last_name = 'Lera' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-rashid-alarape', '115108'
+SELECT pl.id, 1, 'drita-sc-luis-lera', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Rashid' AND per.last_name = 'Alarape' 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Lera' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alex', 'Archambeau', NULL) 
+VALUES ('Nik', 'Lulgjuraj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Alex' AND last_name = 'Archambeau' 
+WHERE first_name = 'Nik' AND last_name = 'Lulgjuraj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-alex-archambeau', '115108'
+SELECT pl.id, 1, 'drita-sc-nik-lulgjuraj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alex' AND per.last_name = 'Archambeau' 
+WHERE per.first_name = 'Nik' AND per.last_name = 'Lulgjuraj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Avery', NULL) 
+VALUES ('Romeo', 'Ben Lumaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Avery' 
+WHERE first_name = 'Romeo' AND last_name = 'Ben Lumaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-christopher-avery', '115108'
+SELECT pl.id, 1, 'drita-sc-romeo-ben-lumaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Avery' 
+WHERE per.first_name = 'Romeo' AND per.last_name = 'Ben Lumaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Carlos', 'Ayala-Viera', NULL) 
+VALUES ('Christian', 'Margilaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Carlos' AND last_name = 'Ayala-Viera' 
+WHERE first_name = 'Christian' AND last_name = 'Margilaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-carlos-ayala-viera', '115108'
+SELECT pl.id, 1, 'drita-sc-christian-margilaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Carlos' AND per.last_name = 'Ayala-Viera' 
+WHERE per.first_name = 'Christian' AND per.last_name = 'Margilaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Carlos', 'Becerra-Gomez', NULL) 
+VALUES ('Alfred', 'Paolo Mece', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Carlos' AND last_name = 'Becerra-Gomez' 
+WHERE first_name = 'Alfred' AND last_name = 'Paolo Mece' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-carlos-becerra-gomez', '115108'
+SELECT pl.id, 1, 'drita-sc-alfred-paolo-mece', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Carlos' AND per.last_name = 'Becerra-Gomez' 
+WHERE per.first_name = 'Alfred' AND per.last_name = 'Paolo Mece' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Oskar', 'Bringle', NULL) 
+VALUES ('Gjon', 'Melakuqi', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Oskar' AND last_name = 'Bringle' 
+WHERE first_name = 'Gjon' AND last_name = 'Melakuqi' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-oskar-bringle', '115108'
+SELECT pl.id, 1, 'drita-sc-gjon-melakuqi', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Oskar' AND per.last_name = 'Bringle' 
+WHERE per.first_name = 'Gjon' AND per.last_name = 'Melakuqi' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Elliot', 'Curtin', NULL) 
+VALUES ('Andri', 'Feti Myftari', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Elliot' AND last_name = 'Curtin' 
+WHERE first_name = 'Andri' AND last_name = 'Feti Myftari' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-elliot-curtin', '115108'
+SELECT pl.id, 1, 'drita-sc-andri-feti-myftari', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Elliot' AND per.last_name = 'Curtin' 
+WHERE per.first_name = 'Andri' AND per.last_name = 'Feti Myftari' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eli', 'Dent', NULL) 
+VALUES ('Jozef', 'Palushaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Eli' AND last_name = 'Dent' 
+WHERE first_name = 'Jozef' AND last_name = 'Palushaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-eli-dent', '115108'
+SELECT pl.id, 1, 'drita-sc-jozef-palushaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eli' AND per.last_name = 'Dent' 
+WHERE per.first_name = 'Jozef' AND per.last_name = 'Palushaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jackson', 'Eskay', NULL) 
+VALUES ('Marco', 'Nika Palushaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Jackson' AND last_name = 'Eskay' 
+WHERE first_name = 'Marco' AND last_name = 'Nika Palushaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-jackson-eskay', '115108'
+SELECT pl.id, 1, 'drita-sc-marco-nika-palushaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jackson' AND per.last_name = 'Eskay' 
+WHERE per.first_name = 'Marco' AND per.last_name = 'Nika Palushaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Andrew', 'Fitton', NULL) 
+VALUES ('Aurel', 'Planaj', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Andrew' AND last_name = 'Fitton' 
+WHERE first_name = 'Aurel' AND last_name = 'Planaj' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-andrew-fitton', '115108'
+SELECT pl.id, 1, 'drita-sc-aurel-planaj', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Andrew' AND per.last_name = 'Fitton' 
+WHERE per.first_name = 'Aurel' AND per.last_name = 'Planaj' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mike', 'Foutsop', NULL) 
+VALUES ('Kyle', 'Raymond Schueneman', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
 INSERT INTO players (person_id, source_system_id) 
 SELECT id, 1 FROM persons 
-WHERE first_name = 'Mike' AND last_name = 'Foutsop' 
+WHERE first_name = 'Kyle' AND last_name = 'Raymond Schueneman' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-mike-foutsop', '115108'
+SELECT pl.id, 1, 'drita-sc-kyle-raymond-schueneman', '143309'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mike' AND per.last_name = 'Foutsop' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Neema', 'Gharib', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Neema' AND last_name = 'Gharib' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-neema-gharib', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Neema' AND per.last_name = 'Gharib' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Andrew', 'Halloran', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Andrew' AND last_name = 'Halloran' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-andrew-halloran', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Andrew' AND per.last_name = 'Halloran' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Thierno', 'Issabre', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Thierno' AND last_name = 'Issabre' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-thierno-issabre', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Thierno' AND per.last_name = 'Issabre' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michael', 'Johnson', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Michael' AND last_name = 'Johnson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-michael-johnson', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michael' AND per.last_name = 'Johnson' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Brennan', 'Koslow', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Brennan' AND last_name = 'Koslow' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-brennan-koslow', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Brennan' AND per.last_name = 'Koslow' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mitchell', 'Kupstas', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mitchell' AND last_name = 'Kupstas' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-mitchell-kupstas', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mitchell' AND per.last_name = 'Kupstas' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Boland', 'Lekeaka', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Boland' AND last_name = 'Lekeaka' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-boland-lekeaka', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Boland' AND per.last_name = 'Lekeaka' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Adrian', 'Lollar', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Adrian' AND last_name = 'Lollar' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-adrian-lollar', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Adrian' AND per.last_name = 'Lollar' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('McKinley', 'Mercer III', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'McKinley' AND last_name = 'Mercer III' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-mckinley-mercer-iii', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'McKinley' AND per.last_name = 'Mercer III' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Luke', 'Narker', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Luke' AND last_name = 'Narker' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-luke-narker', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Luke' AND per.last_name = 'Narker' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Hassan', 'Pinto', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Hassan' AND last_name = 'Pinto' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-hassan-pinto', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Hassan' AND per.last_name = 'Pinto' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Cory', 'Plasker', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Cory' AND last_name = 'Plasker' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-cory-plasker', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Cory' AND per.last_name = 'Plasker' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Max', 'Poore', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Max' AND last_name = 'Poore' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-max-poore', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Max' AND per.last_name = 'Poore' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kevin', 'Reyes', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kevin' AND last_name = 'Reyes' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-kevin-reyes', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kevin' AND per.last_name = 'Reyes' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sharpe', 'Sablon', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sharpe' AND last_name = 'Sablon' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-sharpe-sablon', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sharpe' AND per.last_name = 'Sablon' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Iain', 'Smith', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Iain' AND last_name = 'Smith' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-iain-smith', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Iain' AND per.last_name = 'Smith' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Thor', 'Svienbjorsson', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Thor' AND last_name = 'Svienbjorsson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-thor-svienbjorsson', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Thor' AND per.last_name = 'Svienbjorsson' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Thomas', 'Toney', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Thomas' AND last_name = 'Toney' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-thomas-toney', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Thomas' AND per.last_name = 'Toney' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Zachary', 'Paul Young', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Zachary' AND last_name = 'Paul Young' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'majestic-sc-zachary-paul-young', '115108'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Zachary' AND per.last_name = 'Paul Young' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nour', 'Alamri', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Nour' AND last_name = 'Alamri' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-nour-alamri', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nour' AND per.last_name = 'Alamri' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Henry', 'Asbill', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Henry' AND last_name = 'Asbill' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-henry-asbill', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Henry' AND per.last_name = 'Asbill' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Asad', 'Bashir', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Asad' AND last_name = 'Bashir' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-asad-bashir', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Asad' AND per.last_name = 'Bashir' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kai', 'Bennett', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kai' AND last_name = 'Bennett' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-kai-bennett', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kai' AND per.last_name = 'Bennett' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alex', 'Caskey', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Alex' AND last_name = 'Caskey' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-alex-caskey', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alex' AND per.last_name = 'Caskey' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Damian', 'Charles', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Damian' AND last_name = 'Charles' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-damian-charles', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Damian' AND per.last_name = 'Charles' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jamie', 'Gleeson', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jamie' AND last_name = 'Gleeson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-jamie-gleeson', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jamie' AND per.last_name = 'Gleeson' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Noah', 'Goodman', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Noah' AND last_name = 'Goodman' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-noah-goodman', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Noah' AND per.last_name = 'Goodman' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Anthony', 'Gourdine', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Anthony' AND last_name = 'Gourdine' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-anthony-gourdine', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Anthony' AND per.last_name = 'Gourdine' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Morgan', 'Hall', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Morgan' AND last_name = 'Hall' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-morgan-hall', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Morgan' AND per.last_name = 'Hall' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Josh', 'Hughes', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Josh' AND last_name = 'Hughes' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-josh-hughes', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Josh' AND per.last_name = 'Hughes' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gad', 'Kabwende', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Gad' AND last_name = 'Kabwende' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-gad-kabwende', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gad' AND per.last_name = 'Kabwende' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jason', 'Kayne', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jason' AND last_name = 'Kayne' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-jason-kayne', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jason' AND per.last_name = 'Kayne' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('JT', 'Keiffer', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'JT' AND last_name = 'Keiffer' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-jt-keiffer', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'JT' AND per.last_name = 'Keiffer' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jean', 'Malilo', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jean' AND last_name = 'Malilo' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-jean-malilo', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jean' AND per.last_name = 'Malilo' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Zion', 'Jediah-Jason McClean', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Zion' AND last_name = 'Jediah-Jason McClean' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-zion-jediah-jason-mcclean', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Zion' AND per.last_name = 'Jediah-Jason McClean' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gregg', 'McPheely', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Gregg' AND last_name = 'McPheely' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-gregg-mcpheely', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gregg' AND per.last_name = 'McPheely' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nathan', 'Miles', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Nathan' AND last_name = 'Miles' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-nathan-miles', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nathan' AND per.last_name = 'Miles' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alex', 'Rotoloni', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Alex' AND last_name = 'Rotoloni' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-alex-rotoloni', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alex' AND per.last_name = 'Rotoloni' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jack', 'Snyder', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jack' AND last_name = 'Snyder' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-jack-snyder', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jack' AND per.last_name = 'Snyder' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Brynn', 'Thompson', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Brynn' AND last_name = 'Thompson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-brynn-thompson', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Brynn' AND per.last_name = 'Thompson' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tyler', 'Vogt', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Tyler' AND last_name = 'Vogt' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-tyler-vogt', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tyler' AND per.last_name = 'Vogt' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Renaldo', 'Walters', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Renaldo' AND last_name = 'Walters' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-renaldo-walters', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Renaldo' AND per.last_name = 'Walters' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Matt', 'Williams', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Matt' AND last_name = 'Williams' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-matt-williams', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Matt' AND per.last_name = 'Williams' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nick', 'York', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Nick' AND last_name = 'York' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'terminus-fc-nick-york', '115815'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nick' AND per.last_name = 'York' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Adam', 'Abdullahi', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Adam' AND last_name = 'Abdullahi' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-adam-abdullahi', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Adam' AND per.last_name = 'Abdullahi' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mohammed', 'Al-Asady', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mohammed' AND last_name = 'Al-Asady' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-mohammed-al-asady', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mohammed' AND per.last_name = 'Al-Asady' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Malek', 'Almariri', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Malek' AND last_name = 'Almariri' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-malek-almariri', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Malek' AND per.last_name = 'Almariri' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mario', 'Arreguin', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mario' AND last_name = 'Arreguin' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-mario-arreguin', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mario' AND per.last_name = 'Arreguin' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ali', 'Bazz', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ali' AND last_name = 'Bazz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-ali-bazz', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ali' AND per.last_name = 'Bazz' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Monchu', 'Camara', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Monchu' AND last_name = 'Camara' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-monchu-camara', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Monchu' AND per.last_name = 'Camara' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Steven', 'Carrillo', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Steven' AND last_name = 'Carrillo' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-steven-carrillo', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Steven' AND per.last_name = 'Carrillo' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Karl', 'Christiansen', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Karl' AND last_name = 'Christiansen' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-karl-christiansen', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Karl' AND per.last_name = 'Christiansen' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Franklin', 'Contreras', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Franklin' AND last_name = 'Contreras' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-franklin-contreras', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Franklin' AND per.last_name = 'Contreras' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Vitor', 'De Souza', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Vitor' AND last_name = 'De Souza' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-vitor-de-souza', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Vitor' AND per.last_name = 'De Souza' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Adrian', 'Garcia', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Adrian' AND last_name = 'Garcia' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-adrian-garcia', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Adrian' AND per.last_name = 'Garcia' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Josue', 'Gomez', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Josue' AND last_name = 'Gomez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-josue-gomez', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Josue' AND per.last_name = 'Gomez' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jafet', 'Higuera', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jafet' AND last_name = 'Higuera' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-jafet-higuera', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jafet' AND per.last_name = 'Higuera' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Rui', 'James-Pereira', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Rui' AND last_name = 'James-Pereira' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-rui-james-pereira', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Rui' AND per.last_name = 'James-Pereira' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kendrick', 'Jean', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kendrick' AND last_name = 'Jean' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-kendrick-jean', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kendrick' AND per.last_name = 'Jean' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sanaa', 'Listenbee', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sanaa' AND last_name = 'Listenbee' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-sanaa-listenbee', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sanaa' AND per.last_name = 'Listenbee' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Chris', 'Louissaint', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Chris' AND last_name = 'Louissaint' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-chris-louissaint', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Chris' AND per.last_name = 'Louissaint' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('David', 'Martinez', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'David' AND last_name = 'Martinez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-david-martinez', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'David' AND per.last_name = 'Martinez' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ramsis', 'Martinez', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ramsis' AND last_name = 'Martinez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-ramsis-martinez', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ramsis' AND per.last_name = 'Martinez' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ruben', 'Martinez', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ruben' AND last_name = 'Martinez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-ruben-martinez', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ruben' AND per.last_name = 'Martinez' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jonathan', 'May', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jonathan' AND last_name = 'May' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-jonathan-may', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jonathan' AND per.last_name = 'May' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jaylen', 'McCray', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jaylen' AND last_name = 'McCray' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-jaylen-mccray', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jaylen' AND per.last_name = 'McCray' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tariq', 'Mohammed', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Tariq' AND last_name = 'Mohammed' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-tariq-mohammed', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tariq' AND per.last_name = 'Mohammed' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Geovanni', 'Oboh', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Geovanni' AND last_name = 'Oboh' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-geovanni-oboh', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Geovanni' AND per.last_name = 'Oboh' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jordan', 'Paul', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jordan' AND last_name = 'Paul' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-jordan-paul', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jordan' AND per.last_name = 'Paul' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nicolas', 'Pegorer', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Nicolas' AND last_name = 'Pegorer' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-nicolas-pegorer', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nicolas' AND per.last_name = 'Pegorer' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Pablo', 'Piraquive', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Pablo' AND last_name = 'Piraquive' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-pablo-piraquive', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Pablo' AND per.last_name = 'Piraquive' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Roney', 'Rubio', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Roney' AND last_name = 'Rubio' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-roney-rubio', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Roney' AND per.last_name = 'Rubio' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Anakin', 'Ruiz', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Anakin' AND last_name = 'Ruiz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-anakin-ruiz', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Anakin' AND per.last_name = 'Ruiz' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jazeime', 'Russell', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jazeime' AND last_name = 'Russell' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-jazeime-russell', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jazeime' AND per.last_name = 'Russell' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jonathan', 'Sandoval', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jonathan' AND last_name = 'Sandoval' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-jonathan-sandoval', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jonathan' AND per.last_name = 'Sandoval' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ayman', 'Saudin', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ayman' AND last_name = 'Saudin' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-ayman-saudin', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ayman' AND per.last_name = 'Saudin' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Manuel', 'Simental', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Manuel' AND last_name = 'Simental' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-manuel-simental', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Manuel' AND per.last_name = 'Simental' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mahmoud', 'Tasslak', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mahmoud' AND last_name = 'Tasslak' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-mahmoud-tasslak', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mahmoud' AND per.last_name = 'Tasslak' 
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  team_external_id = EXCLUDED.team_external_id;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Myles', 'Williams', NULL) 
-ON CONFLICT (first_name, last_name) DO UPDATE SET
-  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Myles' AND last_name = 'Williams' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sc-gwinnett-myles-williams', '119159'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Myles' AND per.last_name = 'Williams' 
+WHERE per.first_name = 'Kyle' AND per.last_name = 'Raymond Schueneman' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 

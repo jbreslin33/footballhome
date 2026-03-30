@@ -34,26 +34,34 @@ class GameDayRosterScreen extends Screen {
           <!-- Match Card (Instagram-style, shareable) -->
           <div id="match-card-share" class="gdr-match-card">
             <div class="gdr-card-inner" id="gdr-card-inner">
-              <div class="gdr-card-header">GAME DAY</div>
+              <div class="gdr-card-accent"></div>
+              <div class="gdr-card-header">MATCH DAY</div>
               <div class="gdr-card-logos">
                 <div class="gdr-team gdr-team-home">
                   <div class="gdr-logo-wrap" id="gdr-home-logo"></div>
                   <div class="gdr-team-name" id="gdr-home-name">Home</div>
                 </div>
-                <div class="gdr-vs">VS</div>
+                <div class="gdr-vs-block">
+                  <div class="gdr-vs">VS</div>
+                </div>
                 <div class="gdr-team gdr-team-away">
                   <div class="gdr-logo-wrap" id="gdr-away-logo"></div>
                   <div class="gdr-team-name" id="gdr-away-name">Away</div>
                 </div>
               </div>
+              <div class="gdr-card-divider"></div>
               <div class="gdr-card-details">
                 <div class="gdr-detail" id="gdr-date">\ud83d\udcc5 \u2014</div>
                 <div class="gdr-detail" id="gdr-time">\ud83d\udd50 \u2014</div>
                 <div class="gdr-detail" id="gdr-venue">\ud83d\udccd \u2014</div>
               </div>
               <div class="gdr-card-roster" id="gdr-card-roster" style="display:none;">
-                <div class="gdr-roster-title">\ud83d\udccb Game Day Roster</div>
-                <div class="gdr-roster-names" id="gdr-roster-names"></div>
+                <div class="gdr-card-divider"></div>
+                <div class="gdr-roster-title">SQUAD</div>
+                <div class="gdr-roster-grid" id="gdr-roster-names"></div>
+              </div>
+              <div class="gdr-card-footer">
+                <span class="gdr-card-brand">\u26bd APSL \u2022 Philadelphia</span>
               </div>
             </div>
             <div class="gdr-share-actions">
@@ -70,10 +78,6 @@ class GameDayRosterScreen extends Screen {
 
           <!-- Selected players (game day roster) -->
           <div id="selected-player-list" class="gdr-player-list"></div>
-          
-          <div class="gdr-actions">
-            <button id="save-roster-btn" class="btn btn-primary btn-lg" style="flex: 1;">\ud83d\udcbe Save Game Day Roster</button>
-          </div>
         </div>
       </div>
 
@@ -131,7 +135,6 @@ class GameDayRosterScreen extends Screen {
       if (id === 'back-btn') { this.navigation.goBack(); return; }
       if (id === 'open-overlay-btn') { this.openOverlay(); return; }
       if (id === 'close-overlay-btn') { this.closeOverlay(); return; }
-      if (id === 'save-roster-btn') { this.saveRoster(); return; }
       if (id === 'select-all-attending-btn') { this.selectAllAttending(); return; }
       if (id === 'share-card-btn') { this.shareAsImage(); return; }
       if (id === 'copy-text-btn') { this.copyAsText(); return; }
@@ -145,8 +148,10 @@ class GameDayRosterScreen extends Screen {
           const pid = parseInt(playerRow.dataset.playerId);
           if (this.selectedPlayerIds.has(pid)) {
             this.selectedPlayerIds.delete(pid);
+            this.toggleLineup(pid, false);
           } else {
             this.selectedPlayerIds.add(pid);
+            this.toggleLineup(pid, true);
           }
           this.renderOverlayList();
           this.renderSelectedPlayers();
@@ -160,6 +165,7 @@ class GameDayRosterScreen extends Screen {
       if (removeBtn) {
         const pid = parseInt(removeBtn.dataset.playerId);
         this.selectedPlayerIds.delete(pid);
+        this.toggleLineup(pid, false);
         this.renderSelectedPlayers();
         this.renderOverlayList();
         this.updateSelectedCount();
@@ -310,7 +316,7 @@ class GameDayRosterScreen extends Screen {
       this.find('#gdr-time').textContent = '\ud83d\udd50 ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     if (m.venue_name) {
-      this.find('#gdr-venue').textContent = '\ud83d\udccd ' + m.venue_name;
+      this.find('#gdr-venue').textContent = '\ud83d\udccd ' + this.titleCase(m.venue_name);
     }
   }
 
@@ -324,13 +330,30 @@ class GameDayRosterScreen extends Screen {
       return;
     }
 
-    container.innerHTML = selected.map(p => {
+    // Practice header
+    const pracHeaders = (this.trainingEvents || []).map(te => {
+      const d = new Date(te.date + 'T12:00:00');
+      return `<span class="gdr-sel-prac-hdr">${d.toLocaleDateString('en-US', { weekday: 'short' })}</span>`;
+    }).join('');
+    const pracHeaderRow = (this.trainingEvents || []).length > 0
+      ? `<div class="gdr-sel-header-row"><span class="gdr-sel-header-spacer"></span><div class="gdr-sel-prac-headers">${pracHeaders}</div><span class="gdr-sel-header-x"></span></div>`
+      : '';
+
+    container.innerHTML = pracHeaderRow + selected.map(p => {
       const badges = [];
       if (p.isKeeper) badges.push('<span class="gdr-badge gdr-badge-keeper">GK</span>');
       if (p.hasFamilyDiscount) badges.push('<span class="gdr-badge gdr-badge-family">FAM</span>');
       const rsvpClass = p.rsvpStatus === 'yes' ? 'gdr-rsvp-yes' : p.rsvpStatus === 'no' ? 'gdr-rsvp-no' : p.rsvpStatus === 'maybe' ? 'gdr-rsvp-maybe' : 'gdr-rsvp-none';
       const rsvpLabel = p.rsvpStatus || 'none';
-      
+
+      // Mini practice dots
+      const pracDots = (this.trainingEvents || []).map((te, i) => {
+        const entry = p.practice ? p.practice[i] : null;
+        const v = entry ? (typeof entry === 'object' ? entry.v : entry) : null;
+        const cls = v === 'yes' ? 'gdr-dot-yes' : v === 'no' ? 'gdr-dot-no' : v === 'maybe' ? 'gdr-dot-maybe' : 'gdr-dot-none';
+        return `<span class="gdr-prac-dot ${cls}"></span>`;
+      }).join('');
+
       return `
         <div class="gdr-selected-card">
           <div class="gdr-selected-info">
@@ -338,6 +361,7 @@ class GameDayRosterScreen extends Screen {
             <span class="gdr-selected-meta">${[p.jerseyNumber ? '#' + p.jerseyNumber : '', p.position].filter(Boolean).join(' \u00b7 ')}</span>
             ${badges.join('')}
           </div>
+          <div class="gdr-sel-practice">${pracDots}</div>
           <span class="gdr-rsvp-dot ${rsvpClass}" title="RSVP: ${rsvpLabel}"></span>
           <button class="gdr-remove-btn" data-player-id="${p.playerId}">\u2715</button>
         </div>`;
@@ -574,7 +598,13 @@ class GameDayRosterScreen extends Screen {
   }
 
   selectAllAttending() {
-    this.players.filter(p => p.rsvpStatus === 'yes').forEach(p => this.selectedPlayerIds.add(p.playerId));
+    const matchId = this.navigation.context.match?.id;
+    this.players.filter(p => p.rsvpStatus === 'yes').forEach(p => {
+      if (!this.selectedPlayerIds.has(p.playerId)) {
+        this.selectedPlayerIds.add(p.playerId);
+        this.toggleLineup(p.playerId, true);
+      }
+    });
     this.renderOverlayList();
     this.renderSelectedPlayers();
     this.updateSelectedCount();
@@ -583,9 +613,12 @@ class GameDayRosterScreen extends Screen {
 
   updateSelectedCount() {
     const countEl = this.find('#selected-count');
-    const count = this.selectedPlayerIds.size;
-    countEl.textContent = `${count} / 20 selected`;
-    countEl.className = 'gdr-count-badge' + (count > 20 ? ' gdr-count-over' : count >= 18 ? ' gdr-count-good' : '');
+    const selected = this.players.filter(p => this.selectedPlayerIds.has(p.playerId));
+    const count = selected.length;
+    const gk = selected.filter(p => p.isKeeper).length;
+    const field = count - gk;
+    countEl.textContent = `${count} selected (${field} field, ${gk} GK)`;
+    countEl.className = 'gdr-count-badge' + (count > 20 ? ' gdr-count-over' : count >= 16 ? ' gdr-count-good' : '');
   }
 
   updateCardRoster() {
@@ -600,9 +633,11 @@ class GameDayRosterScreen extends Screen {
 
     rosterSection.style.display = 'block';
     const selected = this.players.filter(p => this.selectedPlayerIds.has(p.playerId));
-    namesEl.innerHTML = selected.map(p => {
-      const jersey = p.jerseyNumber ? `#${p.jerseyNumber} ` : '';
-      return `<span class="gdr-roster-chip">${jersey}${p.firstName} ${p.lastName}</span>`;
+    // Two-column numbered roster
+    namesEl.innerHTML = selected.map((p, i) => {
+      const jersey = p.jerseyNumber ? `<span class="gdr-roster-num">#${p.jerseyNumber}</span>` : '';
+      const gk = p.isKeeper ? ' <span class="gdr-roster-gk">GK</span>' : '';
+      return `<div class="gdr-roster-entry">${jersey}<span class="gdr-roster-pname">${p.firstName} ${p.lastName}</span>${gk}</div>`;
     }).join('');
   }
 
@@ -654,28 +689,21 @@ class GameDayRosterScreen extends Screen {
     });
   }
 
-  async saveRoster() {
+  async toggleLineup(playerId, add) {
     const matchId = this.navigation.context.match?.id;
-    const userId = this.auth.getUser()?.id;
-    if (!matchId) { alert('No match selected'); return; }
-    
-    const playerIds = Array.from(this.selectedPlayerIds);
-    
+    if (!matchId) return;
     try {
-      const response = await this.auth.fetch(`/api/matches/${matchId}/game-roster`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_ids: playerIds, added_by: userId })
-      });
-      const data = await response.json();
-      if (data.success) {
-        alert(`\u2713 Game day roster saved! ${data.count} players.`);
+      if (add) {
+        await this.auth.fetch(`/api/matches/${matchId}/lineup/${playerId}`, { method: 'POST' });
       } else {
-        throw new Error(data.message || 'Failed to save');
+        await this.auth.fetch(`/api/matches/${matchId}/lineup/${playerId}`, { method: 'DELETE' });
       }
-    } catch (error) {
-      console.error('Error saving roster:', error);
-      alert('Failed to save: ' + error.message);
+    } catch (err) {
+      console.error('Failed to toggle lineup:', err);
     }
+  }
+
+  titleCase(str) {
+    return str.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   }
 }

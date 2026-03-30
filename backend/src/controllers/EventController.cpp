@@ -112,6 +112,16 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleUpdateGameRoster(request);
     });
     
+    // POST /api/matches/:matchId/lineup/:playerId - Add player to game day lineup
+    router.post("/api/matches/:matchId/lineup/:playerId", [this](const Request& request) {
+        return this->handleAddToLineup(request);
+    });
+
+    // DELETE /api/matches/:matchId/lineup/:playerId - Remove player from game day lineup
+    router.del("/api/matches/:matchId/lineup/:playerId", [this](const Request& request) {
+        return this->handleRemoveFromLineup(request);
+    });
+
     // GET /api/matches/:matchId/eligible-players - Get players who RSVP'd attending
     router.get("/api/matches/:matchId/eligible-players", [this](const Request& request) {
         return this->handleGetEligiblePlayers(request);
@@ -1779,6 +1789,57 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating game roster: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update game roster"));
+    }
+}
+
+// POST /api/matches/:matchId/lineup/:playerId
+Response EventController::handleAddToLineup(const Request& request) {
+    std::string matchId = extractMatchIdFromPath(request.getPath());
+    // Extract playerId from end of path: /api/matches/425/lineup/1346
+    std::regex pidRegex(R"(/lineup/(\d+))");
+    std::smatch pidMatch;
+    std::string path = request.getPath();
+    std::string playerId;
+    if (std::regex_search(path, pidMatch, pidRegex)) {
+        playerId = pidMatch[1].str();
+    }
+    if (matchId.empty() || playerId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID and Player ID required"));
+    }
+    try {
+        db_->query(
+            "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter) "
+            "VALUES ($1::int, $2::int, (SELECT home_team_id FROM matches WHERE id = $1::int), true) "
+            "ON CONFLICT (match_id, player_id) DO NOTHING",
+            {matchId, playerId});
+        return Response(HttpStatus::OK, createJSONResponse(true, "Added to lineup"));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Add to lineup error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed"));
+    }
+}
+
+// DELETE /api/matches/:matchId/lineup/:playerId
+Response EventController::handleRemoveFromLineup(const Request& request) {
+    std::string matchId = extractMatchIdFromPath(request.getPath());
+    std::regex pidRegex(R"(/lineup/(\d+))");
+    std::smatch pidMatch;
+    std::string path = request.getPath();
+    std::string playerId;
+    if (std::regex_search(path, pidMatch, pidRegex)) {
+        playerId = pidMatch[1].str();
+    }
+    if (matchId.empty() || playerId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID and Player ID required"));
+    }
+    try {
+        db_->query(
+            "DELETE FROM match_lineups WHERE match_id = $1::int AND player_id = $2::int",
+            {matchId, playerId});
+        return Response(HttpStatus::OK, createJSONResponse(true, "Removed from lineup"));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Remove from lineup error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed"));
     }
 }
 
