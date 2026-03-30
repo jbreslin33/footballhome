@@ -249,9 +249,17 @@ class GameDayRosterScreen extends Screen {
     }
 
     try {
+      // Sync GroupMe RSVPs first (fresh data on every page load)
+      const teamId = this.navigation.context.lineupTeamId || '';
+      try {
+        await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}${teamId ? '?teamId=' + teamId : ''}`, { method: 'POST' });
+      } catch (e) {
+        console.warn('GroupMe sync skipped:', e.message);
+      }
+
       const [matchRes, playersRes] = await Promise.all([
         this.auth.fetch(`/api/matches/${matchId}`),
-        this.auth.fetch(`/api/matches/${matchId}/roster-players?teamId=${this.navigation.context.lineupTeamId || ''}`)
+        this.auth.fetch(`/api/matches/${matchId}/roster-players?teamId=${teamId}`)
       ]);
       const [matchData, playersData] = await Promise.all([matchRes.json(), playersRes.json()]);
 

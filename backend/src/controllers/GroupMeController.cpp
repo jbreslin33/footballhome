@@ -39,6 +39,11 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
         return this->handleSyncMatchRsvps(request);
     });
 
+    // POST /api/groupme/sync-for-match/:matchId?teamId=X — sync match + training RSVPs
+    router.post(prefix + "/sync-for-match/:matchId", [this](const Request& request) {
+        return this->handleSyncForMatch(request);
+    });
+
     // GET /api/groupme/members/:teamId?matchId=X
     router.get(prefix + "/members/:teamId", [this](const Request& request) {
         return this->handleGetGroupMembers(request);
@@ -173,14 +178,15 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
                 
                 if (personIt != personMap.end()) {
                     // Person is mapped — upsert by external_user_id to avoid conflicts
-                    // when upgrading a previously-unmapped row
+                    // Preserve admin overrides (override_rsvp_status_id)
                     db_->query(
                         "INSERT INTO chat_event_rsvps "
                         "  (chat_event_id, person_id, external_user_id, external_username, rsvp_status_id, responded_at) "
                         "VALUES ($1::int, $2::int, $3, $4, $5::int, CURRENT_TIMESTAMP) "
                         "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
                         "  person_id = EXCLUDED.person_id, "
-                        "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
+                        "  rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL "
+                        "    THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END, "
                         "  responded_at = EXCLUDED.responded_at, "
                         "  external_username = EXCLUDED.external_username",
                         {chatEventId, personIt->second, uid, nickname, std::to_string(statusId)}
@@ -192,7 +198,8 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
                         "  (chat_event_id, external_user_id, external_username, rsvp_status_id, responded_at) "
                         "VALUES ($1::int, $2, $3, $4::int, CURRENT_TIMESTAMP) "
                         "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
-                        "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
+                        "  rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL "
+                        "    THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END, "
                         "  responded_at = EXCLUDED.responded_at, "
                         "  external_username = EXCLUDED.external_username",
                         {chatEventId, uid, nickname, std::to_string(statusId)}
@@ -222,6 +229,216 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
         std::cerr << "❌ GroupMe sync error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
             createJsonResponse(false, "Sync failed"));
+    }
+}
+
+// ============================================================================
+// Handler: Sync ALL GroupMe data needed for the roster page
+// POST /api/groupme/sync-for-match/:matchId?teamId=X
+// Syncs match RSVPs + training/pickup RSVPs in one call
+// Preserves admin overrides (override_rsvp_status_id)
+// ============================================================================
+Response GroupMeController::handleSyncForMatch(const Request& request) {
+    if (accessToken_.empty()) {
+        return Response(HttpStatus::OK, createJsonResponse(true, "GroupMe token not configured",
+            "{\"synced\":false,\"reason\":\"no_token\"}"));
+    }
+
+    std::string matchId = extractIdFromPath(request.getPath(), "/api/groupme/sync-for-match/(\\d+)");
+    if (matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Match ID required"));
+    }
+
+    try {
+        auto startTime = std::chrono::steady_clock::now();
+
+        // Load person mappings once (GroupMe user_id → person_id)
+        pqxx::result identResult = db_->query(
+            "SELECT external_user_id, person_id FROM external_identities WHERE provider_id = 1"
+        );
+        std::map<std::string, std::string> personMap;
+        for (const auto& row : identResult) {
+            personMap[row["external_user_id"].c_str()] = row["person_id"].c_str();
+        }
+
+        int totalSynced = 0;
+
+        // Override-preserving upsert lambda
+        auto upsertRsvp = [&](const std::string& chatEventId, const std::vector<std::string>& userIds,
+                              int statusId, int& count) {
+            for (const auto& uid : userIds) {
+                auto personIt = personMap.find(uid);
+                if (personIt != personMap.end()) {
+                    db_->query(
+                        "INSERT INTO chat_event_rsvps "
+                        "  (chat_event_id, person_id, external_user_id, rsvp_status_id, responded_at) "
+                        "VALUES ($1::int, $2::int, $3, $4::int, CURRENT_TIMESTAMP) "
+                        "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
+                        "  person_id = EXCLUDED.person_id, "
+                        "  rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL "
+                        "    THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END, "
+                        "  responded_at = EXCLUDED.responded_at",
+                        {chatEventId, personIt->second, uid, std::to_string(statusId)}
+                    );
+                } else {
+                    db_->query(
+                        "INSERT INTO chat_event_rsvps "
+                        "  (chat_event_id, external_user_id, rsvp_status_id, responded_at) "
+                        "VALUES ($1::int, $2, $3::int, CURRENT_TIMESTAMP) "
+                        "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
+                        "  rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL "
+                        "    THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END, "
+                        "  responded_at = EXCLUDED.responded_at",
+                        {chatEventId, uid, std::to_string(statusId)}
+                    );
+                }
+                count++;
+            }
+        };
+
+        // ── Part 1: Sync match RSVPs ────────────────────────────────────
+        std::string teamId = request.getQueryParam("teamId");
+        if (teamId.empty()) teamId = "35";
+
+        pqxx::result ceResult = db_->query(
+            "SELECT ce.id as chat_event_id, ce.external_id as event_external_id, "
+            "       ci.external_id as groupme_group_id "
+            "FROM chat_events ce "
+            "JOIN chats c ON c.id = ce.chat_id "
+            "JOIN chat_integrations ci ON ci.chat_id = c.id AND ci.provider_id = 1 "
+            "WHERE ce.match_id = $1::int AND c.team_id = $2::int "
+            "LIMIT 1",
+            {matchId, teamId}
+        );
+
+        if (!ceResult.empty()) {
+            std::string chatEventId = ceResult[0]["chat_event_id"].c_str();
+            std::string eventExternalId = ceResult[0]["event_external_id"].c_str();
+            std::string groupmeGroupId = ceResult[0]["groupme_group_id"].c_str();
+
+            std::string eventsUrl = "https://api.groupme.com/v3/conversations/" + groupmeGroupId
+                                  + "/events/list?token=" + accessToken_;
+            std::string eventsJson = httpGet(eventsUrl);
+
+            if (!eventsJson.empty()) {
+                std::string eventNeedle = "\"event_id\":\"" + eventExternalId + "\"";
+                size_t eventPos = eventsJson.find(eventNeedle);
+                if (eventPos != std::string::npos) {
+                    size_t nextEventPos = eventsJson.find("\"event_id\":", eventPos + eventNeedle.length());
+                    size_t searchEnd = (nextEventPos != std::string::npos) ? nextEventPos : eventsJson.length();
+
+                    auto going = extractStringArray(eventsJson, eventPos, searchEnd, "going");
+                    auto notGoing = extractStringArray(eventsJson, eventPos, searchEnd, "not_going");
+                    auto maybeGoing = extractStringArray(eventsJson, eventPos, searchEnd, "maybe_going");
+
+                    upsertRsvp(chatEventId, going, 1, totalSynced);
+                    upsertRsvp(chatEventId, notGoing, 2, totalSynced);
+                    upsertRsvp(chatEventId, maybeGoing, 3, totalSynced);
+
+                    std::cout << "🔄 Match " << matchId << " RSVPs: "
+                              << going.size() << "G " << notGoing.size() << "N "
+                              << maybeGoing.size() << "M" << std::endl;
+                }
+            }
+        }
+
+        // ── Part 2: Sync training/pickup RSVPs ──────────────────────────
+        pqxx::result matchResult = db_->query(
+            "SELECT match_date::text FROM matches WHERE id = $1::int", {matchId}
+        );
+
+        if (!matchResult.empty()) {
+            std::string matchDate = matchResult[0]["match_date"].c_str();
+
+            // Get training events before match date (limit 5 unique dates)
+            pqxx::result teResult = db_->query(
+                "SELECT ce.id, ce.external_id, ce.title, ce.event_date::text as event_date, "
+                "       c.name as chat_name "
+                "FROM chat_events ce "
+                "JOIN chats c ON c.id = ce.chat_id "
+                "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
+                "  AND ce.event_date < $1::date "
+                "  AND ce.is_active = true "
+                "ORDER BY ce.event_date DESC, ce.title",
+                {matchDate}
+            );
+
+            struct TrainingEvent {
+                std::string id, externalId, title, eventDate, chatName;
+            };
+            std::vector<TrainingEvent> events;
+            std::set<std::string> uniqueDates;
+            for (const auto& row : teResult) {
+                std::string date = row["event_date"].c_str();
+                uniqueDates.insert(date);
+                if (uniqueDates.size() > 5) break;
+                events.push_back({
+                    row["id"].c_str(),
+                    row["external_id"].is_null() ? "" : row["external_id"].c_str(),
+                    row["title"].c_str(),
+                    date,
+                    row["chat_name"].c_str()
+                });
+            }
+
+            if (!events.empty()) {
+                // Get GroupMe group IDs for training/pickup chats
+                pqxx::result ciResult = db_->query(
+                    "SELECT c.name, ci.external_id "
+                    "FROM chat_integrations ci "
+                    "JOIN chats c ON c.id = ci.chat_id "
+                    "WHERE ci.provider_id = 1 AND c.name IN ('Training Lighthouse', 'Philadelphia Pickup')"
+                );
+                std::map<std::string, std::string> chatGroupIds;
+                for (const auto& row : ciResult) {
+                    chatGroupIds[row["name"].c_str()] = row["external_id"].c_str();
+                }
+
+                // Fetch and sync each group's events from GroupMe API
+                for (const auto& [chatName, groupId] : chatGroupIds) {
+                    std::string eventsUrl = "https://api.groupme.com/v3/conversations/" + groupId
+                                          + "/events/list?token=" + accessToken_;
+                    std::string eventsJson = httpGet(eventsUrl);
+                    if (eventsJson.empty()) continue;
+
+                    int groupSynced = 0;
+                    for (const auto& evt : events) {
+                        if (evt.chatName != chatName || evt.externalId.empty()) continue;
+
+                        std::string eventNeedle = "\"event_id\":\"" + evt.externalId + "\"";
+                        size_t eventPos = eventsJson.find(eventNeedle);
+                        if (eventPos == std::string::npos) continue;
+
+                        size_t nextEventPos = eventsJson.find("\"event_id\":", eventPos + eventNeedle.length());
+                        size_t searchEnd = (nextEventPos != std::string::npos) ? nextEventPos : eventsJson.length();
+
+                        auto going = extractStringArray(eventsJson, eventPos, searchEnd, "going");
+                        auto notGoing = extractStringArray(eventsJson, eventPos, searchEnd, "not_going");
+                        auto maybeGoing = extractStringArray(eventsJson, eventPos, searchEnd, "maybe_going");
+
+                        upsertRsvp(evt.id, going, 1, totalSynced);
+                        upsertRsvp(evt.id, notGoing, 2, totalSynced);
+                        upsertRsvp(evt.id, maybeGoing, 3, totalSynced);
+                        groupSynced += going.size() + notGoing.size() + maybeGoing.size();
+                    }
+                    std::cout << "🔄 Training sync " << chatName << ": " << groupSynced << " RSVPs" << std::endl;
+                }
+            }
+        }
+
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - startTime).count();
+        std::cout << "✅ Sync-for-match " << matchId << " complete: "
+                  << totalSynced << " RSVPs in " << elapsed << "ms" << std::endl;
+
+        std::ostringstream data;
+        data << "{\"synced\":true,\"totalRsvps\":" << totalSynced
+             << ",\"elapsed\":" << elapsed << "}";
+        return Response(HttpStatus::OK, createJsonResponse(true, "Synced", data.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Sync-for-match error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Sync failed"));
     }
 }
 
@@ -858,8 +1075,9 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
 
                     std::vector<std::string> going = extractStringArray(eventsJson, eventPos, searchEnd, "going");
                     std::vector<std::string> notGoing = extractStringArray(eventsJson, eventPos, searchEnd, "not_going");
+                    std::vector<std::string> maybeGoing = extractStringArray(eventsJson, eventPos, searchEnd, "maybe_going");
 
-                    // Upsert RSVPs — always key on external_user_id to avoid conflicts
+                    // Upsert RSVPs — preserve admin overrides
                     auto upsertTrainingRsvps = [&](const std::vector<std::string>& userIds, int statusId) {
                         for (const auto& uid : userIds) {
                             auto personIt = personMap.find(uid);
@@ -871,7 +1089,8 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
                                     "VALUES ($1::int, $2::int, $3, $4::int, CURRENT_TIMESTAMP) "
                                     "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
                                     "  person_id = EXCLUDED.person_id, "
-                                    "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
+                                    "  rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL "
+                                    "    THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END, "
                                     "  responded_at = EXCLUDED.responded_at",
                                     {evt.id, personIdVal, uid, std::to_string(statusId)}
                                 );
@@ -881,7 +1100,8 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
                                     "  (chat_event_id, external_user_id, rsvp_status_id, responded_at) "
                                     "VALUES ($1::int, $2, $3::int, CURRENT_TIMESTAMP) "
                                     "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
-                                    "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
+                                    "  rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL "
+                                    "    THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END, "
                                     "  responded_at = EXCLUDED.responded_at",
                                     {evt.id, uid, std::to_string(statusId)}
                                 );
@@ -891,6 +1111,7 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
 
                     upsertTrainingRsvps(going, 1);     // yes
                     upsertTrainingRsvps(notGoing, 2);   // no
+                    upsertTrainingRsvps(maybeGoing, 3); // maybe
 
                     std::cout << "  📊 " << evt.title << " (" << evt.eventDate << "): "
                               << going.size() << " going, " << notGoing.size() << " not going" << std::endl;

@@ -25,6 +25,9 @@ private:
     // Main handler: sync RSVPs for a specific match from GroupMe API
     Response handleSyncMatchRsvps(const Request& request);
 
+    // Handler: sync ALL GroupMe data needed for the roster page (match + training RSVPs)
+    Response handleSyncForMatch(const Request& request);
+
     // Handler: return all GroupMe group members with linkage info
     Response handleGetGroupMembers(const Request& request);
 
