@@ -1,20 +1,37 @@
-# Simple C++ Backend - No Frameworks!
+# Football Home — C++ Backend
 
-Minimal C++ HTTP server for FootballHome RSVP app.
+Custom HTTP server built with C++17, libpqxx, and nlohmann/json. No frameworks.
 
-## What it does:
-- Handles POST /api/auth/login 
-- Connects to PostgreSQL database
-- Returns JSON responses
-- Zero external frameworks (just standard libs + basics)
+## Controllers
 
-## Dependencies:
-- Standard C++ libraries
-- libpqxx (PostgreSQL client)
-- Basic HTTP parsing
+| Controller | Prefix | Purpose |
+|-----------|--------|---------|
+| Auth | `/api/auth` | Login, register, logout, roles |
+| Availability | `/api` | Player medical/academic status |
+| Club | `/api/clubs` | Club directory + detail |
+| Division | `/api` | Divisions, rosters by division |
+| Eligibility | `/api` | Player eligibility engine |
+| Event | `/api/events` | Matches, events, standings |
+| GroupMe | `/api/groupme` | GroupMe sync + RSVP import |
+| OAuth | `/api/oauth` | Google OAuth flow |
+| Stats | `/api/stats` | Player/team statistics |
+| SystemAdmin | `/api/admin` | System admin operations |
+| TacticalBoard | `/api/tactical` | Tactical board CRUD |
+| Team | `/api/teams` | Teams, rosters, practices, lineups |
 
-## Build & Run:
+## Build
+
+Built via Docker (see `backend/Dockerfile`). The image is tagged `footballhome_backend`.
+
 ```bash
-g++ -std=c++17 main.cpp -lpqxx -lpq -o server
-./server
+# From project root:
+podman build --no-cache -t footballhome_backend -f backend/Dockerfile backend/
+```
+
+## Dependencies
+
+- C++17, CMake
+- libpqxx (PostgreSQL)
+- nlohmann/json
+- OpenSSL, libcurl
 ```

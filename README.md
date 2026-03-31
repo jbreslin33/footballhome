@@ -85,6 +85,38 @@ make backup              # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
 make restore             # restore latest (or BACKUP=file.sql)
 ```
 
+**Automated daily backups** run via cron at 3am:
+- Keeps last 7 daily + 4 weekly snapshots (Sundays)
+- Logs to `backups/cron.log`
+- Script: `scripts/backup-db.sh`
+
+To install (already done on the dev machine):
+```bash
+crontab -e
+# Add: 0 3 * * * /path/to/footballhome/scripts/backup-db.sh >> /path/to/footballhome/backups/cron.log 2>&1
+```
+
+### GroupMe Sync
+
+```bash
+make sync-groupme        # sync RSVPs + events from all connected GroupMe groups
+```
+
+GroupMe chat integrations are configured in `database/data/037-chat-config.sql` (idempotent, auto-loaded on DB init).
+
+### VPN for Scraping
+
+Some league websites block server IPs. Scraping uses a WireGuard VPN:
+
+```bash
+make vpn-up              # bring up WireGuard tunnel (scrape-vpn)
+make vpn-down            # tear down tunnel
+make vpn-status          # check tunnel status
+```
+
+Scrape commands automatically wrap through VPN via `scripts/vpn-wrap.sh`.
+VPN config: `/etc/wireguard/scrape-vpn.conf` (not in repo — manual setup per machine).
+
 ### Dev Reset (destructive — wipes ALL data)
 
 ```bash
@@ -178,6 +210,12 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 - **Multiple Teams**: Users can manage multiple teams across leagues
 - **Role-Based Access**: Admin, Coach, Player roles with appropriate permissions
 
+### Game Day
+- **Game Day Roster**: Select players for match lineup, auto-save to DB
+- **Game Day Lineup**: Drag-and-drop formation builder with fit-to-screen mode
+- **Instagram Match Card**: Royal blue card with team logos, scores, roster — screenshot and share
+- **League Branding**: Cards dynamically show APSL / CASA / CSL branding based on match source
+
 ### Event Management
 - **Practice Scheduling**: Create and manage team practices
 - **Match Tracking**: View upcoming and past matches from league schedule
@@ -199,9 +237,9 @@ This is triggered by a single command per league: `make sync-apsl`
 
 | Category | Source | Sync method | Recoverable? |
 |----------|--------|-------------|-------------|
-| Bootstrap (schema, lookups, seasons) | `database/data/*.sql` | Auto-loaded on first DB start | Always — from git |
+| Bootstrap (schema, lookups, seasons, logos, chat config) | `database/data/*.sql` | Auto-loaded on first DB start | Always — from git |
 | League data (teams, matches, standings, rosters) | League websites | `make sync-*` (scrape → UPSERT) | Always — re-scrape from website |
-| User data (RSVPs, practices, tactical boards) | User input in app | Written by backend to DB | Only from `make backup` |
+| User data (RSVPs, lineups, practices, tactical boards) | User input in app | Written by backend to DB | Only from `make backup` (daily cron at 3am) |
 
 ### Curation Rules (the real asset)
 
@@ -231,7 +269,7 @@ When you find a duplicate or mismatch, add a `clubFamilies` entry and re-sync. T
 | APSL website | clubs, teams, matches, standings, rosters | `make sync-apsl` |
 | CSL website | clubs, teams, matches, standings, rosters | `make sync-csl` |
 | CASA website | clubs, teams, matches, standings, rosters | `make sync-casa` |
-| GroupMe API | group members, calendar events, RSVPs | `node scripts/import-all-groupme-users.js` |
+| GroupMe API | group members, calendar events, RSVPs | `make sync-groupme` |
 
 All sources follow the same pattern: fetch → parse → curate → UPSERT.
 
@@ -305,11 +343,14 @@ Run `make help` for the full list. Key targets:
 | `make sync-apsl` | Full sync: scrape → parse → curate → UPSERT |
 | `make sync-csl` | Full sync for CSL |
 | `make sync-casa` | Full sync for CASA |
+| `make sync-groupme` | Sync GroupMe RSVPs + events |
 | `make build` | Build images + start containers |
 | `make rebuild` | Destroy everything + fresh build (wipes DB) |
 | `make migrate` | Apply pending schema migrations (preserves data) |
 | `make up` / `make down` | Start / stop containers |
 | `make backup` / `make restore` | pg_dump snapshot / restore |
+| `make safe-rebuild` | Backup + rebuild (safety net) |
+| `make vpn-up` / `make vpn-down` | WireGuard tunnel for scraping |
 | `make scrape-apsl` | Fetch HTML only |
 | `make parse-apsl` | Regenerate SQL from cached HTML only |
 | `make shell-db` | Database shell |
