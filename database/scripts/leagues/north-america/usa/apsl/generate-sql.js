@@ -222,15 +222,15 @@ class ApslSqlGenerator extends BaseGenerator {
     for (const file of files) {
       if (!file.endsWith('.html') || file.includes('tables-') || file.endsWith('.skip')) continue;
       
-      // New format: apsl-team-114812-46798c01.html
-      const newMatch = file.match(/^apsl-team-(\d+)-[a-f0-9]+\.html$/);
+      // Newer format: 116079-14b3ab75.html (always prefer)
+      const newMatch = file.match(/^(\d+)-[a-f0-9]+\.html$/);
       if (newMatch) {
-        rosterFiles.set(newMatch[1], file); // Always prefer new format
+        rosterFiles.set(newMatch[1], file);
         continue;
       }
       
-      // Old format: 114812-bc27d2da.html (only use if no new format exists)
-      const oldMatch = file.match(/^(\d+)-[a-f0-9]+\.html$/);
+      // Legacy format: apsl-team-116079-e83402e2.html (only use if no newer file)
+      const oldMatch = file.match(/^apsl-team-(\d+)-[a-f0-9]+\.html$/);
       if (oldMatch && !rosterFiles.has(oldMatch[1])) {
         rosterFiles.set(oldMatch[1], file);
       }
@@ -329,19 +329,28 @@ class ApslSqlGenerator extends BaseGenerator {
     const htmlDir = path.join(__dirname, '../../../../../scraped-html/apsl');
     const files = fs.readdirSync(htmlDir);
     
+    // Collect team files, preferring newer NNNNN-hash.html over legacy apsl-team-NNNNN-hash.html
+    const scheduleFiles = new Map(); // external_id -> filename
     for (const file of files) {
-      // Skip non-HTML files and the standings file
       if (!file.endsWith('.html') || file.includes('tables-') || file.endsWith('.skip')) continue;
       
+      // Newer format: 116079-14b3ab75.html (always prefer)
+      const newMatch = file.match(/^(\d+)-[a-f0-9]+\.html$/);
+      if (newMatch) {
+        scheduleFiles.set(newMatch[1], file);
+        continue;
+      }
+      
+      // Legacy format: apsl-team-116079-e83402e2.html (only use if no newer file)
+      const oldMatch = file.match(/^apsl-team-(\d+)-[a-f0-9]+\.html$/);
+      if (oldMatch && !scheduleFiles.has(oldMatch[1])) {
+        scheduleFiles.set(oldMatch[1], file);
+      }
+    }
+    
+    for (const [teamExternalId, file] of scheduleFiles) {
       const filePath = path.join(htmlDir, file);
       const html = fs.readFileSync(filePath, 'utf-8');
-      
-      // Extract team external ID from filename 
-      // Matches: apsl-team-12345-hash.html, team-12345.html, or 12345-hash.html
-      const match = file.match(/(?:apsl-team-|team-)(\d+)(?:-[a-f0-9]+)?\.html/) || file.match(/^(\d+)-[a-f0-9]+\.html$/);
-      if (!match) continue;
-      
-      const teamExternalId = match[1];
       
       // Parse matches for this team
       const teamMatches = this.matchParser.parse(html, teamExternalId);

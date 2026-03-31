@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Matches - APSL
--- Total Records: 605
+-- Total Records: 586
 -- Match type: 1=league, 3=practice, 4=scrimmage
 -- Match status: 1=scheduled, 3=completed
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -40,10 +40,6 @@ ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
 VALUES ('lancaster bible college', '901 Eden Road  Lancaster PA 17601')
-ON CONFLICT (name) DO UPDATE SET
-  address = COALESCE(EXCLUDED.address, venues.address);
-INSERT INTO venues (name, address) 
-VALUES ('german american society - nick wiener sr field', '215 Uncle Pete''s Rd  Trenton NJ 08691')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
@@ -251,6 +247,10 @@ VALUES ('john bartram high school', '5847R Elmwood Ave  Philadelphia PA 19143')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
+VALUES ('german american society - nick wiener sr field', '215 Uncle Pete''s Rd  Trenton NJ 08691')
+ON CONFLICT (name) DO UPDATE SET
+  address = COALESCE(EXCLUDED.address, venues.address);
+INSERT INTO venues (name, address) 
 VALUES ('veteran''s park', '489 Bill Zimmermann Jr Way  Bayville NJ 08721')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
@@ -264,6 +264,10 @@ ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
 VALUES ('rowan university', '297-399 North Campus Drive  Glassboro NJ 08028')
+ON CONFLICT (name) DO UPDATE SET
+  address = COALESCE(EXCLUDED.address, venues.address);
+INSERT INTO venues (name, address) 
+VALUES ('mccarthy stadium', '1900 W Olney Ave  Philadelphia Pa 19141')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
@@ -467,6 +471,10 @@ VALUES ('westfield high school - 1', '4700 Stonecroft Blvd  Chantilly VA 20151')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
+VALUES ('woodson hs rf#1 west turf', NULL)
+ON CONFLICT (name) DO UPDATE SET
+  address = COALESCE(EXCLUDED.address, venues.address);
+INSERT INTO venues (name, address) 
 VALUES ('varina high school', '7053 Messer rd  Henrico VA 23231')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
@@ -479,23 +487,7 @@ VALUES ('monacan high school - 1', '11501 Smoketree Dr  ichmond VA 23236')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
-VALUES ('woodson hs rf#1 west turf', NULL)
-ON CONFLICT (name) DO UPDATE SET
-  address = COALESCE(EXCLUDED.address, venues.address);
-INSERT INTO venues (name, address) 
 VALUES ('st. paul albanian field', '525 W Auburn Rd  Rochester Hills MI 48307')
-ON CONFLICT (name) DO UPDATE SET
-  address = COALESCE(EXCLUDED.address, venues.address);
-INSERT INTO venues (name, address) 
-VALUES ('westhampton sports complex', '301 Bridge St  Westampton Township NJ 08060')
-ON CONFLICT (name) DO UPDATE SET
-  address = COALESCE(EXCLUDED.address, venues.address);
-INSERT INTO venues (name, address) 
-VALUES ('bryn athyn college -', '2945 College Dr  Bryn Athyn PA 19009')
-ON CONFLICT (name) DO UPDATE SET
-  address = COALESCE(EXCLUDED.address, venues.address);
-INSERT INTO venues (name, address) 
-VALUES ('james j. ramp athletic complex - ramp athletic complex', '3300 Solly Ave  Philadelphia PA 19136')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 
@@ -836,13 +828,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-29', '18:00:00', 3,
+  4, '2026-03-29', '16:30:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  9, 1,
   1, '262665'
 FROM teams ht
 JOIN teams at ON at.external_id = '114808' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'german american society - nick wiener sr field'
+LEFT JOIN venues v ON v.name = 'mercer county community college'
 WHERE ht.external_id = '124946' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -1322,7 +1314,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '20:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  1, 4,
   1, '260827'
 FROM teams ht
 JOIN teams at ON at.external_id = '114811' AND at.source_system_id = 1
@@ -2290,7 +2282,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-26', '20:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  3, 4,
   1, '258661'
 FROM teams ht
 JOIN teams at ON at.external_id = '131978' AND at.source_system_id = 1
@@ -2558,7 +2550,7 @@ SELECT
   1, '258669'
 FROM teams ht
 JOIN teams at ON at.external_id = '118063' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'game on fitchburg'
+LEFT JOIN venues v ON v.name = 'lunenburg middle high school'
 WHERE ht.external_id = '114815' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -2838,13 +2830,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-01', NULL, 1,
+  4, '2026-04-01', '20:00:00', 1,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '278055'
 FROM teams ht
 JOIN teams at ON at.external_id = '114816' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'tbd'
+LEFT JOIN venues v ON v.name = 'kristine lilly field'
 WHERE ht.external_id = '135760' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -3192,7 +3184,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '17:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 8,
   1, '278054'
 FROM teams ht
 JOIN teams at ON at.external_id = '114826' AND at.source_system_id = 1
@@ -3500,7 +3492,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-26', '20:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  4, 0,
   1, '260802'
 FROM teams ht
 JOIN teams at ON at.external_id = '114820' AND at.source_system_id = 1
@@ -3984,7 +3976,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '18:30:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  1, 9,
   1, '262664'
 FROM teams ht
 JOIN teams at ON at.external_id = '114833' AND at.source_system_id = 1
@@ -4202,13 +4194,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-29', NULL, 1,
+  4, '2026-04-29', '20:00:00', 1,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '278112'
 FROM teams ht
 JOIN teams at ON at.external_id = '114826' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'tbd'
+LEFT JOIN venues v ON v.name = 'kristine lilly field'
 WHERE ht.external_id = '135760' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -4930,7 +4922,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '17:30:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 4,
   1, '260826'
 FROM teams ht
 JOIN teams at ON at.external_id = '114830' AND at.source_system_id = 1
@@ -5458,7 +5450,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-28', '20:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 0,
   1, '260828'
 FROM teams ht
 JOIN teams at ON at.external_id = '114832' AND at.source_system_id = 1
@@ -5770,7 +5762,7 @@ SELECT
   1, '262671'
 FROM teams ht
 JOIN teams at ON at.external_id = '114833' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'germantown supersite'
+LEFT JOIN venues v ON v.name = 'mccarthy stadium'
 WHERE ht.external_id = '114835' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -6250,7 +6242,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '13:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 1,
   1, '262662'
 FROM teams ht
 JOIN teams at ON at.external_id = '114835' AND at.source_system_id = 1
@@ -6276,7 +6268,7 @@ SELECT
   1, '262667'
 FROM teams ht
 JOIN teams at ON at.external_id = '116136' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'germantown supersite'
+LEFT JOIN venues v ON v.name = 'mccarthy stadium'
 WHERE ht.external_id = '114835' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -6866,7 +6858,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '16:15:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 0,
   1, '258662'
 FROM teams ht
 JOIN teams at ON at.external_id = '114837' AND at.source_system_id = 1
@@ -7086,7 +7078,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '13:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 3,
   1, '258663'
 FROM teams ht
 JOIN teams at ON at.external_id = '114838' AND at.source_system_id = 1
@@ -7106,13 +7098,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-11', '16:30:00', 1,
+  4, '2026-04-12', '20:30:00', 1,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '258666'
 FROM teams ht
 JOIN teams at ON at.external_id = '131978' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'frey park'
+LEFT JOIN venues v ON v.name = 'english high school'
 WHERE ht.external_id = '114838' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -8514,9 +8506,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-28', '19:00:00', 3,
+  4, '2026-03-28', '20:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  1, 1,
   1, '278053'
 FROM teams ht
 JOIN teams at ON at.external_id = '135760' AND at.source_system_id = 1
@@ -8648,7 +8640,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '11:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 2,
   1, '260823'
 FROM teams ht
 JOIN teams at ON at.external_id = '114852' AND at.source_system_id = 1
@@ -10584,7 +10576,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '17:30:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  1, 3,
   1, '262666'
 FROM teams ht
 JOIN teams at ON at.external_id = '116136' AND at.source_system_id = 1
@@ -12168,12 +12160,12 @@ INSERT INTO matches (
 SELECT 
   4, '2026-03-29', '20:15:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  4, 0,
   1, '286499'
 FROM teams ht
-JOIN teams at ON at.external_id = '140766' AND at.source_system_id = 1
+JOIN teams at ON at.external_id = '140256' AND at.source_system_id = 1
 LEFT JOIN venues v ON v.name = 'patriot park - 1'
-WHERE ht.external_id = '140256' AND ht.source_system_id = 1
+WHERE ht.external_id = '140766' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -12215,9 +12207,9 @@ SELECT
   NULL, NULL,
   1, '293029'
 FROM teams ht
-JOIN teams at ON at.external_id = '140777' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'tbd'
-WHERE ht.external_id = '140256' AND ht.source_system_id = 1
+JOIN teams at ON at.external_id = '140256' AND at.source_system_id = 1
+LEFT JOIN venues v ON v.name = 'patriot park - 1'
+WHERE ht.external_id = '140777' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -12232,14 +12224,14 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-26', '20:10:00', 1,
+  4, '2026-04-25', '20:10:00', 1,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '287638'
 FROM teams ht
-JOIN teams at ON at.external_id = '140777' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'patriot park - 1'
-WHERE ht.external_id = '140256' AND ht.source_system_id = 1
+JOIN teams at ON at.external_id = '140256' AND at.source_system_id = 1
+LEFT JOIN venues v ON v.name = 'woodson hs rf#1 west turf'
+WHERE ht.external_id = '140777' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -12870,28 +12862,6 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-29', '20:15:00', 3,
-  ht.id, at.id, v.id,
-  0, 4,
-  1, '286499'
-FROM teams ht
-JOIN teams at ON at.external_id = '140256' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'patriot park - 1'
-WHERE ht.external_id = '140766' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
   4, '2026-04-18', '15:00:00', 1,
   ht.id, at.id, v.id,
   NULL, NULL,
@@ -12958,53 +12928,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-19', '20:00:00', 1,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '293029'
-FROM teams ht
-JOIN teams at ON at.external_id = '140256' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'patriot park - 1'
-WHERE ht.external_id = '140777' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-04-25', '20:10:00', 1,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '287638'
-FROM teams ht
-JOIN teams at ON at.external_id = '140256' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'woodson hs rf#1 west turf'
-WHERE ht.external_id = '140777' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
   4, '2026-03-28', '13:30:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  5, 4,
   1, '286451'
 FROM teams ht
 JOIN teams at ON at.external_id = '143012' AND at.source_system_id = 1
@@ -13450,358 +13376,6 @@ FROM teams ht
 JOIN teams at ON at.external_id = '140359' AND at.source_system_id = 1
 LEFT JOIN venues v ON v.name = 'tbd'
 WHERE ht.external_id = '144871' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2025-09-06', '16:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '231085'
-FROM teams ht
-JOIN teams at ON at.external_id = '114843' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'game on fitchburg'
-WHERE ht.external_id = '114815' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2025-09-06', '19:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '227806'
-FROM teams ht
-JOIN teams at ON at.external_id = '114826' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'municipal stadium'
-WHERE ht.external_id = '114819' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2025-12-14', '16:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '226874'
-FROM teams ht
-JOIN teams at ON at.external_id = '114820' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'st. john''s university - belson stadium'
-WHERE ht.external_id = '114832' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2025-12-18', '18:30:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '236282'
-FROM teams ht
-JOIN teams at ON at.external_id = '124946' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'veteran''s park -'
-WHERE ht.external_id = '114822' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2025-12-14', '19:30:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '226878'
-FROM teams ht
-JOIN teams at ON at.external_id = '114827' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'roosevelt island - jack mcmanus field'
-WHERE ht.external_id = '114852' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2025-12-18', '20:15:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '228167'
-FROM teams ht
-JOIN teams at ON at.external_id = '114833' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'bryn athyn college -'
-WHERE ht.external_id = '114836' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-01-25', '18:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258150'
-FROM teams ht
-JOIN teams at ON at.external_id = '115101' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'empower college & career center'
-WHERE ht.external_id = '115107' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-02-01', '09:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258165'
-FROM teams ht
-JOIN teams at ON at.external_id = '119159' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'the best academy'
-WHERE ht.external_id = '115101' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-02-01', '14:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258167'
-FROM teams ht
-JOIN teams at ON at.external_id = '115104' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'maynard h jackson high school'
-WHERE ht.external_id = '115106' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-01-25', NULL, 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258149'
-FROM teams ht
-JOIN teams at ON at.external_id = '115105' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'tbd'
-WHERE ht.external_id = '133651' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-02-01', '10:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258164'
-FROM teams ht
-JOIN teams at ON at.external_id = '115105' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'brook run park'
-WHERE ht.external_id = '115815' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-01-18', NULL, 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258146'
-FROM teams ht
-JOIN teams at ON at.external_id = '115106' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'tbd'
-WHERE ht.external_id = '133651' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-01-25', '14:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258151'
-FROM teams ht
-JOIN teams at ON at.external_id = '115108' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'maynard h jackson high school'
-WHERE ht.external_id = '115106' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-02-01', '10:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258166'
-FROM teams ht
-JOIN teams at ON at.external_id = '133651' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'maynard h jackson high school'
-WHERE ht.external_id = '115108' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-02-15', '13:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258173'
-FROM teams ht
-JOIN teams at ON at.external_id = '115108' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'jm tull gwinnett family ymca'
-WHERE ht.external_id = '119159' AND ht.source_system_id = 1
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  4, '2026-01-25', '10:00:00', 3,
-  ht.id, at.id, v.id,
-  NULL, NULL,
-  1, '258148'
-FROM teams ht
-JOIN teams at ON at.external_id = '119159' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'brook run park'
-WHERE ht.external_id = '115815' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,

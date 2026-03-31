@@ -680,12 +680,14 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "m.description as notes, ";
         query << "v.name as venue_name, ";
         query << "ht.name as home_team_name, awt.name as away_team_name, ";
-        query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo ";
+        query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo, ";
+        query << "ss.name as source_name ";
         query << "FROM matches m ";
         query << "JOIN match_statuses ms ON m.match_status_id = ms.id ";
         query << "LEFT JOIN venues v ON m.venue_id = v.id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
+        query << "LEFT JOIN source_systems ss ON m.source_system_id = ss.id ";
         query << "WHERE m.id = '" << match_id << "'";
         
         pqxx::result result = db_->query(query.str());
@@ -739,6 +741,9 @@ Response EventController::handleGetMatch(const Request& request) {
         }
         if (!result[0][16].is_null()) {
             match_json << ",\"away_team_logo\":\"" << escapeJSON(result[0][16].c_str()) << "\"";
+        }
+        if (!result[0][17].is_null()) {
+            match_json << ",\"source_name\":\"" << escapeJSON(result[0][17].c_str()) << "\"";
         }
         
         match_json << "}";

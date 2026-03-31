@@ -497,8 +497,16 @@ ON CONFLICT (team_id, player_id, joined_at) DO UPDATE SET
     // Create unique key: date-homeTeam-awayTeam
     const key = `${matchData.matchDate}-${matchData.homeTeamExternalId}-${matchData.awayTeamExternalId}`;
     
-    // Skip if already added (matches appear on both home and away team pages)
     if (this.matchSet.has(key)) {
+      // If existing entry has no score but new one does, replace it
+      if (matchData.homeScore !== null && matchData.awayScore !== null) {
+        const idx = this.matches.findIndex(m =>
+          `${m.matchDate}-${m.homeTeamExternalId}-${m.awayTeamExternalId}` === key
+        );
+        if (idx !== -1 && this.matches[idx].homeScore === null) {
+          this.matches[idx] = matchData;
+        }
+      }
       return;
     }
     

@@ -61,7 +61,7 @@ class GameDayRosterScreen extends Screen {
                 <div class="gdr-roster-grid" id="gdr-roster-names"></div>
               </div>
               <div class="gdr-card-footer">
-                <span class="gdr-card-brand">\u26bd APSL \u2022 Philadelphia</span>
+                <span class="gdr-card-brand" id="gdr-card-brand">\u26bd Philadelphia</span>
               </div>
             </div>
             <div class="gdr-share-actions">
@@ -317,6 +317,14 @@ class GameDayRosterScreen extends Screen {
     }
     if (m.venue_name) {
       this.find('#gdr-venue').textContent = '\ud83d\udccd ' + this.titleCase(m.venue_name);
+    }
+
+    // Dynamic league brand in footer
+    const brandEl = this.find('#gdr-card-brand');
+    if (brandEl && m.source_name) {
+      const leagueMap = { apsl: 'APSL', casa: 'CASA', csl: 'CSL' };
+      const league = leagueMap[m.source_name] || m.source_name.toUpperCase();
+      brandEl.textContent = '\u26bd ' + league + ' \u2022 Philadelphia';
     }
   }
 

@@ -16,7 +16,7 @@
   margin-bottom: var(--space-4);
 }
 .gdr-card-inner {
-  background: linear-gradient(145deg, #0a1628 0%, #1a2d4a 40%, #0d1f3c 100%);
+  background: linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);
   color: #ffffff;
   border-radius: 16px;
   padding: 28px 24px 20px;
@@ -24,19 +24,21 @@
   position: relative;
   overflow: hidden;
 }
+
 .gdr-card-accent {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #f59e0b, #ef4444, #8b5cf6);
+  background: linear-gradient(90deg, #f5d442, #ffffff, #f5d442);
+  z-index: 2;
 }
 .gdr-card-header {
   font-size: 0.7em;
   text-transform: uppercase;
   letter-spacing: 5px;
-  color: #f59e0b;
+  color: #f5d442;
   margin-bottom: 20px;
   font-weight: 700;
 }
@@ -60,9 +62,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.12);
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
 }
 .gdr-logo-wrap img {
   width: 56px;
@@ -114,7 +116,7 @@
   font-size: 0.65em;
   text-transform: uppercase;
   letter-spacing: 3px;
-  color: #f59e0b;
+  color: #f5d442;
   margin-bottom: 10px;
   text-align: center;
   font-weight: 700;
@@ -133,7 +135,7 @@
   color: rgba(255,255,255,0.9);
 }
 .gdr-roster-num {
-  color: #f59e0b;
+  color: #f5d442;
   font-weight: 700;
   font-size: 0.9em;
   min-width: 24px;
@@ -145,8 +147,8 @@
 }
 .gdr-roster-gk {
   font-size: 0.7em;
-  background: rgba(245,158,11,0.25);
-  color: #f59e0b;
+  background: rgba(245,212,66,0.25);
+  color: #f5d442;
   padding: 0 4px;
   border-radius: 3px;
   font-weight: 700;
@@ -278,16 +280,18 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   justify-content: center;
-  align-items: flex-end;
+  align-items: stretch;
+  padding: 20px 0 0;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 .gdr-overlay-content {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.97);
   width: 100%;
   max-width: 1200px;
-  max-height: 90vh;
   border-radius: 16px 16px 0 0;
   display: flex;
   flex-direction: column;
@@ -550,8 +554,5 @@
     display: block;
     overflow-x: auto;
     white-space: nowrap;
-  }
-  .gdr-overlay-content {
-    max-height: 95vh;
   }
 }

@@ -2377,4 +2377,12 @@ class GameDayLineupScreen extends Screen {
       alert('Failed to save lineup: ' + error.message);
     }
   }
+
+  onExit() {
+    // Clean up body overflow in case fit-to-screen was active
+    document.body.style.overflow = '';
+    if (this.element) {
+      this.element.classList.remove('lineup-fit-screen');
+    }
+  }
 }
