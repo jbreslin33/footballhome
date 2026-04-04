@@ -171,14 +171,15 @@ CREATE TABLE source_systems (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
+    logo_url TEXT,
     is_active BOOLEAN DEFAULT true
 );
 
-INSERT INTO source_systems (id, name, description, is_active) VALUES
-    (1, 'apsl', 'American Premier Soccer League', true),
-    (2, 'casa', 'CASA Soccer Leagues', true),
-    (3, 'csl', 'Cosmopolitan Soccer League', true),
-    (4, 'groupme', 'GroupMe calendar events', true)
+INSERT INTO source_systems (id, name, description, logo_url, is_active) VALUES
+    (1, 'apsl', 'American Premier Soccer League', '/images/leagues/apsl.png', true),
+    (2, 'casa', 'CASA Soccer Leagues', '/images/leagues/casa.png', true),
+    (3, 'csl', 'Cosmopolitan Soccer League', NULL, true),
+    (4, 'groupme', 'GroupMe calendar events', NULL, true)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE chat_providers (
@@ -317,11 +318,11 @@ CREATE TABLE organizations (
 COMMENT ON TABLE organizations IS 'Universal top-level entities (governing bodies, league operators, club owners)';
 
 -- Insert static organizations (league operators)
-INSERT INTO organizations (id, name, short_name, website_url, is_active) VALUES
-    (1, 'American Premier Soccer League', 'APSL', 'https://www.apslsoccer.com', true),
-    (2, 'CASA Soccer Leagues', 'CASA', 'https://www.casasoccerleagues.com', true),
-    (3, 'Cosmopolitan Soccer League', 'CSL', 'https://www.cosmosoccerleague.com', true),
-    (4, 'Eastern Pennsylvania Soccer Association', 'EPSA', 'https://www.epsasoccer.org', true)
+INSERT INTO organizations (id, name, short_name, website_url, logo_url, is_active) VALUES
+    (1, 'American Premier Soccer League', 'APSL', 'https://www.apslsoccer.com', '/images/leagues/apsl.png', true),
+    (2, 'CASA Soccer Leagues', 'CASA', 'https://www.casasoccerleagues.com', '/images/leagues/casa.png', true),
+    (3, 'Cosmopolitan Soccer League', 'CSL', 'https://www.cosmosoccerleague.com', NULL, true),
+    (4, 'Eastern Pennsylvania Soccer Association', 'EPSA', 'https://www.epsasoccer.org', NULL, true)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('organizations_id_seq', (SELECT MAX(id) FROM organizations));
