@@ -758,20 +758,62 @@ class SocialPostCard {
     });
   }
 
-  postNow() {
+  async postNow() {
     if (!this.post || !this.post.post_id) return;
     if (!confirm('Post this to Instagram now?')) return;
 
-    this.auth.fetch(`/api/social/posts/${this.post.post_id}/publish`, {
-      method: 'POST'
-    }).then(r => r.json()).then(data => {
-      if (data.success) {
-        alert('Marked for posting!');
+    const postBtn = this.container.querySelector('.spc-btn-post');
+    if (postBtn) { postBtn.disabled = true; postBtn.textContent = '⏳ Uploading...'; }
+
+    try {
+      // Capture current canvas frame as PNG
+      let imageData;
+      if (this.animCanvas) {
+        imageData = this.animCanvas.toDataURL('image/png');
+      } else if (this.baseImage) {
+        const tmpCvs = document.createElement('canvas');
+        tmpCvs.width = this.baseImage.width;
+        tmpCvs.height = this.baseImage.height;
+        tmpCvs.getContext('2d').drawImage(this.baseImage, 0, 0);
+        imageData = tmpCvs.toDataURL('image/png');
+      }
+
+      if (!imageData) {
+        alert('No image generated yet. Please wait for the preview to load.');
+        if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
+        return;
+      }
+
+      // Step 1: Upload image to backend
+      if (postBtn) postBtn.textContent = '⏳ Uploading image...';
+      const uploadRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: imageData })
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success) {
+        alert('Upload failed: ' + uploadData.message);
+        return;
+      }
+
+      // Step 2: Publish to Instagram
+      if (postBtn) postBtn.textContent = '⏳ Publishing to Instagram...';
+      const pubRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/publish`, {
+        method: 'POST'
+      });
+      const pubData = await pubRes.json();
+      if (pubData.success) {
+        alert('Posted to Instagram! 🎉');
         this.load();
       } else {
-        alert('Failed: ' + data.message);
+        alert('Publish failed: ' + pubData.message);
       }
-    });
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
+    }
   }
 
   schedule() {

@@ -3,6 +3,36 @@
 #include <iostream>
 #include <iomanip>
 #include <regex>
+#include <fstream>
+#include <vector>
+#include <cstdlib>
+#include <curl/curl.h>
+#include <sys/stat.h>
+
+static size_t SocialWriteCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
+    out->append(static_cast<char*>(contents), size * nmemb);
+    return size * nmemb;
+}
+
+static std::string base64Decode(const std::string& encoded) {
+    static const std::string chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::vector<int> T(256, -1);
+    for (int i = 0; i < 64; i++) T[static_cast<unsigned char>(chars[i])] = i;
+
+    std::string decoded;
+    int val = 0, valb = -8;
+    for (unsigned char c : encoded) {
+        if (T[c] == -1) break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            decoded.push_back(static_cast<char>((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return decoded;
+}
 
 SocialController::SocialController() {
     db_ = Database::getInstance();
@@ -84,6 +114,11 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
         return this->handlePostToInstagram(request);
     });
 
+    // POST /api/social/posts/:postId/media - Upload media (base64 video/image)
+    router.post(prefix + "/posts/:postId/media", [this](const Request& request) {
+        return this->handleUploadMedia(request);
+    });
+
     // GET /api/social/schedule/team/:teamId - Get schedule templates for a team
     router.get(prefix + "/schedule/team/:teamId", [this](const Request& request) {
         return this->handleGetScheduleTemplates(request);
@@ -97,6 +132,28 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     // POST /api/social/schedule/apply/:matchId/:teamId - Apply schedule to a match
     router.post(prefix + "/schedule/apply/:matchId/:teamId", [this](const Request& request) {
         return this->handleApplySchedule(request);
+    });
+
+    // ---------- Holiday Posts ----------
+
+    // GET /api/social/holidays - List all holiday posts
+    router.get(prefix + "/holidays", [this](const Request& request) {
+        return this->handleGetHolidayPosts(request);
+    });
+
+    // POST /api/social/holidays - Create or update a holiday post
+    router.post(prefix + "/holidays", [this](const Request& request) {
+        return this->handleSaveHolidayPost(request);
+    });
+
+    // POST /api/social/holidays/:holidayId/media - Upload media for holiday post
+    router.post(prefix + "/holidays/:holidayId/media", [this](const Request& request) {
+        return this->handleUploadHolidayMedia(request);
+    });
+
+    // POST /api/social/holidays/:holidayId/publish - Publish holiday post to Instagram
+    router.post(prefix + "/holidays/:holidayId/publish", [this](const Request& request) {
+        return this->handlePublishHolidayPost(request);
     });
 }
 
@@ -385,19 +442,110 @@ Response SocialController::handleDeletePost(const Request& request) {
     }
 }
 
-Response SocialController::handlePostToInstagram(const Request& request) {
-    // This endpoint marks the post as ready for publish.
-    // Actual Instagram API call happens from the Node.js side
-    // (post-to-instagram.js) which checks for posts with status='publishing'.
+Response SocialController::handleUploadMedia(const Request& request) {
     try {
         std::string postId = extractPostIdFromPath(request.getPath());
+        if (postId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing post ID"));
+        }
 
+        std::string body = request.getBody();
+
+        // Extract "data" field manually (efficient for large base64 payloads)
+        size_t keyPos = body.find("\"data\"");
+        if (keyPos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing 'data' field"));
+        }
+        size_t colonPos = body.find(':', keyPos + 6);
+        size_t quoteStart = body.find('"', colonPos + 1);
+        size_t quoteEnd = body.find('"', quoteStart + 1);
+        if (quoteStart == std::string::npos || quoteEnd == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Invalid data format"));
+        }
+        std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+
+        // Strip data URL prefix (e.g. "data:image/png;base64,")
+        std::string b64Data = dataValue;
+        size_t commaPos = b64Data.find(',');
+        if (commaPos != std::string::npos) {
+            b64Data = b64Data.substr(commaPos + 1);
+        }
+
+        // Decode base64
+        std::string imageBytes = base64Decode(b64Data);
+        if (imageBytes.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Failed to decode image data"));
+        }
+
+        // Ensure directory exists
+        const std::string imageDir = "/app/images/posts";
+        mkdir(imageDir.c_str(), 0755);
+
+        // Save to file
+        std::string filename = "post_" + postId + ".png";
+        std::string filepath = imageDir + "/" + filename;
+        std::ofstream outFile(filepath, std::ios::binary);
+        if (!outFile.is_open()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to write image file"));
+        }
+        outFile.write(imageBytes.data(), imageBytes.size());
+        outFile.close();
+
+        // Build public URL
+        std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
+
+        // Update DB with image path and URL
         db_->query(
-            "UPDATE social_posts SET status = 'publishing', updated_at = NOW() "
-            "WHERE id = " + postId
+            "UPDATE social_posts SET image_path = '" + escapeJson(filename) +
+            "', image_url = '" + escapeJson(publicUrl) +
+            "', updated_at = NOW() WHERE id = " + postId
         );
 
-        // Return the post data so the frontend can trigger the Node posting
+        std::cout << "📸 Media uploaded for post " << postId << ": " << filepath << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJSONResponse(true, "Media uploaded",
+                "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"filename\":\"" + escapeJson(filename) + "\"}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+std::string SocialController::httpPost(const std::string& url, const std::string& postData) {
+    std::string response;
+    CURL* curl = curl_easy_init();
+    if (!curl) return "";
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        std::cerr << "❌ curl POST failed: " << curl_easy_strerror(res) << std::endl;
+    }
+    curl_easy_cleanup(curl);
+    return response;
+}
+
+Response SocialController::handlePostToInstagram(const Request& request) {
+    try {
+        std::string postId = extractPostIdFromPath(request.getPath());
+        if (postId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing post ID"));
+        }
+
+        // Get post from DB
         pqxx::result result = db_->query(
             "SELECT sp.*, spt.name as post_type "
             "FROM social_posts sp "
@@ -411,16 +559,87 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         }
 
         const auto& row = result[0];
-        std::ostringstream json;
-        json << "{";
-        json << "\"id\":" << row["id"].as<int>() << ",";
-        json << "\"image_url\":" << (row["image_url"].is_null() ? "null" : "\"" + escapeJson(row["image_url"].c_str()) + "\"") << ",";
-        json << "\"caption\":" << (row["caption"].is_null() ? "null" : "\"" + escapeJson(row["caption"].c_str()) + "\"") << ",";
-        json << "\"post_type\":\"" << escapeJson(row["post_type"].c_str()) << "\",";
-        json << "\"status\":\"publishing\"";
-        json << "}";
+        std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
+        std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
 
-        return Response(HttpStatus::OK, createJSONResponse(true, "Post marked for publishing", json.str()));
+        if (imageUrl.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "No image uploaded for this post. Upload media first."));
+        }
+
+        // Get Instagram credentials from environment
+        const char* accessToken = std::getenv("INSTAGRAM_ACCESS_TOKEN");
+        const char* userId = std::getenv("INSTAGRAM_USER_ID");
+        if (!accessToken || std::string(accessToken).empty()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "INSTAGRAM_ACCESS_TOKEN not configured"));
+        }
+        std::string igUserId = userId ? std::string(userId) : "26233831926285183";
+        std::string igToken(accessToken);
+        std::string apiBase = "https://graph.instagram.com/v21.0";
+
+        // Mark as publishing
+        db_->query(
+            "UPDATE social_posts SET status = 'publishing', updated_at = NOW() "
+            "WHERE id = " + postId
+        );
+
+        // Step 1: Create media container
+        std::string createUrl = apiBase + "/" + igUserId + "/media";
+        std::string createData = "image_url=" + imageUrl +
+            "&caption=" + caption +
+            "&access_token=" + igToken;
+
+        std::cout << "📤 Instagram: Creating media container for post " << postId << std::endl;
+        std::string createResponse = httpPost(createUrl, createData);
+        std::cout << "📤 Instagram create response: " << createResponse << std::endl;
+
+        std::string creationId = extractJsonField(createResponse, "id");
+        if (creationId.empty()) {
+            // Check for error
+            std::string errorMsg = extractJsonField(createResponse, "message");
+            if (errorMsg.empty()) errorMsg = "Failed to create media container";
+            db_->query(
+                "UPDATE social_posts SET status = 'error', error_message = '" +
+                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + postId
+            );
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, errorMsg));
+        }
+
+        // Step 2: Publish the container
+        std::string publishUrl = apiBase + "/" + igUserId + "/media_publish";
+        std::string publishData = "creation_id=" + creationId +
+            "&access_token=" + igToken;
+
+        std::cout << "📤 Instagram: Publishing container " << creationId << std::endl;
+        std::string publishResponse = httpPost(publishUrl, publishData);
+        std::cout << "📤 Instagram publish response: " << publishResponse << std::endl;
+
+        std::string mediaId = extractJsonField(publishResponse, "id");
+        if (mediaId.empty()) {
+            std::string errorMsg = extractJsonField(publishResponse, "message");
+            if (errorMsg.empty()) errorMsg = "Failed to publish to Instagram";
+            db_->query(
+                "UPDATE social_posts SET status = 'error', error_message = '" +
+                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + postId
+            );
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, errorMsg));
+        }
+
+        // Success - update DB
+        db_->query(
+            "UPDATE social_posts SET status = 'posted', external_media_id = '" +
+            escapeJson(mediaId) + "', posted_at = NOW(), error_message = NULL, "
+            "updated_at = NOW() WHERE id = " + postId
+        );
+
+        std::cout << "✅ Instagram: Post " << postId << " published! Media ID: " << mediaId << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJSONResponse(true, "Posted to Instagram!",
+                "{\"media_id\":\"" + escapeJson(mediaId) + "\"}"));
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));

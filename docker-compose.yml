@@ -55,11 +55,15 @@ services:
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
       GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
       GROUPME_ACCESS_TOKEN: ${GROUPME_ACCESS_TOKEN:-}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+      INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-26233831926285183}
     ports:
       - "3001:3001"
     volumes:
       # Mount database/data for writing ##u/##p files
       - ./database/data:/app/database/data
+      # Shared image storage (backend writes, frontend serves via nginx)
+      - ./frontend/images/posts:/app/images/posts
     networks:
       - footballhome_network
     depends_on:
