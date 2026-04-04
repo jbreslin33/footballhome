@@ -308,11 +308,9 @@ class SocialPostCard {
         ${rosterHtml}
 
         <!-- Footer -->
-        <div style="margin-top:auto;padding-top:10px;display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">
-            <img src="/images/sponsors/welovejunk.png" style="max-width:100%;max-height:100%;object-fit:contain;" />
-          </div>
-          <span style="font-size:9px;letter-spacing:1px;color:rgba(255,255,255,0.5);text-transform:uppercase;">Sponsored by We Love Junk Philly</span>
+        <div style="margin-top:auto;padding-top:0;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <img src="/images/sponsors/welovejunk.png" style="height:120px;object-fit:contain;" />
+          <span style="font-size:9px;letter-spacing:1px;color:#ffffff;text-transform:uppercase;font-weight:600;">Sponsored by We Love Junk Philly</span>
           <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893 ⚽ CLUB</span>
         </div>
       </div>
