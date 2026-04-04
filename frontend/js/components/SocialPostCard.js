@@ -13,6 +13,11 @@ class SocialPostCard {
     this.saving = false;
     this.rosterData = null;
     this.generatedImageUrl = null;
+    this.baseImage = null;       // base card without beam (Image object)
+    this.animCanvas = null;      // live animated canvas
+    this.animFrameId = null;     // requestAnimationFrame ID
+    this.cardWidth = 540;
+    this.cardHeight = 540;
   }
 
   init(container, matchId, teamId, postTypeName, matchContext, rosterData) {
@@ -172,8 +177,9 @@ class SocialPostCard {
     let imageHtml = '';
     if (hasContent && p.image_url) {
       imageHtml = `<div class="spc-image"><img src="${this.escapeHtml(p.image_url)}" alt="Post image"></div>`;
-    } else if (this.generatedImageUrl) {
-      imageHtml = `<div class="spc-image"><img src="${this.generatedImageUrl}" alt="Post image"></div>`;
+    } else if (this.baseImage) {
+      // Animated canvas will be inserted here
+      imageHtml = `<div class="spc-image" id="spc-image-area"></div>`;
     } else {
       imageHtml = `
         <div class="spc-image spc-image-placeholder" id="spc-image-area">
@@ -203,6 +209,7 @@ class SocialPostCard {
         </div>
         <div class="spc-actions">
           ${!isPosted ? `
+            <button class="spc-btn spc-btn-download-video">📹 Download Video</button>
             <button class="spc-btn spc-btn-save" ${this.saving ? 'disabled' : ''}>💾 Save</button>
             <button class="spc-btn spc-btn-schedule">📅 Schedule</button>
             <button class="spc-btn spc-btn-post">🚀 Post Now</button>
@@ -213,8 +220,13 @@ class SocialPostCard {
 
     this.attachListeners();
 
+    // If we already have the base image, restart animation on the new canvas element
+    if (this.baseImage && !hasContent) {
+      this.startAnimatedPreview();
+    }
+
     // Auto-generate image if none exists
-    if (!(hasContent && p.image_url) && !this.generatedImageUrl) {
+    if (!(hasContent && p.image_url) && !this.baseImage) {
       this.generateImage();
     }
   }
@@ -320,18 +332,218 @@ class SocialPostCard {
 
     try {
       const canvas = await html2canvas(wrapper.firstElementChild, { backgroundColor: null, scale: 2, useCORS: true });
-      this.generatedImageUrl = canvas.toDataURL('image/png');
-      // Update the image area
-      const imageArea = this.container.querySelector('#spc-image-area');
-      if (imageArea) {
-        imageArea.className = 'spc-image';
-        imageArea.innerHTML = `<img src="${this.generatedImageUrl}" alt="Post image">`;
-      }
+      // Store base image (card without beam)
+      this.cardWidth = 540;
+      this.cardHeight = cardHeight;
+      const baseImg = new Image();
+      baseImg.src = canvas.toDataURL('image/png');
+      await new Promise(resolve => { baseImg.onload = resolve; });
+      this.baseImage = baseImg;
+      this.generatedImageUrl = baseImg.src; // fallback
+      // Start animated preview
+      this.startAnimatedPreview();
     } catch (err) {
       console.error('Image generation failed:', err);
     } finally {
       document.body.removeChild(wrapper);
     }
+  }
+
+  startAnimatedPreview() {
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    const imageArea = this.container.querySelector('#spc-image-area');
+    if (!imageArea) return;
+
+    // Create canvas at 2x for sharpness, displayed at 1x
+    const dpr = 2;
+    const cvs = document.createElement('canvas');
+    cvs.width = this.cardWidth * dpr;
+    cvs.height = this.cardHeight * dpr;
+    cvs.style.width = '100%';
+    cvs.style.maxWidth = this.cardWidth + 'px';
+    cvs.style.height = 'auto';
+    cvs.style.display = 'block';
+    cvs.style.borderRadius = '4px';
+    this.animCanvas = cvs;
+
+    imageArea.className = 'spc-image';
+    imageArea.innerHTML = '';
+    imageArea.appendChild(cvs);
+
+    const ctx = cvs.getContext('2d');
+    const w = cvs.width;
+    const h = cvs.height;
+    // Lighthouse position (bottom-right corner of card, in 2x coords)
+    const lhX = w - 80;  // lantern X
+    const lhY = h - 230; // lantern Y (near top of lighthouse)
+    const beamLen = Math.max(w, h) * 1.2;
+    const beamSpread = 0.18; // half-angle of beam in radians (~10 degrees)
+    const rotSpeed = 0.4; // radians per second
+    const startTime = performance.now();
+
+    const drawFrame = (now) => {
+      const elapsed = (now - startTime) / 1000;
+      const angle = (elapsed * rotSpeed) % (Math.PI * 2);
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw base card image
+      if (this.baseImage) {
+        ctx.drawImage(this.baseImage, 0, 0, w, h);
+      }
+
+      // Save context for beam clipping to card area
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, w, h);
+      ctx.clip();
+
+      // Draw light beam (rotating cone)
+      const beamAngle = angle - Math.PI; // sweep around, start pointing left
+      const a1 = beamAngle - beamSpread;
+      const a2 = beamAngle + beamSpread;
+      const tipX1 = lhX + Math.cos(a1) * beamLen;
+      const tipY1 = lhY + Math.sin(a1) * beamLen;
+      const tipX2 = lhX + Math.cos(a2) * beamLen;
+      const tipY2 = lhY + Math.sin(a2) * beamLen;
+
+      // Outer glow
+      const grad = ctx.createRadialGradient(lhX, lhY, 10, lhX, lhY, beamLen * 0.7);
+      grad.addColorStop(0, 'rgba(245, 212, 66, 0.35)');
+      grad.addColorStop(0.3, 'rgba(245, 212, 66, 0.12)');
+      grad.addColorStop(1, 'rgba(245, 212, 66, 0)');
+
+      ctx.beginPath();
+      ctx.moveTo(lhX, lhY);
+      ctx.lineTo(tipX1, tipY1);
+      ctx.lineTo(tipX2, tipY2);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Bright core (narrower)
+      const ca1 = beamAngle - beamSpread * 0.4;
+      const ca2 = beamAngle + beamSpread * 0.4;
+      const coreLen = beamLen * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(lhX, lhY);
+      ctx.lineTo(lhX + Math.cos(ca1) * coreLen, lhY + Math.sin(ca1) * coreLen);
+      ctx.lineTo(lhX + Math.cos(ca2) * coreLen, lhY + Math.sin(ca2) * coreLen);
+      ctx.closePath();
+      const coreGrad = ctx.createRadialGradient(lhX, lhY, 5, lhX, lhY, coreLen * 0.5);
+      coreGrad.addColorStop(0, 'rgba(255, 253, 224, 0.3)');
+      coreGrad.addColorStop(1, 'rgba(255, 253, 224, 0)');
+      ctx.fillStyle = coreGrad;
+      ctx.fill();
+
+      ctx.restore();
+
+      // Draw lighthouse on top
+      this.drawLighthouse(ctx, lhX, lhY);
+
+      this.animFrameId = requestAnimationFrame(drawFrame);
+    };
+    this.animFrameId = requestAnimationFrame(drawFrame);
+  }
+
+  drawLighthouse(ctx, lhX, lhY) {
+    // lhX, lhY = lantern center position
+    const s = 2; // scale factor (we're on 2x canvas)
+    ctx.save();
+
+    // Tower body (trapezoid: narrow at top, wider at bottom)
+    const topW = 16 * s, botW = 22 * s, towerH = 100 * s;
+    const topY = lhY + 4 * s;
+    const botY = lhY + towerH;
+    ctx.beginPath();
+    ctx.moveTo(lhX - topW / 2, topY);
+    ctx.lineTo(lhX + topW / 2, topY);
+    ctx.lineTo(lhX + botW / 2, botY);
+    ctx.lineTo(lhX - botW / 2, botY);
+    ctx.closePath();
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = '#0044cc';
+    ctx.lineWidth = 2 * s;
+    ctx.stroke();
+
+    // Lantern room
+    const lanternW = 18 * s, lanternH = 12 * s;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#0044cc';
+    ctx.lineWidth = 2 * s;
+    ctx.fillRect(lhX - lanternW / 2, lhY - lanternH / 2, lanternW, lanternH);
+    ctx.strokeRect(lhX - lanternW / 2, lhY - lanternH / 2, lanternW, lanternH);
+
+    // Light glow at lantern
+    const glowGrad = ctx.createRadialGradient(lhX, lhY, 0, lhX, lhY, 12 * s);
+    glowGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    glowGrad.addColorStop(0.3, 'rgba(255, 253, 224, 0.9)');
+    glowGrad.addColorStop(1, 'rgba(245, 212, 66, 0)');
+    ctx.beginPath();
+    ctx.arc(lhX, lhY, 12 * s, 0, Math.PI * 2);
+    ctx.fillStyle = glowGrad;
+    ctx.fill();
+
+    // Dome/roof
+    ctx.beginPath();
+    ctx.moveTo(lhX - lanternW / 2 - 2 * s, lhY - lanternH / 2);
+    ctx.lineTo(lhX, lhY - lanternH / 2 - 14 * s);
+    ctx.lineTo(lhX + lanternW / 2 + 2 * s, lhY - lanternH / 2);
+    ctx.closePath();
+    ctx.fillStyle = '#0044cc';
+    ctx.fill();
+
+    // Gallery rail
+    ctx.beginPath();
+    ctx.moveTo(lhX - lanternW / 2 - 3 * s, lhY - lanternH / 2);
+    ctx.lineTo(lhX + lanternW / 2 + 3 * s, lhY - lanternH / 2);
+    ctx.strokeStyle = '#0044cc';
+    ctx.lineWidth = 2 * s;
+    ctx.stroke();
+
+    // Door
+    ctx.beginPath();
+    ctx.arc(lhX, botY - 10 * s, 4 * s, Math.PI, 0);
+    ctx.lineTo(lhX + 4 * s, botY);
+    ctx.lineTo(lhX - 4 * s, botY);
+    ctx.closePath();
+    ctx.fillStyle = '#0044cc';
+    ctx.fill();
+
+    // Base rocks
+    ctx.beginPath();
+    ctx.ellipse(lhX, botY + 4 * s, 28 * s, 6 * s, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a3a6a';
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  async downloadVideo() {
+    if (!this.animCanvas) return;
+    const cvs = this.animCanvas;
+    const stream = cvs.captureStream(30); // 30fps
+    const recorder = new MediaRecorder(stream, {
+      mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
+    });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lighthouse_${this.postTypeName || 'post'}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      recorder.start();
+      // Record one full beam rotation (~15.7s at 0.4 rad/s for 2π)
+      // Use a shorter 5-second clip for Instagram
+      setTimeout(() => recorder.stop(), 5000);
+    });
   }
 
   buildImageMatchup(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo) {
@@ -495,6 +707,18 @@ class SocialPostCard {
       schedBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.schedule();
+      });
+    }
+
+    const dlBtn = this.container.querySelector('.spc-btn-download-video');
+    if (dlBtn) {
+      dlBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        dlBtn.disabled = true;
+        dlBtn.textContent = '⏳ Recording 5s...';
+        await this.downloadVideo();
+        dlBtn.textContent = '📹 Download Video';
+        dlBtn.disabled = false;
       });
     }
   }
