@@ -1,0 +1,155 @@
+/* SocialPostCard - Instagram-style post preview */
+.spc-card {
+  border: 1px solid var(--border-color, #333);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-color, #1a1a2e);
+  margin-top: 16px;
+  max-width: 500px;
+}
+
+/* Header - account name + post type */
+.spc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color, #333);
+}
+.spc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.spc-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.spc-account {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--text-primary, #e0e0e0);
+}
+.spc-post-type {
+  font-size: 0.75em;
+  color: var(--spc-accent, #888);
+  font-weight: 500;
+}
+
+/* Status badges */
+.spc-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.72em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.spc-badge-posted {
+  background: #22c55e;
+  color: white;
+}
+.spc-badge-scheduled {
+  background: #f59e0b;
+  color: white;
+}
+.spc-badge-draft {
+  background: #6b7280;
+  color: white;
+}
+
+/* Image area */
+.spc-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #0d0d1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.spc-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.spc-image-placeholder {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+.spc-image-placeholder-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+  font-size: 0.85em;
+}
+
+/* Caption body */
+.spc-body {
+  padding: 12px 14px 8px;
+}
+.spc-caption {
+  width: 100%;
+  min-height: 120px;
+  background: var(--bg-primary, #0f0f23);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.88em;
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.spc-caption:focus {
+  outline: none;
+  border-color: var(--spc-accent, #3b82f6);
+}
+.spc-caption:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.spc-char-count {
+  text-align: right;
+  font-size: 0.72em;
+  color: #666;
+  padding: 4px 0 0;
+}
+
+/* Action buttons */
+.spc-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px 14px;
+  flex-wrap: wrap;
+}
+.spc-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.spc-btn:hover { opacity: 0.85; }
+.spc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.spc-btn-save {
+  background: var(--spc-accent, #3b82f6);
+  color: white;
+}
+.spc-btn-schedule {
+  background: #374151;
+  color: #e0e0e0;
+}
+.spc-btn-post {
+  background: linear-gradient(135deg, #f09433, #e6683c, #dc2743);
+  color: white;
+}

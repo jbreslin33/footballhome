@@ -681,13 +681,17 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "v.name as venue_name, ";
         query << "ht.name as home_team_name, awt.name as away_team_name, ";
         query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo, ";
-        query << "ss.name as source_name ";
+        query << "ss.name as source_name, ";
+        query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, v.zip as venue_zip, ";
+        query << "d.name as division_name ";
         query << "FROM matches m ";
         query << "JOIN match_statuses ms ON m.match_status_id = ms.id ";
         query << "LEFT JOIN venues v ON m.venue_id = v.id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "LEFT JOIN source_systems ss ON m.source_system_id = ss.id ";
+        query << "LEFT JOIN match_divisions md ON md.match_id = m.id ";
+        query << "LEFT JOIN divisions d ON d.id = md.division_id ";
         query << "WHERE m.id = '" << match_id << "'";
         
         pqxx::result result = db_->query(query.str());
@@ -744,6 +748,21 @@ Response EventController::handleGetMatch(const Request& request) {
         }
         if (!result[0][17].is_null()) {
             match_json << ",\"source_name\":\"" << escapeJSON(result[0][17].c_str()) << "\"";
+        }
+        if (!result[0][18].is_null()) {
+            match_json << ",\"venue_address\":\"" << escapeJSON(result[0][18].c_str()) << "\"";
+        }
+        if (!result[0][19].is_null()) {
+            match_json << ",\"venue_city\":\"" << escapeJSON(result[0][19].c_str()) << "\"";
+        }
+        if (!result[0][20].is_null()) {
+            match_json << ",\"venue_state\":\"" << escapeJSON(result[0][20].c_str()) << "\"";
+        }
+        if (!result[0][21].is_null()) {
+            match_json << ",\"venue_zip\":\"" << escapeJSON(result[0][21].c_str()) << "\"";
+        }
+        if (!result[0][22].is_null()) {
+            match_json << ",\"division_name\":\"" << escapeJSON(result[0][22].c_str()) << "\"";
         }
         
         match_json << "}";

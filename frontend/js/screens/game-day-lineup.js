@@ -154,6 +154,8 @@ class GameDayLineupScreen extends Screen {
 
           <!-- Policy summary bar -->
           <div id="policy-bar" class="policy-bar"></div>
+          
+
         </div>
       </div>
     `;
@@ -435,6 +437,8 @@ class GameDayLineupScreen extends Screen {
       this.find('#lineup-content').style.display = 'block';
 
       this.renderAllZones();
+
+
 
     } catch (error) {
       console.error('Error loading eligibility:', error);

@@ -24,6 +24,7 @@
 #include "controllers/ClubController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
+#include "controllers/SocialController.h"
 
 class HttpServer {
 private:
@@ -45,6 +46,7 @@ private:
     std::shared_ptr<ClubController> club_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
+    std::shared_ptr<SocialController> social_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -61,6 +63,7 @@ public:
         club_controller_ = std::make_shared<ClubController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
+        social_controller_ = std::make_shared<SocialController>();
     }
     
     bool initialize() {
@@ -137,6 +140,7 @@ private:
         router_.useController("/api/clubs", club_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
+        router_.useController("/api/social", social_controller_);
         
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {

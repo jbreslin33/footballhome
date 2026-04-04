@@ -55,6 +55,18 @@ class MatchListScreen extends Screen {
         });
         return;
       }
+
+      // Social button - opens calendar view with this match highlighted
+      const socialBtn = e.target.closest('[data-action="social"]');
+      if (socialBtn) {
+        const matchId = socialBtn.getAttribute('data-id');
+        const match = this.currentMatches?.find(m => String(m.id) === String(matchId));
+        this.navigation.context.match = match || { id: parseInt(matchId), title: socialBtn.getAttribute('data-title') };
+        this.navigation.goTo('match-social', {
+          team: this.navigation.context.team
+        });
+        return;
+      }
       
       // RSVP buttons
       const rsvpBtn = e.target.closest('[data-action="rsvp"]');
@@ -125,6 +137,9 @@ class MatchListScreen extends Screen {
   }
   
   renderMatches(matches) {
+    // Store for social button lookups
+    this.currentMatches = matches;
+
     // Transform event_date into separate date and time fields
     const transformedMatches = matches.map(m => {
       const eventDate = new Date(m.event_date);
@@ -232,13 +247,13 @@ class MatchListScreen extends Screen {
               </button>
             </div>
             
-            <div class="match-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);">
+            <div class="match-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2);">
               <button 
                 data-action="stats" 
                 data-id="${m.id}" 
                 data-title="${m.title}"
                 class="btn btn-secondary">
-                📊 View Stats
+                📊 Stats
               </button>
               <button 
                 data-action="tactics" 
@@ -247,47 +262,19 @@ class MatchListScreen extends Screen {
                 class="btn btn-secondary">
                 📋 Tactics
               </button>
+              <button 
+                data-action="social" 
+                data-id="${m.id}" 
+                data-title="${m.title}"
+                class="btn btn-secondary">
+                📱 Social
+              </button>
             </div>
           </div>
         `;
       },
       '<div class="empty-state"><p>🏆 No matches scheduled yet</p><p class="text-muted">Check back later</p></div>'
     );
-  }
-  
-  onEnter(params) {
-    this.loadMatches();
-    
-    this.element.addEventListener('click', (e) => {
-      // Back button
-      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-      
-      // Tactics button
-      const tacticsBtn = e.target.closest('[data-action="tactics"]');
-      if (tacticsBtn) {
-        const matchId = tacticsBtn.getAttribute('data-id');
-        const matchTitle = tacticsBtn.getAttribute('data-title');
-        const team = this.navigation.context.team;
-        
-        this.navigation.goTo('tactical-board', { 
-          matchId: matchId,
-          matchTitle: matchTitle,
-          team: team
-        });
-        return;
-      }
-      
-      // RSVP buttons
-      const rsvpBtn = e.target.closest('[data-action="rsvp"]');
-      if (rsvpBtn) {
-        const matchId = rsvpBtn.getAttribute('data-id');
-        const status = rsvpBtn.getAttribute('data-status');
-        this.handleRSVP(matchId, status);
-      }
-    });
   }
   
   handleRSVP(matchId, status) {

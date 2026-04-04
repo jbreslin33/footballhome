@@ -42,12 +42,22 @@ std::string Controller::extractJsonField(const std::string& json, const std::str
     // Simple JSON field extraction using regex
     // For production use, consider a proper JSON library like nlohmann/json
     
-    std::string pattern = "\"" + field + "\"\\s*:\\s*\"([^\"]+)\"";
-    std::regex field_regex(pattern);
+    // Try string value first: "field": "value"
+    std::string strPattern = "\"" + field + "\"\\s*:\\s*\"([^\"]+)\"";
+    std::regex str_regex(strPattern);
     std::smatch match;
     
-    if (std::regex_search(json, match, field_regex)) {
+    if (std::regex_search(json, match, str_regex)) {
         return match[1].str();
+    }
+    
+    // Try numeric/bool/null value: "field": 123 or "field": true
+    std::string numPattern = "\"" + field + "\"\\s*:\\s*([^,}\\s]+)";
+    std::regex num_regex(numPattern);
+    
+    if (std::regex_search(json, match, num_regex)) {
+        std::string val = match[1].str();
+        if (val != "null") return val;
     }
     
     return "";

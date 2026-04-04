@@ -68,6 +68,25 @@ class GameDayRosterScreen extends Screen {
               <button id="share-card-btn" class="btn btn-secondary btn-sm">\ud83d\udcf8 Share Image</button>
               <button id="copy-text-btn" class="btn btn-secondary btn-sm">\ud83d\udccb Copy Text</button>
             </div>
+
+            <!-- Social post buttons -->
+            <div class="gdr-social-row">
+              <div class="gdr-social-buttons">
+                <button class="gdr-social-btn" data-post-type="game_day" style="--btn-accent:#f59e0b;">⚽ Game<br>Announcement</button>
+                <button class="gdr-social-btn" data-post-type="lineup" style="--btn-accent:#8b5cf6;">📋 20-Man<br>Squad</button>
+                <button class="gdr-social-btn" data-post-type="pre_match_announcement" style="--btn-accent:#3b82f6;">⚔️ Starters<br>& Bench</button>
+                <button class="gdr-social-btn" data-post-type="post_game" style="--btn-accent:#22c55e;">🏆 Match<br>Result</button>
+              </div>
+              <div class="gdr-lineup-links">
+                <span style="font-size:0.75em;opacity:0.5;">Set lineups:</span>
+                <button id="set-20man-btn" class="btn btn-secondary btn-sm" style="font-size:0.75em;padding:2px 8px;">20-Man Roster</button>
+                <button id="set-starters-btn" class="btn btn-secondary btn-sm" style="font-size:0.75em;padding:2px 8px;">Starters & Bench</button>
+              </div>
+            </div>
+
+            <!-- Inline social post preview (shown when a social button is clicked) -->
+            <div id="social-preview-container"></div>
+
           </div>
 
           <!-- Selection header with add button -->
@@ -138,6 +157,27 @@ class GameDayRosterScreen extends Screen {
       if (id === 'select-all-attending-btn') { this.selectAllAttending(); return; }
       if (id === 'share-card-btn') { this.shareAsImage(); return; }
       if (id === 'copy-text-btn') { this.copyAsText(); return; }
+      if (id === 'set-20man-btn') {
+        // Already on this page — scroll to roster
+        this.find('#open-overlay-btn')?.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+      if (id === 'set-starters-btn') {
+        this.navigation.context.match = this.matchDetails;
+        this.navigation.goTo('game-day-lineup');
+        return;
+      }
+
+      // Social post type buttons
+      const socialBtn = target.closest('.gdr-social-btn');
+      if (socialBtn) {
+        const postType = socialBtn.dataset.postType;
+        this.showSocialPreview(postType);
+        // Update active button styling
+        this.element.querySelectorAll('.gdr-social-btn').forEach(b => b.classList.remove('active'));
+        socialBtn.classList.add('active');
+        return;
+      }
       
       // Toggle player selection in overlay
       // Only toggle selection when clicking the checkbox itself or its label area
@@ -288,6 +328,8 @@ class GameDayRosterScreen extends Screen {
       this.renderSelectedPlayers();
       this.updateSelectedCount();
       this.updateCardRoster();
+      
+
     } catch (error) {
       console.error('Error loading:', error);
       this.find('#roster-loading').innerHTML = `<p style="color:red;">\u274c ${error.message}</p>`;
@@ -713,5 +755,24 @@ class GameDayRosterScreen extends Screen {
 
   titleCase(str) {
     return str.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+
+  showSocialPreview(postType) {
+    const container = this.find('#social-preview-container');
+    if (!container) return;
+
+    const matchId = this.matchDetails?.id;
+    const team = this.navigation.context.team;
+    if (!matchId || !team) return;
+
+    // Create fresh card in the container
+    container.innerHTML = '';
+    const card = new SocialPostCard(this.auth);
+    const rosterData = {
+      players: this.players,
+      selectedIds: this.selectedPlayerIds
+    };
+    card.init(container, matchId, team.id, postType, this.matchDetails, rosterData);
+    this.activeSocialCard = card;
   }
 }
