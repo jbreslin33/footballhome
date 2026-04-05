@@ -1,6 +1,7 @@
 #pragma once
 #include "../core/Controller.h"
 #include "../database/Database.h"
+#include <curl/curl.h>
 #include <memory>
 #include <regex>
 
@@ -45,8 +46,11 @@ private:
 
     // Instagram Graph API helpers
     std::string httpPost(const std::string& url, const std::string& postData);
+    std::string httpGet(const std::string& url);
+    std::string urlEncode(CURL* curl, const std::string& value);
 
     // Utility
     std::string escapeJson(const std::string& input);
+    std::string escapeSql(const std::string& input);
     std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
 };

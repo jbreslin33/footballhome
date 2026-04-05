@@ -48,7 +48,26 @@ std::string Controller::extractJsonField(const std::string& json, const std::str
     std::smatch match;
     
     if (std::regex_search(json, match, str_regex)) {
-        return match[1].str();
+        std::string raw = match[1].str();
+        // Unescape JSON escape sequences
+        std::string result;
+        result.reserve(raw.size());
+        for (size_t i = 0; i < raw.size(); i++) {
+            if (raw[i] == '\\' && i + 1 < raw.size()) {
+                switch (raw[i + 1]) {
+                    case 'n':  result += '\n'; i++; break;
+                    case 'r':  result += '\r'; i++; break;
+                    case 't':  result += '\t'; i++; break;
+                    case '\\': result += '\\'; i++; break;
+                    case '"':  result += '"';  i++; break;
+                    case '/':  result += '/';  i++; break;
+                    default:   result += raw[i]; break;
+                }
+            } else {
+                result += raw[i];
+            }
+        }
+        return result;
     }
     
     // Try numeric/bool/null value: "field": 123 or "field": true

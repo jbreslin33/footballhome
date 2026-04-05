@@ -6,6 +6,8 @@
 #include <fstream>
 #include <vector>
 #include <cstdlib>
+#include <thread>
+#include <chrono>
 #include <curl/curl.h>
 #include <sys/stat.h>
 
@@ -169,14 +171,24 @@ std::string SocialController::escapeJson(const std::string& input) {
             case '\r': output << "\\r"; break;
             case '\t': output << "\\t"; break;
             default:
-                if (c < 0x20) {
-                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<unsigned int>(static_cast<unsigned char>(c));
                 } else {
                     output << c;
                 }
         }
     }
     return output.str();
+}
+
+std::string SocialController::escapeSql(const std::string& input) {
+    std::string output;
+    output.reserve(input.size());
+    for (char c : input) {
+        if (c == '\'') output += "''";
+        else output += c;
+    }
+    return output;
 }
 
 std::string SocialController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
@@ -399,11 +411,11 @@ Response SocialController::handleCreateOrUpdatePost(const Request& request) {
         std::string query = R"(
             INSERT INTO social_posts (match_id, team_id, post_type_id, platform, caption, image_path, image_url, status, scheduled_at)
             VALUES ()" + matchId + ", " + teamId + ", " + postTypeId + R"(, 'instagram',
-                )" + (caption.empty() ? "NULL" : "'" + escapeJson(caption) + "'") + R"(,
-                )" + (imagePath.empty() ? "NULL" : "'" + escapeJson(imagePath) + "'") + R"(,
-                )" + (imageUrl.empty() ? "NULL" : "'" + escapeJson(imageUrl) + "'") + R"(,
-                ')" + escapeJson(status) + R"(',
-                )" + (scheduledAt.empty() ? "NULL" : "'" + escapeJson(scheduledAt) + "'") + R"()
+                )" + (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + R"(,
+                )" + (imagePath.empty() ? "NULL" : "'" + escapeSql(imagePath) + "'") + R"(,
+                )" + (imageUrl.empty() ? "NULL" : "'" + escapeSql(imageUrl) + "'") + R"(,
+                ')" + escapeSql(status) + R"(',
+                )" + (scheduledAt.empty() ? "NULL" : "'" + escapeSql(scheduledAt) + "'") + R"()
             ON CONFLICT (match_id, team_id, post_type_id, platform)
             DO UPDATE SET
                 caption = EXCLUDED.caption,
@@ -486,7 +498,7 @@ Response SocialController::handleUploadMedia(const Request& request) {
         mkdir(imageDir.c_str(), 0755);
 
         // Save to file
-        std::string filename = "post_" + postId + ".png";
+        std::string filename = "post_" + postId + ".jpg";
         std::string filepath = imageDir + "/" + filename;
         std::ofstream outFile(filepath, std::ios::binary);
         if (!outFile.is_open()) {
@@ -501,8 +513,8 @@ Response SocialController::handleUploadMedia(const Request& request) {
 
         // Update DB with image path and URL
         db_->query(
-            "UPDATE social_posts SET image_path = '" + escapeJson(filename) +
-            "', image_url = '" + escapeJson(publicUrl) +
+            "UPDATE social_posts SET image_path = '" + escapeSql(filename) +
+            "', image_url = '" + escapeSql(publicUrl) +
             "', updated_at = NOW() WHERE id = " + postId
         );
 
@@ -517,10 +529,37 @@ Response SocialController::handleUploadMedia(const Request& request) {
     }
 }
 
+std::string SocialController::urlEncode(CURL* curl, const std::string& value) {
+    char* encoded = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
+    if (!encoded) return value;
+    std::string result(encoded);
+    curl_free(encoded);
+    return result;
+}
+
+std::string SocialController::httpGet(const std::string& url) {
+    std::string response;
+    CURL* curl = curl_easy_init();
+    if (!curl) return "";
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        std::cerr << "❌ curl GET failed: " << curl_easy_strerror(res) << std::endl;
+    }
+    curl_easy_cleanup(curl);
+    return response;
+}
+
 std::string SocialController::httpPost(const std::string& url, const std::string& postData) {
     std::string response;
     CURL* curl = curl_easy_init();
     if (!curl) return "";
+
+    std::cout << "🌐 curl POST to: " << url << std::endl;
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -528,10 +567,13 @@ std::string SocialController::httpPost(const std::string& url, const std::string
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_DNS_SERVERS, "8.8.8.8,8.8.4.4");
 
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
-        std::cerr << "❌ curl POST failed: " << curl_easy_strerror(res) << std::endl;
+        std::cerr << "❌ curl POST failed: " << curl_easy_strerror(res)
+                  << " (url=" << url << ")" << std::endl;
     }
     curl_easy_cleanup(curl);
     return response;
@@ -584,11 +626,13 @@ Response SocialController::handlePostToInstagram(const Request& request) {
             "WHERE id = " + postId
         );
 
-        // Step 1: Create media container
+        // Step 1: Create media container (URL-encode values for form POST)
+        CURL* encoderCurl = curl_easy_init();
         std::string createUrl = apiBase + "/" + igUserId + "/media";
-        std::string createData = "image_url=" + imageUrl +
-            "&caption=" + caption +
-            "&access_token=" + igToken;
+        std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
+            "&caption=" + urlEncode(encoderCurl, caption) +
+            "&access_token=" + urlEncode(encoderCurl, igToken);
+        curl_easy_cleanup(encoderCurl);
 
         std::cout << "📤 Instagram: Creating media container for post " << postId << std::endl;
         std::string createResponse = httpPost(createUrl, createData);
@@ -601,10 +645,24 @@ Response SocialController::handlePostToInstagram(const Request& request) {
             if (errorMsg.empty()) errorMsg = "Failed to create media container";
             db_->query(
                 "UPDATE social_posts SET status = 'error', error_message = '" +
-                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + postId
+                escapeSql(errorMsg) + "', updated_at = NOW() WHERE id = " + postId
             );
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, errorMsg));
+        }
+
+        // Step 1.5: Poll for media container to be ready (Instagram needs processing time)
+        std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            std::this_thread::sleep_for(std::chrono::seconds(3));
+            std::string statusResp = httpGet(statusUrl);
+            std::string statusCode = extractJsonField(statusResp, "status_code");
+            std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "): " << statusCode << std::endl;
+            if (statusCode == "FINISHED") break;
+            if (statusCode == "ERROR") {
+                db_->query("UPDATE social_posts SET status = 'error', error_message = 'Instagram media processing failed', updated_at = NOW() WHERE id = " + postId);
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Instagram media processing failed"));
+            }
         }
 
         // Step 2: Publish the container
@@ -622,7 +680,7 @@ Response SocialController::handlePostToInstagram(const Request& request) {
             if (errorMsg.empty()) errorMsg = "Failed to publish to Instagram";
             db_->query(
                 "UPDATE social_posts SET status = 'error', error_message = '" +
-                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + postId
+                escapeSql(errorMsg) + "', updated_at = NOW() WHERE id = " + postId
             );
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, errorMsg));
@@ -631,7 +689,7 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         // Success - update DB
         db_->query(
             "UPDATE social_posts SET status = 'posted', external_media_id = '" +
-            escapeJson(mediaId) + "', posted_at = NOW(), error_message = NULL, "
+            escapeSql(mediaId) + "', posted_at = NOW(), error_message = NULL, "
             "updated_at = NOW() WHERE id = " + postId
         );
 
@@ -721,7 +779,7 @@ Response SocialController::handleSaveScheduleTemplates(const Request& request) {
 
         std::string query = R"(
             INSERT INTO social_schedule_templates (team_id, post_type_id, platform, days_before, post_time, enabled)
-            VALUES ()" + teamId + ", " + postTypeId + R"(, 'instagram', )" + daysBefore + R"(, ')" + escapeJson(postTime) + R"(', )" + enabled + R"()
+            VALUES ()" + teamId + ", " + postTypeId + R"(, 'instagram', )" + daysBefore + R"(, ')" + escapeSql(postTime) + R"(', )" + enabled + R"()
             ON CONFLICT (team_id, post_type_id, platform)
             DO UPDATE SET
                 days_before = EXCLUDED.days_before,
@@ -779,7 +837,7 @@ Response SocialController::handleApplySchedule(const Request& request) {
             std::string insertQuery = R"(
                 INSERT INTO social_posts (match_id, team_id, post_type_id, platform, status, scheduled_at)
                 VALUES ()" + matchId + ", " + teamId + ", " + std::to_string(postTypeId) + R"(, 'instagram', 'scheduled',
-                    (')" + matchDate + R"('::date - interval ')" + std::to_string(daysBefore) + R"( days')::date + ')" + escapeJson(postTime) + R"('::time
+                    (')" + matchDate + R"('::date - interval ')" + std::to_string(daysBefore) + R"( days')::date + ')" + escapeSql(postTime) + R"('::time
                 )
                 ON CONFLICT (match_id, team_id, post_type_id, platform)
                 DO UPDATE SET
@@ -867,10 +925,10 @@ Response SocialController::handleSaveHolidayPost(const Request& request) {
 
         std::string query = R"(
             INSERT INTO holiday_posts (holiday_name, holiday_date, caption, status, scheduled_at)
-            VALUES (')" + escapeJson(holidayName) + "', '" + escapeJson(holidayDate) + R"(',
-                )" + (caption.empty() ? "NULL" : "'" + escapeJson(caption) + "'") + R"(,
-                ')" + escapeJson(status) + R"(',
-                )" + (scheduledAt.empty() ? "NULL" : "'" + escapeJson(scheduledAt) + "'") + R"()
+            VALUES (')" + escapeSql(holidayName) + "', '" + escapeSql(holidayDate) + R"(',
+                )" + (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + R"(,
+                ')" + escapeSql(status) + R"(',
+                )" + (scheduledAt.empty() ? "NULL" : "'" + escapeSql(scheduledAt) + "'") + R"()
             ON CONFLICT (holiday_name, holiday_date)
             DO UPDATE SET
                 caption = EXCLUDED.caption,
@@ -935,7 +993,7 @@ Response SocialController::handleUploadHolidayMedia(const Request& request) {
         const std::string imageDir = "/app/images/posts";
         mkdir(imageDir.c_str(), 0755);
 
-        std::string filename = "holiday_" + holidayId + ".png";
+        std::string filename = "holiday_" + holidayId + ".jpg";
         std::string filepath = imageDir + "/" + filename;
         std::ofstream outFile(filepath, std::ios::binary);
         if (!outFile.is_open()) {
@@ -948,8 +1006,8 @@ Response SocialController::handleUploadHolidayMedia(const Request& request) {
         std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
 
         db_->query(
-            "UPDATE holiday_posts SET image_path = '" + escapeJson(filename) +
-            "', image_url = '" + escapeJson(publicUrl) +
+            "UPDATE holiday_posts SET image_path = '" + escapeSql(filename) +
+            "', image_url = '" + escapeSql(publicUrl) +
             "', updated_at = NOW() WHERE id = " + holidayId
         );
 
@@ -1005,11 +1063,13 @@ Response SocialController::handlePublishHolidayPost(const Request& request) {
             "WHERE id = " + holidayId
         );
 
-        // Step 1: Create media container
+        // Step 1: Create media container (URL-encode values for form POST)
+        CURL* encoderCurl = curl_easy_init();
         std::string createUrl = apiBase + "/" + igUserId + "/media";
-        std::string createData = "image_url=" + imageUrl +
-            "&caption=" + caption +
-            "&access_token=" + igToken;
+        std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
+            "&caption=" + urlEncode(encoderCurl, caption) +
+            "&access_token=" + urlEncode(encoderCurl, igToken);
+        curl_easy_cleanup(encoderCurl);
 
         std::cout << "📤 Instagram: Creating media container for holiday " << holidayId << std::endl;
         std::string createResponse = httpPost(createUrl, createData);
@@ -1021,10 +1081,24 @@ Response SocialController::handlePublishHolidayPost(const Request& request) {
             if (errorMsg.empty()) errorMsg = "Failed to create media container";
             db_->query(
                 "UPDATE holiday_posts SET status = 'error', error_message = '" +
-                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + holidayId
+                escapeSql(errorMsg) + "', updated_at = NOW() WHERE id = " + holidayId
             );
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, errorMsg));
+        }
+
+        // Step 1.5: Poll for media container to be ready (Instagram needs processing time)
+        std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            std::this_thread::sleep_for(std::chrono::seconds(3));
+            std::string statusResp = httpGet(statusUrl);
+            std::string statusCode = extractJsonField(statusResp, "status_code");
+            std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "): " << statusCode << std::endl;
+            if (statusCode == "FINISHED") break;
+            if (statusCode == "ERROR") {
+                db_->query("UPDATE holiday_posts SET status = 'error', error_message = 'Instagram media processing failed', updated_at = NOW() WHERE id = " + holidayId);
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Instagram media processing failed"));
+            }
         }
 
         // Step 2: Publish the container
@@ -1042,7 +1116,7 @@ Response SocialController::handlePublishHolidayPost(const Request& request) {
             if (errorMsg.empty()) errorMsg = "Failed to publish to Instagram";
             db_->query(
                 "UPDATE holiday_posts SET status = 'error', error_message = '" +
-                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + holidayId
+                escapeSql(errorMsg) + "', updated_at = NOW() WHERE id = " + holidayId
             );
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, errorMsg));
@@ -1051,7 +1125,7 @@ Response SocialController::handlePublishHolidayPost(const Request& request) {
         // Success
         db_->query(
             "UPDATE holiday_posts SET status = 'posted', external_media_id = '" +
-            escapeJson(mediaId) + "', posted_at = NOW(), error_message = NULL, "
+            escapeSql(mediaId) + "', posted_at = NOW(), error_message = NULL, "
             "updated_at = NOW() WHERE id = " + holidayId
         );
 

@@ -143,6 +143,23 @@ class HolidayPostsScreen extends Screen {
     holidays.forEach((h, i) => this.drawHolidayCard(i, h));
   }
 
+  // Elegant decorative elements for each holiday
+  getHolidayDecor(name) {
+    const decor = {
+      'New Year':          { accent: '#f5d442', symbol: '✦', topLine: '— ✦ —' },
+      "Valentine's Day":   { accent: '#e8485a', symbol: '♥', topLine: '— ♥ —' },
+      "St. Patrick's Day": { accent: '#3cb371', symbol: '✦', topLine: '— ☘ —' },
+      'Easter':            { accent: '#d4a843', symbol: '✦', topLine: '— ✦ —' },
+      'Memorial Day':      { accent: '#ffffff', symbol: '★', topLine: '— ★ —' },
+      'Independence Day':  { accent: '#e8485a', symbol: '★', topLine: '★  ★  ★' },
+      'Labor Day':         { accent: '#f5d442', symbol: '✦', topLine: '— ✦ —' },
+      'Halloween':         { accent: '#f5a623', symbol: '✦', topLine: '— ✦ —' },
+      'Thanksgiving':      { accent: '#d4843a', symbol: '✦', topLine: '— ✦ —' },
+      'Christmas':         { accent: '#cc2936', symbol: '★', topLine: '— ★ —' },
+    };
+    return decor[name] || { accent: '#f5d442', symbol: '✦', topLine: '— ✦ —' };
+  }
+
   drawHolidayCard(index, holiday) {
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -152,45 +169,668 @@ class HolidayPostsScreen extends Screen {
     ctx.scale(scale, scale);
     const w = 1080, h = 1080;
 
-    // Background gradient
-    const grad = ctx.createLinearGradient(0, 0, w * 0.6, h);
-    grad.addColorStop(0, '#0033a0');
-    grad.addColorStop(0.3, '#003fbf');
-    grad.addColorStop(0.55, '#0044cc');
-    grad.addColorStop(1, '#002080');
-    ctx.fillStyle = grad;
+    // Aged parchment background
+    const parchGrad = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, 700);
+    parchGrad.addColorStop(0, '#f5e6c8');
+    parchGrad.addColorStop(0.6, '#e8d5a8');
+    parchGrad.addColorStop(1, '#d4be82');
+    ctx.fillStyle = parchGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Gold border
-    ctx.strokeStyle = '#f5d442';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(4, 4, w - 8, h - 8);
+    // Aged paper texture — seeded random for consistency
+    const seed = index * 9973 + 42;
+    const rng = (i) => { let x = Math.sin(seed + i) * 10000; return x - Math.floor(x); };
+    for (let i = 0; i < 1200; i++) {
+      const x = rng(i * 4) * w;
+      const y = rng(i * 4 + 1) * h;
+      const r = rng(i * 4 + 2) * 3 + 0.5;
+      const alpha = rng(i * 4 + 3) * 0.07;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(120, 90, 40, ${alpha})`;
+      ctx.fill();
+    }
 
-    // Holiday emoji (large, centered)
-    ctx.font = '500px serif';
+    // Faint horizontal paper grain lines
+    for (let y = 0; y < h; y += 6) {
+      const alpha = rng(y + 5000) * 0.025;
+      ctx.strokeStyle = `rgba(100, 70, 30, ${alpha})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Darkened edges (vignette) for aged look
+    const vigGrad = ctx.createRadialGradient(w / 2, h / 2, 280, w / 2, h / 2, 760);
+    vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vigGrad.addColorStop(0.7, 'rgba(80, 50, 20, 0.12)');
+    vigGrad.addColorStop(1, 'rgba(60, 30, 10, 0.35)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    const ink = '#1a0f00';     // Dark brown ink
+    const gold = '#8b6914';    // Antique gold
+    const faintInk = 'rgba(26, 15, 0, 0.35)';
+
+    // Ornate outer border — royal blue with gold inner rule
+    ctx.strokeStyle = '#4169E1';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(36, 36, w - 72, h - 72);
+    ctx.strokeStyle = '#4169E1';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(48, 48, w - 96, h - 96);
+
+    // Victorian corner flourishes (larger, more elaborate)
+    this.drawCornerFlourish(ctx, 48, 48, 1, 1, ink);
+    this.drawCornerFlourish(ctx, w - 48, 48, -1, 1, ink);
+    this.drawCornerFlourish(ctx, 48, h - 48, 1, -1, ink);
+    this.drawCornerFlourish(ctx, w - 48, h - 48, -1, -1, ink);
+
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(holiday.emoji, w / 2, 420);
-    ctx.textBaseline = 'alphabetic';
 
-    // Greeting text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    // Top ornamental rule
+    this.drawOrnamentalRule(ctx, w / 2, 110, 320, '#4169E1');
+
+    // "Est. 1893" banner
+    ctx.fillStyle = '#4169E1';
+    ctx.font = 'italic 24px Georgia, "Times New Roman", serif';
+    ctx.fillText('— Est. 1893 —', w / 2, 155);
+
+    // Victorian pen-and-ink sketch for this holiday
+    this.drawHolidaySketch(ctx, w / 2, 340, holiday.name, ink, gold);
+
+    // Main greeting — drop shadow for depth
     ctx.textAlign = 'center';
-    this.wrapText(ctx, holiday.greeting, w / 2, 750, w - 120, 80);
+    ctx.font = 'bold italic 78px Georgia, "Times New Roman", serif';
+    const greetingLines = this.splitGreeting(holiday.greeting, ctx, w - 200);
+    const greetingY = greetingLines.length === 1 ? 570 : 545;
+    // Shadow
+    greetingLines.forEach((line, i) => {
+      ctx.fillStyle = 'rgba(26, 15, 0, 0.1)';
+      ctx.fillText(line, w / 2 + 2, greetingY + i * 95 + 2);
+    });
+    // Main text
+    greetingLines.forEach((line, i) => {
+      ctx.fillStyle = '#4169E1';
+      ctx.fillText(line, w / 2, greetingY + i * 95);
+    });
 
-    // "from" text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('from', w / 2, h - 110);
+    // Decorative flourish below greeting
+    const flourishY = greetingY + greetingLines.length * 95 + 25;
+    this.drawOrnamentalRule(ctx, w / 2, flourishY, 250, '#4169E1');
 
-    // Club name
-    ctx.fillStyle = '#f5d442';
-    ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('LIGHTHOUSE 1893 ⚽ CLUB', w / 2, h - 60);
+    // Subtle gold wash behind club name area
+    const washGrad = ctx.createLinearGradient(0, h - 280, 0, h - 40);
+    washGrad.addColorStop(0, 'rgba(139, 105, 20, 0)');
+    washGrad.addColorStop(0.3, 'rgba(139, 105, 20, 0.04)');
+    washGrad.addColorStop(0.7, 'rgba(139, 105, 20, 0.04)');
+    washGrad.addColorStop(1, 'rgba(139, 105, 20, 0)');
+    ctx.fillStyle = washGrad;
+    ctx.fillRect(100, h - 280, w - 200, 240);
 
-    // Convert to static image
-    const dataUrl = canvas.toDataURL('image/png');
+    // "With Warm Regards from"
+    ctx.fillStyle = '#4169E1';
+    ctx.font = 'italic 28px Georgia, "Times New Roman", serif';
+    ctx.fillText('With Warm Regards from', w / 2, h - 240);
+
+    // Club name — proper Victorian title with letter spacing
+    ctx.fillStyle = '#4169E1';
+    ctx.font = 'bold 44px Georgia, "Times New Roman", serif';
+    ctx.fillText('LIGHTHOUSE', w / 2, h - 185);
+
+    // "1893" year
+    ctx.fillStyle = '#4169E1';
+    ctx.font = 'italic 30px Georgia, "Times New Roman", serif';
+    ctx.fillText('1893', w / 2, h - 145);
+
+    // Soccer ball as centerpiece divider
+    ctx.font = '36px Georgia, serif';
+    ctx.fillText('⚽', w / 2, h - 102);
+
+    // "Club" below the ball
+    ctx.fillStyle = '#4169E1';
+    ctx.font = 'italic 34px Georgia, "Times New Roman", serif';
+    ctx.fillText('Club', w / 2, h - 62);
+
+    this.finalizeCard(canvas, index);
+  }
+
+  // Victorian corner flourish — clean bracket ornament
+  drawCornerFlourish(ctx, x, y, dx, dy, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    // Horizontal arm
+    ctx.beginPath();
+    ctx.moveTo(x + dx * 2, y + dy * 2);
+    ctx.lineTo(x + dx * 50, y + dy * 2);
+    ctx.stroke();
+    // Vertical arm
+    ctx.beginPath();
+    ctx.moveTo(x + dx * 2, y + dy * 2);
+    ctx.lineTo(x + dx * 2, y + dy * 50);
+    ctx.stroke();
+    // Diamond at the corner
+    ctx.save();
+    ctx.translate(x + dx * 2, y + dy * 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-4, -4, 8, 8);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // Ornamental horizontal rule with diamond center
+  drawOrnamentalRule(ctx, cx, cy, halfWidth, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.5;
+    // Left line
+    ctx.beginPath();
+    ctx.moveTo(cx - halfWidth, cy);
+    ctx.lineTo(cx - 14, cy);
+    ctx.stroke();
+    // Right line
+    ctx.beginPath();
+    ctx.moveTo(cx + 14, cy);
+    ctx.lineTo(cx + halfWidth, cy);
+    ctx.stroke();
+    // Center diamond
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-5, -5, 10, 10);
+    ctx.restore();
+    // End diamonds (smaller)
+    [-halfWidth, halfWidth].forEach(offset => {
+      ctx.save();
+      ctx.translate(cx + offset, cy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-3, -3, 6, 6);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  // Victorian pen-and-ink sketches — thin line art like 1890s engravings
+  drawHolidaySketch(ctx, cx, cy, name, ink, gold) {
+    ctx.save();
+    ctx.strokeStyle = ink;
+    ctx.fillStyle = ink;
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    switch (name) {
+      case 'New Year':       this.sketchBells(ctx, cx, cy); break;
+      case "Valentine's Day": this.sketchHeart(ctx, cx, cy); break;
+      case "St. Patrick's Day": this.sketchShamrock(ctx, cx, cy); break;
+      case 'Easter':         this.sketchSpring(ctx, cx, cy); break;
+      case 'Memorial Day':   this.sketchWreath(ctx, cx, cy); break;
+      case 'Independence Day': this.sketchLibertyBell(ctx, cx, cy); break;
+      case 'Labor Day':      this.sketchAnvil(ctx, cx, cy); break;
+      case 'Halloween':      this.sketchPumpkin(ctx, cx, cy); break;
+      case 'Thanksgiving':   this.sketchWheatSheaf(ctx, cx, cy); break;
+      case 'Christmas':      this.sketchTree(ctx, cx, cy); break;
+    }
+    ctx.restore();
+  }
+
+  // Bells with ribbon bow (New Year)
+  sketchBells(ctx, cx, cy) {
+    // Left bell
+    ctx.beginPath();
+    ctx.moveTo(cx - 55, cy - 50);
+    ctx.quadraticCurveTo(cx - 70, cy - 10, cx - 75, cy + 30);
+    ctx.quadraticCurveTo(cx - 78, cy + 50, cx - 50, cy + 55);
+    ctx.lineTo(cx - 20, cy + 55);
+    ctx.quadraticCurveTo(cx + 5, cy + 50, cx, cy + 30);
+    ctx.quadraticCurveTo(cx - 5, cy - 10, cx - 20, cy - 50);
+    ctx.stroke();
+    // Clapper
+    ctx.beginPath();
+    ctx.arc(cx - 38, cy + 50, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    // Right bell
+    ctx.beginPath();
+    ctx.moveTo(cx + 55, cy - 50);
+    ctx.quadraticCurveTo(cx + 70, cy - 10, cx + 75, cy + 30);
+    ctx.quadraticCurveTo(cx + 78, cy + 50, cx + 50, cy + 55);
+    ctx.lineTo(cx + 20, cy + 55);
+    ctx.quadraticCurveTo(cx - 5, cy + 50, cx, cy + 30);
+    ctx.quadraticCurveTo(cx + 5, cy - 10, cx + 20, cy - 50);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + 38, cy + 50, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    // Ribbon bow at top
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 55);
+    ctx.quadraticCurveTo(cx - 35, cy - 75, cx - 50, cy - 55);
+    ctx.quadraticCurveTo(cx - 35, cy - 50, cx, cy - 55);
+    ctx.quadraticCurveTo(cx + 35, cy - 50, cx + 50, cy - 55);
+    ctx.quadraticCurveTo(cx + 35, cy - 75, cx, cy - 55);
+    ctx.stroke();
+    // Ribbon tails
+    ctx.beginPath();
+    ctx.moveTo(cx - 50, cy - 55);
+    ctx.quadraticCurveTo(cx - 55, cy - 35, cx - 60, cy - 25);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 50, cy - 55);
+    ctx.quadraticCurveTo(cx + 55, cy - 35, cx + 60, cy - 25);
+    ctx.stroke();
+  }
+
+  // Ornate heart with flourish (Valentine's)
+  sketchHeart(ctx, cx, cy) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 50);
+    ctx.bezierCurveTo(cx - 100, cy - 10, cx - 60, cy - 70, cx, cy - 30);
+    ctx.bezierCurveTo(cx + 60, cy - 70, cx + 100, cy - 10, cx, cy + 50);
+    ctx.stroke();
+    // Inner heart (double-line effect)
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 35);
+    ctx.bezierCurveTo(cx - 80, cy - 5, cx - 48, cy - 55, cx, cy - 20);
+    ctx.bezierCurveTo(cx + 48, cy - 55, cx + 80, cy - 5, cx, cy + 35);
+    ctx.stroke();
+    // Arrow through heart
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 80, cy - 25);
+    ctx.lineTo(cx + 80, cy + 10);
+    ctx.stroke();
+    // Arrowhead
+    ctx.beginPath();
+    ctx.moveTo(cx + 80, cy + 10);
+    ctx.lineTo(cx + 65, cy + 2);
+    ctx.moveTo(cx + 80, cy + 10);
+    ctx.lineTo(cx + 72, cy + 22);
+    ctx.stroke();
+    // Feather end
+    ctx.beginPath();
+    ctx.moveTo(cx - 80, cy - 25);
+    ctx.lineTo(cx - 88, cy - 35);
+    ctx.moveTo(cx - 80, cy - 25);
+    ctx.lineTo(cx - 90, cy - 20);
+    ctx.stroke();
+  }
+
+  // Shamrock / clover (St. Patrick's)
+  sketchShamrock(ctx, cx, cy) {
+    const drawLeaf = (angle) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-30, -20, -35, -55, -10, -65);
+      ctx.bezierCurveTo(0, -70, 0, -70, 10, -65);
+      ctx.bezierCurveTo(35, -55, 30, -20, 0, 0);
+      ctx.stroke();
+      ctx.restore();
+    };
+    drawLeaf(0);                    // Top
+    drawLeaf(2.1);                  // Bottom-right
+    drawLeaf(-2.1);                 // Bottom-left
+    // Stem
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.quadraticCurveTo(cx + 5, cy + 30, cx + 3, cy + 65);
+    ctx.stroke();
+    // Leaf veins (thin)
+    ctx.lineWidth = 0.8;
+    [0, 2.1, -2.1].forEach(angle => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(0, -5);
+      ctx.lineTo(0, -50);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  // Simple tulip (Easter/Spring)
+  sketchSpring(ctx, cx, cy) {
+    const royalBlue = '#4169E1';
+    const gold = '#FFD700';
+    const leafGreen = '#2E5D3A';
+
+    // Stem
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = leafGreen;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 60);
+    ctx.quadraticCurveTo(cx + 3, cy + 10, cx, cy - 20);
+    ctx.stroke();
+    // Left leaf
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = leafGreen;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 30);
+    ctx.quadraticCurveTo(cx - 35, cy + 10, cx - 30, cy - 10);
+    ctx.quadraticCurveTo(cx - 20, cy + 5, cx, cy + 30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Right leaf
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 40);
+    ctx.quadraticCurveTo(cx + 35, cy + 20, cx + 30, cy);
+    ctx.quadraticCurveTo(cx + 20, cy + 15, cx, cy + 40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Tulip petals
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = this.inkColor;
+    // Left petal — royal blue (main)
+    ctx.fillStyle = royalBlue;
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, cy - 20);
+    ctx.quadraticCurveTo(cx - 30, cy - 40, cx - 22, cy - 72);
+    ctx.quadraticCurveTo(cx - 12, cy - 62, cx, cy - 55);
+    ctx.quadraticCurveTo(cx - 5, cy - 38, cx - 3, cy - 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Right petal — royal blue (main)
+    ctx.beginPath();
+    ctx.moveTo(cx + 3, cy - 20);
+    ctx.quadraticCurveTo(cx + 30, cy - 40, cx + 22, cy - 72);
+    ctx.quadraticCurveTo(cx + 12, cy - 62, cx, cy - 55);
+    ctx.quadraticCurveTo(cx + 5, cy - 38, cx + 3, cy - 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Center petal — yellow (small, visible between the two main petals)
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, cy - 22);
+    ctx.quadraticCurveTo(cx - 7, cy - 50, cx, cy - 78);
+    ctx.quadraticCurveTo(cx + 7, cy - 50, cx + 4, cy - 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Restore ink color
+    ctx.strokeStyle = this.inkColor;
+  }
+
+  // Laurel wreath (Memorial Day)
+  sketchWreath(ctx, cx, cy) {
+    const r = 55;
+    // Draw wreath as paired leaves around a circle
+    for (let i = 0; i < 16; i++) {
+      const angle = (Math.PI * 2 / 16) * i;
+      const lx = cx + Math.cos(angle) * r;
+      const ly = cy + Math.sin(angle) * r;
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(angle + Math.PI / 2);
+      // Leaf shape
+      ctx.beginPath();
+      ctx.moveTo(0, -12);
+      ctx.quadraticCurveTo(7, -6, 7, 0);
+      ctx.quadraticCurveTo(7, 6, 0, 12);
+      ctx.quadraticCurveTo(-7, 6, -7, 0);
+      ctx.quadraticCurveTo(-7, -6, 0, -12);
+      ctx.stroke();
+      // Center vein
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(0, 10);
+      ctx.stroke();
+      ctx.lineWidth = 1.8;
+      ctx.restore();
+    }
+    // Star in center
+    this.drawStar(ctx, cx, cy, 18, 8, 5);
+  }
+
+  // Simple 5-pointed star outline
+  drawStar(ctx, cx, cy, outerR, innerR, points) {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+      const r = i % 2 === 0 ? outerR : innerR;
+      const angle = (Math.PI / points) * i - Math.PI / 2;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Liberty Bell (Independence Day)
+  sketchLibertyBell(ctx, cx, cy) {
+    // Bell body
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy - 60);
+    ctx.quadraticCurveTo(cx - 50, cy - 30, cx - 55, cy + 10);
+    ctx.quadraticCurveTo(cx - 60, cy + 40, cx - 50, cy + 55);
+    ctx.lineTo(cx + 50, cy + 55);
+    ctx.quadraticCurveTo(cx + 60, cy + 40, cx + 55, cy + 10);
+    ctx.quadraticCurveTo(cx + 50, cy - 30, cx + 20, cy - 60);
+    ctx.stroke();
+    // Top bracket / yoke
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 25, cy - 60);
+    ctx.lineTo(cx - 25, cy - 75);
+    ctx.lineTo(cx + 25, cy - 75);
+    ctx.lineTo(cx + 25, cy - 60);
+    ctx.stroke();
+    ctx.lineWidth = 1.8;
+    // Crack line
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + 5, cy - 40);
+    ctx.lineTo(cx - 2, cy - 15);
+    ctx.lineTo(cx + 4, cy + 10);
+    ctx.lineTo(cx - 1, cy + 30);
+    ctx.stroke();
+    ctx.lineWidth = 1.8;
+    // Clapper
+    ctx.beginPath();
+    ctx.arc(cx, cy + 48, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 42);
+    ctx.lineTo(cx, cy + 10);
+    ctx.stroke();
+    // Decorative band
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 48, cy + 42);
+    ctx.lineTo(cx + 48, cy + 42);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 45, cy + 36);
+    ctx.lineTo(cx + 45, cy + 36);
+    ctx.stroke();
+  }
+
+  // Anvil with hammer (Labor Day)
+  sketchAnvil(ctx, cx, cy) {
+    // Anvil body
+    ctx.beginPath();
+    ctx.moveTo(cx - 50, cy + 10);
+    ctx.lineTo(cx - 50, cy - 10);
+    ctx.lineTo(cx - 30, cy - 10);
+    ctx.lineTo(cx - 30, cy - 30);
+    ctx.lineTo(cx + 40, cy - 30);
+    ctx.lineTo(cx + 55, cy - 15);
+    ctx.lineTo(cx + 55, cy - 10);
+    ctx.lineTo(cx + 35, cy - 10);
+    ctx.lineTo(cx + 35, cy + 10);
+    ctx.closePath();
+    ctx.stroke();
+    // Base
+    ctx.beginPath();
+    ctx.moveTo(cx - 40, cy + 10);
+    ctx.lineTo(cx - 35, cy + 40);
+    ctx.lineTo(cx + 30, cy + 40);
+    ctx.lineTo(cx + 25, cy + 10);
+    ctx.stroke();
+    // Hammer (resting diagonally)
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 40, cy - 60);
+    ctx.lineTo(cx + 15, cy - 35);
+    ctx.stroke();
+    // Hammer head
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 50, cy - 55);
+    ctx.lineTo(cx - 45, cy - 70);
+    ctx.lineTo(cx - 30, cy - 63);
+    ctx.lineTo(cx - 35, cy - 48);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Jack-o-lantern (Halloween)
+  sketchPumpkin(ctx, cx, cy) {
+    // Main pumpkin shape — oval with segments
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 65, 50, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Vertical segment lines
+    ctx.lineWidth = 1;
+    [-30, 0, 30].forEach(offset => {
+      ctx.beginPath();
+      ctx.moveTo(cx + offset, cy - 48);
+      ctx.quadraticCurveTo(cx + offset + (offset > 0 ? 5 : offset < 0 ? -5 : 0), cy, cx + offset, cy + 48);
+      ctx.stroke();
+    });
+    ctx.lineWidth = 1.8;
+    // Eyes (triangles)
+    ctx.beginPath();
+    ctx.moveTo(cx - 25, cy - 15); ctx.lineTo(cx - 12, cy - 15); ctx.lineTo(cx - 18, cy - 28); ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 25, cy - 15); ctx.lineTo(cx + 12, cy - 15); ctx.lineTo(cx + 18, cy - 28); ctx.closePath();
+    ctx.stroke();
+    // Mouth (jagged)
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, cy + 10);
+    ctx.lineTo(cx - 18, cy + 20);
+    ctx.lineTo(cx - 8, cy + 10);
+    ctx.lineTo(cx + 2, cy + 20);
+    ctx.lineTo(cx + 12, cy + 10);
+    ctx.lineTo(cx + 22, cy + 20);
+    ctx.lineTo(cx + 32, cy + 10);
+    ctx.stroke();
+    // Stem
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, cy - 48);
+    ctx.quadraticCurveTo(cx, cy - 68, cx + 8, cy - 62);
+    ctx.lineTo(cx + 3, cy - 48);
+    ctx.stroke();
+  }
+
+  // Wheat sheaf (Thanksgiving)
+  sketchWheatSheaf(ctx, cx, cy) {
+    const stalks = 7;
+    // Draw stalks fanning out
+    for (let i = 0; i < stalks; i++) {
+      const angle = -0.5 + (1.0 / (stalks - 1)) * i;
+      const topX = cx + Math.sin(angle) * 65;
+      const topY = cy - 55;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.sin(angle) * 5, cy + 50);
+      ctx.quadraticCurveTo(cx + Math.sin(angle) * 30, cy - 10, topX, topY);
+      ctx.stroke();
+      // Wheat kernels at top (little ovals)
+      ctx.lineWidth = 1.2;
+      for (let k = 0; k < 3; k++) {
+        const ky = topY - k * 10;
+        const kx = topX + Math.sin(angle) * k * 3;
+        ctx.beginPath();
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(angle);
+        ctx.ellipse(0, 0, 3, 7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.lineWidth = 1.8;
+    }
+    // Ribbon tie at base
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy + 25);
+    ctx.quadraticCurveTo(cx, cy + 18, cx + 20, cy + 25);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy + 30);
+    ctx.quadraticCurveTo(cx, cy + 23, cx + 20, cy + 30);
+    ctx.stroke();
+  }
+
+  // Evergreen tree with star (Christmas)
+  sketchTree(ctx, cx, cy) {
+    // Star at top
+    this.drawStar(ctx, cx, cy - 65, 12, 5, 5);
+    // Tree tiers (3 layers)
+    const tiers = [
+      { y: cy - 50, w: 30, h: 35 },
+      { y: cy - 22, w: 48, h: 35 },
+      { y: cy + 8,  w: 65, h: 38 },
+    ];
+    tiers.forEach(t => {
+      ctx.beginPath();
+      ctx.moveTo(cx, t.y);
+      ctx.lineTo(cx + t.w, t.y + t.h);
+      ctx.lineTo(cx - t.w, t.y + t.h);
+      ctx.closePath();
+      ctx.stroke();
+    });
+    // Trunk
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy + 46);
+    ctx.lineTo(cx - 10, cy + 65);
+    ctx.lineTo(cx + 10, cy + 65);
+    ctx.lineTo(cx + 10, cy + 46);
+    ctx.stroke();
+    // Small ornament dots
+    ctx.lineWidth = 1;
+    [[cx - 15, cy], [cx + 12, cy - 8], [cx - 8, cy + 25], [cx + 20, cy + 28], [cx, cy - 25]].forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  }
+
+  // Split greeting text into lines that fit within maxWidth
+  splitGreeting(text, ctx, maxWidth) {
+    const words = text.split(' ');
+    if (words.length <= 2) return [text];
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+
+  finalizeCard(canvas, index) {
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     this.imageDataUrls = this.imageDataUrls || {};
     this.imageDataUrls[index] = dataUrl;
     const img = this.find(`#img-${index}`);

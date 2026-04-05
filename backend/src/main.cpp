@@ -1,6 +1,8 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <algorithm>
+#include <curl/curl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -208,16 +210,57 @@ private:
     
     void processRequest(int client_fd) {
         try {
-            // Read request
-            char buffer[4096] = {0};
-            ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-            
+            // Read request with support for large bodies (up to 10MB)
+            static const size_t MAX_BODY_SIZE = 10 * 1024 * 1024;
+            static const size_t CHUNK_SIZE = 65536;
+
+            // Read initial chunk (headers + start of body)
+            char initial_buf[CHUNK_SIZE];
+            ssize_t bytes_read = read(client_fd, initial_buf, sizeof(initial_buf));
+
             if (bytes_read <= 0) {
                 close(client_fd);
                 return;
             }
-            
-            std::string raw_request(buffer, bytes_read);
+
+            std::string raw_request(initial_buf, bytes_read);
+
+            // Find end of headers to determine Content-Length
+            size_t header_end = raw_request.find("\r\n\r\n");
+            if (header_end != std::string::npos) {
+                size_t body_start = header_end + 4;
+                size_t body_received = raw_request.size() - body_start;
+
+                // Parse Content-Length from headers
+                size_t content_length = 0;
+                std::string headers_section = raw_request.substr(0, header_end);
+                size_t cl_pos = headers_section.find("Content-Length:");
+                if (cl_pos == std::string::npos)
+                    cl_pos = headers_section.find("content-length:");
+                if (cl_pos != std::string::npos) {
+                    size_t val_start = cl_pos + 15; // length of "Content-Length:"
+                    while (val_start < headers_section.size() && headers_section[val_start] == ' ')
+                        val_start++;
+                    size_t val_end = headers_section.find("\r\n", val_start);
+                    if (val_end == std::string::npos) val_end = headers_section.size();
+                    content_length = std::stoull(headers_section.substr(val_start, val_end - val_start));
+                }
+
+                // Read remaining body if needed (cap at MAX_BODY_SIZE)
+                if (content_length > MAX_BODY_SIZE) content_length = MAX_BODY_SIZE;
+                if (content_length > 0 && body_received < content_length) {
+                    size_t remaining = content_length - body_received;
+                    raw_request.reserve(body_start + content_length);
+                    char chunk[CHUNK_SIZE];
+                    while (remaining > 0) {
+                        size_t to_read = std::min(remaining, sizeof(chunk));
+                        ssize_t n = read(client_fd, chunk, to_read);
+                        if (n <= 0) break;
+                        raw_request.append(chunk, n);
+                        remaining -= n;
+                    }
+                }
+            }
             
             // Parse request and route
             Request request(raw_request);
@@ -245,11 +288,15 @@ private:
 };
 
 int main() {
+    // Initialize libcurl globally before any threads are created
+    curl_global_init(CURL_GLOBAL_ALL);
+
     try {
         HttpServer server(3001);
         
         if (!server.initialize()) {
             std::cerr << "❌ Server initialization failed" << std::endl;
+            curl_global_cleanup();
             return 1;
         }
         
@@ -257,8 +304,10 @@ int main() {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Server error: " << e.what() << std::endl;
+        curl_global_cleanup();
         return 1;
     }
     
+    curl_global_cleanup();
     return 0;
 }

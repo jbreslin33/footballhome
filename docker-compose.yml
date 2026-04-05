@@ -59,6 +59,9 @@ services:
       INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-26233831926285183}
     ports:
       - "3001:3001"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     volumes:
       # Mount database/data for writing ##u/##p files
       - ./database/data:/app/database/data
