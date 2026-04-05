@@ -44,6 +44,13 @@ private:
     Response handlePublishHolidayPost(const Request& request);
     std::string extractHolidayIdFromPath(const std::string& path);
 
+    // Promotional posts
+    Response handleGetPromoPosts(const Request& request);
+    Response handleSavePromoPost(const Request& request);
+    Response handleUploadPromoMedia(const Request& request);
+    Response handlePublishPromoPost(const Request& request);
+    std::string extractPromoIdFromPath(const std::string& path);
+
     // Instagram Graph API helpers
     std::string httpPost(const std::string& url, const std::string& postData);
     std::string httpGet(const std::string& url);

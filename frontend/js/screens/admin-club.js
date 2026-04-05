@@ -64,6 +64,7 @@ class AdminClubScreen extends Screen {
       { id: 'venues', icon: '🏟️', label: 'Venues', description: 'Manage venues' },
       { id: 'tactics', icon: '🧠', label: 'Tactics', description: 'Club-wide tactical boards' },
       { id: 'holiday-posts', icon: '🎉', label: 'Holiday Posts', description: 'Instagram holiday posts' },
+      { id: 'promo-posts', icon: '📢', label: 'Promo Posts', description: 'Instagram promotional posts' },
       { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' }
     ];
     
@@ -97,6 +98,14 @@ class AdminClubScreen extends Screen {
 
     if (section === 'holiday-posts') {
       this.navigation.goTo('holiday-posts', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'promo-posts') {
+      this.navigation.goTo('promo-posts', {
         clubId: this.clubId,
         clubName: this.clubName
       });
