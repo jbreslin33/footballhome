@@ -211,7 +211,10 @@ class SocialPostCard {
           ${!isPosted ? `
             <button class="spc-btn spc-btn-download-video">📹 Download Video</button>
             <button class="spc-btn spc-btn-save" ${this.saving ? 'disabled' : ''}>💾 Save</button>
-            <button class="spc-btn spc-btn-schedule">📅 Schedule</button>
+            <div class="spc-schedule-row">
+              <input type="datetime-local" class="spc-schedule-input" value="${isScheduled && p.scheduled_at ? this.toLocalISOString(p.scheduled_at) : ''}" />
+              <button class="spc-btn spc-btn-schedule">📅 Schedule</button>
+            </div>
             <button class="spc-btn spc-btn-post">🚀 Post Now</button>
           ` : ''}
         </div>
@@ -812,23 +815,26 @@ class SocialPostCard {
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
-      if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
+      if (postBtn) { postBtn.disabled = false; postBtn.textContent = '� Post Now'; }
     }
   }
 
   schedule() {
     const ptId = this.post?.post_type_id || this.postTypeId;
     if (!ptId) return;
-    const datetime = prompt('Schedule post at (YYYY-MM-DD HH:MM):');
-    if (!datetime) return;
-    if (!/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/.test(datetime.trim())) {
-      alert('Format: YYYY-MM-DD HH:MM');
+    const input = this.container.querySelector('.spc-schedule-input');
+    if (!input || !input.value) {
+      alert('Pick a date and time first.');
       return;
     }
+    const datetime = input.value.replace('T', ' ');
 
     // Save current caption too
     const textarea = this.container.querySelector('.spc-caption');
     const caption = textarea ? textarea.value.trim() : (this.post?.caption || '');
+
+    const schedBtn = this.container.querySelector('.spc-btn-schedule');
+    if (schedBtn) { schedBtn.disabled = true; schedBtn.textContent = '⏳ Scheduling...'; }
 
     this.auth.fetch('/api/social/posts', {
       method: 'POST',
@@ -839,12 +845,23 @@ class SocialPostCard {
         post_type_id: ptId,
         caption: caption,
         status: 'scheduled',
-        scheduled_at: datetime.trim() + ':00'
+        scheduled_at: datetime + ':00'
       })
     }).then(r => r.json()).then(data => {
       if (data.success) this.load();
-      else alert('Failed to schedule: ' + data.message);
+      else {
+        alert('Failed to schedule: ' + data.message);
+        if (schedBtn) { schedBtn.disabled = false; schedBtn.textContent = '📅 Schedule'; }
+      }
     });
+  }
+
+  toLocalISOString(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   formatDate(dateStr) {
