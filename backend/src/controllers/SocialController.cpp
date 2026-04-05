@@ -799,3 +799,269 @@ Response SocialController::handleApplySchedule(const Request& request) {
             createJSONResponse(false, std::string("Error: ") + e.what()));
     }
 }
+
+// ---------- Holiday Posts ----------
+
+std::string SocialController::extractHolidayIdFromPath(const std::string& path) {
+    std::regex r(R"(/api/social/holidays/(\d+))");
+    std::smatch m;
+    if (std::regex_search(path, m, r)) {
+        return m[1].str();
+    }
+    return "";
+}
+
+Response SocialController::handleGetHolidayPosts(const Request& request) {
+    try {
+        pqxx::result result = db_->query(
+            "SELECT id, holiday_name, holiday_date, caption, image_path, image_url, "
+            "status, scheduled_at, posted_at, external_media_id, error_message, "
+            "created_at, updated_at "
+            "FROM holiday_posts ORDER BY holiday_date DESC"
+        );
+
+        std::ostringstream json;
+        json << "[";
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            first = false;
+            json << "{";
+            json << "\"id\":" << row["id"].as<int>() << ",";
+            json << "\"holiday_name\":\"" << escapeJson(row["holiday_name"].c_str()) << "\",";
+            json << "\"holiday_date\":\"" << row["holiday_date"].c_str() << "\",";
+            json << "\"caption\":" << (row["caption"].is_null() ? "null" : "\"" + escapeJson(row["caption"].c_str()) + "\"") << ",";
+            json << "\"image_path\":" << (row["image_path"].is_null() ? "null" : "\"" + escapeJson(row["image_path"].c_str()) + "\"") << ",";
+            json << "\"image_url\":" << (row["image_url"].is_null() ? "null" : "\"" + escapeJson(row["image_url"].c_str()) + "\"") << ",";
+            json << "\"status\":\"" << escapeJson(row["status"].c_str()) << "\",";
+            json << "\"scheduled_at\":" << (row["scheduled_at"].is_null() ? "null" : "\"" + std::string(row["scheduled_at"].c_str()) + "\"") << ",";
+            json << "\"posted_at\":" << (row["posted_at"].is_null() ? "null" : "\"" + std::string(row["posted_at"].c_str()) + "\"") << ",";
+            json << "\"external_media_id\":" << (row["external_media_id"].is_null() ? "null" : "\"" + escapeJson(row["external_media_id"].c_str()) + "\"") << ",";
+            json << "\"error_message\":" << (row["error_message"].is_null() ? "null" : "\"" + escapeJson(row["error_message"].c_str()) + "\"");
+            json << "}";
+        }
+        json << "]";
+
+        return Response(HttpStatus::OK, createJSONResponse(true, "Holiday posts", json.str()));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleSaveHolidayPost(const Request& request) {
+    try {
+        std::string body = request.getBody();
+        std::string holidayName = extractJsonField(body, "holiday_name");
+        std::string holidayDate = extractJsonField(body, "holiday_date");
+        std::string caption = extractJsonField(body, "caption");
+        std::string status = extractJsonField(body, "status");
+        std::string scheduledAt = extractJsonField(body, "scheduled_at");
+
+        if (holidayName.empty() || holidayDate.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "holiday_name and holiday_date are required"));
+        }
+
+        if (status.empty()) status = "draft";
+
+        std::string query = R"(
+            INSERT INTO holiday_posts (holiday_name, holiday_date, caption, status, scheduled_at)
+            VALUES (')" + escapeJson(holidayName) + "', '" + escapeJson(holidayDate) + R"(',
+                )" + (caption.empty() ? "NULL" : "'" + escapeJson(caption) + "'") + R"(,
+                ')" + escapeJson(status) + R"(',
+                )" + (scheduledAt.empty() ? "NULL" : "'" + escapeJson(scheduledAt) + "'") + R"()
+            ON CONFLICT (holiday_name, holiday_date)
+            DO UPDATE SET
+                caption = EXCLUDED.caption,
+                status = EXCLUDED.status,
+                scheduled_at = EXCLUDED.scheduled_at,
+                updated_at = NOW()
+            RETURNING id
+        )";
+
+        pqxx::result result = db_->query(query);
+
+        if (!result.empty()) {
+            int id = result[0]["id"].as<int>();
+            return Response(HttpStatus::OK,
+                createJSONResponse(true, "Holiday post saved", "{\"id\":" + std::to_string(id) + "}"));
+        }
+
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, "Failed to save holiday post"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleUploadHolidayMedia(const Request& request) {
+    try {
+        std::string holidayId = extractHolidayIdFromPath(request.getPath());
+        if (holidayId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing holiday ID"));
+        }
+
+        std::string body = request.getBody();
+
+        size_t keyPos = body.find("\"data\"");
+        if (keyPos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing 'data' field"));
+        }
+        size_t colonPos = body.find(':', keyPos + 6);
+        size_t quoteStart = body.find('"', colonPos + 1);
+        size_t quoteEnd = body.find('"', quoteStart + 1);
+        if (quoteStart == std::string::npos || quoteEnd == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Invalid data format"));
+        }
+        std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+
+        std::string b64Data = dataValue;
+        size_t commaPos = b64Data.find(',');
+        if (commaPos != std::string::npos) {
+            b64Data = b64Data.substr(commaPos + 1);
+        }
+
+        std::string imageBytes = base64Decode(b64Data);
+        if (imageBytes.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Failed to decode image data"));
+        }
+
+        const std::string imageDir = "/app/images/posts";
+        mkdir(imageDir.c_str(), 0755);
+
+        std::string filename = "holiday_" + holidayId + ".png";
+        std::string filepath = imageDir + "/" + filename;
+        std::ofstream outFile(filepath, std::ios::binary);
+        if (!outFile.is_open()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to write image file"));
+        }
+        outFile.write(imageBytes.data(), imageBytes.size());
+        outFile.close();
+
+        std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
+
+        db_->query(
+            "UPDATE holiday_posts SET image_path = '" + escapeJson(filename) +
+            "', image_url = '" + escapeJson(publicUrl) +
+            "', updated_at = NOW() WHERE id = " + holidayId
+        );
+
+        std::cout << "📸 Holiday media uploaded for " << holidayId << ": " << filepath << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJSONResponse(true, "Media uploaded",
+                "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"filename\":\"" + escapeJson(filename) + "\"}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handlePublishHolidayPost(const Request& request) {
+    try {
+        std::string holidayId = extractHolidayIdFromPath(request.getPath());
+        if (holidayId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing holiday ID"));
+        }
+
+        pqxx::result result = db_->query(
+            "SELECT * FROM holiday_posts WHERE id = " + holidayId
+        );
+
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND,
+                createJSONResponse(false, "Holiday post not found"));
+        }
+
+        const auto& row = result[0];
+        std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
+        std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
+
+        if (imageUrl.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "No image uploaded. Upload media first."));
+        }
+
+        const char* accessToken = std::getenv("INSTAGRAM_ACCESS_TOKEN");
+        const char* userId = std::getenv("INSTAGRAM_USER_ID");
+        if (!accessToken || std::string(accessToken).empty()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "INSTAGRAM_ACCESS_TOKEN not configured"));
+        }
+        std::string igUserId = userId ? std::string(userId) : "26233831926285183";
+        std::string igToken(accessToken);
+        std::string apiBase = "https://graph.instagram.com/v21.0";
+
+        db_->query(
+            "UPDATE holiday_posts SET status = 'publishing', updated_at = NOW() "
+            "WHERE id = " + holidayId
+        );
+
+        // Step 1: Create media container
+        std::string createUrl = apiBase + "/" + igUserId + "/media";
+        std::string createData = "image_url=" + imageUrl +
+            "&caption=" + caption +
+            "&access_token=" + igToken;
+
+        std::cout << "📤 Instagram: Creating media container for holiday " << holidayId << std::endl;
+        std::string createResponse = httpPost(createUrl, createData);
+        std::cout << "📤 Instagram create response: " << createResponse << std::endl;
+
+        std::string creationId = extractJsonField(createResponse, "id");
+        if (creationId.empty()) {
+            std::string errorMsg = extractJsonField(createResponse, "message");
+            if (errorMsg.empty()) errorMsg = "Failed to create media container";
+            db_->query(
+                "UPDATE holiday_posts SET status = 'error', error_message = '" +
+                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + holidayId
+            );
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, errorMsg));
+        }
+
+        // Step 2: Publish the container
+        std::string publishUrl = apiBase + "/" + igUserId + "/media_publish";
+        std::string publishData = "creation_id=" + creationId +
+            "&access_token=" + igToken;
+
+        std::cout << "📤 Instagram: Publishing holiday container " << creationId << std::endl;
+        std::string publishResponse = httpPost(publishUrl, publishData);
+        std::cout << "📤 Instagram publish response: " << publishResponse << std::endl;
+
+        std::string mediaId = extractJsonField(publishResponse, "id");
+        if (mediaId.empty()) {
+            std::string errorMsg = extractJsonField(publishResponse, "message");
+            if (errorMsg.empty()) errorMsg = "Failed to publish to Instagram";
+            db_->query(
+                "UPDATE holiday_posts SET status = 'error', error_message = '" +
+                escapeJson(errorMsg) + "', updated_at = NOW() WHERE id = " + holidayId
+            );
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, errorMsg));
+        }
+
+        // Success
+        db_->query(
+            "UPDATE holiday_posts SET status = 'posted', external_media_id = '" +
+            escapeJson(mediaId) + "', posted_at = NOW(), error_message = NULL, "
+            "updated_at = NOW() WHERE id = " + holidayId
+        );
+
+        std::cout << "✅ Instagram: Holiday " << holidayId << " published! Media ID: " << mediaId << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJSONResponse(true, "Posted to Instagram!",
+                "{\"media_id\":\"" + escapeJson(mediaId) + "\"}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
