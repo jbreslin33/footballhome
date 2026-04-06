@@ -946,33 +946,52 @@ class SocialPostCard {
     if (!confirm('Post this to Instagram now?')) return;
 
     const postBtn = this.container.querySelector('.spc-btn-post');
-    if (postBtn) { postBtn.disabled = true; postBtn.textContent = '⏳ Uploading...'; }
+    if (postBtn) { postBtn.disabled = true; postBtn.textContent = '⏳ Recording video...'; }
 
     try {
-      // Capture current canvas frame as PNG
-      let imageData;
+      let mediaData;
+
       if (this.animCanvas) {
-        imageData = this.animCanvas.toDataURL('image/png');
+        // Record animated video (5-second WebM clip) for Instagram Reel
+        mediaData = await new Promise((resolve, reject) => {
+          const stream = this.animCanvas.captureStream(30);
+          const recorder = new MediaRecorder(stream, {
+            mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
+          });
+          const chunks = [];
+          recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+          recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: recorder.mimeType });
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result); // data:video/webm;base64,...
+            reader.onerror = () => reject(new Error('Failed to read video'));
+            reader.readAsDataURL(blob);
+          };
+          recorder.onerror = () => reject(new Error('Recording failed'));
+          recorder.start();
+          setTimeout(() => recorder.stop(), 5000);
+        });
       } else if (this.baseImage) {
+        // Fallback: static image
         const tmpCvs = document.createElement('canvas');
         tmpCvs.width = this.baseImage.width;
         tmpCvs.height = this.baseImage.height;
         tmpCvs.getContext('2d').drawImage(this.baseImage, 0, 0);
-        imageData = tmpCvs.toDataURL('image/png');
+        mediaData = tmpCvs.toDataURL('image/png');
       }
 
-      if (!imageData) {
-        alert('No image generated yet. Please wait for the preview to load.');
+      if (!mediaData) {
+        alert('No media generated yet. Please wait for the preview to load.');
         if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
         return;
       }
 
-      // Step 1: Upload image to backend
-      if (postBtn) postBtn.textContent = '⏳ Uploading image...';
+      // Step 1: Upload media to backend
+      if (postBtn) postBtn.textContent = '⏳ Uploading...';
       const uploadRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: imageData })
+        body: JSON.stringify({ data: mediaData })
       });
       const uploadData = await uploadRes.json();
       if (!uploadData.success) {
@@ -995,7 +1014,7 @@ class SocialPostCard {
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
-      if (postBtn) { postBtn.disabled = false; postBtn.textContent = '� Post Now'; }
+      if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
     }
   }
 

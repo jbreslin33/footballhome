@@ -501,7 +501,11 @@ Response SocialController::handleUploadMedia(const Request& request) {
         }
         std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
 
-        // Strip data URL prefix (e.g. "data:image/png;base64,")
+        // Detect media type from data URL prefix
+        bool isVideo = (dataValue.find("data:video/") == 0);
+        std::string mediaType = isVideo ? "video" : "image";
+
+        // Strip data URL prefix (e.g. "data:image/png;base64," or "data:video/webm;base64,")
         std::string b64Data = dataValue;
         size_t commaPos = b64Data.find(',');
         if (commaPos != std::string::npos) {
@@ -509,42 +513,99 @@ Response SocialController::handleUploadMedia(const Request& request) {
         }
 
         // Decode base64
-        std::string imageBytes = base64Decode(b64Data);
-        if (imageBytes.empty()) {
+        std::string mediaBytes = base64Decode(b64Data);
+        if (mediaBytes.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
-                createJSONResponse(false, "Failed to decode image data"));
+                createJSONResponse(false, "Failed to decode media data"));
         }
 
         // Ensure directory exists
-        const std::string imageDir = "/app/images/posts";
-        mkdir(imageDir.c_str(), 0755);
+        const std::string mediaDir = "/app/images/posts";
+        mkdir(mediaDir.c_str(), 0755);
 
-        // Save to file
-        std::string filename = "post_" + postId + ".jpg";
-        std::string filepath = imageDir + "/" + filename;
-        std::ofstream outFile(filepath, std::ios::binary);
-        if (!outFile.is_open()) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, "Failed to write image file"));
+        if (isVideo) {
+            // Save WebM to temp file
+            std::string webmFile = mediaDir + "/post_" + postId + ".webm";
+            std::string mp4File = mediaDir + "/post_" + postId + ".mp4";
+            {
+                std::ofstream outFile(webmFile, std::ios::binary);
+                if (!outFile.is_open()) {
+                    return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Failed to write video file"));
+                }
+                outFile.write(mediaBytes.data(), mediaBytes.size());
+                outFile.close();
+            }
+
+            // Convert WebM to MP4 with ffmpeg (Instagram-compatible)
+            std::string ffmpegCmd = "ffmpeg -y -i " + webmFile +
+                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                " -movflags +faststart -an " + mp4File + " 2>&1";
+            std::cout << "🎬 Converting video: " << ffmpegCmd << std::endl;
+            int ffResult = system(ffmpegCmd.c_str());
+            // Remove temp WebM
+            std::remove(webmFile.c_str());
+
+            if (ffResult != 0) {
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                    createJSONResponse(false, "FFmpeg conversion failed"));
+            }
+
+            std::string videoFilename = "post_" + postId + ".mp4";
+            std::string videoPublicUrl = "https://footballhome.org/images/posts/" + videoFilename;
+
+            // Also save a poster image (first frame)
+            std::string posterFile = mediaDir + "/post_" + postId + ".jpg";
+            std::string posterCmd = "ffmpeg -y -i " + mp4File +
+                " -vframes 1 -q:v 2 " + posterFile + " 2>&1";
+            system(posterCmd.c_str());
+            std::string imageFilename = "post_" + postId + ".jpg";
+            std::string imagePublicUrl = "https://footballhome.org/images/posts/" + imageFilename;
+
+            // Update DB
+            db_->query(
+                "UPDATE social_posts SET video_path = '" + escapeSql(videoFilename) +
+                "', video_url = '" + escapeSql(videoPublicUrl) +
+                "', image_path = '" + escapeSql(imageFilename) +
+                "', image_url = '" + escapeSql(imagePublicUrl) +
+                "', media_type = 'video'"
+                ", updated_at = NOW() WHERE id = " + postId
+            );
+
+            std::cout << "🎬 Video uploaded for post " << postId << ": " << mp4File << std::endl;
+
+            return Response(HttpStatus::OK,
+                createJSONResponse(true, "Video uploaded and converted",
+                    "{\"video_url\":\"" + escapeJson(videoPublicUrl) +
+                    "\",\"image_url\":\"" + escapeJson(imagePublicUrl) +
+                    "\",\"media_type\":\"video\"}"));
+        } else {
+            // Image upload (existing flow)
+            std::string filename = "post_" + postId + ".jpg";
+            std::string filepath = mediaDir + "/" + filename;
+            std::ofstream outFile(filepath, std::ios::binary);
+            if (!outFile.is_open()) {
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                    createJSONResponse(false, "Failed to write image file"));
+            }
+            outFile.write(mediaBytes.data(), mediaBytes.size());
+            outFile.close();
+
+            std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
+
+            db_->query(
+                "UPDATE social_posts SET image_path = '" + escapeSql(filename) +
+                "', image_url = '" + escapeSql(publicUrl) +
+                "', media_type = 'image'"
+                ", updated_at = NOW() WHERE id = " + postId
+            );
+
+            std::cout << "📸 Media uploaded for post " << postId << ": " << filepath << std::endl;
+
+            return Response(HttpStatus::OK,
+                createJSONResponse(true, "Media uploaded",
+                    "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"filename\":\"" + escapeJson(filename) + "\",\"media_type\":\"image\"}"));
         }
-        outFile.write(imageBytes.data(), imageBytes.size());
-        outFile.close();
-
-        // Build public URL
-        std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
-
-        // Update DB with image path and URL
-        db_->query(
-            "UPDATE social_posts SET image_path = '" + escapeSql(filename) +
-            "', image_url = '" + escapeSql(publicUrl) +
-            "', updated_at = NOW() WHERE id = " + postId
-        );
-
-        std::cout << "📸 Media uploaded for post " << postId << ": " << filepath << std::endl;
-
-        return Response(HttpStatus::OK,
-            createJSONResponse(true, "Media uploaded",
-                "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"filename\":\"" + escapeJson(filename) + "\"}"));
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));
@@ -624,9 +685,15 @@ Response SocialController::handlePostToInstagram(const Request& request) {
 
         const auto& row = result[0];
         std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
+        std::string videoUrl = row["video_url"].is_null() ? "" : row["video_url"].c_str();
         std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
+        std::string mediaType = row["media_type"].is_null() ? "image" : row["media_type"].c_str();
 
-        if (imageUrl.empty()) {
+        if (mediaType == "video" && videoUrl.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "No video uploaded for this post. Upload media first."));
+        }
+        if (mediaType == "image" && imageUrl.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
                 createJSONResponse(false, "No image uploaded for this post. Upload media first."));
         }
@@ -651,12 +718,21 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         // Step 1: Create media container (URL-encode values for form POST)
         CURL* encoderCurl = curl_easy_init();
         std::string createUrl = apiBase + "/" + igUserId + "/media";
-        std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-            "&caption=" + urlEncode(encoderCurl, caption) +
-            "&access_token=" + urlEncode(encoderCurl, igToken);
+        std::string createData;
+        if (mediaType == "video") {
+            // Instagram Reels API
+            createData = "media_type=REELS"
+                "&video_url=" + urlEncode(encoderCurl, videoUrl) +
+                "&caption=" + urlEncode(encoderCurl, caption) +
+                "&access_token=" + urlEncode(encoderCurl, igToken);
+            std::cout << "📤 Instagram: Creating REELS container for post " << postId << std::endl;
+        } else {
+            createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
+                "&caption=" + urlEncode(encoderCurl, caption) +
+                "&access_token=" + urlEncode(encoderCurl, igToken);
+            std::cout << "📤 Instagram: Creating image container for post " << postId << std::endl;
+        }
         curl_easy_cleanup(encoderCurl);
-
-        std::cout << "📤 Instagram: Creating media container for post " << postId << std::endl;
         std::string createResponse = httpPost(createUrl, createData);
         std::cout << "📤 Instagram create response: " << createResponse << std::endl;
 
@@ -674,12 +750,15 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         }
 
         // Step 1.5: Poll for media container to be ready (Instagram needs processing time)
+        // Video (Reels) takes longer to process — use more attempts with longer interval
+        int maxAttempts = (mediaType == "video") ? 30 : 10;
+        int pollInterval = (mediaType == "video") ? 5 : 3;
         std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
-        for (int attempt = 0; attempt < 10; attempt++) {
-            std::this_thread::sleep_for(std::chrono::seconds(3));
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            std::this_thread::sleep_for(std::chrono::seconds(pollInterval));
             std::string statusResp = httpGet(statusUrl);
             std::string statusCode = extractJsonField(statusResp, "status_code");
-            std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "): " << statusCode << std::endl;
+            std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "/" << maxAttempts << "): " << statusCode << std::endl;
             if (statusCode == "FINISHED") break;
             if (statusCode == "ERROR") {
                 db_->query("UPDATE social_posts SET status = 'error', error_message = 'Instagram media processing failed', updated_at = NOW() WHERE id = " + postId);
