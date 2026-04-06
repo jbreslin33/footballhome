@@ -377,8 +377,8 @@ class SocialPostCard {
     const w = cvs.width;
     const h = cvs.height;
     // Lighthouse position (bottom-right corner of card, in 2x coords)
-    const lhX = w - 80;  // lantern X
-    const lhY = h - 230; // lantern Y (near top of lighthouse)
+    const lhX = w - 100;  // lantern X
+    const lhY = h - 340; // lantern Y (near top of lighthouse)
     const beamLen = Math.max(w, h) * 1.2;
     const beamSpread = 0.18; // half-angle of beam in radians (~10 degrees)
     const rotSpeed = 0.4; // radians per second
@@ -411,9 +411,9 @@ class SocialPostCard {
 
       // Outer glow
       const grad = ctx.createRadialGradient(lhX, lhY, 10, lhX, lhY, beamLen * 0.7);
-      grad.addColorStop(0, 'rgba(245, 212, 66, 0.35)');
-      grad.addColorStop(0.3, 'rgba(245, 212, 66, 0.12)');
-      grad.addColorStop(1, 'rgba(245, 212, 66, 0)');
+      grad.addColorStop(0, 'rgba(255, 230, 0, 0.55)');
+      grad.addColorStop(0.3, 'rgba(255, 223, 0, 0.25)');
+      grad.addColorStop(1, 'rgba(255, 223, 0, 0)');
 
       ctx.beginPath();
       ctx.moveTo(lhX, lhY);
@@ -433,8 +433,8 @@ class SocialPostCard {
       ctx.lineTo(lhX + Math.cos(ca2) * coreLen, lhY + Math.sin(ca2) * coreLen);
       ctx.closePath();
       const coreGrad = ctx.createRadialGradient(lhX, lhY, 5, lhX, lhY, coreLen * 0.5);
-      coreGrad.addColorStop(0, 'rgba(255, 253, 224, 0.3)');
-      coreGrad.addColorStop(1, 'rgba(255, 253, 224, 0)');
+      coreGrad.addColorStop(0, 'rgba(255, 240, 50, 0.5)');
+      coreGrad.addColorStop(1, 'rgba(255, 240, 50, 0)');
       ctx.fillStyle = coreGrad;
       ctx.fill();
 
@@ -453,71 +453,251 @@ class SocialPostCard {
     const s = 2; // scale factor (we're on 2x canvas)
     ctx.save();
 
-    // Tower body (trapezoid: narrow at top, wider at bottom)
-    const topW = 16 * s, botW = 22 * s, towerH = 100 * s;
-    const topY = lhY + 4 * s;
+    // === DIMENSIONS ===
+    const topW = 26 * s, botW = 38 * s, towerH = 150 * s;
+    const topY = lhY + 8 * s;
     const botY = lhY + towerH;
-    ctx.beginPath();
-    ctx.moveTo(lhX - topW / 2, topY);
-    ctx.lineTo(lhX + topW / 2, topY);
-    ctx.lineTo(lhX + botW / 2, botY);
-    ctx.lineTo(lhX - botW / 2, botY);
-    ctx.closePath();
+
+    // Helper: tower trapezoid clip path
+    const towerPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(lhX - topW / 2, topY);
+      ctx.lineTo(lhX + topW / 2, topY);
+      ctx.lineTo(lhX + botW / 2, botY);
+      ctx.lineTo(lhX - botW / 2, botY);
+      ctx.closePath();
+    };
+
+    // === TOWER BODY (white) ===
+    towerPath();
     ctx.fillStyle = '#ffffff';
     ctx.fill();
-    ctx.strokeStyle = '#0044cc';
+
+    // 4 royal blue bands with gold "1893" digits (spread out, last band just above door)
+    const digits = ['1', '8', '9', '3'];
+    const bandH = 18 * s;
+    const bandZone = towerH * 0.82; // bands occupy top 82% of tower
+    const bandGap = (bandZone - bandH * 4) / 5;
+    for (let i = 0; i < 4; i++) {
+      const bandY = topY + bandGap * (i + 1) + bandH * i;
+      const fracTop = (bandY - topY) / towerH;
+      const fracBot = (bandY + bandH - topY) / towerH;
+      const wTop = topW + (botW - topW) * fracTop;
+      const wBot = topW + (botW - topW) * fracBot;
+
+      ctx.save();
+      towerPath();
+      ctx.clip();
+      ctx.beginPath();
+      ctx.moveTo(lhX - wTop / 2, bandY);
+      ctx.lineTo(lhX + wTop / 2, bandY);
+      ctx.lineTo(lhX + wBot / 2, bandY + bandH);
+      ctx.lineTo(lhX - wBot / 2, bandY + bandH);
+      ctx.closePath();
+      ctx.fillStyle = '#0033a0';
+      ctx.fill();
+
+      // Gold digit
+      const fontSize = Math.round(14 * s);
+      ctx.font = `900 ${fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#f5d442';
+      ctx.fillText(digits[i], lhX, bandY + bandH / 2);
+      ctx.restore();
+    }
+
+    // Thin outline on tower
+    towerPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // === GALLERY PLATFORM ===
+    const platW = topW + 12 * s;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(lhX - platW / 2, topY - 3 * s, platW, 6 * s);
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1 * s;
+    ctx.strokeRect(lhX - platW / 2, topY - 3 * s, platW, 6 * s);
+
+    // Gallery railing posts
+    const railH = 10 * s;
+    const railY = topY - 3 * s - railH;
+    const numPosts = 7;
+    for (let i = 0; i < numPosts; i++) {
+      const px = lhX - platW / 2 + 3 * s + i * ((platW - 6 * s) / (numPosts - 1));
+      ctx.beginPath();
+      ctx.moveTo(px, topY - 3 * s);
+      ctx.lineTo(px, railY);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+    }
+    // Top rail
+    ctx.beginPath();
+    ctx.moveTo(lhX - platW / 2 + 2 * s, railY);
+    ctx.lineTo(lhX + platW / 2 - 2 * s, railY);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // === LANTERN ROOM ===
+    const lanternW = 20 * s, lanternH = 16 * s;
+    const lanternTop = railY - lanternH;
+
+    // Glass panes (gold)
+    ctx.fillStyle = '#f5d442';
+    ctx.fillRect(lhX - lanternW / 2, lanternTop, lanternW, lanternH);
+    // Muntin bars
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(lhX, lanternTop);
+    ctx.lineTo(lhX, lanternTop + lanternH);
+    ctx.moveTo(lhX - lanternW / 2, lanternTop + lanternH / 2);
+    ctx.lineTo(lhX + lanternW / 2, lanternTop + lanternH / 2);
+    ctx.stroke();
+    // Lantern frame
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2 * s;
+    ctx.strokeRect(lhX - lanternW / 2, lanternTop, lanternW, lanternH);
+
+    // === DOME ===
+    const domeW = lanternW + 4 * s;
+    ctx.beginPath();
+    ctx.moveTo(lhX - domeW / 2, lanternTop);
+    ctx.quadraticCurveTo(lhX, lanternTop - 22 * s, lhX + domeW / 2, lanternTop);
+    ctx.closePath();
+    ctx.fillStyle = '#0033a0';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // Finial (gold ball + spike)
+    ctx.beginPath();
+    ctx.arc(lhX, lanternTop - 18 * s, 3 * s, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5d442';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(lhX, lanternTop - 21 * s);
+    ctx.lineTo(lhX, lanternTop - 28 * s);
+    ctx.strokeStyle = '#f5d442';
     ctx.lineWidth = 2 * s;
     ctx.stroke();
 
-    // Lantern room
-    const lanternW = 18 * s, lanternH = 12 * s;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#0044cc';
-    ctx.lineWidth = 2 * s;
-    ctx.fillRect(lhX - lanternW / 2, lhY - lanternH / 2, lanternW, lanternH);
-    ctx.strokeRect(lhX - lanternW / 2, lhY - lanternH / 2, lanternW, lanternH);
-
-    // Light glow at lantern
-    const glowGrad = ctx.createRadialGradient(lhX, lhY, 0, lhX, lhY, 12 * s);
-    glowGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    glowGrad.addColorStop(0.3, 'rgba(255, 253, 224, 0.9)');
-    glowGrad.addColorStop(1, 'rgba(245, 212, 66, 0)');
+    // === LANTERN GLOW ===
+    const glowCY = lanternTop + lanternH / 2;
+    const glowGrad = ctx.createRadialGradient(lhX, glowCY, 0, lhX, glowCY, 24 * s);
+    glowGrad.addColorStop(0, 'rgba(255, 230, 0, 0.7)');
+    glowGrad.addColorStop(0.4, 'rgba(255, 223, 0, 0.2)');
+    glowGrad.addColorStop(1, 'rgba(255, 223, 0, 0)');
     ctx.beginPath();
-    ctx.arc(lhX, lhY, 12 * s, 0, Math.PI * 2);
+    ctx.arc(lhX, glowCY, 24 * s, 0, Math.PI * 2);
     ctx.fillStyle = glowGrad;
     ctx.fill();
 
-    // Dome/roof
+    // === DOOR ===
     ctx.beginPath();
-    ctx.moveTo(lhX - lanternW / 2 - 2 * s, lhY - lanternH / 2);
-    ctx.lineTo(lhX, lhY - lanternH / 2 - 14 * s);
-    ctx.lineTo(lhX + lanternW / 2 + 2 * s, lhY - lanternH / 2);
+    ctx.arc(lhX, botY - 16 * s, 7 * s, Math.PI, 0);
+    ctx.lineTo(lhX + 7 * s, botY);
+    ctx.lineTo(lhX - 7 * s, botY);
     ctx.closePath();
-    ctx.fillStyle = '#0044cc';
+    ctx.fillStyle = '#0033a0';
     ctx.fill();
-
-    // Gallery rail
-    ctx.beginPath();
-    ctx.moveTo(lhX - lanternW / 2 - 3 * s, lhY - lanternH / 2);
-    ctx.lineTo(lhX + lanternW / 2 + 3 * s, lhY - lanternH / 2);
-    ctx.strokeStyle = '#0044cc';
-    ctx.lineWidth = 2 * s;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5 * s;
     ctx.stroke();
 
-    // Door
+    // === ROCKY CLIFF ===
+    const rockY = botY + 2 * s;
+    const rockW = 50 * s;
+    const rockH = 28 * s;
+
+    // Main cliff shape (dark craggy rock)
     ctx.beginPath();
-    ctx.arc(lhX, botY - 10 * s, 4 * s, Math.PI, 0);
-    ctx.lineTo(lhX + 4 * s, botY);
-    ctx.lineTo(lhX - 4 * s, botY);
+    ctx.moveTo(lhX - rockW, rockY + rockH);
+    ctx.lineTo(lhX - rockW, rockY + 6 * s);
+    ctx.quadraticCurveTo(lhX - rockW * 0.7, rockY - 4 * s, lhX - rockW * 0.4, rockY + 2 * s);
+    ctx.lineTo(lhX - rockW * 0.2, rockY - 2 * s);
+    ctx.lineTo(lhX, rockY);
+    ctx.lineTo(lhX + rockW * 0.15, rockY - 3 * s);
+    ctx.lineTo(lhX + rockW * 0.35, rockY + 1 * s);
+    ctx.quadraticCurveTo(lhX + rockW * 0.6, rockY - 2 * s, lhX + rockW * 0.8, rockY + 4 * s);
+    ctx.lineTo(lhX + rockW, rockY + 8 * s);
+    ctx.lineTo(lhX + rockW, rockY + rockH);
     ctx.closePath();
-    ctx.fillStyle = '#0044cc';
+    ctx.fillStyle = '#2c2c2c';
     ctx.fill();
 
-    // Base rocks
+    // Rock highlights
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    const rockShapes = [
+      { x: lhX - 20 * s, y: rockY + 6 * s, rx: 10 * s, ry: 5 * s },
+      { x: lhX + 15 * s, y: rockY + 8 * s, rx: 8 * s, ry: 4 * s },
+      { x: lhX - 5 * s, y: rockY + 14 * s, rx: 12 * s, ry: 5 * s },
+      { x: lhX + 30 * s, y: rockY + 12 * s, rx: 9 * s, ry: 5 * s },
+      { x: lhX - 35 * s, y: rockY + 12 * s, rx: 11 * s, ry: 4 * s },
+    ];
+    for (const r of rockShapes) {
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y, r.rx, r.ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#444444';
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Rock edge highlight (top edge lighter)
     ctx.beginPath();
-    ctx.ellipse(lhX, botY + 4 * s, 28 * s, 6 * s, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#1a3a6a';
-    ctx.fill();
+    ctx.moveTo(lhX - rockW, rockY + 6 * s);
+    ctx.quadraticCurveTo(lhX - rockW * 0.7, rockY - 4 * s, lhX - rockW * 0.4, rockY + 2 * s);
+    ctx.lineTo(lhX - rockW * 0.2, rockY - 2 * s);
+    ctx.lineTo(lhX, rockY);
+    ctx.lineTo(lhX + rockW * 0.15, rockY - 3 * s);
+    ctx.lineTo(lhX + rockW * 0.35, rockY + 1 * s);
+    ctx.quadraticCurveTo(lhX + rockW * 0.6, rockY - 2 * s, lhX + rockW * 0.8, rockY + 4 * s);
+    ctx.lineTo(lhX + rockW, rockY + 8 * s);
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // === OCEAN WAVES ===
+    const oceanY = rockY + rockH - 4 * s;
+    const oceanW = 60 * s;
+
+    // Ocean background
+    const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, oceanY + 20 * s);
+    oceanGrad.addColorStop(0, '#1a6baa');
+    oceanGrad.addColorStop(1, '#0d4a7a');
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
+
+    // Wave lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5 * s;
+    for (let row = 0; row < 3; row++) {
+      const wy = oceanY + 4 * s + row * 6 * s;
+      ctx.beginPath();
+      for (let x = lhX - oceanW; x < lhX + oceanW; x += 12 * s) {
+        const amp = 2 * s;
+        ctx.moveTo(x, wy);
+        ctx.quadraticCurveTo(x + 3 * s, wy - amp, x + 6 * s, wy);
+        ctx.quadraticCurveTo(x + 9 * s, wy + amp, x + 12 * s, wy);
+      }
+      ctx.stroke();
+    }
+
+    // Foam at rock base
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    for (let x = lhX - rockW; x < lhX + rockW; x += 8 * s) {
+      ctx.moveTo(x, oceanY + 1 * s);
+      ctx.quadraticCurveTo(x + 2 * s, oceanY - 2 * s, x + 4 * s, oceanY + 1 * s);
+    }
+    ctx.stroke();
 
     ctx.restore();
   }
