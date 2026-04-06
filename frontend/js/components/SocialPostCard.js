@@ -124,8 +124,11 @@ class SocialPostCard {
     switch (this.postTypeName) {
       case 'pre_match_announcement':
         return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 #APSL #PhillySoccer #StartingXI`;
-      case 'game_day':
-        return `⚽ GAME DAY!\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\nLet's go! 🔥\n\n#Lighthouse1893 #APSL #GameDay #PhillySoccer`;
+      case 'game_day': {
+        const gameDayLabel = this.getGameDayLabel(rawDate);
+        const gameDayEmoji = gameDayLabel === 'GAME DAY' ? "Let's go! 🔥" : gameDayLabel === 'TOMORROW' ? 'See you there! 💪' : 'Mark your calendars! 📌';
+        return `⚽ ${gameDayLabel}!\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n${gameDayEmoji}\n\n#Lighthouse1893 #APSL #GameDay #PhillySoccer`;
+      }
       case 'lineup':
         return `📋 MATCH DAY SQUAD\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 #APSL #MatchDaySquad #PhillySoccer`;
       case 'post_game': {
@@ -253,6 +256,29 @@ class SocialPostCard {
     }
     const venueStr = this.buildVenueString(m);
     const isCasa = (m.source_name === 'casa');
+
+    // Fetch accolades for both teams
+    const homeTeamId = m.home_team_id || null;
+    const awayTeamId = m.away_team_id || null;
+    let homeAccolades = [], awayAccolades = [];
+    try {
+      const fetches = [];
+      if (homeTeamId) fetches.push(this.auth.fetch(`/api/teams/${homeTeamId}/accolades`).then(r => r.json()));
+      else fetches.push(Promise.resolve({ data: [] }));
+      if (awayTeamId) fetches.push(this.auth.fetch(`/api/teams/${awayTeamId}/accolades`).then(r => r.json()));
+      else fetches.push(Promise.resolve({ data: [] }));
+      const [homeRes, awayRes] = await Promise.all(fetches);
+      homeAccolades = (homeRes.data || []).filter(a => a.type === 'achievement');
+      awayAccolades = (awayRes.data || []).filter(a => a.type === 'achievement');
+      // Grab our tagline
+      this.teamTagline = (homeRes.data || []).concat(awayRes.data || [])
+        .filter(a => a.type === 'tagline' && [homeTeamId, awayTeamId].includes(this.teamId))
+        .map(a => a.accolade)[0] || '';
+      // If our team is home, use homeRes tagline; if away, use awayRes tagline
+      const ourRes = (String(this.teamId) === String(homeTeamId)) ? homeRes : awayRes;
+      const ourTaglines = (ourRes.data || []).filter(a => a.type === 'tagline');
+      if (ourTaglines.length) this.teamTagline = ourTaglines[0].accolade;
+    } catch (e) { /* accolades are optional */ }
     // Determine league display name
     let league;
     if (isCasa) {
@@ -267,19 +293,19 @@ class SocialPostCard {
     let headerText = '', middleHtml = '', rosterHtml = '', leagueBadgeHtml = '';
     switch (this.postTypeName) {
       case 'game_day':
-        headerText = 'GAME DAY';
-        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo);
+        headerText = this.getGameDayLabel(rawDate);
+        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
         leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, false);
         break;
       case 'lineup':
         headerText = 'MATCH DAY SQUAD';
-        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo);
+        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
         leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, true);
         rosterHtml = this.buildImageRoster();
         break;
       case 'pre_match_announcement':
         headerText = 'STARTERS & BENCH';
-        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo);
+        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
         leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, true);
         break;
       case 'post_game':
@@ -305,14 +331,14 @@ class SocialPostCard {
         background:linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);
         color:#fff; text-align:center; position:relative; overflow:hidden;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-        display:flex; flex-direction:column; justify-content:center; align-items:center;
-        padding:${hasRoster ? '30px 28px 20px' : '40px 30px'};
+        display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
+        padding:${hasRoster ? '20px 28px 16px' : '20px 30px 16px'};
         box-sizing:border-box;
         border:4px solid #f5d442;
       ">
 
         <!-- Header -->
-        <div style="font-size:12px;text-transform:uppercase;letter-spacing:5px;color:#ffffff;margin-bottom:${hasRoster ? '10px' : leagueBadgeHtml ? '10px' : '24px'};font-weight:700;">
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:5px;color:#ffffff;margin-bottom:${hasRoster ? '8px' : leagueBadgeHtml ? '8px' : '12px'};font-weight:700;">
           ${this.escapeHtml(headerText)}
         </div>
 
@@ -323,10 +349,15 @@ class SocialPostCard {
         ${rosterHtml}
 
         <!-- Footer -->
-        <div style="margin-top:auto;padding-top:0;display:flex;flex-direction:column;align-items:center;gap:2px;">
-          <img src="/images/sponsors/welovejunk.png" style="height:120px;object-fit:contain;" />
-          <span style="font-size:9px;letter-spacing:1px;color:#ffffff;text-transform:uppercase;font-weight:600;">Sponsored by We Love Junk Philly</span>
-          <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893 ⚽ CLUB</span>
+        <div style="margin-top:auto;padding-top:0;display:flex;align-items:flex-end;justify-content:flex-start;width:100%;">
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="/images/sponsors/welovejunk.png" style="height:80px;object-fit:contain;" />
+              <span style="font-size:11px;letter-spacing:0.5px;color:rgba(255,255,255,0.95);text-transform:uppercase;font-weight:700;">Sponsored by<br/>We Love Junk</span>
+            </div>
+            <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893</span>
+            ${this.teamTagline ? `<span style="font-size:8px;font-style:italic;letter-spacing:0.5px;color:rgba(255,255,255,0.7);">"${this.escapeHtml(this.teamTagline)}"</span>` : ''}
+          </div>
         </div>
       </div>
     `;
@@ -381,7 +412,8 @@ class SocialPostCard {
     const lhY = h - 340; // lantern Y (near top of lighthouse)
     const beamLen = Math.max(w, h) * 1.2;
     const beamSpread = 0.18; // half-angle of beam in radians (~10 degrees)
-    const rotSpeed = 0.4; // radians per second
+    const rotPeriod = 8; // seconds for one full 360° sweep
+    const rotSpeed = (2 * Math.PI) / rotPeriod; // radians per second
     const startTime = performance.now();
 
     const drawFrame = (now) => {
@@ -723,35 +755,61 @@ class SocialPostCard {
         resolve();
       };
       recorder.start();
-      // Record one full beam rotation (~15.7s at 0.4 rad/s for 2π)
-      // Use a shorter 5-second clip for Instagram
-      setTimeout(() => recorder.stop(), 5000);
+      // Record exactly one full beam rotation (8s) for seamless Instagram loop
+      setTimeout(() => recorder.stop(), 8000);
     });
   }
 
-  buildImageMatchup(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo) {
+  buildImageMatchup(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo, homeAccolades, awayAccolades) {
+    homeAccolades = homeAccolades || [];
+    awayAccolades = awayAccolades || [];
     const homeLogoHtml = homeLogo
       ? `<img src="${this.escapeHtml(homeLogo)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`
       : `<span style="font-size:2em;">⚽</span>`;
     const awayLogoHtml = awayLogo
       ? `<img src="${this.escapeHtml(awayLogo)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`
       : `<span style="font-size:2em;">⚽</span>`;
+
+    const buildAccoladeHtml = (accolades) => {
+      if (!accolades.length) return '';
+      const items = accolades.map(a =>
+        `<div style="display:flex;align-items:center;gap:3px;justify-content:center;">
+          <span style="font-size:9px;">🏆</span>
+          <span>${this.escapeHtml(a.accolade)}</span>
+        </div>`
+      ).join('');
+      return `
+        <div style="margin-top:4px;padding:4px 8px;background:linear-gradient(135deg,rgba(245,212,66,0.15),rgba(255,215,0,0.08));border:1px solid rgba(245,212,66,0.3);border-radius:6px;max-width:160px;">
+          <div style="font-size:9px;letter-spacing:0.5px;color:rgba(245,212,66,0.9);line-height:1.4;text-align:center;">
+            ${items}
+          </div>
+        </div>`;
+    };
+
+    const isHomeOurs = String(this.matchContext.home_team_id) === String(this.teamId);
+    const isAwayOurs = String(this.matchContext.away_team_id) === String(this.teamId);
+
+    // Replace "SC" with "⚽ Club" for our team name display
+    const formatName = (name) => name.replace(/\bSc$/i, '⚽ Club');
+
     return `
-      <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px;width:100%;">
+      <div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;margin-bottom:20px;width:100%;">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;">
           <div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">${homeLogoHtml}</div>
-          <div style="font-size:13px;font-weight:700;max-width:130px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(homeName)}</div>
+          <div style="font-size:13px;font-weight:700;max-width:140px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(formatName(homeName))}</div>
+          ${buildAccoladeHtml(homeAccolades)}
         </div>
-        <div style="flex-shrink:0;">
+        <div style="flex-shrink:0;padding-top:30px;">
           <div style="font-size:18px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:2px;">VS</div>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;">
           <div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">${awayLogoHtml}</div>
-          <div style="font-size:13px;font-weight:700;max-width:130px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(awayName)}</div>
+          <div style="font-size:13px;font-weight:700;max-width:140px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(formatName(awayName))}</div>
+          ${buildAccoladeHtml(awayAccolades)}
         </div>
       </div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:0 auto 16px;"></div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:rgba(255,255,255,0.75);">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:0 auto 10px;"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:rgba(255,255,255,0.75);">
         <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;">
           ${dateStr ? `<span>📅 ${this.escapeHtml(dateStr)}</span>` : ''}
           ${timeStr ? `<span>⏰ ${this.escapeHtml(timeStr)}</span>` : ''}
@@ -802,11 +860,11 @@ class SocialPostCard {
     }
     // Full-size standalone logo + conference text for game_day / post_game
     return `
-      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:16px;gap:6px;">
-        <div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:#ffffff;border-radius:12px;border:1px solid rgba(255,255,255,0.18);">
-          <img src="${logoSrc}" style="max-width:56px;max-height:60px;object-fit:contain;" />
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:8px;gap:4px;">
+        <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:#ffffff;border-radius:10px;border:1px solid rgba(255,255,255,0.18);">
+          <img src="${logoSrc}" style="max-width:42px;max-height:46px;object-fit:contain;" />
         </div>
-        <span style="font-size:12px;font-weight:700;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${this.escapeHtml(league)}</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${this.escapeHtml(league)}</span>
       </div>
     `;
   }
@@ -836,6 +894,20 @@ class SocialPostCard {
       if (w !== w.toLowerCase() && w !== w.toUpperCase()) return w;  // McAnally, DeJong
       return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
     });
+  }
+
+  getGameDayLabel(rawDate) {
+    if (!rawDate) return 'MATCH PREVIEW';
+    const match = new Date(rawDate);
+    if (isNaN(match)) return 'MATCH PREVIEW';
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const matchDay = new Date(match.getFullYear(), match.getMonth(), match.getDate());
+    const diffDays = Math.round((matchDay - today) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'GAME DAY';
+    if (diffDays === 1) return 'TOMORROW';
+    const dayName = match.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+    return `THIS ${dayName}`;
   }
 
   buildImageRoster() {

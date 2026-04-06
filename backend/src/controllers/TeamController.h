@@ -18,6 +18,7 @@ private:
     Response handleGetDivisionStandings(const Request& request);
     Response handleUpdateRosterMember(const Request& request);
     Response handleRemoveRosterMember(const Request& request);
+    Response handleGetTeamAccolades(const Request& request);
     
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);

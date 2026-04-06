@@ -364,6 +364,39 @@ std::string Team::getRosterStatuses() {
     return json.str();
 }
 
+std::string Team::getTeamAccolades(const std::string& team_id) {
+    std::ostringstream json;
+    json << "[";
+    
+    try {
+        std::string sql = 
+            "SELECT id, accolade, accolade_type, sort_order "
+            "FROM team_accolades "
+            "WHERE team_id = $1 AND active = true "
+            "ORDER BY sort_order";
+        
+        pqxx::result result = executeQuery(sql, {team_id});
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            json << "{";
+            json << "\"id\":" << row["id"].as<int>() << ",";
+            json << "\"accolade\":\"" << escapeJSON(row["accolade"].as<std::string>()) << "\",";
+            json << "\"type\":\"" << row["accolade_type"].as<std::string>() << "\",";
+            json << "\"sortOrder\":" << row["sort_order"].as<int>();
+            json << "}";
+            first = false;
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ getTeamAccolades error: " << e.what() << std::endl;
+    }
+    
+    json << "]";
+    return json.str();
+}
+
 bool Team::updateRosterMember(const std::string& team_id, const std::string& player_id,
                               const std::string& jersey_number, bool is_captain, bool is_vice_captain,
                               const std::string& roster_status_id,

@@ -37,6 +37,11 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
     router.del(prefix + "/:teamId/roster/:playerId", [this](const Request& request) {
         return this->handleRemoveRosterMember(request);
     });
+    
+    // Get team accolades
+    router.get(prefix + "/:teamId/accolades", [this](const Request& request) {
+        return this->handleGetTeamAccolades(request);
+    });
 }
 
 Response TeamController::handleGetRoster(const Request& request) {
@@ -307,4 +312,35 @@ std::string TeamController::createJSONResponse(bool success, const std::string& 
     json << "\"message\":\"" << message << "\"";
     json << "}";
     return json.str();
+}
+
+Response TeamController::handleGetTeamAccolades(const Request& request) {
+    try {
+        // Extract team ID from path like "/api/teams/35/accolades"
+        std::regex id_regex(R"(/api/teams/([^/]+)/accolades)");
+        std::smatch match;
+        std::string path = request.getPath();
+        
+        if (!std::regex_search(path, match, id_regex) || match[1].str().empty()) {
+            std::string json = createJSONResponse(false, "Invalid team ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::string team_id = match[1].str();
+        std::string accolades_json = team_model_->getTeamAccolades(team_id);
+        
+        std::ostringstream json;
+        json << "{";
+        json << "\"success\":true,";
+        json << "\"message\":\"Team accolades retrieved successfully\",";
+        json << "\"data\":" << accolades_json;
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleGetTeamAccolades error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve team accolades");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
 }

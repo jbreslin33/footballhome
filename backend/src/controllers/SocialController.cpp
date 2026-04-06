@@ -339,6 +339,8 @@ Response SocialController::handleGetTeamCalendar(const Request& request) {
             "  m.match_time, "
             "  m.home_score, "
             "  m.away_score, "
+            "  m.home_team_id, "
+            "  m.away_team_id, "
             "  ht.name as home_team_name, "
             "  ht.logo_url as home_team_logo, "
             "  at2.name as away_team_name, "
@@ -384,6 +386,8 @@ Response SocialController::handleGetTeamCalendar(const Request& request) {
             json << "\"match_time\":" << (row["match_time"].is_null() ? "null" : "\"" + std::string(row["match_time"].c_str()) + "\"") << ",";
             json << "\"home_score\":" << (row["home_score"].is_null() ? "null" : std::to_string(row["home_score"].as<int>())) << ",";
             json << "\"away_score\":" << (row["away_score"].is_null() ? "null" : std::to_string(row["away_score"].as<int>())) << ",";
+            json << "\"home_team_id\":" << row["home_team_id"].as<int>() << ",";
+            json << "\"away_team_id\":" << row["away_team_id"].as<int>() << ",";
             json << "\"home_team_name\":" << (row["home_team_name"].is_null() ? "null" : "\"" + escapeJson(row["home_team_name"].c_str()) + "\"") << ",";
             json << "\"home_team_logo\":" << (row["home_team_logo"].is_null() ? "null" : "\"" + escapeJson(row["home_team_logo"].c_str()) + "\"") << ",";
             json << "\"away_team_name\":" << (row["away_team_name"].is_null() ? "null" : "\"" + escapeJson(row["away_team_name"].c_str()) + "\"") << ",";

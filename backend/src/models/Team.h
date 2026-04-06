@@ -22,6 +22,7 @@ public:
     std::string getTeamRoster(const std::string& team_id);
     std::string getDivisionStandings(const std::string& team_id);
     std::string getRosterStatuses();
+    std::string getTeamAccolades(const std::string& team_id);
     bool updateRosterMember(const std::string& team_id, const std::string& player_id, 
                             const std::string& jersey_number, bool is_captain, bool is_vice_captain,
                             const std::string& roster_status_id = "",
