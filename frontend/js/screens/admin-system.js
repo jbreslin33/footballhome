@@ -33,6 +33,7 @@ class AdminSystemScreen extends Screen {
           <button class="admin-tab" data-view="clubs">🏢 Clubs</button>
           <button class="admin-tab" data-view="holiday-posts">🎉 Holiday Posts</button>
           <button class="admin-tab" data-view="promo-posts">📢 Promo Posts</button>
+          <button class="admin-tab" data-view="content-posts">📷 Content Posts</button>
         </div>
         
         <!-- Content Area -->
@@ -131,6 +132,9 @@ class AdminSystemScreen extends Screen {
           return;
         case 'promo-posts':
           this.navigation.goTo('promo-posts');
+          return;
+        case 'content-posts':
+          this.navigation.goTo('content-posts');
           return;
         default:
           content.innerHTML = '<div class="error-message">View not found</div>';

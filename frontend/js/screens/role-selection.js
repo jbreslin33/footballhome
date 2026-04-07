@@ -38,7 +38,15 @@ class RoleSelectionScreen extends Screen {
           <span style="font-size: 2rem;">👨‍💼</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Admin</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Manage clubs & teams</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">System administration</div>
+          </div>
+        </button>
+        
+        <button class="btn btn-lg btn-primary" data-role="club-admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏢</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Club Admin</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Social media, events & club management</div>
           </div>
         </button>
         
@@ -91,12 +99,23 @@ class RoleSelectionScreen extends Screen {
     if (role === 'admin') {
       // Admin role - go directly to level selection
       this.navigation.goTo('admin-level-selection');
+    } else if (role === 'club-admin') {
+      // Club Admin - fetch user's club and go to club admin dashboard
+      this.loadClubAdmin();
     } else if (role === 'coach' || role === 'player') {
       // Coach/Player - go to context selection to pick team
       this.navigation.goTo('context-selection', { role: role });
     } else {
       this.handleError(new Error('Unknown role: ' + role), 'role-selection');
     }
+  }
+  
+  async loadClubAdmin() {
+    // Go directly to club admin for Lighthouse
+    this.navigation.goTo('admin-club', {
+      clubId: 134,
+      clubName: 'Lighthouse 1893 SC'
+    });
   }
   
   handleLogout() {

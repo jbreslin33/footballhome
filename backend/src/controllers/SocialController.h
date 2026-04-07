@@ -51,6 +51,13 @@ private:
     Response handlePublishPromoPost(const Request& request);
     std::string extractPromoIdFromPath(const std::string& path);
 
+    // Content posts (user-uploaded media)
+    Response handleGetContentPosts(const Request& request);
+    Response handleSaveContentPost(const Request& request);
+    Response handleUploadContentMedia(const Request& request);
+    Response handlePublishContentPost(const Request& request);
+    std::string extractContentIdFromPath(const std::string& path);
+
     // Instagram Graph API helpers
     std::string httpPost(const std::string& url, const std::string& postData);
     std::string httpGet(const std::string& url);

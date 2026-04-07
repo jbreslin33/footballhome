@@ -50,7 +50,8 @@ class App {
       matchSocial: new MatchSocialScreen(this.navigation, this.auth),
       socialSchedule: new SocialScheduleScreen(this.navigation, this.auth),
       holidayPosts: new HolidayPostsScreen(this.navigation, this.auth),
-      promoPosts: new PromotionalPostsScreen(this.navigation, this.auth)
+      promoPosts: new PromotionalPostsScreen(this.navigation, this.auth),
+      contentPosts: new ContentPostsScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
@@ -100,6 +101,7 @@ class App {
     this.screenManager.register('social-schedule', this.screens.socialSchedule);
     this.screenManager.register('holiday-posts', this.screens.holidayPosts);
     this.screenManager.register('promo-posts', this.screens.promoPosts);
+    this.screenManager.register('content-posts', this.screens.contentPosts);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }
