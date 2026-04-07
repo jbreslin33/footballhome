@@ -56,6 +56,7 @@ private:
     Response handleSaveContentPost(const Request& request);
     Response handleUploadContentMedia(const Request& request);
     Response handlePublishContentPost(const Request& request);
+    Response handleDeleteContentPost(const Request& request);
     std::string extractContentIdFromPath(const std::string& path);
 
     // Instagram Graph API helpers

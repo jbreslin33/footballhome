@@ -201,6 +201,11 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     router.post(prefix + "/content/:contentId/publish", [this](const Request& request) {
         return this->handlePublishContentPost(request);
     });
+
+    // DELETE /api/social/content/:contentId - Delete a content post
+    router.del(prefix + "/content/:contentId", [this](const Request& request) {
+        return this->handleDeleteContentPost(request);
+    });
 }
 
 std::string SocialController::escapeJson(const std::string& input) {
@@ -1548,6 +1553,31 @@ Response SocialController::handlePublishPromoPost(const Request& request) {
 }
 
 // ========== Content Posts (User-uploaded media) ==========
+
+Response SocialController::handleDeleteContentPost(const Request& request) {
+    try {
+        std::string contentId = extractContentIdFromPath(request.getPath());
+        if (contentId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing content ID"));
+        }
+
+        // Delete associated files
+        const std::string mediaDir = "/app/images/posts";
+        std::string imgFile = mediaDir + "/content_" + contentId + ".jpg";
+        std::string vidFile = mediaDir + "/content_" + contentId + ".mp4";
+        std::remove(imgFile.c_str());
+        std::remove(vidFile.c_str());
+
+        db_->query("DELETE FROM content_posts WHERE id = " + escapeSql(contentId));
+
+        return Response(HttpStatus::OK,
+            createJSONResponse(true, "Content post deleted"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
 
 std::string SocialController::extractContentIdFromPath(const std::string& path) {
     std::regex re("/api/social/content/([^/]+)");

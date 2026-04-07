@@ -8,7 +8,7 @@ class ContentPostsScreen extends Screen {
     this.currentPreviewUrl = null;
     // Available overlay logos with their display info
     this.overlayOptions = [
-      { key: 'sponsor', label: 'We Love Junk (Sponsor)', icon: '💰', src: '/images/sponsors/welovejunk.png', checked: true },
+      { key: 'sponsor', label: 'We Love Junk (Sponsor)', icon: '💰', src: '/images/sponsors/welovejunk_logo.png', checked: true },
       { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', checked: false },
       { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', checked: false },
       { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', checked: false }
@@ -49,6 +49,11 @@ class ContentPostsScreen extends Screen {
         this.publishPost(parseInt(publishBtn.dataset.id));
         return;
       }
+      const deleteBtn = e.target.closest('.delete-content-btn');
+      if (deleteBtn) {
+        this.deletePost(parseInt(deleteBtn.dataset.id));
+        return;
+      }
     });
     this.loadPosts();
   }
@@ -79,24 +84,30 @@ class ContentPostsScreen extends Screen {
         ? `<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">\u274c ${this.escapeHtml(p.error_message || 'Error')}</span>`
         : '<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">Draft</span>';
 
-      const thumb = p.image_url
-        ? `<img src="${this.escapeHtml(p.image_url)}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">`
-        : '<div style="width:80px;height:80px;background:#e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;">\ud83d\uddbc\ufe0f</div>';
+      const preview = p.image_url
+        ? `<img src="${this.escapeHtml(p.image_url)}" style="max-width:100%;max-height:400px;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">`
+        : p.video_url
+        ? `<video src="${this.escapeHtml(p.video_url)}" controls muted style="max-width:100%;max-height:400px;border-radius:8px;display:block;margin:0 auto;"></video>`
+        : '<div style="padding:40px;text-align:center;background:#e5e7eb;border-radius:8px;opacity:0.5;">No media uploaded</div>';
 
       const formatLabel = { post: '\ud83d\uddbc\ufe0f Post', reel: '\ud83c\udfac Reel', story: '\ud83d\udcf1 Story' }[p.format] || p.format;
+      const overlayInfo = p.overlay_logos ? p.overlay_logos.split(',').join(', ') : (p.include_sponsor ? 'sponsor' : 'none');
 
       return `
-        <div style="display:flex;gap:16px;align-items:center;padding:12px;background:var(--bg-secondary);border-radius:8px;">
-          ${thumb}
-          <div style="flex:1;">
-            <div style="font-weight:600;">${this.escapeHtml(p.title)}</div>
-            <div style="font-size:0.85rem;opacity:0.7;">${formatLabel} \u2022 ${p.overlay_logos ? p.overlay_logos.split(',').join(', ') : (p.include_sponsor ? 'sponsor' : 'none')}</div>
-            ${p.caption ? `<div style="font-size:0.8rem;opacity:0.6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px;">${this.escapeHtml(p.caption)}</div>` : ''}
+        <div style="background:var(--bg-secondary);border-radius:12px;overflow:hidden;margin-bottom:8px;">
+          <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:600;font-size:1.1rem;">${this.escapeHtml(p.title)}</div>
+              <div style="font-size:0.85rem;opacity:0.7;">${formatLabel} \u2022 Logos: ${overlayInfo}</div>
+              ${p.caption ? `<div style="font-size:0.8rem;opacity:0.6;margin-top:4px;">${this.escapeHtml(p.caption)}</div>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${badge}
+              ${!isPosted && p.image_url ? `<button class="btn btn-sm btn-primary publish-content-btn" data-id="${p.id}">\ud83d\ude80 Publish</button>` : ''}
+              <button class="btn btn-sm delete-content-btn" data-id="${p.id}" style="background:#ef4444;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">\ud83d\uddd1\ufe0f Delete</button>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            ${badge}
-            ${!isPosted && p.image_url ? `<button class="btn btn-sm btn-primary publish-content-btn" data-id="${p.id}">\ud83d\ude80 Publish</button>` : ''}
-          </div>
+          <div style="padding:0 16px 16px;">${preview}</div>
         </div>
       `;
     }).join('');
@@ -391,7 +402,6 @@ class ContentPostsScreen extends Screen {
         const logos = [];
         logoSrcs.forEach((src, i) => {
           const logo = new Image();
-          logo.crossOrigin = 'anonymous';
           logo.onload = () => {
             logos[i] = logo;
             loaded++;
@@ -448,6 +458,21 @@ class ContentPostsScreen extends Screen {
         btn.disabled = false;
         btn.textContent = '\ud83d\ude80 Publish';
       }
+    }
+  }
+
+  async deletePost(id) {
+    if (!confirm('Delete this content post?')) return;
+
+    try {
+      const resp = await this.auth.fetch(`/api/social/content/${id}`, {
+        method: 'DELETE'
+      });
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.message);
+      await this.loadPosts();
+    } catch (e) {
+      alert('Delete failed: ' + e.message);
     }
   }
 
