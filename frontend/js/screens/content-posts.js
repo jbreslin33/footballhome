@@ -6,20 +6,33 @@ class ContentPostsScreen extends Screen {
     this.posts = [];
     this.currentFile = null;
     this.currentPreviewUrl = null;
-    // Available overlay logos with their display info
+    // Available overlay logos with their display info and default positions
+    // Positions: tl=top-left, tc=top-center, tr=top-right, bl=bottom-left, bc=bottom-center, br=bottom-right
+    // pos: null means off, a position string means on at that location
+    this.positions = ['tl','tc','tr','bl','bc','br'];
+    this.positionLabels = { tl:'↖', tc:'↑', tr:'↗', bl:'↙', bc:'↓', br:'↘' };
     this.overlayOptions = [
-      { key: 'sponsor', label: 'We Love Junk (Sponsor)', icon: '💰', src: '/images/sponsors/welovejunk_logo.png', checked: true },
-      { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', checked: false },
-      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', checked: false },
-      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', checked: false }
+      { key: 'clubname', label: 'Lighthouse 1893', icon: '🏠', src: null, pos: null },
+      { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk_logo.png', pos: 'tr' },
+      { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
+      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: null },
+      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null }
     ];
   }
 
-  getSelectedOverlays() {
+  getSelectedOverlaysWithPositions() {
     return this.overlayOptions.filter(o => {
-      const cb = this.find(`#overlay-${o.key}`);
-      return cb ? cb.checked : o.checked;
-    }).map(o => o.key);
+      const hidden = this.find(`#pos-${o.key}`);
+      const pos = hidden ? hidden.value : o.pos;
+      return pos && pos !== 'off';
+    }).map(o => {
+      const hidden = this.find(`#pos-${o.key}`);
+      return { key: o.key, pos: hidden ? hidden.value : o.pos };
+    });
+  }
+
+  getSelectedOverlays() {
+    return this.getSelectedOverlaysWithPositions().map(o => o.key);
   }
 
   render() {
@@ -146,17 +159,25 @@ class ContentPostsScreen extends Screen {
         </div>
 
         <div style="margin-bottom:16px;">
-          <label style="display:block;font-weight:600;margin-bottom:8px;">Logo Overlays</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <label style="display:block;font-weight:600;margin-bottom:8px;">Logo Overlays <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— tap a grid cell to place, tap again to remove</span></label>
+          <div style="display:flex;flex-direction:column;gap:8px;">
             ${this.overlayOptions.map(o => `
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
-                <input type="checkbox" id="overlay-${o.key}" ${o.checked ? 'checked' : ''} style="width:18px;height:18px;">
-                <img src="${o.src}" style="height:24px;width:24px;object-fit:contain;border-radius:4px;">
-                <span style="font-size:0.9rem;">${o.label}</span>
-              </label>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                ${o.src ? `<img src="${o.src}" style="height:28px;width:28px;object-fit:contain;border-radius:4px;flex-shrink:0;">` : `<span style="font-size:20px;flex-shrink:0;">${o.icon}</span>`}
+                <span style="font-size:0.9rem;flex:1;">${o.label}</span>
+                <div style="display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(2,22px);gap:2px;flex-shrink:0;">
+                  ${this.positions.map(p => `
+                    <button type="button" class="pos-btn" data-key="${o.key}" data-pos="${p}"
+                      style="width:22px;height:22px;border:1px solid var(--border-color);border-radius:3px;font-size:10px;line-height:22px;text-align:center;cursor:pointer;padding:0;
+                      background:${p === o.pos ? 'var(--accent-color)' : 'var(--bg-secondary)'};color:${p === o.pos ? '#fff' : 'inherit'};">
+                      ${this.positionLabels[p]}
+                    </button>
+                  `).join('')}
+                </div>
+                <input type="hidden" id="pos-${o.key}" value="${o.pos || 'off'}">
+              </div>
             `).join('')}
           </div>
-          <div style="margin-top:4px;font-size:0.8rem;opacity:0.5;">Selected logos appear at the bottom of the image</div>
         </div>
 
         <div style="margin-bottom:16px;">
@@ -184,14 +205,33 @@ class ContentPostsScreen extends Screen {
       fileInput.addEventListener('change', (e) => this.handleFileSelected(e));
     }
 
-    // Wire up overlay checkboxes for live preview update
-    this.overlayOptions.forEach(o => {
-      const cb = this.find(`#overlay-${o.key}`);
-      if (cb) {
-        cb.addEventListener('change', () => {
-          if (this.currentFile) this.updatePreview();
+    // Wire up tic-tac-toe position grid (click = place/move, click active = remove)
+    area.querySelectorAll('.pos-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        const pos = btn.dataset.pos;
+        const hidden = this.find(`#pos-${key}`);
+        if (!hidden) return;
+
+        const current = hidden.value;
+        if (current === pos) {
+          // Clicking active cell = turn off
+          hidden.value = 'off';
+        } else {
+          // Clicking any other cell = place/move there
+          hidden.value = pos;
+        }
+
+        // Update button highlights
+        const newVal = hidden.value;
+        area.querySelectorAll(`.pos-btn[data-key="${key}"]`).forEach(b => {
+          const active = b.dataset.pos === newVal;
+          b.style.background = active ? 'var(--accent-color)' : 'var(--bg-secondary)';
+          b.style.color = active ? '#fff' : 'inherit';
         });
-      }
+
+        if (this.currentFile) this.updatePreview();
+      });
     });
 
     // Wire up save
@@ -231,23 +271,45 @@ class ContentPostsScreen extends Screen {
     this.currentPreviewUrl = URL.createObjectURL(this.currentFile);
 
     const isVideo = this.currentFile.type.startsWith('video/');
-    const selected = this.getSelectedOverlays();
-    const hasOverlays = selected.length > 0;
+    const selectedWithPos = this.getSelectedOverlaysWithPositions();
+    const hasOverlays = selectedWithPos.length > 0;
 
-    // Build overlay HTML showing selected logos
+    // Group selected overlays by position region
     let overlayHtml = '';
     if (hasOverlays) {
-      const logoImgs = selected.map(key => {
-        const opt = this.overlayOptions.find(o => o.key === key);
-        return opt ? `<img src="${opt.src}" style="height:28px;object-fit:contain;" title="${opt.label}">` : '';
-      }).join('');
+      const regionStyles = {
+        tl: 'top:6px;left:6px;',
+        tc: 'top:6px;left:50%;transform:translateX(-50%);',
+        tr: 'top:6px;right:6px;',
+        bl: 'bottom:6px;left:6px;',
+        bc: 'bottom:6px;left:50%;transform:translateX(-50%);',
+        br: 'bottom:6px;right:6px;'
+      };
 
-      overlayHtml = `
-        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 16px;background:linear-gradient(transparent, rgba(0,0,0,0.7));display:flex;align-items:flex-end;justify-content:space-between;">
-          <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893</span>
-          <div style="display:flex;align-items:center;gap:8px;">${logoImgs}</div>
-        </div>
-      `;
+      const regions = {};
+      selectedWithPos.forEach(s => {
+        if (!regions[s.pos]) regions[s.pos] = [];
+        regions[s.pos].push(s.key);
+      });
+
+      for (const [pos, keys] of Object.entries(regions)) {
+        const items = keys.map(key => {
+          if (key === 'clubname') {
+            return '<span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;text-shadow:0 0 4px rgba(0,0,0,0.7);">LIGHTHOUSE 1893</span>';
+          }
+          if (key === 'sponsor') {
+            const opt = this.overlayOptions.find(o => o.key === 'sponsor');
+            return `<div style="display:flex;align-items:center;gap:6px;">
+              <div style="padding:1px 3px;background:rgba(65,105,225,0.9);border-radius:2px;"><span style="font-size:11px;color:#eee;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Sponsored by</span></div>
+              <img src="${opt.src}" style="height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,0,0,0.7));">
+            </div>`;
+          }
+          const opt = this.overlayOptions.find(o => o.key === key);
+          return opt ? `<img src="${opt.src}" style="height:28px;object-fit:contain;filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));" title="${opt.label}">` : '';
+        }).join('');
+
+        overlayHtml += `<div style="position:absolute;${regionStyles[pos]}display:flex;align-items:center;gap:6px;">${items}</div>`;
+      }
     }
 
     if (isVideo) {
@@ -268,7 +330,8 @@ class ContentPostsScreen extends Screen {
     const format = this.find('#content-format')?.value || 'post';
     const caption = (this.find('#content-caption')?.value || '').trim();
     const selectedOverlays = this.getSelectedOverlays();
-    const overlayLogos = selectedOverlays.join(',');
+    const selectedWithPos = this.getSelectedOverlaysWithPositions();
+    const overlayLogos = selectedWithPos.map(s => `${s.key}:${s.pos}`).join(',');
 
     if (!title) {
       alert('Please enter a title.');
@@ -316,7 +379,7 @@ class ContentPostsScreen extends Screen {
       } else {
         // For images: render with canvas to add logo overlays
         if (saveBtn) saveBtn.textContent = '\u23f3 Generating image...';
-        const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, selectedOverlays);
+        const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, selectedWithPos);
         const uploadResp = await this.auth.fetch(`/api/social/content/${postId}/media`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -350,7 +413,7 @@ class ContentPostsScreen extends Screen {
     });
   }
 
-  renderImageWithOverlay(file, overlayKeys) {
+  renderImageWithOverlay(file, overlaysWithPos) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -358,76 +421,157 @@ class ContentPostsScreen extends Screen {
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
-
-        // Draw original image
         ctx.drawImage(img, 0, 0);
 
-        if (overlayKeys.length === 0) {
+        if (overlaysWithPos.length === 0) {
           resolve(canvas.toDataURL('image/jpeg', 0.92));
           return;
         }
 
         const w = canvas.width;
         const h = canvas.height;
-        const barH = Math.max(60, h * 0.08);
+        const margin = w * 0.02;
 
-        // Semi-transparent gradient bar at bottom
-        const grad = ctx.createLinearGradient(0, h - barH * 2, 0, h);
-        grad.addColorStop(0, 'rgba(0,0,0,0)');
-        grad.addColorStop(0.5, 'rgba(0,0,0,0.5)');
-        grad.addColorStop(1, 'rgba(0,0,0,0.7)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, h - barH * 2, w, barH * 2);
+        // Group by position
+        const regions = {};
+        overlaysWithPos.forEach(s => {
+          if (!regions[s.pos]) regions[s.pos] = [];
+          regions[s.pos].push(s.key);
+        });
 
-        // Club name - bottom left
-        const fontSize = Math.max(12, Math.round(w * 0.025));
-        ctx.font = `700 ${fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
-        ctx.fillStyle = '#f5d442';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText('LIGHTHOUSE 1893', w * 0.03, h - barH * 0.35);
+        // Collect images to load (all non-clubname overlays that have src)
+        const toLoad = [];
+        overlaysWithPos.forEach(s => {
+          if (s.key === 'clubname') return;
+          const opt = this.overlayOptions.find(o => o.key === s.key);
+          if (opt && opt.src) toLoad.push({ key: s.key, src: opt.src, pos: s.pos });
+        });
 
-        // Load all selected logo images, then draw them right-aligned
-        const logoSrcs = overlayKeys.map(key => {
-          const opt = this.overlayOptions.find(o => o.key === key);
-          return opt ? opt.src : null;
-        }).filter(Boolean);
+        const drawAll = (loadedImages) => {
+          // For each region, render grouped items
+          for (const [pos, keys] of Object.entries(regions)) {
+            // Calculate anchor point
+            let anchorX, anchorY, alignH, alignV;
+            if (pos.startsWith('t')) anchorY = margin, alignV = 'top';
+            else if (pos.startsWith('b')) anchorY = h - margin, alignV = 'bottom';
+            if (pos.endsWith('l')) anchorX = margin, alignH = 'left';
+            else if (pos.endsWith('c')) anchorX = w / 2, alignH = 'center';
+            else if (pos.endsWith('r')) anchorX = w - margin, alignH = 'right';
 
-        if (logoSrcs.length === 0) {
+            // Measure all items in this region to lay them out
+            const items = [];
+            const logoH = Math.max(40, h * 0.065);
+            const fontSize = Math.max(14, Math.round(w * 0.028));
+            const smallFont = Math.max(12, Math.round(w * 0.022));
+            const gap = w * 0.015;
+
+            keys.forEach(key => {
+              if (key === 'clubname') {
+                ctx.font = `700 ${fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+                const tw = ctx.measureText('LIGHTHOUSE 1893').width;
+                items.push({ type: 'clubname', w: tw, h: fontSize });
+              } else if (key === 'sponsor') {
+                const limg = loadedImages[key];
+                const sH = Math.max(50, h * 0.08);
+                const sW = limg ? sH * (limg.width / limg.height) : 0;
+                ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+                const pillW = ctx.measureText('Sponsored by').width + 6;
+                items.push({ type: 'sponsor', w: pillW + gap * 0.5 + sW, h: sH, imgW: sW, imgH: sH, pillW, img: limg });
+              } else {
+                const limg = loadedImages[key];
+                if (limg) {
+                  const lw = logoH * (limg.width / limg.height);
+                  items.push({ type: 'logo', w: lw, h: logoH, img: limg, key });
+                }
+              }
+            });
+
+            // Total width of all items + gaps
+            const totalW = items.reduce((sum, it) => sum + it.w, 0) + Math.max(0, items.length - 1) * gap;
+            const maxH = Math.max(...items.map(it => it.h));
+
+            // Starting x based on alignment
+            let startX;
+            if (alignH === 'left') startX = anchorX;
+            else if (alignH === 'center') startX = anchorX - totalW / 2;
+            else startX = anchorX - totalW;
+
+            let curX = startX;
+
+            items.forEach(item => {
+              // Y position
+              let itemY;
+              if (alignV === 'top') itemY = anchorY;
+              else itemY = anchorY - maxH;
+
+              if (item.type === 'clubname') {
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 6;
+                ctx.font = `700 ${fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+                ctx.fillStyle = '#f5d442';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText('LIGHTHOUSE 1893', curX, itemY + (maxH - item.h) / 2);
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+              } else if (item.type === 'sponsor') {
+                const midY = itemY + maxH / 2;
+                // Text pill
+                const pillH = smallFont + 4;
+                ctx.fillStyle = 'rgba(65,105,225,0.9)';
+                ctx.beginPath();
+                ctx.roundRect(curX, midY - pillH / 2, item.pillW, pillH, 2);
+                ctx.fill();
+                ctx.fillStyle = '#eeeeee';
+                ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Sponsored by', curX + item.pillW / 2, midY);
+                // Logo
+                if (item.img) {
+                  const lx = curX + item.pillW + gap * 0.5;
+                  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                  ctx.shadowBlur = Math.max(4, w * 0.005);
+                  ctx.drawImage(item.img, lx, midY - item.imgH / 2, item.imgW, item.imgH);
+                  ctx.shadowColor = 'transparent';
+                  ctx.shadowBlur = 0;
+                }
+              } else {
+                // League logo
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 4;
+                ctx.drawImage(item.img, curX, itemY + (maxH - item.h) / 2, item.w, item.h);
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+              }
+
+              curX += item.w + gap;
+            });
+          }
+
           resolve(canvas.toDataURL('image/jpeg', 0.92));
+        };
+
+        // Load all images, then draw
+        if (toLoad.length === 0) {
+          drawAll({});
           return;
         }
 
-        let loaded = 0;
-        const logos = [];
-        logoSrcs.forEach((src, i) => {
+        let loadCount = 0;
+        const loadedImages = {};
+        toLoad.forEach(item => {
           const logo = new Image();
           logo.onload = () => {
-            logos[i] = logo;
-            loaded++;
-            if (loaded === logoSrcs.length) {
-              // Draw all logos from right to left
-              const logoH = barH * 0.7;
-              let xPos = w * 0.97;
-              for (let j = logos.length - 1; j >= 0; j--) {
-                if (!logos[j]) continue;
-                const logoW = logoH * (logos[j].width / logos[j].height);
-                xPos -= logoW;
-                const logoY = h - barH * 0.35 - logoH + fontSize * 0.15;
-                ctx.drawImage(logos[j], xPos, logoY, logoW, logoH);
-                xPos -= w * 0.02; // gap between logos
-              }
-              resolve(canvas.toDataURL('image/jpeg', 0.92));
-            }
+            loadedImages[item.key] = logo;
+            loadCount++;
+            if (loadCount === toLoad.length) drawAll(loadedImages);
           };
           logo.onerror = () => {
-            logos[i] = null;
-            loaded++;
-            if (loaded === logoSrcs.length) {
-              resolve(canvas.toDataURL('image/jpeg', 0.92));
-            }
+            loadCount++;
+            if (loadCount === toLoad.length) drawAll(loadedImages);
           };
-          logo.src = src;
+          logo.src = item.src;
         });
       };
       img.onerror = reject;
