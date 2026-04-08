@@ -4,6 +4,8 @@
 #include <curl/curl.h>
 #include <memory>
 #include <regex>
+#include <atomic>
+#include <thread>
 
 class SocialController : public Controller {
 private:
@@ -16,7 +18,12 @@ private:
 
 public:
     SocialController();
+    ~SocialController();
     void registerRoutes(Router& router, const std::string& prefix) override;
+
+    // Scheduler for auto-publishing scheduled promo posts
+    void startScheduler();
+    void stopScheduler();
 
 private:
     // Post types
@@ -50,6 +57,7 @@ private:
     Response handleUploadPromoMedia(const Request& request);
     Response handlePublishPromoPost(const Request& request);
     std::string extractPromoIdFromPath(const std::string& path);
+    bool publishPromoById(const std::string& promoId, std::string& errorOut);
 
     // Content posts (user-uploaded media)
     Response handleGetContentPosts(const Request& request);
@@ -63,6 +71,12 @@ private:
     std::string httpPost(const std::string& url, const std::string& postData);
     std::string httpGet(const std::string& url);
     std::string urlEncode(CURL* curl, const std::string& value);
+
+    // Scheduler internals
+    std::atomic<bool> schedulerRunning_{false};
+    std::thread schedulerThread_;
+    void schedulerLoop();
+    void checkScheduledPosts();
 
     // Utility
     std::string escapeJson(const std::string& input);

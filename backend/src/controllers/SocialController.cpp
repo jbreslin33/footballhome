@@ -40,6 +40,58 @@ SocialController::SocialController() {
     db_ = Database::getInstance();
 }
 
+SocialController::~SocialController() {
+    stopScheduler();
+}
+
+void SocialController::startScheduler() {
+    if (schedulerRunning_) return;
+    schedulerRunning_ = true;
+    schedulerThread_ = std::thread(&SocialController::schedulerLoop, this);
+    schedulerThread_.detach();
+    std::cout << "⏰ Social post scheduler started (checks every 60s)" << std::endl;
+}
+
+void SocialController::stopScheduler() {
+    schedulerRunning_ = false;
+}
+
+void SocialController::schedulerLoop() {
+    while (schedulerRunning_) {
+        try {
+            checkScheduledPosts();
+        } catch (const std::exception& e) {
+            std::cerr << "⏰ Scheduler error: " << e.what() << std::endl;
+        }
+        // Sleep 60 seconds, checking every second so we can stop quickly
+        for (int i = 0; i < 60 && schedulerRunning_; i++) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
+}
+
+void SocialController::checkScheduledPosts() {
+    // Find promo posts that are due for publishing
+    pqxx::result rows = db_->query(
+        "SELECT id FROM promotional_posts "
+        "WHERE status = 'scheduled' AND scheduled_at <= NOW() "
+        "AND image_url IS NOT NULL "
+        "ORDER BY scheduled_at ASC"
+    );
+
+    for (const auto& row : rows) {
+        std::string promoId = std::to_string(row["id"].as<int>());
+        std::cout << "⏰ Auto-publishing scheduled promo #" << promoId << std::endl;
+        std::string errorMsg;
+        bool ok = publishPromoById(promoId, errorMsg);
+        if (ok) {
+            std::cout << "⏰ ✅ Promo #" << promoId << " auto-published successfully" << std::endl;
+        } else {
+            std::cerr << "⏰ ❌ Promo #" << promoId << " auto-publish failed: " << errorMsg << std::endl;
+        }
+    }
+}
+
 // ---------- Path Parameter Extraction ----------
 
 std::string SocialController::extractMatchIdFromPath(const std::string& path) {
@@ -1288,6 +1340,7 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
         pqxx::result result = db_->query(
             "SELECT id, title, caption, image_path, image_url, "
             "status, scheduled_at, posted_at, external_media_id, error_message, "
+            "heading, subheading, body_lines, footer, "
             "created_at, updated_at "
             "FROM promotional_posts ORDER BY created_at DESC"
         );
@@ -1308,7 +1361,11 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
             json << "\"scheduled_at\":" << (row["scheduled_at"].is_null() ? "null" : "\"" + std::string(row["scheduled_at"].c_str()) + "\"") << ",";
             json << "\"posted_at\":" << (row["posted_at"].is_null() ? "null" : "\"" + std::string(row["posted_at"].c_str()) + "\"") << ",";
             json << "\"external_media_id\":" << (row["external_media_id"].is_null() ? "null" : "\"" + escapeJson(row["external_media_id"].c_str()) + "\"") << ",";
-            json << "\"error_message\":" << (row["error_message"].is_null() ? "null" : "\"" + escapeJson(row["error_message"].c_str()) + "\"");
+            json << "\"error_message\":" << (row["error_message"].is_null() ? "null" : "\"" + escapeJson(row["error_message"].c_str()) + "\"") << ",";
+            json << "\"heading\":" << (row["heading"].is_null() ? "null" : "\"" + escapeJson(row["heading"].c_str()) + "\"") << ",";
+            json << "\"subheading\":" << (row["subheading"].is_null() ? "null" : "\"" + escapeJson(row["subheading"].c_str()) + "\"") << ",";
+            json << "\"body_lines\":" << (row["body_lines"].is_null() ? "null" : "\"" + escapeJson(row["body_lines"].c_str()) + "\"") << ",";
+            json << "\"footer\":" << (row["footer"].is_null() ? "null" : "\"" + escapeJson(row["footer"].c_str()) + "\"");
             json << "}";
         }
         json << "]";
@@ -1328,6 +1385,10 @@ Response SocialController::handleSavePromoPost(const Request& request) {
         std::string status = extractJsonField(body, "status");
         std::string scheduledAt = extractJsonField(body, "scheduled_at");
         std::string id = extractJsonField(body, "id");
+        std::string heading = extractJsonField(body, "heading");
+        std::string subheading = extractJsonField(body, "subheading");
+        std::string bodyLines = extractJsonField(body, "body_lines");
+        std::string footer = extractJsonField(body, "footer");
 
         if (title.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -1343,14 +1404,22 @@ Response SocialController::handleSavePromoPost(const Request& request) {
                 "caption = " + (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + ", "
                 "status = '" + escapeSql(status) + "', "
                 "scheduled_at = " + (scheduledAt.empty() ? "NULL" : "'" + escapeSql(scheduledAt) + "'") + ", "
+                "heading = " + (heading.empty() ? "NULL" : "'" + escapeSql(heading) + "'") + ", "
+                "subheading = " + (subheading.empty() ? "NULL" : "'" + escapeSql(subheading) + "'") + ", "
+                "body_lines = " + (bodyLines.empty() ? "NULL" : "'" + escapeSql(bodyLines) + "'") + ", "
+                "footer = " + (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") + ", "
                 "updated_at = NOW() "
                 "WHERE id = " + escapeSql(id) + " RETURNING id";
         } else {
-            query = "INSERT INTO promotional_posts (title, caption, status, scheduled_at) "
+            query = "INSERT INTO promotional_posts (title, caption, status, scheduled_at, heading, subheading, body_lines, footer) "
                 "VALUES ('" + escapeSql(title) + "', " +
                 (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + ", '" +
                 escapeSql(status) + "', " +
-                (scheduledAt.empty() ? "NULL" : "'" + escapeSql(scheduledAt) + "'") +
+                (scheduledAt.empty() ? "NULL" : "'" + escapeSql(scheduledAt) + "'") + ", " +
+                (heading.empty() ? "NULL" : "'" + escapeSql(heading) + "'") + ", " +
+                (subheading.empty() ? "NULL" : "'" + escapeSql(subheading) + "'") + ", " +
+                (bodyLines.empty() ? "NULL" : "'" + escapeSql(bodyLines) + "'") + ", " +
+                (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") +
                 ") RETURNING id";
         }
 
@@ -1446,110 +1515,118 @@ Response SocialController::handlePublishPromoPost(const Request& request) {
                 createJSONResponse(false, "Missing promo ID"));
         }
 
-        pqxx::result result = db_->query(
-            "SELECT * FROM promotional_posts WHERE id = " + promoId
-        );
-
-        if (result.empty()) {
-            return Response(HttpStatus::NOT_FOUND,
-                createJSONResponse(false, "Promotional post not found"));
-        }
-
-        const auto& row = result[0];
-        std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
-        std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
-
-        if (imageUrl.empty()) {
-            return Response(HttpStatus::BAD_REQUEST,
-                createJSONResponse(false, "No image uploaded. Upload media first."));
-        }
-
-        const char* accessToken = std::getenv("INSTAGRAM_ACCESS_TOKEN");
-        const char* userId = std::getenv("INSTAGRAM_USER_ID");
-        if (!accessToken || std::string(accessToken).empty()) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, "INSTAGRAM_ACCESS_TOKEN not configured"));
-        }
-        std::string igUserId = userId ? std::string(userId) : "26233831926285183";
-        std::string igToken(accessToken);
-        std::string apiBase = "https://graph.instagram.com/v21.0";
-
-        db_->query(
-            "UPDATE promotional_posts SET status = 'publishing', updated_at = NOW() "
-            "WHERE id = " + promoId
-        );
-
-        CURL* encoderCurl = curl_easy_init();
-        std::string createUrl = apiBase + "/" + igUserId + "/media";
-        std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-            "&caption=" + urlEncode(encoderCurl, caption) +
-            "&access_token=" + urlEncode(encoderCurl, igToken);
-        curl_easy_cleanup(encoderCurl);
-
-        std::cout << "📤 Instagram: Creating media container for promo " << promoId << std::endl;
-        std::string createResponse = httpPost(createUrl, createData);
-        std::cout << "📤 Instagram create response: " << createResponse << std::endl;
-
-        std::string creationId = extractJsonField(createResponse, "id");
-        if (creationId.empty()) {
-            std::string errorMsg = extractJsonField(createResponse, "message");
-            if (errorMsg.empty()) errorMsg = "Failed to create media container";
-            db_->query(
-                "UPDATE promotional_posts SET status = 'error', error_message = '" +
-                escapeSql(errorMsg) + "', updated_at = NOW() WHERE id = " + promoId
-            );
+        std::string errorMsg;
+        bool ok = publishPromoById(promoId, errorMsg);
+        if (!ok) {
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, errorMsg));
         }
-
-        std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
-        for (int attempt = 0; attempt < 10; attempt++) {
-            std::this_thread::sleep_for(std::chrono::seconds(3));
-            std::string statusResp = httpGet(statusUrl);
-            std::string statusCode = extractJsonField(statusResp, "status_code");
-            std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "): " << statusCode << std::endl;
-            if (statusCode == "FINISHED") break;
-            if (statusCode == "ERROR") {
-                db_->query("UPDATE promotional_posts SET status = 'error', error_message = 'Instagram media processing failed', updated_at = NOW() WHERE id = " + promoId);
-                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Instagram media processing failed"));
-            }
-        }
-
-        std::string publishUrl = apiBase + "/" + igUserId + "/media_publish";
-        std::string publishData = "creation_id=" + creationId +
-            "&access_token=" + igToken;
-
-        std::cout << "📤 Instagram: Publishing promo container " << creationId << std::endl;
-        std::string publishResponse = httpPost(publishUrl, publishData);
-        std::cout << "📤 Instagram publish response: " << publishResponse << std::endl;
-
-        std::string mediaId = extractJsonField(publishResponse, "id");
-        if (mediaId.empty()) {
-            std::string errorMsg = extractJsonField(publishResponse, "message");
-            if (errorMsg.empty()) errorMsg = "Failed to publish to Instagram";
-            db_->query(
-                "UPDATE promotional_posts SET status = 'error', error_message = '" +
-                escapeSql(errorMsg) + "', updated_at = NOW() WHERE id = " + promoId
-            );
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, errorMsg));
-        }
-
-        db_->query(
-            "UPDATE promotional_posts SET status = 'posted', external_media_id = '" +
-            escapeSql(mediaId) + "', posted_at = NOW(), error_message = NULL, "
-            "updated_at = NOW() WHERE id = " + promoId
-        );
-
-        std::cout << "✅ Instagram: Promo " << promoId << " published! Media ID: " << mediaId << std::endl;
 
         return Response(HttpStatus::OK,
-            createJSONResponse(true, "Posted to Instagram!",
-                "{\"media_id\":\"" + escapeJson(mediaId) + "\"}"));
+            createJSONResponse(true, "Posted to Instagram!"));
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));
     }
+}
+
+bool SocialController::publishPromoById(const std::string& promoId, std::string& errorOut) {
+    pqxx::result result = db_->query(
+        "SELECT * FROM promotional_posts WHERE id = " + escapeSql(promoId)
+    );
+
+    if (result.empty()) {
+        errorOut = "Promotional post not found";
+        return false;
+    }
+
+    const auto& row = result[0];
+    std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
+    std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
+
+    if (imageUrl.empty()) {
+        errorOut = "No image uploaded. Upload media first.";
+        return false;
+    }
+
+    const char* accessToken = std::getenv("INSTAGRAM_ACCESS_TOKEN");
+    const char* userId = std::getenv("INSTAGRAM_USER_ID");
+    if (!accessToken || std::string(accessToken).empty()) {
+        errorOut = "INSTAGRAM_ACCESS_TOKEN not configured";
+        return false;
+    }
+    std::string igUserId = userId ? std::string(userId) : "26233831926285183";
+    std::string igToken(accessToken);
+    std::string apiBase = "https://graph.instagram.com/v21.0";
+
+    db_->query(
+        "UPDATE promotional_posts SET status = 'publishing', updated_at = NOW() "
+        "WHERE id = " + escapeSql(promoId)
+    );
+
+    CURL* encoderCurl = curl_easy_init();
+    std::string createUrl = apiBase + "/" + igUserId + "/media";
+    std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
+        "&caption=" + urlEncode(encoderCurl, caption) +
+        "&access_token=" + urlEncode(encoderCurl, igToken);
+    curl_easy_cleanup(encoderCurl);
+
+    std::cout << "📤 Instagram: Creating media container for promo " << promoId << std::endl;
+    std::string createResponse = httpPost(createUrl, createData);
+    std::cout << "📤 Instagram create response: " << createResponse << std::endl;
+
+    std::string creationId = extractJsonField(createResponse, "id");
+    if (creationId.empty()) {
+        errorOut = extractJsonField(createResponse, "message");
+        if (errorOut.empty()) errorOut = "Failed to create media container";
+        db_->query(
+            "UPDATE promotional_posts SET status = 'error', error_message = '" +
+            escapeSql(errorOut) + "', updated_at = NOW() WHERE id = " + escapeSql(promoId)
+        );
+        return false;
+    }
+
+    std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
+    for (int attempt = 0; attempt < 10; attempt++) {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::string statusResp = httpGet(statusUrl);
+        std::string statusCode = extractJsonField(statusResp, "status_code");
+        std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "): " << statusCode << std::endl;
+        if (statusCode == "FINISHED") break;
+        if (statusCode == "ERROR") {
+            errorOut = "Instagram media processing failed";
+            db_->query("UPDATE promotional_posts SET status = 'error', error_message = 'Instagram media processing failed', updated_at = NOW() WHERE id = " + escapeSql(promoId));
+            return false;
+        }
+    }
+
+    std::string publishUrl = apiBase + "/" + igUserId + "/media_publish";
+    std::string publishData = "creation_id=" + creationId +
+        "&access_token=" + igToken;
+
+    std::cout << "📤 Instagram: Publishing promo container " << creationId << std::endl;
+    std::string publishResponse = httpPost(publishUrl, publishData);
+    std::cout << "📤 Instagram publish response: " << publishResponse << std::endl;
+
+    std::string mediaId = extractJsonField(publishResponse, "id");
+    if (mediaId.empty()) {
+        errorOut = extractJsonField(publishResponse, "message");
+        if (errorOut.empty()) errorOut = "Failed to publish to Instagram";
+        db_->query(
+            "UPDATE promotional_posts SET status = 'error', error_message = '" +
+            escapeSql(errorOut) + "', updated_at = NOW() WHERE id = " + escapeSql(promoId)
+        );
+        return false;
+    }
+
+    db_->query(
+        "UPDATE promotional_posts SET status = 'posted', external_media_id = '" +
+        escapeSql(mediaId) + "', posted_at = NOW(), error_message = NULL, "
+        "updated_at = NOW() WHERE id = " + escapeSql(promoId)
+    );
+
+    std::cout << "✅ Instagram: Promo " << promoId << " published! Media ID: " << mediaId << std::endl;
+    return true;
 }
 
 // ========== Content Posts (User-uploaded media) ==========

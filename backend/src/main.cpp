@@ -98,6 +98,9 @@ public:
         // Setup routes
         setupRoutes();
         
+        // Start background schedulers
+        social_controller_->startScheduler();
+        
         // Create socket
         if (!createSocket()) {
             return false;

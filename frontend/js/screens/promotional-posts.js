@@ -2,25 +2,21 @@
 class PromotionalPostsScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
-    this.dbPosts = {};       // keyed by id
+    this.posts = [];         // array from DB
     this.imageDataUrls = {};
+    this.editing = null;     // post object being edited/created, or null
+    this.loadLogos();
   }
 
-  getPromos() {
-    return [
-      {
-        title: 'Travel Team Registration',
-        heading: 'SPOTS AVAILABLE',
-        subheading: 'Travel Teams 2026-27',
-        bodyLines: [
-          'U13 Boys & Girls',
-          'U15 Boys & Girls',
-          'U19 Boys & Girls',
-        ],
-        footer: 'Inter County Soccer League',
-        caption: "A few spots remaining for U13, U15 & U19 Boys & Girls Lighthouse Travel teams.\n\nInter County Soccer League\n\n#Lighthouse1893 #PhillySoccer #TravelSoccer #YouthSoccer #ICSL"
-      }
-    ];
+  getDefaultPromo() {
+    return {
+      title: '',
+      heading: '',
+      subheading: '',
+      body_lines: '',
+      footer: '',
+      caption: '',
+    };
   }
 
   render() {
@@ -31,7 +27,7 @@ class PromotionalPostsScreen extends Screen {
         <h1>📢 Promotional Posts</h1>
         <p class="subtitle">Lighthouse 1893 Instagram promotional posts</p>
       </div>
-      <div id="promo-list" style="padding: var(--space-4); max-width: 800px; margin: 0 auto;">
+      <div id="promo-area" style="padding: var(--space-4); max-width: 800px; margin: 0 auto;">
         <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
       </div>
     `;
@@ -42,14 +38,29 @@ class PromotionalPostsScreen extends Screen {
   onEnter(params) {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
+        if (this.editing) { this.editing = null; this.renderArea(); }
+        else this.navigation.goBack();
         return;
       }
-      const publishBtn = e.target.closest('.publish-btn');
-      if (publishBtn) {
-        const idx = parseInt(publishBtn.dataset.idx);
-        this.publishPromo(idx);
+      const createBtn = e.target.closest('.create-btn');
+      if (createBtn) { this.editing = this.getDefaultPromo(); this.renderArea(); return; }
+
+      const editBtn = e.target.closest('.edit-btn');
+      if (editBtn) {
+        const id = parseInt(editBtn.dataset.id);
+        const post = this.posts.find(p => p.id === id);
+        if (post) { this.editing = { ...post }; this.renderArea(); }
+        return;
       }
+
+      const publishBtn = e.target.closest('.publish-btn');
+      if (publishBtn) { this.publishPromo(parseInt(publishBtn.dataset.id)); return; }
+
+      const scheduleBtn = e.target.closest('.schedule-btn');
+      if (scheduleBtn) { this.schedulePromo(parseInt(scheduleBtn.dataset.id)); return; }
+
+      const cancelBtn = e.target.closest('.cancel-schedule-btn');
+      if (cancelBtn) { this.cancelSchedule(parseInt(cancelBtn.dataset.id)); return; }
     });
     this.loadAndRender();
   }
@@ -60,32 +71,191 @@ class PromotionalPostsScreen extends Screen {
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          this.dbPosts = {};
-          result.data.forEach(p => { this.dbPosts[p.title] = p; });
+          this.posts = result.data;
         }
       }
     } catch (e) {
       console.error('Failed to load promo posts:', e);
     }
-    this.renderList();
+    this.renderArea();
   }
 
-  renderList() {
-    const container = this.find('#promo-list');
-    if (!container) return;
+  renderArea() {
+    const area = this.find('#promo-area');
+    if (!area) return;
 
-    const promos = this.getPromos();
+    if (this.editing) {
+      this.renderForm(area);
+    } else {
+      this.renderList(area);
+    }
+  }
 
-    container.innerHTML = promos.map((p, i) => {
-      const dbPost = this.dbPosts[p.title];
-      const isPosted = dbPost && dbPost.status === 'posted';
-      const isError = dbPost && dbPost.status === 'error';
+  renderForm(container) {
+    const p = this.editing;
+    const isNew = !p.id;
+    container.innerHTML = `
+      <div class="card" style="padding:var(--space-3);margin-bottom:var(--space-3);">
+        <h2 style="margin-bottom:16px;">${isNew ? '➕ New Promo Post' : '✏️ Edit Promo Post'}</h2>
+
+        <div style="display:grid;gap:12px;margin-bottom:16px;">
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:4px;">Title</label>
+            <input type="text" id="promo-title" value="${this.esc(p.title)}" placeholder="e.g. Travel Team Registration" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:4px;">Heading <span style="opacity:0.5;font-weight:400;">(large text on card)</span></label>
+            <input type="text" id="promo-heading" value="${this.esc(p.heading || '')}" placeholder="e.g. SPOTS AVAILABLE" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:4px;">Subheading</label>
+            <input type="text" id="promo-subheading" value="${this.esc(p.subheading || '')}" placeholder="e.g. Travel Teams 2026-27" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:4px;">Body Lines <span style="opacity:0.5;font-weight:400;">(one per line — appear as pills on card)</span></label>
+            <textarea id="promo-bodylines" rows="4" placeholder="U13 Boys & Girls&#10;U15 Boys & Girls&#10;U19 Boys & Girls" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;resize:vertical;">${this.esc(p.body_lines || '')}</textarea>
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:4px;">Footer Line</label>
+            <input type="text" id="promo-footer" value="${this.esc(p.footer || '')}" placeholder="e.g. Inter County Soccer League" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:4px;">Instagram Caption</label>
+            <textarea id="promo-caption" rows="4" placeholder="Caption text + hashtags..." style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;resize:vertical;">${this.esc(p.caption || '')}</textarea>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:8px;">Preview</label>
+          <div id="promo-preview" style="text-align:center;">
+            <canvas id="promo-canvas" style="max-width:100%;height:auto;border-radius:8px;border:2px solid var(--border-color);"></canvas>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="btn btn-primary" id="save-draft-btn">💾 Save Draft</button>
+          <button class="btn btn-secondary" id="preview-btn">🔄 Update Preview</button>
+          <button class="btn btn-secondary" style="margin-left:auto;" id="cancel-edit-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    // Wire up buttons
+    this.find('#preview-btn')?.addEventListener('click', () => this.updateFormPreview());
+    this.find('#cancel-edit-btn')?.addEventListener('click', () => { this.editing = null; this.renderArea(); });
+    this.find('#save-draft-btn')?.addEventListener('click', () => this.saveDraft());
+
+    // Initial preview
+    this.updateFormPreview();
+  }
+
+  getFormData() {
+    return {
+      title: (this.find('#promo-title')?.value || '').trim(),
+      heading: (this.find('#promo-heading')?.value || '').trim(),
+      subheading: (this.find('#promo-subheading')?.value || '').trim(),
+      body_lines: (this.find('#promo-bodylines')?.value || '').trim(),
+      footer: (this.find('#promo-footer')?.value || '').trim(),
+      caption: (this.find('#promo-caption')?.value || '').trim(),
+    };
+  }
+
+  updateFormPreview() {
+    const canvas = this.find('#promo-canvas');
+    if (!canvas) return;
+    const data = this.getFormData();
+    const promo = {
+      heading: data.heading || 'HEADING',
+      subheading: data.subheading || 'Subheading',
+      bodyLines: data.body_lines ? data.body_lines.split('\n').filter(l => l.trim()) : [],
+      footer: data.footer || '',
+    };
+    this.drawPromoCardOnCanvas(canvas, promo);
+  }
+
+  esc(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  async saveDraft() {
+    const data = this.getFormData();
+    if (!data.title) { alert('Please enter a title.'); return; }
+
+    const btn = this.find('#save-draft-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+
+    try {
+      const saveBody = {
+        title: data.title,
+        caption: data.caption,
+        status: 'draft',
+        heading: data.heading,
+        subheading: data.subheading,
+        body_lines: data.body_lines,
+        footer: data.footer,
+      };
+      if (this.editing.id) saveBody.id = String(this.editing.id);
+
+      const saveResp = await this.auth.fetch('/api/social/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveBody)
+      });
+      if (!saveResp.ok) throw new Error(`Save HTTP ${saveResp.status}`);
+      const saveResult = await saveResp.json();
+      if (!saveResult.success) throw new Error(saveResult.message || 'Save failed');
+
+      // Also upload the card image
+      const canvas = this.find('#promo-canvas');
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const postId = saveResult.data.id;
+        await this.auth.fetch(`/api/social/promos/${postId}/media`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: dataUrl })
+        });
+      }
+
+      this.editing = null;
+      await this.loadAndRender();
+    } catch (error) {
+      alert('Error: ' + error.message);
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Save Draft'; }
+    }
+  }
+
+  renderList(container) {
+    const posts = this.posts;
+
+    let html = `
+      <div style="margin-bottom:16px;">
+        <button class="btn btn-primary create-btn" style="padding:10px 20px;">➕ Create New Promo</button>
+      </div>
+    `;
+
+    if (posts.length === 0) {
+      html += `<p style="opacity:0.6;text-align:center;padding:40px 0;">No promotional posts yet. Create your first one!</p>`;
+    }
+
+    html += posts.map(p => {
+      const isPosted = p.status === 'posted';
+      const isError = p.status === 'error';
+      const isScheduled = p.status === 'scheduled';
+      const isPublishing = p.status === 'publishing';
 
       let statusBadge = '';
       if (isPosted) {
         statusBadge = `<span style="background:#4CAF50;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">✅ POSTED</span>`;
+      } else if (isScheduled) {
+        const when = p.scheduled_at ? new Date(p.scheduled_at).toLocaleString() : '';
+        statusBadge = `<span style="background:#FF9800;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">⏰ SCHEDULED${when ? ' — ' + when : ''}</span>`;
+      } else if (isPublishing) {
+        statusBadge = `<span style="background:#2196F3;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">⏳ PUBLISHING</span>`;
       } else if (isError) {
         statusBadge = `<span style="background:#f44336;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">⚠️ ERROR</span>`;
+      } else {
+        statusBadge = `<span style="background:var(--bg-secondary);padding:2px 10px;border-radius:12px;font-size:0.8rem;">📝 DRAFT</span>`;
       }
 
       return `
@@ -93,61 +263,50 @@ class PromotionalPostsScreen extends Screen {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div>
               <span style="font-size: 1.5rem; margin-right: 8px;">📢</span>
-              <strong style="font-size: 1.1rem;">${p.title}</strong>
+              <strong style="font-size: 1.1rem;">${this.esc(p.title)}</strong>
             </div>
             ${statusBadge}
           </div>
 
-          <div id="preview-${i}" style="text-align: center; margin-bottom: 12px;">
-            <img id="img-${i}" style="max-width: 100%; height: auto; border-radius: 8px; border: 2px solid var(--border-color);">
-          </div>
+          ${p.image_url ? `<div style="text-align:center;margin-bottom:12px;"><img src="${this.esc(p.image_url)}" style="max-width:100%;height:auto;border-radius:8px;border:2px solid var(--border-color);"></div>` : ''}
 
+          ${p.caption ? `
           <details style="margin-bottom: 12px;">
             <summary style="cursor: pointer; font-weight: 600; opacity: 0.8;">📝 Caption</summary>
-            <p style="white-space: pre-wrap; opacity: 0.85; margin-top: 8px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 0.9rem;">${p.caption}</p>
-          </details>
+            <p style="white-space: pre-wrap; opacity: 0.85; margin-top: 8px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 0.9rem;">${this.esc(p.caption)}</p>
+          </details>` : ''}
 
-          ${isError && dbPost.error_message ? `<div style="color: #f44336; font-size: 0.85rem; margin-bottom: 8px;">⚠️ ${dbPost.error_message}</div>` : ''}
+          ${isError && p.error_message ? `<div style="color: #f44336; font-size: 0.85rem; margin-bottom: 8px;">⚠️ ${this.esc(p.error_message)}</div>` : ''}
 
-          <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="display: flex; flex-direction: column; gap: 10px;">
             ${isPosted
-              ? `<span style="color: #4CAF50; font-weight: 600;">✅ Published${dbPost.posted_at ? ' ' + new Date(dbPost.posted_at).toLocaleDateString() : ''}</span>`
-              : `<button class="btn btn-primary publish-btn" data-idx="${i}" style="padding: 10px 20px;">🚀 Post to Instagram</button>`
+              ? `<span style="color: #4CAF50; font-weight: 600;">✅ Published${p.posted_at ? ' ' + new Date(p.posted_at).toLocaleDateString() : ''}</span>`
+              : isScheduled
+                ? `<div style="display:flex;gap:8px;align-items:center;">
+                    <span style="color:#FF9800;font-weight:600;">⏰ Scheduled</span>
+                    <button class="btn btn-secondary cancel-schedule-btn" data-id="${p.id}" style="padding:6px 14px;font-size:0.85rem;">Cancel</button>
+                  </div>`
+                : isPublishing
+                  ? `<span style="color:#2196F3;font-weight:600;">⏳ Publishing to Instagram...</span>`
+                  : `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                      <button class="btn btn-secondary edit-btn" data-id="${p.id}" style="padding:8px 14px;">✏️ Edit</button>
+                      ${p.image_url ? `<button class="btn btn-primary publish-btn" data-id="${p.id}" style="padding: 10px 20px;">🚀 Post Now</button>` : ''}
+                      ${p.image_url ? `<div style="display:flex;align-items:center;gap:6px;">
+                        <input type="datetime-local" id="schedule-time-${p.id}" style="padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.85rem;">
+                        <button class="btn btn-secondary schedule-btn" data-id="${p.id}" style="padding:8px 14px;">⏰ Schedule</button>
+                      </div>` : '<span style="opacity:0.5;font-size:0.85rem;">Save draft to generate image first</span>'}
+                    </div>`
             }
           </div>
         </div>
       `;
     }).join('');
 
-    // Generate card images
-    promos.forEach((p, i) => this.drawPromoCard(i, p));
-
-    // Pre-load logos for card rendering
-    const logosToLoad = [
-      { key: 'logoImg', src: '/images/teams/logos/lighthouse-1893.png' },
-      { key: 'icslLogo', src: '/images/leagues/icsl.png' },
-      { key: 'epysaLogo', src: '/images/leagues/epysa.png' },
-      { key: 'sponsorLogo', src: '/images/sponsors/welovejunk.png' }
-    ];
-    let pending = 0;
-    logosToLoad.forEach(({ key, src }) => {
-      if (!this[key]) {
-        pending++;
-        const img = new Image();
-        img.onload = () => {
-          this[key] = img;
-          pending--;
-          if (pending === 0) promos.forEach((p, i) => this.drawPromoCard(i, p));
-        };
-        img.onerror = () => { pending--; };
-        img.src = src;
-      }
-    });
+    container.innerHTML = html;
   }
 
-  drawPromoCard(index, promo) {
+  drawPromoCardOnCanvas(canvas, promo) {
     const scale = 2;
-    const canvas = document.createElement('canvas');
     canvas.width = 1080 * scale;
     canvas.height = 1080 * scale;
     const ctx = canvas.getContext('2d');
@@ -317,57 +476,36 @@ class PromotionalPostsScreen extends Screen {
       ctx.font = '600 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.fillText('Sponsored by We Love Junk Philly', w / 2, h - 50);
     }
-
-    // Finalize
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-    this.imageDataUrls[index] = dataUrl;
-    const img = this.find(`#img-${index}`);
-    if (img) img.src = dataUrl;
   }
 
+  loadLogos() {
+    const logosToLoad = [
+      { key: 'logoImg', src: '/images/teams/logos/lighthouse-1893.png' },
+      { key: 'icslLogo', src: '/images/leagues/icsl.png' },
+      { key: 'epysaLogo', src: '/images/leagues/epysa.png' },
+      { key: 'sponsorLogo', src: '/images/sponsors/welovejunk.png' }
+    ];
+    let pending = 0;
+    logosToLoad.forEach(({ key, src }) => {
+      if (!this[key]) {
+        pending++;
+        const img = new Image();
+        img.onload = () => { this[key] = img; pending--; };
+        img.onerror = () => { pending--; };
+        img.src = src;
+      }
+    });
+  }
 
-
-  async publishPromo(index) {
-    const promos = this.getPromos();
-    const p = promos[index];
+  async publishPromo(postId) {
+    const p = this.posts.find(x => x.id === postId);
+    if (!p) return;
     if (!confirm(`Post "${p.title}" to Instagram now?`)) return;
 
-    const btn = this.element.querySelector(`.publish-btn[data-idx="${index}"]`);
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+    const btn = this.element.querySelector(`.publish-btn[data-id="${postId}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Publishing...'; }
 
     try {
-      // 1. Save to DB
-      const dbPost = this.dbPosts[p.title];
-      const saveBody = { title: p.title, caption: p.caption };
-      if (dbPost) saveBody.id = String(dbPost.id);
-
-      const saveResp = await this.auth.fetch('/api/social/promos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saveBody)
-      });
-      if (!saveResp.ok) throw new Error(`Save HTTP ${saveResp.status}`);
-      const saveResult = await saveResp.json();
-      if (!saveResult.success) throw new Error(saveResult.message || 'Save failed');
-      const postId = saveResult.data.id;
-
-      if (btn) btn.textContent = '⏳ Uploading image...';
-
-      // 2. Upload the generated image
-      const dataUrl = this.imageDataUrls[index] || '';
-      if (!dataUrl) throw new Error('Image not ready yet — please wait a moment and try again');
-      const uploadResp = await this.auth.fetch(`/api/social/promos/${postId}/media`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: dataUrl })
-      });
-      if (!uploadResp.ok) throw new Error(`Upload HTTP ${uploadResp.status}`);
-      const uploadResult = await uploadResp.json();
-      if (!uploadResult.success) throw new Error(uploadResult.message || 'Upload failed');
-
-      if (btn) btn.textContent = '⏳ Publishing...';
-
-      // 3. Publish to Instagram
       const pubResp = await this.auth.fetch(`/api/social/promos/${postId}/publish`, {
         method: 'POST'
       });
@@ -380,6 +518,66 @@ class PromotionalPostsScreen extends Screen {
     } catch (error) {
       alert('Error: ' + error.message);
       await this.loadAndRender();
+    }
+  }
+
+  async schedulePromo(postId) {
+    const p = this.posts.find(x => x.id === postId);
+    if (!p) return;
+
+    const input = this.find(`#schedule-time-${postId}`);
+    if (!input || !input.value) {
+      alert('Please pick a date and time first.');
+      return;
+    }
+
+    const scheduledAt = new Date(input.value).toISOString();
+    if (new Date(input.value) <= new Date()) {
+      alert('Scheduled time must be in the future.');
+      return;
+    }
+
+    const scheduleBtn = this.element.querySelector(`.schedule-btn[data-id="${postId}"]`);
+    if (scheduleBtn) { scheduleBtn.disabled = true; scheduleBtn.textContent = '⏳ Saving...'; }
+
+    try {
+      const resp = await this.auth.fetch('/api/social/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: String(postId), title: p.title, caption: p.caption, status: 'scheduled', scheduled_at: scheduledAt })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.message || 'Failed');
+
+      alert('⏰ Scheduled for ' + new Date(scheduledAt).toLocaleString());
+      await this.loadAndRender();
+    } catch (error) {
+      alert('Error: ' + error.message);
+      await this.loadAndRender();
+    }
+  }
+
+  async cancelSchedule(postId) {
+    const p = this.posts.find(x => x.id === postId);
+    if (!p) return;
+
+    if (!confirm(`Cancel scheduled post "${p.title}"?`)) return;
+
+    try {
+      const resp = await this.auth.fetch('/api/social/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: String(postId), title: p.title, caption: p.caption, status: 'draft', scheduled_at: '' })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.message || 'Failed');
+
+      alert('Schedule cancelled.');
+      await this.loadAndRender();
+    } catch (error) {
+      alert('Error: ' + error.message);
     }
   }
 }
