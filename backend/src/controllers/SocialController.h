@@ -67,6 +67,13 @@ private:
     Response handleDeleteContentPost(const Request& request);
     std::string extractContentIdFromPath(const std::string& path);
 
+    // Google Drive media browser
+    Response handleListDriveMedia(const Request& request);
+    Response handleDownloadDriveFile(const Request& request);
+    std::string extractUserIdFromJWT(const Request& request);
+    std::string getGoogleAccessToken(const std::string& userId);
+    std::string refreshGoogleToken(const std::string& userId, const std::string& refreshToken);
+
     // Instagram Graph API helpers
     std::string httpPost(const std::string& url, const std::string& postData);
     std::string httpGet(const std::string& url);

@@ -157,7 +157,7 @@ std::string OAuthController::getGoogleAuthUrl() {
     authUrl += "?client_id=" + urlEncode(clientId_);
     authUrl += "&redirect_uri=" + urlEncode(redirectUri_);
     authUrl += "&response_type=code";
-    authUrl += "&scope=" + urlEncode("openid email profile");
+    authUrl += "&scope=" + urlEncode("openid email profile https://www.googleapis.com/auth/drive.readonly");
     authUrl += "&access_type=offline";
     authUrl += "&prompt=consent";
     
@@ -382,6 +382,30 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     std::string userId = findOrCreateUser(userInfo);
     if (userId.empty()) {
         return Response::internalError("Failed to create or find user");
+    }
+    
+    // Store Google tokens for Drive API access
+    try {
+        auto db = Database::getInstance();
+        std::string refreshToken = tokenData.count("refresh_token") ? tokenData.at("refresh_token") : "";
+        int expSec = 3600;
+        if (tokenData.count("expires_in")) {
+            try { expSec = std::stoi(tokenData.at("expires_in")); } catch (...) {}
+        }
+        
+        std::string upsertSql = "INSERT INTO user_google_tokens (user_id, access_token, refresh_token, expires_at) "
+            "VALUES (" + db->escape(userId) + ", " + db->escape(accessToken) + ", " +
+            (refreshToken.empty() ? "NULL" : db->escape(refreshToken)) + ", "
+            "NOW() + INTERVAL '" + std::to_string(expSec) + " seconds') "
+            "ON CONFLICT (user_id) DO UPDATE SET "
+            "access_token = EXCLUDED.access_token, "
+            "refresh_token = COALESCE(EXCLUDED.refresh_token, user_google_tokens.refresh_token), "
+            "expires_at = EXCLUDED.expires_at, "
+            "updated_at = NOW()";
+        db->query(upsertSql);
+        std::cout << "Stored Google tokens for user " << userId << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to store Google tokens: " << e.what() << std::endl;
     }
     
     // Generate JWT token

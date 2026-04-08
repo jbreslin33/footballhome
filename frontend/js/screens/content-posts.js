@@ -148,9 +148,14 @@ class ContentPostsScreen extends Screen {
         <div style="margin-bottom:16px;">
           <label style="display:block;font-weight:600;margin-bottom:6px;">Upload Photo or Video</label>
           <input type="file" id="content-file" accept="image/*,video/*" style="display:none;">
-          <button id="content-file-btn" class="btn btn-secondary" style="width:100%;padding:24px;border:2px dashed var(--border-color);border-radius:8px;text-align:center;cursor:pointer;">
-            \ud83d\udcc1 Click to select a file (photo or video)
-          </button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button id="content-file-btn" class="btn btn-secondary" style="padding:24px;border:2px dashed var(--border-color);border-radius:8px;text-align:center;cursor:pointer;">
+              \ud83d\udcc1 Choose from device
+            </button>
+            <button id="drive-browse-btn" class="btn btn-secondary" style="padding:24px;border:2px dashed var(--border-color);border-radius:8px;text-align:center;cursor:pointer;">
+              \ud83d\udcf1 Browse Google Drive
+            </button>
+          </div>
           <div id="content-file-name" style="margin-top:6px;font-size:0.85rem;opacity:0.7;"></div>
         </div>
 
@@ -203,6 +208,12 @@ class ContentPostsScreen extends Screen {
     if (fileBtn && fileInput) {
       fileBtn.addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', (e) => this.handleFileSelected(e));
+    }
+
+    // Wire up Google Drive browse button
+    const driveBtn = this.find('#drive-browse-btn');
+    if (driveBtn) {
+      driveBtn.addEventListener('click', () => this.openDriveGallery());
     }
 
     // Wire up tic-tac-toe position grid (click = place/move, click active = remove)
@@ -617,6 +628,151 @@ class ContentPostsScreen extends Screen {
       await this.loadPosts();
     } catch (e) {
       alert('Delete failed: ' + e.message);
+    }
+  }
+
+  async openDriveGallery() {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.id = 'drive-gallery-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+
+    modal.innerHTML = `
+      <div style="background:var(--bg-primary);border-radius:12px;width:90vw;max-width:800px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;">\ud83d\udcf1 Google Drive Photos & Videos</h3>
+          <button id="drive-close-btn" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-primary);">\u2715</button>
+        </div>
+        <div id="drive-gallery-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start;">
+          <div style="grid-column:1/-1;text-align:center;padding:40px;"><div class="spinner"></div><p>Loading photos from Google Drive...</p></div>
+        </div>
+        <div id="drive-load-more" style="padding:12px;text-align:center;border-top:1px solid var(--border-color);display:none;">
+          <button id="drive-more-btn" class="btn btn-secondary">Load More</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('#drive-close-btn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    this.driveNextPageToken = null;
+    await this.loadDriveFiles(modal);
+  }
+
+  async loadDriveFiles(modal, append = false) {
+    const grid = modal.querySelector('#drive-gallery-grid');
+    const loadMoreDiv = modal.querySelector('#drive-load-more');
+    const moreBtn = modal.querySelector('#drive-more-btn');
+
+    if (!append) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;"><div class="spinner"></div><p>Loading...</p></div>';
+    }
+
+    try {
+      let url = '/api/social/drive/media';
+      if (this.driveNextPageToken) {
+        url += '?pageToken=' + encodeURIComponent(this.driveNextPageToken);
+      }
+
+      const resp = await this.auth.fetch(url);
+      const data = await resp.json();
+
+      if (data.error) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;">
+          <p style="color:#ef4444;">\u274c ${this.escapeHtml(data.error.message || 'Failed to load Drive files')}</p>
+          <p style="font-size:0.85rem;opacity:0.7;">Make sure Google Drive API is enabled and you\'ve logged in with Drive permissions.</p>
+        </div>`;
+        return;
+      }
+
+      const files = data.files || [];
+      if (!append) grid.innerHTML = '';
+
+      if (files.length === 0 && !append) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">No photos or videos found in your Google Drive.</div>';
+        return;
+      }
+
+      files.forEach(file => {
+        const isVideo = file.mimeType && file.mimeType.startsWith('video/');
+        const thumb = file.thumbnailLink || '';
+        const card = document.createElement('div');
+        card.style.cssText = 'cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color 0.2s;position:relative;aspect-ratio:1;background:var(--bg-secondary);';
+        card.innerHTML = `
+          ${thumb
+            ? `<img src="${this.escapeHtml(thumb)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;">${isVideo ? '\ud83c\udfac' : '\ud83d\uddbc\ufe0f'}</div>`
+          }
+          ${isVideo ? '<div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">\ud83c\udfac Video</div>' : ''}
+          <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:4px 6px;">
+            <div style="color:#fff;font-size:0.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this.escapeHtml(file.name)}</div>
+          </div>
+        `;
+
+        card.addEventListener('mouseenter', () => card.style.borderColor = 'var(--accent-color)');
+        card.addEventListener('mouseleave', () => card.style.borderColor = 'transparent');
+        card.addEventListener('click', () => this.selectDriveFile(file, modal));
+
+        grid.appendChild(card);
+      });
+
+      // Handle pagination
+      this.driveNextPageToken = data.nextPageToken || null;
+      if (this.driveNextPageToken) {
+        loadMoreDiv.style.display = 'block';
+        // Remove old listener and add new one
+        const newBtn = moreBtn.cloneNode(true);
+        moreBtn.parentNode.replaceChild(newBtn, moreBtn);
+        newBtn.addEventListener('click', () => this.loadDriveFiles(modal, true));
+      } else {
+        loadMoreDiv.style.display = 'none';
+      }
+
+    } catch (e) {
+      console.error('Drive gallery error:', e);
+      if (!append) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;">
+          <p style="color:#ef4444;">\u274c Failed to load Google Drive files</p>
+          <p style="font-size:0.85rem;opacity:0.7;">${this.escapeHtml(e.message)}</p>
+        </div>`;
+      }
+    }
+  }
+
+  async selectDriveFile(file, modal) {
+    // Show loading indicator on the modal
+    const grid = modal.querySelector('#drive-gallery-grid');
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;">
+      <div class="spinner"></div>
+      <p>Downloading ${this.escapeHtml(file.name)}...</p>
+    </div>`;
+
+    try {
+      const resp = await this.auth.fetch(`/api/social/drive/download?fileId=${encodeURIComponent(file.id)}`);
+      if (!resp.ok) throw new Error('Download failed');
+
+      const blob = await resp.blob();
+      // Create a File object from the blob so it works with existing file handling
+      const driveFile = new File([blob], file.name, { type: file.mimeType });
+
+      this.currentFile = driveFile;
+      const nameEl = this.find('#content-file-name');
+      if (nameEl) nameEl.textContent = `${file.name} (${(blob.size / 1024 / 1024).toFixed(1)} MB) — from Google Drive`;
+
+      // Auto-detect format
+      const formatSelect = this.find('#content-format');
+      if (file.mimeType.startsWith('video/') && formatSelect) {
+        formatSelect.value = 'reel';
+      }
+
+      this.updatePreview();
+      modal.remove();
+    } catch (e) {
+      alert('Failed to download file from Google Drive: ' + e.message);
+      // Re-open the gallery
+      await this.loadDriveFiles(modal);
     }
   }
 

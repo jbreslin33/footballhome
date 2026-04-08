@@ -258,6 +258,18 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     router.del(prefix + "/content/:contentId", [this](const Request& request) {
         return this->handleDeleteContentPost(request);
     });
+
+    // ---------- Google Drive Media Browser ----------
+
+    // GET /api/social/drive/media - List photos/videos from Google Drive
+    router.get(prefix + "/drive/media", [this](const Request& request) {
+        return this->handleListDriveMedia(request);
+    });
+
+    // GET /api/social/drive/download?fileId=xxx - Download a file from Drive
+    router.get(prefix + "/drive/download", [this](const Request& request) {
+        return this->handleDownloadDriveFile(request);
+    });
 }
 
 std::string SocialController::escapeJson(const std::string& input) {
@@ -2035,6 +2047,270 @@ Response SocialController::handlePublishContentPost(const Request& request) {
         return Response(HttpStatus::OK,
             createJSONResponse(true, "Posted to Instagram!",
                 "{\"media_id\":\"" + escapeJson(mediaId) + "\"}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// ============ Google Drive Media Browser ============
+
+std::string SocialController::extractUserIdFromJWT(const Request& request) {
+    std::string authHeader = request.getHeader("authorization");
+    if (authHeader.empty() || authHeader.substr(0, 7) != "Bearer ") {
+        return "";
+    }
+    std::string token = authHeader.substr(7);
+
+    // JWT is header.payload.signature — decode the payload (second part)
+    size_t dot1 = token.find('.');
+    size_t dot2 = token.find('.', dot1 + 1);
+    if (dot1 == std::string::npos || dot2 == std::string::npos) return "";
+
+    std::string payloadB64 = token.substr(dot1 + 1, dot2 - dot1 - 1);
+
+    // Convert base64url back to standard base64
+    for (auto& c : payloadB64) {
+        if (c == '-') c = '+';
+        else if (c == '_') c = '/';
+    }
+    // Add padding
+    while (payloadB64.size() % 4 != 0) payloadB64 += '=';
+
+    std::string payload = base64Decode(payloadB64);
+    // Extract userId from {"userId":"<id>", ...}
+    std::string key = "\"userId\":\"";
+    size_t pos = payload.find(key);
+    if (pos == std::string::npos) return "";
+    pos += key.size();
+    size_t end = payload.find('"', pos);
+    if (end == std::string::npos) return "";
+    return payload.substr(pos, end - pos);
+}
+
+std::string SocialController::getGoogleAccessToken(const std::string& userId) {
+    try {
+        pqxx::result result = db_->query(
+            "SELECT access_token, refresh_token, expires_at FROM user_google_tokens "
+            "WHERE user_id = " + db_->escape(userId)
+        );
+        if (result.empty()) return "";
+
+        std::string accessToken = result[0]["access_token"].c_str();
+        std::string refreshToken = result[0]["refresh_token"].is_null() ? "" : result[0]["refresh_token"].c_str();
+
+        // Check if token is expired
+        pqxx::result timeCheck = db_->query(
+            "SELECT CASE WHEN expires_at < NOW() THEN 1 ELSE 0 END AS expired "
+            "FROM user_google_tokens WHERE user_id = " + db_->escape(userId)
+        );
+        if (!timeCheck.empty() && timeCheck[0]["expired"].as<int>() == 1) {
+            if (refreshToken.empty()) return "";
+            return refreshGoogleToken(userId, refreshToken);
+        }
+
+        return accessToken;
+    } catch (const std::exception& e) {
+        std::cerr << "Error getting Google access token: " << e.what() << std::endl;
+        return "";
+    }
+}
+
+std::string SocialController::refreshGoogleToken(const std::string& userId, const std::string& refreshToken) {
+    const char* clientId = std::getenv("GOOGLE_OAUTH_CLIENT_ID");
+    const char* clientSecret = std::getenv("GOOGLE_OAUTH_CLIENT_SECRET");
+    if (!clientId || !clientSecret) return "";
+
+    CURL* curl = curl_easy_init();
+    if (!curl) return "";
+
+    std::string postData = "grant_type=refresh_token";
+    postData += "&refresh_token=" + urlEncode(curl, refreshToken);
+    postData += "&client_id=" + urlEncode(curl, std::string(clientId));
+    postData += "&client_secret=" + urlEncode(curl, std::string(clientSecret));
+
+    std::string response;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://oauth2.googleapis.com/token");
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        std::cerr << "Token refresh failed: " << curl_easy_strerror(res) << std::endl;
+        return "";
+    }
+
+    std::string newAccessToken = extractJsonField(response, "access_token");
+    if (newAccessToken.empty()) {
+        std::cerr << "Token refresh response missing access_token: " << response << std::endl;
+        return "";
+    }
+
+    int expSec = 3600;
+    std::string expiresIn = extractJsonField(response, "expires_in");
+    if (!expiresIn.empty()) {
+        try { expSec = std::stoi(expiresIn); } catch (...) {}
+    }
+
+    try {
+        db_->query(
+            "UPDATE user_google_tokens SET access_token = " + db_->escape(newAccessToken) +
+            ", expires_at = NOW() + INTERVAL '" + std::to_string(expSec) + " seconds'"
+            ", updated_at = NOW() WHERE user_id = " + db_->escape(userId)
+        );
+    } catch (...) {}
+
+    return newAccessToken;
+}
+
+Response SocialController::handleListDriveMedia(const Request& request) {
+    try {
+        std::string userId = extractUserIdFromJWT(request);
+        if (userId.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                createJSONResponse(false, "Not authenticated"));
+        }
+
+        std::string accessToken = getGoogleAccessToken(userId);
+        if (accessToken.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                createJSONResponse(false, "Google Drive not connected. Please log in again."));
+        }
+
+        std::string pageToken = request.getQueryParam("pageToken");
+
+        // Build Drive API query — list images and videos
+        std::string query = "(mimeType contains 'image/' or mimeType contains 'video/')";
+        query += " and trashed = false";
+
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to initialize HTTP client"));
+        }
+
+        std::string url = "https://www.googleapis.com/drive/v3/files"
+            "?q=" + urlEncode(curl, query) +
+            "&fields=" + urlEncode(curl, "nextPageToken,files(id,name,mimeType,thumbnailLink,createdTime,size)") +
+            "&orderBy=createdTime desc"
+            "&pageSize=50";
+        if (!pageToken.empty()) {
+            url += "&pageToken=" + urlEncode(curl, pageToken);
+        }
+
+        std::string response;
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, ("Authorization: Bearer " + accessToken).c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        CURLcode res = curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+
+        if (res != CURLE_OK) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to fetch Drive files"));
+        }
+
+        Response resp(HttpStatus::OK, response);
+        resp.setHeader("Content-Type", "application/json");
+        return resp;
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleDownloadDriveFile(const Request& request) {
+    try {
+        std::string userId = extractUserIdFromJWT(request);
+        if (userId.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                createJSONResponse(false, "Not authenticated"));
+        }
+
+        std::string fileId = request.getQueryParam("fileId");
+        if (fileId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing fileId parameter"));
+        }
+
+        std::string accessToken = getGoogleAccessToken(userId);
+        if (accessToken.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                createJSONResponse(false, "Google Drive not connected"));
+        }
+
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to initialize HTTP client"));
+        }
+
+        // Validate fileId format (alphanumeric, hyphens, underscores only)
+        for (char c : fileId) {
+            if (!std::isalnum(c) && c != '-' && c != '_') {
+                curl_easy_cleanup(curl);
+                return Response(HttpStatus::BAD_REQUEST,
+                    createJSONResponse(false, "Invalid file ID"));
+            }
+        }
+
+        // Get file metadata
+        std::string metaUrl = "https://www.googleapis.com/drive/v3/files/" + fileId
+            + "?fields=id,name,mimeType,size";
+
+        std::string metaResponse;
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, ("Authorization: Bearer " + accessToken).c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, metaUrl.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &metaResponse);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        CURLcode res = curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+
+        if (res != CURLE_OK) {
+            curl_easy_cleanup(curl);
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to get file metadata"));
+        }
+
+        std::string mimeType = extractJsonField(metaResponse, "mimeType");
+        std::string fileName = extractJsonField(metaResponse, "name");
+
+        // Download the actual file content
+        std::string downloadUrl = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media";
+        std::string fileContent;
+        headers = nullptr;
+        headers = curl_slist_append(headers, ("Authorization: Bearer " + accessToken).c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, downloadUrl.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fileContent);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        res = curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+
+        if (res != CURLE_OK) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to download file"));
+        }
+
+        Response resp(HttpStatus::OK, fileContent);
+        resp.setHeader("Content-Type", mimeType);
+        resp.setHeader("Content-Disposition", "inline; filename=\"" + fileName + "\"");
+        return resp;
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));
