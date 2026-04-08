@@ -1340,7 +1340,7 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
         pqxx::result result = db_->query(
             "SELECT id, title, caption, image_path, image_url, "
             "status, scheduled_at, posted_at, external_media_id, error_message, "
-            "heading, subheading, body_lines, footer, "
+            "heading, subheading, body_lines, footer, overlay_logos, "
             "created_at, updated_at "
             "FROM promotional_posts ORDER BY created_at DESC"
         );
@@ -1365,7 +1365,8 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
             json << "\"heading\":" << (row["heading"].is_null() ? "null" : "\"" + escapeJson(row["heading"].c_str()) + "\"") << ",";
             json << "\"subheading\":" << (row["subheading"].is_null() ? "null" : "\"" + escapeJson(row["subheading"].c_str()) + "\"") << ",";
             json << "\"body_lines\":" << (row["body_lines"].is_null() ? "null" : "\"" + escapeJson(row["body_lines"].c_str()) + "\"") << ",";
-            json << "\"footer\":" << (row["footer"].is_null() ? "null" : "\"" + escapeJson(row["footer"].c_str()) + "\"");
+            json << "\"footer\":" << (row["footer"].is_null() ? "null" : "\"" + escapeJson(row["footer"].c_str()) + "\"") << ",";
+            json << "\"overlay_logos\":" << (row["overlay_logos"].is_null() ? "null" : "\"" + escapeJson(row["overlay_logos"].c_str()) + "\"");
             json << "}";
         }
         json << "]";
@@ -1389,6 +1390,7 @@ Response SocialController::handleSavePromoPost(const Request& request) {
         std::string subheading = extractJsonField(body, "subheading");
         std::string bodyLines = extractJsonField(body, "body_lines");
         std::string footer = extractJsonField(body, "footer");
+        std::string overlayLogos = extractJsonField(body, "overlay_logos");
 
         if (title.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -1408,10 +1410,11 @@ Response SocialController::handleSavePromoPost(const Request& request) {
                 "subheading = " + (subheading.empty() ? "NULL" : "'" + escapeSql(subheading) + "'") + ", "
                 "body_lines = " + (bodyLines.empty() ? "NULL" : "'" + escapeSql(bodyLines) + "'") + ", "
                 "footer = " + (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") + ", "
+                "overlay_logos = " + (overlayLogos.empty() ? "NULL" : "'" + escapeSql(overlayLogos) + "'") + ", "
                 "updated_at = NOW() "
                 "WHERE id = " + escapeSql(id) + " RETURNING id";
         } else {
-            query = "INSERT INTO promotional_posts (title, caption, status, scheduled_at, heading, subheading, body_lines, footer) "
+            query = "INSERT INTO promotional_posts (title, caption, status, scheduled_at, heading, subheading, body_lines, footer, overlay_logos) "
                 "VALUES ('" + escapeSql(title) + "', " +
                 (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + ", '" +
                 escapeSql(status) + "', " +
@@ -1419,7 +1422,8 @@ Response SocialController::handleSavePromoPost(const Request& request) {
                 (heading.empty() ? "NULL" : "'" + escapeSql(heading) + "'") + ", " +
                 (subheading.empty() ? "NULL" : "'" + escapeSql(subheading) + "'") + ", " +
                 (bodyLines.empty() ? "NULL" : "'" + escapeSql(bodyLines) + "'") + ", " +
-                (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") +
+                (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") + ", " +
+                (overlayLogos.empty() ? "NULL" : "'" + escapeSql(overlayLogos) + "'") +
                 ") RETURNING id";
         }
 

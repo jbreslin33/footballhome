@@ -5,6 +5,15 @@ class PromotionalPostsScreen extends Screen {
     this.posts = [];         // array from DB
     this.imageDataUrls = {};
     this.editing = null;     // post object being edited/created, or null
+    // Tic-tac-toe overlay positioning (same system as content posts)
+    this.positions = ['tl','tc','tr','bl','bc','br'];
+    this.positionLabels = { tl:'↖', tc:'↑', tr:'↗', bl:'↙', bc:'↓', br:'↘' };
+    this.overlayOptions = [
+      { key: 'lighthouse', label: 'Lighthouse 1893', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: null },
+      { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
+      { key: 'icsl', label: 'ICSL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
+      { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk.png', pos: null },
+    ];
     this.loadLogos();
   }
 
@@ -16,7 +25,30 @@ class PromotionalPostsScreen extends Screen {
       body_lines: '',
       footer: '',
       caption: '',
+      overlay_logos: '',
     };
+  }
+
+  getSelectedOverlaysWithPositions() {
+    return this.overlayOptions.filter(o => {
+      const hidden = this.find(`#pos-${o.key}`);
+      const pos = hidden ? hidden.value : o.pos;
+      return pos && pos !== 'off';
+    }).map(o => {
+      const hidden = this.find(`#pos-${o.key}`);
+      return { key: o.key, pos: hidden ? hidden.value : o.pos };
+    });
+  }
+
+  applyOverlayPositionsFromString(str) {
+    // Reset all to null
+    this.overlayOptions.forEach(o => o.pos = null);
+    if (!str) return;
+    str.split(',').forEach(part => {
+      const [key, pos] = part.split(':');
+      const opt = this.overlayOptions.find(o => o.key === key);
+      if (opt && pos && pos !== 'off') opt.pos = pos;
+    });
   }
 
   render() {
@@ -43,13 +75,22 @@ class PromotionalPostsScreen extends Screen {
         return;
       }
       const createBtn = e.target.closest('.create-btn');
-      if (createBtn) { this.editing = this.getDefaultPromo(); this.renderArea(); return; }
+      if (createBtn) {
+        this.overlayOptions.forEach(o => o.pos = null);
+        this.editing = this.getDefaultPromo();
+        this.renderArea();
+        return;
+      }
 
       const editBtn = e.target.closest('.edit-btn');
       if (editBtn) {
         const id = parseInt(editBtn.dataset.id);
         const post = this.posts.find(p => p.id === id);
-        if (post) { this.editing = { ...post }; this.renderArea(); }
+        if (post) {
+          this.editing = { ...post };
+          this.applyOverlayPositionsFromString(post.overlay_logos || '');
+          this.renderArea();
+        }
         return;
       }
 
@@ -126,6 +167,28 @@ class PromotionalPostsScreen extends Screen {
         </div>
 
         <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:8px;">Logo Overlays <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— tap a grid cell to place, tap again to remove</span></label>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${this.overlayOptions.map(o => `
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                ${o.src ? `<img src="${o.src}" style="height:28px;width:28px;object-fit:contain;border-radius:4px;flex-shrink:0;">` : `<span style="font-size:20px;flex-shrink:0;">${o.icon}</span>`}
+                <span style="font-size:0.9rem;flex:1;">${o.label}</span>
+                <div style="display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(2,22px);gap:2px;flex-shrink:0;">
+                  ${this.positions.map(pos => `
+                    <button type="button" class="pos-btn" data-key="${o.key}" data-pos="${pos}"
+                      style="width:22px;height:22px;border:1px solid var(--border-color);border-radius:3px;font-size:10px;line-height:22px;text-align:center;cursor:pointer;padding:0;
+                      background:${pos === o.pos ? 'var(--accent-color)' : 'var(--bg-secondary)'};color:${pos === o.pos ? '#fff' : 'inherit'};">
+                      ${this.positionLabels[pos]}
+                    </button>
+                  `).join('')}
+                </div>
+                <input type="hidden" id="pos-${o.key}" value="${o.pos || 'off'}">
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
           <label style="display:block;font-weight:600;margin-bottom:8px;">Preview</label>
           <div id="promo-preview" style="text-align:center;">
             <canvas id="promo-canvas" style="max-width:100%;height:auto;border-radius:8px;border:2px solid var(--border-color);"></canvas>
@@ -145,11 +208,35 @@ class PromotionalPostsScreen extends Screen {
     this.find('#cancel-edit-btn')?.addEventListener('click', () => { this.editing = null; this.renderArea(); });
     this.find('#save-draft-btn')?.addEventListener('click', () => this.saveDraft());
 
+    // Wire up tic-tac-toe position grid
+    container.querySelectorAll('.pos-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        const pos = btn.dataset.pos;
+        const hidden = this.find(`#pos-${key}`);
+        if (!hidden) return;
+        const current = hidden.value;
+        if (current === pos) {
+          hidden.value = 'off';
+        } else {
+          hidden.value = pos;
+        }
+        const newVal = hidden.value;
+        container.querySelectorAll(`.pos-btn[data-key="${key}"]`).forEach(b => {
+          const active = b.dataset.pos === newVal;
+          b.style.background = active ? 'var(--accent-color)' : 'var(--bg-secondary)';
+          b.style.color = active ? '#fff' : 'inherit';
+        });
+        this.updateFormPreview();
+      });
+    });
+
     // Initial preview
     this.updateFormPreview();
   }
 
   getFormData() {
+    const overlaysWithPos = this.getSelectedOverlaysWithPositions();
     return {
       title: (this.find('#promo-title')?.value || '').trim(),
       heading: (this.find('#promo-heading')?.value || '').trim(),
@@ -157,6 +244,7 @@ class PromotionalPostsScreen extends Screen {
       body_lines: (this.find('#promo-bodylines')?.value || '').trim(),
       footer: (this.find('#promo-footer')?.value || '').trim(),
       caption: (this.find('#promo-caption')?.value || '').trim(),
+      overlay_logos: overlaysWithPos.map(s => `${s.key}:${s.pos}`).join(','),
     };
   }
 
@@ -164,11 +252,13 @@ class PromotionalPostsScreen extends Screen {
     const canvas = this.find('#promo-canvas');
     if (!canvas) return;
     const data = this.getFormData();
+    const overlaysWithPos = this.getSelectedOverlaysWithPositions();
     const promo = {
       heading: data.heading || 'HEADING',
       subheading: data.subheading || 'Subheading',
       bodyLines: data.body_lines ? data.body_lines.split('\n').filter(l => l.trim()) : [],
       footer: data.footer || '',
+      overlays: overlaysWithPos,
     };
     this.drawPromoCardOnCanvas(canvas, promo);
   }
@@ -193,6 +283,7 @@ class PromotionalPostsScreen extends Screen {
         subheading: data.subheading,
         body_lines: data.body_lines,
         footer: data.footer,
+        overlay_logos: data.overlay_logos,
       };
       if (this.editing.id) saveBody.id = String(this.editing.id);
 
@@ -432,66 +523,104 @@ class PromotionalPostsScreen extends Screen {
     ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('Registration & interest form in bio', w / 2, leagueY + 45);
 
-    // --- Three logos row: ICSL | Lighthouse | EPYSA ---
-    const logoY = h - 330;
-    const centerLogoSize = 60;
-    const sideLogoH = 40;
-    const logoGap = 16;
+    // --- Position-based logo overlays (tic-tac-toe grid) ---
+    const overlays = promo.overlays || [];
+    if (overlays.length > 0) {
+      const margin = 50;
+      const logoH = 60;
+      const gap = 14;
+      const smallFont = 22;
 
-    // Lighthouse club logo (center)
-    if (this.logoImg) {
-      ctx.drawImage(this.logoImg, w / 2 - centerLogoSize / 2, logoY, centerLogoSize, centerLogoSize);
-    }
+      // Group overlays by position region
+      const regions = {};
+      overlays.forEach(s => {
+        if (!regions[s.pos]) regions[s.pos] = [];
+        regions[s.pos].push(s.key);
+      });
 
-    // ICSL logo (left of center)
-    if (this.icslLogo) {
-      const aspect = this.icslLogo.width / this.icslLogo.height;
-      const icslW = sideLogoH * aspect;
-      const icslX = w / 2 - centerLogoSize / 2 - logoGap - icslW;
-      const icslY = logoY + (centerLogoSize - sideLogoH) / 2;
-      ctx.drawImage(this.icslLogo, icslX, icslY, icslW, sideLogoH);
-    }
+      for (const [pos, keys] of Object.entries(regions)) {
+        let anchorX, anchorY, alignH, alignV;
+        if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
+        else { anchorY = h - margin; alignV = 'bottom'; }
+        if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
+        else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
+        else { anchorX = w - margin; alignH = 'right'; }
 
-    // EPYSA logo (right of center)
-    if (this.epysaLogo) {
-      const aspect = this.epysaLogo.width / this.epysaLogo.height;
-      const epysaW = sideLogoH * aspect;
-      const epysaX = w / 2 + centerLogoSize / 2 + logoGap;
-      const epysaY = logoY + (centerLogoSize - sideLogoH) / 2;
-      ctx.drawImage(this.epysaLogo, epysaX, epysaY, epysaW, sideLogoH);
-    }
+        // Measure items
+        const items = [];
+        keys.forEach(key => {
+          if (key === 'sponsor') {
+            const img = this.loadedLogos['sponsor'];
+            const sH = logoH;
+            const sW = img ? sH * (img.width / img.height) : 0;
+            ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+            const pillW = ctx.measureText('Sponsored by').width + 8;
+            items.push({ type: 'sponsor', w: pillW + gap + sW, h: sH, imgW: sW, imgH: sH, pillW, img });
+          } else {
+            const img = this.loadedLogos[key];
+            if (img) {
+              const lw = logoH * (img.width / img.height);
+              items.push({ type: 'logo', w: lw, h: logoH, img, key });
+            }
+          }
+        });
 
-    // --- "LIGHTHOUSE 1893 ⚽ CLUB" ---
-    ctx.fillStyle = gold;
-    ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('LIGHTHOUSE 1893 ⚽ CLUB', w / 2, h - 245);
+        if (items.length === 0) continue;
 
-    // --- Sponsor: We Love Junk ---
-    if (this.sponsorLogo) {
-      const spH = 140;
-      const spAspect = this.sponsorLogo.width / this.sponsorLogo.height;
-      const spW = spH * spAspect;
-      ctx.drawImage(this.sponsorLogo, w / 2 - spW / 2, h - 220, spW, spH);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.font = '600 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.fillText('Sponsored by We Love Junk Philly', w / 2, h - 50);
+        const totalW = items.reduce((sum, it) => sum + it.w, 0) + Math.max(0, items.length - 1) * gap;
+        const maxH = Math.max(...items.map(it => it.h));
+
+        let startX;
+        if (alignH === 'left') startX = anchorX;
+        else if (alignH === 'center') startX = anchorX - totalW / 2;
+        else startX = anchorX - totalW;
+
+        let curX = startX;
+        items.forEach(item => {
+          let itemY;
+          if (alignV === 'top') itemY = anchorY;
+          else itemY = anchorY - maxH;
+
+          if (item.type === 'sponsor') {
+            const midY = itemY + maxH / 2;
+            const pillH = smallFont + 6;
+            ctx.fillStyle = 'rgba(65,105,225,0.9)';
+            ctx.beginPath();
+            ctx.roundRect(curX, midY - pillH / 2, item.pillW, pillH, 3);
+            ctx.fill();
+            ctx.fillStyle = '#eeeeee';
+            ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Sponsored by', curX + item.pillW / 2, midY);
+            if (item.img) {
+              ctx.shadowColor = 'rgba(0,0,0,0.6)';
+              ctx.shadowBlur = 6;
+              ctx.drawImage(item.img, curX + item.pillW + gap, midY - item.imgH / 2, item.imgW, item.imgH);
+              ctx.shadowColor = 'transparent';
+              ctx.shadowBlur = 0;
+            }
+            ctx.textAlign = 'center';
+          } else {
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 6;
+            ctx.drawImage(item.img, curX, itemY + (maxH - item.h) / 2, item.w, item.h);
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+          }
+          curX += item.w + gap;
+        });
+      }
     }
   }
 
   loadLogos() {
-    const logosToLoad = [
-      { key: 'logoImg', src: '/images/teams/logos/lighthouse-1893.png' },
-      { key: 'icslLogo', src: '/images/leagues/icsl.png' },
-      { key: 'epysaLogo', src: '/images/leagues/epysa.png' },
-      { key: 'sponsorLogo', src: '/images/sponsors/welovejunk.png' }
-    ];
-    let pending = 0;
-    logosToLoad.forEach(({ key, src }) => {
-      if (!this[key]) {
-        pending++;
+    this.loadedLogos = {};
+    this.overlayOptions.forEach(({ key, src }) => {
+      if (src) {
         const img = new Image();
-        img.onload = () => { this[key] = img; pending--; };
-        img.onerror = () => { pending--; };
+        img.onload = () => { this.loadedLogos[key] = img; };
+        img.onerror = () => {};
         img.src = src;
       }
     });
