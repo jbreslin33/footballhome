@@ -14,6 +14,9 @@ class PromotionalPostsScreen extends Screen {
       { key: 'icsl', label: 'ICSL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
       { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk.png', pos: null },
     ];
+    this.currentFile = null;
+    this.currentPreviewUrl = null;
+    this.mediaType = 'card'; // 'card' or 'media'
     this.loadLogos();
   }
 
@@ -135,31 +138,63 @@ class PromotionalPostsScreen extends Screen {
   renderForm(container) {
     const p = this.editing;
     const isNew = !p.id;
+    const isMedia = this.mediaType === 'media';
     container.innerHTML = `
       <div class="card" style="padding:var(--space-3);margin-bottom:var(--space-3);">
         <h2 style="margin-bottom:16px;">${isNew ? '➕ New Promo Post' : '✏️ Edit Promo Post'}</h2>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:8px;">Post Type</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button type="button" id="type-card-btn" class="btn" style="padding:14px;border-radius:8px;border:2px solid ${!isMedia ? 'var(--accent-color)' : 'var(--border-color)'};background:${!isMedia ? 'var(--accent-color)' : 'var(--bg-secondary)'};color:${!isMedia ? '#fff' : 'inherit'};cursor:pointer;font-weight:600;">
+              🎨 Designed Card
+            </button>
+            <button type="button" id="type-media-btn" class="btn" style="padding:14px;border-radius:8px;border:2px solid ${isMedia ? 'var(--accent-color)' : 'var(--border-color)'};background:${isMedia ? 'var(--accent-color)' : 'var(--bg-secondary)'};color:${isMedia ? '#fff' : 'inherit'};cursor:pointer;font-weight:600;">
+              📷 Photo / Video
+            </button>
+          </div>
+        </div>
 
         <div style="display:grid;gap:12px;margin-bottom:16px;">
           <div>
             <label style="display:block;font-weight:600;margin-bottom:4px;">Title</label>
             <input type="text" id="promo-title" value="${this.esc(p.title)}" placeholder="e.g. Travel Team Registration" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
           </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:4px;">Heading <span style="opacity:0.5;font-weight:400;">(large text on card)</span></label>
-            <input type="text" id="promo-heading" value="${this.esc(p.heading || '')}" placeholder="e.g. SPOTS AVAILABLE" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+
+          <div id="card-fields" style="display:${isMedia ? 'none' : 'grid'};gap:12px;">
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:4px;">Heading <span style="opacity:0.5;font-weight:400;">(large text on card)</span></label>
+              <input type="text" id="promo-heading" value="${this.esc(p.heading || '')}" placeholder="e.g. SPOTS AVAILABLE" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:4px;">Subheading</label>
+              <input type="text" id="promo-subheading" value="${this.esc(p.subheading || '')}" placeholder="e.g. Travel Teams 2026-27" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:4px;">Body Lines <span style="opacity:0.5;font-weight:400;">(one per line — appear as pills on card)</span></label>
+              <textarea id="promo-bodylines" rows="4" placeholder="U13 Boys & Girls&#10;U15 Boys & Girls&#10;U19 Boys & Girls" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;resize:vertical;">${this.esc(p.body_lines || '')}</textarea>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:4px;">Footer Line</label>
+              <input type="text" id="promo-footer" value="${this.esc(p.footer || '')}" placeholder="e.g. Inter County Soccer League" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+            </div>
           </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:4px;">Subheading</label>
-            <input type="text" id="promo-subheading" value="${this.esc(p.subheading || '')}" placeholder="e.g. Travel Teams 2026-27" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+
+          <div id="media-upload-section" style="display:${isMedia ? 'block' : 'none'};">
+            <label style="display:block;font-weight:600;margin-bottom:6px;">Upload Photo or Video</label>
+            <input type="file" id="promo-file" accept="image/*,video/*" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button id="promo-file-btn" class="btn btn-secondary" style="padding:24px;border:2px dashed var(--border-color);border-radius:8px;text-align:center;cursor:pointer;">
+                📁 Choose from device
+              </button>
+              <button id="promo-drive-btn" class="btn btn-secondary" style="padding:24px;border:2px dashed var(--border-color);border-radius:8px;text-align:center;cursor:pointer;">
+                📱 Browse Google Drive
+              </button>
+            </div>
+            <div id="promo-file-name" style="margin-top:6px;font-size:0.85rem;opacity:0.7;"></div>
+            <div id="promo-media-preview" style="display:none;margin-top:12px;text-align:center;"></div>
           </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:4px;">Body Lines <span style="opacity:0.5;font-weight:400;">(one per line — appear as pills on card)</span></label>
-            <textarea id="promo-bodylines" rows="4" placeholder="U13 Boys & Girls&#10;U15 Boys & Girls&#10;U19 Boys & Girls" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;resize:vertical;">${this.esc(p.body_lines || '')}</textarea>
-          </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:4px;">Footer Line</label>
-            <input type="text" id="promo-footer" value="${this.esc(p.footer || '')}" placeholder="e.g. Inter County Soccer League" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
-          </div>
+
           <div>
             <label style="display:block;font-weight:600;margin-bottom:4px;">Instagram Caption</label>
             <textarea id="promo-caption" rows="4" placeholder="Caption text + hashtags..." style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;resize:vertical;">${this.esc(p.caption || '')}</textarea>
@@ -188,7 +223,7 @@ class PromotionalPostsScreen extends Screen {
           </div>
         </div>
 
-        <div style="margin-bottom:16px;">
+        <div id="canvas-preview-section" style="margin-bottom:16px;display:${isMedia ? 'none' : 'block'};">
           <label style="display:block;font-weight:600;margin-bottom:8px;">Preview</label>
           <div id="promo-preview" style="text-align:center;">
             <canvas id="promo-canvas" style="max-width:100%;height:auto;border-radius:8px;border:2px solid var(--border-color);"></canvas>
@@ -205,8 +240,30 @@ class PromotionalPostsScreen extends Screen {
 
     // Wire up buttons
     this.find('#preview-btn')?.addEventListener('click', () => this.updateFormPreview());
-    this.find('#cancel-edit-btn')?.addEventListener('click', () => { this.editing = null; this.renderArea(); });
+    this.find('#cancel-edit-btn')?.addEventListener('click', () => { this.editing = null; this.currentFile = null; this.currentPreviewUrl = null; this.mediaType = 'card'; this.renderArea(); });
     this.find('#save-draft-btn')?.addEventListener('click', () => this.saveDraft());
+
+    // Wire up media type toggle
+    this.find('#type-card-btn')?.addEventListener('click', () => {
+      this.mediaType = 'card';
+      this.renderForm(container);
+    });
+    this.find('#type-media-btn')?.addEventListener('click', () => {
+      this.mediaType = 'media';
+      this.renderForm(container);
+    });
+
+    // Wire up file picker and Drive browse (media mode)
+    const fileBtn = this.find('#promo-file-btn');
+    const fileInput = this.find('#promo-file');
+    if (fileBtn && fileInput) {
+      fileBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => this.handleFileSelected(e));
+    }
+    const driveBtn = this.find('#promo-drive-btn');
+    if (driveBtn) {
+      driveBtn.addEventListener('click', () => this.openDriveGallery());
+    }
 
     // Wire up tic-tac-toe position grid
     container.querySelectorAll('.pos-btn').forEach(btn => {
@@ -232,7 +289,8 @@ class PromotionalPostsScreen extends Screen {
     });
 
     // Initial preview
-    this.updateFormPreview();
+    if (!isMedia) this.updateFormPreview();
+    if (isMedia && this.currentFile) this.updateMediaPreview();
   }
 
   getFormData() {
@@ -267,9 +325,173 @@ class PromotionalPostsScreen extends Screen {
     return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  handleFileSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    this.currentFile = file;
+    const nameEl = this.find('#promo-file-name');
+    if (nameEl) nameEl.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+    this.updateMediaPreview();
+  }
+
+  updateMediaPreview() {
+    const previewEl = this.find('#promo-media-preview');
+    if (!previewEl || !this.currentFile) return;
+    previewEl.style.display = 'block';
+
+    if (this.currentPreviewUrl) URL.revokeObjectURL(this.currentPreviewUrl);
+    this.currentPreviewUrl = URL.createObjectURL(this.currentFile);
+
+    const isVideo = this.currentFile.type.startsWith('video/');
+    const selectedWithPos = this.getSelectedOverlaysWithPositions();
+
+    const regionStyles = {
+      tl: 'top:6px;left:6px;', tc: 'top:6px;left:50%;transform:translateX(-50%);',
+      tr: 'top:6px;right:6px;', bl: 'bottom:6px;left:6px;',
+      bc: 'bottom:6px;left:50%;transform:translateX(-50%);', br: 'bottom:6px;right:6px;'
+    };
+    let overlayHtml = '';
+    if (selectedWithPos.length > 0) {
+      const regions = {};
+      selectedWithPos.forEach(s => { if (!regions[s.pos]) regions[s.pos] = []; regions[s.pos].push(s.key); });
+      for (const [pos, keys] of Object.entries(regions)) {
+        const items = keys.map(key => {
+          if (key === 'sponsor') {
+            const opt = this.overlayOptions.find(o => o.key === 'sponsor');
+            return `<div style="display:flex;align-items:center;gap:6px;"><div style="padding:1px 3px;background:rgba(65,105,225,0.9);border-radius:2px;"><span style="font-size:11px;color:#eee;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Sponsored by</span></div><img src="${opt.src}" style="height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,0,0,0.7));"></div>`;
+          }
+          const opt = this.overlayOptions.find(o => o.key === key);
+          return opt ? `<img src="${opt.src}" style="height:28px;object-fit:contain;filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));" title="${opt.label}">` : '';
+        }).join('');
+        overlayHtml += `<div style="position:absolute;${regionStyles[pos]}display:flex;align-items:center;gap:6px;">${items}</div>`;
+      }
+    }
+
+    if (isVideo) {
+      previewEl.innerHTML = `<div style="display:inline-block;position:relative;max-width:400px;"><video src="${this.currentPreviewUrl}" controls muted style="max-width:100%;max-height:400px;display:block;border-radius:8px;"></video>${overlayHtml}</div>`;
+    } else {
+      previewEl.innerHTML = `<div style="display:inline-block;position:relative;max-width:400px;"><img src="${this.currentPreviewUrl}" style="max-width:100%;max-height:400px;display:block;border-radius:8px;">${overlayHtml}</div>`;
+    }
+  }
+
+  renderImageWithOverlay(file, overlaysWithPos) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        if (overlaysWithPos.length === 0) { resolve(canvas.toDataURL('image/jpeg', 0.92)); return; }
+
+        const w = canvas.width, h = canvas.height;
+        const margin = w * 0.02;
+        const regions = {};
+        overlaysWithPos.forEach(s => { if (!regions[s.pos]) regions[s.pos] = []; regions[s.pos].push(s.key); });
+
+        const toLoad = [];
+        overlaysWithPos.forEach(s => {
+          const opt = this.overlayOptions.find(o => o.key === s.key);
+          if (opt && opt.src) toLoad.push({ key: s.key, src: opt.src, pos: s.pos });
+        });
+
+        const drawAll = (loadedImages) => {
+          for (const [pos, keys] of Object.entries(regions)) {
+            let anchorX, anchorY, alignH, alignV;
+            if (pos.startsWith('t')) anchorY = margin, alignV = 'top';
+            else anchorY = h - margin, alignV = 'bottom';
+            if (pos.endsWith('l')) anchorX = margin, alignH = 'left';
+            else if (pos.endsWith('c')) anchorX = w / 2, alignH = 'center';
+            else anchorX = w - margin, alignH = 'right';
+
+            const items = [];
+            const logoH = Math.max(40, h * 0.065);
+            const fontSize = Math.max(14, Math.round(w * 0.028));
+            const smallFont = Math.max(12, Math.round(w * 0.022));
+            const gap = w * 0.015;
+
+            keys.forEach(key => {
+              if (key === 'sponsor') {
+                const limg = loadedImages[key];
+                const sH = Math.max(50, h * 0.08);
+                const sW = limg ? sH * (limg.width / limg.height) : 0;
+                ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+                const pillW = ctx.measureText('Sponsored by').width + 6;
+                items.push({ type: 'sponsor', w: pillW + gap * 0.5 + sW, h: sH, imgW: sW, imgH: sH, pillW, img: limg });
+              } else {
+                const limg = loadedImages[key];
+                if (limg) { const lw = logoH * (limg.width / limg.height); items.push({ type: 'logo', w: lw, h: logoH, img: limg, key }); }
+              }
+            });
+
+            const totalW = items.reduce((sum, it) => sum + it.w, 0) + Math.max(0, items.length - 1) * gap;
+            const maxH = Math.max(...items.map(it => it.h));
+            let startX;
+            if (alignH === 'left') startX = anchorX;
+            else if (alignH === 'center') startX = anchorX - totalW / 2;
+            else startX = anchorX - totalW;
+
+            let curX = startX;
+            items.forEach(item => {
+              let itemY = alignV === 'top' ? anchorY : anchorY - maxH;
+              if (item.type === 'sponsor') {
+                const midY = itemY + maxH / 2;
+                const pillH = smallFont + 4;
+                ctx.fillStyle = 'rgba(65,105,225,0.9)';
+                ctx.beginPath(); ctx.roundRect(curX, midY - pillH / 2, item.pillW, pillH, 2); ctx.fill();
+                ctx.fillStyle = '#eeeeee';
+                ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('Sponsored by', curX + item.pillW / 2, midY);
+                if (item.img) {
+                  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = Math.max(4, w * 0.005);
+                  ctx.drawImage(item.img, curX + item.pillW + gap * 0.5, midY - item.imgH / 2, item.imgW, item.imgH);
+                  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+                }
+                ctx.textAlign = 'center';
+              } else {
+                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
+                ctx.drawImage(item.img, curX, itemY + (maxH - item.h) / 2, item.w, item.h);
+                ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+              }
+              curX += item.w + gap;
+            });
+          }
+          resolve(canvas.toDataURL('image/jpeg', 0.92));
+        };
+
+        if (toLoad.length === 0) { drawAll({}); return; }
+        let loadCount = 0;
+        const loadedImages = {};
+        toLoad.forEach(item => {
+          const logo = new Image();
+          logo.onload = () => { loadedImages[item.key] = logo; loadCount++; if (loadCount === toLoad.length) drawAll(loadedImages); };
+          logo.onerror = () => { loadCount++; if (loadCount === toLoad.length) drawAll(loadedImages); };
+          logo.src = item.src;
+        });
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async saveDraft() {
     const data = this.getFormData();
     if (!data.title) { alert('Please enter a title.'); return; }
+
+    const isMedia = this.mediaType === 'media';
+    if (isMedia && !this.currentFile) { alert('Please select a photo or video.'); return; }
 
     const btn = this.find('#save-draft-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
@@ -296,19 +518,52 @@ class PromotionalPostsScreen extends Screen {
       const saveResult = await saveResp.json();
       if (!saveResult.success) throw new Error(saveResult.message || 'Save failed');
 
-      // Also upload the card image
-      const canvas = this.find('#promo-canvas');
-      if (canvas) {
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        const postId = saveResult.data.id;
-        await this.auth.fetch(`/api/social/promos/${postId}/media`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: dataUrl })
-        });
+      const postId = saveResult.data.id;
+
+      if (isMedia) {
+        // Upload user media (photo or video)
+        if (btn) btn.textContent = '⏳ Processing media...';
+        const isVideo = this.currentFile.type.startsWith('video/');
+
+        if (isVideo) {
+          const b64 = await this.fileToBase64(this.currentFile);
+          const uploadResp = await this.auth.fetch(`/api/social/promos/${postId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: b64 })
+          });
+          const uploadResult = await uploadResp.json();
+          if (!uploadResult.success) throw new Error(uploadResult.message);
+        } else {
+          // For images: render with canvas to bake in logo overlays
+          if (btn) btn.textContent = '⏳ Generating image...';
+          const overlaysWithPos = this.getSelectedOverlaysWithPositions();
+          const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, overlaysWithPos);
+          const uploadResp = await this.auth.fetch(`/api/social/promos/${postId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: finalDataUrl })
+          });
+          const uploadResult = await uploadResp.json();
+          if (!uploadResult.success) throw new Error(uploadResult.message);
+        }
+      } else {
+        // Upload the canvas-generated card image
+        const canvas = this.find('#promo-canvas');
+        if (canvas) {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          await this.auth.fetch(`/api/social/promos/${postId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: dataUrl })
+          });
+        }
       }
 
       this.editing = null;
+      this.currentFile = null;
+      this.currentPreviewUrl = null;
+      this.mediaType = 'card';
       await this.loadAndRender();
     } catch (error) {
       alert('Error: ' + error.message);
@@ -709,5 +964,117 @@ class PromotionalPostsScreen extends Screen {
     } catch (error) {
       alert('Error: ' + error.message);
     }
+  }
+
+  // ========== Google Drive Gallery ==========
+
+  async openDriveGallery() {
+    const modal = document.createElement('div');
+    modal.id = 'drive-gallery-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:var(--bg-primary);border-radius:12px;width:90vw;max-width:800px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;">📱 Google Drive Photos & Videos</h3>
+          <button id="drive-close-btn" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-primary);">✕</button>
+        </div>
+        <div id="drive-gallery-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start;">
+          <div style="grid-column:1/-1;text-align:center;padding:40px;"><div class="spinner"></div><p>Loading photos from Google Drive...</p></div>
+        </div>
+        <div id="drive-load-more" style="padding:12px;text-align:center;border-top:1px solid var(--border-color);display:none;">
+          <button id="drive-more-btn" class="btn btn-secondary">Load More</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('#drive-close-btn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    this.driveNextPageToken = null;
+    await this.loadDriveFiles(modal);
+  }
+
+  async loadDriveFiles(modal, append = false) {
+    const grid = modal.querySelector('#drive-gallery-grid');
+    const loadMoreDiv = modal.querySelector('#drive-load-more');
+    const moreBtn = modal.querySelector('#drive-more-btn');
+    if (!append) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;"><div class="spinner"></div><p>Loading...</p></div>';
+
+    try {
+      let url = '/api/social/drive/media';
+      if (this.driveNextPageToken) url += '?pageToken=' + encodeURIComponent(this.driveNextPageToken);
+
+      const resp = await this.auth.fetch(url);
+      const data = await resp.json();
+
+      if (data.error) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;"><p style="color:#ef4444;">❌ ${this.escapeHtml(data.error.message || 'Failed to load Drive files')}</p><p style="font-size:0.85rem;opacity:0.7;">Make sure Google Drive API is enabled and you've logged in with Drive permissions.</p></div>`;
+        return;
+      }
+
+      const files = data.files || [];
+      if (!append) grid.innerHTML = '';
+      if (files.length === 0 && !append) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">No photos or videos found in your Google Drive.</div>';
+        return;
+      }
+
+      files.forEach(file => {
+        const isVideo = file.mimeType && file.mimeType.startsWith('video/');
+        const thumb = file.thumbnailLink || '';
+        const card = document.createElement('div');
+        card.style.cssText = 'cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color 0.2s;position:relative;aspect-ratio:1;background:var(--bg-secondary);';
+        card.innerHTML = `
+          ${thumb ? `<img src="${this.escapeHtml(thumb)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;">${isVideo ? '🎬' : '🖼️'}</div>`}
+          ${isVideo ? '<div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">🎬 Video</div>' : ''}
+          <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:4px 6px;"><div style="color:#fff;font-size:0.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this.escapeHtml(file.name)}</div></div>
+        `;
+        card.addEventListener('mouseenter', () => card.style.borderColor = 'var(--accent-color)');
+        card.addEventListener('mouseleave', () => card.style.borderColor = 'transparent');
+        card.addEventListener('click', () => this.selectDriveFile(file, modal));
+        grid.appendChild(card);
+      });
+
+      this.driveNextPageToken = data.nextPageToken || null;
+      if (this.driveNextPageToken) {
+        loadMoreDiv.style.display = 'block';
+        const newBtn = moreBtn.cloneNode(true);
+        moreBtn.parentNode.replaceChild(newBtn, moreBtn);
+        newBtn.addEventListener('click', () => this.loadDriveFiles(modal, true));
+      } else {
+        loadMoreDiv.style.display = 'none';
+      }
+    } catch (e) {
+      console.error('Drive gallery error:', e);
+      if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;"><p style="color:#ef4444;">❌ Failed to load Google Drive files</p><p style="font-size:0.85rem;opacity:0.7;">${this.escapeHtml(e.message)}</p></div>`;
+    }
+  }
+
+  async selectDriveFile(file, modal) {
+    const grid = modal.querySelector('#drive-gallery-grid');
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;"><div class="spinner"></div><p>Downloading ${this.escapeHtml(file.name)}...</p></div>`;
+
+    try {
+      const resp = await this.auth.fetch(`/api/social/drive/download?fileId=${encodeURIComponent(file.id)}`);
+      if (!resp.ok) throw new Error('Download failed');
+      const blob = await resp.blob();
+      const driveFile = new File([blob], file.name, { type: file.mimeType });
+
+      this.currentFile = driveFile;
+      const nameEl = this.find('#promo-file-name');
+      if (nameEl) nameEl.textContent = `${file.name} (${(blob.size / 1024 / 1024).toFixed(1)} MB) — from Google Drive`;
+
+      this.updateMediaPreview();
+      modal.remove();
+    } catch (e) {
+      alert('Failed to download file from Google Drive: ' + e.message);
+      await this.loadDriveFiles(modal);
+    }
+  }
+
+  escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 }
