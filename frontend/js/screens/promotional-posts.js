@@ -551,11 +551,12 @@ class PromotionalPostsScreen extends Screen {
         keys.forEach(key => {
           if (key === 'sponsor') {
             const img = this.loadedLogos['sponsor'];
-            const sH = logoH;
+            const sH = 140;
             const sW = img ? sH * (img.width / img.height) : 0;
-            ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
-            const pillW = ctx.measureText('Sponsored by').width + 8;
-            items.push({ type: 'sponsor', w: pillW + gap + sW, h: sH, imgW: sW, imgH: sH, pillW, img });
+            const sponsorFont = 28;
+            ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+            const pillW = ctx.measureText('Sponsored by').width + 12;
+            items.push({ type: 'sponsor', w: pillW + gap + sW, h: sH, imgW: sW, imgH: sH, pillW, img, fontSize: sponsorFont });
           } else {
             const img = this.loadedLogos[key];
             if (img) {
@@ -583,13 +584,13 @@ class PromotionalPostsScreen extends Screen {
 
           if (item.type === 'sponsor') {
             const midY = itemY + maxH / 2;
-            const pillH = smallFont + 6;
+            const pillH = item.fontSize + 8;
             ctx.fillStyle = 'rgba(65,105,225,0.9)';
             ctx.beginPath();
-            ctx.roundRect(curX, midY - pillH / 2, item.pillW, pillH, 3);
+            ctx.roundRect(curX, midY - pillH / 2, item.pillW, pillH, 4);
             ctx.fill();
             ctx.fillStyle = '#eeeeee';
-            ctx.font = `600 ${smallFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+            ctx.font = `600 ${item.fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('Sponsored by', curX + item.pillW / 2, midY);
