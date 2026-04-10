@@ -679,10 +679,11 @@ class ContentPostsScreen extends Screen {
       const resp = await this.auth.fetch(url);
       const data = await resp.json();
 
-      if (data.error) {
+      if (data.error || data.success === false) {
+        const errMsg = (data.error && data.error.message) || data.message || 'Failed to load Drive files';
         grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;">
-          <p style="color:#ef4444;">\u274c ${this.escapeHtml(data.error.message || 'Failed to load Drive files')}</p>
-          <p style="font-size:0.85rem;opacity:0.7;">Make sure Google Drive API is enabled and you\'ve logged in with Drive permissions.</p>
+          <p style="color:#ef4444;">\u274c ${this.escapeHtml(errMsg)}</p>
+          <p style="font-size:0.85rem;opacity:0.7;">Please log out and log back in with Google to connect Google Drive.</p>
         </div>`;
         return;
       }
