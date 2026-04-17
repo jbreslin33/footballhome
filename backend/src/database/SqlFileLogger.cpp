@@ -76,7 +76,7 @@ void SqlFileLogger::initializeTableMap() {
     
     // Users and authentication
     table_file_map_["users"] = "08";
-    table_file_map_["user_emails"] = "08";
+    table_file_map_["person_emails"] = "08";
     table_file_map_["user_external_identities"] = "08";
     table_file_map_["external_apps"] = "08";
     table_file_map_["user_sessions"] = "08";

@@ -8,9 +8,15 @@ UserService::UserService(Database* db) : db_(db) {}
 
 UserService::UserDetails UserService::getUserById(const std::string& user_id) {
     std::string query = R"(
-        SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.date_of_birth,
+        SELECT u.id, p.first_name, p.last_name,
+               COALESCE(pe.email, '') as email,
+               COALESCE(pp.phone_number, '') as phone,
+               p.birth_date as date_of_birth,
                u.is_active, u.created_at, u.updated_at
         FROM users u
+        JOIN persons p ON u.person_id = p.id
+        LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true
+        LEFT JOIN person_phones pp ON pp.person_id = p.id AND pp.is_primary = true
         WHERE u.id = $1
     )";
     
@@ -37,14 +43,20 @@ UserService::UserDetails UserService::getUserById(const std::string& user_id) {
 
 std::vector<UserService::UserDetails> UserService::getUsersByClub(const std::string& club_id) {
     std::string query = R"(
-        SELECT DISTINCT u.id, u.first_name, u.last_name, u.email, u.phone, 
-               u.date_of_birth, u.is_active, u.created_at, u.updated_at
+        SELECT DISTINCT u.id, p.first_name, p.last_name,
+               COALESCE(pe.email, '') as email,
+               COALESCE(pp.phone_number, '') as phone,
+               p.birth_date as date_of_birth,
+               u.is_active, u.created_at, u.updated_at
         FROM users u
+        JOIN persons p ON u.person_id = p.id
+        LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true
+        LEFT JOIN person_phones pp ON pp.person_id = p.id AND pp.is_primary = true
         JOIN team_division_players tp ON u.id = tp.player_id
         JOIN teams t ON tp.team_id = t.id
         JOIN clubs sd ON t.club_id = sd.id
         WHERE sd.club_id = $1
-        ORDER BY u.last_name, u.first_name
+        ORDER BY p.last_name, p.first_name
     )";
     
     std::vector<std::string> params = {club_id};
@@ -76,48 +88,68 @@ bool UserService::updateUserBasicInfo(const std::string& user_id,
                                       const std::string& date_of_birth,
                                       const std::string& admin_id) {
     try {
-        // Build update query dynamically based on provided fields
-        std::string query = "UPDATE users SET updated_at = CURRENT_TIMESTAMP";
-        std::vector<std::string> params;
-        int param_count = 0;
-        
-        if (!first_name.empty()) {
-            query += ", first_name = $" + std::to_string(++param_count);
-            params.push_back(first_name);
+        // First get the person_id for this user
+        auto person_result = db_->query("SELECT person_id FROM users WHERE id = $1", {user_id});
+        if (person_result.empty()) return false;
+        std::string person_id = person_result[0]["person_id"].as<std::string>();
+
+        // Update persons table for name and birth_date
+        {
+            std::string query = "UPDATE persons SET updated_at = CURRENT_TIMESTAMP";
+            std::vector<std::string> params;
+            int param_count = 0;
+            
+            if (!first_name.empty()) {
+                query += ", first_name = $" + std::to_string(++param_count);
+                params.push_back(first_name);
+            }
+            if (!last_name.empty()) {
+                query += ", last_name = $" + std::to_string(++param_count);
+                params.push_back(last_name);
+            }
+            if (!date_of_birth.empty()) {
+                query += ", birth_date = $" + std::to_string(++param_count);
+                params.push_back(date_of_birth);
+            }
+            
+            if (!params.empty()) {
+                query += " WHERE id = $" + std::to_string(++param_count);
+                params.push_back(person_id);
+                db_->query(query, params);
+            }
         }
-        if (!last_name.empty()) {
-            query += ", last_name = $" + std::to_string(++param_count);
-            params.push_back(last_name);
-        }
+
+        // Update primary email in person_emails
         if (!email.empty()) {
-            query += ", email = $" + std::to_string(++param_count);
-            params.push_back(email);
+            db_->query(
+                "INSERT INTO person_emails (person_id, email, email_type_id, is_primary) "
+                "VALUES ($1, $2, 1, true) "
+                "ON CONFLICT (person_id, email) DO UPDATE SET email = $2 ",
+                {person_id, email});
         }
+
+        // Update primary phone in person_phones
         if (!phone.empty()) {
-            query += ", phone = $" + std::to_string(++param_count);
-            params.push_back(phone);
+            db_->query(
+                "INSERT INTO person_phones (person_id, phone_number, phone_type_id, is_primary) "
+                "VALUES ($1, $2, 1, true) "
+                "ON CONFLICT (person_id, phone_number) DO UPDATE SET phone_number = $2 ",
+                {person_id, phone});
         }
-        if (!date_of_birth.empty()) {
-            query += ", date_of_birth = $" + std::to_string(++param_count);
-            params.push_back(date_of_birth);
-        }
-        
-        query += " WHERE id = $" + std::to_string(++param_count);
-        params.push_back(user_id);
-        
-        db_->query(query, params);
+
+        // Also update users.updated_at
+        db_->query("UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = $1", {user_id});
         
         // Build SQL statement with actual values for file logging
         std::ostringstream sql_log;
-        sql_log << "UPDATE users SET updated_at = CURRENT_TIMESTAMP";
+        sql_log << "UPDATE persons/person_emails/person_phones for user " << user_id << " (person " << person_id << ")";
         if (!first_name.empty()) sql_log << ", first_name = '" << first_name << "'";
         if (!last_name.empty()) sql_log << ", last_name = '" << last_name << "'";
         if (!email.empty()) sql_log << ", email = '" << email << "'";
         if (!phone.empty()) sql_log << ", phone = '" << phone << "'";
-        if (!date_of_birth.empty()) sql_log << ", date_of_birth = '" << date_of_birth << "'";
-        sql_log << " WHERE id = '" << user_id << "'";
+        if (!date_of_birth.empty()) sql_log << ", birth_date = '" << date_of_birth << "'";
         
-        SqlFileLogger::log("users", sql_log.str());
+        SqlFileLogger::log("persons", sql_log.str());
         
         // Log audit action
         logAuditAction(admin_id, "user_update", "users", user_id, "Updated user basic info");

@@ -3132,12 +3132,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -3283,12 +3279,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -3406,11 +3398,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-12T23:00:00.000Z",
     "end_date_time": "2026-03-13T00:30:00.000Z",
     "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:27.000Z",
+    "updated_at": "2026-03-23T14:34:11.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -3422,11 +3414,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f11102-0a7c-5c62-a3c6-de0bc43510dc",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3520,24 +3512,26 @@
     "game_details": {
       "originator_id": "699ccd46a5687f00013c61da",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f11102-0a7c-5c62-a3c6-de0bc43510dc",
         "originator_id": "699ccc4581c1bd0001cce228",
         "name": "Oaklyn United Nor'Easters II",
-        "score": "",
-        "is_home_team": true
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -3579,12 +3573,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -3730,12 +3720,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -3881,12 +3867,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -4004,11 +3986,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T16:00:00.000Z",
     "end_date_time": "2026-03-22T17:30:00.000Z",
     "created_at": "2026-02-23T21:57:29.000Z",
-    "updated_at": "2026-02-23T21:57:31.000Z",
+    "updated_at": "2026-03-23T14:34:08.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4020,11 +4002,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f11102-0a7c-5c62-a3c6-de0bc43510dc",
-        "home_team_score": "",
+        "home_team_score": "8",
         "away_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4118,24 +4100,26 @@
     "game_details": {
       "originator_id": "699ccd4ba59f580001eed940",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f11102-0a7c-5c62-a3c6-de0bc43510dc",
         "originator_id": "699ccc4581c1bd0001cce228",
         "name": "Oaklyn United Nor'Easters II",
-        "score": "",
-        "is_home_team": true
+        "score": "8",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Boys Club U23",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4149,11 +4133,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T17:00:00.000Z",
     "end_date_time": "2026-03-22T18:30:00.000Z",
     "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:29.000Z",
+    "updated_at": "2026-03-23T14:34:09.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4165,11 +4149,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4263,24 +4247,26 @@
     "game_details": {
       "originator_id": "699ccd484685970001a2eab8",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
         "originator_id": "68bd9535dad4620001549426",
         "name": "Philadelphia Sierra Stars",
-        "score": "",
-        "is_home_team": false
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4294,11 +4280,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T18:00:00.000Z",
     "end_date_time": "2026-03-22T19:30:00.000Z",
     "created_at": "2026-02-23T21:57:28.000Z",
-    "updated_at": "2026-02-23T21:57:31.000Z",
+    "updated_at": "2026-03-23T14:34:08.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4310,11 +4296,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4408,24 +4394,26 @@
     "game_details": {
       "originator_id": "699ccd4aa5687f00013c61e8",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
         "originator_id": "69948b6e6c4d0bddc5325cdb",
         "name": "Sewell's Old Boys ",
-        "score": "",
-        "is_home_team": true
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
         "originator_id": "68b9ec8f99aa1400fcdcee33",
         "name": "Philadelphia SC Select",
-        "score": "",
-        "is_home_team": false
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4439,11 +4427,11 @@
     "location_description": "Field 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-29T16:30:00.000Z",
     "end_date_time": "2026-03-29T18:00:00.000Z",
     "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:28.000Z",
+    "updated_at": "2026-03-30T14:16:42.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4455,11 +4443,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
-        "home_team_score": "",
+        "home_team_score": "5",
         "away_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4553,24 +4541,26 @@
     "game_details": {
       "originator_id": "699ccd47a59f580001eed93a",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
         "originator_id": "68b9ec8f2fa76700fb2eef25",
         "name": "Phoenix SCR",
-        "score": "",
-        "is_home_team": true
+        "score": "5",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Boys Club U23",
-        "score": "",
-        "is_home_team": false
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4584,11 +4574,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-29T18:45:00.000Z",
     "end_date_time": "2026-03-29T20:15:00.000Z",
     "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:30.000Z",
+    "updated_at": "2026-03-30T14:16:44.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4600,11 +4590,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f08c05-875d-2946-a1c6-aa0f2d49d2f3",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4698,24 +4688,26 @@
     "game_details": {
       "originator_id": "699ccd490c5241000144fb5f",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
         "originator_id": "68b9ec8f99aa1400fcdcee33",
         "name": "Philadelphia SC Select",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f08c05-875d-2946-a1c6-aa0f2d49d2f3",
         "originator_id": "68bdaf0edad4620001549632",
         "name": "Ade United FC",
-        "score": "",
-        "is_home_team": false
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4729,11 +4721,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-29T21:00:00.000Z",
     "end_date_time": "2026-03-29T22:30:00.000Z",
     "created_at": "2026-02-23T21:57:32.000Z",
-    "updated_at": "2026-02-23T21:57:33.000Z",
+    "updated_at": "2026-03-30T14:16:42.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4745,11 +4737,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f08bf9-18d4-ed08-ad97-7a9586fe34c4",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4843,314 +4835,26 @@
     "game_details": {
       "originator_id": "699ccd4da59f580001eed942",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f08bf9-18d4-ed08-ad97-7a9586fe34c4",
         "originator_id": "68bd9a33dad462000154945f",
         "name": "Illyrians",
-        "score": "",
-        "is_home_team": true
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
         "originator_id": "69948b6e6c4d0bddc5325cdb",
         "name": "Sewell's Old Boys ",
-        "score": "",
-        "is_home_team": false
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "9cad47d5-989d-46e9-8f0b-4756ad2453db",
-    "title": "Sewell's Old Boys  at Persepolis FC II",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Germantown Supersite",
-    "location_address": "1199 East Sedgwick Street, Philadelphia, PA 19150",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-03T00:15:00.000Z",
-    "end_date_time": "2026-04-03T01:45:00.000Z",
-    "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:28.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "466884",
-    "subvenue_id": "501883",
-    "source": {
-      "id": "699ccd470c5241000144fb5b",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "home_team_score": "",
-        "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f9716a100fc8d454e",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Persepolis FC II",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8f562f54017935a21b",
-          "primary_color": "170202",
-          "seed_id": "3279220",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6b5-a12a-a76f-e61f3017bc57/large_square_Gemini_Generated_Image_h4esunh4esunh4es.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f9716a100fc8d454e",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "69948b6e6c4d0bddc5325cdb",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Sewell's Old Boys ",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "69948b6d0f3a7d6e28e701d1",
-          "primary_color": "",
-          "seed_id": "3671413",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c16-b122-1f5c-adba-aa423833d9df/large_square_Sewell_Old_Boys.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "69948b6e6c4d0bddc5325cdb",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "682f9676528c0e00bfc9d2f2",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "682f967a5d052e0001c4ec30"
-        },
-        "system": "StatNgin",
-        "id": "682f967a5d052e0001c4ec2f",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "699ccd470c5241000144fb5b",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "originator_id": "68b9ec8f9716a100fc8d454e",
-        "name": "Persepolis FC II",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "originator_id": "69948b6e6c4d0bddc5325cdb",
-        "name": "Sewell's Old Boys ",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "fc3a66ec-1d87-491a-85a4-8ba9322bea3e",
-    "title": "Philadelphia Sierra Stars at Lighthouse Boys Club U23",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Lighthouse Sport Complex",
-    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140",
-    "location_description": "Grass",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-12T04:00:00.000Z",
-    "end_date_time": "2026-04-12T05:30:00.000Z",
-    "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:27.000Z",
-    "tbd_time": true,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "470590",
-    "subvenue_id": "507549",
-    "source": {
-      "id": "699ccd47a5687f00013c61dc",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "home_team_score": "",
-        "away_team_id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f1f736300fa2e7142",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Lighthouse Boys Club U23",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8fb3eb0800fd755db8",
-          "primary_color": "",
-          "seed_id": "3279218",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d68f-e4bc-a2a3-cabfdee30661/large_square_Lighthouse.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f1f736300fa2e7142",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68bd9535dad4620001549426",
-        "extended_attributes": {
-          "outside_team": true,
-          "division_name": "Liga 2",
-          "name": "Philadelphia Sierra Stars",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": null,
-          "team_id": "68bd9535dad4620001549425",
-          "primary_color": null,
-          "seed_id": "3284763",
-          "logos": {
-            "large_square": null
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68bd9535dad4620001549426",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "682f9676528c0e00bfc9d2f2",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "682f967a5d052e0001c4ec30"
-        },
-        "system": "StatNgin",
-        "id": "682f967a5d052e0001c4ec2f",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "699ccd47a5687f00013c61dc",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "originator_id": "68b9ec8f1f736300fa2e7142",
-        "name": "Lighthouse Boys Club U23",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
-        "originator_id": "68bd9535dad4620001549426",
-        "name": "Philadelphia Sierra Stars",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -5164,11 +4868,11 @@
     "location_description": "Field 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-12T16:00:00.000Z",
     "end_date_time": "2026-04-12T17:30:00.000Z",
     "created_at": "2026-02-23T21:57:28.000Z",
-    "updated_at": "2026-02-23T21:57:30.000Z",
+    "updated_at": "2026-04-13T14:59:00.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -5180,11 +4884,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
-        "home_team_score": "",
+        "home_team_score": "0",
         "away_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -5192,8 +4896,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -5278,24 +4986,26 @@
     "game_details": {
       "originator_id": "699ccd49a5687f00013c61e6",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
         "originator_id": "68b9ec8f2fa76700fb2eef25",
         "name": "Phoenix SCR",
-        "score": "",
-        "is_home_team": true
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
-        "score": "",
-        "is_home_team": false
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -5309,11 +5019,11 @@
     "location_description": "Field 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-12T18:30:00.000Z",
     "end_date_time": "2026-04-12T20:00:00.000Z",
     "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:30.000Z",
+    "updated_at": "2026-04-13T14:59:00.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -5325,11 +5035,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f11102-0a7c-7db4-9748-4a17fbf6afb2",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -5337,8 +5047,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -5423,24 +5137,177 @@
     "game_details": {
       "originator_id": "699ccd49a5687f00013c61e4",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f11102-0a7c-7db4-9748-4a17fbf6afb2",
         "originator_id": "699ccc453bbfed0001bd0efb",
         "name": "Phoenix SCM",
-        "score": "",
-        "is_home_team": true
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
         "originator_id": "69948b6e6c4d0bddc5325cdb",
         "name": "Sewell's Old Boys ",
-        "score": "",
-        "is_home_team": false
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "fc3a66ec-1d87-491a-85a4-8ba9322bea3e",
+    "title": "Philadelphia Sierra Stars at Lighthouse Boys Club U23",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Lighthouse Sport Complex",
+    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140, US",
+    "location_description": "Grass",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2026-04-12T19:15:00.000Z",
+    "end_date_time": "2026-04-12T20:45:00.000Z",
+    "created_at": "2026-02-23T21:57:25.000Z",
+    "updated_at": "2026-04-13T14:58:58.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "470590",
+    "subvenue_id": "507549",
+    "source": {
+      "id": "699ccd47a5687f00013c61dc",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "home_team_score": "1",
+        "away_team_id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
+        "away_team_score": "4",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f1f736300fa2e7142",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lighthouse Boys Club U23",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8fb3eb0800fd755db8",
+          "primary_color": "",
+          "seed_id": "3279218",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d68f-e4bc-a2a3-cabfdee30661/large_square_Lighthouse.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f1f736300fa2e7142",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68bd9535dad4620001549426",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Philadelphia Sierra Stars",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": null,
+          "team_id": "68bd9535dad4620001549425",
+          "primary_color": null,
+          "seed_id": "3284763",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68bd9535dad4620001549426",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "682f9676528c0e00bfc9d2f2",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "682f967a5d052e0001c4ec30"
+        },
+        "system": "StatNgin",
+        "id": "682f967a5d052e0001c4ec2f",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "699ccd47a5687f00013c61dc",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "originator_id": "68b9ec8f1f736300fa2e7142",
+        "name": "Lighthouse Boys Club U23",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
+        "originator_id": "68bd9535dad4620001549426",
+        "name": "Philadelphia Sierra Stars",
+        "score": "4",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -5450,16 +5317,16 @@
     "event_type": "game",
     "description": "",
     "location_name": "Lighthouse Sport Complex",
-    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140",
+    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140, US",
     "location_description": "Grass",
     "location_place_id": "",
     "location_url": "",
     "status": "scheduled",
-    "start_date_time": "2026-04-19T04:00:00.000Z",
-    "end_date_time": "2026-04-19T05:30:00.000Z",
+    "start_date_time": "2026-04-19T14:45:00.000Z",
+    "end_date_time": "2026-04-19T16:15:00.000Z",
     "created_at": "2026-02-23T21:57:30.000Z",
-    "updated_at": "2026-02-23T21:57:32.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-04-04T04:27:49.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
     "venue_id": "470590",
@@ -5574,14 +5441,167 @@
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Boys Club U23",
         "score": "",
-        "is_home_team": true
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f08bf9-18d4-ed08-ad97-7a9586fe34c4",
         "originator_id": "68bd9a33dad462000154945f",
         "name": "Illyrians",
         "score": "",
-        "is_home_team": false
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "5e8e4dde-a165-42bf-b967-9b559e75c162",
+    "title": "Sewell's Old Boys  at Phoenix SCR",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Phoenix Sport Club",
+    "location_address": "301 West Bristol Road, Trevose, PA 19053-7301",
+    "location_description": "Field 1",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-19T16:00:00.000Z",
+    "end_date_time": "2026-04-19T17:30:00.000Z",
+    "created_at": "2026-02-23T21:57:25.000Z",
+    "updated_at": "2026-04-13T14:58:58.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "470591",
+    "subvenue_id": "507553",
+    "source": {
+      "id": "699ccd47a59f580001eed93c",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
+        "home_team_score": "",
+        "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f2fa76700fb2eef25",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Phoenix SCR",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8f562f5400fd35a5dc",
+          "primary_color": "",
+          "seed_id": "3279221",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6ce-f59e-a770-e61f3017bc57/large_square_85.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f2fa76700fb2eef25",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "69948b6e6c4d0bddc5325cdb",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Sewell's Old Boys ",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "69948b6d0f3a7d6e28e701d1",
+          "primary_color": "",
+          "seed_id": "3671413",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c16-b122-1f5c-adba-aa423833d9df/large_square_Sewell_Old_Boys.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69948b6e6c4d0bddc5325cdb",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "682f9676528c0e00bfc9d2f2",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "682f967a5d052e0001c4ec30"
+        },
+        "system": "StatNgin",
+        "id": "682f967a5d052e0001c4ec2f",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "699ccd47a59f580001eed93c",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
+        "originator_id": "68b9ec8f2fa76700fb2eef25",
+        "name": "Phoenix SCR",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
+        "originator_id": "69948b6e6c4d0bddc5325cdb",
+        "name": "Sewell's Old Boys ",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
@@ -5594,21 +5614,21 @@
     "title": "Philadelphia SC Select at Persepolis FC II",
     "event_type": "game",
     "description": "",
-    "location_name": "Lighthouse Sport Complex",
-    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140",
-    "location_description": "Grass",
+    "location_name": "Northeast High School",
+    "location_address": "1601 Cottman Avenue, Philadelphia, PA 19111-3430, US",
+    "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
     "status": "scheduled",
-    "start_date_time": "2026-04-19T04:00:00.000Z",
-    "end_date_time": "2026-04-19T05:30:00.000Z",
+    "start_date_time": "2026-04-19T19:00:00.000Z",
+    "end_date_time": "2026-04-19T20:30:00.000Z",
     "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:28.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-04-10T16:36:19.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
-    "venue_id": "470590",
-    "subvenue_id": "507549",
+    "venue_id": "162599",
+    "subvenue_id": "501332",
     "source": {
       "id": "699ccd474685970001a2eab6",
       "type": "event",
@@ -5719,159 +5739,16 @@
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
         "score": "",
-        "is_home_team": true
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
         "originator_id": "68b9ec8f99aa1400fcdcee33",
         "name": "Philadelphia SC Select",
         "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "5e8e4dde-a165-42bf-b967-9b559e75c162",
-    "title": "Sewell's Old Boys  at Phoenix SCR",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Phoenix Sport Club",
-    "location_address": "301 West Bristol Road, Trevose, PA 19053-7301",
-    "location_description": "Field 1",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-19T16:00:00.000Z",
-    "end_date_time": "2026-04-19T17:30:00.000Z",
-    "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:28.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "470591",
-    "subvenue_id": "507553",
-    "source": {
-      "id": "699ccd47a59f580001eed93c",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
-        "home_team_score": "",
-        "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f2fa76700fb2eef25",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Phoenix SCR",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8f562f5400fd35a5dc",
-          "primary_color": "",
-          "seed_id": "3279221",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6ce-f59e-a770-e61f3017bc57/large_square_85.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f2fa76700fb2eef25",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "69948b6e6c4d0bddc5325cdb",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Sewell's Old Boys ",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "69948b6d0f3a7d6e28e701d1",
-          "primary_color": "",
-          "seed_id": "3671413",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c16-b122-1f5c-adba-aa423833d9df/large_square_Sewell_Old_Boys.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "69948b6e6c4d0bddc5325cdb",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "682f9676528c0e00bfc9d2f2",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "682f967a5d052e0001c4ec30"
-        },
-        "system": "StatNgin",
-        "id": "682f967a5d052e0001c4ec2f",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "699ccd47a59f580001eed93c",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
-        "originator_id": "68b9ec8f2fa76700fb2eef25",
-        "name": "Phoenix SCR",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "originator_id": "69948b6e6c4d0bddc5325cdb",
-        "name": "Sewell's Old Boys ",
-        "score": "",
-        "is_home_team": false
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
@@ -6025,21 +5902,168 @@
     }
   },
   {
+    "id": "9cad47d5-989d-46e9-8f0b-4756ad2453db",
+    "title": "Sewell's Old Boys  at Persepolis FC II",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Germantown Supersite",
+    "location_address": "1199 East Sedgwick Street, Philadelphia, PA 19150, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-24T00:15:00.000Z",
+    "end_date_time": "2026-04-24T01:45:00.000Z",
+    "created_at": "2026-02-23T21:57:25.000Z",
+    "updated_at": "2026-04-07T22:41:45.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "466884",
+    "subvenue_id": "501883",
+    "source": {
+      "id": "699ccd470c5241000144fb5b",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
+        "home_team_score": "",
+        "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f9716a100fc8d454e",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Persepolis FC II",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8f562f54017935a21b",
+          "primary_color": "170202",
+          "seed_id": "3279220",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6b5-a12a-a76f-e61f3017bc57/large_square_Gemini_Generated_Image_h4esunh4esunh4es.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f9716a100fc8d454e",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "69948b6e6c4d0bddc5325cdb",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Sewell's Old Boys ",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "69948b6d0f3a7d6e28e701d1",
+          "primary_color": "",
+          "seed_id": "3671413",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c16-b122-1f5c-adba-aa423833d9df/large_square_Sewell_Old_Boys.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69948b6e6c4d0bddc5325cdb",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "682f9676528c0e00bfc9d2f2",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "682f967a5d052e0001c4ec30"
+        },
+        "system": "StatNgin",
+        "id": "682f967a5d052e0001c4ec2f",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "699ccd470c5241000144fb5b",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
+        "originator_id": "68b9ec8f9716a100fc8d454e",
+        "name": "Persepolis FC II",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
+        "originator_id": "69948b6e6c4d0bddc5325cdb",
+        "name": "Sewell's Old Boys ",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
     "id": "ecb165b3-a21f-47df-ad53-4762827218aa",
     "title": "Persepolis FC II at Lighthouse Boys Club U23",
     "event_type": "game",
     "description": "",
     "location_name": "Lighthouse Sport Complex",
-    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140",
+    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140, US",
     "location_description": "Grass",
     "location_place_id": "",
     "location_url": "",
     "status": "scheduled",
-    "start_date_time": "2026-04-26T04:00:00.000Z",
-    "end_date_time": "2026-04-26T05:30:00.000Z",
+    "start_date_time": "2026-04-26T17:05:00.000Z",
+    "end_date_time": "2026-04-26T18:35:00.000Z",
     "created_at": "2026-02-23T21:57:29.000Z",
-    "updated_at": "2026-02-23T21:57:31.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-04-04T04:28:25.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
     "venue_id": "470590",
@@ -6154,14 +6178,16 @@
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Boys Club U23",
         "score": "",
-        "is_home_team": true
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
         "score": "",
-        "is_home_team": false
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
@@ -6305,151 +6331,6 @@
         "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
         "originator_id": "68b9ec8f2fa76700fb2eef25",
         "name": "Phoenix SCR",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "e2350470-d8a1-4cfe-8d33-210ece9f3904",
-    "title": "Philadelphia SC Select at Lighthouse Boys Club U23",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Lighthouse Sport Complex",
-    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140",
-    "location_description": "Grass",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-05-03T04:00:00.000Z",
-    "end_date_time": "2026-05-03T05:30:00.000Z",
-    "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:29.000Z",
-    "tbd_time": true,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "470590",
-    "subvenue_id": "507549",
-    "source": {
-      "id": "699ccd49a5687f00013c61e2",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "home_team_score": "",
-        "away_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f1f736300fa2e7142",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Lighthouse Boys Club U23",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8fb3eb0800fd755db8",
-          "primary_color": "",
-          "seed_id": "3279218",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d68f-e4bc-a2a3-cabfdee30661/large_square_Lighthouse.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f1f736300fa2e7142",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f99aa1400fcdcee33",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Philadelphia SC Select",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8fb3eb08013b755a47",
-          "primary_color": "",
-          "seed_id": "3279219",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f99aa1400fcdcee33",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "682f9676528c0e00bfc9d2f2",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "682f967a5d052e0001c4ec30"
-        },
-        "system": "StatNgin",
-        "id": "682f967a5d052e0001c4ec2f",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "699ccd49a5687f00013c61e2",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "originator_id": "68b9ec8f1f736300fa2e7142",
-        "name": "Lighthouse Boys Club U23",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "originator_id": "68b9ec8f99aa1400fcdcee33",
-        "name": "Philadelphia SC Select",
         "score": "",
         "is_home_team": false
       },
@@ -6742,6 +6623,153 @@
         "name": "Persepolis FC II",
         "score": "",
         "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "e2350470-d8a1-4cfe-8d33-210ece9f3904",
+    "title": "Philadelphia SC Select at Lighthouse Boys Club U23",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Lighthouse Sport Complex",
+    "location_address": "101-199 East Erie Avenue, Philadelphia, PA 19140, US",
+    "location_description": "Grass",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-05-03T20:30:00.000Z",
+    "end_date_time": "2026-05-03T22:00:00.000Z",
+    "created_at": "2026-02-23T21:57:27.000Z",
+    "updated_at": "2026-04-08T15:44:19.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "470590",
+    "subvenue_id": "507549",
+    "source": {
+      "id": "699ccd49a5687f00013c61e2",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "home_team_score": "",
+        "away_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f1f736300fa2e7142",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lighthouse Boys Club U23",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8fb3eb0800fd755db8",
+          "primary_color": "",
+          "seed_id": "3279218",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d68f-e4bc-a2a3-cabfdee30661/large_square_Lighthouse.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f1f736300fa2e7142",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f99aa1400fcdcee33",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Philadelphia SC Select",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8fb3eb08013b755a47",
+          "primary_color": "",
+          "seed_id": "3279219",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f99aa1400fcdcee33",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "682f9676528c0e00bfc9d2f2",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "682f967a5d052e0001c4ec30"
+        },
+        "system": "StatNgin",
+        "id": "682f967a5d052e0001c4ec2f",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "699ccd49a5687f00013c61e2",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "originator_id": "68b9ec8f1f736300fa2e7142",
+        "name": "Lighthouse Boys Club U23",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "originator_id": "68b9ec8f99aa1400fcdcee33",
+        "name": "Philadelphia SC Select",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,

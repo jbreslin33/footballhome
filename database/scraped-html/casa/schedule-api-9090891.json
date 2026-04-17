@@ -201,7 +201,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -495,7 +495,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -936,7 +936,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -1403,7 +1403,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -1818,7 +1818,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -2285,7 +2285,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -2700,7 +2700,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -2994,7 +2994,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -3390,11 +3390,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T18:00:00.000Z",
     "end_date_time": "2026-03-22T19:30:00.000Z",
     "created_at": "2026-03-05T16:33:55.000Z",
-    "updated_at": "2026-03-05T16:33:57.000Z",
+    "updated_at": "2026-03-23T14:45:26.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -3406,11 +3406,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3504,24 +3504,26 @@
     "game_details": {
       "originator_id": "69a9b074fd1b3d00017ed157",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
         "originator_id": "68b1fb2fa99c9fd1943b4736",
         "name": "Gambeta FC",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
         "originator_id": "68b76604f68b713e325680f5",
         "name": "South Shore FC",
-        "score": "",
-        "is_home_team": false
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -3535,11 +3537,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T20:00:00.000Z",
     "end_date_time": "2026-03-22T21:30:00.000Z",
     "created_at": "2026-03-05T16:39:15.000Z",
-    "updated_at": "2026-03-05T16:39:18.000Z",
+    "updated_at": "2026-03-23T14:45:26.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -3551,11 +3553,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "home_team_score": "",
+        "home_team_score": "4",
         "away_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3649,24 +3651,26 @@
     "game_details": {
       "originator_id": "69a9b1b527d40b00018b0d10",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9c0-504c-acca-46945ae83505",
         "originator_id": "68b1fb2fe5b758de1670bc0d",
         "name": "BCFC All Stars",
-        "score": "",
-        "is_home_team": true
+        "score": "4",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
         "originator_id": "68b1fb2f1c1bd03f8949729f",
         "name": "Flatley FC",
-        "score": "",
-        "is_home_team": false
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -3680,11 +3684,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T22:00:00.000Z",
     "end_date_time": "2026-03-22T23:30:00.000Z",
     "created_at": "2026-03-05T16:41:31.000Z",
-    "updated_at": "2026-03-09T21:37:10.000Z",
+    "updated_at": "2026-03-23T14:45:26.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -3696,11 +3700,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "home_team_score": "",
+        "home_team_score": "6",
         "away_team_id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "away_team_score": "",
+        "away_team_score": "4",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3725,7 +3729,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -3794,12 +3798,12 @@
     "game_details": {
       "originator_id": "69a9b23d27d40b00018b0d12",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
         "originator_id": "68b1fb2f92f9ec2570c17ff9",
         "name": "Jaguars United FC",
-        "score": "",
+        "score": "6",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -3807,13 +3811,164 @@
         "id": "11f118b2-0771-31ca-a818-e621b21d259e",
         "originator_id": "69a9b201f42011c91984cee3",
         "name": "Somerville United FC II",
-        "score": "",
+        "score": "4",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "233a48e0-7ed0-467c-90c0-3315d8ae7dd4",
+    "title": "Gambeta FC at Somerville United FC II",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Conway Field",
+    "location_address": "560 Somerville Avenue, Somerville, MA 02143",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2026-03-29T18:00:00.000Z",
+    "end_date_time": "2026-03-29T19:30:00.000Z",
+    "created_at": "2026-03-05T16:45:04.000Z",
+    "updated_at": "2026-03-30T14:24:01.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "665723",
+    "subvenue_id": "809138",
+    "source": {
+      "id": "69a9b311aaca4c00010a6022",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "home_team_score": "5",
+        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "69a9b201f42011c91984cee3",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "69a9b311aaca4c00010a6022",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "name": "Somerville United FC II",
+        "score": "5",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -3822,32 +3977,32 @@
     "title": "BCFC All Stars at Strictly Nos Fc",
     "event_type": "game",
     "description": "",
-    "location_name": "",
-    "location_address": "",
-    "location_description": "",
+    "location_name": "Medford High School",
+    "location_address": "489 Winthrop Street, Medford, MA 02155-2349, US",
+    "location_description": "Field 2",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-03-29T04:00:00.000Z",
-    "end_date_time": "2026-03-29T05:30:00.000Z",
+    "status": "completed",
+    "start_date_time": "2026-03-29T19:00:00.000Z",
+    "end_date_time": "2026-03-29T20:30:00.000Z",
     "created_at": "2026-03-05T16:45:50.000Z",
-    "updated_at": "2026-03-05T16:45:52.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-03-30T13:25:56.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
-    "venue_id": "",
-    "subvenue_id": "",
+    "venue_id": "472329",
+    "subvenue_id": "510128",
     "source": {
       "id": "69a9b340b14c1c000116e7f6",
       "type": "event",
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3941,169 +4096,26 @@
     "game_details": {
       "originator_id": "69a9b340b14c1c000116e7f6",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
         "originator_id": "68b1fb2fa99c9fc3563b496b",
         "name": "Strictly Nos Fc",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0850b-d9c0-504c-acca-46945ae83505",
         "originator_id": "68b1fb2fe5b758de1670bc0d",
         "name": "BCFC All Stars",
-        "score": "",
-        "is_home_team": false
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "233a48e0-7ed0-467c-90c0-3315d8ae7dd4",
-    "title": "Gambeta FC at Somerville United FC II",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Conway Field",
-    "location_address": "560 Somerville Avenue, Somerville, MA 02143",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-03-29T18:00:00.000Z",
-    "end_date_time": "2026-03-29T19:30:00.000Z",
-    "created_at": "2026-03-05T16:45:04.000Z",
-    "updated_at": "2026-03-05T16:45:06.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "665723",
-    "subvenue_id": "809138",
-    "source": {
-      "id": "69a9b311aaca4c00010a6022",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "home_team_score": "",
-        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Gambeta FC",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "68b1fb2ef68b710813568204",
-          "primary_color": "0A19F5",
-          "seed_id": "3256303",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "69a9b201f42011c91984cee3",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Somerville United FC II",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "primary_color": "",
-          "seed_id": "3717571",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 1",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "6827a0c22cbf1300019c8b52"
-        },
-        "system": "StatNgin",
-        "id": "6827a0c22cbf1300019c8b51",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "69a9b311aaca4c00010a6022",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "originator_id": "69a9b201f42011c91984cee3",
-        "name": "Somerville United FC II",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
-        "name": "Gambeta FC",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4117,11 +4129,11 @@
     "location_description": "Stadium Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-29T22:45:00.000Z",
     "end_date_time": "2026-03-30T00:15:00.000Z",
     "created_at": "2026-03-05T16:42:20.000Z",
-    "updated_at": "2026-03-09T21:37:57.000Z",
+    "updated_at": "2026-03-30T14:24:01.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4133,11 +4145,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
-        "home_team_score": "",
+        "home_team_score": "0",
         "away_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "away_team_score": "",
+        "away_team_score": "9",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4145,8 +4157,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -4188,7 +4204,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -4231,12 +4247,12 @@
     "game_details": {
       "originator_id": "69a9b26eb14c1c000116e7f4",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
         "originator_id": "68b1fb2f1c1bd03f8949729f",
         "name": "Flatley FC",
-        "score": "",
+        "score": "0",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -4244,13 +4260,13 @@
         "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
         "originator_id": "68b1fb2f92f9ec2570c17ff9",
         "name": "Jaguars United FC",
-        "score": "",
+        "score": "9",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4264,11 +4280,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-04T18:00:00.000Z",
     "end_date_time": "2026-04-04T19:30:00.000Z",
     "created_at": "2026-03-05T16:46:48.000Z",
-    "updated_at": "2026-03-05T16:46:50.000Z",
+    "updated_at": "2026-04-06T18:52:07.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4280,11 +4296,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4292,8 +4308,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -4378,24 +4398,26 @@
     "game_details": {
       "originator_id": "69a9b379aaca4c00010a6026",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
         "originator_id": "68b76604f68b713e325680f5",
         "name": "South Shore FC",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
         "originator_id": "68b1fb2fa99c9fc3563b496b",
         "name": "Strictly Nos Fc",
-        "score": "",
-        "is_home_team": false
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4409,11 +4431,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-10T00:15:00.000Z",
     "end_date_time": "2026-04-10T01:45:00.000Z",
     "created_at": "2026-03-05T16:47:37.000Z",
-    "updated_at": "2026-03-09T21:39:01.000Z",
+    "updated_at": "2026-04-10T15:27:07.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4425,20 +4447,45 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "away_team_score": "",
+        "away_team_score": "4",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
-        "event_attendees": [],
+        "event_attendees": [
+          {
+            "principal_triad": "TeamService__team__11f0850b-d9cf-485e-b396-f279949b2dbd",
+            "event_id": "e8de2369-457a-4667-b88f-c856e7390f4c",
+            "response": "yes",
+            "principal_system": "TeamService",
+            "persona_id": "41926603",
+            "id": "e8de2369-457a-4667-b88f-c856e7390f4c_11f0850b-d9cf-485e-b396-f279949b2dbd_41926603",
+            "principal_type": "team",
+            "principal_id": "11f0850b-d9cf-485e-b396-f279949b2dbd"
+          },
+          {
+            "principal_triad": "TeamService__team__11f0850b-d9cf-485e-b396-f279949b2dbd",
+            "event_id": "e8de2369-457a-4667-b88f-c856e7390f4c",
+            "response": "yes",
+            "principal_system": "TeamService",
+            "persona_id": "112339375",
+            "id": "e8de2369-457a-4667-b88f-c856e7390f4c_11f0850b-d9cf-485e-b396-f279949b2dbd_112339375",
+            "principal_type": "team",
+            "principal_id": "11f0850b-d9cf-485e-b396-f279949b2dbd"
+          }
+        ],
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -4523,12 +4570,12 @@
     "game_details": {
       "originator_id": "69a9b3abfd1b3d00017ed18f",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
         "originator_id": "68b1fb2f1c1bd03f8949729f",
         "name": "Flatley FC",
-        "score": "",
+        "score": "3",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -4536,158 +4583,13 @@
         "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
         "originator_id": "68b1fb2fa99c9fd1943b4736",
         "name": "Gambeta FC",
-        "score": "",
+        "score": "4",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "64674b29-182e-4be5-afad-90b38201a1db",
-    "title": "Gambeta FC at Jaguars United FC",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Rivergreen Park",
-    "location_address": "Rivergreen Drive, Everett, MA 02149",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-12T04:00:00.000Z",
-    "end_date_time": "2026-04-12T05:30:00.000Z",
-    "created_at": "2026-03-05T16:48:17.000Z",
-    "updated_at": "2026-03-05T16:48:19.000Z",
-    "tbd_time": true,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "578972",
-    "subvenue_id": "679765",
-    "source": {
-      "id": "69a9b3d3fd1b3d00017ed191",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "home_team_score": "",
-        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Jaguars United FC",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
-          "seed_id": "3256305",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Gambeta FC",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "68b1fb2ef68b710813568204",
-          "primary_color": "0A19F5",
-          "seed_id": "3256303",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 1",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "6827a0c22cbf1300019c8b52"
-        },
-        "system": "StatNgin",
-        "id": "6827a0c22cbf1300019c8b51",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "69a9b3d3fd1b3d00017ed191",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "name": "Jaguars United FC",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
-        "name": "Gambeta FC",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4701,11 +4603,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-12T18:00:00.000Z",
     "end_date_time": "2026-04-12T19:30:00.000Z",
     "created_at": "2026-03-05T16:49:00.000Z",
-    "updated_at": "2026-03-05T16:49:03.000Z",
+    "updated_at": "2026-04-13T13:41:13.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4717,11 +4619,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "away_team_score": "",
+        "away_team_score": "5",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -4729,8 +4631,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -4815,24 +4721,26 @@
     "game_details": {
       "originator_id": "69a9b3fefd1b3d00017ed193",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f118b2-0771-31ca-a818-e621b21d259e",
         "originator_id": "69a9b201f42011c91984cee3",
         "name": "Somerville United FC II",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
         "originator_id": "68b1fb2fa99c9fc3563b496b",
         "name": "Strictly Nos Fc",
-        "score": "",
-        "is_home_team": false
+        "score": "5",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4846,11 +4754,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-12T20:00:00.000Z",
     "end_date_time": "2026-04-12T21:30:00.000Z",
     "created_at": "2026-03-05T16:49:36.000Z",
-    "updated_at": "2026-03-05T16:49:53.000Z",
+    "updated_at": "2026-04-13T13:44:53.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -4862,20 +4770,35 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
-        "event_attendees": [],
+        "event_attendees": [
+          {
+            "principal_triad": "TeamService__team__11f0850b-d9c0-504c-acca-46945ae83505",
+            "event_id": "55496d08-f6fa-4dd8-b060-fbc5f2333af7",
+            "response": "yes",
+            "principal_system": "TeamService",
+            "persona_id": "104054742",
+            "id": "55496d08-f6fa-4dd8-b060-fbc5f2333af7_11f0850b-d9c0-504c-acca-46945ae83505_104054742",
+            "principal_type": "team",
+            "principal_id": "11f0850b-d9c0-504c-acca-46945ae83505"
+          }
+        ],
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -4960,12 +4883,12 @@
     "game_details": {
       "originator_id": "69a9b42227d40b00018b0d1a",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0850b-d9c0-504c-acca-46945ae83505",
         "originator_id": "68b1fb2fe5b758de1670bc0d",
         "name": "BCFC All Stars",
-        "score": "",
+        "score": "2",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -4973,13 +4896,175 @@
         "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
         "originator_id": "68b76604f68b713e325680f5",
         "name": "South Shore FC",
-        "score": "",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "64674b29-182e-4be5-afad-90b38201a1db",
+    "title": "Gambeta FC at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Madeline English School",
+    "location_address": "105 Woodville Street, Everett, MA 02149-1123, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2026-04-12T22:00:00.000Z",
+    "end_date_time": "2026-04-12T23:30:00.000Z",
+    "created_at": "2026-03-05T16:48:17.000Z",
+    "updated_at": "2026-04-13T13:46:31.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "596000",
+    "subvenue_id": "705704",
+    "source": {
+      "id": "69a9b3d3fd1b3d00017ed191",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "8",
+        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "away_team_score": "1",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [
+          {
+            "principal_triad": "TeamService__team__11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+            "event_id": "64674b29-182e-4be5-afad-90b38201a1db",
+            "response": "yes",
+            "principal_system": "TeamService",
+            "persona_id": "20173321",
+            "id": "64674b29-182e-4be5-afad-90b38201a1db_11f0850b-d9cd-24f2-8d29-7e9687db76bf_20173321",
+            "principal_type": "team",
+            "principal_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf"
+          }
+        ],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "#FFEF13",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "69a9b3d3fd1b3d00017ed191",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "8",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -4988,21 +5073,21 @@
     "title": "Jaguars United FC at South Shore FC",
     "event_type": "game",
     "description": "",
-    "location_name": "Legion Field",
-    "location_address": "32 Middle Street, Weymouth, MA 02189, US",
+    "location_name": "Lovell Field",
+    "location_address": "Lovell Field, Weymouth, MA 02189, US",
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
     "status": "scheduled",
-    "start_date_time": "2026-04-19T04:00:00.000Z",
-    "end_date_time": "2026-04-19T05:30:00.000Z",
+    "start_date_time": "2026-04-18T22:00:00.000Z",
+    "end_date_time": "2026-04-18T23:30:00.000Z",
     "created_at": "2026-03-05T16:50:56.000Z",
-    "updated_at": "2026-03-05T17:06:02.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-03-24T21:35:10.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
-    "venue_id": "583950",
-    "subvenue_id": "687567",
+    "venue_id": "673354",
+    "subvenue_id": "825331",
     "source": {
       "id": "69a9b47127d40b00018b0d1e",
       "type": "event",
@@ -5038,7 +5123,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -5423,170 +5508,25 @@
     }
   },
   {
-    "id": "2ce744fa-1bf1-42d9-8170-a41410456722",
-    "title": "Strictly Nos Fc at Jaguars United FC",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Rivergreen Park",
-    "location_address": "Rivergreen Drive, Everett, MA 02149",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-26T04:00:00.000Z",
-    "end_date_time": "2026-04-26T05:30:00.000Z",
-    "created_at": "2026-03-05T16:54:20.000Z",
-    "updated_at": "2026-03-05T16:54:23.000Z",
-    "tbd_time": true,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "578972",
-    "subvenue_id": "679765",
-    "source": {
-      "id": "69a9b53eaaca4c00010a602e",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "home_team_score": "",
-        "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Strictly Nos Fc",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "primary_color": "",
-          "seed_id": "3256304",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Jaguars United FC",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
-          "seed_id": "3256305",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 1",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "6827a0c22cbf1300019c8b52"
-        },
-        "system": "StatNgin",
-        "id": "6827a0c22cbf1300019c8b51",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "69a9b53eaaca4c00010a602e",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "name": "Jaguars United FC",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
-        "name": "Strictly Nos Fc",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
     "id": "2ef2c4ba-eacd-4c40-9ef0-a2dcaa2cf6b2",
     "title": "Somerville United FC II at South Shore FC",
     "event_type": "game",
     "description": "",
-    "location_name": "Legion Field",
-    "location_address": "32 Middle Street, Weymouth, MA 02189",
+    "location_name": "Lovell Field",
+    "location_address": "Lovell Field, Weymouth, MA 02189, US",
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
     "status": "scheduled",
-    "start_date_time": "2026-04-26T04:00:00.000Z",
-    "end_date_time": "2026-04-26T05:30:00.000Z",
+    "start_date_time": "2026-04-25T22:00:00.000Z",
+    "end_date_time": "2026-04-25T23:30:00.000Z",
     "created_at": "2026-03-05T16:55:10.000Z",
-    "updated_at": "2026-03-05T16:55:13.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-03-24T21:35:44.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
-    "venue_id": "583950",
-    "subvenue_id": "687567",
+    "venue_id": "673354",
+    "subvenue_id": "825331",
     "source": {
       "id": "69a9b570fd1b3d00017ed19b",
       "type": "event",
@@ -5697,14 +5637,16 @@
         "originator_id": "68b76604f68b713e325680f5",
         "name": "South Shore FC",
         "score": "",
-        "is_home_team": true
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f118b2-0771-31ca-a818-e621b21d259e",
         "originator_id": "69a9b201f42011c91984cee3",
         "name": "Somerville United FC II",
         "score": "",
-        "is_home_team": false
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
@@ -5849,6 +5791,157 @@
         "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
         "originator_id": "68b1fb2f1c1bd03f8949729f",
         "name": "Flatley FC",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "2ce744fa-1bf1-42d9-8170-a41410456722",
+    "title": "Strictly Nos Fc at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Malcolm X Park",
+    "location_address": "131 Dale Street, Boston, MA 02119, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-26T22:00:00.000Z",
+    "end_date_time": "2026-04-26T23:30:00.000Z",
+    "created_at": "2026-03-05T16:54:20.000Z",
+    "updated_at": "2026-04-10T16:47:57.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "681079",
+    "subvenue_id": "843352",
+    "source": {
+      "id": "69a9b53eaaca4c00010a602e",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "",
+        "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "#FFEF13",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "69a9b53eaaca4c00010a602e",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
         "score": "",
         "is_home_team": false,
         "interval_scores": []
@@ -6059,7 +6152,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -6935,7 +7028,7 @@
           "division_id": "6827a0c22cbf1300019c8b51",
           "secondary_color": "",
           "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
+          "primary_color": "#FFEF13",
           "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
@@ -7171,170 +7264,25 @@
     }
   },
   {
-    "id": "2eb57186-388d-4850-b6be-f2248fdd8993",
-    "title": "Somerville United FC II at Jaguars United FC",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Rivergreen Park",
-    "location_address": "Rivergreen Drive, Everett, MA 02149",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-05-31T04:00:00.000Z",
-    "end_date_time": "2026-05-31T05:30:00.000Z",
-    "created_at": "2026-03-05T17:03:20.000Z",
-    "updated_at": "2026-03-05T17:03:22.000Z",
-    "tbd_time": true,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "578972",
-    "subvenue_id": "679765",
-    "source": {
-      "id": "69a9b759b14c1c000116e82a",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "home_team_score": "",
-        "away_team_id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Jaguars United FC",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "primary_color": "yellow",
-          "seed_id": "3256305",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "69a9b201f42011c91984cee3",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Somerville United FC II",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": "",
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "primary_color": "",
-          "seed_id": "3717571",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51",
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 1",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "6827a0c22cbf1300019c8b52"
-        },
-        "system": "StatNgin",
-        "id": "6827a0c22cbf1300019c8b51",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "69a9b759b14c1c000116e82a",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "name": "Jaguars United FC",
-        "score": "",
-        "is_home_team": true
-      },
-      "team_2": {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "originator_id": "69a9b201f42011c91984cee3",
-        "name": "Somerville United FC II",
-        "score": "",
-        "is_home_team": false
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
     "id": "2b164a9b-5ced-4f98-8964-b02c259e4130",
     "title": "BCFC All Stars at South Shore FC",
     "event_type": "game",
     "description": "",
-    "location_name": "Legion Field",
-    "location_address": "32 Middle Street, Weymouth, MA 02189",
+    "location_name": "Lovell Field",
+    "location_address": "Lovell Field, Weymouth, MA 02189, US",
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
     "status": "scheduled",
-    "start_date_time": "2026-05-31T04:00:00.000Z",
-    "end_date_time": "2026-05-31T05:30:00.000Z",
+    "start_date_time": "2026-05-30T22:00:00.000Z",
+    "end_date_time": "2026-05-30T23:30:00.000Z",
     "created_at": "2026-03-05T17:03:54.000Z",
-    "updated_at": "2026-03-05T17:03:57.000Z",
-    "tbd_time": true,
+    "updated_at": "2026-03-24T21:36:21.000Z",
+    "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
-    "venue_id": "583950",
-    "subvenue_id": "687567",
+    "venue_id": "673354",
+    "subvenue_id": "825331",
     "source": {
       "id": "69a9b77cb14c1c000116e83e",
       "type": "event",
@@ -7445,14 +7393,16 @@
         "originator_id": "68b76604f68b713e325680f5",
         "name": "South Shore FC",
         "score": "",
-        "is_home_team": true
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0850b-d9c0-504c-acca-46945ae83505",
         "originator_id": "68b1fb2fe5b758de1670bc0d",
         "name": "BCFC All Stars",
         "score": "",
-        "is_home_team": false
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
@@ -7597,6 +7547,157 @@
         "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
         "originator_id": "68b1fb2f1c1bd03f8949729f",
         "name": "Flatley FC",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "2eb57186-388d-4850-b6be-f2248fdd8993",
+    "title": "Somerville United FC II at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Malcolm X Park",
+    "location_address": "131 Dale Street, Boston, MA 02119, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-05-31T22:00:00.000Z",
+    "end_date_time": "2026-05-31T23:30:00.000Z",
+    "created_at": "2026-03-05T17:03:20.000Z",
+    "updated_at": "2026-04-10T16:49:30.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "681079",
+    "subvenue_id": "843352",
+    "source": {
+      "id": "69a9b759b14c1c000116e82a",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "",
+        "away_team_id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "#FFEF13",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "69a9b201f42011c91984cee3",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "69a9b759b14c1c000116e82a",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "name": "Somerville United FC II",
         "score": "",
         "is_home_team": false,
         "interval_scores": []

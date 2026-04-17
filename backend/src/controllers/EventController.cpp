@@ -1504,11 +1504,11 @@ Response EventController::handleGetEventAttendance(const Request& request) {
                 ea.id,
                 ea.event_id,
                 ea.player_id,
-                u.first_name,
-                u.last_name,
-                COALESCE(u.preferred_name, '') as preferred_name,
-                u.email,
-                u.avatar_url,
+                p.first_name,
+                p.last_name,
+                '' as preferred_name,
+                COALESCE(pe.email, '') as email,
+                COALESCE(pl.photo_url, '') as avatar_url,
                 ats.id as status_id,
                 ats.name as status_name,
                 ats.display_name as status_display_name,
@@ -1517,15 +1517,19 @@ Response EventController::handleGetEventAttendance(const Request& request) {
                 ea.notes,
                 ea.created_at,
                 ea.updated_at,
-                upd.first_name as updated_by_first_name,
-                upd.last_name as updated_by_last_name
+                upd_p.first_name as updated_by_first_name,
+                upd_p.last_name as updated_by_last_name
             FROM event_attendance ea
             JOIN users u ON ea.player_id = u.id
+            JOIN persons p ON u.person_id = p.id
+            LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true
+            LEFT JOIN players pl ON pl.person_id = p.id
             JOIN attendance_statuses ats ON ea.status_id = ats.id
             LEFT JOIN rsvp_statuses rs ON ea.rsvp_snapshot_id = rs.id
             LEFT JOIN users upd ON ea.updated_by = upd.id
+            LEFT JOIN persons upd_p ON upd.person_id = upd_p.id
             WHERE ea.event_id = $1
-            ORDER BY u.last_name, u.first_name
+            ORDER BY p.last_name, p.first_name
         )";
         
         pqxx::result result = db_->query(query, {event_id});
@@ -2267,11 +2271,13 @@ Response EventController::handleSendReminder(const Request& request) {
                 e.duration_minutes,
                 v.name as venue_name,
                 v.address as venue_address,
-                u.first_name,
-                u.phone
+                p.first_name,
+                pp.phone_number as phone
             FROM events e
             LEFT JOIN venues v ON e.venue_id = v.id
             JOIN users u ON u.id = $1
+            JOIN persons p ON u.person_id = p.id
+            LEFT JOIN person_phones pp ON pp.person_id = p.id AND pp.is_primary = true
             WHERE e.id = $2
         )";
         

@@ -478,12 +478,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -629,12 +625,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -752,11 +744,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-21T22:00:00.000Z",
     "end_date_time": "2026-03-21T23:30:00.000Z",
     "created_at": "2026-02-17T20:26:31.000Z",
-    "updated_at": "2026-02-17T20:26:33.000Z",
+    "updated_at": "2026-03-23T14:38:46.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -768,11 +760,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -866,24 +858,26 @@
     "game_details": {
       "originator_id": "6994cef8aab4520001394c1b",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf48021c50f87e6da72",
         "name": "Lancaster Bible College",
-        "score": "",
-        "is_home_team": true
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
         "originator_id": "6994cef366c55200019bafff",
         "name": "Alloy Soccer Club Reserves",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -897,11 +891,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T14:30:00.000Z",
     "end_date_time": "2026-03-22T16:00:00.000Z",
     "created_at": "2026-02-17T20:26:32.000Z",
-    "updated_at": "2026-02-17T20:26:35.000Z",
+    "updated_at": "2026-03-23T14:38:46.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -913,11 +907,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -925,12 +919,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -1015,24 +1005,26 @@
     "game_details": {
       "originator_id": "6994cefaaab4520001394c1d",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf47ffccf5025fcc635",
         "name": "West Chester University Club",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
         "originator_id": "6994cdf46c4d0b61853257ac",
         "name": "YorkPA FC",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1046,11 +1038,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-22T19:00:00.000Z",
     "end_date_time": "2026-03-22T20:30:00.000Z",
     "created_at": "2026-02-17T20:26:31.000Z",
-    "updated_at": "2026-02-25T18:45:02.000Z",
+    "updated_at": "2026-03-23T14:38:46.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1062,11 +1054,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -1160,12 +1152,12 @@
     "game_details": {
       "originator_id": "6994cef995167e0001b16241",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf40d4c144e5db64656",
         "name": "Millersville Men's Club Soccer",
-        "score": "",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
@@ -1173,13 +1165,13 @@
         "id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
         "originator_id": "6994cef353967e00013892e0",
         "name": "Keystone Elite",
-        "score": "",
+        "score": "2",
         "is_home_team": true,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1193,11 +1185,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-26T00:00:00.000Z",
     "end_date_time": "2026-03-26T01:30:00.000Z",
     "created_at": "2026-02-17T20:26:29.000Z",
-    "updated_at": "2026-03-17T16:40:31.000Z",
+    "updated_at": "2026-03-30T14:27:35.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1209,11 +1201,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -1311,12 +1303,12 @@
     "game_details": {
       "originator_id": "6994cef695167e0001b1623b",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf40d4c144e5db64656",
         "name": "Millersville Men's Club Soccer",
-        "score": "",
+        "score": "1",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -1324,13 +1316,13 @@
         "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
         "originator_id": "6994cef366c55200019bafff",
         "name": "Alloy Soccer Club Reserves",
-        "score": "",
+        "score": "1",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1344,11 +1336,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-29T23:00:00.000Z",
     "end_date_time": "2026-03-30T00:30:00.000Z",
     "created_at": "2026-02-17T20:26:32.000Z",
-    "updated_at": "2026-02-17T20:26:34.000Z",
+    "updated_at": "2026-04-13T14:53:28.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1360,11 +1352,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
-        "away_team_score": "",
+        "away_team_score": "5",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -1372,8 +1364,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -1458,24 +1454,26 @@
     "game_details": {
       "originator_id": "6994cefa95167e0001b16245",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf48021c50f87e6da72",
         "name": "Lancaster Bible College",
-        "score": "",
-        "is_home_team": true
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf47ffccf5025fcc635",
         "name": "West Chester University Club",
-        "score": "",
-        "is_home_team": false
+        "score": "5",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1489,11 +1487,11 @@
     "location_description": "Turf 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-29T23:30:00.000Z",
     "end_date_time": "2026-03-30T01:00:00.000Z",
     "created_at": "2026-02-17T20:26:27.000Z",
-    "updated_at": "2026-03-11T19:47:51.000Z",
+    "updated_at": "2026-03-30T14:27:35.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1505,11 +1503,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -1607,12 +1605,12 @@
     "game_details": {
       "originator_id": "6994cef5aab4520001394c17",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
         "originator_id": "6994cdf46c4d0b61853257ac",
         "name": "YorkPA FC",
-        "score": "",
+        "score": "3",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -1620,13 +1618,13 @@
         "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf40d4c144e5db64656",
         "name": "Millersville Men's Club Soccer",
-        "score": "",
+        "score": "3",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1640,11 +1638,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-04T14:30:00.000Z",
     "end_date_time": "2026-04-04T16:00:00.000Z",
     "created_at": "2026-02-17T20:26:27.000Z",
-    "updated_at": "2026-02-17T20:26:30.000Z",
+    "updated_at": "2026-04-06T18:35:35.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1656,11 +1654,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f10c3e-ef7b-6d62-80c4-02e6ae2dfff4",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -1758,24 +1756,26 @@
     "game_details": {
       "originator_id": "6994cef5aab4520001394c15",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf47ffccf5025fcc635",
         "name": "West Chester University Club",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-ef7b-6d62-80c4-02e6ae2dfff4",
         "originator_id": "6994cef366c55200019baff9",
         "name": "Kutztown Men's Soccer",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1789,11 +1789,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-08T00:00:00.000Z",
     "end_date_time": "2026-04-08T01:30:00.000Z",
     "created_at": "2026-02-17T20:26:32.000Z",
-    "updated_at": "2026-02-17T20:26:35.000Z",
+    "updated_at": "2026-04-10T15:44:17.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1805,20 +1805,35 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "away_team_score": "",
+        "away_team_score": "4",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
-        "event_attendees": [],
+        "event_attendees": [
+          {
+            "principal_triad": "TeamService__team__11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+            "event_id": "936ce5ab-abbb-4fbf-b268-0ef05fd0cc69",
+            "response": "yes",
+            "principal_system": "TeamService",
+            "persona_id": "111829902",
+            "id": "936ce5ab-abbb-4fbf-b268-0ef05fd0cc69_11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8_111829902",
+            "principal_type": "team",
+            "principal_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8"
+          }
+        ],
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -1903,24 +1918,26 @@
     "game_details": {
       "originator_id": "6994cefa2a1178000164b6a3",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf48021c50f87e6da72",
         "name": "Lancaster Bible College",
-        "score": "",
-        "is_home_team": true
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf40d4c144e5db64656",
         "name": "Millersville Men's Club Soccer",
-        "score": "",
-        "is_home_team": false
+        "score": "4",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1934,11 +1951,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-12T14:30:00.000Z",
     "end_date_time": "2026-04-12T16:00:00.000Z",
     "created_at": "2026-02-17T20:26:29.000Z",
-    "updated_at": "2026-02-17T20:26:31.000Z",
+    "updated_at": "2026-04-13T13:49:27.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -1950,11 +1967,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -2052,24 +2069,26 @@
     "game_details": {
       "originator_id": "6994cef72a1178000164b6a1",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf47ffccf5025fcc635",
         "name": "West Chester University Club",
-        "score": "",
-        "is_home_team": true
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf40d4c144e5db64656",
         "name": "Millersville Men's Club Soccer",
-        "score": "",
-        "is_home_team": false
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -2083,11 +2102,11 @@
     "location_description": "Turf 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-12T23:30:00.000Z",
     "end_date_time": "2026-04-13T01:00:00.000Z",
     "created_at": "2026-02-17T20:26:31.000Z",
-    "updated_at": "2026-03-11T19:50:22.000Z",
+    "updated_at": "2026-04-13T13:52:34.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -2099,11 +2118,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -2201,12 +2220,12 @@
     "game_details": {
       "originator_id": "6994cef895167e0001b1623f",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
         "originator_id": "6994cdf46c4d0b61853257ac",
         "name": "YorkPA FC",
-        "score": "",
+        "score": "3",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -2214,13 +2233,13 @@
         "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf48021c50f87e6da72",
         "name": "Lancaster Bible College",
-        "score": "",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -2262,12 +2281,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -2560,12 +2575,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -2856,12 +2867,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }

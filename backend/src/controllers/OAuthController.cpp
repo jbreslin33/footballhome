@@ -275,8 +275,10 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
     try {
         auto db = Database::getInstance();
         
-        // Check if email exists in user_emails table
-        std::string checkEmailSql = "SELECT user_id FROM user_emails WHERE email = " + db->escape(email);
+        // Check if email exists in person_emails table, join to users
+        std::string checkEmailSql = "SELECT u.id AS user_id FROM person_emails pe "
+                                   "JOIN users u ON u.person_id = pe.person_id "
+                                   "WHERE pe.email = " + db->escape(email);
         pqxx::result existingEmail = db->query(checkEmailSql);
         
         if (!existingEmail.empty()) {
@@ -285,23 +287,25 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
             return userId;
         }
         
-        // Create new user
-        std::string insertUserSql = "INSERT INTO users (first_name, last_name, is_active) "
-                                   "VALUES (" + db->escape(firstName) + ", " + db->escape(lastName) + ", true) "
+        // Create new person + user for Google OAuth users who don't exist yet
+        std::string insertPersonSql = "INSERT INTO persons (first_name, last_name) "
+                                     "VALUES (" + db->escape(firstName) + ", " + db->escape(lastName) + ") "
+                                     "RETURNING id";
+        pqxx::result newPerson = db->query(insertPersonSql);
+        std::string personId = newPerson[0]["id"].as<std::string>();
+        
+        std::string insertUserSql = "INSERT INTO users (person_id, is_active) "
+                                   "VALUES (" + db->escape(personId) + ", true) "
                                    "RETURNING id";
         pqxx::result newUser = db->query(insertUserSql);
         std::string userId = newUser[0]["id"].as<std::string>();
         
-        // Add email to user_emails table
-        std::string insertEmailSql = "INSERT INTO user_emails (user_id, email, is_primary, is_verified, auth_provider) "
-                                    "VALUES (" + db->escape(userId) + ", " + db->escape(email) + ", true, true, 'google')";
+        // Add email to person_emails table
+        std::string insertEmailSql = "INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified) "
+                                    "VALUES (" + db->escape(personId) + ", " + db->escape(email) + ", 1, true, true)";
         db->query(insertEmailSql);
         
-        // Also set email in users table for backwards compatibility
-        std::string updateUserSql = "UPDATE users SET email = " + db->escape(email) + " WHERE id = " + db->escape(userId);
-        db->query(updateUserSql);
-        
-        std::cout << "Created new user via Google OAuth: " << userId << " with email: " << email << std::endl;
+        std::cout << "Created new user via Google OAuth: " << userId << " (person: " << personId << ") with email: " << email << std::endl;
         return userId;
         
     } catch (const std::exception& e) {

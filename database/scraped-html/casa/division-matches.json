@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-19T13:44:47.075Z",
+  "generated": "2026-04-16T17:05:35.633Z",
   "total_matches": 256,
   "divisions": [
     {
@@ -405,15 +405,6 @@
           "externalId": "150ab0ff-9a95-42fc-92ab-dea7d680ec59"
         },
         {
-          "home": "Persepolis FC",
-          "away": "Lighthouse Boys Club",
-          "time": "12:45 PM - 2:30 PM",
-          "date": "2026-03-01T17:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "f394c026-6768-41bc-8c1c-4935589024e3"
-        },
-        {
           "home": "Philly BlackStars",
           "away": "Adé United FC",
           "time": "1:00 PM - 2:45 PM",
@@ -517,8 +508,8 @@
           "away": "Persepolis FC",
           "time": "7:00 PM - 8:45 PM",
           "date": "2026-03-19T23:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 5",
           "externalId": "01eb55cf-9f65-4853-81e8-8f74b9a4d055"
         },
         {
@@ -526,8 +517,8 @@
           "away": "Lighthouse Boys Club",
           "time": "11:00 AM - 1:00 PM",
           "date": "2026-03-22T15:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "47649325-1732-42e9-92d5-2d9e3b7227d2"
         },
         {
@@ -535,17 +526,17 @@
           "away": "Lighthouse Boys Club U23",
           "time": "12:00 PM - 2:00 PM",
           "date": "2026-03-22T16:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "8 - 0",
           "externalId": "62294e19-4b8a-481b-bcf5-6e4f80baa542"
         },
         {
-          "home": "Persepolis FC",
+          "home": "Persepolis FC II",
           "away": "Philadelphia Sierra Stars",
           "time": "1:00 PM - 3:00 PM",
           "date": "2026-03-22T17:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 2",
           "externalId": "7c505606-7538-4254-b75f-1f8335bb68f4"
         },
         {
@@ -553,8 +544,8 @@
           "away": "Phoenix SCM",
           "time": "1:00 PM - 3:00 PM",
           "date": "2026-03-22T17:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 1",
           "externalId": "0eb0f7bc-d966-461c-9db2-6df19e5cb91c"
         },
         {
@@ -562,8 +553,8 @@
           "away": "Adé United FC",
           "time": "3:00 PM - 5:00 PM",
           "date": "2026-03-22T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 3",
           "externalId": "5e1c1adb-1606-4a8c-a28e-f67a167eaacb"
         },
         {
@@ -571,8 +562,8 @@
           "away": "Persepolis FC",
           "time": "7:00 PM - 8:45 PM",
           "date": "2026-03-26T23:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "3265ccb1-af30-4fa5-97d0-1e1ef4e2ae56"
         },
         {
@@ -580,8 +571,8 @@
           "away": "Persepolis FC",
           "time": "12:45 PM - 2:45 PM",
           "date": "2026-03-29T16:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "975e6446-a502-4263-8d12-74083d123347"
         },
         {
@@ -589,8 +580,8 @@
           "away": "Lighthouse Boys Club",
           "time": "2:30 PM - 4:30 PM",
           "date": "2026-03-29T18:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 3",
           "externalId": "264d201b-7f35-42f3-b19b-61e7effdb658"
         },
         {
@@ -598,8 +589,8 @@
           "away": "Adé United FC",
           "time": "2:45 PM - 4:45 PM",
           "date": "2026-03-29T18:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 3",
           "externalId": "209ee67c-ee21-4200-b3bc-45f0f7964612"
         },
         {
@@ -607,8 +598,8 @@
           "away": "Philly BlackStars",
           "time": "3:00 PM - 5:00 PM",
           "date": "2026-03-29T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "5 - 2",
           "externalId": "ffc59cbe-a8c5-4592-bc6b-41a05a108854"
         },
         {
@@ -616,44 +607,35 @@
           "away": "Sewells Old Boys II",
           "time": "5:00 PM - 7:00 PM",
           "date": "2026-03-29T21:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 2",
           "externalId": "0990d763-287f-4d88-840f-bf777c37f6be"
-        },
-        {
-          "home": "Lighthouse Boys Club",
-          "away": "Philly BlackStars",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-04-12T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "f9723869-a966-4a8e-9ee4-d36eab6620ea"
-        },
-        {
-          "home": "Lighthouse Old Timers Club",
-          "away": "Philadelphia Sierra Stars",
-          "time": "12:00 AM - 2:00 AM",
-          "date": "2026-04-12T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "bb5b99db-cc7f-412a-a89b-448969a627d5"
         },
         {
           "home": "Adé United FC",
           "away": "Oaklyn United FC II",
           "time": "1:00 PM - 3:00 PM",
           "date": "2026-04-12T17:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "cc54baea-5c9b-4b38-9e5e-4f0a89c49ab0"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Philly BlackStars",
+          "time": "1:30 PM - 3:15 PM",
+          "date": "2026-04-12T17:30:00.000Z",
+          "status": "Final",
+          "score": "5 - 2",
+          "externalId": "f9723869-a966-4a8e-9ee4-d36eab6620ea"
         },
         {
           "home": "Phoenix SCM",
           "away": "Sewells Old Boys II",
           "time": "2:30 PM - 4:30 PM",
           "date": "2026-04-12T18:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 3",
           "externalId": "caf414b4-7f9a-4507-8132-d20d9dddba55"
         },
         {
@@ -661,9 +643,18 @@
           "away": "Illyrians FC",
           "time": "3:00 PM - 5:00 PM",
           "date": "2026-04-12T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "8 - 3",
           "externalId": "a435f090-bb85-470a-8e7b-7b1e3e91258e"
+        },
+        {
+          "home": "Lighthouse Boys Club U23",
+          "away": "Philadelphia Sierra Stars",
+          "time": "3:15 PM - 5:15 PM",
+          "date": "2026-04-12T19:15:00.000Z",
+          "status": "Final",
+          "score": "1 - 4",
+          "externalId": "bb5b99db-cc7f-412a-a89b-448969a627d5"
         },
         {
           "home": "Persepolis FC",
@@ -675,28 +666,28 @@
           "externalId": "30bbc7cd-6e90-4678-af6a-e532be5cadd1"
         },
         {
-          "home": "Lighthouse Old Timers Club",
-          "away": "Illyrians FC",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-04-19T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "171f7db4-1f3b-429d-9320-9d156fc1bd5f"
-        },
-        {
           "home": "Lighthouse Boys Club",
           "away": "Adé United FC",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-04-19T04:00:00.000Z",
+          "time": "9:00 AM - 10:45 AM",
+          "date": "2026-04-19T13:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "21d2bea7-e180-440e-ae34-2adedb51a239"
         },
         {
+          "home": "Lighthouse Boys Club U23",
+          "away": "Illyrians FC",
+          "time": "10:45 AM - 12:30 PM",
+          "date": "2026-04-19T14:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "171f7db4-1f3b-429d-9320-9d156fc1bd5f"
+        },
+        {
           "home": "Persepolis FC",
           "away": "Philly BlackStars",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-04-19T04:00:00.000Z",
+          "time": "1:00 PM - 2:45 PM",
+          "date": "2026-04-19T17:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "567017b2-88e9-45c7-b6ed-33e49398fb7c"
@@ -711,10 +702,28 @@
           "externalId": "ef8894b1-a525-4ce0-bd80-a28b3e8c7163"
         },
         {
+          "home": "Phoenix Reserves",
+          "away": "Philadelphia Sierra Stars",
+          "time": "8:00 PM - 10:00 PM",
+          "date": "2026-04-23T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "85f9381f-3278-4ca9-88e9-0b7b653718a5"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Lighthouse Boys Club",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2026-04-23T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "f394c026-6768-41bc-8c1c-4935589024e3"
+        },
+        {
           "home": "Lighthouse Boys Club",
           "away": "Illyrians FC",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-04-26T04:00:00.000Z",
+          "time": "11:20 AM - 1:05 PM",
+          "date": "2026-04-26T15:20:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "75853064-d047-4398-b292-8124f6382b11"
@@ -738,15 +747,6 @@
           "externalId": "f435b363-e72d-49b5-baed-cc8d09514092"
         },
         {
-          "home": "Phoenix Reserves",
-          "away": "Philadelphia Sierra Stars",
-          "time": "8:00 PM - 10:00 PM",
-          "date": "2026-04-27T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "85f9381f-3278-4ca9-88e9-0b7b653718a5"
-        },
-        {
           "home": "Persepolis FC",
           "away": "Lighthouse Boys Club",
           "time": "7:00 PM - 8:45 PM",
@@ -754,15 +754,6 @@
           "status": "scheduled",
           "score": null,
           "externalId": "0a9f8712-a8b9-4058-bc6f-df425fe74b19"
-        },
-        {
-          "home": "Lighthouse Boys Club",
-          "away": "Oaklyn United FC II",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-05-03T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "98abeb8e-572a-4195-8a58-75fecb6cc379"
         },
         {
           "home": "Sewells Old Boys II",
@@ -802,12 +793,12 @@
         },
         {
           "home": "Lighthouse Boys Club",
-          "away": "Phoenix SCM",
-          "time": "12:00 AM - 1:45 AM",
-          "date": "2026-05-10T04:00:00.000Z",
+          "away": "Oaklyn United FC II",
+          "time": "6:15 PM - 8:00 PM",
+          "date": "2026-05-03T22:15:00.000Z",
           "status": "scheduled",
           "score": null,
-          "externalId": "102e7b4f-ae55-4f81-85f6-ed74a18c62b5"
+          "externalId": "98abeb8e-572a-4195-8a58-75fecb6cc379"
         },
         {
           "home": "Philadelphia Sierra Stars",
@@ -835,6 +826,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "703293fc-8366-4dd5-93c8-3afc5e6b415e"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Phoenix SCM",
+          "time": "5:00 PM - 6:45 PM",
+          "date": "2026-05-10T21:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "102e7b4f-ae55-4f81-85f6-ed74a18c62b5"
         }
       ]
     },
@@ -1056,8 +1056,8 @@
           "away": "Persepolis FC II",
           "time": "7:00 PM - 8:30 PM",
           "date": "2026-03-12T23:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 0",
           "externalId": "8d2f11fd-0d4e-4d1c-96e9-1832bac72f20"
         },
         {
@@ -1092,8 +1092,8 @@
           "away": "Lighthouse Boys Club U23",
           "time": "12:00 PM - 1:30 PM",
           "date": "2026-03-22T16:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "8 - 0",
           "externalId": "21b167eb-781e-489f-8eda-41ec926a4ba3"
         },
         {
@@ -1101,8 +1101,8 @@
           "away": "Philadelphia Sierra Stars",
           "time": "1:00 PM - 2:30 PM",
           "date": "2026-03-22T17:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 2",
           "externalId": "83bcb6e5-d194-41c0-b086-eb7bbd3b312c"
         },
         {
@@ -1110,8 +1110,8 @@
           "away": "Philadelphia SC Select",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-03-22T18:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 1",
           "externalId": "6221cd0d-a385-4478-a2d0-7dec7543076b"
         },
         {
@@ -1119,8 +1119,8 @@
           "away": "Lighthouse Boys Club U23",
           "time": "12:30 PM - 2:00 PM",
           "date": "2026-03-29T16:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "5 - 1",
           "externalId": "4a88faec-37e9-46dc-a5c4-819bedae41eb"
         },
         {
@@ -1128,8 +1128,8 @@
           "away": "Ade United FC",
           "time": "2:45 PM - 4:15 PM",
           "date": "2026-03-29T18:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 3",
           "externalId": "13e4df9f-34bc-40f4-9bce-745b23d44792"
         },
         {
@@ -1137,35 +1137,17 @@
           "away": "Sewell's Old Boys ",
           "time": "5:00 PM - 6:30 PM",
           "date": "2026-03-29T21:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 2",
           "externalId": "0c7bb7d1-a279-4f09-96ef-8bf2af7440b7"
-        },
-        {
-          "home": "Persepolis FC II",
-          "away": "Sewell's Old Boys ",
-          "time": "8:15 PM - 9:45 PM",
-          "date": "2026-04-03T00:15:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "9cad47d5-989d-46e9-8f0b-4756ad2453db"
-        },
-        {
-          "home": "Lighthouse Boys Club U23",
-          "away": "Philadelphia Sierra Stars",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-12T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "fc3a66ec-1d87-491a-85a4-8ba9322bea3e"
         },
         {
           "home": "Phoenix SCR",
           "away": "Persepolis FC II",
           "time": "12:00 PM - 1:30 PM",
           "date": "2026-04-12T16:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 1",
           "externalId": "b5fd9494-8191-44d5-8489-b0c85bdc7acb"
         },
         {
@@ -1173,27 +1155,27 @@
           "away": "Sewell's Old Boys ",
           "time": "2:30 PM - 4:00 PM",
           "date": "2026-04-12T18:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 3",
           "externalId": "d3b3887f-104a-40b2-b3e8-77ebffb7ea03"
         },
         {
           "home": "Lighthouse Boys Club U23",
+          "away": "Philadelphia Sierra Stars",
+          "time": "3:15 PM - 4:45 PM",
+          "date": "2026-04-12T19:15:00.000Z",
+          "status": "Final",
+          "score": "1 - 4",
+          "externalId": "fc3a66ec-1d87-491a-85a4-8ba9322bea3e"
+        },
+        {
+          "home": "Lighthouse Boys Club U23",
           "away": "Illyrians",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-19T04:00:00.000Z",
+          "time": "10:45 AM - 12:15 PM",
+          "date": "2026-04-19T14:45:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "ff714569-61d8-4b38-a652-28243676b709"
-        },
-        {
-          "home": "Persepolis FC II",
-          "away": "Philadelphia SC Select",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-19T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "631ed140-a881-4ed6-8fb1-87e6b9dd6f66"
         },
         {
           "home": "Phoenix SCR",
@@ -1205,6 +1187,15 @@
           "externalId": "5e8e4dde-a165-42bf-b967-9b559e75c162"
         },
         {
+          "home": "Persepolis FC II",
+          "away": "Philadelphia SC Select",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2026-04-19T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "631ed140-a881-4ed6-8fb1-87e6b9dd6f66"
+        },
+        {
           "home": "Phoenix SCR",
           "away": "Philadelphia Sierra Stars",
           "time": "8:00 PM - 9:30 PM",
@@ -1214,10 +1205,19 @@
           "externalId": "60679fcd-c0c7-4423-83bc-9bd64a756ce2"
         },
         {
+          "home": "Persepolis FC II",
+          "away": "Sewell's Old Boys ",
+          "time": "8:15 PM - 9:45 PM",
+          "date": "2026-04-24T00:15:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9cad47d5-989d-46e9-8f0b-4756ad2453db"
+        },
+        {
           "home": "Lighthouse Boys Club U23",
           "away": "Persepolis FC II",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-26T04:00:00.000Z",
+          "time": "1:05 PM - 2:35 PM",
+          "date": "2026-04-26T17:05:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "ecb165b3-a21f-47df-ad53-4762827218aa"
@@ -1230,15 +1230,6 @@
           "status": "scheduled",
           "score": null,
           "externalId": "0812a16e-cf25-4ba2-877d-acb125162844"
-        },
-        {
-          "home": "Lighthouse Boys Club U23",
-          "away": "Philadelphia SC Select",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-05-03T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "e2350470-d8a1-4cfe-8d33-210ece9f3904"
         },
         {
           "home": "Sewell's Old Boys ",
@@ -1257,6 +1248,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "a6cda417-321e-4d51-ad2e-c052242a7ab7"
+        },
+        {
+          "home": "Lighthouse Boys Club U23",
+          "away": "Philadelphia SC Select",
+          "time": "4:30 PM - 6:00 PM",
+          "date": "2026-05-03T20:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "e2350470-d8a1-4cfe-8d33-210ece9f3904"
         },
         {
           "home": "Persepolis FC II",
@@ -1496,8 +1496,8 @@
           "away": "South Shore FC",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-03-22T18:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 3",
           "externalId": "e28d3e3b-f4d6-42f5-bbce-8cbbc1beb7c2"
         },
         {
@@ -1505,8 +1505,8 @@
           "away": "Flatley FC",
           "time": "4:00 PM - 5:30 PM",
           "date": "2026-03-22T20:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "4 - 1",
           "externalId": "4d4cb7a0-9255-4c13-896e-3aa104605c3b"
         },
         {
@@ -1514,35 +1514,35 @@
           "away": "Somerville United FC II",
           "time": "6:00 PM - 7:30 PM",
           "date": "2026-03-22T22:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "6 - 4",
           "externalId": "0745ee5f-277c-4501-bb33-2e6fe38fdfcc"
-        },
-        {
-          "home": "Strictly Nos Fc",
-          "away": "BCFC All Stars",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-03-29T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "4ecc9412-b8f9-4db8-aef1-feb2c8bead33"
         },
         {
           "home": "Somerville United FC II",
           "away": "Gambeta FC",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-03-29T18:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "5 - 2",
           "externalId": "233a48e0-7ed0-467c-90c0-3315d8ae7dd4"
+        },
+        {
+          "home": "Strictly Nos Fc",
+          "away": "BCFC All Stars",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2026-03-29T19:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
+          "externalId": "4ecc9412-b8f9-4db8-aef1-feb2c8bead33"
         },
         {
           "home": "Flatley FC",
           "away": "Jaguars United FC",
           "time": "6:45 PM - 8:15 PM",
           "date": "2026-03-29T22:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 9",
           "externalId": "0b6d6ac1-b516-4557-826f-0823d2576131"
         },
         {
@@ -1550,8 +1550,8 @@
           "away": "Strictly Nos Fc",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-04-04T18:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 2",
           "externalId": "c8a9e404-a831-4d75-bac1-26950c9feb04"
         },
         {
@@ -1559,26 +1559,17 @@
           "away": "Gambeta FC",
           "time": "8:15 PM - 9:45 PM",
           "date": "2026-04-10T00:15:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 4",
           "externalId": "e8de2369-457a-4667-b88f-c856e7390f4c"
-        },
-        {
-          "home": "Jaguars United FC",
-          "away": "Gambeta FC",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-12T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "64674b29-182e-4be5-afad-90b38201a1db"
         },
         {
           "home": "Somerville United FC II",
           "away": "Strictly Nos Fc",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-04-12T18:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 5",
           "externalId": "7da002dd-7e42-4969-adab-8e083f99d5eb"
         },
         {
@@ -1586,15 +1577,24 @@
           "away": "South Shore FC",
           "time": "4:00 PM - 5:30 PM",
           "date": "2026-04-12T20:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 2",
           "externalId": "55496d08-f6fa-4dd8-b060-fbc5f2333af7"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "Gambeta FC",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-04-12T22:00:00.000Z",
+          "status": "Final",
+          "score": "8 - 1",
+          "externalId": "64674b29-182e-4be5-afad-90b38201a1db"
         },
         {
           "home": "South Shore FC",
           "away": "Jaguars United FC",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-19T04:00:00.000Z",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-04-18T22:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "66cfeb40-cb14-4f60-b072-3cda6e2b24f8"
@@ -1618,19 +1618,10 @@
           "externalId": "08214ec4-597f-4d81-aad0-6916663a2fb4"
         },
         {
-          "home": "Jaguars United FC",
-          "away": "Strictly Nos Fc",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-26T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "2ce744fa-1bf1-42d9-8170-a41410456722"
-        },
-        {
           "home": "South Shore FC",
           "away": "Somerville United FC II",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-26T04:00:00.000Z",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-04-25T22:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "2ef2c4ba-eacd-4c40-9ef0-a2dcaa2cf6b2"
@@ -1643,6 +1634,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "2aa23d2c-1f6f-4d05-9241-c68240c4e991"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "Strictly Nos Fc",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-04-26T22:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "2ce744fa-1bf1-42d9-8170-a41410456722"
         },
         {
           "home": "Strictly Nos Fc",
@@ -1726,19 +1726,10 @@
           "externalId": "142e1c8d-7c12-4639-a5e9-4070a0921096"
         },
         {
-          "home": "Jaguars United FC",
-          "away": "Somerville United FC II",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-05-31T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "2eb57186-388d-4850-b6be-f2248fdd8993"
-        },
-        {
           "home": "South Shore FC",
           "away": "BCFC All Stars",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-05-31T04:00:00.000Z",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-05-30T22:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "2b164a9b-5ced-4f98-8964-b02c259e4130"
@@ -1751,6 +1742,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "264ea405-c94d-4e5a-8ef0-b070dab81c13"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "Somerville United FC II",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-05-31T22:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "2eb57186-388d-4850-b6be-f2248fdd8993"
         }
       ]
     },
@@ -2008,8 +2008,8 @@
           "away": "Lancaster Bible College",
           "time": "6:00 PM - 7:30 PM",
           "date": "2026-03-21T22:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 3",
           "externalId": "12239797-ef2c-4e55-9291-7e1040bf04a1"
         },
         {
@@ -2017,8 +2017,8 @@
           "away": "Millersville Men's Club Soccer",
           "time": "3:00 PM - 4:30 PM",
           "date": "2026-03-22T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 2",
           "externalId": "f3302399-f480-4343-abd9-10621ef3b12e"
         },
         {
@@ -2026,26 +2026,17 @@
           "away": "Alloy Soccer Club Reserves\t",
           "time": "8:00 PM - 9:30 PM",
           "date": "2026-03-26T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1"
-        },
-        {
-          "home": "F&M FC\t",
-          "away": "Kutztown Men's Soccer\t",
-          "time": "2:30 PM - 4:00 PM",
-          "date": "2026-03-29T18:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "6b238965-bc43-4c60-be51-e556b1ea0371"
         },
         {
           "home": "Keystone Elite\t",
           "away": "Lancaster City FC\t",
           "time": "4:00 PM - 5:30 PM",
           "date": "2026-03-29T20:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 4",
           "externalId": "9aa26d15-9e56-48fc-976b-576dba695454"
         },
         {
@@ -2053,8 +2044,8 @@
           "away": "West Chester University Club",
           "time": "10:30 AM - 12:00 PM",
           "date": "2026-04-04T14:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 1",
           "externalId": "7018b701-2c80-419b-a850-74ff6d36faea"
         },
         {
@@ -2062,26 +2053,26 @@
           "away": "Lancaster City FC\t",
           "time": "7:30 PM - 9:00 PM",
           "date": "2026-04-08T23:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 2",
           "externalId": "9191ae8c-984a-425e-afc7-cdb348f52f5f"
         },
         {
           "home": "Kutztown Men's Soccer\t",
           "away": "F&M FC\t",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-11T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2026-04-11T23:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 0",
           "externalId": "8f281dfd-83d5-42ac-954f-52d0c2983d32"
         },
         {
           "home": "Kutztown Men's Soccer\t",
           "away": "Alloy Soccer Club Reserves\t",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-12T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2026-04-12T15:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
           "externalId": "0b602b05-f408-4018-a519-a2c8fc07aa75"
         },
         {
@@ -2089,8 +2080,8 @@
           "away": "F&M FC\t",
           "time": "4:00 PM - 5:30 PM",
           "date": "2026-04-12T20:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "4 - 1",
           "externalId": "9fdc1a0a-0e36-4ea4-980c-9e7719796785"
         },
         {
@@ -2103,10 +2094,19 @@
           "externalId": "8a0867f0-4d81-489d-8401-46a93ea02978"
         },
         {
+          "home": "Keystone Elite\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2026-04-18T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9ec32619-41ad-43a8-970f-b1e65ba5d370"
+        },
+        {
           "home": "Kutztown Men's Soccer\t",
           "away": "Keystone Elite\t",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-19T04:00:00.000Z",
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2026-04-19T23:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "411d026a-403e-4567-a619-480fc6301b31"
@@ -2114,20 +2114,20 @@
         {
           "home": "Lancaster City FC\t",
           "away": "Keystone Elite\t",
-          "time": "7:30 PM - 9:00 PM",
-          "date": "2026-04-22T23:30:00.000Z",
+          "time": "7:45 PM - 9:15 PM",
+          "date": "2026-04-21T23:45:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "19a7e38d-9d84-42d0-bca4-ad1951230fd9"
         },
         {
-          "home": "Keystone Elite\t",
+          "home": "F&M FC\t",
           "away": "Kutztown Men's Soccer\t",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-26T04:00:00.000Z",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2026-04-25T17:00:00.000Z",
           "status": "scheduled",
           "score": null,
-          "externalId": "9ec32619-41ad-43a8-970f-b1e65ba5d370"
+          "externalId": "6b238965-bc43-4c60-be51-e556b1ea0371"
         },
         {
           "home": "F&M FC\t",
@@ -2150,8 +2150,8 @@
         {
           "home": "Kutztown Men's Soccer\t",
           "away": "Lancaster City FC\t",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-05-03T04:00:00.000Z",
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2026-05-03T23:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "7871174c-e524-4865-80e1-fb69b62b3dc3"
@@ -2214,8 +2214,8 @@
           "away": "Alloy Soccer Club Reserves",
           "time": "6:00 PM - 7:30 PM",
           "date": "2026-03-21T22:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 0",
           "externalId": "3d76341a-9b65-41c7-a09e-7fee4deefa41"
         },
         {
@@ -2223,8 +2223,8 @@
           "away": "YorkPA FC",
           "time": "10:30 AM - 12:00 PM",
           "date": "2026-03-22T14:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 0",
           "externalId": "677181c1-7791-4eaf-8fc4-1ff08b38f5fb"
         },
         {
@@ -2232,8 +2232,8 @@
           "away": "Millersville Men's Club Soccer",
           "time": "3:00 PM - 4:30 PM",
           "date": "2026-03-22T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 2",
           "externalId": "55a3f991-6963-4aab-817f-d8a58a221d8e"
         },
         {
@@ -2241,8 +2241,8 @@
           "away": "Alloy Soccer Club Reserves",
           "time": "8:00 PM - 9:30 PM",
           "date": "2026-03-26T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "0fd03b02-6603-406c-ab9a-3f4e8a9620be"
         },
         {
@@ -2250,8 +2250,8 @@
           "away": "West Chester University Club",
           "time": "7:00 PM - 8:30 PM",
           "date": "2026-03-29T23:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 5",
           "externalId": "0330a870-cf4b-4129-b2ea-3273ca18dfb0"
         },
         {
@@ -2259,8 +2259,8 @@
           "away": "Millersville Men's Club Soccer",
           "time": "7:30 PM - 9:00 PM",
           "date": "2026-03-29T23:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 3",
           "externalId": "bc0b95d4-daa8-4790-a1bd-a8a7cfb7607d"
         },
         {
@@ -2268,8 +2268,8 @@
           "away": "Kutztown Men's Soccer",
           "time": "10:30 AM - 12:00 PM",
           "date": "2026-04-04T14:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 0",
           "externalId": "63741a6f-2813-49fe-95f8-4ba726e59307"
         },
         {
@@ -2277,8 +2277,8 @@
           "away": "Millersville Men's Club Soccer",
           "time": "8:00 PM - 9:30 PM",
           "date": "2026-04-08T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 4",
           "externalId": "936ce5ab-abbb-4fbf-b268-0ef05fd0cc69"
         },
         {
@@ -2286,8 +2286,8 @@
           "away": "Millersville Men's Club Soccer",
           "time": "10:30 AM - 12:00 PM",
           "date": "2026-04-12T14:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 2",
           "externalId": "db180893-fbd0-4e68-a79f-2e4ded2d3f8d"
         },
         {
@@ -2295,8 +2295,8 @@
           "away": "Lancaster Bible College",
           "time": "7:30 PM - 9:00 PM",
           "date": "2026-04-12T23:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 2",
           "externalId": "ad697c65-8457-4487-9c67-2a0287c06ed8"
         },
         {

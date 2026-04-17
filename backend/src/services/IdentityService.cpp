@@ -20,11 +20,14 @@ std::vector<IdentityService::IdentityDTO> IdentityService::getIdentities(const I
                 uei.external_data->>'source' as source,
                 t.name as team_name,
                 ep.name as provider_name,
-                u.first_name as user_first, u.last_name as user_last, u.email as user_email
+                p.first_name as user_first, p.last_name as user_last,
+                COALESCE(pe.email, '') as user_email
             FROM user_external_identities uei
             LEFT JOIN teams t ON uei.team_id = t.id
             LEFT JOIN external_providers ep ON uei.provider_id = ep.id
             LEFT JOIN users u ON uei.user_id = u.id
+            LEFT JOIN persons p ON u.person_id = p.id
+            LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true
             LEFT JOIN clubs sd ON t.club_id = sd.id
             WHERE 1=1
         )";

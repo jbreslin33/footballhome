@@ -433,7 +433,8 @@ class SocialPostCard {
       ctx.clip();
 
       // Draw light beam (rotating cone)
-      const beamAngle = angle - Math.PI; // sweep around, start pointing left
+      // Start beam pointing down-right (off-screen) so loop seam is invisible
+      const beamAngle = angle + Math.PI * 0.25; // offset: starts at ~45° down-right (off canvas)
       const a1 = beamAngle - beamSpread;
       const a2 = beamAngle + beamSpread;
       const tipX1 = lhX + Math.cos(a1) * beamLen;
@@ -1041,7 +1042,8 @@ class SocialPostCard {
           };
           recorder.onerror = () => reject(new Error('Recording failed'));
           recorder.start();
-          setTimeout(() => recorder.stop(), 5000);
+          // Record one full beam rotation (8s) for seamless Instagram loop
+          setTimeout(() => recorder.stop(), 8000);
         });
       } else if (this.baseImage) {
         // Fallback: static image

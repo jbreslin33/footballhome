@@ -157,28 +157,24 @@ UserData User::getUserById(const std::string& user_id) {
     userData.valid = false;
     
     try {
-        auto data = findBy("users", "id", user_id);
-        if (!data.empty()) {
-            userData.id = data[0]["id"];
-            userData.email = data[0]["email"];
-            userData.first_name = data[0]["first_name"];
-            userData.last_name = data[0]["last_name"];
-            userData.preferred_name = ""; // New schema doesn't have preferred_name
+        std::string sql = "SELECT u.id, p.first_name, p.last_name, "
+                         "COALESCE(pe.email, '') as email, "
+                         "COALESCE(al.name, 'user') as admin_level "
+                         "FROM users u "
+                         "JOIN persons p ON u.person_id = p.id "
+                         "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true "
+                         "LEFT JOIN admins a ON a.user_id = u.id "
+                         "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
+                         "WHERE u.id = $1";
+        pqxx::result result = executeQuery(sql, {user_id});
+        if (!result.empty()) {
+            userData.id = result[0]["id"].as<std::string>();
+            userData.email = result[0]["email"].as<std::string>();
+            userData.first_name = result[0]["first_name"].as<std::string>();
+            userData.last_name = result[0]["last_name"].as<std::string>();
+            userData.preferred_name = "";
             userData.name = userData.first_name + " " + userData.last_name;
-            userData.role = "user"; // Default role
-            
-            // Check if user has any admin roles (new schema uses admins table with admin_level column)
-            std::string admin_check_sql = "SELECT admin_level FROM admins WHERE user_id = $1";
-            
-            try {
-                pqxx::result admin_result = executeQuery(admin_check_sql, {user_id});
-                if (!admin_result.empty()) {
-                    userData.role = admin_result[0]["admin_level"].as<std::string>();
-                }
-            } catch (const std::exception& admin_error) {
-                std::cerr << "Error checking admin roles: " << admin_error.what() << std::endl;
-            }
-            
+            userData.role = result[0]["admin_level"].as<std::string>();
             userData.valid = true;
         }
     } catch (const std::exception& e) {

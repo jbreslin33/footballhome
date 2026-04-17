@@ -799,7 +799,9 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
         std::string sort_by = request.getQueryParam("sort_by");
         std::string sort_order = request.getQueryParam("sort_order");
         
-        std::string query = "SELECT DISTINCT u.id, u.email, u.first_name, u.last_name, u.is_active, u.created_at FROM users u ";
+        std::string query = "SELECT DISTINCT u.id, COALESCE(pe.email, '') as email, p.first_name, p.last_name, u.is_active, u.created_at FROM users u "
+                          "JOIN persons p ON u.person_id = p.id "
+                          "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true ";
         std::vector<std::string> params;
         int param_idx = 1;
         
@@ -816,7 +818,7 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
         }
         
         if (!search.empty()) {
-            where_clause += "AND (LOWER(u.first_name) LIKE LOWER($" + std::to_string(param_idx) + ") OR LOWER(u.last_name) LIKE LOWER($" + std::to_string(param_idx) + ") OR LOWER(u.email) LIKE LOWER($" + std::to_string(param_idx) + ")) ";
+            where_clause += "AND (LOWER(p.first_name) LIKE LOWER($" + std::to_string(param_idx) + ") OR LOWER(p.last_name) LIKE LOWER($" + std::to_string(param_idx) + ") OR LOWER(pe.email) LIKE LOWER($" + std::to_string(param_idx) + ")) ";
             params.push_back("%" + search + "%");
             param_idx++;
         }
@@ -824,12 +826,12 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
         query += where_clause;
 
         // Sorting
-        std::string order_clause = "ORDER BY u.last_name, u.first_name"; // Default
+        std::string order_clause = "ORDER BY p.last_name, p.first_name"; // Default
         if (!sort_by.empty()) {
             std::string direction = (sort_order == "desc" || sort_order == "DESC") ? "DESC" : "ASC";
-            if (sort_by == "first_name") order_clause = "ORDER BY u.first_name " + direction + ", u.last_name ASC";
-            else if (sort_by == "last_name") order_clause = "ORDER BY u.last_name " + direction + ", u.first_name ASC";
-            else if (sort_by == "email") order_clause = "ORDER BY u.email " + direction;
+            if (sort_by == "first_name") order_clause = "ORDER BY p.first_name " + direction + ", p.last_name ASC";
+            else if (sort_by == "last_name") order_clause = "ORDER BY p.last_name " + direction + ", p.first_name ASC";
+            else if (sort_by == "email") order_clause = "ORDER BY pe.email " + direction;
             else if (sort_by == "created_at") order_clause = "ORDER BY u.created_at " + direction;
         }
         query += " " + order_clause;
@@ -962,7 +964,16 @@ Response SystemAdminController::handleGetUser(const Request& request) {
         }
         
         // Get user basic info
-        std::string user_query = "SELECT id, first_name, last_name, email, phone, date_of_birth, is_active, created_at FROM users WHERE id = $1";
+        std::string user_query = "SELECT u.id, p.first_name, p.last_name, "
+                                "COALESCE(pe.email, '') as email, "
+                                "COALESCE(pp.phone_number, '') as phone, "
+                                "p.birth_date as date_of_birth, "
+                                "u.is_active, u.created_at "
+                                "FROM users u "
+                                "JOIN persons p ON u.person_id = p.id "
+                                "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true "
+                                "LEFT JOIN person_phones pp ON pp.person_id = p.id AND pp.is_primary = true "
+                                "WHERE u.id = $1";
         std::vector<std::string> params = {user_id};
         auto user_result = db_->query(user_query, params);
         
@@ -1256,11 +1267,14 @@ Response SystemAdminController::handleGetSystemAdmins(const Request& request) {
         // Query system admins with user details
         std::string query = "SELECT sa.id, sa.user_id, sa.appointed_by, sa.notes, sa.is_active, "
                           "sa.appointed_at, "
-                          "u.email, u.first_name, u.last_name, "
-                          "appointer.first_name as appointer_first_name, appointer.last_name as appointer_last_name "
+                          "COALESCE(pe.email, '') as email, p.first_name, p.last_name, "
+                          "appt_p.first_name as appointer_first_name, appt_p.last_name as appointer_last_name "
                           "FROM system_admins sa "
                           "JOIN users u ON sa.user_id = u.id "
+                          "JOIN persons p ON u.person_id = p.id "
+                          "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true "
                           "LEFT JOIN users appointer ON sa.appointed_by = appointer.id "
+                          "LEFT JOIN persons appt_p ON appointer.person_id = appt_p.id "
                           "WHERE sa.is_active = true "
                           "ORDER BY sa.appointed_at DESC";
         
@@ -1425,9 +1439,11 @@ Response SystemAdminController::handleGetAuditLogs(const Request& request) {
         // Build query with optional filters
         std::string query = "SELECT sal.id, sal.admin_user_id, sal.action_type, sal.entity_type, sal.entity_id, "
                           "sal.old_values, sal.new_values, sal.created_at, "
-                          "u.email, u.first_name, u.last_name "
+                          "COALESCE(pe.email, '') as email, p.first_name, p.last_name "
                           "FROM system_audit_log sal "
                           "JOIN users u ON sal.admin_user_id = u.id "
+                          "JOIN persons p ON u.person_id = p.id "
+                          "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true "
                           "WHERE 1=1 ";
         
         std::vector<std::string> params;

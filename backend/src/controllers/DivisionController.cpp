@@ -184,28 +184,34 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
                    "gen_random_uuid() as id, tp.player_id, $1::uuid as division_id, 'active' as status, "
                    "null::varchar as registration_number, '2024-2025' as last_active_season, "
                    "CURRENT_TIMESTAMP as created_at, CURRENT_TIMESTAMP as updated_at, "
-                   "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
+                   "per.first_name, per.last_name, per.birth_date as date_of_birth, "
+                   "COALESCE(pe.email, '') as email, COALESCE(pp.phone_number, '') as phone "
                    "FROM clubs sd "
                    "JOIN teams t ON sd.id = t.club_id "
                    "JOIN team_division_players tp ON t.id = tp.team_id "
                    "JOIN players p ON tp.player_id = p.id "
-                   "JOIN users u ON p.id = u.id "
+                   "JOIN persons per ON p.person_id = per.id "
+                   "LEFT JOIN person_emails pe ON pe.person_id = per.id AND pe.is_primary = true "
+                   "LEFT JOIN person_phones pp ON pp.person_id = per.id AND pp.is_primary = true "
                    "WHERE sd.id = $1 "
-                   "ORDER BY u.last_name, u.first_name";
+                   "ORDER BY per.last_name, per.first_name";
             params.push_back(divisionId);
         } else {
             query = "SELECT DISTINCT "
                    "gen_random_uuid() as id, tp.player_id, $1::uuid as division_id, 'active' as status, "
                    "null::varchar as registration_number, '2024-2025' as last_active_season, "
                    "CURRENT_TIMESTAMP as created_at, CURRENT_TIMESTAMP as updated_at, "
-                   "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
+                   "per.first_name, per.last_name, per.birth_date as date_of_birth, "
+                   "COALESCE(pe.email, '') as email, COALESCE(pp.phone_number, '') as phone "
                    "FROM clubs sd "
                    "JOIN teams t ON sd.id = t.club_id "
                    "JOIN team_division_players tp ON t.id = tp.team_id "
                    "JOIN players p ON tp.player_id = p.id "
-                   "JOIN users u ON p.id = u.id "
+                   "JOIN persons per ON p.person_id = per.id "
+                   "LEFT JOIN person_emails pe ON pe.person_id = per.id AND pe.is_primary = true "
+                   "LEFT JOIN person_phones pp ON pp.person_id = per.id AND pp.is_primary = true "
                    "WHERE sd.id = $1 AND 'active' = $2 "
-                   "ORDER BY u.last_name, u.first_name";
+                   "ORDER BY per.last_name, per.first_name";
             params.push_back(divisionId);
             params.push_back(status);
         }

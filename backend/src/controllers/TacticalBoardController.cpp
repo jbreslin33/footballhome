@@ -688,12 +688,14 @@ Response TacticalBoardController::handleGetBoard(const Request& request) {
         "tbt.id as board_type_id, tbt.code as board_type_code, tbt.name as board_type_name, "
         "ts.id as stance_id, ts.code as stance_code, ts.name as stance_name, "
         "tft.id as field_third_id, tft.code as field_third_code, tft.name as field_third_name, "
-        "u.email as creator_email "
+        "COALESCE(pe.email, '') as creator_email "
         "FROM tactical_boards tb "
         "JOIN tactical_board_types tbt ON tb.board_type_id = tbt.id "
         "LEFT JOIN tactical_stances ts ON tb.stance_id = ts.id "
         "LEFT JOIN tactical_field_thirds tft ON tb.field_third_id = tft.id "
         "LEFT JOIN users u ON tb.created_by = u.id "
+        "LEFT JOIN persons tbp ON u.person_id = tbp.id "
+        "LEFT JOIN person_emails pe ON pe.person_id = tbp.id AND pe.is_primary = true "
         "WHERE tb.id = $1",
         {boardId}
     );

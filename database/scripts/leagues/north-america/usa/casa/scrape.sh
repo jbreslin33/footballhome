@@ -21,6 +21,10 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
+  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+done
 
 echo "🌐 CASA: Scraping all data..."
 echo ""
@@ -29,7 +33,7 @@ echo ""
 echo "🌐 Scraping CASA standings + schedule..."
 export SCRAPE_MODE=download
 export SCRAPE_USE_CACHE=false
-node database/scripts/scrapers/CasaStructureScraper.js
+node "$PROJECT_ROOT/database/scripts/scrapers/CasaStructureScraper.js"
 echo ""
 
 # 3. Rosters
