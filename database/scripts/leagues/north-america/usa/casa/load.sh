@@ -44,6 +44,18 @@ for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* 
     fi
 done
 
+# Post-load: set team logos (teams must exist before this runs)
+echo "  Setting CASA team logos..."
+$DB_EXEC psql -U footballhome_user -d footballhome -c "
+UPDATE teams SET logo_url = '/images/teams/logos/lighthouse-1893.png' WHERE name = 'Lighthouse Boys Club' AND source_system_id = 2;
+UPDATE teams SET logo_url = '/images/teams/logos/lighthouse-1893.png' WHERE name = 'Lighthouse Boys Club U23' AND source_system_id = 2;
+UPDATE teams SET logo_url = '/images/teams/logos/oaklyn-united.jpg' WHERE name = 'Oaklyn United FC II' AND source_system_id = 2;
+UPDATE teams SET logo_url = '/images/teams/logos/philly-soccer-club.png' WHERE name = 'Philadelphia Sierra Stars' AND source_system_id = 2;
+UPDATE teams SET logo_url = '/images/teams/logos/philly-soccer-club.png' WHERE name = 'Philadelphia SC Select' AND source_system_id = 2;
+UPDATE teams SET logo_url = '/images/teams/logos/sewell-old-boys.jpg' WHERE name = 'Sewell''s Old Boys' AND source_system_id = 2;
+UPDATE teams SET logo_url = '/images/teams/logos/alloy-sc.jpg' WHERE name = 'Alloy Soccer Club Reserves' AND source_system_id = 2;
+"
+
 # Post-load: assign coaches to CASA teams (teams must exist before this runs)
 echo "  Assigning coaches to CASA teams..."
 $DB_EXEC psql -U footballhome_user -d footballhome -c "
@@ -52,7 +64,7 @@ SELECT t.id, c.id, cr.id
 FROM teams t
 JOIN coaches c ON c.person_id = 1
 JOIN coach_roles cr ON cr.name = 'head'
-WHERE t.name IN ('Lighthouse Boys Club', 'Lighthouse Old Timers Club')
+WHERE t.name IN ('Lighthouse Boys Club', 'Lighthouse Boys Club U23')
 ON CONFLICT DO NOTHING;
 "
 
