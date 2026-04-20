@@ -31,8 +31,10 @@ std::string Response::getStatusText(HttpStatus status) const {
         case HttpStatus::FORBIDDEN: return "Forbidden";
         case HttpStatus::NOT_FOUND: return "Not Found";
         case HttpStatus::METHOD_NOT_ALLOWED: return "Method Not Allowed";
+        case HttpStatus::CONFLICT: return "Conflict";
         case HttpStatus::INTERNAL_SERVER_ERROR: return "Internal Server Error";
         case HttpStatus::NOT_IMPLEMENTED: return "Not Implemented";
+        case HttpStatus::SERVICE_UNAVAILABLE: return "Service Unavailable";
         default: return "Unknown";
     }
 }

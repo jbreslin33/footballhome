@@ -61,6 +61,11 @@ if sudo wg show "$INTERFACE" &> /dev/null 2>&1; then
 else
   echo "   🔒 Connecting VPN..."
   sudo wg-quick up "$INTERFACE"
+  # systemd-resolved split-DNS fix: wg-quick registers the DNS server but
+  # without a routing domain of ~., systemd-resolved won't route queries
+  # through it. Force all DNS through the VPN interface.
+  sudo resolvectl dns "$INTERFACE" 10.64.0.1
+  sudo resolvectl domain "$INTERFACE" "~."
   sleep 1
   VPN_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
   echo "   🔒 VPN connected — IP: $VPN_IP"

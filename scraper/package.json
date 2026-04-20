@@ -1,0 +1,10 @@
+{
+  "name": "footballhome-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "jsdom": "^23.0.0",
+    "pg": "^8.11.0",
+    "puppeteer-core": "^22.0.0"
+  }
+}

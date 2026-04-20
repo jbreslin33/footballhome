@@ -422,9 +422,10 @@ class AdminSystemScreen extends Screen {
     const content = this.element.querySelector('.admin-content');
     
     // Define all scrape items with their metadata
+    // Items with refreshEndpoint get a live "Run Now" button via the API
     const scrapeItems = [
       { key: 'apsl-standings',  league: 'APSL', type: 'Standings',  icon: '📊', command: 'make scrape-apsl-standings', source: 'Chrome --dump-dom' },
-      { key: 'apsl-teams',     league: 'APSL', type: 'Rosters & Schedule', icon: '👥', command: 'make scrape-apsl-teams', source: 'Puppeteer (team pages)' },
+      { key: 'apsl-teams',     league: 'APSL', type: 'Lighthouse Schedule & Scores', icon: '⚽', command: 'make scrape-apsl-teams', source: 'Puppeteer via WARP', refreshEndpoint: '/api/matches/apsl/refresh' },
       { key: 'csl-standings',  league: 'CSL',  type: 'Standings',  icon: '📊', command: 'make scrape-csl-standings', source: 'Chrome --dump-dom' },
       { key: 'csl-teams',     league: 'CSL',  type: 'Rosters & Schedule', icon: '👥', command: 'make scrape-csl-teams', source: 'Puppeteer (team pages)' },
       { key: 'casa-standings', league: 'CASA', type: 'Standings',  icon: '📊', command: 'make scrape-casa-standings', source: 'Puppeteer (SportsEngine)' },
@@ -475,7 +476,7 @@ class AdminSystemScreen extends Screen {
         const details = s && s.details ? s.details : '';
         
         html += `
-          <div class="pipeline-item pipeline-${freshnessClass}">
+          <div class="pipeline-item pipeline-${freshnessClass}" data-key="${item.key}">
             <div class="pipeline-item-header">
               <span class="pipeline-icon">${item.icon}</span>
               <span class="pipeline-type">${item.type}</span>
@@ -495,6 +496,7 @@ class AdminSystemScreen extends Screen {
             <div class="pipeline-item-footer">
               <code class="pipeline-command">${item.command}</code>
               <button class="btn btn-small pipeline-copy-btn" data-command="${item.command}" title="Copy command">📋</button>
+              ${item.refreshEndpoint ? `<button class="btn btn-small btn-primary pipeline-run-btn" data-endpoint="${item.refreshEndpoint}" data-key="${item.key}" title="Run now via scraper API">▶ Run Now</button>` : ''}
             </div>
           </div>
         `;
@@ -559,6 +561,41 @@ class AdminSystemScreen extends Screen {
           btn.textContent = '✅';
           setTimeout(() => { btn.textContent = '📋'; }, 1500);
         });
+      });
+    });
+
+    // Bind "Run Now" buttons (live scraper API)
+    content.querySelectorAll('.pipeline-run-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const endpoint = btn.dataset.endpoint;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Running…';
+
+        try {
+          const response = await this.auth.fetch(endpoint, { method: 'POST' });
+          const data = await response.json();
+
+          if (response.status === 409) {
+            btn.textContent = '⚠️ Already running';
+          } else if (response.ok && data.success) {
+            btn.textContent = `✅ ${data.inserted ?? 0}↑ ${data.updated ?? 0}↻`;
+            // Reload pipeline status after a moment so freshness updates
+            setTimeout(() => this.loadDataPipeline(), 1500);
+            return;
+          } else {
+            btn.textContent = '❌ Failed';
+            console.error('Scraper error:', data.message || response.status);
+          }
+        } catch (err) {
+          btn.textContent = '❌ Error';
+          console.error('Run Now error:', err);
+        }
+
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 3000);
       });
     });
   }

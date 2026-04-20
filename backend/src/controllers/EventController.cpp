@@ -9,6 +9,7 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
+#include <curl/curl.h>
 
 EventController::EventController() {
     db_ = Database::getInstance();
@@ -155,6 +156,11 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     // PUT /api/events/chat-events/:chatEventId/person-rsvp - Override practice RSVP by person
     router.put(prefix + "/chat-events/:chatEventId/person-rsvp", [this](const Request& request) {
         return this->handleSetPracticeRSVP(request);
+    });
+
+    // POST /api/matches/apsl/refresh - Trigger APSL score scrape (coach/admin only)
+    router.post("/api/matches/apsl/refresh", [this](const Request& request) {
+        return this->handleRefreshAPSLScores(request);
     });
 }
 
@@ -461,28 +467,27 @@ Response EventController::handleGetMatches(const Request& request) {
         std::cout << "🔍 Getting matches for team: " << team_id << std::endl;
         
         // Query matches where team is home or away
-        // Show: all upcoming matches + matches ended within last 8 hours
+        // matches extends events (matches.id = events.id FK)
+        // Show: all upcoming matches + completed matches
         // Include has_ended flag so frontend knows whether to show RSVP buttons
         std::ostringstream query;
-        query << "SELECT m.id, COALESCE(m.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
-        query << "m.match_date::text || ' ' || COALESCE(m.match_time::text, '00:00:00') as event_date, ";
-        query << "90 as duration_minutes, mt.name as event_type, ";
-        query << "m.home_score as home_team_score, m.away_score as away_team_score, ";
-        query << "ms.name as match_status, '' as competition_name, v.name as venue_name, ";
-        query << "CASE WHEN m.match_status_id = 3 THEN true ";
-        query << "WHEN m.match_date < CURRENT_DATE THEN true ";
-        query << "WHEN m.match_date = CURRENT_DATE AND m.match_time IS NOT NULL ";
-        query << "AND (m.match_time + INTERVAL '90 minutes') < CURRENT_TIME THEN true ";
+        query << "SELECT m.id, COALESCE(e.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
+        query << "e.event_date::text as event_date, ";
+        query << "COALESCE(e.duration_minutes, 90) as duration_minutes, et.name as event_type, ";
+        query << "m.home_team_score, m.away_team_score, ";
+        query << "m.match_status, m.competition_name, v.name as venue_name, ";
+        query << "CASE WHEN m.match_status = 'completed' THEN true ";
+        query << "WHEN e.event_date < NOW() - INTERVAL '90 minutes' THEN true ";
         query << "ELSE false END as has_ended, ";
         query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo ";
         query << "FROM matches m ";
-        query << "JOIN match_types mt ON m.match_type_id = mt.id ";
-        query << "JOIN match_statuses ms ON m.match_status_id = ms.id ";
-        query << "LEFT JOIN venues v ON m.venue_id = v.id ";
+        query << "JOIN events e ON m.id = e.id ";
+        query << "LEFT JOIN event_types et ON e.event_type_id = et.id ";
+        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
-        query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
+        query << "ORDER BY e.event_date ASC ";
         query << "LIMIT 100";
         
         pqxx::result result = db_->query(query.str());
@@ -670,28 +675,27 @@ Response EventController::handleGetMatch(const Request& request) {
         std::cout << "🔍 Getting match: " << match_id << std::endl;
         
         // Query single match with all details
+        // matches extends events via matches.id = events.id FK
         std::ostringstream query;
-        query << "SELECT m.id, COALESCE(m.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
-        query << "m.match_date::text || ' ' || COALESCE(m.match_time::text, '00:00:00') as event_date, ";
-        query << "90 as duration_minutes, m.venue_id, ";
-        query << "m.home_team_id, m.away_team_id, '' as competition_name, ";
-        query << "ms.name as match_status, ";
-        query << "m.home_score as home_team_score, m.away_score as away_team_score, ";
-        query << "m.description as notes, ";
+        query << "SELECT m.id, COALESCE(e.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
+        query << "e.event_date::text as event_date, ";
+        query << "COALESCE(e.duration_minutes, 90) as duration_minutes, e.venue_id, ";
+        query << "m.home_team_id, m.away_team_id, m.competition_name, ";
+        query << "m.match_status, ";
+        query << "m.home_team_score, m.away_team_score, ";
+        query << "e.description as notes, ";
         query << "v.name as venue_name, ";
         query << "ht.name as home_team_name, awt.name as away_team_name, ";
         query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo, ";
-        query << "ss.name as source_name, ";
-        query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, v.zip as venue_zip, ";
-        query << "d.name as division_name ";
+        query << "'' as source_name, ";
+        query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, '' as venue_zip, ";
+        query << "et.name as division_name ";
         query << "FROM matches m ";
-        query << "JOIN match_statuses ms ON m.match_status_id = ms.id ";
-        query << "LEFT JOIN venues v ON m.venue_id = v.id ";
+        query << "JOIN events e ON m.id = e.id ";
+        query << "LEFT JOIN event_types et ON e.event_type_id = et.id ";
+        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
-        query << "LEFT JOIN source_systems ss ON m.source_system_id = ss.id ";
-        query << "LEFT JOIN match_divisions md ON md.match_id = m.id ";
-        query << "LEFT JOIN divisions d ON d.id = md.division_id ";
         query << "WHERE m.id = '" << match_id << "'";
         
         pqxx::result result = db_->query(query.str());
@@ -1962,10 +1966,10 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
     try {
         // Get match date so we can find the 5 practice/pickup events before it
         pqxx::result matchDateResult = db_->query(
-            "SELECT match_date FROM matches WHERE id = $1", {matchId});
+            "SELECT e.event_date FROM matches m JOIN events e ON m.id = e.id WHERE m.id = $1", {matchId});
         std::string matchDate = "9999-12-31";
         if (!matchDateResult.empty()) {
-            matchDate = matchDateResult[0]["match_date"].c_str();
+            matchDate = matchDateResult[0]["event_date"].c_str();
         }
 
         // Last 5 training + pickup events before the match date
@@ -2728,5 +2732,65 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
         std::cerr << "\u274c Error setting practice RSVP: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, "Failed to set practice RSVP"));
+    }
+}
+
+// ─── APSL score refresh ───────────────────────────────────────────────────────
+static size_t eventCurlWriteCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
+    size_t total = size * nmemb;
+    out->append(static_cast<char*>(contents), total);
+    return total;
+}
+
+Response EventController::handleRefreshAPSLScores(const Request& request) {
+    // Require authentication — coaches and admins only
+    std::string userId = extractUserIdFromToken(request);
+    if (userId.empty()) {
+        return Response(HttpStatus::UNAUTHORIZED,
+            createJSONResponse(false, "Authentication required"));
+    }
+
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, "Failed to initialize HTTP client"));
+    }
+
+    std::string responseBody;
+    // Scraper runs with network_mode:host, reachable via host gateway
+    curl_easy_setopt(curl, CURLOPT_URL, "http://host.docker.internal:3010/refresh");
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, eventCurlWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);  // scraping + DB write can take ~60s
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+
+    CURLcode res = curl_easy_perform(curl);
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        std::cerr << "❌ APSL refresh: scraper unreachable — " << curl_easy_strerror(res) << std::endl;
+        return Response(HttpStatus::SERVICE_UNAVAILABLE,
+            createJSONResponse(false, std::string("Scraper service unavailable: ") + curl_easy_strerror(res)));
+    }
+
+    std::cout << "🔄 APSL refresh: scraper returned HTTP " << httpCode << std::endl;
+
+    if (httpCode == 200) {
+        Response r(HttpStatus::OK, responseBody);
+        r.setHeader("Content-Type", "application/json");
+        return r;
+    } else if (httpCode == 409) {
+        Response r(HttpStatus::CONFLICT, responseBody);
+        r.setHeader("Content-Type", "application/json");
+        return r;
+    } else {
+        Response r(HttpStatus::INTERNAL_SERVER_ERROR, responseBody);
+        r.setHeader("Content-Type", "application/json");
+        return r;
     }
 }
