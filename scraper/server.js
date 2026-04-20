@@ -2,30 +2,41 @@
 /**
  * scraper/server.js
  *
- * Tiny HTTP server that scrapes Lighthouse APSL schedule/results and
+ * Tiny HTTP server that scrapes all 3 Lighthouse team schedules/results and
  * loads them into the PostgreSQL DB.
+ *
+ *   - Lighthouse 1893 SC      → APSL (Puppeteer, apslsoccer.com)
+ *   - Lighthouse Boys Club    → CASA Liga 1 (SportsEngine REST API)
+ *   - Lighthouse Old Timers   → CASA Liga 2 (SportsEngine REST API)
  *
  * Endpoints:
  *   GET  /health    — liveness check
- *   POST /refresh   — run scraper and update DB, returns JSON summary
+ *   POST /refresh   — run all scrapers and update DB, returns JSON summary
  */
 
 'use strict';
 
-const http       = require('http');
-const puppeteer  = require('puppeteer-core');
-const { JSDOM }  = require('jsdom');
-const { Client } = require('pg');
+const http              = require('http');
+const { execSync }      = require('child_process');
+const puppeteer         = require('puppeteer-core');
+const { JSDOM }         = require('jsdom');
+const { Client }        = require('pg');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const PORT              = 3010;
-const CHROME_PATH       = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium';
-const APSL_TEAM_URL     = 'https://apslsoccer.com/APSL/Team/116079';
+const PORT      = 3010;
+const CHROME_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium';
+const APSL_TEAM_URL = 'https://apslsoccer.com/APSL/Team/116079';
 
-const LIGHTHOUSE_1893_ID  = 'd37eb44b-8e47-0005-9060-f0cbe96fe089';
-const CREATOR_USER_ID     = '77d77471-1250-47e0-81ab-d4626595d63c';
-const MATCH_EVENT_TYPE_ID = '550e8400-e29b-41d4-a716-446655440402';
-const SOCCER_SPORT_ID     = '550e8400-e29b-41d4-a716-446655440101';
+// SportsEngine program IDs (CASA league microsites)
+const CASA_LIGA1_PROGRAM = '6827a0840b95c8019f7e2b38';
+const CASA_LIGA2_PROGRAM = '682f9676528c0e00bfc9d2f2';
+
+const LIGHTHOUSE_1893_ID       = 'd37eb44b-8e47-0005-9060-f0cbe96fe089';
+const LIGHTHOUSE_BOYS_ID       = '04b164cd-4e35-4302-84b0-60e2a5e71500';
+const LIGHTHOUSE_OLD_TIMERS_ID = '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+const CREATOR_USER_ID          = '77d77471-1250-47e0-81ab-d4626595d63c';
+const MATCH_EVENT_TYPE_ID      = '550e8400-e29b-41d4-a716-446655440402';
+const SOCCER_SPORT_ID          = '550e8400-e29b-41d4-a716-446655440101';
 
 // APSL season: Sep–Dec = 2025, Jan–Jul = 2026
 const MONTH_YEAR = {
@@ -36,6 +47,9 @@ const MONTH_NUM = {
   Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12,
 };
 
+// SOCKS5 proxy for external HTTP calls
+const SOCKS5_PROXY = '127.0.0.1:40000';
+
 // ─── Parsing helpers ──────────────────────────────────────────────────────────
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -45,7 +59,7 @@ function slugify(s) {
 function parseAPSLDate(s) {
   const m = s.match(/(\w+),\s+(\w{3})\s+(\d+)\s+-\s+(\d+):(\d+)\s+(AM|PM)/);
   if (!m) return null;
-  const [,,, mon, day, rawH, rawM, ampm] = m;
+  const [,, mon, day, rawH, rawM, ampm] = m;
   let h = parseInt(rawH, 10);
   if (ampm === 'PM' && h !== 12) h += 12;
   if (ampm === 'AM' && h === 12) h = 0;
@@ -72,14 +86,28 @@ function parseMatchCell(s) {
   return null;
 }
 
-// ─── APSL scraper ─────────────────────────────────────────────────────────────
+// ISO UTC → "YYYY-MM-DD HH:MM:SS" in America/New_York
+function utcToEastern(isoStr) {
+  const d = new Date(isoStr);
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(d).map(p => [p.type, p.value]));
+  const h = parts.hour === '24' ? '00' : parts.hour;
+  return `${parts.year}-${parts.month}-${parts.day} ${h}:${parts.minute}:${parts.second}`;
+}
+
+// ─── APSL scraper (Puppeteer) ─────────────────────────────────────────────────
 async function fetchAPSL() {
   console.log('[scraper] Launching Chromium for APSL...');
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu',
            '--disable-dev-shm-usage',
-           '--proxy-server=socks5://127.0.0.1:40000'],
+           `--proxy-server=socks5://${SOCKS5_PROXY}`],
     headless: true,
   });
 
@@ -114,10 +142,13 @@ async function fetchAPSL() {
         const { status, homeScore, awayScore } = parseResult(resultStr);
 
         matches.push({
-          opponent:   parsed.opponent,
-          isHome:     parsed.isHome,
+          lighthouseTeamId:   LIGHTHOUSE_1893_ID,
+          lighthouseTeamName: 'Lighthouse 1893 SC',
+          competition:        'APSL 2025/2026',
+          opponent:           parsed.opponent,
+          isHome:             parsed.isHome,
           eventDate,
-          venueName:  venueName.replace(/@$/, '').trim(),
+          venueName:          venueName.replace(/@$/, '').trim(),
           homeScore,
           awayScore,
           status,
@@ -132,6 +163,63 @@ async function fetchAPSL() {
     await browser.close().catch(() => {});
     throw err;
   }
+}
+
+// ─── CASA scraper (SportsEngine REST API via curl+SOCKS5) ─────────────────────
+// programId: SE microsite program ID
+// apiTeamName: exact team name as it appears in the SE API
+// dbTeamId: UUID of this team in our DB
+// dbTeamName: display name for titles (may differ from apiTeamName)
+// competition: e.g. 'CASA Liga 1 2025/2026'
+// prefix: short slug prefix for external IDs e.g. 'casa-boys'
+async function fetchCASA(programId, apiTeamName, dbTeamId, dbTeamName, competition, prefix) {
+  console.log(`[scraper] Fetching CASA ${competition} (${apiTeamName})...`);
+
+  const url = `https://se-api.sportsengine.com/v3/microsites/events?per_page=200&program_id=${programId}&order_by=starts_at&direction=asc`;
+  const curlCmd = `curl -sf --socks5 ${SOCKS5_PROXY} -A "Mozilla/5.0" -H "Accept: application/json" "${url}"`;
+
+  const raw = execSync(curlCmd, { timeout: 30000, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+  const data = JSON.parse(raw);
+  const events = data.result || [];
+
+  const matches = [];
+  for (const event of events) {
+    if (event.event_type !== 'game') continue;
+    const gd = event.game_details;
+    if (!gd) continue;
+
+    // team_1 is always HOME, team_2 is always AWAY
+    const t1Name = gd.team_1.name;
+    const t2Name = gd.team_2.name;
+    const lighthouseIsT1 = t1Name === apiTeamName;
+    const lighthouseIsT2 = t2Name === apiTeamName;
+    if (!lighthouseIsT1 && !lighthouseIsT2) continue;
+
+    const isHome     = lighthouseIsT1; // team_1 is always home
+    const opponent   = isHome ? t2Name : t1Name;
+    const homeScore  = gd.team_1.score !== '' ? parseInt(gd.team_1.score, 10) : null;
+    const awayScore  = gd.team_2.score !== '' ? parseInt(gd.team_2.score, 10) : null;
+    const status     = gd.status === 'completed' ? 'completed' : 'scheduled';
+    const eventDate  = utcToEastern(event.start_date_time);
+    const dateSlug   = event.start_date_time.substring(0, 10);
+
+    matches.push({
+      lighthouseTeamId:   dbTeamId,
+      lighthouseTeamName: dbTeamName,
+      competition,
+      opponent,
+      isHome,
+      eventDate,
+      venueName: event.location_name || null,
+      homeScore,
+      awayScore,
+      status,
+      externalId: `${prefix}-${dateSlug}-${slugify(opponent)}`,
+    });
+  }
+
+  console.log(`[scraper] ${competition}: found ${matches.length} Lighthouse matches`);
+  return matches;
 }
 
 // ─── DB load ──────────────────────────────────────────────────────────────────
@@ -165,8 +253,8 @@ async function loadToDatabase(matches) {
 
       // Upsert opponent club
       await db.query(
-        'INSERT INTO clubs (name, display_name, slug, is_active) VALUES ($1,$1,$2,true) ON CONFLICT (slug) DO NOTHING',
-        [m.opponent, opponentSlug]
+        'INSERT INTO clubs (name, display_name, slug, is_active) VALUES ($1,$2,$3,true) ON CONFLICT (slug) DO NOTHING',
+        [m.opponent, m.opponent, opponentSlug]
       );
 
       // Upsert opponent sport_division
@@ -183,21 +271,21 @@ async function loadToDatabase(matches) {
         SELECT $1, sd.id, true
         FROM sport_divisions sd JOIN clubs c ON sd.club_id = c.id
         WHERE c.slug = $2 AND sd.slug = $3
-        AND NOT EXISTS (SELECT 1 FROM teams WHERE name = $1)
-      `, [m.opponent, opponentSlug, sdSlug]);
+        AND NOT EXISTS (SELECT 1 FROM teams WHERE name = $4)
+      `, [m.opponent, opponentSlug, sdSlug, m.opponent]);
 
       // Get opponent team id
       const teamRow = await db.query('SELECT id FROM teams WHERE name = $1 LIMIT 1', [m.opponent]);
       if (teamRow.rows.length === 0) continue;
       const opponentId = teamRow.rows[0].id;
 
-      const homeId = m.isHome ? LIGHTHOUSE_1893_ID : opponentId;
-      const awayId = m.isHome ? opponentId : LIGHTHOUSE_1893_ID;
+      const homeId = m.isHome ? m.lighthouseTeamId : opponentId;
+      const awayId = m.isHome ? opponentId : m.lighthouseTeamId;
 
       // Build human-readable title
       const title = m.isHome
-        ? `Lighthouse 1893 SC vs ${m.opponent}`
-        : `${m.opponent} vs Lighthouse 1893 SC`;
+        ? `${m.lighthouseTeamName} vs ${m.opponent}`
+        : `${m.opponent} vs ${m.lighthouseTeamName}`;
 
       // Get venue id
       let venueId = null;
@@ -222,8 +310,8 @@ async function loadToDatabase(matches) {
         const eid = rows[0].id;
         await db.query(`
           INSERT INTO matches (id, home_team_id, away_team_id, home_team_score, away_team_score, match_status, competition_name)
-          VALUES ($1, $2, $3, $4, $5, $6, 'APSL 2025/2026')
-        `, [eid, homeId, awayId, m.homeScore, m.awayScore, m.status]);
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [eid, homeId, awayId, m.homeScore, m.awayScore, m.status, m.competition]);
         inserted++;
       } else {
         // Update scores/status/venue/title
@@ -273,18 +361,43 @@ const server = http.createServer(async (req, res) => {
     console.log(`[scraper] Refresh started at ${started}`);
 
     try {
-      const matches = await fetchAPSL();
-      const { inserted, updated } = await loadToDatabase(matches);
-      const finished = new Date().toISOString();
-      console.log(`[scraper] Done — inserted ${inserted}, updated ${updated}`);
+      // Run all 3 scrapers; collect results even if some fail
+      const results = await Promise.allSettled([
+        fetchAPSL(),
+        fetchCASA(CASA_LIGA1_PROGRAM, 'Lighthouse Boys Club',
+                  LIGHTHOUSE_BOYS_ID, 'Lighthouse Boys Club',
+                  'CASA Liga 1 2025/2026', 'casa-boys'),
+        fetchCASA(CASA_LIGA2_PROGRAM, 'Lighthouse Boys Club U23',
+                  LIGHTHOUSE_OLD_TIMERS_ID, 'Lighthouse Old Timers',
+                  'CASA Liga 2 2025/2026', 'casa-ot'),
+      ]);
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      const errors = [];
+      let allMatches = [];
+      const labels = ['APSL', 'CASA Liga 1', 'CASA Liga 2'];
+
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'fulfilled') {
+          allMatches = allMatches.concat(results[i].value);
+        } else {
+          console.error(`[scraper] ${labels[i]} failed:`, results[i].reason.message);
+          errors.push(`${labels[i]}: ${results[i].reason.message}`);
+        }
+      }
+
+      const { inserted, updated } = await loadToDatabase(allMatches);
+      const finished = new Date().toISOString();
+      console.log(`[scraper] Done — ${allMatches.length} total matches, inserted ${inserted}, updated ${updated}`);
+
+      const status = errors.length === 0 ? 200 : 207;
+      res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
-        success:  true,
-        message:  `Loaded ${matches.length} APSL matches (${inserted} new, ${updated} updated)`,
-        total:    matches.length,
+        success:  errors.length === 0,
+        message:  `Loaded ${allMatches.length} matches (${inserted} new, ${updated} updated)`,
+        total:    allMatches.length,
         inserted,
         updated,
+        errors:   errors.length > 0 ? errors : undefined,
         started,
         finished,
       }));

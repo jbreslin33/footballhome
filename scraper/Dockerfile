@@ -3,6 +3,8 @@ FROM node:22-bookworm-slim
 # Install Chromium and its dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
+    curl \
+    ca-certificates \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
