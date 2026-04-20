@@ -188,6 +188,7 @@ class GameDayLineupScreen extends Screen {
         });
         const syncData = await syncResponse.json();
         if (syncData.success && syncData.data?.synced) {
+          this.lastSyncedAt = syncData.data.syncedAt || new Date().toISOString();
           console.log(`✅ GroupMe sync: ${syncData.data.totalRsvps} RSVPs (${syncData.data.going} going)`);
         } else {
           console.log('ℹ️ GroupMe sync skipped:', syncData.data?.reason || syncData.message);
@@ -794,28 +795,31 @@ class GameDayLineupScreen extends Screen {
     const status = sync.status;
     const minutes = sync.minutesAgo;
     
-    if (status === 'fresh') {
-      banner.style.display = 'none';
-      return;
-    }
+    // Format the last sync timestamp
+    const lastSyncTime = this.lastSyncedAt || sync.lastSync;
+    const timeStr = lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     
     let icon, message, level;
     const refreshBtn = '<button id="groupme-refresh-btn" class="btn-groupme-refresh">🔄 Refresh</button>';
     
-    if (status === 'no_data') {
+    if (status === 'fresh') {
+      icon = '✅';
+      message = `GroupMe synced${timeStr ? ' at ' + timeStr : ''}. ${refreshBtn}`;
+      level = 'success';
+    } else if (status === 'no_data') {
       icon = '🚫';
       message = `No GroupMe event linked for this match — RSVPs unavailable. ${refreshBtn}`;
       level = 'error';
     } else if (status === 'very_stale') {
       const days = Math.floor(minutes / 1440);
       icon = '⚠️';
-      message = `RSVP data is ${days} day${days !== 1 ? 's' : ''} old. ${refreshBtn}`;
+      message = `RSVP data is ${days} day${days !== 1 ? 's' : ''} old${timeStr ? ' (last: ' + timeStr + ')' : ''}. ${refreshBtn}`;
       level = 'error';
     } else if (status === 'stale') {
       const hours = Math.floor(minutes / 60);
       const mins = minutes % 60;
       icon = '⏳';
-      message = `RSVPs synced ${hours}h ${mins}m ago. ${refreshBtn}`;
+      message = `RSVPs synced ${hours}h ${mins}m ago${timeStr ? ' (' + timeStr + ')' : ''}. ${refreshBtn}`;
       level = 'warning';
     }
     

@@ -68,6 +68,11 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/training-attendance", [this](const Request& request) {
         return this->handleToggleAttendance(request);
     });
+
+    // GET /api/groupme/sync-status/:teamId — Last successful sync timestamp for a team
+    router.get(prefix + "/sync-status/:teamId", [this](const Request& request) {
+        return this->handleGetSyncStatus(request);
+    });
 }
 
 // ============================================================================
@@ -215,13 +220,31 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
 
         std::cout << "  ✅ Synced " << rsvpCount << " RSVPs" << std::endl;
 
+        // Update chat_integrations.last_synced_at and fetch server timestamp
+        std::string syncedAt;
+        try {
+            db_->query(
+                "UPDATE chat_integrations SET last_synced_at = NOW() "
+                "WHERE chat_id = (SELECT chat_id FROM chat_events WHERE id = $1::int) AND provider_id = 1",
+                {chatEventId}
+            );
+            pqxx::result tsResult = db_->query("SELECT NOW()::text as ts");
+            if (!tsResult.empty()) {
+                syncedAt = tsResult[0]["ts"].c_str();
+            }
+        } catch (...) {}
+
         // Build response
         std::ostringstream data;
         data << "{\"synced\":true,"
              << "\"going\":" << going.size() << ","
              << "\"notGoing\":" << notGoing.size() << ","
              << "\"maybe\":" << maybeGoing.size() << ","
-             << "\"totalRsvps\":" << rsvpCount << "}";
+             << "\"totalRsvps\":" << rsvpCount;
+        if (!syncedAt.empty()) {
+            data << ",\"syncedAt\":\"" << syncedAt << "\"";
+        }
+        data << "}";
 
         return Response(HttpStatus::OK, createJsonResponse(true, "RSVPs synced", data.str()));
 
@@ -1475,6 +1498,46 @@ Response GroupMeController::handleToggleAttendance(const Request& request) {
         std::cerr << "❌ Toggle attendance error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, "Failed to toggle attendance"));
+    }
+}
+
+// ============================================================================
+// Handler: Get last successful GroupMe sync timestamp for a team
+// GET /api/groupme/sync-status/:teamId
+// ============================================================================
+Response GroupMeController::handleGetSyncStatus(const Request& request) {
+    std::string teamId = extractIdFromPath(request.getPath(), "/api/groupme/sync-status/([^/]+)");
+    if (teamId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "teamId required"));
+    }
+
+    try {
+        pqxx::result result = db_->query(
+            "SELECT MAX(cer.responded_at) as last_sync "
+            "FROM chat_event_rsvps cer "
+            "JOIN chat_events ce ON ce.id = cer.chat_event_id "
+            "JOIN chats c ON c.id = ce.chat_id "
+            "WHERE c.team_id = $1",
+            {teamId}
+        );
+
+        std::ostringstream data;
+        if (!result.empty() && !result[0]["last_sync"].is_null()) {
+            std::string lastSync = result[0]["last_sync"].c_str();
+            pqxx::result ageResult = db_->query(
+                "SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1::timestamp)) / 60 as minutes_ago",
+                {lastSync}
+            );
+            int minutesAgo = ageResult.empty() ? -1 : static_cast<int>(ageResult[0]["minutes_ago"].as<double>());
+            data << "{\"lastSync\":\"" << lastSync << "\",\"minutesAgo\":" << minutesAgo << "}";
+        } else {
+            data << "{\"lastSync\":null,\"minutesAgo\":-1}";
+        }
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "OK", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Sync status error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to get sync status"));
     }
 }
 

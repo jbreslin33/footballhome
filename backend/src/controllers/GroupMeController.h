@@ -43,6 +43,9 @@ private:
     // Handler: toggle attendance for a player on a training event
     Response handleToggleAttendance(const Request& request);
 
+    // Handler: get last successful sync timestamp for a team
+    Response handleGetSyncStatus(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 

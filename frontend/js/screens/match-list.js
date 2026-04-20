@@ -11,6 +11,8 @@ class MatchListScreen extends Screen {
         <h1>🏆 Match Schedule</h1>
         <p class="subtitle">Tap a button to RSVP</p>
       </div>
+
+      <div id="groupme-sync-status" class="groupme-sync-status" style="display: none;"></div>
       
       <div id="match-list" class="match-cards"></div>
     `;
@@ -20,6 +22,7 @@ class MatchListScreen extends Screen {
   
   onEnter(params) {
     this.loadMatches();
+    this.loadSyncStatus();
     
     this.element.addEventListener('click', (e) => {
       // Back button
@@ -314,5 +317,41 @@ class MatchListScreen extends Screen {
       console.error('Match RSVP error:', err);
       this.handleError(err, 'rsvp');
     });
+  }
+
+  async loadSyncStatus() {
+    const teamId = this.navigation.context.team?.id;
+    if (!teamId) return;
+
+    const banner = this.find('#groupme-sync-status');
+    if (!banner) return;
+
+    try {
+      const response = await this.auth.fetch(`/api/groupme/sync-status/${teamId}`);
+      const result = await response.json();
+      if (!result.success || !result.data?.lastSync) {
+        banner.style.display = 'none';
+        return;
+      }
+
+      const lastSync = new Date(result.data.lastSync);
+      const timeStr = lastSync.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const minutesAgo = result.data.minutesAgo;
+
+      let icon, level;
+      if (minutesAgo <= 60) {
+        icon = '✅'; level = 'success';
+      } else if (minutesAgo <= 1440) {
+        icon = '⏳'; level = 'warning';
+      } else {
+        icon = '⚠️'; level = 'error';
+      }
+
+      banner.className = `groupme-sync-status groupme-sync-${level}`;
+      banner.innerHTML = `<span>${icon} GroupMe last synced: ${timeStr}</span>`;
+      banner.style.display = 'block';
+    } catch (err) {
+      console.warn('Failed to load sync status:', err.message);
+    }
   }
 }
