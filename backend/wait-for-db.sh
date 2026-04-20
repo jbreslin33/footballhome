@@ -27,6 +27,7 @@ done
 
 echo ""
 echo "✅ PostgreSQL is up and accepting connections! (took ${attempts}s)"
+
 echo "🚀 Starting backend server..."
 
 # Execute the actual command (the server binary)

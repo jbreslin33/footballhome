@@ -71,6 +71,8 @@ void SocialController::schedulerLoop() {
 }
 
 void SocialController::checkScheduledPosts() {
+    ensurePromotionalPostsSchema();
+
     // Find promo posts that are due for publishing
     pqxx::result rows = db_->query(
         "SELECT id FROM promotional_posts "
@@ -90,6 +92,36 @@ void SocialController::checkScheduledPosts() {
             std::cerr << "⏰ ❌ Promo #" << promoId << " auto-publish failed: " << errorMsg << std::endl;
         }
     }
+}
+
+void SocialController::ensurePromotionalPostsSchema() {
+    db_->query(
+        "CREATE TABLE IF NOT EXISTS promotional_posts ("
+        "id SERIAL PRIMARY KEY, "
+        "title VARCHAR(200) NOT NULL, "
+        "caption TEXT, "
+        "image_path TEXT, "
+        "image_url TEXT, "
+        "status VARCHAR(20) NOT NULL DEFAULT 'draft', "
+        "scheduled_at TIMESTAMPTZ, "
+        "posted_at TIMESTAMPTZ, "
+        "external_media_id VARCHAR(100), "
+        "error_message TEXT, "
+        "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+        "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+        ")"
+    );
+
+    db_->query(
+        "CREATE INDEX IF NOT EXISTS idx_promotional_posts_status "
+        "ON promotional_posts(status)"
+    );
+
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS heading VARCHAR(200)");
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS subheading VARCHAR(200)");
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS body_lines TEXT");
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS footer VARCHAR(200)");
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS overlay_logos TEXT");
 }
 
 // ---------- Path Parameter Extraction ----------
@@ -1349,6 +1381,8 @@ std::string SocialController::extractPromoIdFromPath(const std::string& path) {
 
 Response SocialController::handleGetPromoPosts(const Request& request) {
     try {
+        ensurePromotionalPostsSchema();
+
         pqxx::result result = db_->query(
             "SELECT id, title, caption, image_path, image_url, "
             "status, scheduled_at, posted_at, external_media_id, error_message, "
@@ -1392,6 +1426,8 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
 
 Response SocialController::handleSavePromoPost(const Request& request) {
     try {
+        ensurePromotionalPostsSchema();
+
         std::string body = request.getBody();
         std::string title = extractJsonField(body, "title");
         std::string caption = extractJsonField(body, "caption");
@@ -1457,6 +1493,8 @@ Response SocialController::handleSavePromoPost(const Request& request) {
 
 Response SocialController::handleUploadPromoMedia(const Request& request) {
     try {
+        ensurePromotionalPostsSchema();
+
         std::string promoId = extractPromoIdFromPath(request.getPath());
         if (promoId.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -1525,6 +1563,8 @@ Response SocialController::handleUploadPromoMedia(const Request& request) {
 
 Response SocialController::handlePublishPromoPost(const Request& request) {
     try {
+        ensurePromotionalPostsSchema();
+
         std::string promoId = extractPromoIdFromPath(request.getPath());
         if (promoId.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -1547,6 +1587,8 @@ Response SocialController::handlePublishPromoPost(const Request& request) {
 }
 
 bool SocialController::publishPromoById(const std::string& promoId, std::string& errorOut) {
+    ensurePromotionalPostsSchema();
+
     pqxx::result result = db_->query(
         "SELECT * FROM promotional_posts WHERE id = " + escapeSql(promoId)
     );
