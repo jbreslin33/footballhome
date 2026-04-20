@@ -1972,33 +1972,41 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             matchDate = matchDateResult[0]["event_date"].c_str();
         }
 
-        // Last 5 training + pickup events before the match date
-        std::string trainingQuery = R"(
-            SELECT id, title, event_date
-            FROM chat_events
-            WHERE chat_id IN (4, 5) AND is_active = true
-              AND event_date < $1
-            ORDER BY event_date DESC, event_time DESC
-            LIMIT 5
-        )";
-        pqxx::result trainingEvents = db_->query(trainingQuery, {matchDate});
-
+        // Last 5 training + pickup events before the match date (requires chat_events table)
+        pqxx::result trainingEvents;
         std::vector<int> teIds;
-        for (const auto& te : trainingEvents) {
-            teIds.push_back(te["id"].as<int>());
+        try {
+            std::string trainingQuery = R"(
+                SELECT id, title, event_date
+                FROM chat_events
+                WHERE chat_id IN (4, 5) AND is_active = true
+                  AND event_date < $1
+                ORDER BY event_date DESC, event_time DESC
+                LIMIT 5
+            )";
+            trainingEvents = db_->query(trainingQuery, {matchDate});
+            for (const auto& te : trainingEvents) {
+                teIds.push_back(te["id"].as<int>());
+            }
+        } catch (...) {
+            // chat_events table not available — skip training RSVP data
         }
 
         // Find the chat_event for this match (GroupMe RSVP source)
-        std::string matchEventQuery = R"(
-            SELECT ce.id as chat_event_id
-            FROM chat_events ce
-            WHERE ce.match_id = $1
-            LIMIT 1
-        )";
-        pqxx::result matchEventResult = db_->query(matchEventQuery, {matchId});
         int matchChatEventId = 0;
-        if (!matchEventResult.empty()) {
-            matchChatEventId = matchEventResult[0]["chat_event_id"].as<int>();
+        try {
+            std::string matchEventQuery = R"(
+                SELECT ce.id as chat_event_id
+                FROM chat_events ce
+                WHERE ce.match_id = $1
+                LIMIT 1
+            )";
+            pqxx::result matchEventResult = db_->query(matchEventQuery, {matchId});
+            if (!matchEventResult.empty()) {
+                matchChatEventId = matchEventResult[0]["chat_event_id"].as<int>();
+            }
+        } catch (...) {
+            // chat_events table not available — skip GroupMe RSVP lookup
         }
 
         // Get all players from the home team roster with enriched data
@@ -2009,50 +2017,35 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 pe.id as person_id,
                 pe.first_name,
                 pe.last_name,
-                p.is_keeper,
-                p.has_family_discount,
-                pp_pos.abbreviation as position,
+                false::boolean as is_keeper,
+                false::boolean as has_family_discount,
+                NULL::text as position,
                 CASE WHEN ml.id IS NOT NULL THEN true ELSE false END as on_game_roster,
-                COALESCE(r.jersey_number, '') as jersey_number,
+                COALESCE(r.jersey_number::text, '') as jersey_number,
                 r.team_id as roster_team_id,
-                -- Admin override RSVP (from player_rsvps_current)
-                prc.rsvp_status_id as admin_rsvp_id,
-                rs_admin.name as admin_rsvp,
-                -- GroupMe RSVP (from chat_event_rsvps for this match, resolved via external_user_id)
-                rs_gm.name as gm_rsvp,
-                -- Individual chat memberships
-                EXISTS(SELECT 1 FROM chat_external_members cem WHERE cem.person_id = pe.id AND cem.chat_id = 1) as in_chat_apsl,
-                EXISTS(SELECT 1 FROM chat_external_members cem WHERE cem.person_id = pe.id AND cem.chat_id = 6) as in_chat_casa,
-                EXISTS(SELECT 1 FROM chat_external_members cem WHERE cem.person_id = pe.id AND cem.chat_id = 7) as in_chat_u23,
-                -- Individual roster memberships
-                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = 35 AND r2.left_at IS NULL) as on_roster_lighthouse,
-                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = 1101 AND r2.left_at IS NULL) as on_roster_casa,
-                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = 1106 AND r2.left_at IS NULL) as on_roster_u23
+                -- Admin override RSVP (player_rsvps_current not available — use NULL)
+                NULL::int as admin_rsvp_id,
+                NULL::text as admin_rsvp,
+                -- GroupMe RSVP (chat tables not available — use NULL)
+                NULL::text as gm_rsvp,
+                -- Individual chat memberships (chat_external_members not available)
+                false::boolean as in_chat_apsl,
+                false::boolean as in_chat_casa,
+                false::boolean as in_chat_u23,
+                -- Individual roster memberships (using team names for UUID lookup)
+                EXISTS(SELECT 1 FROM team_players r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse 1893 SC') AND r2.left_at IS NULL AND r2.is_active = true) as on_roster_lighthouse,
+                EXISTS(SELECT 1 FROM team_players r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Boys Club') AND r2.left_at IS NULL AND r2.is_active = true) as on_roster_casa,
+                EXISTS(SELECT 1 FROM team_players r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.left_at IS NULL AND r2.is_active = true) as on_roster_u23
             FROM matches m
-            JOIN rosters r ON r.team_id = CASE WHEN $3::int > 0 THEN $3::int ELSE m.home_team_id END AND r.left_at IS NULL
+            JOIN team_players r ON r.team_id = CASE WHEN $2 <> '' THEN $2::uuid ELSE m.home_team_id END AND r.left_at IS NULL AND r.is_active = true
             JOIN players p ON r.player_id = p.id
             JOIN persons pe ON pe.id = p.person_id
-            LEFT JOIN player_positions pp ON pp.player_id = p.id AND pp.is_primary = true
-            LEFT JOIN positions pp_pos ON pp.position_id = pp_pos.id
-            LEFT JOIN player_rsvps_current prc ON prc.player_id = p.id AND prc.event_id = m.id
-            LEFT JOIN rsvp_statuses rs_admin ON prc.rsvp_status_id = rs_admin.id
             LEFT JOIN match_lineups ml ON ml.match_id = m.id AND ml.player_id = p.id
-            LEFT JOIN (
-                SELECT DISTINCT ON (cem2.person_id)
-                    cem2.person_id,
-                    cer.rsvp_status_id,
-                    cer.override_rsvp_status_id
-                FROM chat_event_rsvps cer
-                JOIN chat_external_members cem2 ON cem2.external_user_id = cer.external_user_id
-                    AND cem2.person_id IS NOT NULL
-                WHERE cer.chat_event_id = $2
-            ) cer_match ON cer_match.person_id = pe.id
-            LEFT JOIN rsvp_statuses rs_gm ON rs_gm.id = COALESCE(cer_match.override_rsvp_status_id, cer_match.rsvp_status_id)
             WHERE m.id = $1
             ORDER BY pe.last_name, pe.first_name
         )";
 
-        pqxx::result result = db_->query(query, {matchId, std::to_string(matchChatEventId), teamIdParam.empty() ? "0" : teamIdParam});
+        pqxx::result result = db_->query(query, {matchId, teamIdParam});
 
         // Build practice map (person_id -> array of RSVPs for last 5 trainings)
         std::map<int, std::vector<std::string>> practiceMap;
@@ -2149,7 +2142,7 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             }
 
             json << "{";
-            json << "\"playerId\":" << row["player_id"].c_str() << ",";
+            json << "\"playerId\":\"" << row["player_id"].c_str() << "\",";
             json << "\"personId\":" << personId << ",";
             json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
@@ -2160,7 +2153,7 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             json << "\"rsvpSource\":" << (rsvpSource.empty() ? "null" : "\"" + rsvpSource + "\"") << ",";
             json << "\"onGameRoster\":" << (row["on_game_roster"].as<bool>() ? "true" : "false") << ",";
             json << "\"jerseyNumber\":\"" << escapeJSON(row["jersey_number"].c_str()) << "\",";
-            json << "\"rosterTeamId\":" << row["roster_team_id"].c_str() << ",";
+            json << "\"rosterTeamId\":\"" << row["roster_team_id"].c_str() << "\",";
 
             // Chat memberships
             json << "\"inChatApsl\":" << (row["in_chat_apsl"].as<bool>() ? "true" : "false") << ",";
