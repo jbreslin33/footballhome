@@ -456,17 +456,12 @@ Response AuthController::handleCoachTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        // Find all teams in the same club(s) as any team the coach is assigned to.
-        // This keeps the coach role available even if there are currently no direct team assignments.
         std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, COUNT(tp.player_id) AS player_count "
-                 "FROM teams t "
+                 "FROM coaches co "
+                 "JOIN team_coaches tc ON co.id = tc.coach_id AND tc.ended_at IS NULL "
+                 "JOIN teams t ON tc.team_id = t.id "
                  "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
-                 "WHERE t.club_id IN ("
-                 "  SELECT DISTINCT t2.club_id FROM coaches co "
-                 "  JOIN team_coaches tc ON co.id = tc.coach_id AND tc.ended_at IS NULL "
-                 "  JOIN teams t2 ON tc.team_id = t2.id "
-                 "  WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1)"
-                 ") "
+                 "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
                  "GROUP BY t.id, t.name, t.club_id "
                  "ORDER BY t.name";
         
