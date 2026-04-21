@@ -521,11 +521,11 @@ ${match.venueId ? `LEFT JOIN venues v ON v.name = '${this.escapeSql(Array.from(t
 WHERE ht.external_id = '${match.homeTeamExternalId}' AND ht.source_system_id = ${match.sourceSystemId}
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
+  home_score = COALESCE(EXCLUDED.home_score, matches.home_score),
+  away_score = COALESCE(EXCLUDED.away_score, matches.away_score),
   match_date = EXCLUDED.match_date,
   match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;\n\n`;
+  venue_id = COALESCE(EXCLUDED.venue_id, matches.venue_id);\n\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-apsl.sql`);

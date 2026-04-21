@@ -457,22 +457,18 @@ Response AuthController::handleCoachTeams(const Request& request) {
         }
         
         // Find all teams in the same club(s) as any team the coach is assigned to.
-        // This ensures cross-league teams curated to the same club appear automatically.
-        // teams.division_id -> sport_divisions.id -> sport_divisions.club_id -> clubs.id
-        std::string sql = "SELECT DISTINCT t.id, t.name, sd.club_id, COUNT(tp.player_id) as player_count "
-                         "FROM teams t "
-                         "JOIN sport_divisions sd ON t.division_id = sd.id "
-                         "JOIN clubs c ON sd.club_id = c.id "
-                         "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
-                         "WHERE sd.club_id IN ("
-                         "  SELECT sd2.club_id FROM coaches co "
-                         "  JOIN team_coaches tc ON co.id = tc.coach_id AND tc.is_active = true "
-                         "  JOIN teams t2 ON tc.team_id = t2.id "
-                         "  JOIN sport_divisions sd2 ON t2.division_id = sd2.id "
-                         "  WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1)"
-                         ") "
-                         "GROUP BY t.id, t.name, sd.club_id "
-                         "ORDER BY t.name";
+        // This keeps the coach role available even if there are currently no direct team assignments.
+        std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, COUNT(tp.player_id) AS player_count "
+                 "FROM teams t "
+                 "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
+                 "WHERE t.club_id IN ("
+                 "  SELECT DISTINCT t2.club_id FROM coaches co "
+                 "  JOIN team_coaches tc ON co.id = tc.coach_id AND tc.ended_at IS NULL "
+                 "  JOIN teams t2 ON tc.team_id = t2.id "
+                 "  WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1)"
+                 ") "
+                 "GROUP BY t.id, t.name, t.club_id "
+                 "ORDER BY t.name";
         
         pqxx::result result = db_->query(sql, {user_id});
         
@@ -485,7 +481,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
                       << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"name\":\"" << row["name"].as<std::string>() << "\","
-                      << "\"club_id\":\"" << row["club_id"].as<std::string>() << "\","
+                      << "\"club_id\":" << (row["club_id"].is_null() ? "null" : std::to_string(row["club_id"].as<int>())) << ","
                       << "\"player_count\":" << row["player_count"].as<int>() << "}";
         }
         teams_json << "]";

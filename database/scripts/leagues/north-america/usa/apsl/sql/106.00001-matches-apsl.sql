@@ -508,11 +508,11 @@ LEFT JOIN venues v ON v.name = 'mercer county community college'
 WHERE ht.external_id = '114840' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
+  home_score = COALESCE(EXCLUDED.home_score, matches.home_score),
+  away_score = COALESCE(EXCLUDED.away_score, matches.away_score),
   match_date = EXCLUDED.match_date,
   match_time = EXCLUDED.match_time,
-  venue_id = EXCLUDED.venue_id;
+  venue_id = COALESCE(EXCLUDED.venue_id, matches.venue_id);
 
 INSERT INTO matches (
   match_type_id, match_date, match_time, match_status_id,

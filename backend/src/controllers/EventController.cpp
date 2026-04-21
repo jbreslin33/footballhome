@@ -9,7 +9,6 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
-#include <curl/curl.h>
 
 EventController::EventController() {
     db_ = Database::getInstance();
@@ -158,10 +157,6 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleSetPracticeRSVP(request);
     });
 
-    // POST /api/matches/apsl/refresh - Trigger APSL score scrape (coach/admin only)
-    router.post("/api/matches/apsl/refresh", [this](const Request& request) {
-        return this->handleRefreshAPSLScores(request);
-    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -466,28 +461,25 @@ Response EventController::handleGetMatches(const Request& request) {
         
         std::cout << "🔍 Getting matches for team: " << team_id << std::endl;
         
-        // Query matches where team is home or away
-        // matches extends events (matches.id = events.id FK)
-        // Show: all upcoming matches + completed matches
-        // Include has_ended flag so frontend knows whether to show RSVP buttons
+        // Query matches where team is home or away using the current standalone matches schema.
         std::ostringstream query;
-        query << "SELECT m.id, COALESCE(e.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
-        query << "e.event_date::text as event_date, ";
-        query << "COALESCE(e.duration_minutes, 90) as duration_minutes, et.name as event_type, ";
-        query << "m.home_team_score, m.away_team_score, ";
-        query << "m.match_status, m.competition_name, v.name as venue_name, ";
-        query << "CASE WHEN m.match_status = 'completed' THEN true ";
-        query << "WHEN e.event_date < NOW() - INTERVAL '90 minutes' THEN true ";
-        query << "ELSE false END as has_ended, ";
+        query << "SELECT m.id, COALESCE(m.title, CONCAT(COALESCE(ht.name, 'TBD'), ' vs ', COALESCE(awt.name, 'TBD'))) AS title, ";
+        query << "(m.match_date::timestamp + COALESCE(m.match_time, '00:00:00'::time))::text AS event_date, ";
+        query << "90 AS duration_minutes, COALESCE(mt.name, 'match') AS event_type, ";
+        query << "m.home_score, m.away_score, ";
+        query << "COALESCE(ms.name, 'scheduled') AS match_status, m.round_name AS competition_name, v.name AS venue_name, ";
+        query << "CASE WHEN COALESCE(ms.name, '') = 'completed' THEN true ";
+        query << "WHEN (m.match_date::timestamp + COALESCE(m.match_time, '00:00:00'::time)) < NOW() - INTERVAL '90 minutes' THEN true ";
+        query << "ELSE false END AS has_ended, ";
         query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo ";
         query << "FROM matches m ";
-        query << "JOIN events e ON m.id = e.id ";
-        query << "LEFT JOIN event_types et ON e.event_type_id = et.id ";
-        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
+        query << "LEFT JOIN match_types mt ON m.match_type_id = mt.id ";
+        query << "LEFT JOIN match_statuses ms ON m.match_status_id = ms.id ";
+        query << "LEFT JOIN venues v ON m.venue_id = v.id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
-        query << "ORDER BY e.event_date ASC ";
+        query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
         query << "LIMIT 100";
         
         pqxx::result result = db_->query(query.str());
@@ -2725,65 +2717,5 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
         std::cerr << "\u274c Error setting practice RSVP: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, "Failed to set practice RSVP"));
-    }
-}
-
-// ─── APSL score refresh ───────────────────────────────────────────────────────
-static size_t eventCurlWriteCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
-    size_t total = size * nmemb;
-    out->append(static_cast<char*>(contents), total);
-    return total;
-}
-
-Response EventController::handleRefreshAPSLScores(const Request& request) {
-    // Require authentication — coaches and admins only
-    std::string userId = extractUserIdFromToken(request);
-    if (userId.empty()) {
-        return Response(HttpStatus::UNAUTHORIZED,
-            createJSONResponse(false, "Authentication required"));
-    }
-
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJSONResponse(false, "Failed to initialize HTTP client"));
-    }
-
-    std::string responseBody;
-    // Scraper runs with network_mode:host, reachable via host gateway
-    curl_easy_setopt(curl, CURLOPT_URL, "http://host.docker.internal:3010/refresh");
-    curl_easy_setopt(curl, CURLOPT_POST, 1L);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, eventCurlWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);  // scraping + DB write can take ~60s
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
-
-    CURLcode res = curl_easy_perform(curl);
-    long httpCode = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-    curl_easy_cleanup(curl);
-
-    if (res != CURLE_OK) {
-        std::cerr << "❌ APSL refresh: scraper unreachable — " << curl_easy_strerror(res) << std::endl;
-        return Response(HttpStatus::SERVICE_UNAVAILABLE,
-            createJSONResponse(false, std::string("Scraper service unavailable: ") + curl_easy_strerror(res)));
-    }
-
-    std::cout << "🔄 APSL refresh: scraper returned HTTP " << httpCode << std::endl;
-
-    if (httpCode == 200) {
-        Response r(HttpStatus::OK, responseBody);
-        r.setHeader("Content-Type", "application/json");
-        return r;
-    } else if (httpCode == 409) {
-        Response r(HttpStatus::CONFLICT, responseBody);
-        r.setHeader("Content-Type", "application/json");
-        return r;
-    } else {
-        Response r(HttpStatus::INTERNAL_SERVER_ERROR, responseBody);
-        r.setHeader("Content-Type", "application/json");
-        return r;
     }
 }

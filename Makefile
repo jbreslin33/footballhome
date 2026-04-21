@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status
+.PHONY: all help clean build deploy up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -26,6 +26,7 @@ help:
 	@echo ""
 	@echo "Sync (primary workflow — idempotent, safe to run anytime):"
 	@echo "  make sync          Sync all leagues + GroupMe"
+	@echo "  make sync-lighthouse Sync Lighthouse leagues (APSL + CASA + GroupMe)"
 	@echo "  make sync-apsl     Sync APSL only"
 	@echo "  make sync-csl      Sync CSL only"
 	@echo "  make sync-casa     Sync CASA only"
@@ -103,9 +104,9 @@ build:
 deploy:
 	@echo "🚀 Building and deploying backend..."
 	@$(COMPOSE) --env-file env build backend
-	@$(ENGINE) stop footballhome_frontend footballhome_backend 2>/dev/null || true
-	@$(ENGINE) rm -f footballhome_frontend footballhome_backend 2>/dev/null || true
-	@$(COMPOSE) --env-file env up -d
+	@$(ENGINE) rm -f footballhome_frontend 2>/dev/null || true
+	@$(ENGINE) rm -f footballhome_backend 2>/dev/null || true
+	@$(COMPOSE) --env-file env up -d backend frontend
 	@echo "✓ Deploy complete — new backend is live"
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"
@@ -319,6 +320,13 @@ sync-csl: scrape-csl parse-csl load-csl
 
 sync-casa: scrape-casa parse-casa load-casa
 	@echo "✓ CASA synced"
+
+sync-lighthouse:
+	@echo "⏬ Syncing Lighthouse leagues..."
+	@$(MAKE) sync-apsl
+	@$(MAKE) sync-casa
+	@$(MAKE) sync-groupme
+	@echo "✓ Lighthouse synced (APSL + CASA + GroupMe)"
 
 sync-groupme:
 	@echo "💬 Syncing GroupMe events + RSVPs..."

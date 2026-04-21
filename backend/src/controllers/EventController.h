@@ -46,9 +46,6 @@ private:
     // SMS Reminder endpoint
     Response handleSendReminder(const Request& request);
     
-    // APSL score refresh (proxies to scraper service)
-    Response handleRefreshAPSLScores(const Request& request);
-
     // Club Chat Events & RSVP Override
     Response handleGetClubChatEvents(const Request& request);
     Response handleOverrideRSVP(const Request& request);

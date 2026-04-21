@@ -75,26 +75,6 @@ services:
       db:
         condition: service_healthy
 
-  # Lighthouse score scraper service (Node.js + Chromium)
-  # POST http://scraper:3010/refresh  — run from backend or cron
-  # GET  http://localhost:3010/health — liveness check
-  scraper:
-    build:
-      context: ./scraper
-      dockerfile: Dockerfile
-    container_name: footballhome_scraper
-    restart: unless-stopped
-    network_mode: host   # uses host VPN for outbound requests to apslsoccer.com
-    environment:
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_NAME: footballhome
-      DB_USER: footballhome_user
-      POSTGRES_PASSWORD: footballhome_pass
-    depends_on:
-      db:
-        condition: service_healthy
-
   # Frontend (Vanilla JS)
   frontend:
     build:

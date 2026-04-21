@@ -34,6 +34,9 @@ You now have a running system at **http://localhost:3000** with an empty databas
 make sync-apsl
 make sync-csl
 make sync-casa
+
+# Lighthouse-only refresh (APSL + CASA + GroupMe)
+make sync-lighthouse
 ```
 
 **What each step does:**
@@ -52,6 +55,7 @@ make sync-casa
 
 ```bash
 make backup              # safety net (pg_dump → backups/)
+make sync-lighthouse     # Lighthouse 1893 SC + Boys Club + U23 + GroupMe
 make sync-apsl           # scrape → parse → curate → UPSERT
 make sync-csl            # scrape → parse → curate → UPSERT
 make sync-casa           # scrape → parse → curate → UPSERT
@@ -271,6 +275,8 @@ When you find a duplicate or mismatch, add a `clubFamilies` entry and re-sync. T
 | CASA website | clubs, teams, matches, standings, rosters | `make sync-casa` |
 | GroupMe API | group members, calendar events, RSVPs | `make sync-groupme` |
 
+For normal Lighthouse operations, use `make sync-lighthouse`. It runs APSL, CASA, and GroupMe in the expected order.
+
 All sources follow the same pattern: fetch → parse → curate → UPSERT.
 
 ## 🐳 Container Services
@@ -344,6 +350,7 @@ Run `make help` for the full list. Key targets:
 | `make sync-csl` | Full sync for CSL |
 | `make sync-casa` | Full sync for CASA |
 | `make sync-groupme` | Sync GroupMe RSVPs + events |
+| `make sync-lighthouse` | Lighthouse refresh: APSL + CASA + GroupMe |
 | `make build` | Build images + start containers |
 | `make rebuild` | Destroy everything + fresh build (wipes DB) |
 | `make migrate` | Apply pending schema migrations (preserves data) |
