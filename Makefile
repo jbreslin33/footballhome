@@ -26,7 +26,7 @@ help:
 	@echo ""
 	@echo "Sync (primary workflow — idempotent, safe to run anytime):"
 	@echo "  make sync          Sync all leagues + GroupMe"
-	@echo "  make sync-lighthouse Sync Lighthouse leagues (APSL + CASA + GroupMe)"
+	@echo "  make sync-lighthouse Sync Lighthouse-only APSL + CASA + GroupMe"
 	@echo "  make sync-apsl     Sync APSL only"
 	@echo "  make sync-csl      Sync CSL only"
 	@echo "  make sync-casa     Sync CASA only"
@@ -323,8 +323,8 @@ sync-casa: scrape-casa parse-casa load-casa
 
 sync-lighthouse:
 	@echo "⏬ Syncing Lighthouse leagues..."
-	@$(MAKE) sync-apsl
-	@$(MAKE) sync-casa
+	@FORCE_SCRAPE=1 LIGHTHOUSE_ONLY=1 $(MAKE) sync-apsl
+	@LIGHTHOUSE_ONLY=1 $(MAKE) sync-casa
 	@$(MAKE) sync-groupme
 	@echo "✓ Lighthouse synced (APSL + CASA + GroupMe)"
 

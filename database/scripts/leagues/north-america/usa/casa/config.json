@@ -14,6 +14,15 @@
   "standingsUrl": "https://www.casasoccerleagues.com",
   "cacheDir": "casa",
   "curateAgainst": ["apsl", "csl"],
+  "lighthouseScope": {
+    "divisionNames": ["Philadelphia Liga 1", "Philadelphia Liga 2"],
+    "teamNames": [
+      "Lighthouse Boys Club",
+      "Lighthouse Boys Club U23",
+      "Lighthouse Old Timers Club"
+    ],
+    "clubFamilies": ["lighthouse-1893-sc"]
+  },
   "rosterSheets": {
     "Philadelphia Liga 1": {
       "sheetId": "14eQOJ60T0XNru6twNp59rP4RNrAuO2Gf",

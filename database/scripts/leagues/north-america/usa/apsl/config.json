@@ -14,6 +14,10 @@
   "standingsUrl": "https://www.apslsoccer.com/Standings",
   "cacheDir": "apsl",
   "curateAgainst": [],
+  "lighthouseScope": {
+    "teamExternalIds": ["116079"],
+    "clubFamilies": ["lighthouse-1893-sc"]
+  },
   "clubFamilies": {
     "central park rangers": "central-park-rangers",
     "central park rangers fc": "central-park-rangers",

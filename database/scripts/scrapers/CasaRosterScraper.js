@@ -31,7 +31,50 @@ class CasaRosterScraper {
   constructor(config, cacheDir) {
     this.config = config;
     this.cacheDir = cacheDir;
-    this.rosterSheets = config.rosterSheets || {};
+    this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
+    this.lighthouseDivisionNames = new Set((config.lighthouseScope?.divisionNames || []).map(name => this._normalizeName(name)));
+    this.lighthouseTeamNames = new Set((config.lighthouseScope?.teamNames || []).map(name => this._normalizeName(name)));
+    this.rosterSheets = this._filterRosterSheets(config.rosterSheets || {});
+  }
+
+  _normalizeName(name) {
+    return String(name || '').trim().toLowerCase();
+  }
+
+  _isLighthouseTeam(teamName) {
+    if (!this.lighthouseOnly || this.lighthouseTeamNames.size === 0) {
+      return true;
+    }
+    return this.lighthouseTeamNames.has(this._normalizeName(teamName));
+  }
+
+  _filterRosterSheets(rosterSheets) {
+    if (!this.lighthouseOnly) {
+      return rosterSheets;
+    }
+
+    const filteredSheets = {};
+
+    for (const [divisionName, sheetConfig] of Object.entries(rosterSheets)) {
+      if (this.lighthouseDivisionNames.size > 0 && !this.lighthouseDivisionNames.has(this._normalizeName(divisionName))) {
+        continue;
+      }
+
+      const filteredTabMap = Object.fromEntries(
+        Object.entries(sheetConfig.tabMap || {}).filter(([, teamName]) => this._isLighthouseTeam(teamName))
+      );
+
+      if (Object.keys(filteredTabMap).length === 0) {
+        continue;
+      }
+
+      filteredSheets[divisionName] = {
+        ...sheetConfig,
+        tabMap: filteredTabMap
+      };
+    }
+
+    return filteredSheets;
   }
 
   /**

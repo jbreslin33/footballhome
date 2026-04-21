@@ -18,10 +18,46 @@ class CasaSqlGenerator extends BaseGenerator {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
     super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
     this.config = config;
+    this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
+    this.isPartialSync = this.lighthouseOnly;
+    this.targetTeamNames = new Set((config.lighthouseScope?.teamNames || []).map(name => this.normalizeScopeKey(name)));
+    this.targetClubFamilies = new Set(config.lighthouseScope?.clubFamilies || []);
     this.organizations = new Map();
     this.clubs = new Map();
     this.teams = [];
+    this.allTeams = [];
     this.standings = [];
+  }
+
+  normalizeScopeKey(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  getClubFamilySlug(teamName) {
+    return this.config.clubFamilies?.[this.normalizeScopeKey(teamName)] || null;
+  }
+
+  isTargetTeamName(teamName) {
+    if (!this.lighthouseOnly) {
+      return true;
+    }
+
+    const normalizedName = this.normalizeScopeKey(teamName);
+    if (this.targetTeamNames.has(normalizedName)) {
+      return true;
+    }
+
+    const clubFamilySlug = this.getClubFamilySlug(teamName);
+    return !!clubFamilySlug && this.targetClubFamilies.has(clubFamilySlug);
+  }
+
+  applyLighthouseScope() {
+    this.allTeams = [...this.teams];
+    if (!this.lighthouseOnly) {
+      return;
+    }
+
+    this.teams = this.teams.filter(team => this.isTargetTeamName(team.name));
   }
 
   /**
@@ -58,6 +94,7 @@ class CasaSqlGenerator extends BaseGenerator {
     
     // Parse teams
     this.parseTeams(data);
+    this.applyLighthouseScope();
     
     console.log(`   Found ${this.teams.length} teams`);
     
@@ -262,6 +299,9 @@ ON CONFLICT (division_id, name) DO UPDATE SET
           );
         
         if (!team) {
+          if (this.lighthouseOnly && !this.isTargetTeamName(teamData.teamName)) {
+            continue;
+          }
           console.log(`   ⚠️  Team not found in standings: ${teamData.teamName}`);
           unmatchedCount++;
           continue;
@@ -413,7 +453,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
     
     // Create a map of team name -> external_id for matching
     const teamMap = new Map();
-    for (const team of this.teams) {
+    for (const team of this.allTeams) {
       const key = team.name.toLowerCase().trim();
       teamMap.set(key, team.externalId);
       
@@ -427,6 +467,10 @@ ON CONFLICT (division_id, name) DO UPDATE SET
     // Parse each division's matches
     for (const division of data.divisions) {
       for (const match of division.matches) {
+        if (this.lighthouseOnly && !this.isTargetTeamName(match.home) && !this.isTargetTeamName(match.away)) {
+          continue;
+        }
+
         let homeTeamKey = match.home.toLowerCase().trim();
         let awayTeamKey = match.away.toLowerCase().trim();
         

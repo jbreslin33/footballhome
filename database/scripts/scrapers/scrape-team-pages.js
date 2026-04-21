@@ -155,6 +155,7 @@ async function main() {
   const leagueCfg = LEAGUE_CONFIG[args.league];
   const config = JSON.parse(fs.readFileSync(leagueCfg.configPath, 'utf8'));
   const leagueName = args.league.toUpperCase();
+  const lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
 
   console.log(`\n🌐 ${leagueName} Team Page Scraper`);
   console.log('='.repeat(60));
@@ -162,6 +163,15 @@ async function main() {
   // Read standings to get team IDs
   const standingsHtml = readStandingsHtml(leagueCfg, config);
   let teamIds = extractTeamIds(standingsHtml, leagueCfg);
+
+  if (lighthouseOnly && !args.singleTeam) {
+    const scopedTeamIds = new Set((config.lighthouseScope?.teamExternalIds || []).map(String));
+    if (scopedTeamIds.size > 0) {
+      const filteredTeamIds = teamIds.filter(teamId => scopedTeamIds.has(String(teamId)));
+      teamIds = filteredTeamIds.length > 0 ? filteredTeamIds : Array.from(scopedTeamIds);
+      console.log(`   Lighthouse scope enabled: ${teamIds.length} team(s)`);
+    }
+  }
 
   if (args.singleTeam) {
     if (!teamIds.includes(args.singleTeam)) {

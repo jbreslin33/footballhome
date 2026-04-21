@@ -10047,12 +10047,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -10198,12 +10194,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -10349,12 +10341,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -10500,12 +10488,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -10626,11 +10610,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-16T23:00:00.000Z",
     "end_date_time": "2026-04-17T00:45:00.000Z",
     "created_at": "2026-02-20T20:46:30.000Z",
-    "updated_at": "2026-03-10T14:50:54.000Z",
+    "updated_at": "2026-04-20T18:15:46.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -10642,11 +10626,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0d9f4-b886-12d4-b185-9add99b5cd93",
-        "home_team_score": "",
+        "home_team_score": "4",
         "away_team_id": "11f089c6-38bb-1ffa-b177-0ebac976a684",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -10654,8 +10638,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -10740,12 +10728,12 @@
     "game_details": {
       "originator_id": "6998c8272a1178000164e4ae",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0d9f4-b886-12d4-b185-9add99b5cd93",
         "originator_id": "69406f99ea8978cc642913f9",
         "name": "Persepolis FC",
-        "score": "",
+        "score": "4",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -10753,13 +10741,13 @@
         "id": "11f089c6-38bb-1ffa-b177-0ebac976a684",
         "originator_id": "68b9e9d9562f5400fd35a55f",
         "name": "Adé United FC",
-        "score": "",
+        "score": "0",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -10773,11 +10761,11 @@
     "location_description": "Grass",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-19T13:00:00.000Z",
     "end_date_time": "2026-04-19T14:45:00.000Z",
     "created_at": "2026-02-20T20:48:33.000Z",
-    "updated_at": "2026-04-04T03:01:29.000Z",
+    "updated_at": "2026-04-20T14:40:48.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -10789,11 +10777,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c6-38b9-b188-b2ff-ee90516ff737",
-        "home_team_score": "",
+        "home_team_score": "4",
         "away_team_id": "11f089c6-38bb-1ffa-b177-0ebac976a684",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -10887,12 +10875,12 @@
     "game_details": {
       "originator_id": "6998c8a3d7aaa4000104037f",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c6-38b9-b188-b2ff-ee90516ff737",
         "originator_id": "68b9e9d904803c00fd5a5fa0",
         "name": "Lighthouse Boys Club",
-        "score": "",
+        "score": "4",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -10900,13 +10888,13 @@
         "id": "11f089c6-38bb-1ffa-b177-0ebac976a684",
         "originator_id": "68b9e9d9562f5400fd35a55f",
         "name": "Adé United FC",
-        "score": "",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -10920,11 +10908,11 @@
     "location_description": "Grass",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-19T14:45:00.000Z",
     "end_date_time": "2026-04-19T16:30:00.000Z",
     "created_at": "2026-02-20T20:49:01.000Z",
-    "updated_at": "2026-04-04T03:01:11.000Z",
+    "updated_at": "2026-04-20T14:40:51.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -10936,11 +10924,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f12143-34b5-da7a-95b3-8609fed95fb5",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f089c6-38cd-1f48-b177-0ebac976a684",
-        "away_team_score": "",
+        "away_team_score": "6",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -10948,8 +10936,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -11034,12 +11026,12 @@
     "game_details": {
       "originator_id": "6998c8bf2a1178000164e4ba",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f12143-34b5-da7a-95b3-8609fed95fb5",
         "originator_id": "69b8118b71f95a0001a1ac6b",
         "name": "Lighthouse Boys Club U23",
-        "score": "",
+        "score": "1",
         "is_home_team": true,
         "interval_scores": [],
         "originator_type": "opponent_season_team",
@@ -11049,13 +11041,13 @@
         "id": "11f089c6-38cd-1f48-b177-0ebac976a684",
         "originator_id": "68b9e9d91f736301382e6ee2",
         "name": "Illyrians FC",
-        "score": "",
+        "score": "6",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0,
       "originator_system": "StatNgin"
     }
@@ -11070,11 +11062,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-19T17:00:00.000Z",
     "end_date_time": "2026-04-19T18:45:00.000Z",
     "created_at": "2026-02-20T20:47:31.000Z",
-    "updated_at": "2026-04-10T16:37:13.000Z",
+    "updated_at": "2026-04-20T14:40:51.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -11086,11 +11078,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0d9f4-b886-12d4-b185-9add99b5cd93",
-        "home_team_score": "",
+        "home_team_score": "7",
         "away_team_id": "11f089c6-38b5-2b86-a6ce-e61f3017bc57",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -11098,8 +11090,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -11184,12 +11180,12 @@
     "game_details": {
       "originator_id": "6998c8642a1178000164e4b2",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0d9f4-b886-12d4-b185-9add99b5cd93",
         "originator_id": "69406f99ea8978cc642913f9",
         "name": "Persepolis FC",
-        "score": "",
+        "score": "7",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -11197,7 +11193,7 @@
         "id": "11f089c6-38b5-2b86-a6ce-e61f3017bc57",
         "originator_id": "68b9e9d951d7f200fd407e42",
         "name": "Philly BlackStars",
-        "score": "",
+        "score": "1",
         "is_home_team": false,
         "interval_scores": [],
         "originator_type": "season_team",
@@ -11205,7 +11201,7 @@
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -11219,11 +11215,11 @@
     "location_description": "Field 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-19T18:30:00.000Z",
     "end_date_time": "2026-04-19T20:30:00.000Z",
     "created_at": "2026-02-20T20:47:03.000Z",
-    "updated_at": "2026-03-10T14:50:54.000Z",
+    "updated_at": "2026-04-20T14:40:51.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -11235,11 +11231,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c6-38c5-ac0e-b177-0ebac976a684",
-        "home_team_score": "",
+        "home_team_score": "4",
         "away_team_id": "11f089c6-38c1-d7e6-a6ce-e61f3017bc57",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -11247,8 +11243,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -11333,12 +11333,12 @@
     "game_details": {
       "originator_id": "6998c84895167e0001b17f45",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c6-38c5-ac0e-b177-0ebac976a684",
         "originator_id": "68b9e9d9b3eb08013b7559ce",
         "name": "Phoenix SCM",
-        "score": "",
+        "score": "4",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -11346,13 +11346,13 @@
         "id": "11f089c6-38c1-d7e6-a6ce-e61f3017bc57",
         "originator_id": "68b9e9d91f736300fa2e7027",
         "name": "Oaklyn United FC II",
-        "score": "",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },

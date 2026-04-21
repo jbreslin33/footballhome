@@ -24,6 +24,9 @@ class CasaStructureScraper {
     this.config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     this.cacheDir = path.join(__dirname, '../../scraped-html/casa');
     this._browser = null;
+    this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
+    this.lighthouseDivisionNames = new Set((this.config.lighthouseScope?.divisionNames || []).map(name => this._normalizeName(name)));
+    this.lighthouseTeamNames = new Set((this.config.lighthouseScope?.teamNames || []).map(name => this._normalizeName(name)));
 
     // Division mapping from 034-divisions.sql
     // programId: SportsEngine program ID for the REST API (found in iframe embed URL)
@@ -34,6 +37,21 @@ class CasaStructureScraper {
       { id: 57, name: 'Lancaster Liga 1', externalId: '9090893', programId: '6827a11eaca2fea950917a73' },
       { id: 70, name: 'Lancaster Liga 2', externalId: '9270318', programId: '68f132e008e07ca525a9989b' }
     ];
+
+    if (this.lighthouseOnly && this.lighthouseDivisionNames.size > 0) {
+      this.divisions = this.divisions.filter(division => this.lighthouseDivisionNames.has(this._normalizeName(division.name)));
+    }
+  }
+
+  _normalizeName(name) {
+    return String(name || '').trim().toLowerCase();
+  }
+
+  _isLighthouseTeam(teamName) {
+    if (!this.lighthouseOnly || this.lighthouseTeamNames.size === 0) {
+      return true;
+    }
+    return this.lighthouseTeamNames.has(this._normalizeName(teamName));
   }
 
   /**
@@ -450,9 +468,10 @@ class CasaStructureScraper {
         if (target === 'all' || target === 'schedule') {
         try {
           const matches = await this.scrapeSchedule(browser, division);
-          console.log(`   ✓ Schedule: ${matches.length} matches`);
+          const filteredMatches = matches.filter(match => this._isLighthouseTeam(match.home) || this._isLighthouseTeam(match.away));
+          console.log(`   ✓ Schedule: ${filteredMatches.length} matches`);
 
-          for (const match of matches) {
+          for (const match of filteredMatches) {
             snapshot.matches.push({
               homeTeam: match.home,
               awayTeam: match.away,

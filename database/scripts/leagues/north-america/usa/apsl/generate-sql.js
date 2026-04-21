@@ -20,8 +20,47 @@ class ApslSqlGenerator extends BaseGenerator {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
     super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
     this.config = config;
+    this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
+    this.isPartialSync = this.lighthouseOnly;
+    this.targetTeamExternalIds = new Set((config.lighthouseScope?.teamExternalIds || []).map(String));
+    this.targetClubFamilies = new Set(config.lighthouseScope?.clubFamilies || []);
     
     this.matchParser = new ApslMatchParser(config.activeSeason);
+  }
+
+  normalizeScopeKey(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  getClubFamilySlug(teamName) {
+    return this.config.clubFamilies?.[this.normalizeScopeKey(teamName)] || null;
+  }
+
+  isTargetTeam(team) {
+    if (!this.lighthouseOnly) {
+      return true;
+    }
+
+    if (this.targetTeamExternalIds.has(String(team.externalId))) {
+      return true;
+    }
+
+    const clubFamilySlug = this.getClubFamilySlug(team.name) || this.getClubFamilySlug(team.clubName);
+    return !!clubFamilySlug && this.targetClubFamilies.has(clubFamilySlug);
+  }
+
+  applyLighthouseScope() {
+    if (!this.lighthouseOnly) {
+      return;
+    }
+
+    this.teams = this.teams.filter(team => this.isTargetTeam(team));
+    this.targetTeamExternalIds = new Set(this.teams.map(team => String(team.externalId)));
+    this.divisions = new Map(
+      Array.from(this.divisions.entries()).filter(([divisionName]) =>
+        this.teams.some(team => team.divisionName === divisionName)
+      )
+    );
   }
 
   getLeagueFolder() {
@@ -55,6 +94,7 @@ class ApslSqlGenerator extends BaseGenerator {
     
     // Parse teams and standings
     this.parseStandingsPage(standingsHtml);
+    this.applyLighthouseScope();
     
     console.log(`   Found ${this.teams.length} teams with standings data`);
     
@@ -349,6 +389,10 @@ class ApslSqlGenerator extends BaseGenerator {
     }
     
     for (const [teamExternalId, file] of scheduleFiles) {
+      if (this.lighthouseOnly && !this.targetTeamExternalIds.has(String(teamExternalId))) {
+        continue;
+      }
+
       const filePath = path.join(htmlDir, file);
       const html = fs.readFileSync(filePath, 'utf-8');
       

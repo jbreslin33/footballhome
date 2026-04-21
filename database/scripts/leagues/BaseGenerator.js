@@ -23,6 +23,7 @@ class BaseGenerator {
     this.matches = [];  // NEW: Store parsed matches
     this.matchSet = new Set();  // NEW: Deduplicate matches
     this.venues = new Map();  // NEW: Store unique venues
+    this.isPartialSync = false;
   }
 
   /**
@@ -408,6 +409,13 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
       return;
     }
 
+    const scopedExternalIds = this.isPartialSync
+      ? Array.from(new Set(this.teams.map(team => team.externalId).filter(Boolean)))
+      : [];
+    const deleteSql = scopedExternalIds.length > 0
+      ? `DELETE FROM rosters WHERE team_id IN (SELECT id FROM teams WHERE source_system_id = ${this.sourceSystemId} AND external_id IN (${scopedExternalIds.map(id => `'${this.escapeSql(String(id))}'`).join(', ')}));`
+      : `DELETE FROM rosters WHERE team_id IN (SELECT id FROM teams WHERE source_system_id = ${this.sourceSystemId});`;
+
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Rosters - ${this.leagueName}
 -- Player-team relationships from team roster pages
@@ -415,12 +423,12 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
 -- 
 -- Architecture: Players looked up by name (no hardcoded IDs)
 -- joined_at uses sentinel date '1970-01-01' for scraped rosters (deterministic for UPSERT)
--- Full replace: DELETE all rosters for this source system's teams, then re-INSERT current roster
+- ${scopedExternalIds.length > 0 ? 'Partial replace: DELETE only scoped teams for this sync, then re-INSERT current roster' : 'Full replace: DELETE all rosters for this source system\'s teams, then re-INSERT current roster'}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- Remove all existing roster entries for teams in this source system
+-- Remove existing roster entries for the teams covered by this sync
 -- This ensures players removed from the official roster are also removed from the DB
-DELETE FROM rosters WHERE team_id IN (SELECT id FROM teams WHERE source_system_id = ${this.sourceSystemId});
+${deleteSql}
 
 `;
 
