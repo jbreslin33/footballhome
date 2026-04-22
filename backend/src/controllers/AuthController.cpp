@@ -455,17 +455,36 @@ Response AuthController::handleCoachTeams(const Request& request) {
         if (user_id.empty()) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
-        
+
         std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, COUNT(tp.player_id) AS player_count "
-                 "FROM coaches co "
-                 "JOIN team_coaches tc ON co.id = tc.coach_id AND tc.ended_at IS NULL "
-                 "JOIN teams t ON tc.team_id = t.id "
-                 "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
-                 "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
-                 "GROUP BY t.id, t.name, t.club_id "
-                 "ORDER BY t.name";
-        
-        pqxx::result result = db_->query(sql, {user_id});
+                          "FROM coaches co "
+                          "JOIN team_coaches tc ON co.id = tc.coach_id "
+                          "JOIN teams t ON tc.team_id = t.id "
+                          "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
+                          "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
+                          "GROUP BY t.id, t.name, t.club_id "
+                          "ORDER BY t.name";
+
+        pqxx::result result;
+        try {
+            result = db_->query(sql, {user_id});
+        } catch (const std::exception& e) {
+            std::string error = e.what();
+            if (error.find("team_division_players") == std::string::npos) {
+                throw;
+            }
+
+            std::cerr << "⚠️ team_division_players missing, falling back to team_players in handleCoachTeams" << std::endl;
+            const std::string fallback_sql = "SELECT DISTINCT t.id, t.name, NULL::integer AS club_id, COUNT(tp.player_id) AS player_count "
+                                             "FROM coaches co "
+                                             "JOIN team_coaches tc ON co.id = tc.coach_id "
+                                             "JOIN teams t ON tc.team_id = t.id "
+                                             "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
+                                             "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
+                                             "GROUP BY t.id, t.name "
+                                             "ORDER BY t.name";
+            result = db_->query(fallback_sql, {user_id});
+        }
         
         std::ostringstream teams_json;
         teams_json << "[";

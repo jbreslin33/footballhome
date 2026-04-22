@@ -482,7 +482,35 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
         query << "LIMIT 100";
         
-        pqxx::result result = db_->query(query.str());
+        pqxx::result result;
+        try {
+            result = db_->query(query.str());
+        } catch (const std::exception& e) {
+            std::string error = e.what();
+            const bool missingMatchTypes = error.find("match_types") != std::string::npos;
+            const bool missingMatchStatuses = error.find("match_statuses") != std::string::npos;
+            if (!missingMatchTypes && !missingMatchStatuses) {
+                throw;
+            }
+
+            std::cerr << "⚠️ match_types/match_statuses missing, using fallback query in handleGetMatches" << std::endl;
+            std::ostringstream fallbackQuery;
+            fallbackQuery << "SELECT m.id, CONCAT(COALESCE(ht.name, 'TBD'), ' vs ', COALESCE(awt.name, 'TBD')) AS title, ";
+            fallbackQuery << "(m.match_date::timestamp + COALESCE(m.match_time, '00:00:00'::time))::text AS event_date, ";
+            fallbackQuery << "90 AS duration_minutes, 'match' AS event_type, ";
+            fallbackQuery << "m.home_score, m.away_score, ";
+            fallbackQuery << "'scheduled' AS match_status, NULL::text AS competition_name, NULL::text AS venue_name, ";
+            fallbackQuery << "CASE WHEN (m.match_date::timestamp + COALESCE(m.match_time, '00:00:00'::time)) < NOW() - INTERVAL '90 minutes' THEN true ";
+            fallbackQuery << "ELSE false END AS has_ended, ";
+            fallbackQuery << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo ";
+            fallbackQuery << "FROM matches m ";
+            fallbackQuery << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
+            fallbackQuery << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
+            fallbackQuery << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
+            fallbackQuery << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
+            fallbackQuery << "LIMIT 100";
+            result = db_->query(fallbackQuery.str());
+        }
         
         std::ostringstream matches_json;
         matches_json << "[";

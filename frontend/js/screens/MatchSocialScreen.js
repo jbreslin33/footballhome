@@ -63,6 +63,7 @@ class MatchSocialScreen extends Screen {
 
         // Set match context for target screens
         this.navigation.context.match = match;
+        this.navigation.context.lineupTeamId = this.team?.id || '';
 
         if (screen === 'game-day-roster' || screen === 'game-day-lineup') {
           this.navigation.goTo(screen, { matchId });

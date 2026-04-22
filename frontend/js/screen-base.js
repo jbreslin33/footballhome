@@ -11,6 +11,34 @@ class Screen {
   find(selector) {
     return this.element ? this.element.querySelector(selector) : null;
   }
+
+  resolveAssetUrl(url) {
+    if (!url) return '';
+
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
+  }
+
+  buildTeamLogoMarkup(url, options = {}) {
+    const {
+      className = 'team-logo',
+      alt = 'Team logo',
+      placeholder = '⚽',
+      placeholderClass = 'team-logo-placeholder'
+    } = options;
+
+    const resolvedUrl = this.resolveAssetUrl(url);
+    const safeAlt = String(alt).replace(/"/g, '&quot;');
+    const placeholderHtml = `<div class=&quot;${placeholderClass}&quot;>${placeholder}</div>`;
+
+    if (!resolvedUrl) {
+      return `<div class="${placeholderClass}">${placeholder}</div>`;
+    }
+
+    return `<img src="${resolvedUrl}" class="${className}" alt="${safeAlt}" onerror="this.onerror=null;this.outerHTML='${placeholderHtml}'">`;
+  }
   
   // Safe fetch that ignores results if screen unmounted
   safeFetch(url, onSuccess) {

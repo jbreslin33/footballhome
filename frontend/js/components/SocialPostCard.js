@@ -20,6 +20,25 @@ class SocialPostCard {
     this.cardHeight = 540;
   }
 
+  resolveAssetUrl(url) {
+    if (!url) return '';
+
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
+  }
+
+  buildLogoInnerHtml(url, fallback = '⚽') {
+    const resolvedUrl = this.resolveAssetUrl(url);
+    if (!resolvedUrl) {
+      return `<span style="font-size:2em;">${fallback}</span>`;
+    }
+
+    const fallbackHtml = `<span style=&quot;font-size:2em;&quot;>${fallback}</span>`;
+    return `<img src="${this.escapeHtml(resolvedUrl)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;" onerror="this.onerror=null;this.outerHTML='${fallbackHtml}'">`;
+  }
+
   init(container, matchId, teamId, postTypeName, matchContext, rosterData) {
     this.container = container;
     this.matchId = matchId;
@@ -243,8 +262,8 @@ class SocialPostCard {
     const m = this.matchContext;
     const homeName = this.titleCase(m.home_team_name || m.homeTeam || 'Home');
     const awayName = this.titleCase(m.away_team_name || m.awayTeam || 'Away');
-    const homeLogo = m.home_team_logo || '';
-    const awayLogo = m.away_team_logo || '';
+    const homeLogo = this.resolveAssetUrl(m.home_team_logo || '');
+    const awayLogo = this.resolveAssetUrl(m.away_team_logo || '');
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
     if (rawDate) {
@@ -764,12 +783,8 @@ class SocialPostCard {
   buildImageMatchup(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo, homeAccolades, awayAccolades) {
     homeAccolades = homeAccolades || [];
     awayAccolades = awayAccolades || [];
-    const homeLogoHtml = homeLogo
-      ? `<img src="${this.escapeHtml(homeLogo)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`
-      : `<span style="font-size:2em;">⚽</span>`;
-    const awayLogoHtml = awayLogo
-      ? `<img src="${this.escapeHtml(awayLogo)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`
-      : `<span style="font-size:2em;">⚽</span>`;
+    const homeLogoHtml = this.buildLogoInnerHtml(homeLogo);
+    const awayLogoHtml = this.buildLogoInnerHtml(awayLogo);
 
     const buildAccoladeHtml = (accolades) => {
       if (!accolades.length) return '';
@@ -823,12 +838,8 @@ class SocialPostCard {
   buildImageScore(homeName, awayName, m, homeLogo, awayLogo) {
     const hs = m.home_team_score ?? m.home_score ?? '?';
     const as = m.away_team_score ?? m.away_score ?? '?';
-    const homeLogoHtml = homeLogo
-      ? `<img src="${this.escapeHtml(homeLogo)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`
-      : `<span style="font-size:2em;">⚽</span>`;
-    const awayLogoHtml = awayLogo
-      ? `<img src="${this.escapeHtml(awayLogo)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`
-      : `<span style="font-size:2em;">⚽</span>`;
+    const homeLogoHtml = this.buildLogoInnerHtml(homeLogo);
+    const awayLogoHtml = this.buildLogoInnerHtml(awayLogo);
     return `
       <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;width:100%;">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;">

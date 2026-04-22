@@ -188,13 +188,8 @@ class MatchListScreen extends Screen {
             </div>`
           : '';
         
-        const homeLogo = m.home_team_logo 
-          ? `<img src="${m.home_team_logo}" class="team-logo" alt="Home Team">`
-          : `<div class="team-logo-placeholder">🏠</div>`;
-          
-        const awayLogo = m.away_team_logo 
-          ? `<img src="${m.away_team_logo}" class="team-logo" alt="Away Team">`
-          : `<div class="team-logo-placeholder">✈️</div>`;
+        const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { alt: 'Home Team', placeholder: '🏠' });
+        const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { alt: 'Away Team', placeholder: '✈️' });
         
         return `
           <div class="card match-card">

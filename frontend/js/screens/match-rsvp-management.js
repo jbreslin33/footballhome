@@ -70,6 +70,7 @@ class MatchRSVPManagementScreen extends Screen {
         console.log('Found match:', match);
         if (match) {
           this.navigation.context.match = match;
+          this.navigation.context.lineupTeamId = this.navigation.context.team?.id || '';
           this.navigation.goTo('game-day-roster');
         } else {
           console.error('Match not found in this.matches for id:', matchId);
@@ -84,6 +85,7 @@ class MatchRSVPManagementScreen extends Screen {
         const match = this.matches.find(m => m.id === matchId);
         if (match) {
           this.navigation.context.match = match;
+          this.navigation.context.lineupTeamId = this.navigation.context.team?.id || '';
           this.navigation.goTo('game-day-lineup');
         }
         return;

@@ -255,12 +255,8 @@ class TeamDashboardScreen extends Screen {
               <span class="score">${m.home_team_score} - ${m.away_team_score}</span>
             </div>` : '';
         
-        const homeLogo = m.home_team_logo 
-          ? `<img src="${m.home_team_logo}" class="team-logo" alt="Home">`
-          : `<div class="team-logo-placeholder">H</div>`;
-        const awayLogo = m.away_team_logo 
-          ? `<img src="${m.away_team_logo}" class="team-logo" alt="Away">`
-          : `<div class="team-logo-placeholder">A</div>`;
+        const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { alt: 'Home', placeholder: 'H' });
+        const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { alt: 'Away', placeholder: 'A' });
         
         const rsvpSection = m.has_ended ? '' : `
           <div class="match-card-actions">

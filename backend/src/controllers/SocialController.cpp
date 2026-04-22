@@ -387,6 +387,8 @@ Response SocialController::handleGetMatchPosts(const Request& request) {
         std::string path = request.getPath();
         std::string matchId = extractMatchIdFromPath(path);
         std::string teamId = extractTeamIdFromPath(path);
+        std::string quotedMatchId = "'" + escapeSql(matchId) + "'";
+        std::string quotedTeamId = "'" + escapeSql(teamId) + "'";
 
         // Return all 4 post types with any existing post data joined in
         std::string query = R"(
@@ -408,8 +410,8 @@ Response SocialController::handleGetMatchPosts(const Request& request) {
                 sp.updated_at
             FROM social_post_types spt
             LEFT JOIN social_posts sp ON sp.post_type_id = spt.id
-                AND sp.match_id = )" + matchId + R"(
-                AND sp.team_id = )" + teamId + R"(
+                AND sp.match_id = )" + quotedMatchId + R"(
+                AND sp.team_id = )" + quotedTeamId + R"(
                 AND sp.platform = 'instagram'
             ORDER BY spt.sort_order
         )";
@@ -452,6 +454,7 @@ Response SocialController::handleGetMatchPosts(const Request& request) {
 Response SocialController::handleGetTeamCalendar(const Request& request) {
     try {
         std::string teamId = extractTeamIdFromPath(request.getPath());
+        std::string quotedTeamId = "'" + escapeSql(teamId) + "'";
 
         // Get all upcoming matches for this team with their social post statuses
         std::string query =
@@ -486,11 +489,11 @@ Response SocialController::handleGetTeamCalendar(const Request& request) {
             "LEFT JOIN match_statuses ms ON m.match_status_id = ms.id "
             "CROSS JOIN social_post_types spt "
             "LEFT JOIN social_posts sp ON sp.match_id = m.id "
-            "  AND sp.team_id = " + teamId + " "
+            "  AND sp.team_id = " + quotedTeamId + " "
             "  AND sp.post_type_id = spt.id "
             "  AND sp.platform = 'instagram' "
-            "WHERE (m.home_team_id = " + teamId + " "
-            "  OR m.away_team_id = " + teamId + ") "
+            "WHERE (m.home_team_id = " + quotedTeamId + " "
+            "  OR m.away_team_id = " + quotedTeamId + ") "
             "  AND m.match_date >= CURRENT_DATE - interval '7 days' "
             "ORDER BY m.match_date ASC, m.match_time ASC, spt.sort_order ASC";
 
@@ -554,12 +557,15 @@ Response SocialController::handleCreateOrUpdatePost(const Request& request) {
                 createJSONResponse(false, "match_id, team_id, and post_type_id are required"));
         }
 
+        std::string quotedMatchId = "'" + escapeSql(matchId) + "'";
+        std::string quotedTeamId = "'" + escapeSql(teamId) + "'";
+
         if (status.empty()) status = "draft";
 
         // Upsert
         std::string query = R"(
             INSERT INTO social_posts (match_id, team_id, post_type_id, platform, caption, image_path, image_url, status, scheduled_at)
-            VALUES ()" + matchId + ", " + teamId + ", " + postTypeId + R"(, 'instagram',
+            VALUES ()" + quotedMatchId + ", " + quotedTeamId + ", " + postTypeId + R"(, 'instagram',
                 )" + (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + R"(,
                 )" + (imagePath.empty() ? "NULL" : "'" + escapeSql(imagePath) + "'") + R"(,
                 )" + (imageUrl.empty() ? "NULL" : "'" + escapeSql(imageUrl) + "'") + R"(,
@@ -937,6 +943,7 @@ Response SocialController::handlePostToInstagram(const Request& request) {
 Response SocialController::handleGetScheduleTemplates(const Request& request) {
     try {
         std::string teamId = extractTeamIdFromPath(request.getPath());
+        std::string quotedTeamId = "'" + escapeSql(teamId) + "'";
 
         std::string query = R"(
             SELECT
@@ -950,7 +957,7 @@ Response SocialController::handleGetScheduleTemplates(const Request& request) {
                 COALESCE(sst.enabled, false) as enabled
             FROM social_post_types spt
             LEFT JOIN social_schedule_templates sst ON sst.post_type_id = spt.id
-                AND sst.team_id = )" + teamId + R"(
+                AND sst.team_id = )" + quotedTeamId + R"(
                 AND sst.platform = 'instagram'
             ORDER BY spt.sort_order
         )";
@@ -986,6 +993,7 @@ Response SocialController::handleGetScheduleTemplates(const Request& request) {
 Response SocialController::handleSaveScheduleTemplates(const Request& request) {
     try {
         std::string teamId = extractTeamIdFromPath(request.getPath());
+        std::string quotedTeamId = "'" + escapeSql(teamId) + "'";
 
         // Expect JSON array: [{post_type_id, days_before, post_time, enabled}, ...]
         // Parse manually since we don't have nlohmann/json in this controller pattern.
@@ -1007,7 +1015,7 @@ Response SocialController::handleSaveScheduleTemplates(const Request& request) {
 
         std::string query = R"(
             INSERT INTO social_schedule_templates (team_id, post_type_id, platform, days_before, post_time, enabled)
-            VALUES ()" + teamId + ", " + postTypeId + R"(, 'instagram', )" + daysBefore + R"(, ')" + escapeSql(postTime) + R"(', )" + enabled + R"()
+            VALUES ()" + quotedTeamId + ", " + postTypeId + R"(, 'instagram', )" + daysBefore + R"(, ')" + escapeSql(postTime) + R"(', )" + enabled + R"()
             ON CONFLICT (team_id, post_type_id, platform)
             DO UPDATE SET
                 days_before = EXCLUDED.days_before,
@@ -1031,10 +1039,12 @@ Response SocialController::handleApplySchedule(const Request& request) {
         std::string path = request.getPath();
         std::string matchId = extractMatchIdFromPath(path);
         std::string teamId = extractTeamIdFromPath(path);
+        std::string quotedMatchId = "'" + escapeSql(matchId) + "'";
+        std::string quotedTeamId = "'" + escapeSql(teamId) + "'";
 
         // Get match date
         pqxx::result matchResult = db_->query(
-            "SELECT match_date, match_time FROM matches WHERE id = " + matchId
+            "SELECT match_date, match_time FROM matches WHERE id = " + quotedMatchId
         );
 
         if (matchResult.empty()) {
@@ -1048,7 +1058,7 @@ Response SocialController::handleApplySchedule(const Request& request) {
         std::string query = R"(
             SELECT sst.post_type_id, sst.days_before, sst.post_time
             FROM social_schedule_templates sst
-            WHERE sst.team_id = )" + teamId + R"(
+                        WHERE sst.team_id = )" + quotedTeamId + R"(
               AND sst.platform = 'instagram'
               AND sst.enabled = true
         )";
@@ -1064,7 +1074,7 @@ Response SocialController::handleApplySchedule(const Request& request) {
             // Calculate scheduled_at: match_date - days_before + post_time
             std::string insertQuery = R"(
                 INSERT INTO social_posts (match_id, team_id, post_type_id, platform, status, scheduled_at)
-                VALUES ()" + matchId + ", " + teamId + ", " + std::to_string(postTypeId) + R"(, 'instagram', 'scheduled',
+                VALUES ()" + quotedMatchId + ", " + quotedTeamId + ", " + std::to_string(postTypeId) + R"(, 'instagram', 'scheduled',
                     (')" + matchDate + R"('::date - interval ')" + std::to_string(daysBefore) + R"( days')::date + ')" + escapeSql(postTime) + R"('::time
                 )
                 ON CONFLICT (match_id, team_id, post_type_id, platform)

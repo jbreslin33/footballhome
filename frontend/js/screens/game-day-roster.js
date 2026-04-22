@@ -296,7 +296,7 @@ class GameDayRosterScreen extends Screen {
 
     try {
       // Sync GroupMe RSVPs first (fresh data on every page load)
-      const teamId = this.navigation.context.lineupTeamId || '';
+      const teamId = this.resolveActiveTeamId();
       try {
         await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}${teamId ? '?teamId=' + teamId : ''}`, { method: 'POST' });
       } catch (e) {
@@ -342,12 +342,18 @@ class GameDayRosterScreen extends Screen {
 
     const homeLogo = this.find('#gdr-home-logo');
     const awayLogo = this.find('#gdr-away-logo');
-    homeLogo.innerHTML = m.home_team_logo
-      ? `<img src="${m.home_team_logo}" alt="Home">`
-      : `<div class="gdr-logo-placeholder">\ud83c\udfe0</div>`;
-    awayLogo.innerHTML = m.away_team_logo
-      ? `<img src="${m.away_team_logo}" alt="Away">`
-      : `<div class="gdr-logo-placeholder">\ud83c\udfdf\ufe0f</div>`;
+    homeLogo.innerHTML = this.buildTeamLogoMarkup(m.home_team_logo, {
+      className: '',
+      alt: 'Home',
+      placeholder: '🏠',
+      placeholderClass: 'gdr-logo-placeholder'
+    });
+    awayLogo.innerHTML = this.buildTeamLogoMarkup(m.away_team_logo, {
+      className: '',
+      alt: 'Away',
+      placeholder: '🏟️',
+      placeholderClass: 'gdr-logo-placeholder'
+    });
 
     this.find('#gdr-home-name').textContent = m.home_team_name || 'Home';
     this.find('#gdr-away-name').textContent = m.away_team_name || 'Away';
@@ -757,13 +763,56 @@ class GameDayRosterScreen extends Screen {
     return str.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   }
 
+  resolveActiveTeamId() {
+    if (this.navigation.context.lineupTeamId) {
+      return String(this.navigation.context.lineupTeamId);
+    }
+
+    if (this.navigation.context.team?.id) {
+      return String(this.navigation.context.team.id);
+    }
+
+    const rosterTeamIds = [...new Set((this.players || []).map(player => player.rosterTeamId).filter(Boolean))];
+    if (rosterTeamIds.length === 1) {
+      return String(rosterTeamIds[0]);
+    }
+
+    return this.matchDetails?.home_team_id ? String(this.matchDetails.home_team_id) : '';
+  }
+
+  resolveActiveTeamContext() {
+    if (this.navigation.context.team?.id) {
+      return this.navigation.context.team;
+    }
+
+    const teamId = this.resolveActiveTeamId();
+    if (!teamId || !this.matchDetails) {
+      return null;
+    }
+
+    if (String(this.matchDetails.home_team_id) === String(teamId)) {
+      return { id: teamId, name: this.matchDetails.home_team_name || 'Home' };
+    }
+
+    if (String(this.matchDetails.away_team_id) === String(teamId)) {
+      return { id: teamId, name: this.matchDetails.away_team_name || 'Away' };
+    }
+
+    return { id: teamId, name: this.matchDetails.home_team_name || this.matchDetails.away_team_name || 'Team' };
+  }
+
   showSocialPreview(postType) {
     const container = this.find('#social-preview-container');
     if (!container) return;
 
     const matchId = this.matchDetails?.id;
-    const team = this.navigation.context.team;
+    const team = this.resolveActiveTeamContext();
     if (!matchId || !team) return;
+
+    this.navigation.context.lineupTeamId = String(team.id);
+    if (!this.navigation.context.team) {
+      this.navigation.context.team = team;
+    }
 
     // Create fresh card in the container
     container.innerHTML = '';
