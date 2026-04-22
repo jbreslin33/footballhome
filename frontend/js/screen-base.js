@@ -12,6 +12,12 @@ class Screen {
     return this.element ? this.element.querySelector(selector) : null;
   }
 
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+  }
+
   resolveAssetUrl(url) {
     if (!url) return '';
 
@@ -41,7 +47,7 @@ class Screen {
   }
   
   // Safe fetch that ignores results if screen unmounted
-  safeFetch(url, onSuccess) {
+  safeFetch(url, onSuccess, onError) {
     return this.auth.fetch(url)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
@@ -56,7 +62,11 @@ class Screen {
       })
       .catch(error => {
         if (this.isMounted) {
-          this.handleError(error, 'fetch');
+          if (typeof onError === 'function') {
+            onError(error);
+          } else {
+            this.handleError(error, 'fetch');
+          }
         }
       });
   }

@@ -146,6 +146,13 @@ class TeamDashboardScreen extends Screen {
         this.navigation.goTo('practice-options');
         return;
       }
+
+      // Retry schedule load after an API error
+      const retryScheduleBtn = e.target.closest('[data-action="retry-schedule"]');
+      if (retryScheduleBtn) {
+        this.loadSchedule();
+        return;
+      }
     });
   }
   
@@ -186,11 +193,24 @@ class TeamDashboardScreen extends Screen {
     const container = this.find('#schedule-list');
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading schedule...</p></div>';
     
-    this.safeFetch(`/api/matches/team/${teamId}`, response => {
-      const matches = response.data || [];
-      this.matchesLoaded = true;
-      this.loadMatchesWithRSVP(matches);
-    });
+    this.safeFetch(
+      `/api/matches/team/${teamId}`,
+      response => {
+        const matches = response.data || [];
+        this.matchesLoaded = true;
+        this.loadMatchesWithRSVP(matches);
+      },
+      error => {
+        console.error('Failed to load schedule:', error);
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>Unable to load schedule right now.</p>
+            <p class="text-muted">${this.escapeHtml(error.message || 'Unknown error')}</p>
+            <button class="btn btn-primary btn-sm" data-action="retry-schedule">Try Again</button>
+          </div>
+        `;
+      }
+    );
   }
   
   async loadMatchesWithRSVP(matches) {
