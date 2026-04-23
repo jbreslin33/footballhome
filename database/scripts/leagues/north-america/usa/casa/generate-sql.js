@@ -290,7 +290,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
 
     for (const [teamName, logoUrl] of this.teamLogos) {
       sql += `UPDATE teams SET logo_url = '${this.escapeSql(logoUrl)}'
-WHERE name = '${this.escapeSql(teamName)}' AND source_system_id = ${this.sourceSystemId};
+WHERE name = '${this.escapeSql(teamName)}';
 `;
     }
 
