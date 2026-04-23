@@ -142,7 +142,7 @@ class SocialPostCard {
         timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       }
     }
-    const venue = this.titleCase(m.venue_name || 'TBD');
+    const venue = this.buildVenueString(m) || this.titleCase(m.venue_name || 'TBD');
     const league = m.competition_name || 'APSL';
 
     switch (this.postTypeName) {
@@ -159,7 +159,7 @@ class SocialPostCard {
         const hs = m.home_team_score ?? m.home_score ?? '?';
         const as = m.away_team_score ?? m.away_score ?? '?';
         const result = Number(hs) > Number(as) ? '🟢 WIN' : Number(hs) < Number(as) ? '🔴 LOSS' : '🟡 DRAW';
-        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n\n#Lighthouse1893 #APSL #PhillySoccer #MatchResult`;
+        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}\n\n#Lighthouse1893 #APSL #PhillySoccer #MatchResult`;
       }
       default:
         return '';
