@@ -144,22 +144,24 @@ class SocialPostCard {
     }
     const venue = this.buildVenueString(m) || this.titleCase(m.venue_name || 'TBD');
     const league = m.competition_name || 'APSL';
+    const isCASA = /casa/i.test(league);
+    const leagueTag = isCASA ? '#CASA' : '#APSL';
 
     switch (this.postTypeName) {
       case 'pre_match_announcement':
-        return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 #APSL #PhillySoccer #StartingXI`;
+        return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #StartingXI`;
       case 'game_day': {
         const gameDayLabel = this.getGameDayLabel(rawDate);
-        const gameDayEmoji = gameDayLabel === 'GAME DAY' ? "Let's go! 🔥" : gameDayLabel === 'TOMORROW' ? 'See you there! 💪' : 'Mark your calendars! 📌';
-        return `⚽ ${gameDayLabel}!\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n${gameDayEmoji}\n\n#Lighthouse1893 #APSL #GameDay #PhillySoccer`;
+        const gameDayEmoji = gameDayLabel === 'GAME DAY' ? '' : gameDayLabel === 'TOMORROW' ? 'See you there! 💪' : 'Mark your calendars! 📌';
+        return `⚽ ${gameDayLabel}!\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}${gameDayEmoji ? '\n\n' + gameDayEmoji : ''}\n\n#Lighthouse1893 ${leagueTag} #GameDay #PhillySoccer`;
       }
       case 'lineup':
-        return `📋 MATCH DAY SQUAD\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 #APSL #MatchDaySquad #PhillySoccer`;
+        return `📋 MATCH DAY SQUAD\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 ${leagueTag} #MatchDaySquad #PhillySoccer`;
       case 'post_game': {
         const hs = m.home_team_score ?? m.home_score ?? '?';
         const as = m.away_team_score ?? m.away_score ?? '?';
         const result = Number(hs) > Number(as) ? '🟢 WIN' : Number(hs) < Number(as) ? '🔴 LOSS' : '🟡 DRAW';
-        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}\n\n#Lighthouse1893 #APSL #PhillySoccer #MatchResult`;
+        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #MatchResult`;
       }
       default:
         return '';
@@ -189,7 +191,7 @@ class SocialPostCard {
 
     // Caption for textarea
     const rawCaption = (hasContent && p.caption) ? p.caption : this.buildCaption();
-    const caption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(rawCaption));
+    const caption = this.normalizeLegacyCaptionText(this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(rawCaption)));
 
     // Status badge
     let badge = '';
@@ -954,6 +956,15 @@ class SocialPostCard {
     return isNaN(d) ? null : d;
   }
 
+  async waitForMediaReady(timeoutMs = 4000) {
+    const start = Date.now();
+    while ((Date.now() - start) < timeoutMs) {
+      if (this.animCanvas || this.baseImage) return true;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return false;
+  }
+
   buildImageRoster() {
     if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
     const players = this.rosterData.players;
@@ -1025,7 +1036,7 @@ class SocialPostCard {
   saveCaption() {
     const textarea = this.container.querySelector('.spc-caption');
     if (!textarea) return;
-    const caption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea.value.trim()));
+    const caption = this.normalizeLegacyCaptionText(this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea.value.trim())));
     const ptId = this.post?.post_type_id || this.postTypeId;
     if (!ptId) return;
 
@@ -1067,7 +1078,7 @@ class SocialPostCard {
     try {
       // Persist the visible caption before publish so the post text matches the preview.
       const textarea = this.container.querySelector('.spc-caption');
-      const currentCaption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || '')));
+      const currentCaption = this.normalizeLegacyCaptionText(this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || ''))));
       const ptId = this.post?.post_type_id || this.postTypeId;
       if (ptId && currentCaption) {
         await this.auth.fetch('/api/social/posts', {
@@ -1085,12 +1096,20 @@ class SocialPostCard {
 
       let mediaData;
 
+      // If preview media is not ready yet, try generating it now.
+      if (!this.animCanvas && !this.baseImage) {
+        if (postBtn) postBtn.textContent = '⏳ Generating preview...';
+        await this.generateImage();
+        await this.waitForMediaReady(5000);
+      }
+
       if (this.animCanvas) {
-        // Record animated video (5-second WebM clip) for Instagram Reel
+        // Record a compact WebM clip to keep upload payload under proxy limits.
         mediaData = await new Promise((resolve, reject) => {
-          const stream = this.animCanvas.captureStream(30);
+          const stream = this.animCanvas.captureStream(24);
           const recorder = new MediaRecorder(stream, {
-            mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
+            mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
+            videoBitsPerSecond: 1200000
           });
           const chunks = [];
           recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -1103,8 +1122,8 @@ class SocialPostCard {
           };
           recorder.onerror = () => reject(new Error('Recording failed'));
           recorder.start();
-          // Record one full beam rotation (8s) for seamless Instagram loop
-          setTimeout(() => recorder.stop(), 8000);
+          // Keep duration short to avoid 413 (base64 JSON body through nginx).
+          setTimeout(() => recorder.stop(), 5000);
         });
       } else if (this.baseImage) {
         // Fallback: static image
@@ -1115,23 +1134,35 @@ class SocialPostCard {
         mediaData = tmpCvs.toDataURL('image/png');
       }
 
-      if (!mediaData) {
-        alert('No media generated yet. Please wait for the preview to load.');
+      const hasExistingMedia = !!(this.post && this.post.image_url);
+      if (!mediaData && !hasExistingMedia) {
+        alert('No media generated yet. Please wait a moment and try again.');
         if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
         return;
       }
 
-      // Step 1: Upload media to backend
-      if (postBtn) postBtn.textContent = '⏳ Uploading...';
-      const uploadRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/media`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: mediaData })
-      });
-      const uploadData = await uploadRes.json();
-      if (!uploadData.success) {
-        alert('Upload failed: ' + uploadData.message);
-        return;
+      // Step 1: Upload media to backend if we produced fresh media.
+      if (mediaData) {
+        if (postBtn) postBtn.textContent = '⏳ Uploading...';
+        const uploadRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/media`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: mediaData })
+        });
+        const uploadText = await uploadRes.text();
+        let uploadData = null;
+        try {
+          uploadData = uploadText ? JSON.parse(uploadText) : null;
+        } catch (_) {
+          uploadData = null;
+        }
+        if (!uploadRes.ok || !uploadData || !uploadData.success) {
+          const uploadMsg = (uploadData && uploadData.message)
+            ? uploadData.message
+            : `HTTP ${uploadRes.status}${uploadText ? `: ${uploadText.slice(0, 200)}` : ''}`;
+          alert('Upload failed: ' + uploadMsg);
+          return;
+        }
       }
 
       // Step 2: Publish to Instagram
@@ -1139,7 +1170,18 @@ class SocialPostCard {
       const pubRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/publish`, {
         method: 'POST'
       });
-      const pubData = await pubRes.json();
+      const pubText = await pubRes.text();
+      let pubData = null;
+      try {
+        pubData = pubText ? JSON.parse(pubText) : null;
+      } catch (_) {
+        pubData = null;
+      }
+      if (!pubRes.ok || !pubData) {
+        const pubMsg = `HTTP ${pubRes.status}${pubText ? `: ${pubText.slice(0, 200)}` : ''}`;
+        alert('Publish failed: ' + pubMsg);
+        return;
+      }
       if (pubData.success) {
         alert('Posted to Instagram! 🎉');
         this.load();
@@ -1165,7 +1207,7 @@ class SocialPostCard {
 
     // Save current caption too
     const textarea = this.container.querySelector('.spc-caption');
-    const caption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || '')));
+    const caption = this.normalizeLegacyCaptionText(this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || ''))));
 
     const schedBtn = this.container.querySelector('.spc-btn-schedule');
     if (schedBtn) { schedBtn.disabled = true; schedBtn.textContent = '⏳ Scheduling...'; }
@@ -1202,6 +1244,12 @@ class SocialPostCard {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  normalizeLegacyCaptionText(caption) {
+    if (!caption) return caption;
+    // Remove standalone "Let's go! 🔥" lines (and variants)
+    return String(caption).replace(/^Let's go! ?🔥\s*\n?/mu, '').replace(/\n\nLet's go! ?🔥/gu, '');
   }
 
   normalizeLegacyCaptionVenue(caption) {

@@ -776,11 +776,9 @@ Response SocialController::handleUploadMedia(const Request& request) {
             // Update DB
             db_->query(
                 "UPDATE social_posts SET video_path = '" + escapeSql(videoFilename) +
-                "', video_url = '" + escapeSql(videoPublicUrl) +
                 "', image_path = '" + escapeSql(imageFilename) +
                 "', image_url = '" + escapeSql(imagePublicUrl) +
-                "', media_type = 'video'"
-                ", updated_at = NOW() WHERE id = " + postId
+                "', updated_at = NOW() WHERE id = " + postId
             );
 
             std::cout << "🎬 Video uploaded for post " << postId << ": " << mp4File << std::endl;
@@ -807,8 +805,7 @@ Response SocialController::handleUploadMedia(const Request& request) {
             db_->query(
                 "UPDATE social_posts SET image_path = '" + escapeSql(filename) +
                 "', image_url = '" + escapeSql(publicUrl) +
-                "', media_type = 'image'"
-                ", updated_at = NOW() WHERE id = " + postId
+                "', updated_at = NOW() WHERE id = " + postId
             );
 
             std::cout << "📸 Media uploaded for post " << postId << ": " << filepath << std::endl;
@@ -896,9 +893,10 @@ Response SocialController::handlePostToInstagram(const Request& request) {
 
         const auto& row = result[0];
         std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
-        std::string videoUrl = row["video_url"].is_null() ? "" : row["video_url"].c_str();
+        std::string videoPath = row["video_path"].is_null() ? "" : row["video_path"].c_str();
+        std::string videoUrl = videoPath.empty() ? "" : ("https://footballhome.org/images/posts/" + videoPath);
         std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
-        std::string mediaType = row["media_type"].is_null() ? "image" : row["media_type"].c_str();
+        std::string mediaType = videoPath.empty() ? "image" : "video";
 
         if (mediaType == "video" && videoUrl.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -964,17 +962,59 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         // Video (Reels) takes longer to process — use more attempts with longer interval
         int maxAttempts = (mediaType == "video") ? 30 : 10;
         int pollInterval = (mediaType == "video") ? 5 : 3;
+        bool containerReady = false;
         std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             std::this_thread::sleep_for(std::chrono::seconds(pollInterval));
             std::string statusResp = httpGet(statusUrl);
             std::string statusCode = extractJsonField(statusResp, "status_code");
             std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "/" << maxAttempts << "): " << statusCode << std::endl;
-            if (statusCode == "FINISHED") break;
-            if (statusCode == "ERROR") {
-                db_->query("UPDATE social_posts SET status = 'error', error_message = 'Instagram media processing failed', updated_at = NOW() WHERE id = " + postId);
-                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Instagram media processing failed"));
+            if (statusCode == "FINISHED") {
+                containerReady = true;
+                break;
             }
+            if (statusCode == "ERROR") {
+                break;
+            }
+        }
+
+        if (!containerReady && mediaType == "video" && !imageUrl.empty()) {
+            std::cout << "⚠️ Instagram: Video processing failed/timed out, falling back to image for post " << postId << std::endl;
+
+            CURL* fallbackCurl = curl_easy_init();
+            std::string fallbackCreateData = "image_url=" + urlEncode(fallbackCurl, imageUrl) +
+                "&caption=" + urlEncode(fallbackCurl, caption) +
+                "&access_token=" + urlEncode(fallbackCurl, igToken);
+            curl_easy_cleanup(fallbackCurl);
+
+            std::string fallbackCreateResp = httpPost(createUrl, fallbackCreateData);
+            std::string fallbackCreationId = extractJsonField(fallbackCreateResp, "id");
+            if (fallbackCreationId.empty()) {
+                std::string fallbackErr = extractJsonField(fallbackCreateResp, "message");
+                if (fallbackErr.empty()) fallbackErr = "Instagram media processing failed";
+                db_->query("UPDATE social_posts SET status = 'error', error_message = '" + escapeSql(fallbackErr) + "', updated_at = NOW() WHERE id = " + postId);
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, fallbackErr));
+            }
+
+            std::string fallbackPublishData = "creation_id=" + fallbackCreationId + "&access_token=" + igToken;
+            std::string fallbackPublishResp = httpPost(apiBase + "/" + igUserId + "/media_publish", fallbackPublishData);
+            std::string fallbackMediaId = extractJsonField(fallbackPublishResp, "id");
+            if (fallbackMediaId.empty()) {
+                std::string fallbackErr = extractJsonField(fallbackPublishResp, "message");
+                if (fallbackErr.empty()) fallbackErr = "Instagram media processing failed";
+                db_->query("UPDATE social_posts SET status = 'error', error_message = '" + escapeSql(fallbackErr) + "', updated_at = NOW() WHERE id = " + postId);
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, fallbackErr));
+            }
+
+            db_->query(
+                "UPDATE social_posts SET status = 'posted', external_media_id = '" +
+                escapeSql(fallbackMediaId) + "', posted_at = NOW(), error_message = NULL, "
+                "updated_at = NOW() WHERE id = " + postId
+            );
+
+            return Response(HttpStatus::OK,
+                createJSONResponse(true, "Posted to Instagram (image fallback)!",
+                    "{\"media_id\":\"" + escapeJson(fallbackMediaId) + "\",\"fallback\":true}"));
         }
 
         // Step 2: Publish the container
@@ -989,6 +1029,34 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         std::string mediaId = extractJsonField(publishResponse, "id");
         if (mediaId.empty()) {
             std::string errorMsg = extractJsonField(publishResponse, "message");
+
+            if (mediaType == "video" && !imageUrl.empty()) {
+                std::cout << "⚠️ Instagram: Video publish failed, retrying as image for post " << postId << std::endl;
+                CURL* fallbackCurl = curl_easy_init();
+                std::string fallbackCreateData = "image_url=" + urlEncode(fallbackCurl, imageUrl) +
+                    "&caption=" + urlEncode(fallbackCurl, caption) +
+                    "&access_token=" + urlEncode(fallbackCurl, igToken);
+                curl_easy_cleanup(fallbackCurl);
+
+                std::string fallbackCreateResp = httpPost(createUrl, fallbackCreateData);
+                std::string fallbackCreationId = extractJsonField(fallbackCreateResp, "id");
+                if (!fallbackCreationId.empty()) {
+                    std::string fallbackPublishData = "creation_id=" + fallbackCreationId + "&access_token=" + igToken;
+                    std::string fallbackPublishResp = httpPost(publishUrl, fallbackPublishData);
+                    std::string fallbackMediaId = extractJsonField(fallbackPublishResp, "id");
+                    if (!fallbackMediaId.empty()) {
+                        db_->query(
+                            "UPDATE social_posts SET status = 'posted', external_media_id = '" +
+                            escapeSql(fallbackMediaId) + "', posted_at = NOW(), error_message = NULL, "
+                            "updated_at = NOW() WHERE id = " + postId
+                        );
+                        return Response(HttpStatus::OK,
+                            createJSONResponse(true, "Posted to Instagram (image fallback)!",
+                                "{\"media_id\":\"" + escapeJson(fallbackMediaId) + "\",\"fallback\":true}"));
+                    }
+                }
+            }
+
             if (errorMsg.empty()) errorMsg = "Failed to publish to Instagram";
             db_->query(
                 "UPDATE social_posts SET status = 'error', error_message = '" +
