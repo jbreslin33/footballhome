@@ -72,6 +72,7 @@ private:
     // Google Drive media browser
     Response handleListDriveMedia(const Request& request);
     Response handleDownloadDriveFile(const Request& request);
+    Response handleLogoProxy(const Request& request);
     std::string extractUserIdFromJWT(const Request& request);
     std::string getGoogleAccessToken(const std::string& userId);
     std::string refreshGoogleToken(const std::string& userId, const std::string& refreshToken);

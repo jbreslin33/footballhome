@@ -30,6 +30,12 @@ class Screen {
     };
     if (assetAliases[trimmed]) return assetAliases[trimmed];
 
+    // SportsEngine S3 logos do not send CORS headers needed for canvas captures.
+    // Route them through backend proxy so both inline UI and generated images work.
+    if (/^https:\/\/se-team-service-production\.s3\.amazonaws\.com\//i.test(trimmed)) {
+      return `/api/social/logo-proxy?url=${trimmed}`;
+    }
+
     if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
     return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
   }

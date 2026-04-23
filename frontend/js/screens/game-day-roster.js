@@ -369,10 +369,17 @@ class GameDayRosterScreen extends Screen {
 
     // Dynamic league brand in footer
     const brandEl = this.find('#gdr-card-brand');
-    if (brandEl && m.source_name) {
-      const leagueMap = { apsl: 'APSL', casa: 'CASA', csl: 'CSL' };
-      const league = leagueMap[m.source_name] || m.source_name.toUpperCase();
-      brandEl.textContent = '\u26bd ' + league + ' \u2022 Philadelphia';
+    if (brandEl) {
+      const comp = `${m.competition_name || ''} ${m.division_name || ''}`;
+      const isCasa = m.source_name === 'casa' || /casa|liga\s*[12]/i.test(comp);
+      if (isCasa) {
+        const liga = /liga\s*2/i.test(comp) ? '2' : '1';
+        brandEl.textContent = `\u26bd Philadelphia CASA Select Liga ${liga}`;
+      } else if (m.source_name) {
+        const leagueMap = { apsl: 'APSL', csl: 'CSL' };
+        const league = leagueMap[m.source_name] || m.source_name.toUpperCase();
+        brandEl.textContent = '\u26bd ' + league + ' \u2022 Philadelphia';
+      }
     }
   }
 

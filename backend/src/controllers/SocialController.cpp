@@ -375,6 +375,11 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/drive/download", [this](const Request& request) {
         return this->handleDownloadDriveFile(request);
     });
+
+    // GET /api/social/logo-proxy?url=... - Proxy third-party team logos for canvas-safe rendering
+    router.get(prefix + "/logo-proxy", [this](const Request& request) {
+        return this->handleLogoProxy(request);
+    });
 }
 
 std::string SocialController::escapeJson(const std::string& input) {
@@ -2435,6 +2440,56 @@ Response SocialController::handleDownloadDriveFile(const Request& request) {
         Response resp(HttpStatus::OK, fileContent);
         resp.setHeader("Content-Type", mimeType);
         resp.setHeader("Content-Disposition", "inline; filename=\"" + fileName + "\"");
+        return resp;
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleLogoProxy(const Request& request) {
+    try {
+        std::string url = request.getQueryParam("url");
+        if (url.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing url parameter"));
+        }
+
+        // Restrict proxying to trusted SportsEngine team logo host only.
+        const std::string allowedPrefix = "https://se-team-service-production.s3.amazonaws.com/";
+        if (url.rfind(allowedPrefix, 0) != 0) {
+            return Response(HttpStatus::FORBIDDEN,
+                createJSONResponse(false, "Only SportsEngine team logos are allowed"));
+        }
+
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJSONResponse(false, "Failed to initialize curl"));
+        }
+
+        std::string imageData;
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &imageData);
+
+        CURLcode code = curl_easy_perform(curl);
+        long status = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+        curl_easy_cleanup(curl);
+
+        if (code != CURLE_OK || status != 200 || imageData.empty()) {
+            return Response(HttpStatus::NOT_FOUND,
+                createJSONResponse(false, "Logo fetch failed"));
+        }
+
+        Response resp(HttpStatus::OK, imageData);
+        resp.setHeader("Content-Type", "image/png");
+        resp.setHeader("Cache-Control", "public, max-age=86400");
+        resp.setCorsHeaders();
         return resp;
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,

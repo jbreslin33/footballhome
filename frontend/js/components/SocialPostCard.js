@@ -25,6 +25,11 @@ class SocialPostCard {
 
     const trimmed = String(url).trim();
     if (!trimmed) return '';
+
+    if (/^https:\/\/se-team-service-production\.s3\.amazonaws\.com\//i.test(trimmed)) {
+      return `/api/social/logo-proxy?url=${trimmed}`;
+    }
+
     if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
     return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
   }
@@ -274,7 +279,8 @@ class SocialPostCard {
       }
     }
     const venueStr = this.buildVenueString(m);
-    const isCasa = (m.source_name === 'casa');
+    const competitionText = `${m.competition_name || ''} ${m.division_name || ''}`;
+    const isCasa = (m.source_name === 'casa') || /casa|liga\s*[12]/i.test(competitionText);
 
     // Fetch accolades for both teams
     const homeTeamId = m.home_team_id || null;
@@ -301,9 +307,9 @@ class SocialPostCard {
     // Determine league display name
     let league;
     if (isCasa) {
-      const div = m.division_name || '';
-      if (/liga\s*2/i.test(div)) league = 'CASA Select Liga 2';
-      else league = 'CASA Select Liga 1';
+      const div = `${m.division_name || ''} ${m.competition_name || ''}`;
+      if (/liga\s*2/i.test(div)) league = 'Philadelphia CASA Select Liga 2';
+      else league = 'Philadelphia CASA Select Liga 1';
     } else {
       league = 'Delaware River Conference';
     }
