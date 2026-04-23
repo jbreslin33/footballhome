@@ -57,6 +57,7 @@ private:
     Response handleUploadPromoMedia(const Request& request);
     Response handlePublishPromoPost(const Request& request);
     std::string extractPromoIdFromPath(const std::string& path);
+    void ensureSocialSchema();
     void ensurePromotionalPostsSchema();
     bool publishPromoById(const std::string& promoId, std::string& errorOut);
 

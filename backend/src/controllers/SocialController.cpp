@@ -124,11 +124,82 @@ void SocialController::ensurePromotionalPostsSchema() {
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS overlay_logos TEXT");
 }
 
+void SocialController::ensureSocialSchema() {
+    // Core social post type catalog
+    db_->query(
+        "CREATE TABLE IF NOT EXISTS social_post_types ("
+        "id SERIAL PRIMARY KEY, "
+        "name VARCHAR(100) NOT NULL UNIQUE, "
+        "display_name VARCHAR(150) NOT NULL, "
+        "description TEXT NOT NULL DEFAULT '', "
+        "sort_order INT NOT NULL DEFAULT 0"
+        ")"
+    );
+
+    // Team + match specific social posts
+    db_->query(
+        "CREATE TABLE IF NOT EXISTS social_posts ("
+        "id SERIAL PRIMARY KEY, "
+        "match_id UUID NOT NULL, "
+        "team_id UUID NOT NULL, "
+        "post_type_id INT NOT NULL REFERENCES social_post_types(id), "
+        "platform VARCHAR(50) NOT NULL DEFAULT 'instagram', "
+        "caption TEXT, "
+        "image_path TEXT, "
+        "image_url TEXT, "
+        "video_path TEXT, "
+        "status VARCHAR(20) NOT NULL DEFAULT 'draft', "
+        "scheduled_at TIMESTAMPTZ, "
+        "posted_at TIMESTAMPTZ, "
+        "external_media_id VARCHAR(200), "
+        "error_message TEXT, "
+        "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+        "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+        "UNIQUE(match_id, team_id, post_type_id, platform)"
+        ")"
+    );
+
+    db_->query(
+        "CREATE INDEX IF NOT EXISTS idx_social_posts_match_team "
+        "ON social_posts(match_id, team_id)"
+    );
+
+    db_->query(
+        "CREATE INDEX IF NOT EXISTS idx_social_posts_status_sched "
+        "ON social_posts(status, scheduled_at)"
+    );
+
+    // Team schedule templates for auto-scheduling post types
+    db_->query(
+        "CREATE TABLE IF NOT EXISTS social_schedule_templates ("
+        "id SERIAL PRIMARY KEY, "
+        "team_id UUID NOT NULL, "
+        "post_type_id INT NOT NULL REFERENCES social_post_types(id), "
+        "platform VARCHAR(50) NOT NULL DEFAULT 'instagram', "
+        "days_before INT NOT NULL DEFAULT 0, "
+        "post_time TIME NOT NULL DEFAULT '10:00', "
+        "enabled BOOLEAN NOT NULL DEFAULT false, "
+        "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+        "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+        "UNIQUE(team_id, post_type_id, platform)"
+        ")"
+    );
+
+    db_->query(
+        "INSERT INTO social_post_types (name, display_name, description, sort_order) VALUES "
+        "('pre_match_announcement', 'Pre-Match Announcement', 'General pre-match announcement post', 1),"
+        "('game_day', 'Game Announcement', 'Game day promo post', 2),"
+        "('lineup', '20-Man Squad', 'Lineup or squad reveal post', 3),"
+        "('post_game', 'Match Result', 'Post-game result post', 4) "
+        "ON CONFLICT (name) DO NOTHING"
+    );
+}
+
 // ---------- Path Parameter Extraction ----------
 
 std::string SocialController::extractMatchIdFromPath(const std::string& path) {
     // Matches /api/social/match/{id}/team/... or /api/social/schedule/apply/{id}/...
-    std::regex r(R"(/api/social/(?:match|schedule/apply)/(\d+))");
+    std::regex r(R"(/api/social/(?:match|schedule/apply)/([^/]+))");
     std::smatch m;
     if (std::regex_search(path, m, r)) {
         return m[1].str();
@@ -141,16 +212,16 @@ std::string SocialController::extractTeamIdFromPath(const std::string& path) {
     //      or /api/social/calendar/team/{teamId}
     //      or /api/social/schedule/team/{teamId}
     //      or /api/social/schedule/apply/{matchId}/{teamId}
-    std::regex r1(R"(/api/social/(?:calendar|schedule)/team/(\d+))");
+    std::regex r1(R"(/api/social/(?:calendar|schedule)/team/([^/]+))");
     std::smatch m;
     if (std::regex_search(path, m, r1)) {
         return m[1].str();
     }
-    std::regex r2(R"(/api/social/match/\d+/team/(\d+))");
+    std::regex r2(R"(/api/social/match/[^/]+/team/([^/]+))");
     if (std::regex_search(path, m, r2)) {
         return m[1].str();
     }
-    std::regex r3(R"(/api/social/schedule/apply/\d+/(\d+))");
+    std::regex r3(R"(/api/social/schedule/apply/[^/]+/([^/]+))");
     if (std::regex_search(path, m, r3)) {
         return m[1].str();
     }
@@ -168,6 +239,8 @@ std::string SocialController::extractPostIdFromPath(const std::string& path) {
 }
 
 void SocialController::registerRoutes(Router& router, const std::string& prefix) {
+    ensureSocialSchema();
+
     std::cout << "Registering social routes with prefix: " << prefix << std::endl;
 
     // GET /api/social/post-types - List post types
