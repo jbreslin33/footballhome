@@ -462,6 +462,7 @@ Response EventController::handleGetMatches(const Request& request) {
         std::cout << "🔍 Getting matches for team: " << team_id << std::endl;
         
         // Query matches joined with events for date/title/venue (matches.id = events.id).
+        // Fetch logos dynamically from teams table
         std::ostringstream query;
         query << "SELECT m.id, COALESCE(NULLIF(e.title,''), CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) AS title, ";
         query << "e.event_date::text AS event_date, ";
@@ -471,42 +472,9 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "CASE WHEN m.match_status = 'completed' THEN true ";
         query << "WHEN e.event_date < NOW() - INTERVAL '90 minutes' THEN true ";
         query << "ELSE false END AS has_ended, ";
-        query << "COALESCE(NULLIF(ht.logo_url, ''), CASE ht.name ";
-        query << "WHEN 'Alloy Soccer Club' THEN '/images/teams/logos/alloy-sc.jpg' ";
-        query << "WHEN 'GAK' THEN '/images/teams/logos/gak.png' ";
-        query << "WHEN 'Jersey Shore Boca' THEN '/images/teams/logos/jersey-shore-boca.jpg' ";
-        query << "WHEN 'Lighthouse 1893 SC' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Lighthouse Boys Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Lighthouse Boys Club U23' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Lighthouse Old Timers Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Medford Strikers' THEN '/images/teams/logos/medford-strikers.png' ";
-        query << "WHEN 'Oaklyn United FC' THEN '/images/teams/logos/oaklyn-united.jpg' ";
-        query << "WHEN 'Philadelphia Heritage SC' THEN '/images/teams/logos/philly-heritage.jpeg' ";
-        query << "WHEN 'Philadelphia Soccer Club' THEN '/images/teams/logos/philly-soccer-club.png' ";
-        query << "WHEN 'Real Central NJ Soccer' THEN '/images/teams/logos/real-central-nj.png' ";
-        query << "WHEN 'Sewell Old Boys FC' THEN '/images/teams/logos/sewell-old-boys.jpg' ";
-        query << "WHEN 'Sewell''s Old Boys' THEN '/images/teams/logos/sewell-old-boys.jpg' ";
-        query << "WHEN 'Vidas United FC' THEN '/images/teams/logos/vidas-united.jpg' ";
-        query << "WHEN 'WC Predators' THEN '/images/teams/logos/wc-predators.jpg' ";
-        query << "ELSE NULL END) AS home_team_logo, ";
-        query << "COALESCE(NULLIF(awt.logo_url, ''), CASE awt.name ";
-        query << "WHEN 'Alloy Soccer Club' THEN '/images/teams/logos/alloy-sc.jpg' ";
-        query << "WHEN 'GAK' THEN '/images/teams/logos/gak.png' ";
-        query << "WHEN 'Jersey Shore Boca' THEN '/images/teams/logos/jersey-shore-boca.jpg' ";
-        query << "WHEN 'Lighthouse 1893 SC' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Lighthouse Boys Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Lighthouse Boys Club U23' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Lighthouse Old Timers Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
-        query << "WHEN 'Medford Strikers' THEN '/images/teams/logos/medford-strikers.png' ";
-        query << "WHEN 'Oaklyn United FC' THEN '/images/teams/logos/oaklyn-united.jpg' ";
-        query << "WHEN 'Philadelphia Heritage SC' THEN '/images/teams/logos/philly-heritage.jpeg' ";
-        query << "WHEN 'Philadelphia Soccer Club' THEN '/images/teams/logos/philly-soccer-club.png' ";
-        query << "WHEN 'Real Central NJ Soccer' THEN '/images/teams/logos/real-central-nj.png' ";
-        query << "WHEN 'Sewell Old Boys FC' THEN '/images/teams/logos/sewell-old-boys.jpg' ";
-        query << "WHEN 'Sewell''s Old Boys' THEN '/images/teams/logos/sewell-old-boys.jpg' ";
-        query << "WHEN 'Vidas United FC' THEN '/images/teams/logos/vidas-united.jpg' ";
-        query << "WHEN 'WC Predators' THEN '/images/teams/logos/wc-predators.jpg' ";
-        query << "ELSE NULL END) AS away_team_logo ";
+        query << "NULLIF(ht.logo_url, '') AS home_team_logo, ";
+        query << "NULLIF(awt.logo_url, '') AS away_team_logo, ";
+        query << "ht.id AS home_team_id, awt.id AS away_team_id ";
         query << "FROM matches m ";
         query << "JOIN events e ON e.id = m.id ";
         query << "LEFT JOIN venues v ON v.id = e.venue_id ";
