@@ -188,7 +188,8 @@ class SocialPostCard {
     const accent = accentColors[this.postTypeName] || '#6b7280';
 
     // Caption for textarea
-    const caption = (hasContent && p.caption) ? p.caption : this.buildCaption();
+    const rawCaption = (hasContent && p.caption) ? p.caption : this.buildCaption();
+    const caption = this.normalizeLegacyCaptionTime(rawCaption);
 
     // Status badge
     let badge = '';
@@ -1024,7 +1025,7 @@ class SocialPostCard {
   saveCaption() {
     const textarea = this.container.querySelector('.spc-caption');
     if (!textarea) return;
-    const caption = textarea.value.trim();
+    const caption = this.normalizeLegacyCaptionTime(textarea.value.trim());
     const ptId = this.post?.post_type_id || this.postTypeId;
     if (!ptId) return;
 
@@ -1064,6 +1065,24 @@ class SocialPostCard {
     if (postBtn) { postBtn.disabled = true; postBtn.textContent = '⏳ Recording video...'; }
 
     try {
+      // Persist the visible caption before publish so the post text matches the preview.
+      const textarea = this.container.querySelector('.spc-caption');
+      const currentCaption = this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || ''));
+      const ptId = this.post?.post_type_id || this.postTypeId;
+      if (ptId && currentCaption) {
+        await this.auth.fetch('/api/social/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            match_id: this.matchId,
+            team_id: this.teamId,
+            post_type_id: ptId,
+            caption: currentCaption,
+            status: this.post?.status || 'draft'
+          })
+        });
+      }
+
       let mediaData;
 
       if (this.animCanvas) {
@@ -1146,7 +1165,7 @@ class SocialPostCard {
 
     // Save current caption too
     const textarea = this.container.querySelector('.spc-caption');
-    const caption = textarea ? textarea.value.trim() : (this.post?.caption || '');
+    const caption = this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || ''));
 
     const schedBtn = this.container.querySelector('.spc-btn-schedule');
     if (schedBtn) { schedBtn.disabled = true; schedBtn.textContent = '⏳ Scheduling...'; }
@@ -1183,6 +1202,33 @@ class SocialPostCard {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  normalizeLegacyCaptionTime(caption) {
+    if (!caption) return caption;
+
+    const rawDate = this.matchContext?.event_date || this.matchContext?.date || this.matchContext?.match_date;
+    if (!rawDate) return caption;
+
+    const expected = this.parseMatchDisplayDate(rawDate);
+    const legacy = new Date(rawDate);
+    if (!expected || isNaN(legacy)) return caption;
+
+    const expectedTime = expected.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const legacyTime = legacy.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (!expectedTime || !legacyTime || expectedTime === legacyTime) return caption;
+
+    const lines = String(caption).split('\n');
+    let replaced = false;
+    const updated = lines.map(line => {
+      if (/^\s*⏰\s+/u.test(line) && line.includes(legacyTime)) {
+        replaced = true;
+        return line.replace(legacyTime, expectedTime);
+      }
+      return line;
+    });
+
+    return replaced ? updated.join('\n') : caption;
   }
 
   escapeHtml(str) {
