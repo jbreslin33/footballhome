@@ -16,6 +16,7 @@ class SocialPostCard {
     this.baseImage = null;       // base card without beam (Image object)
     this.animCanvas = null;      // live animated canvas
     this.animFrameId = null;     // requestAnimationFrame ID
+    this.animStartTime = null;   // persisted start time so beam angle survives re-renders
     this.cardWidth = 540;
     this.cardHeight = 540;
   }
@@ -442,7 +443,9 @@ class SocialPostCard {
     const beamSpread = 0.18; // half-angle of beam in radians (~10 degrees)
     const rotPeriod = 8; // seconds for one full 360° sweep
     const rotSpeed = (2 * Math.PI) / rotPeriod; // radians per second
-    const startTime = performance.now();
+    // Preserve startTime across re-renders so the beam angle never jumps
+    if (!this.animStartTime) this.animStartTime = performance.now();
+    const startTime = this.animStartTime;
 
     const drawFrame = (now) => {
       const elapsed = (now - startTime) / 1000;
