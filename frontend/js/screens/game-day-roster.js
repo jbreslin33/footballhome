@@ -359,9 +359,11 @@ class GameDayRosterScreen extends Screen {
     this.find('#gdr-away-name').textContent = m.away_team_name || 'Away';
 
     if (m.event_date) {
-      const d = new Date(m.event_date);
-      this.find('#gdr-date').textContent = '\ud83d\udcc5 ' + d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-      this.find('#gdr-time').textContent = '\ud83d\udd50 ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const d = this.parseMatchDisplayDate(m.event_date);
+      if (d) {
+        this.find('#gdr-date').textContent = '\ud83d\udcc5 ' + d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        this.find('#gdr-time').textContent = '\ud83d\udd50 ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
     }
     if (m.venue_name) {
       this.find('#gdr-venue').textContent = '\ud83d\udccd ' + this.titleCase(m.venue_name);
@@ -726,7 +728,7 @@ class GameDayRosterScreen extends Screen {
   copyAsText() {
     const m = this.matchDetails || {};
     const selected = this.players.filter(p => this.selectedPlayerIds.has(p.playerId));
-    const d = m.event_date ? new Date(m.event_date) : null;
+    const d = m.event_date ? this.parseMatchDisplayDate(m.event_date) : null;
 
     let text = `\u26bd GAME DAY\n`;
     text += `${m.home_team_name || 'Home'} vs ${m.away_team_name || 'Away'}\n`;
@@ -768,6 +770,31 @@ class GameDayRosterScreen extends Screen {
 
   titleCase(str) {
     return str.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+
+  parseMatchDisplayDate(rawDate) {
+    if (!rawDate) return null;
+    const s = String(rawDate).trim();
+
+    // Feed timestamps are sometimes sent with +00 even though they are intended as local kickoff times.
+    // For display, treat UTC-tagged values as local wall-clock time.
+    if (/(?:Z|\+00(?::?00)?)$/i.test(s)) {
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+      if (m) {
+        const d = new Date(
+          Number(m[1]),
+          Number(m[2]) - 1,
+          Number(m[3]),
+          Number(m[4]),
+          Number(m[5]),
+          Number(m[6] || 0)
+        );
+        if (!isNaN(d)) return d;
+      }
+    }
+
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
   }
 
   resolveActiveTeamId() {

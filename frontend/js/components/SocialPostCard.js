@@ -136,8 +136,8 @@ class SocialPostCard {
     let dateStr = '';
     let timeStr = '';
     if (rawDate) {
-      const d = new Date(rawDate);
-      if (!isNaN(d)) {
+      const d = this.parseMatchDisplayDate(rawDate);
+      if (d) {
         dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       }
@@ -272,8 +272,8 @@ class SocialPostCard {
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
     if (rawDate) {
-      const d = new Date(rawDate);
-      if (!isNaN(d)) {
+      const d = this.parseMatchDisplayDate(rawDate);
+      if (d) {
         dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       }
@@ -916,8 +916,8 @@ class SocialPostCard {
 
   getGameDayLabel(rawDate) {
     if (!rawDate) return 'MATCH PREVIEW';
-    const match = new Date(rawDate);
-    if (isNaN(match)) return 'MATCH PREVIEW';
+    const match = this.parseMatchDisplayDate(rawDate);
+    if (!match) return 'MATCH PREVIEW';
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const matchDay = new Date(match.getFullYear(), match.getMonth(), match.getDate());
@@ -926,6 +926,31 @@ class SocialPostCard {
     if (diffDays === 1) return 'TOMORROW';
     const dayName = match.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
     return `THIS ${dayName}`;
+  }
+
+  parseMatchDisplayDate(rawDate) {
+    if (!rawDate) return null;
+    const s = String(rawDate).trim();
+
+    // Feed timestamps are sometimes tagged +00 but represent local kickoff wall-clock time.
+    // For display, keep the same clock time users expect to see.
+    if (/(?:Z|\+00(?::?00)?)$/i.test(s)) {
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+      if (m) {
+        const d = new Date(
+          Number(m[1]),
+          Number(m[2]) - 1,
+          Number(m[3]),
+          Number(m[4]),
+          Number(m[5]),
+          Number(m[6] || 0)
+        );
+        if (!isNaN(d)) return d;
+      }
+    }
+
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
   }
 
   buildImageRoster() {
