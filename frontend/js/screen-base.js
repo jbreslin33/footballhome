@@ -23,6 +23,13 @@ class Screen {
 
     const trimmed = String(url).trim();
     if (!trimmed) return '';
+
+    // Handle legacy team logo filenames still present in DB records.
+    const assetAliases = {
+      '/images/teams/logos/lighthouse-1893-sc.png': '/images/teams/logos/lighthouse-1893.png'
+    };
+    if (assetAliases[trimmed]) return assetAliases[trimmed];
+
     if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
     return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
   }
