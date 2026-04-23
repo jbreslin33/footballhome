@@ -1323,153 +1323,6 @@
     }
   },
   {
-    "id": "d4060108-b706-4f5f-a165-8a93b1d36f75",
-    "title": "Lighthouse Boys Club U23 at Persepolis FC II",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Germantown Supersite",
-    "location_address": "1199 East Sedgwick Street, Philadelphia, PA 19150, US",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "completed",
-    "start_date_time": "2025-10-12T18:45:00.000Z",
-    "end_date_time": "2025-10-12T20:30:00.000Z",
-    "created_at": "2025-09-12T13:10:49.000Z",
-    "updated_at": "2025-11-04T17:47:13.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "466884",
-    "subvenue_id": "501883",
-    "source": {
-      "id": "68c41bdad93fd5000189836b",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "home_team_score": "8",
-        "away_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "away_team_score": "0",
-        "score_allowed": true,
-        "status": "completed",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f1f736300fa2e7142",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Lighthouse Boys Club U23",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8fb3eb0800fd755db8",
-          "primary_color": "",
-          "seed_id": "3279218",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d68f-e4bc-a2a3-cabfdee30661/large_square_Lighthouse.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f1f736300fa2e7142",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f9716a100fc8d454e",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Persepolis FC II",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8f562f54017935a21b",
-          "primary_color": "170202",
-          "seed_id": "3279220",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6b5-a12a-a76f-e61f3017bc57/large_square_Gemini_Generated_Image_h4esunh4esunh4es.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f9716a100fc8d454e",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "682f9676528c0e00bfc9d2f2",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "682f967a5d052e0001c4ec30"
-        },
-        "system": "StatNgin",
-        "id": "682f967a5d052e0001c4ec2f",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "68c41bdad93fd5000189836b",
-      "originator_type": "game_slot",
-      "status": "completed",
-      "team_1": {
-        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "originator_id": "68b9ec8f9716a100fc8d454e",
-        "name": "Persepolis FC II",
-        "score": "8",
-        "is_home_team": true,
-        "interval_scores": []
-      },
-      "team_2": {
-        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "originator_id": "68b9ec8f1f736300fa2e7142",
-        "name": "Lighthouse Boys Club U23",
-        "score": "0",
-        "is_home_team": false,
-        "interval_scores": []
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "quick",
-      "number_of_overtime": 0
-    }
-  },
-  {
     "id": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed",
     "title": "Philly Black Stars at Philadelphia SC Select",
     "event_type": "game",
@@ -1607,6 +1460,153 @@
         "originator_id": "68bd95ae7365f5000188deb7",
         "name": "Philly Black Stars",
         "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "d4060108-b706-4f5f-a165-8a93b1d36f75",
+    "title": "Lighthouse Boys Club U23 at Persepolis FC II",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Germantown Supersite",
+    "location_address": "1199 East Sedgwick Street, Philadelphia, PA 19150, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-12T18:45:00.000Z",
+    "end_date_time": "2025-10-12T20:30:00.000Z",
+    "created_at": "2025-09-12T13:10:49.000Z",
+    "updated_at": "2025-11-04T17:47:13.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "466884",
+    "subvenue_id": "501883",
+    "source": {
+      "id": "68c41bdad93fd5000189836b",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
+        "home_team_score": "8",
+        "away_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "away_team_score": "0",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f1f736300fa2e7142",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lighthouse Boys Club U23",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8fb3eb0800fd755db8",
+          "primary_color": "",
+          "seed_id": "3279218",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d68f-e4bc-a2a3-cabfdee30661/large_square_Lighthouse.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f1f736300fa2e7142",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f9716a100fc8d454e",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Persepolis FC II",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8f562f54017935a21b",
+          "primary_color": "170202",
+          "seed_id": "3279220",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6b5-a12a-a76f-e61f3017bc57/large_square_Gemini_Generated_Image_h4esunh4esunh4es.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f9716a100fc8d454e",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "682f9676528c0e00bfc9d2f2",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "682f967a5d052e0001c4ec30"
+        },
+        "system": "StatNgin",
+        "id": "682f967a5d052e0001c4ec2f",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68c41bdad93fd5000189836b",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
+        "originator_id": "68b9ec8f9716a100fc8d454e",
+        "name": "Persepolis FC II",
+        "score": "8",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
+        "originator_id": "68b9ec8f1f736300fa2e7142",
+        "name": "Lighthouse Boys Club U23",
+        "score": "0",
         "is_home_team": false,
         "interval_scores": []
       },

@@ -27,6 +27,7 @@ class CasaSqlGenerator extends BaseGenerator {
     this.teams = [];
     this.allTeams = [];
     this.standings = [];
+    this.teamLogos = new Map();  // Map of team name -> logo URL from SportsEngine API
   }
 
   normalizeScopeKey(value) {
@@ -127,6 +128,12 @@ class CasaSqlGenerator extends BaseGenerator {
     await this.parseMatches();
     console.log(`   Found ${this.matches.length} matches`);
     this.writeMatchesSql();
+    
+    // Apply team logos from SportsEngine API
+    if (this.teamLogos.size > 0) {
+      console.log('\n🎨 Applying team logos from SportsEngine API...');
+      this.writeTeamLogosSql();
+    }
     
     console.log('\n✓ SQL generation complete\n');
   }
@@ -264,6 +271,32 @@ ON CONFLICT (division_id, name) DO UPDATE SET
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-casa.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Write team logos SQL
+   * Applies logos from SportsEngine API (source of truth, reproducible)
+   * Logos are extracted from match data where teams appear in SportsEngine schedule
+   */
+  writeTeamLogosSql() {
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Team Logos - CASA (from SportsEngine API)
+-- Source: https://se-api.sportsengine.com/v3/microsites/events
+-- Reproducibility: Logos are extracted from match data, not manually curated
+-- Total logos applied: ${this.teamLogos.size}
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    for (const [teamName, logoUrl] of this.teamLogos) {
+      sql += `UPDATE teams SET logo_url = '${this.escapeSql(logoUrl)}'
+WHERE name = '${this.escapeSql(teamName)}' AND source_system_id = ${this.sourceSystemId};
+`;
+    }
+
+    const outputPath = path.join(__dirname, 'sql', `103.${this.leagueId}-team-logos-casa.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath} (${this.teamLogos.size} logos)`);
   }
 
   /**
@@ -502,6 +535,14 @@ ON CONFLICT (division_id, name) DO UPDATE SET
         
         // Use SportsEngine API UUID as external ID (stable, unique)
         const externalId = match.externalId || `${division.external_id}_${match.home.toLowerCase().replace(/\s+/g, '-')}_vs_${match.away.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        // Capture team logos from SportsEngine API (reproducible, no manual curation)
+        if (match.homeLogoUrl && !this.teamLogos.has(match.home)) {
+          this.teamLogos.set(match.home, match.homeLogoUrl);
+        }
+        if (match.awayLogoUrl && !this.teamLogos.has(match.away)) {
+          this.teamLogos.set(match.away, match.awayLogoUrl);
+        }
         
         // Add match (will be deduplicated by BaseGenerator)
         this.addMatch({

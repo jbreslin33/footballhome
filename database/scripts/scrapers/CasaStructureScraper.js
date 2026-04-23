@@ -269,6 +269,26 @@ class CasaStructureScraper {
   }
 
   /**
+   * Extract team logo from principals array in SportsEngine API response
+   * Looks for the team's principal object and gets logos.large_square
+   * @returns {string|null} - Logo URL or null if not found
+   */
+  _extractTeamLogo(event, teamName, isHomeTeam) {
+    if (!event.principals) return null;
+    
+    // Find the team principal by name
+    const teamPrincipal = event.principals.find(p => 
+      p.type === 'team' && 
+      p.extended_attributes?.name === teamName
+    );
+    
+    if (teamPrincipal && teamPrincipal.extended_attributes?.logos?.large_square) {
+      return teamPrincipal.extended_attributes.logos.large_square;
+    }
+    return null;
+  }
+
+  /**
    * Scrape schedule for a single division using the SportsEngine REST API.
    * Returns all matches for the season (past + future) with dates, scores, and status.
    *
@@ -276,8 +296,9 @@ class CasaStructureScraper {
    * - Requires a program_id (SportsEngine's internal season/division ID)
    * - Returns up to 100 events per page (paginated)
    * - Includes home/away teams, scores, dates, locations, status
+   * - Team logos available in principals array (logos.large_square)
    *
-   * @returns {Array<{home, away, time, status, score, date, homeScore, awayScore, externalId}>}
+   * @returns {Array<{home, away, homeLogoUrl, awayLogoUrl, time, status, score, date, homeScore, awayScore, externalId}>}
    */
   async scrapeSchedule(browser, division) {
     console.log(`   🌐 Schedule: ${division.name} (${division.externalId})`);
@@ -374,9 +395,15 @@ class CasaStructureScraper {
       const status = event.status === 'completed' ? 'Final' : 'Scheduled';
       const score = (homeScore !== null && awayScore !== null) ? `${homeScore} - ${awayScore}` : null;
 
+      // Extract team logos from principals array
+      const homeLogoUrl = this._extractTeamLogo(event, homeTeam, true);
+      const awayLogoUrl = this._extractTeamLogo(event, awayTeam, false);
+
       matches.push({
         home: homeTeam,
         away: awayTeam,
+        homeLogoUrl,
+        awayLogoUrl,
         time: timeStr,
         status,
         score,
@@ -475,6 +502,8 @@ class CasaStructureScraper {
             snapshot.matches.push({
               homeTeam: match.home,
               awayTeam: match.away,
+              homeLogoUrl: match.homeLogoUrl,
+              awayLogoUrl: match.awayLogoUrl,
               divisionName: division.name,
               divisionExternalId: division.externalId,
               date: match.startDateTime || null,
@@ -582,7 +611,9 @@ class CasaStructureScraper {
           match_count: divMatches.length,
           matches: divMatches.map(m => ({
             home: m.homeTeam,
+            homeLogoUrl: m.homeLogoUrl,
             away: m.awayTeam,
+            awayLogoUrl: m.awayLogoUrl,
             time: m.time,
             date: m.date,
             status: m.status === 'completed' ? 'Final' : m.status,
