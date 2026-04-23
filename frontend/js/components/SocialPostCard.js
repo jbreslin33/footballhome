@@ -189,7 +189,7 @@ class SocialPostCard {
 
     // Caption for textarea
     const rawCaption = (hasContent && p.caption) ? p.caption : this.buildCaption();
-    const caption = this.normalizeLegacyCaptionTime(rawCaption);
+    const caption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(rawCaption));
 
     // Status badge
     let badge = '';
@@ -1025,7 +1025,7 @@ class SocialPostCard {
   saveCaption() {
     const textarea = this.container.querySelector('.spc-caption');
     if (!textarea) return;
-    const caption = this.normalizeLegacyCaptionTime(textarea.value.trim());
+    const caption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea.value.trim()));
     const ptId = this.post?.post_type_id || this.postTypeId;
     if (!ptId) return;
 
@@ -1067,7 +1067,7 @@ class SocialPostCard {
     try {
       // Persist the visible caption before publish so the post text matches the preview.
       const textarea = this.container.querySelector('.spc-caption');
-      const currentCaption = this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || ''));
+      const currentCaption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || '')));
       const ptId = this.post?.post_type_id || this.postTypeId;
       if (ptId && currentCaption) {
         await this.auth.fetch('/api/social/posts', {
@@ -1165,7 +1165,7 @@ class SocialPostCard {
 
     // Save current caption too
     const textarea = this.container.querySelector('.spc-caption');
-    const caption = this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || ''));
+    const caption = this.normalizeLegacyCaptionVenue(this.normalizeLegacyCaptionTime(textarea ? textarea.value.trim() : (this.post?.caption || '')));
 
     const schedBtn = this.container.querySelector('.spc-btn-schedule');
     if (schedBtn) { schedBtn.disabled = true; schedBtn.textContent = '⏳ Scheduling...'; }
@@ -1202,6 +1202,26 @@ class SocialPostCard {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  normalizeLegacyCaptionVenue(caption) {
+    if (!caption) return caption;
+    const m = this.matchContext;
+    if (!m) return caption;
+    // Build the full venue string (name + address)
+    const fullVenue = this.buildVenueString(m);
+    if (!fullVenue) return caption;
+    // If the 📍 line already contains the full string, nothing to do
+    const lines = String(caption).split('\n');
+    let replaced = false;
+    const updated = lines.map(line => {
+      if (!/^\s*📍\s+/u.test(line)) return line;
+      if (line.includes(fullVenue)) return line; // already up to date
+      // Replace whatever follows 📍 with the full venue string
+      replaced = true;
+      return line.replace(/^(\s*📍\s+).+$/, `$1${fullVenue}`);
+    });
+    return replaced ? updated.join('\n') : caption;
   }
 
   normalizeLegacyCaptionTime(caption) {
