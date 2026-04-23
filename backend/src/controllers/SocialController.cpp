@@ -122,6 +122,7 @@ void SocialController::ensurePromotionalPostsSchema() {
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS body_lines TEXT");
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS footer VARCHAR(200)");
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS overlay_logos TEXT");
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS overlay_text VARCHAR(300)");
 }
 
 void SocialController::ensureSocialSchema() {
@@ -1542,7 +1543,7 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
         pqxx::result result = db_->query(
             "SELECT id, title, caption, image_path, image_url, "
             "status, scheduled_at, posted_at, external_media_id, error_message, "
-            "heading, subheading, body_lines, footer, overlay_logos, "
+            "heading, subheading, body_lines, footer, overlay_logos, overlay_text, "
             "created_at, updated_at "
             "FROM promotional_posts ORDER BY created_at DESC"
         );
@@ -1568,7 +1569,8 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
             json << "\"subheading\":" << (row["subheading"].is_null() ? "null" : "\"" + escapeJson(row["subheading"].c_str()) + "\"") << ",";
             json << "\"body_lines\":" << (row["body_lines"].is_null() ? "null" : "\"" + escapeJson(row["body_lines"].c_str()) + "\"") << ",";
             json << "\"footer\":" << (row["footer"].is_null() ? "null" : "\"" + escapeJson(row["footer"].c_str()) + "\"") << ",";
-            json << "\"overlay_logos\":" << (row["overlay_logos"].is_null() ? "null" : "\"" + escapeJson(row["overlay_logos"].c_str()) + "\"");
+            json << "\"overlay_logos\":" << (row["overlay_logos"].is_null() ? "null" : "\"" + escapeJson(row["overlay_logos"].c_str()) + "\"") << ",";
+            json << "\"overlay_text\":" << (row["overlay_text"].is_null() ? "null" : "\"" + escapeJson(row["overlay_text"].c_str()) + "\"");
             json << "}";
         }
         json << "]";
@@ -1595,6 +1597,7 @@ Response SocialController::handleSavePromoPost(const Request& request) {
         std::string bodyLines = extractJsonField(body, "body_lines");
         std::string footer = extractJsonField(body, "footer");
         std::string overlayLogos = extractJsonField(body, "overlay_logos");
+        std::string overlayText = extractJsonField(body, "overlay_text");
 
         if (title.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -1615,10 +1618,11 @@ Response SocialController::handleSavePromoPost(const Request& request) {
                 "body_lines = " + (bodyLines.empty() ? "NULL" : "'" + escapeSql(bodyLines) + "'") + ", "
                 "footer = " + (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") + ", "
                 "overlay_logos = " + (overlayLogos.empty() ? "NULL" : "'" + escapeSql(overlayLogos) + "'") + ", "
+                "overlay_text = " + (overlayText.empty() ? "NULL" : "'" + escapeSql(overlayText) + "'") + ", "
                 "updated_at = NOW() "
                 "WHERE id = " + escapeSql(id) + " RETURNING id";
         } else {
-            query = "INSERT INTO promotional_posts (title, caption, status, scheduled_at, heading, subheading, body_lines, footer, overlay_logos) "
+            query = "INSERT INTO promotional_posts (title, caption, status, scheduled_at, heading, subheading, body_lines, footer, overlay_logos, overlay_text) "
                 "VALUES ('" + escapeSql(title) + "', " +
                 (caption.empty() ? "NULL" : "'" + escapeSql(caption) + "'") + ", '" +
                 escapeSql(status) + "', " +
@@ -1627,7 +1631,8 @@ Response SocialController::handleSavePromoPost(const Request& request) {
                 (subheading.empty() ? "NULL" : "'" + escapeSql(subheading) + "'") + ", " +
                 (bodyLines.empty() ? "NULL" : "'" + escapeSql(bodyLines) + "'") + ", " +
                 (footer.empty() ? "NULL" : "'" + escapeSql(footer) + "'") + ", " +
-                (overlayLogos.empty() ? "NULL" : "'" + escapeSql(overlayLogos) + "'") +
+                (overlayLogos.empty() ? "NULL" : "'" + escapeSql(overlayLogos) + "'") + ", " +
+                (overlayText.empty() ? "NULL" : "'" + escapeSql(overlayText) + "'") +
                 ") RETURNING id";
         }
 

@@ -29,6 +29,7 @@ class PromotionalPostsScreen extends Screen {
       footer: '',
       caption: '',
       overlay_logos: '',
+      overlay_text: '',
     };
   }
 
@@ -223,6 +224,11 @@ class PromotionalPostsScreen extends Screen {
           </div>
         </div>
 
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:4px;">Overlay Text <span style="opacity:0.5;font-weight:400;font-size:0.85rem;">(appears with logos)</span></label>
+          <input type="text" id="promo-overlay-text" value="${this.esc(p.overlay_text || '')}" placeholder="e.g. JOIN NOW • LIMITED SPOTS" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
+        </div>
+
         <div id="canvas-preview-section" style="margin-bottom:16px;display:${isMedia ? 'none' : 'block'};">
           <label style="display:block;font-weight:600;margin-bottom:8px;">Preview</label>
           <div id="promo-preview" style="text-align:center;">
@@ -303,6 +309,7 @@ class PromotionalPostsScreen extends Screen {
       footer: (this.find('#promo-footer')?.value || '').trim(),
       caption: (this.find('#promo-caption')?.value || '').trim(),
       overlay_logos: overlaysWithPos.map(s => `${s.key}:${s.pos}`).join(','),
+      overlay_text: (this.find('#promo-overlay-text')?.value || '').trim(),
     };
   }
 
@@ -317,6 +324,7 @@ class PromotionalPostsScreen extends Screen {
       bodyLines: data.body_lines ? data.body_lines.split('\n').filter(l => l.trim()) : [],
       footer: data.footer || '',
       overlays: overlaysWithPos,
+      overlayText: data.overlay_text || '',
     };
     this.drawPromoCardOnCanvas(canvas, promo);
   }
@@ -506,6 +514,7 @@ class PromotionalPostsScreen extends Screen {
         body_lines: data.body_lines,
         footer: data.footer,
         overlay_logos: data.overlay_logos,
+        overlay_text: data.overlay_text,
       };
       if (this.editing.id) saveBody.id = String(this.editing.id);
 
@@ -779,93 +788,114 @@ class PromotionalPostsScreen extends Screen {
     ctx.fillText('Registration & interest form in bio', w / 2, leagueY + 45);
 
     // --- Position-based logo overlays (tic-tac-toe grid) ---
+    // Sponsor always at bottom; other logos positioned above
     const overlays = promo.overlays || [];
-    if (overlays.length > 0) {
+    const sponsorOverlay = overlays.find(s => s.key === 'sponsor');
+    const nonSponsorOverlays = overlays.filter(s => s.key !== 'sponsor');
+
+    if (nonSponsorOverlays.length > 0 || sponsorOverlay) {
       const margin = 50;
       const logoH = 60;
       const gap = 14;
-      const smallFont = 22;
 
-      // Group overlays by position region
-      const regions = {};
-      overlays.forEach(s => {
-        if (!regions[s.pos]) regions[s.pos] = [];
-        regions[s.pos].push(s.key);
-      });
+      // Draw non-sponsor overlays in their grid positions
+      if (nonSponsorOverlays.length > 0) {
+        const regions = {};
+        nonSponsorOverlays.forEach(s => {
+          if (!regions[s.pos]) regions[s.pos] = [];
+          regions[s.pos].push(s.key);
+        });
 
-      for (const [pos, keys] of Object.entries(regions)) {
-        let anchorX, anchorY, alignH, alignV;
-        if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
-        else { anchorY = h - margin; alignV = 'bottom'; }
-        if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
-        else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
-        else { anchorX = w - margin; alignH = 'right'; }
+        for (const [pos, keys] of Object.entries(regions)) {
+          let anchorX, anchorY, alignH, alignV;
+          if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
+          else { anchorY = h - margin - 200; alignV = 'bottom'; } // Reserve space at bottom for sponsor
+          if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
+          else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
+          else { anchorX = w - margin; alignH = 'right'; }
 
-        // Measure items
-        const items = [];
-        keys.forEach(key => {
-          if (key === 'sponsor') {
-            const img = this.loadedLogos['sponsor'];
-            const sH = 140;
-            const sW = img ? sH * (img.width / img.height) : 0;
-            const sponsorFont = 28;
-            ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
-            const pillW = ctx.measureText('Sponsored by').width + 12;
-            items.push({ type: 'sponsor', w: pillW + gap + sW, h: sH, imgW: sW, imgH: sH, pillW, img, fontSize: sponsorFont });
-          } else {
+          const items = [];
+          keys.forEach(key => {
             const img = this.loadedLogos[key];
             if (img) {
               const lw = logoH * (img.width / img.height);
               items.push({ type: 'logo', w: lw, h: logoH, img, key });
             }
-          }
-        });
+          });
 
-        if (items.length === 0) continue;
+          if (items.length === 0) continue;
 
-        const totalW = items.reduce((sum, it) => sum + it.w, 0) + Math.max(0, items.length - 1) * gap;
-        const maxH = Math.max(...items.map(it => it.h));
+          const totalW = items.reduce((sum, it) => sum + it.w, 0) + Math.max(0, items.length - 1) * gap;
+          const maxH = Math.max(...items.map(it => it.h));
 
-        let startX;
-        if (alignH === 'left') startX = anchorX;
-        else if (alignH === 'center') startX = anchorX - totalW / 2;
-        else startX = anchorX - totalW;
+          let startX;
+          if (alignH === 'left') startX = anchorX;
+          else if (alignH === 'center') startX = anchorX - totalW / 2;
+          else startX = anchorX - totalW;
 
-        let curX = startX;
-        items.forEach(item => {
-          let itemY;
-          if (alignV === 'top') itemY = anchorY;
-          else itemY = anchorY - maxH;
+          let curX = startX;
+          items.forEach(item => {
+            let itemY;
+            if (alignV === 'top') itemY = anchorY;
+            else itemY = anchorY - maxH;
 
-          if (item.type === 'sponsor') {
-            const midY = itemY + maxH / 2;
-            const pillH = item.fontSize + 8;
-            ctx.fillStyle = 'rgba(65,105,225,0.9)';
-            ctx.beginPath();
-            ctx.roundRect(curX, midY - pillH / 2, item.pillW, pillH, 4);
-            ctx.fill();
-            ctx.fillStyle = '#eeeeee';
-            ctx.font = `600 ${item.fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Sponsored by', curX + item.pillW / 2, midY);
-            if (item.img) {
-              ctx.shadowColor = 'rgba(0,0,0,0.6)';
-              ctx.shadowBlur = 6;
-              ctx.drawImage(item.img, curX + item.pillW + gap, midY - item.imgH / 2, item.imgW, item.imgH);
-              ctx.shadowColor = 'transparent';
-              ctx.shadowBlur = 0;
-            }
-            ctx.textAlign = 'center';
-          } else {
             ctx.shadowColor = 'rgba(0,0,0,0.5)';
             ctx.shadowBlur = 6;
             ctx.drawImage(item.img, curX, itemY + (maxH - item.h) / 2, item.w, item.h);
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
+            curX += item.w + gap;
+          });
+
+          // Draw overlay text above non-sponsor logos
+          if (promo.overlayText) {
+            const textY = alignV === 'top' ? anchorY + maxH + 30 : anchorY - maxH - 50;
+            ctx.fillStyle = white;
+            ctx.font = '600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = alignV === 'top' ? 'top' : 'bottom';
+            ctx.fillText(promo.overlayText, w / 2, textY);
           }
-          curX += item.w + gap;
-        });
+        }
+      }
+
+      // Draw sponsor at bottom (always center)
+      if (sponsorOverlay) {
+        const img = this.loadedLogos['sponsor'];
+        const sH = 100;
+        const sW = img ? sH * (img.width / img.height) : 0;
+        const sponsorFont = 24;
+        const bottomMargin = 40;
+        const sponsorY = h - bottomMargin - sH;
+
+        ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+        const pillW = ctx.measureText('Sponsored by').width + 12;
+        const totalSponsorW = pillW + gap + sW;
+        const sponsorX = w / 2 - totalSponsorW / 2;
+
+        // Pill background
+        const pillH = sponsorFont + 8;
+        const pillY = sponsorY + (sH - pillH) / 2;
+        ctx.fillStyle = 'rgba(65,105,225,0.9)';
+        ctx.beginPath();
+        ctx.roundRect(sponsorX, pillY, pillW, pillH, 4);
+        ctx.fill();
+
+        // Pill text
+        ctx.fillStyle = '#eeeeee';
+        ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sponsored by', sponsorX + pillW / 2, pillY + pillH / 2);
+
+        // Sponsor logo
+        if (img) {
+          ctx.shadowColor = 'rgba(0,0,0,0.6)';
+          ctx.shadowBlur = 6;
+          ctx.drawImage(img, sponsorX + pillW + gap, sponsorY, sW, sH);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+        }
       }
     }
   }
