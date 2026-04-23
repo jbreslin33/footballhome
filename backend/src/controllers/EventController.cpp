@@ -476,6 +476,9 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "WHEN 'GAK' THEN '/images/teams/logos/gak.png' ";
         query << "WHEN 'Jersey Shore Boca' THEN '/images/teams/logos/jersey-shore-boca.jpg' ";
         query << "WHEN 'Lighthouse 1893 SC' THEN '/images/teams/logos/lighthouse-1893.png' ";
+        query << "WHEN 'Lighthouse Boys Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
+        query << "WHEN 'Lighthouse Boys Club U23' THEN '/images/teams/logos/lighthouse-1893.png' ";
+        query << "WHEN 'Lighthouse Old Timers Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
         query << "WHEN 'Medford Strikers' THEN '/images/teams/logos/medford-strikers.png' ";
         query << "WHEN 'Oaklyn United FC' THEN '/images/teams/logos/oaklyn-united.jpg' ";
         query << "WHEN 'Philadelphia Heritage SC' THEN '/images/teams/logos/philly-heritage.jpeg' ";
@@ -491,6 +494,9 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "WHEN 'GAK' THEN '/images/teams/logos/gak.png' ";
         query << "WHEN 'Jersey Shore Boca' THEN '/images/teams/logos/jersey-shore-boca.jpg' ";
         query << "WHEN 'Lighthouse 1893 SC' THEN '/images/teams/logos/lighthouse-1893.png' ";
+        query << "WHEN 'Lighthouse Boys Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
+        query << "WHEN 'Lighthouse Boys Club U23' THEN '/images/teams/logos/lighthouse-1893.png' ";
+        query << "WHEN 'Lighthouse Old Timers Club' THEN '/images/teams/logos/lighthouse-1893.png' ";
         query << "WHEN 'Medford Strikers' THEN '/images/teams/logos/medford-strikers.png' ";
         query << "WHEN 'Oaklyn United FC' THEN '/images/teams/logos/oaklyn-united.jpg' ";
         query << "WHEN 'Philadelphia Heritage SC' THEN '/images/teams/logos/philly-heritage.jpeg' ";
