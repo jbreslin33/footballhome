@@ -11,10 +11,16 @@ class PromotionalPostsScreen extends Screen {
     this.overlayOptions = [
       { key: 'lighthouse_graphic', label: 'Lighthouse + Beam', icon: '🏮', src: null, pos: null, isGraphic: true },
       { key: 'lighthouse', label: 'Lighthouse 1893 Logo', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: null },
-      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: null },
-      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null },
+      { key: 'fifa', label: 'FIFA', icon: '🌍', src: '/images/leagues/fifa.png', pos: null },
+      { key: 'concacaf', label: 'Concacaf', icon: '🌎', src: '/images/leagues/concacaf.png', pos: null },
+      { key: 'ussoccer', label: 'US Soccer', icon: '🇺🇸', src: '/images/leagues/ussoccer.png', pos: null },
+      { key: 'ussfr1', label: 'USSF Region 1', icon: '🇺🇸', src: '/images/leagues/ussf-region1.jpg', pos: null },
+      { key: 'epsa', label: 'Eastern PA Soccer', icon: '⚽', src: '/images/leagues/epsa.png', pos: null },
       { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
-      { key: 'icsl', label: 'ICSL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
+      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: null },
+      { key: 'tcwsl', label: 'Tri County WSL', icon: '⚽', src: '/images/leagues/tcwsl.png', pos: null },
+      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null },
+      { key: 'icsl', label: 'Inter County SL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
       { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk.png', pos: null },
     ];
     this.currentFile = null;
@@ -219,10 +225,11 @@ class PromotionalPostsScreen extends Screen {
 
         <div style="margin-bottom:16px;">
           <label style="display:block;font-weight:600;margin-bottom:8px;">Logo Overlays <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— tap a grid cell to place, tap again to remove</span></label>
-          <div style="display:flex;flex-direction:column;gap:8px;">
+          <div id="overlay-list" style="display:flex;flex-direction:column;gap:8px;">
             ${this.overlayOptions.map(o => `
-              <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
-                ${o.src ? `<img src="${o.src}" style="height:28px;width:28px;object-fit:contain;border-radius:4px;flex-shrink:0;">` : `<span style="font-size:20px;flex-shrink:0;">${o.icon}</span>`}
+              <div class="overlay-row" draggable="true" data-key="${o.key}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);cursor:grab;">
+                <span style="font-size:14px;opacity:0.4;flex-shrink:0;">⠿</span>
+                ${o.src ? `<img src="${o.src}" style="height:28px;width:auto;max-width:60px;object-fit:contain;border-radius:4px;flex-shrink:0;">` : `<span style="font-size:20px;flex-shrink:0;">${o.icon}</span>`}
                 <span style="font-size:0.9rem;flex:1;">${o.label}</span>
                 <div style="display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(2,22px);gap:2px;flex-shrink:0;">
                   ${this.positions.map(pos => `
@@ -237,11 +244,6 @@ class PromotionalPostsScreen extends Screen {
               </div>
             `).join('')}
           </div>
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <label style="display:block;font-weight:600;margin-bottom:4px;">Overlay Text <span style="opacity:0.5;font-weight:400;font-size:0.85rem;">(appears with logos)</span></label>
-          <input type="text" id="promo-overlay-text" value="${this.esc(p.overlay_text || '')}" placeholder="e.g. JOIN NOW • LIMITED SPOTS" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:1rem;">
         </div>
 
         <div id="canvas-preview-section" style="margin-bottom:16px;display:${isMedia ? 'none' : 'block'};">
@@ -286,6 +288,40 @@ class PromotionalPostsScreen extends Screen {
       driveBtn.addEventListener('click', () => this.openDriveGallery());
     }
 
+    // Wire up drag-to-reorder overlay rows
+    const overlayList = container.querySelector('#overlay-list');
+    if (overlayList) {
+      let dragSrc = null;
+      overlayList.querySelectorAll('.overlay-row').forEach(row => {
+        row.addEventListener('dragstart', (e) => {
+          dragSrc = row;
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => row.style.opacity = '0.4', 0);
+        });
+        row.addEventListener('dragend', () => { row.style.opacity = ''; });
+        row.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+        row.addEventListener('dragenter', (e) => { e.preventDefault(); row.style.outline = '2px solid var(--accent-color)'; });
+        row.addEventListener('dragleave', () => { row.style.outline = ''; });
+        row.addEventListener('drop', (e) => {
+          e.preventDefault();
+          row.style.outline = '';
+          if (dragSrc === row) return;
+          const rows = [...overlayList.querySelectorAll('.overlay-row')];
+          const srcIdx = rows.indexOf(dragSrc);
+          const dstIdx = rows.indexOf(row);
+          // Reorder overlayOptions array to match
+          const [moved] = this.overlayOptions.splice(srcIdx, 1);
+          this.overlayOptions.splice(dstIdx, 0, moved);
+          // Save current pos values before re-render
+          this.overlayOptions.forEach(o => {
+            const h = container.querySelector(`#pos-${o.key}`);
+            if (h) o.pos = h.value === 'off' ? null : h.value;
+          });
+          this.renderForm(container);
+        });
+      });
+    }
+
     // Wire up tic-tac-toe position grid
     container.querySelectorAll('.pos-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -324,7 +360,7 @@ class PromotionalPostsScreen extends Screen {
       footer: (this.find('#promo-footer')?.value || '').trim(),
       caption: (this.find('#promo-caption')?.value || '').trim(),
       overlay_logos: overlaysWithPos.map(s => `${s.key}:${s.pos}`).join(','),
-      overlay_text: (this.find('#promo-overlay-text')?.value || '').trim(),
+      overlay_text: '',
     };
   }
 
@@ -807,7 +843,7 @@ class PromotionalPostsScreen extends Screen {
         for (const [pos, keys] of Object.entries(regions)) {
           let anchorX, anchorY, alignH, alignV;
           if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
-          else { anchorY = h - margin - 200; alignV = 'bottom'; } // Reserve space at bottom for sponsor
+          else { anchorY = h - margin; alignV = 'bottom'; }
           if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
           else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
           else { anchorX = w - margin; alignH = 'right'; }
@@ -845,26 +881,18 @@ class PromotionalPostsScreen extends Screen {
             curX += item.w + gap;
           });
 
-          // Draw overlay text above non-sponsor logos
-          if (promo.overlayText) {
-            const textY = alignV === 'top' ? anchorY + maxH + 30 : anchorY - maxH - 50;
-            ctx.fillStyle = white;
-            ctx.font = '600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = alignV === 'top' ? 'top' : 'bottom';
-            ctx.fillText(promo.overlayText, w / 2, textY);
-          }
         }
       }
 
-      // Draw sponsor at bottom (always center)
+      // Draw sponsor just above any bottom-row logos
       if (sponsorOverlay) {
         const img = this.loadedLogos['sponsor'];
         const sH = 100;
         const sW = img ? sH * (img.width / img.height) : 0;
         const sponsorFont = 24;
-        const bottomMargin = 40;
-        const sponsorY = h - bottomMargin - sH;
+        const hasBottomLogos = nonSponsorOverlays.some(o => o.pos && o.pos.startsWith('b'));
+        const sponsorBottomY = hasBottomLogos ? h - margin - logoH - gap : h - margin;
+        const sponsorY = sponsorBottomY - sH;
 
         ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
         const pillW = ctx.measureText('Sponsored by').width + 12;
@@ -937,7 +965,7 @@ class PromotionalPostsScreen extends Screen {
 
     const beamLen = Math.max(w, h) * 1.2;
     const beamSpread = 0.18;
-    const rotPeriod = 8;
+    const rotPeriod = 20;
     const rotSpeed = (2 * Math.PI) / rotPeriod;
 
     if (!this.animStartTime) this.animStartTime = performance.now();
@@ -1130,7 +1158,7 @@ class PromotionalPostsScreen extends Screen {
         for (const [pos, keys] of Object.entries(regions)) {
           let anchorX, anchorY, alignH, alignV;
           if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
-          else { anchorY = h - margin - 200; alignV = 'bottom'; }
+          else { anchorY = h - margin; alignV = 'bottom'; }
           if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
           else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
           else { anchorX = w - margin; alignH = 'right'; }
@@ -1168,14 +1196,6 @@ class PromotionalPostsScreen extends Screen {
             curX += item.w + gap;
           });
 
-          if (promo.overlayText) {
-            const textY = alignV === 'top' ? anchorY + maxH + 30 : anchorY - maxH - 50;
-            ctx.fillStyle = white;
-            ctx.font = '600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = alignV === 'top' ? 'top' : 'bottom';
-            ctx.fillText(promo.overlayText, w / 2, textY);
-          }
         }
       }
 
@@ -1184,8 +1204,9 @@ class PromotionalPostsScreen extends Screen {
         const sH = 100;
         const sW = img ? sH * (img.width / img.height) : 0;
         const sponsorFont = 24;
-        const bottomMargin = 40;
-        const sponsorY = h - bottomMargin - sH;
+        const hasBottomLogos = nonSponsorOverlays.some(o => o.pos && o.pos.startsWith('b'));
+        const sponsorBottomY = hasBottomLogos ? h - margin - logoH - gap : h - margin;
+        const sponsorY = sponsorBottomY - sH;
 
         ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
         const pillW = ctx.measureText('Sponsored by').width + 12;
@@ -1424,6 +1445,83 @@ class PromotionalPostsScreen extends Screen {
     oceanGrad.addColorStop(1, '#0d4a7a');
     ctx.fillStyle = oceanGrad;
     ctx.fillRect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
+
+    // Randomized fish pass-throughs (changes every few seconds)
+    const rand = (n) => {
+      const x = Math.sin(n * 12.9898) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    const drawFish = (fx, fy, size, type, color, dir) => {
+      ctx.save();
+      ctx.translate(fx, fy);
+      if (dir < 0) ctx.scale(-1, 1);
+
+      ctx.fillStyle = color;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 0.8 * s;
+
+      if (type === 0) {
+        // Oval fish
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 4.2 * size, 2.2 * size, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 1) {
+        // Pointed fish
+        ctx.beginPath();
+        ctx.moveTo(-4.2 * size, 0);
+        ctx.lineTo(2.8 * size, -2.1 * size);
+        ctx.lineTo(4.2 * size, 0);
+        ctx.lineTo(2.8 * size, 2.1 * size);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Chubbier fish
+        ctx.beginPath();
+        ctx.ellipse(0.5 * size, 0, 4.6 * size, 2.7 * size, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Tail
+      ctx.beginPath();
+      ctx.moveTo(-4.2 * size, 0);
+      ctx.lineTo(-7.0 * size, -2.0 * size);
+      ctx.lineTo(-6.0 * size, 0);
+      ctx.lineTo(-7.0 * size, 2.0 * size);
+      ctx.closePath();
+      ctx.fill();
+
+      // Eye
+      ctx.fillStyle = '#f3f7ff';
+      ctx.beginPath();
+      ctx.arc(2.6 * size, -0.5 * size, 0.8 * size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0b1b2b';
+      ctx.beginPath();
+      ctx.arc(2.8 * size, -0.45 * size, 0.35 * size, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    const fishColors = ['#f7a64b', '#4fc3f7', '#8ce99a', '#f38bb8', '#ffd166'];
+    const fishSlot = Math.floor(t / 3.5);
+    const fishCount = 7;
+    for (let i = 0; i < fishCount; i++) {
+      const seed = fishSlot * 97 + i * 31;
+      const dir = rand(seed + 1) > 0.5 ? 1 : -1;
+      const lane = 3 + rand(seed + 2) * (22 * s - 7);
+      const speed = 16 + rand(seed + 3) * 26;
+      const size = 0.55 * s + rand(seed + 4) * 0.55 * s;
+      const type = Math.floor(rand(seed + 5) * 3);
+      const color = fishColors[Math.floor(rand(seed + 6) * fishColors.length)];
+      const bob = Math.sin(t * (2.2 + rand(seed + 7) * 1.4) + i * 1.7) * (0.8 * s);
+      const pad = 18 * s;
+      const span = oceanW * 2 + pad * 2;
+      const travel = ((t * speed + rand(seed + 8) * span) % span) - pad;
+      const fx = dir > 0 ? (lhX - oceanW + travel) : (lhX + oceanW - travel);
+      const fy = oceanY + lane + bob;
+      drawFish(fx, fy, size, type, color, dir);
+    }
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.lineWidth = 1.5 * s;
