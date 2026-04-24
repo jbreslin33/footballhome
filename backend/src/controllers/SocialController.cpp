@@ -338,6 +338,11 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
         return this->handlePublishPromoPost(request);
     });
 
+    // DELETE /api/social/promos/:promoId - Delete a promotional post
+    router.del(prefix + "/promos/:promoId", [this](const Request& request) {
+        return this->handleDeletePromoPost(request);
+    });
+
     // ---------- Content Posts (User-uploaded media) ----------
 
     // GET /api/social/content - List all content posts
@@ -1977,6 +1982,29 @@ Response SocialController::handleSaveContentPost(const Request& request) {
 
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, "Failed to save content post"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleDeletePromoPost(const Request& request) {
+    try {
+        ensurePromotionalPostsSchema();
+
+        std::string promoId = extractPromoIdFromPath(request.getPath());
+        if (promoId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "promoId is required"));
+        }
+
+        // Delete the promotional post
+        db_->query(
+            "DELETE FROM promotional_posts WHERE id = " + escapeSql(promoId)
+        );
+
+        return Response(HttpStatus::OK,
+            createJSONResponse(true, "Promotional post deleted"));
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));

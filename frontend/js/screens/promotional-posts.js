@@ -9,7 +9,8 @@ class PromotionalPostsScreen extends Screen {
     this.positions = ['tl','tc','tr','bl','bc','br'];
     this.positionLabels = { tl:'↖', tc:'↑', tr:'↗', bl:'↙', bc:'↓', br:'↘' };
     this.overlayOptions = [
-      { key: 'lighthouse', label: 'Lighthouse 1893', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: null },
+      { key: 'lighthouse_graphic', label: 'Lighthouse + Beam', icon: '🏮', src: null, pos: null, isGraphic: true },
+      { key: 'lighthouse', label: 'Lighthouse 1893 Logo', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: null },
       { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
       { key: 'icsl', label: 'ICSL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
       { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk.png', pos: null },
@@ -17,6 +18,8 @@ class PromotionalPostsScreen extends Screen {
     this.currentFile = null;
     this.currentPreviewUrl = null;
     this.mediaType = 'card'; // 'card' or 'media'
+    this.animFrameId = null;
+    this.animStartTime = null;
     this.loadLogos();
   }
 
@@ -71,6 +74,13 @@ class PromotionalPostsScreen extends Screen {
     return div;
   }
 
+  onLeave() {
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+  }
+
   onEnter(params) {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
@@ -106,6 +116,9 @@ class PromotionalPostsScreen extends Screen {
 
       const cancelBtn = e.target.closest('.cancel-schedule-btn');
       if (cancelBtn) { this.cancelSchedule(parseInt(cancelBtn.dataset.id)); return; }
+
+      const deleteBtn = e.target.closest('.delete-btn');
+      if (deleteBtn) { this.deletePromo(parseInt(deleteBtn.dataset.id)); return; }
     });
     this.loadAndRender();
   }
@@ -326,7 +339,7 @@ class PromotionalPostsScreen extends Screen {
       overlays: overlaysWithPos,
       overlayText: data.overlay_text || '',
     };
-    this.drawPromoCardOnCanvas(canvas, promo);
+    this.startPromoAnimation(canvas, promo);
   }
 
   esc(str) {
@@ -645,6 +658,7 @@ class PromotionalPostsScreen extends Screen {
                   ? `<span style="color:#2196F3;font-weight:600;">⏳ Publishing to Instagram...</span>`
                   : `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                       <button class="btn btn-secondary edit-btn" data-id="${p.id}" style="padding:8px 14px;">✏️ Edit</button>
+                      <button class="btn btn-danger delete-btn" data-id="${p.id}" style="padding:8px 14px;background:#d32f2f;color:#fff;border:none;border-radius:6px;cursor:pointer;">🗑️ Delete</button>
                       ${p.image_url ? `<button class="btn btn-primary publish-btn" data-id="${p.id}" style="padding: 10px 20px;">🚀 Post Now</button>` : ''}
                       ${p.image_url ? `<div style="display:flex;align-items:center;gap:6px;">
                         <input type="datetime-local" id="schedule-time-${p.id}" style="padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.85rem;">
@@ -747,37 +761,19 @@ class PromotionalPostsScreen extends Screen {
     ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(promo.subheading, w / 2, 295);
 
-    // --- Age group pills ---
-    const pillStartY = 370;
-    const pillH = 64;
-    const pillGap = 20;
-    const pillW = 520;
-
+    // --- Body lines (plain text) ---
+    const bodyLineStartY = 380;
+    const bodyLineGap = 50;
+    ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     promo.bodyLines.forEach((line, i) => {
-      const py = pillStartY + i * (pillH + pillGap);
-
-      // Pill background - semi-transparent white
-      const pillRadius = pillH / 2;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.beginPath();
-      ctx.roundRect(w / 2 - pillW / 2, py, pillW, pillH, pillRadius);
-      ctx.fill();
-
-      // Pill border
-      ctx.strokeStyle = 'rgba(245, 212, 66, 0.4)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(w / 2 - pillW / 2, py, pillW, pillH, pillRadius);
-      ctx.stroke();
-
-      // Pill text
-      ctx.fillStyle = white;
-      ctx.font = '700 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.fillText(line, w / 2, py + pillH / 2 + 10);
+      ctx.fillText(line, w / 2, bodyLineStartY + i * bodyLineGap);
     });
 
     // --- Footer league name ---
-    const leagueY = pillStartY + promo.bodyLines.length * (pillH + pillGap) + 50;
+    const leagueY = bodyLineStartY + promo.bodyLines.length * bodyLineGap + 50;
     ctx.fillStyle = gold;
     ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(promo.footer, w / 2, leagueY);
@@ -900,6 +896,566 @@ class PromotionalPostsScreen extends Screen {
     }
   }
 
+  startPromoAnimation(canvas, promo) {
+    // Cancel any previous animation loop
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+
+    const scale = 2;
+    const w = 1080, h = 1080;
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    // Check if lighthouse graphic is positioned
+    const lighthouseOverlay = (promo.overlays || []).find(o => o.key === 'lighthouse_graphic');
+    let lhX = null, lhY = null;
+    
+    if (lighthouseOverlay && lighthouseOverlay.pos) {
+      // Actual lighthouse dimensions (s=2 inside drawLighthouseOnCtx):
+      // - top of finial is at lhY - 98
+      // - bottom of ocean is at lhY + 380 (tower=300, rock=56, ocean=24)
+      const margin = 50;
+      const lhTopOffset = 98;   // distance from lhY to top of finial
+      const lhBotOffset = 380;  // distance from lhY to bottom of ocean
+      const lhW = 120;          // half-width includes ocean (rockW=100)
+      const pos = lighthouseOverlay.pos;
+
+      if (pos.startsWith('t')) lhY = margin + lhTopOffset;
+      else if (pos.startsWith('b')) lhY = h - margin - lhBotOffset;
+      else lhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
+
+      if (pos.endsWith('l')) lhX = margin + lhW;
+      else if (pos.endsWith('r')) lhX = w - margin - lhW;
+      else lhX = w / 2;
+    }
+
+    const beamLen = Math.max(w, h) * 1.2;
+    const beamSpread = 0.18;
+    const rotPeriod = 8;
+    const rotSpeed = (2 * Math.PI) / rotPeriod;
+
+    if (!this.animStartTime) this.animStartTime = performance.now();
+    const startTime = this.animStartTime;
+
+    const drawFrame = (now) => {
+      const elapsed = (now - startTime) / 1000;
+      const angle = (elapsed * rotSpeed) % (Math.PI * 2);
+
+      // Clear canvas
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw the base card (without lighthouse if it's positioned elsewhere)
+      this.drawPromoCardBaseOnly(ctx, w, h, promo, lhX !== null);
+
+      // Draw lighthouse with beam if positioned
+      if (lhX !== null && lhY !== null) {
+        // Clip beam to canvas
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        // Draw light beam (rotating cone)
+        const beamAngle = angle + Math.PI * 0.25;
+        const a1 = beamAngle - beamSpread;
+        const a2 = beamAngle + beamSpread;
+        const tipX1 = lhX + Math.cos(a1) * beamLen;
+        const tipY1 = lhY + Math.sin(a1) * beamLen;
+        const tipX2 = lhX + Math.cos(a2) * beamLen;
+        const tipY2 = lhY + Math.sin(a2) * beamLen;
+
+        // Outer glow
+        const grad = ctx.createRadialGradient(lhX, lhY, 10, lhX, lhY, beamLen * 0.7);
+        grad.addColorStop(0, 'rgba(255, 230, 0, 0.55)');
+        grad.addColorStop(0.3, 'rgba(255, 223, 0, 0.25)');
+        grad.addColorStop(1, 'rgba(255, 223, 0, 0)');
+        ctx.beginPath();
+        ctx.moveTo(lhX, lhY);
+        ctx.lineTo(tipX1, tipY1);
+        ctx.lineTo(tipX2, tipY2);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Bright core
+        const ca1 = beamAngle - beamSpread * 0.4;
+        const ca2 = beamAngle + beamSpread * 0.4;
+        const coreLen = beamLen * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(lhX, lhY);
+        ctx.lineTo(lhX + Math.cos(ca1) * coreLen, lhY + Math.sin(ca1) * coreLen);
+        ctx.lineTo(lhX + Math.cos(ca2) * coreLen, lhY + Math.sin(ca2) * coreLen);
+        ctx.closePath();
+        const coreGrad = ctx.createRadialGradient(lhX, lhY, 5, lhX, lhY, coreLen * 0.5);
+        coreGrad.addColorStop(0, 'rgba(255, 240, 50, 0.5)');
+        coreGrad.addColorStop(1, 'rgba(255, 240, 50, 0)');
+        ctx.fillStyle = coreGrad;
+        ctx.fill();
+
+        ctx.restore();
+
+        // Draw lighthouse on top of beam
+        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed);
+      }
+
+      this.animFrameId = requestAnimationFrame(drawFrame);
+    };
+
+    this.animFrameId = requestAnimationFrame(drawFrame);
+  }
+
+  drawPromoCardBaseOnly(ctx, w, h, promo, skipLighthouseGraphic) {
+    // Render just the base card (without lighthouse beam) - extracted from drawPromoCardOnCanvas
+    const gold = '#f5d442';
+    const white = '#ffffff';
+
+    // Deep blue gradient background
+    const bgGrad = ctx.createLinearGradient(0, 0, w * 0.6, h);
+    bgGrad.addColorStop(0, '#0033a0');
+    bgGrad.addColorStop(0.3, '#003fbf');
+    bgGrad.addColorStop(0.55, '#0044cc');
+    bgGrad.addColorStop(1, '#002080');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle radial glow
+    const glowGrad = ctx.createRadialGradient(w / 2, h * 0.4, 50, w / 2, h * 0.4, 500);
+    glowGrad.addColorStop(0, 'rgba(0, 100, 255, 0.15)');
+    glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Gold border
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 8;
+    ctx.strokeRect(24, 24, w - 48, h - 48);
+    ctx.strokeStyle = 'rgba(245, 212, 66, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(40, 40, w - 80, h - 80);
+
+    ctx.textAlign = 'center';
+
+    // "LIGHTHOUSE 1893" header
+    ctx.fillStyle = gold;
+    ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.letterSpacing = '6px';
+    ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 90);
+
+    // Divider
+    const divY = 115;
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.25, divY);
+    ctx.lineTo(w * 0.75, divY);
+    ctx.stroke();
+
+    // Soccer ball
+    ctx.font = '28px sans-serif';
+    ctx.fillStyle = white;
+    ctx.fillText('⚽', w / 2, divY + 6);
+
+    // Gold dots on divider
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.arc(w * 0.25, divY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w * 0.75, divY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main heading
+    ctx.fillStyle = white;
+    ctx.font = '800 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(promo.heading, w / 2, 220);
+
+    // Gold underline
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 140, 242);
+    ctx.lineTo(w / 2 + 140, 242);
+    ctx.stroke();
+
+    // Subheading
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(promo.subheading, w / 2, 295);
+
+    // Body lines (plain text)
+    const bodyLineStartY = 380;
+    const bodyLineGap = 50;
+    ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    promo.bodyLines.forEach((line, i) => {
+      ctx.fillText(line, w / 2, bodyLineStartY + i * bodyLineGap);
+    });
+
+    // Footer league name
+    const leagueY = bodyLineStartY + promo.bodyLines.length * bodyLineGap + 50;
+    ctx.fillStyle = gold;
+    ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(promo.footer, w / 2, leagueY);
+
+    // CTA
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('Registration & interest form in bio', w / 2, leagueY + 45);
+
+    // Sponsor section at bottom
+    const overlays = promo.overlays || [];
+    const sponsorOverlay = overlays.find(s => s.key === 'sponsor');
+    const nonSponsorOverlays = overlays.filter(s => s.key !== 'sponsor');
+
+    if (nonSponsorOverlays.length > 0 || sponsorOverlay) {
+      const margin = 50;
+      const logoH = 60;
+      const gap = 14;
+
+      if (nonSponsorOverlays.length > 0) {
+        const regions = {};
+        nonSponsorOverlays.forEach(s => {
+          if (!regions[s.pos]) regions[s.pos] = [];
+          regions[s.pos].push(s.key);
+        });
+
+        for (const [pos, keys] of Object.entries(regions)) {
+          let anchorX, anchorY, alignH, alignV;
+          if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
+          else { anchorY = h - margin - 200; alignV = 'bottom'; }
+          if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
+          else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
+          else { anchorX = w - margin; alignH = 'right'; }
+
+          const items = [];
+          keys.forEach(key => {
+            const img = this.loadedLogos[key];
+            if (img) {
+              const lw = logoH * (img.width / img.height);
+              items.push({ type: 'logo', w: lw, h: logoH, img, key });
+            }
+          });
+
+          if (items.length === 0) continue;
+
+          const totalW = items.reduce((sum, it) => sum + it.w, 0) + Math.max(0, items.length - 1) * gap;
+          const maxH = Math.max(...items.map(it => it.h));
+
+          let startX;
+          if (alignH === 'left') startX = anchorX;
+          else if (alignH === 'center') startX = anchorX - totalW / 2;
+          else startX = anchorX - totalW;
+
+          let curX = startX;
+          items.forEach(item => {
+            let itemY;
+            if (alignV === 'top') itemY = anchorY;
+            else itemY = anchorY - maxH;
+
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 6;
+            ctx.drawImage(item.img, curX, itemY + (maxH - item.h) / 2, item.w, item.h);
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            curX += item.w + gap;
+          });
+
+          if (promo.overlayText) {
+            const textY = alignV === 'top' ? anchorY + maxH + 30 : anchorY - maxH - 50;
+            ctx.fillStyle = white;
+            ctx.font = '600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = alignV === 'top' ? 'top' : 'bottom';
+            ctx.fillText(promo.overlayText, w / 2, textY);
+          }
+        }
+      }
+
+      if (sponsorOverlay) {
+        const img = this.loadedLogos['sponsor'];
+        const sH = 100;
+        const sW = img ? sH * (img.width / img.height) : 0;
+        const sponsorFont = 24;
+        const bottomMargin = 40;
+        const sponsorY = h - bottomMargin - sH;
+
+        ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+        const pillW = ctx.measureText('Sponsored by').width + 12;
+        const totalSponsorW = pillW + gap + sW;
+        const sponsorX = w / 2 - totalSponsorW / 2;
+
+        const pillH = sponsorFont + 8;
+        const pillY = sponsorY + (sH - pillH) / 2;
+        ctx.fillStyle = 'rgba(65,105,225,0.9)';
+        ctx.beginPath();
+        ctx.roundRect(sponsorX, pillY, pillW, pillH, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#eeeeee';
+        ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sponsored by', sponsorX + pillW / 2, pillY + pillH / 2);
+
+        if (img) {
+          ctx.shadowColor = 'rgba(0,0,0,0.6)';
+          ctx.shadowBlur = 6;
+          ctx.drawImage(img, sponsorX + pillW + gap, sponsorY, sW, sH);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+  }
+
+  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0) {
+    const s = 2;
+    ctx.save();
+
+    const topW = 26 * s, botW = 38 * s, towerH = 150 * s;
+    const topY = lhY + 8 * s;
+    const botY = lhY + towerH;
+
+    const towerPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(lhX - topW / 2, topY);
+      ctx.lineTo(lhX + topW / 2, topY);
+      ctx.lineTo(lhX + botW / 2, botY);
+      ctx.lineTo(lhX - botW / 2, botY);
+      ctx.closePath();
+    };
+
+    // Tower body (white)
+    towerPath();
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // 4 royal blue bands with gold "1893" digits
+    const digits = ['1', '8', '9', '3'];
+    const bandH = 18 * s;
+    const bandZone = towerH * 0.82;
+    const bandGap = (bandZone - bandH * 4) / 5;
+    for (let i = 0; i < 4; i++) {
+      const bandY = topY + bandGap * (i + 1) + bandH * i;
+      const fracTop = (bandY - topY) / towerH;
+      const fracBot = (bandY + bandH - topY) / towerH;
+      const wTop = topW + (botW - topW) * fracTop;
+      const wBot = topW + (botW - topW) * fracBot;
+
+      ctx.save();
+      towerPath();
+      ctx.clip();
+      ctx.beginPath();
+      ctx.moveTo(lhX - wTop / 2, bandY);
+      ctx.lineTo(lhX + wTop / 2, bandY);
+      ctx.lineTo(lhX + wBot / 2, bandY + bandH);
+      ctx.lineTo(lhX - wBot / 2, bandY + bandH);
+      ctx.closePath();
+      ctx.fillStyle = '#0033a0';
+      ctx.fill();
+
+      const fontSize = Math.round(14 * s);
+      ctx.font = `900 ${fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#f5d442';
+      ctx.fillText(digits[i], lhX, bandY + bandH / 2);
+      ctx.restore();
+    }
+
+    // Tower outline
+    towerPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // Gallery platform
+    const platW = topW + 12 * s;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(lhX - platW / 2, topY - 3 * s, platW, 6 * s);
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1 * s;
+    ctx.strokeRect(lhX - platW / 2, topY - 3 * s, platW, 6 * s);
+
+    // Railing posts
+    const railH = 10 * s;
+    const railY = topY - 3 * s - railH;
+    const numPosts = 7;
+    for (let i = 0; i < numPosts; i++) {
+      const px = lhX - platW / 2 + 3 * s + i * ((platW - 6 * s) / (numPosts - 1));
+      ctx.beginPath();
+      ctx.moveTo(px, topY - 3 * s);
+      ctx.lineTo(px, railY);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(lhX - platW / 2 + 2 * s, railY);
+    ctx.lineTo(lhX + platW / 2 - 2 * s, railY);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // Lantern room
+    const lanternW = 20 * s, lanternH = 16 * s;
+    const lanternTop = railY - lanternH;
+    ctx.fillStyle = '#f5d442';
+    ctx.fillRect(lhX - lanternW / 2, lanternTop, lanternW, lanternH);
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(lhX, lanternTop);
+    ctx.lineTo(lhX, lanternTop + lanternH);
+    ctx.moveTo(lhX - lanternW / 2, lanternTop + lanternH / 2);
+    ctx.lineTo(lhX + lanternW / 2, lanternTop + lanternH / 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2 * s;
+    ctx.strokeRect(lhX - lanternW / 2, lanternTop, lanternW, lanternH);
+
+    // Dome
+    const domeW = lanternW + 4 * s;
+    ctx.beginPath();
+    ctx.moveTo(lhX - domeW / 2, lanternTop);
+    ctx.quadraticCurveTo(lhX, lanternTop - 22 * s, lhX + domeW / 2, lanternTop);
+    ctx.closePath();
+    ctx.fillStyle = '#0033a0';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // Finial
+    ctx.beginPath();
+    ctx.arc(lhX, lanternTop - 18 * s, 3 * s, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5d442';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(lhX, lanternTop - 21 * s);
+    ctx.lineTo(lhX, lanternTop - 28 * s);
+    ctx.strokeStyle = '#f5d442';
+    ctx.lineWidth = 2 * s;
+    ctx.stroke();
+
+    // Lantern glow
+    const glowCY = lanternTop + lanternH / 2;
+    const glowGrad = ctx.createRadialGradient(lhX, glowCY, 0, lhX, glowCY, 24 * s);
+    glowGrad.addColorStop(0, 'rgba(255, 230, 0, 0.7)');
+    glowGrad.addColorStop(0.4, 'rgba(255, 223, 0, 0.2)');
+    glowGrad.addColorStop(1, 'rgba(255, 223, 0, 0)');
+    ctx.beginPath();
+    ctx.arc(lhX, glowCY, 24 * s, 0, Math.PI * 2);
+    ctx.fillStyle = glowGrad;
+    ctx.fill();
+
+    // === ROCKY CLIFF ===
+    const rockY = botY + 2 * s;
+    const rockW = 50 * s;
+    const rockH = 28 * s;
+
+    ctx.beginPath();
+    ctx.moveTo(lhX - rockW, rockY + rockH);
+    ctx.lineTo(lhX - rockW, rockY + 6 * s);
+    ctx.quadraticCurveTo(lhX - rockW * 0.7, rockY - 4 * s, lhX - rockW * 0.4, rockY + 2 * s);
+    ctx.lineTo(lhX - rockW * 0.2, rockY - 2 * s);
+    ctx.lineTo(lhX, rockY);
+    ctx.lineTo(lhX + rockW * 0.15, rockY - 3 * s);
+    ctx.lineTo(lhX + rockW * 0.35, rockY + 1 * s);
+    ctx.quadraticCurveTo(lhX + rockW * 0.6, rockY - 2 * s, lhX + rockW * 0.8, rockY + 4 * s);
+    ctx.lineTo(lhX + rockW, rockY + 8 * s);
+    ctx.lineTo(lhX + rockW, rockY + rockH);
+    ctx.closePath();
+    ctx.fillStyle = '#2c2c2c';
+    ctx.fill();
+
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    const rockShapes = [
+      { x: lhX - 20 * s, y: rockY + 6 * s, rx: 10 * s, ry: 5 * s },
+      { x: lhX + 15 * s, y: rockY + 8 * s, rx: 8 * s, ry: 4 * s },
+      { x: lhX - 5 * s, y: rockY + 14 * s, rx: 12 * s, ry: 5 * s },
+      { x: lhX + 30 * s, y: rockY + 12 * s, rx: 9 * s, ry: 5 * s },
+      { x: lhX - 35 * s, y: rockY + 12 * s, rx: 11 * s, ry: 4 * s },
+    ];
+    for (const r of rockShapes) {
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y, r.rx, r.ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#444444';
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.moveTo(lhX - rockW, rockY + 6 * s);
+    ctx.quadraticCurveTo(lhX - rockW * 0.7, rockY - 4 * s, lhX - rockW * 0.4, rockY + 2 * s);
+    ctx.lineTo(lhX - rockW * 0.2, rockY - 2 * s);
+    ctx.lineTo(lhX, rockY);
+    ctx.lineTo(lhX + rockW * 0.15, rockY - 3 * s);
+    ctx.lineTo(lhX + rockW * 0.35, rockY + 1 * s);
+    ctx.quadraticCurveTo(lhX + rockW * 0.6, rockY - 2 * s, lhX + rockW * 0.8, rockY + 4 * s);
+    ctx.lineTo(lhX + rockW, rockY + 8 * s);
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    // === OCEAN WAVES ===
+    const oceanY = rockY + rockH - 4 * s;
+    const oceanW = 60 * s;
+    const waveStep = 12 * s;
+    const waveSpeed = 25; // canvas pixels per second
+
+    // Clip wave drawing to ocean rect so scrolling waves don't bleed out
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
+    ctx.clip();
+
+    const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, oceanY + 20 * s);
+    oceanGrad.addColorStop(0, '#1a6baa');
+    oceanGrad.addColorStop(1, '#0d4a7a');
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5 * s;
+    for (let row = 0; row < 3; row++) {
+      const wy = oceanY + 4 * s + row * 6 * s;
+      const dir = row % 2 === 0 ? 1 : -1;
+      const phase = ((t * waveSpeed * dir) % waveStep + waveStep) % waveStep;
+      ctx.beginPath();
+      for (let x = lhX - oceanW - waveStep; x < lhX + oceanW + waveStep; x += waveStep) {
+        const px = x + phase;
+        const amp = 2 * s;
+        ctx.moveTo(px, wy);
+        ctx.quadraticCurveTo(px + 3 * s, wy - amp, px + 6 * s, wy);
+        ctx.quadraticCurveTo(px + 9 * s, wy + amp, px + 12 * s, wy);
+      }
+      ctx.stroke();
+    }
+
+    ctx.restore(); // end ocean clip
+
+    // Foam at rock base — oscillates gently
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    for (let x = lhX - rockW; x < lhX + rockW; x += 8 * s) {
+      const foamY = oceanY + 1 * s + Math.sin(t * 3 + x * 0.05) * s;
+      ctx.moveTo(x, foamY);
+      ctx.quadraticCurveTo(x + 2 * s, foamY - 3 * s, x + 4 * s, foamY);
+    }
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
   loadLogos() {
     this.loadedLogos = {};
     this.overlayOptions.forEach(({ key, src }) => {
@@ -990,6 +1546,27 @@ class PromotionalPostsScreen extends Screen {
       if (!result.success) throw new Error(result.message || 'Failed');
 
       alert('Schedule cancelled.');
+      await this.loadAndRender();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  async deletePromo(postId) {
+    const p = this.posts.find(x => x.id === postId);
+    if (!p) return;
+
+    if (!confirm(`⚠️ Permanently delete promotional post "${p.title}"? This cannot be undone.`)) return;
+
+    try {
+      const resp = await this.auth.fetch(`/api/social/promos/${postId}`, {
+        method: 'DELETE'
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.message || 'Delete failed');
+
+      alert('✅ Post deleted.');
       await this.loadAndRender();
     } catch (error) {
       alert('Error: ' + error.message);
