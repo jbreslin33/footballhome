@@ -9,20 +9,21 @@ class PromotionalPostsScreen extends Screen {
     this.positions = ['tl','tc','tr','bl','bc','br'];
     this.positionLabels = { tl:'↖', tc:'↑', tr:'↗', bl:'↙', bc:'↓', br:'↘' };
     this.overlayOptions = [
-      { key: 'lighthouse_graphic', label: 'Lighthouse + Beam', icon: '🏮', src: null, pos: null, isGraphic: true },
-      { key: 'lighthouse', label: 'Lighthouse 1893 Logo', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: null },
-      { key: 'fifa', label: 'FIFA', icon: '🌍', src: '/images/leagues/fifa.png', pos: null },
-      { key: 'concacaf', label: 'Concacaf', icon: '🌎', src: '/images/leagues/concacaf.png', pos: null },
-      { key: 'ussoccer', label: 'US Soccer', icon: '🇺🇸', src: '/images/leagues/ussoccer.png', pos: null },
-      { key: 'ussfr1', label: 'USSF Region 1', icon: '🇺🇸', src: '/images/leagues/ussf-region1.jpg', pos: null },
-      { key: 'epsa', label: 'Eastern PA Soccer', icon: '⚽', src: '/images/leagues/epsa.png', pos: null },
-      { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
-      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: null },
-      { key: 'tcwsl', label: 'Tri County WSL', icon: '⚽', src: '/images/leagues/tcwsl.png', pos: null },
-      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null },
-      { key: 'icsl', label: 'Inter County SL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
+      { key: 'lighthouse_graphic', label: 'Lighthouse + Beam', icon: '🏮', src: null, pos: 'br', isGraphic: true },
+      { key: 'lighthouse', label: 'Lighthouse 1893 Logo', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: 'br' },
+      { key: 'fifa', label: 'FIFA', icon: '🌍', src: '/images/leagues/fifa.png', pos: 'bl' },
+      { key: 'concacaf', label: 'Concacaf', icon: '🌎', src: '/images/leagues/concacaf.png', pos: 'bl' },
+      { key: 'ussoccer', label: 'US Soccer', icon: '🇺🇸', src: '/images/leagues/ussoccer.png', pos: 'bl' },
+      { key: 'ussfr1', label: 'USSF Region 1', icon: '🇺🇸', src: '/images/leagues/ussf-region1.jpg', pos: 'bl' },
+      { key: 'epsa', label: 'Eastern PA Soccer', icon: '⚽', src: '/images/leagues/epsa.png', pos: 'bl' },
+      { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: 'bl' },
+      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: 'bl' },
+      { key: 'tcwsl', label: 'Tri County WSL', icon: '⚽', src: '/images/leagues/tcwsl.png', pos: 'bl' },
+      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: 'bl' },
+      { key: 'icsl', label: 'Inter County SL', icon: '⚽', src: '/images/leagues/icsl.png', pos: 'bl' },
       { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk.png', pos: null },
     ];
+    this._defaultOverlayPositions = Object.fromEntries(this.overlayOptions.map(o => [o.key, o.pos]));
     this.currentFile = null;
     this.currentPreviewUrl = null;
     this.mediaType = 'card'; // 'card' or 'media'
@@ -98,7 +99,7 @@ class PromotionalPostsScreen extends Screen {
       }
       const createBtn = e.target.closest('.create-btn');
       if (createBtn) {
-        this.overlayOptions.forEach(o => o.pos = null);
+        this.overlayOptions.forEach(o => o.pos = this._defaultOverlayPositions[o.key] ?? null);
         this.editing = this.getDefaultPromo();
         this.renderArea();
         return;
@@ -750,13 +751,16 @@ class PromotionalPostsScreen extends Screen {
     ctx.strokeRect(40, 40, w - 80, h - 80);
 
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
 
     // --- Top section ---
-    // "LIGHTHOUSE 1893" header
+    // "LIGHTHOUSE 1893" header — centered between thick border (y≈28) and thin divider (y=115)
     ctx.fillStyle = gold;
     ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.letterSpacing = '6px';
-    ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 90);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 72);
+    ctx.textBaseline = 'alphabetic';
 
     // Thin gold divider
     const divY = 115;
@@ -784,23 +788,25 @@ class PromotionalPostsScreen extends Screen {
     // --- Main heading ---
     ctx.fillStyle = white;
     ctx.font = '800 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.heading, w / 2, 220);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(promo.heading, w / 2, 282);
+    ctx.textBaseline = 'alphabetic';
 
-    // Gold underline accent
+    // Gold separator — midpoint between heading bottom (~318) and subheading top (~467)
     ctx.strokeStyle = gold;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 140, 242);
-    ctx.lineTo(w / 2 + 140, 242);
+    ctx.moveTo(w / 2 - 140, 392);
+    ctx.lineTo(w / 2 + 140, 392);
     ctx.stroke();
 
     // Subheading
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.subheading, w / 2, 295);
+    ctx.fillText(promo.subheading, w / 2, 495);
 
     // --- Body lines (plain text) ---
-    const bodyLineStartY = 380;
+    const bodyLineStartY = 555;
     const bodyLineGap = 50;
     ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
@@ -831,6 +837,26 @@ class PromotionalPostsScreen extends Screen {
       const margin = 50;
       const logoH = 60;
       const gap = 14;
+      let bottomAnchorY = h - margin;
+
+      const lighthouseGraphic = overlays.find(o => o.key === 'lighthouse_graphic' && o.pos);
+      if (lighthouseGraphic) {
+        const lhTopOffset = 98;
+        const lhBotOffset = 380;
+        let waterLhY;
+        if (lighthouseGraphic.pos.startsWith('t')) waterLhY = margin + lhTopOffset;
+        else if (lighthouseGraphic.pos.startsWith('b')) waterLhY = h - margin - lhBotOffset;
+        else waterLhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
+
+        const oceanY = waterLhY + 352;
+        const oceanH = 44;
+        const logoTopAtDefaultAnchor = h - margin - logoH;
+        const logoBottomAtDefaultAnchor = h - margin;
+        const oceanOverlapsBottomLogos = oceanY < logoBottomAtDefaultAnchor && (oceanY + oceanH) > logoTopAtDefaultAnchor;
+        if (oceanOverlapsBottomLogos) {
+          bottomAnchorY = Math.min(bottomAnchorY, oceanY - 10);
+        }
+      }
 
       // Draw non-sponsor overlays in their grid positions
       if (nonSponsorOverlays.length > 0) {
@@ -843,7 +869,7 @@ class PromotionalPostsScreen extends Screen {
         for (const [pos, keys] of Object.entries(regions)) {
           let anchorX, anchorY, alignH, alignV;
           if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
-          else { anchorY = h - margin; alignV = 'bottom'; }
+          else { anchorY = bottomAnchorY; alignV = 'bottom'; }
           if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
           else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
           else { anchorX = w - margin; alignH = 'right'; }
@@ -891,7 +917,7 @@ class PromotionalPostsScreen extends Screen {
         const sW = img ? sH * (img.width / img.height) : 0;
         const sponsorFont = 24;
         const hasBottomLogos = nonSponsorOverlays.some(o => o.pos && o.pos.startsWith('b'));
-        const sponsorBottomY = hasBottomLogos ? h - margin - logoH - gap : h - margin;
+        const sponsorBottomY = hasBottomLogos ? bottomAnchorY - logoH - gap : bottomAnchorY;
         const sponsorY = sponsorBottomY - sH;
 
         ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
@@ -959,7 +985,7 @@ class PromotionalPostsScreen extends Screen {
       else lhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
 
       if (pos.endsWith('l')) lhX = margin + lhW;
-      else if (pos.endsWith('r')) lhX = w - margin - lhW;
+      else if (pos.endsWith('r')) lhX = w - 10 - lhW;
       else lhX = w / 2;
     }
 
@@ -983,10 +1009,11 @@ class PromotionalPostsScreen extends Screen {
 
       // Draw lighthouse with beam if positioned
       if (lhX !== null && lhY !== null) {
-        // Clip beam to canvas
+        // Clip beam to inner border so animation stays inside the painted area
+        const paintInset = 28;
         ctx.save();
         ctx.beginPath();
-        ctx.rect(0, 0, w, h);
+        ctx.rect(paintInset, paintInset, w - paintInset * 2, h - paintInset * 2);
         ctx.clip();
 
         // Draw light beam (rotating cone)
@@ -1029,8 +1056,17 @@ class PromotionalPostsScreen extends Screen {
         ctx.restore();
 
         // Draw lighthouse on top of beam
-        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed, w, h);
+        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed, w, h, promo);
       }
+
+      // Re-draw frame on top so moving logos/animation feel beneath the painting border
+      const gold = '#f5d442';
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 8;
+      ctx.strokeRect(24, 24, w - 48, h - 48);
+      ctx.strokeStyle = 'rgba(245, 212, 66, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(40, 40, w - 80, h - 80);
 
       this.animFrameId = requestAnimationFrame(drawFrame);
     };
@@ -1103,21 +1139,21 @@ class PromotionalPostsScreen extends Screen {
     ctx.font = '800 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(promo.heading, w / 2, 220);
 
-    // Gold underline
+    // Gold separator — midpoint between heading bottom (~235) and subheading top (~372)
     ctx.strokeStyle = gold;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 140, 242);
-    ctx.lineTo(w / 2 + 140, 242);
+    ctx.moveTo(w / 2 - 140, 310);
+    ctx.lineTo(w / 2 + 140, 310);
     ctx.stroke();
 
     // Subheading
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.subheading, w / 2, 295);
+    ctx.fillText(promo.subheading, w / 2, 395);
 
     // Body lines (plain text)
-    const bodyLineStartY = 380;
+    const bodyLineStartY = 460;
     const bodyLineGap = 50;
     ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
@@ -1147,10 +1183,37 @@ class PromotionalPostsScreen extends Screen {
       const margin = 50;
       const logoH = 60;
       const gap = 14;
+      let bottomAnchorY = h - margin;
+      let oceanYForLogos = null;
+      const oceanHForLogos = 44;
+
+      const lighthouseGraphic = overlays.find(o => o.key === 'lighthouse_graphic' && o.pos);
+      if (lighthouseGraphic) {
+        const lhTopOffset = 98;
+        const lhBotOffset = 380;
+        let waterLhY;
+        if (lighthouseGraphic.pos.startsWith('t')) waterLhY = margin + lhTopOffset;
+        else if (lighthouseGraphic.pos.startsWith('b')) waterLhY = h - margin - lhBotOffset;
+        else waterLhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
+
+        const oceanY = waterLhY + 352;
+        const oceanH = oceanHForLogos;
+        oceanYForLogos = oceanY;
+        const logoTopAtDefaultAnchor = h - margin - logoH;
+        const logoBottomAtDefaultAnchor = h - margin;
+        const oceanOverlapsBottomLogos = oceanY < logoBottomAtDefaultAnchor && (oceanY + oceanH) > logoTopAtDefaultAnchor;
+        if (oceanOverlapsBottomLogos) {
+          bottomAnchorY = Math.min(bottomAnchorY, oceanY - 10);
+        }
+      }
 
       if (nonSponsorOverlays.length > 0) {
+        const staticOverlays = skipLighthouseGraphic
+          ? nonSponsorOverlays.filter(o => !(o.pos && o.pos.startsWith('b')))
+          : nonSponsorOverlays;
+
         const regions = {};
-        nonSponsorOverlays.forEach(s => {
+        staticOverlays.forEach(s => {
           if (!regions[s.pos]) regions[s.pos] = [];
           regions[s.pos].push(s.key);
         });
@@ -1158,7 +1221,7 @@ class PromotionalPostsScreen extends Screen {
         for (const [pos, keys] of Object.entries(regions)) {
           let anchorX, anchorY, alignH, alignV;
           if (pos.startsWith('t')) { anchorY = margin; alignV = 'top'; }
-          else { anchorY = h - margin; alignV = 'bottom'; }
+          else { anchorY = bottomAnchorY; alignV = 'bottom'; }
           if (pos.endsWith('l')) { anchorX = margin; alignH = 'left'; }
           else if (pos.endsWith('c')) { anchorX = w / 2; alignH = 'center'; }
           else { anchorX = w - margin; alignH = 'right'; }
@@ -1205,7 +1268,7 @@ class PromotionalPostsScreen extends Screen {
         const sW = img ? sH * (img.width / img.height) : 0;
         const sponsorFont = 24;
         const hasBottomLogos = nonSponsorOverlays.some(o => o.pos && o.pos.startsWith('b'));
-        const sponsorBottomY = hasBottomLogos ? h - margin - logoH - gap : h - margin;
+        const sponsorBottomY = hasBottomLogos ? bottomAnchorY - logoH - gap : bottomAnchorY;
         const sponsorY = sponsorBottomY - sH;
 
         ctx.font = `600 ${sponsorFont}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
@@ -1237,7 +1300,7 @@ class PromotionalPostsScreen extends Screen {
     }
   }
 
-  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0, w = 1080, h = 1080) {
+  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0, w = 1080, h = 1080, promo = null) {
     const s = 2;
     ctx.save();
 
@@ -1431,26 +1494,29 @@ class PromotionalPostsScreen extends Screen {
     // === OCEAN WAVES ===
     const oceanY = rockY + rockH - 4 * s;
     const oceanH = 22 * s;
+    const paintInset = 28;
+    const paintLeft = paintInset;
+    const paintWidth = w - paintInset * 2;
     const waveStep = 12 * s;
     const waveSpeed = 25; // canvas pixels per second
 
     // Full-width ocean background
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, oceanY, w, oceanH);
+    ctx.rect(paintLeft, oceanY, paintWidth, oceanH);
     ctx.clip();
 
     const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, oceanY + oceanH);
     oceanGrad.addColorStop(0, '#1a6baa');
     oceanGrad.addColorStop(1, '#0d4a7a');
     ctx.fillStyle = oceanGrad;
-    ctx.fillRect(0, oceanY, w, oceanH);
+    ctx.fillRect(paintLeft, oceanY, paintWidth, oceanH);
     ctx.restore(); // end background clip
 
     // Draw fish — clipped to ocean height; canvas edges clip them horizontally
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, oceanY, w, oceanH);
+    ctx.rect(paintLeft, oceanY, paintWidth, oceanH);
     ctx.clip();
 
     // Randomized fish pass-throughs (changes every few seconds)
@@ -1522,22 +1588,67 @@ class PromotionalPostsScreen extends Screen {
       const color = fishColors[Math.floor(rand(seed + 6) * fishColors.length)];
       const bob = Math.sin(t * (2.2 + rand(seed + 7) * 1.4) + i * 1.7) * (0.8 * s);
       const fishPad = 70; // keep fish fully off-canvas before entry/after exit
-      const span = w + fishPad * 2;
+      const span = paintWidth + fishPad * 2;
       const cycleSec = span / speed;
       const phase = rand(seed + 8);
       const progress = (((t / cycleSec) + phase) % 1) * span;
       const travel = progress;
-      const fx = dir > 0 ? (-fishPad + travel) : (w + fishPad - travel);
+      const fx = dir > 0 ? (paintLeft - fishPad + travel) : (paintLeft + paintWidth + fishPad - travel);
       const fy = oceanY + lane + bob;
       drawFish(fx, fy, size, type, color, dir);
     }
 
     ctx.restore(); // end fish clip
 
+    const movingLogoOverlays = (promo?.overlays || []).filter(
+      (o) => o.key !== 'sponsor' && o.key !== 'lighthouse_graphic' && o.pos && o.pos.startsWith('b')
+    );
+    const movingLogoItems = movingLogoOverlays
+      .map((o) => ({ key: o.key, img: this.loadedLogos[o.key] }))
+      .filter((o) => o.img)
+      .map((o) => ({ key: o.key, img: o.img, h: 30, w: 30 * (o.img.width / o.img.height) }));
+
+    if (movingLogoItems.length > 0) {
+      const convoyGap = 16;
+      const convoyW = movingLogoItems.reduce((sum, item) => sum + item.w, 0) + (movingLogoItems.length - 1) * convoyGap;
+      const convoyDir = 1;
+      const convoySpeed = 42;
+      const convoyPad = 24;
+      // Include full convoy width in span so reset happens only after train fully exits.
+      const convoySpan = paintWidth + convoyW + convoyPad * 2;
+      const convoyTravel = ((t * convoySpeed) % convoySpan);
+      const convoyStartX = convoyDir > 0
+        ? (paintLeft - convoyW - convoyPad + convoyTravel)
+        : (paintLeft + paintWidth + convoyPad - convoyTravel - convoyW);
+      const convoyY = oceanY - 34 + Math.sin(t * 1.25) * 1.4;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(paintLeft, paintInset, paintWidth, h - paintInset * 2);
+      ctx.clip();
+
+      const drawConvoy = (startX) => {
+        let curX = startX;
+        movingLogoItems.forEach((item) => {
+          ctx.shadowColor = 'rgba(0,0,0,0.45)';
+          ctx.shadowBlur = 4;
+          ctx.drawImage(item.img, curX, convoyY, item.w, item.h);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          curX += item.w + convoyGap;
+        });
+      };
+
+      ctx.globalAlpha = 0.92;
+      drawConvoy(convoyStartX);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
     // Draw wave lines — full canvas width
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, oceanY, w, oceanH);
+    ctx.rect(paintLeft, oceanY, paintWidth, oceanH);
     ctx.clip();
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
@@ -1547,7 +1658,7 @@ class PromotionalPostsScreen extends Screen {
       const dir = row % 2 === 0 ? 1 : -1;
       const phase = ((t * waveSpeed * dir) % waveStep + waveStep) % waveStep;
       ctx.beginPath();
-      for (let x = -waveStep; x < w + waveStep; x += waveStep) {
+      for (let x = paintLeft - waveStep; x < paintLeft + paintWidth + waveStep; x += waveStep) {
         const px = x + phase;
         const amp = 2 * s;
         ctx.moveTo(px, wy);
