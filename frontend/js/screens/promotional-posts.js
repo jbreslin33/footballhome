@@ -11,6 +11,8 @@ class PromotionalPostsScreen extends Screen {
     this.overlayOptions = [
       { key: 'lighthouse_graphic', label: 'Lighthouse + Beam', icon: '🏮', src: null, pos: null, isGraphic: true },
       { key: 'lighthouse', label: 'Lighthouse 1893 Logo', icon: '🏠', src: '/images/teams/logos/lighthouse-1893.png', pos: null },
+      { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: null },
+      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null },
       { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
       { key: 'icsl', label: 'ICSL', icon: '⚽', src: '/images/leagues/icsl.png', pos: null },
       { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk.png', pos: null },
