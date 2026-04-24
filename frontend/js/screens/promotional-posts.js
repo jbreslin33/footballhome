@@ -965,7 +965,7 @@ class PromotionalPostsScreen extends Screen {
 
     const beamLen = Math.max(w, h) * 1.2;
     const beamSpread = 0.18;
-    const rotPeriod = 20;
+    const rotPeriod = 30;
     const rotSpeed = (2 * Math.PI) / rotPeriod;
 
     if (!this.animStartTime) this.animStartTime = performance.now();
@@ -1029,7 +1029,7 @@ class PromotionalPostsScreen extends Screen {
         ctx.restore();
 
         // Draw lighthouse on top of beam
-        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed);
+        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed, w, h);
       }
 
       this.animFrameId = requestAnimationFrame(drawFrame);
@@ -1237,7 +1237,7 @@ class PromotionalPostsScreen extends Screen {
     }
   }
 
-  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0) {
+  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0, w = 1080, h = 1080) {
     const s = 2;
     ctx.save();
 
@@ -1430,21 +1430,28 @@ class PromotionalPostsScreen extends Screen {
 
     // === OCEAN WAVES ===
     const oceanY = rockY + rockH - 4 * s;
-    const oceanW = 60 * s;
+    const oceanH = 22 * s;
     const waveStep = 12 * s;
     const waveSpeed = 25; // canvas pixels per second
 
-    // Clip wave drawing to ocean rect so scrolling waves don't bleed out
+    // Full-width ocean background
     ctx.save();
     ctx.beginPath();
-    ctx.rect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
+    ctx.rect(0, oceanY, w, oceanH);
     ctx.clip();
 
-    const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, oceanY + 20 * s);
+    const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, oceanY + oceanH);
     oceanGrad.addColorStop(0, '#1a6baa');
     oceanGrad.addColorStop(1, '#0d4a7a');
     ctx.fillStyle = oceanGrad;
-    ctx.fillRect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
+    ctx.fillRect(0, oceanY, w, oceanH);
+    ctx.restore(); // end background clip
+
+    // Draw fish — clipped to ocean height; canvas edges clip them horizontally
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, oceanY, w, oceanH);
+    ctx.clip();
 
     // Randomized fish pass-throughs (changes every few seconds)
     const rand = (n) => {
@@ -1504,24 +1511,34 @@ class PromotionalPostsScreen extends Screen {
     };
 
     const fishColors = ['#f7a64b', '#4fc3f7', '#8ce99a', '#f38bb8', '#ffd166'];
-    const fishSlot = Math.floor(t / 3.5);
-    const fishCount = 7;
+    const fishCount = 18;
     for (let i = 0; i < fishCount; i++) {
-      const seed = fishSlot * 97 + i * 31;
+      const seed = i * 97 + 31;
       const dir = rand(seed + 1) > 0.5 ? 1 : -1;
-      const lane = 3 + rand(seed + 2) * (22 * s - 7);
+      const lane = 3 + rand(seed + 2) * (oceanH - 7);
       const speed = 16 + rand(seed + 3) * 26;
       const size = 0.55 * s + rand(seed + 4) * 0.55 * s;
       const type = Math.floor(rand(seed + 5) * 3);
       const color = fishColors[Math.floor(rand(seed + 6) * fishColors.length)];
       const bob = Math.sin(t * (2.2 + rand(seed + 7) * 1.4) + i * 1.7) * (0.8 * s);
-      const pad = 18 * s;
-      const span = oceanW * 2 + pad * 2;
-      const travel = ((t * speed + rand(seed + 8) * span) % span) - pad;
-      const fx = dir > 0 ? (lhX - oceanW + travel) : (lhX + oceanW - travel);
+      const fishPad = 70; // keep fish fully off-canvas before entry/after exit
+      const span = w + fishPad * 2;
+      const cycleSec = span / speed;
+      const phase = rand(seed + 8);
+      const progress = (((t / cycleSec) + phase) % 1) * span;
+      const travel = progress;
+      const fx = dir > 0 ? (-fishPad + travel) : (w + fishPad - travel);
       const fy = oceanY + lane + bob;
       drawFish(fx, fy, size, type, color, dir);
     }
+
+    ctx.restore(); // end fish clip
+
+    // Draw wave lines — full canvas width
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, oceanY, w, oceanH);
+    ctx.clip();
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.lineWidth = 1.5 * s;
@@ -1530,7 +1547,7 @@ class PromotionalPostsScreen extends Screen {
       const dir = row % 2 === 0 ? 1 : -1;
       const phase = ((t * waveSpeed * dir) % waveStep + waveStep) % waveStep;
       ctx.beginPath();
-      for (let x = lhX - oceanW - waveStep; x < lhX + oceanW + waveStep; x += waveStep) {
+      for (let x = -waveStep; x < w + waveStep; x += waveStep) {
         const px = x + phase;
         const amp = 2 * s;
         ctx.moveTo(px, wy);
@@ -1540,7 +1557,7 @@ class PromotionalPostsScreen extends Screen {
       ctx.stroke();
     }
 
-    ctx.restore(); // end ocean clip
+    ctx.restore(); // end wave clip
 
     // Foam at rock base — oscillates gently
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';

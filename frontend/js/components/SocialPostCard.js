@@ -441,7 +441,7 @@ class SocialPostCard {
     const lhY = h - 340; // lantern Y (near top of lighthouse)
     const beamLen = Math.max(w, h) * 1.2;
     const beamSpread = 0.18; // half-angle of beam in radians (~10 degrees)
-    const rotPeriod = 8; // seconds for one full 360° sweep
+    const rotPeriod = 30; // seconds for one full 360° sweep
     const rotSpeed = (2 * Math.PI) / rotPeriod; // radians per second
     // Preserve startTime across re-renders so the beam angle never jumps
     if (!this.animStartTime) this.animStartTime = performance.now();
