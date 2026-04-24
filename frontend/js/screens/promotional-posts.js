@@ -723,6 +723,10 @@ class PromotionalPostsScreen extends Screen {
 
     const gold = '#f5d442';
     const white = '#ffffff';
+    const frameBottom = h - 68;
+    const innerFrameBottom = frameBottom - 8;
+    const contentShiftY = 0;
+    const lighthouseLift = 24;
 
     // --- Deep blue gradient background (matches match day cards) ---
     const bgGrad = ctx.createLinearGradient(0, 0, w * 0.6, h);
@@ -743,12 +747,24 @@ class PromotionalPostsScreen extends Screen {
     // --- Gold border ---
     ctx.strokeStyle = gold;
     ctx.lineWidth = 8;
-    ctx.strokeRect(24, 24, w - 48, h - 48);
+    ctx.beginPath();
+    ctx.moveTo(24, 24);
+    ctx.lineTo(w - 24, 24);
+    ctx.lineTo(w - 24, frameBottom);
+    ctx.lineTo(24, frameBottom);
+    ctx.closePath();
+    ctx.stroke();
 
     // Inner thin border
     ctx.strokeStyle = 'rgba(245, 212, 66, 0.3)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(40, 40, w - 80, h - 80);
+    ctx.beginPath();
+    ctx.moveTo(40, 40);
+    ctx.lineTo(w - 40, 40);
+    ctx.lineTo(w - 40, innerFrameBottom);
+    ctx.lineTo(40, innerFrameBottom);
+    ctx.closePath();
+    ctx.stroke();
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -759,13 +775,22 @@ class PromotionalPostsScreen extends Screen {
     ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.letterSpacing = '6px';
     ctx.textBaseline = 'middle';
-    ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 72);
+    ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 72 + contentShiftY);
     ctx.textBaseline = 'alphabetic';
 
-    // Thin gold divider
-    const divY = 115;
+    // Top divider with soccer ball
+    const divY = 115 + contentShiftY;
+
+    // Draw line first so the ball sits on top of it
+    // Add a dark underlay so the divider remains visible over bright pixels.
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.25, divY);
+    ctx.lineTo(w * 0.75, divY);
+    ctx.stroke();
     ctx.strokeStyle = gold;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(w * 0.25, divY);
     ctx.lineTo(w * 0.75, divY);
@@ -787,45 +812,53 @@ class PromotionalPostsScreen extends Screen {
 
     // --- Main heading ---
     ctx.fillStyle = white;
-    ctx.font = '800 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '800 56px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillText(promo.heading, w / 2, 282);
+    ctx.fillText(promo.heading, w / 2, 187 + contentShiftY);
     ctx.textBaseline = 'alphabetic';
 
-    // Gold separator — midpoint between heading bottom (~318) and subheading top (~467)
+    // Gold separator
     ctx.strokeStyle = gold;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 140, 392);
-    ctx.lineTo(w / 2 + 140, 392);
+    ctx.moveTo(w / 2 - 140, 248 + contentShiftY);
+    ctx.lineTo(w / 2 + 140, 248 + contentShiftY);
     ctx.stroke();
+    ctx.font = '28px sans-serif';
+    ctx.fillStyle = white;
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚽', w / 2, 248 + contentShiftY);
+    ctx.textBaseline = 'alphabetic';
 
     // Subheading
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.subheading, w / 2, 495);
+    ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(promo.subheading, w / 2, 283 + contentShiftY);
 
     // --- Body lines (plain text) ---
-    const bodyLineStartY = 555;
+    const bodyLineStartY = 348 + contentShiftY;
     const bodyLineGap = 50;
     ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
     promo.bodyLines.forEach((line, i) => {
-      ctx.fillText(line, w / 2, bodyLineStartY + i * bodyLineGap);
+      const lineY = bodyLineStartY + i * bodyLineGap;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillText(line, w / 2, lineY);
     });
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
 
     // --- Footer league name ---
     const leagueY = bodyLineStartY + promo.bodyLines.length * bodyLineGap + 50;
     ctx.fillStyle = gold;
     ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(promo.footer, w / 2, leagueY);
-
-    // --- "Registration & interest form in bio" CTA ---
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('Registration & interest form in bio', w / 2, leagueY + 45);
 
     // --- Position-based logo overlays (tic-tac-toe grid) ---
     // Sponsor always at bottom; other logos positioned above
@@ -835,7 +868,7 @@ class PromotionalPostsScreen extends Screen {
 
     if (nonSponsorOverlays.length > 0 || sponsorOverlay) {
       const margin = 50;
-      const logoH = 60;
+      const logoH = 70;
       const gap = 14;
       let bottomAnchorY = h - margin;
 
@@ -847,6 +880,7 @@ class PromotionalPostsScreen extends Screen {
         if (lighthouseGraphic.pos.startsWith('t')) waterLhY = margin + lhTopOffset;
         else if (lighthouseGraphic.pos.startsWith('b')) waterLhY = h - margin - lhBotOffset;
         else waterLhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
+        waterLhY -= lighthouseLift;
 
         const oceanY = waterLhY + 352;
         const oceanH = 44;
@@ -961,6 +995,10 @@ class PromotionalPostsScreen extends Screen {
 
     const scale = 2;
     const w = 1080, h = 1080;
+    const frameBottom = h - 68;
+    const innerFrameBottom = frameBottom - 8;
+    const contentShiftY = 0;
+    const lighthouseLift = 36;
     canvas.width = w * scale;
     canvas.height = h * scale;
     const ctx = canvas.getContext('2d');
@@ -983,6 +1021,7 @@ class PromotionalPostsScreen extends Screen {
       if (pos.startsWith('t')) lhY = margin + lhTopOffset;
       else if (pos.startsWith('b')) lhY = h - margin - lhBotOffset;
       else lhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
+      lhY -= lighthouseLift;
 
       if (pos.endsWith('l')) lhX = margin + lhW;
       else if (pos.endsWith('r')) lhX = w - 10 - lhW;
@@ -1004,8 +1043,9 @@ class PromotionalPostsScreen extends Screen {
       // Clear canvas
       ctx.clearRect(0, 0, w, h);
 
-      // Draw the base card (without lighthouse if it's positioned elsewhere)
-      this.drawPromoCardBaseOnly(ctx, w, h, promo, lhX !== null);
+      // Draw the base card (without lighthouse if it's positioned elsewhere).
+      // In animated lighthouse mode, skip base text so it can be drawn once on top.
+      this.drawPromoCardBaseOnly(ctx, w, h, promo, lhX !== null, lhX !== null, frameBottom, contentShiftY, lighthouseLift);
 
       // Draw lighthouse with beam if positioned
       if (lhX !== null && lhY !== null) {
@@ -1013,7 +1053,7 @@ class PromotionalPostsScreen extends Screen {
         const paintInset = 28;
         ctx.save();
         ctx.beginPath();
-        ctx.rect(paintInset, paintInset, w - paintInset * 2, h - paintInset * 2);
+        ctx.rect(paintInset, paintInset, w - paintInset * 2, frameBottom - paintInset);
         ctx.clip();
 
         // Draw light beam (rotating cone)
@@ -1056,17 +1096,122 @@ class PromotionalPostsScreen extends Screen {
         ctx.restore();
 
         // Draw lighthouse on top of beam
-        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed, w, h, promo);
+        this.drawLighthouseOnCtx(ctx, lhX, lhY, elapsed, w, h, promo, frameBottom);
       }
 
-      // Re-draw frame on top so moving logos/animation feel beneath the painting border
+      // Redraw text on top so it appears over lighthouse (but not beam)
       const gold = '#f5d442';
+      const white = '#ffffff';
+      ctx.textAlign = 'center';
+
+      // --- Top section ---
+      // "LIGHTHOUSE 1893" header
+      ctx.fillStyle = gold;
+      ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.letterSpacing = '6px';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 72 + contentShiftY);
+      ctx.textBaseline = 'alphabetic';
+
+      // Thin gold divider with soccer ball
+      const divY = 115 + contentShiftY;
+
+      // Draw line first so the ball sits on top of it
+      // Add a dark underlay so the divider remains visible over bright pixels.
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.25, divY);
+      ctx.lineTo(w * 0.75, divY);
+      ctx.stroke();
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.25, divY);
+      ctx.lineTo(w * 0.75, divY);
+      ctx.stroke();
+
+      ctx.font = '28px sans-serif';
+      ctx.fillStyle = white;
+      ctx.fillText('⚽', w / 2, divY + 6);
+
+      // Gold dots on divider
+      ctx.fillStyle = gold;
+      ctx.beginPath();
+      ctx.arc(w * 0.25, divY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(w * 0.75, divY, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // --- Main heading ---
+      ctx.fillStyle = white;
+      ctx.font = '800 56px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(promo.heading, w / 2, 187 + contentShiftY);
+      ctx.textBaseline = 'alphabetic';
+
+      // Gold separator
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w / 2 - 140, 248 + contentShiftY);
+      ctx.lineTo(w / 2 + 140, 248 + contentShiftY);
+      ctx.stroke();
+      ctx.font = '28px sans-serif';
+      ctx.fillStyle = white;
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚽', w / 2, 248 + contentShiftY);
+      ctx.textBaseline = 'alphabetic';
+
+      // Subheading
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(promo.subheading, w / 2, 283 + contentShiftY);
+
+      // --- Body lines ---
+      const bodyLineStartY = 348 + contentShiftY;
+      const bodyLineGap = 50;
+      ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 2;
+      promo.bodyLines.forEach((line, i) => {
+        const lineY = bodyLineStartY + i * bodyLineGap;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillText(line, w / 2, lineY);
+      });
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // --- Footer league name ---
+      const leagueY = bodyLineStartY + promo.bodyLines.length * bodyLineGap + 50;
+      ctx.fillStyle = gold;
+      ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(promo.footer, w / 2, leagueY);
+
+      // Re-draw frame on top so moving logos/animation feel beneath the painting border
       ctx.strokeStyle = gold;
       ctx.lineWidth = 8;
-      ctx.strokeRect(24, 24, w - 48, h - 48);
+      ctx.beginPath();
+      ctx.moveTo(24, 24);
+      ctx.lineTo(w - 24, 24);
+      ctx.lineTo(w - 24, frameBottom);
+      ctx.lineTo(24, frameBottom);
+      ctx.closePath();
+      ctx.stroke();
       ctx.strokeStyle = 'rgba(245, 212, 66, 0.3)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(40, 40, w - 80, h - 80);
+      ctx.beginPath();
+      ctx.moveTo(40, 40);
+      ctx.lineTo(w - 40, 40);
+      ctx.lineTo(w - 40, innerFrameBottom);
+      ctx.lineTo(40, innerFrameBottom);
+      ctx.closePath();
+      ctx.stroke();
 
       this.animFrameId = requestAnimationFrame(drawFrame);
     };
@@ -1074,7 +1219,7 @@ class PromotionalPostsScreen extends Screen {
     this.animFrameId = requestAnimationFrame(drawFrame);
   }
 
-  drawPromoCardBaseOnly(ctx, w, h, promo, skipLighthouseGraphic) {
+  drawPromoCardBaseOnly(ctx, w, h, promo, skipLighthouseGraphic, skipText = false, frameBottom = h - 68, contentShiftY = 0, lighthouseLift = 36) {
     // Render just the base card (without lighthouse beam) - extracted from drawPromoCardOnCanvas
     const gold = '#f5d442';
     const white = '#ffffff';
@@ -1098,81 +1243,113 @@ class PromotionalPostsScreen extends Screen {
     // Gold border
     ctx.strokeStyle = gold;
     ctx.lineWidth = 8;
-    ctx.strokeRect(24, 24, w - 48, h - 48);
+    ctx.beginPath();
+    ctx.moveTo(24, 24);
+    ctx.lineTo(w - 24, 24);
+    ctx.lineTo(w - 24, frameBottom);
+    ctx.lineTo(24, frameBottom);
+    ctx.closePath();
+    ctx.stroke();
     ctx.strokeStyle = 'rgba(245, 212, 66, 0.3)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(40, 40, w - 80, h - 80);
-
-    ctx.textAlign = 'center';
-
-    // "LIGHTHOUSE 1893" header
-    ctx.fillStyle = gold;
-    ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.letterSpacing = '6px';
-    ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 90);
-
-    // Divider
-    const divY = 115;
-    ctx.strokeStyle = gold;
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(w * 0.25, divY);
-    ctx.lineTo(w * 0.75, divY);
+    ctx.moveTo(40, 40);
+    ctx.lineTo(w - 40, 40);
+    ctx.lineTo(w - 40, frameBottom - 8);
+    ctx.lineTo(40, frameBottom - 8);
+    ctx.closePath();
     ctx.stroke();
 
-    // Soccer ball
-    ctx.font = '28px sans-serif';
-    ctx.fillStyle = white;
-    ctx.fillText('⚽', w / 2, divY + 6);
+    if (!skipText) {
+      ctx.textAlign = 'center';
 
-    // Gold dots on divider
-    ctx.fillStyle = gold;
-    ctx.beginPath();
-    ctx.arc(w * 0.25, divY, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(w * 0.75, divY, 3, 0, Math.PI * 2);
-    ctx.fill();
+      // "LIGHTHOUSE 1893" header
+      ctx.fillStyle = gold;
+      ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.letterSpacing = '6px';
+      ctx.fillText('L I G H T H O U S E   1 8 9 3', w / 2, 90 + contentShiftY);
 
-    // Main heading
-    ctx.fillStyle = white;
-    ctx.font = '800 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.heading, w / 2, 220);
+      // Divider with soccer ball
+      const divY = 115 + contentShiftY;
 
-    // Gold separator — midpoint between heading bottom (~235) and subheading top (~372)
-    ctx.strokeStyle = gold;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(w / 2 - 140, 310);
-    ctx.lineTo(w / 2 + 140, 310);
-    ctx.stroke();
+      // Draw line first so the ball sits on top of it
+      // Add a dark underlay so the divider remains visible over bright pixels.
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.25, divY);
+      ctx.lineTo(w * 0.75, divY);
+      ctx.stroke();
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.25, divY);
+      ctx.lineTo(w * 0.75, divY);
+      ctx.stroke();
 
-    // Subheading
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.subheading, w / 2, 395);
+      // Soccer ball
+      ctx.font = '28px sans-serif';
+      ctx.fillStyle = white;
+      ctx.fillText('⚽', w / 2, divY + 6);
 
-    // Body lines (plain text)
-    const bodyLineStartY = 460;
-    const bodyLineGap = 50;
-    ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    promo.bodyLines.forEach((line, i) => {
-      ctx.fillText(line, w / 2, bodyLineStartY + i * bodyLineGap);
-    });
+      // Gold dots on divider
+      ctx.fillStyle = gold;
+      ctx.beginPath();
+      ctx.arc(w * 0.25, divY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(w * 0.75, divY, 3, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Footer league name
-    const leagueY = bodyLineStartY + promo.bodyLines.length * bodyLineGap + 50;
-    ctx.fillStyle = gold;
-    ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(promo.footer, w / 2, leagueY);
+      // Main heading
+      ctx.fillStyle = white;
+      ctx.font = '800 56px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(promo.heading, w / 2, 142 + contentShiftY);
 
-    // CTA
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('Registration & interest form in bio', w / 2, leagueY + 45);
+      // Gold separator
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w / 2 - 140, 188 + contentShiftY);
+      ctx.lineTo(w / 2 + 140, 188 + contentShiftY);
+      ctx.stroke();
+      ctx.font = '28px sans-serif';
+      ctx.fillStyle = white;
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚽', w / 2, 188 + contentShiftY);
+      ctx.textBaseline = 'alphabetic';
+
+      // Subheading
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(promo.subheading, w / 2, 228 + contentShiftY);
+
+      // Body lines (plain text)
+      const bodyLineStartY = 288 + contentShiftY;
+      const bodyLineGap = 50;
+      ctx.font = '600 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      promo.bodyLines.forEach((line, i) => {
+        const lineY = bodyLineStartY + i * bodyLineGap;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        ctx.shadowBlur = 18;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillText(line, w / 2, lineY);
+      });
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Footer league name
+      const leagueY = bodyLineStartY + promo.bodyLines.length * bodyLineGap + 50;
+      ctx.fillStyle = gold;
+      ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(promo.footer, w / 2, leagueY);
+
+    }
 
     // Sponsor section at bottom
     const overlays = promo.overlays || [];
@@ -1181,7 +1358,7 @@ class PromotionalPostsScreen extends Screen {
 
     if (nonSponsorOverlays.length > 0 || sponsorOverlay) {
       const margin = 50;
-      const logoH = 60;
+      const logoH = 70;
       const gap = 14;
       let bottomAnchorY = h - margin;
       let oceanYForLogos = null;
@@ -1195,6 +1372,7 @@ class PromotionalPostsScreen extends Screen {
         if (lighthouseGraphic.pos.startsWith('t')) waterLhY = margin + lhTopOffset;
         else if (lighthouseGraphic.pos.startsWith('b')) waterLhY = h - margin - lhBotOffset;
         else waterLhY = h / 2 - (lhBotOffset - lhTopOffset) / 2;
+        waterLhY -= lighthouseLift;
 
         const oceanY = waterLhY + 352;
         const oceanH = oceanHForLogos;
@@ -1300,7 +1478,7 @@ class PromotionalPostsScreen extends Screen {
     }
   }
 
-  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0, w = 1080, h = 1080, promo = null) {
+  drawLighthouseOnCtx(ctx, lhX, lhY, t = 0, w = 1080, h = 1080, promo = null, frameBottom = h - 68) {
     const s = 2;
     ctx.save();
 
@@ -1606,7 +1784,7 @@ class PromotionalPostsScreen extends Screen {
     const movingLogoItems = movingLogoOverlays
       .map((o) => ({ key: o.key, img: this.loadedLogos[o.key] }))
       .filter((o) => o.img)
-      .map((o) => ({ key: o.key, img: o.img, h: 30, w: 30 * (o.img.width / o.img.height) }));
+      .map((o) => ({ key: o.key, img: o.img, h: 44, w: 44 * (o.img.width / o.img.height) }));
 
     if (movingLogoItems.length > 0) {
       const convoyGap = 16;
@@ -1620,11 +1798,11 @@ class PromotionalPostsScreen extends Screen {
       const convoyStartX = convoyDir > 0
         ? (paintLeft - convoyW - convoyPad + convoyTravel)
         : (paintLeft + paintWidth + convoyPad - convoyTravel - convoyW);
-      const convoyY = oceanY - 34 + Math.sin(t * 1.25) * 1.4;
+      const convoyY = h - 56 + Math.sin(t * 1.25) * 1.4;
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(paintLeft, paintInset, paintWidth, h - paintInset * 2);
+      ctx.rect(paintLeft, frameBottom + 4, paintWidth, h - (frameBottom + 4));
       ctx.clip();
 
       const drawConvoy = (startX) => {
