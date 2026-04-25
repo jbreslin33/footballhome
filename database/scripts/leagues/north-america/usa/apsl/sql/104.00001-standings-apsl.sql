@@ -5,7 +5,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT t.id, 9, 11, 3, 2, 6, 16, 25, -9, 11, '2026-04-21T04:27:50.657Z', 'APSL Scraper'
+SELECT t.id, 9, 11, 3, 2, 6, 16, 25, -9, 11, '2026-04-25T03:04:24.469Z', 'APSL Scraper'
 FROM teams t
 JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id

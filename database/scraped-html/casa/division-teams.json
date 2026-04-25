@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-21T04:32:29.495Z",
+  "generated": "2026-04-24T20:23:21.765Z",
   "divisions": [
     {
       "id": 54,
@@ -21,12 +21,12 @@
           "teamName": "Persepolis FC",
           "played": 37,
           "wins": 11,
-          "draws": 0,
+          "draws": 1,
           "losses": 4,
-          "goalsFor": 15,
-          "goalsAgainst": 60,
-          "goalDiff": 12,
-          "points": 48
+          "goalsFor": 16,
+          "goalsAgainst": 61,
+          "goalDiff": 14,
+          "points": 47
         },
         {
           "teamName": "Oaklyn United FC II",
@@ -43,12 +43,23 @@
           "teamName": "Philadelphia Sierra Stars",
           "played": 33,
           "wins": 10,
-          "draws": 3,
+          "draws": 4,
           "losses": 3,
+          "goalsFor": 17,
+          "goalsAgainst": 34,
+          "goalDiff": 19,
+          "points": 15
+        },
+        {
+          "teamName": "Lighthouse Boys Club",
+          "played": 22,
+          "wins": 7,
+          "draws": 8,
+          "losses": 1,
           "goalsFor": 16,
           "goalsAgainst": 34,
-          "goalDiff": 18,
-          "points": 16
+          "goalDiff": 36,
+          "points": -2
         },
         {
           "teamName": "Illyrians FC",
@@ -60,17 +71,6 @@
           "goalsAgainst": 45,
           "goalDiff": 58,
           "points": -13
-        },
-        {
-          "teamName": "Lighthouse Boys Club",
-          "played": 19,
-          "wins": 6,
-          "draws": 8,
-          "losses": 1,
-          "goalsFor": 15,
-          "goalsAgainst": 32,
-          "goalDiff": 35,
-          "points": -3
         },
         {
           "teamName": "Phoenix SCM",
@@ -103,24 +103,24 @@
       "teams": [
         {
           "teamName": "Persepolis FC II",
-          "played": 16,
+          "played": 17,
           "wins": 5,
           "draws": 3,
-          "losses": 1,
-          "goalsFor": 9,
-          "goalsAgainst": 23,
-          "goalDiff": 7,
+          "losses": 2,
+          "goalsFor": 10,
+          "goalsAgainst": 24,
+          "goalDiff": 8,
           "points": 16
         },
         {
           "teamName": "Sewell's Old Boys",
-          "played": 15,
+          "played": 16,
           "wins": 5,
           "draws": 2,
-          "losses": 0,
-          "goalsFor": 7,
-          "goalsAgainst": 16,
-          "goalDiff": 14,
+          "losses": 1,
+          "goalsFor": 8,
+          "goalsAgainst": 17,
+          "goalDiff": 15,
           "points": 2
         },
         {
@@ -136,14 +136,14 @@
         },
         {
           "teamName": "Phoenix SCR",
-          "played": 12,
-          "wins": 4,
+          "played": 15,
+          "wins": 5,
           "draws": 9,
           "losses": 0,
-          "goalsFor": 13,
-          "goalsAgainst": 18,
+          "goalsFor": 14,
+          "goalsAgainst": 19,
           "goalDiff": 38,
-          "points": -20
+          "points": -19
         },
         {
           "teamName": "Lighthouse Boys Club U23",

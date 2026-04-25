@@ -5762,11 +5762,11 @@
     "location_description": "Field 1",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-23T00:00:00.000Z",
     "end_date_time": "2026-04-23T01:30:00.000Z",
     "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-02-23T21:57:28.000Z",
+    "updated_at": "2026-04-24T03:03:45.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -5778,11 +5778,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -5790,8 +5790,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -5869,6 +5873,8 @@
           "flight_stage_id": "682f967a5d052e0001c4ec30"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "682f967a5d052e0001c4ec2f",
         "id": "682f967a5d052e0001c4ec2f",
         "type": "division"
       }
@@ -5876,24 +5882,26 @@
     "game_details": {
       "originator_id": "699ccd47a5687f00013c61de",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
         "originator_id": "68b9ec8f2fa76700fb2eef25",
         "name": "Phoenix SCR",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f08bf6-1f8f-654a-8934-2e381cc1de43",
         "originator_id": "68bd9535dad4620001549426",
         "name": "Philadelphia Sierra Stars",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -5907,11 +5915,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-24T00:15:00.000Z",
     "end_date_time": "2026-04-24T01:45:00.000Z",
     "created_at": "2026-02-23T21:57:25.000Z",
-    "updated_at": "2026-04-07T22:41:45.000Z",
+    "updated_at": "2026-04-24T03:03:32.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -5923,11 +5931,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -5935,8 +5943,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -6014,6 +6026,8 @@
           "flight_stage_id": "682f967a5d052e0001c4ec30"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "682f967a5d052e0001c4ec2f",
         "id": "682f967a5d052e0001c4ec2f",
         "type": "division"
       }
@@ -6021,12 +6035,12 @@
     "game_details": {
       "originator_id": "699ccd470c5241000144fb5b",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
-        "score": "",
+        "score": "1",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -6034,13 +6048,13 @@
         "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
         "originator_id": "69948b6e6c4d0bddc5325cdb",
         "name": "Sewell's Old Boys ",
-        "score": "",
+        "score": "1",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
