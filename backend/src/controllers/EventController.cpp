@@ -461,31 +461,32 @@ Response EventController::handleGetMatches(const Request& request) {
         
         std::cout << "🔍 Getting matches for team: " << team_id << std::endl;
         
-        // Query matches joined with events for date/title/venue (matches.id = events.id).
-        // Fetch logos dynamically from teams table
+        // Matches store date/title/venue inline (no separate events table).
+        // Status text is resolved via the match_statuses lookup table.
         std::ostringstream query;
-        query << "SELECT m.id, COALESCE(NULLIF(e.title,''), CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) AS title, ";
-        query << "e.event_date::text AS event_date, ";
-        query << "COALESCE(e.duration_minutes, 90) AS duration_minutes, 'match' AS event_type, ";
-        query << "m.home_team_score, m.away_team_score, ";
-        query << "COALESCE(m.match_status,'scheduled') AS match_status, m.competition_name, v.name AS venue_name, ";
-        query << "CASE WHEN m.match_status = 'completed' THEN true ";
-        query << "WHEN e.event_date < NOW() - INTERVAL '90 minutes' THEN true ";
+        query << "SELECT m.id, COALESCE(NULLIF(m.title,''), CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) AS title, ";
+        query << "(m.match_date + COALESCE(m.match_time, '00:00'::time))::text AS event_date, ";
+        query << "90 AS duration_minutes, 'match' AS event_type, ";
+        query << "m.home_score, m.away_score, ";
+        query << "COALESCE(ms.name, 'scheduled') AS match_status, ";
+        query << "NULL::text AS competition_name, v.name AS venue_name, ";
+        query << "CASE WHEN ms.name = 'completed' THEN true ";
+        query << "WHEN (m.match_date + COALESCE(m.match_time, '00:00'::time)) < NOW() - INTERVAL '90 minutes' THEN true ";
         query << "ELSE false END AS has_ended, ";
         query << "NULLIF(ht.logo_url, '') AS home_team_logo, ";
         query << "NULLIF(awt.logo_url, '') AS away_team_logo, ";
         query << "ht.id AS home_team_id, awt.id AS away_team_id ";
         query << "FROM matches m ";
-        query << "JOIN events e ON e.id = m.id ";
-        query << "LEFT JOIN venues v ON v.id = e.venue_id ";
+        query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
+        query << "LEFT JOIN venues v ON v.id = m.venue_id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
-        query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
-        query << "ORDER BY e.event_date ASC ";
+        query << "WHERE (m.home_team_id = $1 OR m.away_team_id = $1) ";
+        query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
         query << "LIMIT 100";
         
         pqxx::result result;
-        result = db_->query(query.str());
+        result = db_->query(query.str(), {team_id});
         
         std::ostringstream matches_json;
         matches_json << "[";
@@ -1961,7 +1962,7 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
     try {
         // Get match date so we can find the 5 practice/pickup events before it
         pqxx::result matchDateResult = db_->query(
-            "SELECT e.event_date FROM matches m JOIN events e ON m.id = e.id WHERE m.id = $1", {matchId});
+            "SELECT (m.match_date + COALESCE(m.match_time, '00:00'::time))::text AS event_date FROM matches m WHERE m.id = $1", {matchId});
         std::string matchDate = "9999-12-31";
         if (!matchDateResult.empty()) {
             matchDate = matchDateResult[0]["event_date"].c_str();
