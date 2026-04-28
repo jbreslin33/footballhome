@@ -25,7 +25,14 @@ class CasaStructureScraper {
     this.cacheDir = path.join(__dirname, '../../scraped-html/casa');
     this._browser = null;
     this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
-    this.lighthouseDivisionNames = new Set((this.config.lighthouseScope?.divisionNames || []).map(name => this._normalizeName(name)));
+    // LIGHTHOUSE_DIVISION narrows scope to a single division (implies LIGHTHOUSE_ONLY=1)
+    const singleDivision = process.env.LIGHTHOUSE_DIVISION;
+    if (singleDivision) {
+      this.lighthouseOnly = true;
+      this.lighthouseDivisionNames = new Set([this._normalizeName(singleDivision)]);
+    } else {
+      this.lighthouseDivisionNames = new Set((this.config.lighthouseScope?.divisionNames || []).map(name => this._normalizeName(name)));
+    }
     this.lighthouseTeamNames = new Set((this.config.lighthouseScope?.teamNames || []).map(name => this._normalizeName(name)));
 
     // Division mapping from 034-divisions.sql

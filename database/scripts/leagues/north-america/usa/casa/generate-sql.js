@@ -19,6 +19,9 @@ class CasaSqlGenerator extends BaseGenerator {
     super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
     this.config = config;
     this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
+    // LIGHTHOUSE_DIVISION narrows scope to a single division (implies LIGHTHOUSE_ONLY=1)
+    this.lighthouseDivision = process.env.LIGHTHOUSE_DIVISION || null;
+    if (this.lighthouseDivision) this.lighthouseOnly = true;
     this.isPartialSync = this.lighthouseOnly;
     this.targetTeamNames = new Set((config.lighthouseScope?.teamNames || []).map(name => this.normalizeScopeKey(name)));
     this.targetClubFamilies = new Set(config.lighthouseScope?.clubFamilies || []);
@@ -59,6 +62,10 @@ class CasaSqlGenerator extends BaseGenerator {
     }
 
     this.teams = this.teams.filter(team => this.isTargetTeamName(team.name));
+    if (this.lighthouseDivision) {
+      const target = this.normalizeScopeKey(this.lighthouseDivision);
+      this.teams = this.teams.filter(team => this.normalizeScopeKey(team.divisionName) === target);
+    }
   }
 
   /**

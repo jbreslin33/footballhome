@@ -32,7 +32,14 @@ class CasaRosterScraper {
     this.config = config;
     this.cacheDir = cacheDir;
     this.lighthouseOnly = process.env.LIGHTHOUSE_ONLY === '1';
-    this.lighthouseDivisionNames = new Set((config.lighthouseScope?.divisionNames || []).map(name => this._normalizeName(name)));
+    // LIGHTHOUSE_DIVISION narrows scope to a single division (implies LIGHTHOUSE_ONLY=1)
+    const singleDivision = process.env.LIGHTHOUSE_DIVISION;
+    if (singleDivision) {
+      this.lighthouseOnly = true;
+      this.lighthouseDivisionNames = new Set([this._normalizeName(singleDivision)]);
+    } else {
+      this.lighthouseDivisionNames = new Set((config.lighthouseScope?.divisionNames || []).map(name => this._normalizeName(name)));
+    }
     this.lighthouseTeamNames = new Set((config.lighthouseScope?.teamNames || []).map(name => this._normalizeName(name)));
     this.rosterSheets = this._filterRosterSheets(config.rosterSheets || {});
   }
