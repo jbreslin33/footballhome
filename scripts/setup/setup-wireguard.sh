@@ -124,126 +124,50 @@ cmd_import() {
 }
 
 cmd_up() {
-  need_root
-
-  if ! command -v wg &> /dev/null; then
-    error "WireGuard not installed. Run: sudo ./setup-wireguard.sh install"
-    exit 1
-  fi
-
-  if [ ! -f "$CONFIG_FILE" ]; then
-    error "No config found at $CONFIG_FILE"
-    echo "Import one: sudo ./setup-wireguard.sh import /path/to/config.conf"
-    exit 1
-  fi
-
-  # Check if already up
-  if wg show "$INTERFACE" &> /dev/null 2>&1; then
-    warn "VPN already connected ($INTERFACE)"
-    return 0
-  fi
-
-  echo "Connecting VPN ($INTERFACE)..."
-  wg-quick up "$INTERFACE"
-
-  # Verify with external IP check
-  sleep 1
-  local vpn_ip
-  vpn_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
-  info "VPN connected — external IP: $vpn_ip"
+  error "'up' on the host is disabled — it would drop your SSH session."
+  echo "   The VPN ALWAYS runs inside the scraper container." >&2
+  echo "   Use:  make scrape-vpn-up" >&2
+  exit 1
 }
 
 cmd_down() {
-  need_root
-
-  if ! wg show "$INTERFACE" &> /dev/null 2>&1; then
-    warn "VPN not connected ($INTERFACE)"
-    return 0
-  fi
-
-  wg-quick down "$INTERFACE"
-  sleep 1
-  local real_ip
-  real_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
-  info "VPN disconnected — external IP: $real_ip"
+  error "'down' on the host is disabled."
+  echo "   Use:  make scrape-vpn-down" >&2
+  exit 1
 }
 
 cmd_status() {
-  if wg show "$INTERFACE" &> /dev/null 2>&1; then
-    local vpn_ip
-    vpn_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
-    info "VPN is UP ($INTERFACE) — external IP: $vpn_ip"
-    echo ""
-    wg show "$INTERFACE"
-  else
-    local real_ip
-    real_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
-    warn "VPN is DOWN ($INTERFACE) — external IP: $real_ip"
-  fi
+  error "'status' on the host is disabled."
+  echo "   Use:  make scrape-vpn-status" >&2
+  exit 1
 }
 
 cmd_scrape() {
-  need_root
-  local target="$1"
-
-  if [ -z "$target" ]; then
-    error "Usage: setup-wireguard.sh scrape <make-target>"
-    echo "  Example: sudo ./setup-wireguard.sh scrape scrape-apsl"
-    echo "  Example: sudo ./setup-wireguard.sh scrape sync"
-    exit 1
-  fi
-
-  # Find project root
-  local script_dir
-  script_dir="$(cd "$(dirname "$0")" && pwd)"
-  local project_root="$script_dir"
-  while [ ! -f "$project_root/Makefile" ]; do
-    project_root="$(dirname "$project_root")"
-  done
-
-  # Connect VPN
-  cmd_up
-
-  # Run the make target, ensure VPN goes down even on failure
-  echo ""
-  echo "Running: make $target"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  local exit_code=0
-  (cd "$project_root" && make "$target") || exit_code=$?
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-  # Disconnect VPN
-  echo ""
-  cmd_down
-
-  if [ "$exit_code" -ne 0 ]; then
-    error "make $target failed (exit code $exit_code)"
-    exit "$exit_code"
-  fi
-
-  info "Scrape complete via VPN"
+  error "'scrape' via host VPN is disabled — it would drop your SSH session."
+  echo "   Use:  make scrape-vpn-up && make sync-lighthouse" >&2
+  exit 1
 }
 
 # ── Help ──────────────────────────────────────────────────────────────
 cmd_help() {
-  echo "WireGuard VPN for Scraping"
+  echo "WireGuard VPN for Scraping (container-only)"
+  echo ""
+  echo "The VPN ALWAYS runs inside an isolated podman container so it"
+  echo "cannot drop your SSH session. This script only handles"
+  echo "installing wireguard-tools and importing the provider config"
+  echo "that the scraper container will read."
   echo ""
   echo "Usage: setup-wireguard.sh <command> [args]"
   echo ""
   echo "Commands:"
-  echo "  install                    Install WireGuard"
-  echo "  import <config.conf>       Import VPN provider config"
-  echo "  up                         Connect VPN"
-  echo "  down                       Disconnect VPN"
-  echo "  status                     Show VPN status + external IP"
-  echo "  scrape <make-target>       Connect VPN, run make target, disconnect"
+  echo "  install                    Install wireguard-tools on host"
+  echo "  import <config.conf>       Stage VPN provider config for the container"
   echo "  help                       Show this help"
   echo ""
-  echo "Examples:"
-  echo "  sudo ./setup-wireguard.sh install"
-  echo "  sudo ./setup-wireguard.sh import ~/Downloads/mullvad-us25.conf"
-  echo "  sudo ./setup-wireguard.sh scrape scrape-apsl"
-  echo "  sudo ./setup-wireguard.sh scrape sync"
+  echo "Then bring the VPN up inside the container:"
+  echo "  make scrape-vpn-up"
+  echo "  make scrape-vpn-status"
+  echo "  make sync-lighthouse"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────

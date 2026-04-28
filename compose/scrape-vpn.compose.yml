@@ -1,0 +1,62 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Sidecar scraper + VPN
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Run with podman/docker compose using --project-name footballhome_scrape
+# so it stays isolated from the main app pod.
+#
+#   podman-compose -f compose/scrape-vpn.compose.yml -p footballhome_scrape up -d
+#
+# Or just use scripts/scrape-vpn.sh which wraps the lifecycle commands.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+services:
+  scraper:
+    build:
+      context: ../.docker/scraper
+      dockerfile: Dockerfile
+    image: footballhome-scraper:latest
+    container_name: footballhome_scraper
+    hostname: scraper
+    restart: unless-stopped
+
+    # WireGuard needs to manage interfaces + routing inside the netns.
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+
+    # /dev/net/tun for the WireGuard interface.
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+    # Required by wg-quick for routing the encrypted packets.
+    sysctls:
+      net.ipv4.conf.all.src_valid_mark: "1"
+
+    # Use Cloudflare/Google DNS so name resolution works even before the
+    # VPN provider's DNS is reachable.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+
+    environment:
+      WG_INTERFACE: "${WG_INTERFACE:-scrape-vpn}"
+      NO_VPN: "${NO_VPN:-0}"
+      # Make puppeteer use the system chromium baked into the image.
+      PUPPETEER_SKIP_DOWNLOAD: "1"
+      PUPPETEER_EXECUTABLE_PATH: "/usr/bin/chromium"
+
+    volumes:
+      # WireGuard configs staged into a per-user cache dir by
+      # scripts/scrape-vpn.sh (the canonical /etc/wireguard is root-only
+      # and unreadable by rootless podman). Set WG_STAGE_DIR to override.
+      - ${WG_STAGE_DIR:-${HOME}/.cache/footballhome/wireguard}:/etc/wireguard:ro
+      # Mount the repo at the SAME absolute path it has on the host so
+      # all the scripts' SCRIPT_DIR / PROJECT_ROOT logic resolves
+      # identically inside and out (no path rewriting needed).
+      - ${REPO_ROOT}:${REPO_ROOT}:rw
+      # Persist node_modules across container rebuilds (optional — falls
+      # back to the host's node_modules via the bind mount above).
+    working_dir: ${REPO_ROOT}
+
+    # Keep alive — actual scrapes run via `podman exec`.
+    command: ["sleep", "infinity"]

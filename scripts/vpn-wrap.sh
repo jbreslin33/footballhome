@@ -1,32 +1,34 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# VPN Wrapper — ensures VPN is up before running a command
+# VPN Wrapper — runs a command behind WireGuard (CONTAINER ONLY)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Used by APSL and CSL scrape scripts. These sites (LeagueApps platform)
-# block our IP, so all requests must go through WireGuard VPN.
+# block our IP, so requests must go through WireGuard.
+#
+# WireGuard ALWAYS runs inside a dedicated podman/docker container in its
+# own network namespace. Host routing is never modified, so SSH sessions
+# survive. There is intentionally no host-VPN backend.
 #
 # Usage:
 #   ./vpn-wrap.sh <command> [args...]
 #
-# Examples:
-#   ./vpn-wrap.sh ./scrape-standings.sh
-#   ./vpn-wrap.sh node scrape-team-pages.js --league apsl
-#
-# Behavior:
-#   - If VPN is already up: runs command, leaves VPN up
-#   - If VPN is down: brings it up, runs command, brings it down
-#   - If VPN setup is missing: prints clear error and exits
-#   - Requires sudo (WireGuard needs root for interface management)
-#
-# Skip VPN (for testing or when IP isn't blocked):
+# Skip VPN entirely (testing, or for sites that aren't IP-blocked):
 #   NO_VPN=1 ./vpn-wrap.sh ./scrape-standings.sh
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
 
-INTERFACE="scrape-vpn"
+# ── Refuse legacy host backend ────────────────────────────────────────
+if [ "${VPN_BACKEND:-}" = "host" ]; then
+  echo "❌ VPN_BACKEND=host is no longer supported." >&2
+  echo "   The host VPN backend was removed because it routes ALL host" >&2
+  echo "   traffic through WireGuard and drops SSH sessions." >&2
+  echo "   Use the container backend instead:" >&2
+  echo "     make scrape-vpn-up && make sync-lighthouse" >&2
+  exit 1
+fi
 
 # ── Skip VPN if requested ─────────────────────────────────────────────
 if [ "${NO_VPN:-0}" = "1" ]; then
@@ -34,51 +36,22 @@ if [ "${NO_VPN:-0}" = "1" ]; then
   exec "$@"
 fi
 
-# ── Check WireGuard is installed ──────────────────────────────────────
-if ! command -v wg &> /dev/null; then
-  echo "❌ WireGuard not installed."
-  echo "   Run: sudo scripts/setup/setup-wireguard.sh install"
-  echo "   Then: sudo scripts/setup/setup-wireguard.sh import /path/to/config.conf"
-  echo ""
-  echo "   To skip VPN (stale cache): NO_VPN=1 make scrape-apsl-standings"
+# ── Already inside the scraper container? Just run the command. ───────
+# The container's entrypoint already brought up WireGuard.
+if [ -f /.dockerenv ] || [ "${container:-}" = "podman" ] || [ "${VPN_ACTIVE:-0}" = "1" ]; then
+  exec "$@"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ── Container backend is mandatory ────────────────────────────────────
+if ! command -v podman >/dev/null 2>&1 && ! command -v docker >/dev/null 2>&1; then
+  echo "❌ Neither podman nor docker is installed." >&2
+  echo "   The scraper VPN runs in a container to keep your SSH session alive." >&2
+  echo "   Install podman:  sudo apt install -y podman" >&2
+  echo "   (Or set NO_VPN=1 to bypass the VPN entirely.)" >&2
   exit 1
 fi
 
-# ── Check config exists (needs sudo — /etc/wireguard is root-only) ──
-if ! sudo test -f "/etc/wireguard/${INTERFACE}.conf"; then
-  echo "❌ No VPN config found at /etc/wireguard/${INTERFACE}.conf"
-  echo "   Run: sudo scripts/setup/setup-wireguard.sh import /path/to/config.conf"
-  echo ""
-  echo "   To skip VPN (stale cache): NO_VPN=1 make scrape-apsl-standings"
-  exit 1
-fi
-
-# ── Determine if we started the VPN (so we know whether to stop it) ──
-VPN_WAS_UP=0
-if sudo wg show "$INTERFACE" &> /dev/null 2>&1; then
-  VPN_WAS_UP=1
-  echo "   🔒 VPN already connected"
-else
-  echo "   🔒 Connecting VPN..."
-  sudo wg-quick up "$INTERFACE"
-  # systemd-resolved split-DNS fix: wg-quick registers the DNS server but
-  # without a routing domain of ~., systemd-resolved won't route queries
-  # through it. Force all DNS through the VPN interface.
-  sudo resolvectl dns "$INTERFACE" 10.64.0.1
-  sudo resolvectl domain "$INTERFACE" "~."
-  sleep 1
-  VPN_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
-  echo "   🔒 VPN connected — IP: $VPN_IP"
-fi
-
-# ── Run the actual command ────────────────────────────────────────────
-EXIT_CODE=0
-"$@" || EXIT_CODE=$?
-
-# ── Tear down VPN if we brought it up ─────────────────────────────────
-if [ "$VPN_WAS_UP" = "0" ]; then
-  echo "   🔓 Disconnecting VPN..."
-  sudo wg-quick down "$INTERFACE" 2>/dev/null || true
-fi
-
-exit $EXIT_CODE
+echo "   🔒 Routing through scraper container (host SSH unaffected)..."
+exec "$SCRIPT_DIR/scrape-vpn.sh" exec "$@"

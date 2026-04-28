@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status
+.PHONY: all help clean build deploy up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 lighthouse-groupme lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -24,7 +24,22 @@ all: up
 help:
 	@echo "Football Home - Makefile Targets"
 	@echo ""
-	@echo "Sync (primary workflow — idempotent, safe to run anytime):"
+	@echo "🏠 Lighthouse (the only thing that matters — each target is full scrape+parse+load):"
+	@echo "  make lighthouse                       ⭐ Full Lighthouse refresh (runs all below)"
+	@echo "  make lighthouse-apsl                  APSL: whole-league standings + Lighthouse team page"
+	@echo "    make lighthouse-apsl-standings    └─ just whole-league standings"
+	@echo "    make lighthouse-apsl-team         └─ just Lighthouse 1893 SC team page (roster+schedule)"
+	@echo "  make lighthouse-casa                  CASA: both Lighthouse divisions"
+	@echo "    make lighthouse-casa-liga1        └─ Philadelphia Liga 1 (Lighthouse Boys Club)"
+	@echo "    make lighthouse-casa-liga2        └─ Philadelphia Liga 2 (Lighthouse Boys Club U23)"
+	@echo "  make lighthouse-groupme               GroupMe: all 5 Lighthouse chats"
+	@echo "    make lighthouse-groupme-apsl      └─ APSL Lighthouse chat"
+	@echo "    make lighthouse-groupme-liga1     └─ Lighthouse Boys Club Liga 1 & 2 chat"
+	@echo "    make lighthouse-groupme-liga2     └─ Lighthouse Boys Club U23 chat"
+	@echo "    make lighthouse-groupme-training  └─ Training Lighthouse chat"
+	@echo "    make lighthouse-groupme-pickup    └─ Philadelphia Pickup chat"
+	@echo ""
+	@echo "Sync (legacy whole-league — idempotent, safe to run anytime):"
 	@echo "  make sync          Sync all leagues + GroupMe"
 	@echo "  make sync-lighthouse Sync Lighthouse-only APSL + CASA + GroupMe"
 	@echo "  make sync-apsl     Sync APSL only"
@@ -66,16 +81,26 @@ help:
 	@echo "  make audit         Run data quality audit"
 	@echo ""
 	@echo "Backup & restore:"
+	@echo "  make er                  🚨 Emergency rebuild — full one-shot recovery (preserves user data)"
+	@echo "  make er FORCE=1          Same, no confirmation prompt"
 	@echo "  make backup              Snapshot DB (pg_dump → backups/)"
 	@echo "  make restore             Restore latest backup (or BACKUP=file.sql)"
 	@echo "  make safe-rebuild        Backup + rebuild (safety net)"
 	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
 	@echo "  make load-user-data      Load exported user data (after sync)"
 	@echo ""
-	@echo "VPN (automatic for APSL/CSL — manual controls):"
-	@echo "  make vpn-up              Connect WireGuard VPN manually"
-	@echo "  make vpn-down            Disconnect WireGuard VPN manually"
-	@echo "  make vpn-status          Show VPN status + external IP"
+	@echo "VPN — scraper container (default, safe over SSH):"
+	@echo "  make scrape-vpn-up       Start the dedicated scraper+VPN container (SSH-safe)"
+	@echo "  make scrape-vpn-down     Stop and remove it"
+	@echo "  make scrape-vpn-status   Show status + tunneled IP"
+	@echo "  make scrape-vpn-shell    Open a shell inside it"
+	@echo "  make scrape-vpn-logs     Tail container logs"
+	@echo "  make scrape-vpn-rebuild  Rebuild the image from scratch"
+	@echo ""
+	@echo "VPN — host backend (legacy, drops SSH):"
+	@echo "  make vpn-up              Alias for scrape-vpn-up (containerized)"
+	@echo "  make vpn-down            Alias for scrape-vpn-down"
+	@echo "  make vpn-status          Show host VPN status"
 	@echo ""
 
 # ============================================================
@@ -95,6 +120,7 @@ clean:
 build:
 	@echo "🔨 Building images and starting containers..."
 	@$(COMPOSE) --env-file env build
+	@$(ENGINE) rm -f footballhome_frontend footballhome_backend footballhome_db 2>/dev/null || true
 	@$(COMPOSE) --env-file env up -d
 	@echo "✓ Build complete and containers started"
 	@echo ""
@@ -334,6 +360,87 @@ sync-groupme:
 	@echo "✓ GroupMe synced"
 
 # ============================================================
+# Lighthouse-focused targets
+#
+# Naming convention (strict hierarchy, root → leaf):
+#   lighthouse                          — everything
+#   lighthouse-<league>                 — one league (all of it)
+#   lighthouse-<league>-<sub>           — one slice of one league
+#
+# Every target is SELF-CONTAINED: it runs scrape → parse → load in one shot.
+# Use the underlying scrape-*/parse-*/load-* targets only for debugging.
+# ============================================================
+
+# ── APSL ───────────────────────────────────────────────────────────────
+lighthouse-apsl-standings:
+	@echo "🏟️  Lighthouse → APSL standings (whole league)..."
+	@$(MAKE) scrape-apsl-standings
+	@$(MAKE) parse-apsl
+	@$(MAKE) load-apsl
+	@echo "✓ lighthouse-apsl-standings done"
+
+lighthouse-apsl-team:
+	@echo "🏠 Lighthouse → APSL team page (Lighthouse 1893 SC roster + schedule)..."
+	@FORCE_SCRAPE=1 LIGHTHOUSE_ONLY=1 $(MAKE) scrape-apsl-teams
+	@LIGHTHOUSE_ONLY=1 $(MAKE) parse-apsl
+	@$(MAKE) load-apsl
+	@echo "✓ lighthouse-apsl-team done"
+
+lighthouse-apsl: lighthouse-apsl-standings lighthouse-apsl-team
+	@echo "✅ lighthouse-apsl done (standings + team)"
+
+# ── CASA ───────────────────────────────────────────────────────────────
+lighthouse-casa-liga1:
+	@echo "🏠 Lighthouse → CASA Philadelphia Liga 1 (Lighthouse Boys Club)..."
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 1" $(MAKE) scrape-casa-standings
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 1" $(MAKE) scrape-casa-schedule
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 1" $(MAKE) scrape-casa-rosters
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 1" $(MAKE) parse-casa
+	@$(MAKE) load-casa
+	@echo "✓ lighthouse-casa-liga1 done"
+
+lighthouse-casa-liga2:
+	@echo "🏠 Lighthouse → CASA Philadelphia Liga 2 (Lighthouse Boys Club U23)..."
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 2" $(MAKE) scrape-casa-standings
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 2" $(MAKE) scrape-casa-schedule
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 2" $(MAKE) scrape-casa-rosters
+	@LIGHTHOUSE_ONLY=1 LIGHTHOUSE_DIVISION="Philadelphia Liga 2" $(MAKE) parse-casa
+	@$(MAKE) load-casa
+	@echo "✓ lighthouse-casa-liga2 done"
+
+lighthouse-casa: lighthouse-casa-liga1 lighthouse-casa-liga2
+	@echo "✅ lighthouse-casa done (Liga 1 + Liga 2)"
+
+# ── GroupMe ────────────────────────────────────────────────────────────
+lighthouse-groupme-apsl:
+	@echo "💬 Lighthouse → GroupMe: APSL Lighthouse..."
+	@node scripts/sync-groupme-events.js --group "APSL Lighthouse"
+
+lighthouse-groupme-liga1:
+	@echo "💬 Lighthouse → GroupMe: Lighthouse Boys Club Liga 1 & 2..."
+	@node scripts/sync-groupme-events.js --group "Lighthouse Boys Club Liga 1 & 2"
+
+lighthouse-groupme-liga2:
+	@echo "💬 Lighthouse → GroupMe: Lighthouse Boys Club U23..."
+	@node scripts/sync-groupme-events.js --group "Lighthouse Boys Club U23"
+
+lighthouse-groupme-training:
+	@echo "💬 Lighthouse → GroupMe: Training Lighthouse..."
+	@node scripts/sync-groupme-events.js --group "Training Lighthouse"
+
+lighthouse-groupme-pickup:
+	@echo "💬 Lighthouse → GroupMe: Philadelphia Pickup..."
+	@node scripts/sync-groupme-events.js --group "Philadelphia Pickup"
+
+lighthouse-groupme: lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup
+	@echo "✅ lighthouse-groupme done (all 5 chats)"
+
+# ── Root: full Lighthouse refresh ─────────────────────────────────────
+lighthouse: lighthouse-apsl lighthouse-casa lighthouse-groupme
+	@echo ""
+	@echo "🏆 lighthouse done (APSL + CASA Liga 1/2 + all GroupMe chats)"
+
+# ============================================================
 # Backup & Restore (pg_dump snapshots)
 # ============================================================
 
@@ -354,6 +461,57 @@ safe-rebuild: backup rebuild
 	@echo "✓ Safe rebuild complete (backup in backups/)"
 	@echo "  Run: make sync    (to re-sync league data)"
 	@echo "  Or:  make restore (to restore from backup)"
+
+# ============================================================
+# Emergency Rebuild — full automated recovery in one command
+# ============================================================
+# Wipes containers + DB, then restores everything that matters:
+#   1. Export user data (lineups + manual attendance) to SQL
+#   2. pg_dump full backup (paranoia safety net)
+#   3. clean + build (image build cached if no source changes)
+#   4. Wait for DB ready
+#   5. Load all league SQL (teams/players/schedule)
+#   6. Re-load user data (lineups + attendance)
+# RSVPs are not exported — re-fetch from source: make sync-groupme
+#
+# Usage:  make er           # interactive (prompts before destroying)
+#         make er FORCE=1   # no prompt, for true emergencies
+emergency-rebuild er:
+	@echo "🚨 Emergency rebuild starting..."
+	@if [ -z "$(FORCE)" ]; then \
+		printf "This wipes the DB. User data (lineups + manual attendance) will be exported and re-loaded. Continue? [y/N] "; \
+		read ans; [ "$$ans" = "y" ] || [ "$$ans" = "Y" ] || { echo "Aborted."; exit 1; }; \
+	fi
+	@echo ""
+	@echo "[1/6] Exporting user data (lineups + manual attendance)..."
+	@$(MAKE) -s export-user-data || echo "  (skipped — DB not reachable)"
+	@echo ""
+	@echo "[2/6] Snapshot pg_dump backup..."
+	@$(MAKE) -s backup || echo "  (skipped — DB not reachable)"
+	@echo ""
+	@echo "[3/6] Clean + build containers..."
+	@$(MAKE) -s clean
+	@$(MAKE) -s build
+	@echo ""
+	@echo "[4/6] Waiting for DB to be ready..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
+		$(DB_EXEC) pg_isready -U footballhome_user -d footballhome >/dev/null 2>&1 && break; \
+		sleep 2; \
+	done
+	@echo ""
+	@echo "[5/6] Loading league SQL (teams/players/schedule)..."
+	@$(MAKE) -s load
+	@echo ""
+	@echo "[6/6] Re-loading user data..."
+	@$(MAKE) -s load-user-data || echo "  (no user data to load)"
+	@echo ""
+	@echo "✅ Emergency rebuild complete."
+	@echo "   Frontend: http://localhost:3000"
+	@echo "   Backend:  http://localhost:3001"
+	@echo ""
+	@echo "Optional next steps:"
+	@echo "   make sync-groupme   # restore RSVPs/chat events from GroupMe"
+	@echo "   make scrape         # refresh standings/results from web"
 
 export-user-data:
 	@echo "📦 Exporting user data..."
@@ -388,16 +546,31 @@ audit:
 
 # ============================================================
 # VPN (WireGuard — for IP-blocked scraping)
+#
+# ALWAYS containerized. WireGuard runs inside an isolated podman
+# network namespace; the host routing table is never modified, so
+# SSH sessions stay alive. There is no host-VPN backend by design.
 # ============================================================
 
-vpn-up:
-	@sudo scripts/setup/setup-wireguard.sh up
+scrape-vpn-up:
+	@scripts/scrape-vpn.sh up
 
-vpn-down:
-	@sudo scripts/setup/setup-wireguard.sh down
+scrape-vpn-down:
+	@scripts/scrape-vpn.sh down
 
-vpn-status:
-	@sudo scripts/setup/setup-wireguard.sh status
+scrape-vpn-status:
+	@scripts/scrape-vpn.sh status
 
-# vpn-scrape / vpn-sync removed — VPN is now automatic for APSL/CSL targets.
-# Just run: make scrape  or  make sync
+scrape-vpn-shell:
+	@scripts/scrape-vpn.sh shell
+
+scrape-vpn-logs:
+	@scripts/scrape-vpn.sh logs
+
+scrape-vpn-rebuild:
+	@scripts/scrape-vpn.sh rebuild
+
+# Friendly aliases
+vpn-up:    scrape-vpn-up
+vpn-down:  scrape-vpn-down
+vpn-status: scrape-vpn-status
