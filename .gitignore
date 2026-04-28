@@ -31,6 +31,9 @@ lighthouse_*.txt
 
 # Database backups (pg_dump snapshots)
 backups/
+# WireGuard provider config — plaintext is gitignored;
+# encrypted scrape-vpn.conf.age IS committed and decrypted at setup time.
+scrape-vpn.conf
 # Generated COPY format SQL files (created from INSERT SQL for fast loading)
 database/data/*.copy.sql
 database/data/99-*.sql
@@ -55,8 +58,7 @@ package-lock.json
 
 # Environment and credentials
 .groupme-cookies.json
-footballhome-git-crypt.key
-.env
+footballhome-git-crypt.key.env
 env
 .aider*
 # frontend/vendor/ is tracked - vis-network library needed for schema viewer
