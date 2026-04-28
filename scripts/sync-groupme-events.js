@@ -31,6 +31,11 @@ const TOKEN = process.env.GROUPME_ACCESS_TOKEN;
 const GROUPME_PROVIDER_ID = 1; // chat_providers.id for 'groupme'
 const GROUPME_SOURCE_SYSTEM_ID = 4; // source_systems.id for 'groupme'
 const DRY_RUN = process.argv.includes('--dry-run');
+// --group "<name>" filters to a single GroupMe group by exact name match (case-insensitive)
+const GROUP_FILTER = (() => {
+  const idx = process.argv.indexOf('--group');
+  return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1].trim().toLowerCase() : null;
+})();
 
 // GroupMe group → team mapping
 // team lookup uses source_system_id + external_id (unique per source)
@@ -779,7 +784,17 @@ async function main() {
     // Track processed events to skip cross-chat duplicates
     const processedEventKeys = new Set();
 
-    for (const groupConfig of GROUPS) {
+    const groupsToSync = GROUP_FILTER
+      ? GROUPS.filter(g => g.name.toLowerCase() === GROUP_FILTER)
+      : GROUPS;
+
+    if (GROUP_FILTER && groupsToSync.length === 0) {
+      console.error(`❌ No GroupMe group matches --group "${GROUP_FILTER}"`);
+      console.error(`   Available: ${GROUPS.map(g => `"${g.name}"`).join(', ')}`);
+      process.exit(1);
+    }
+
+    for (const groupConfig of groupsToSync) {
       console.log('='.repeat(60));
       console.log(`📱 ${groupConfig.name} (GroupMe: ${groupConfig.groupmeId})`);
       console.log('='.repeat(60));
