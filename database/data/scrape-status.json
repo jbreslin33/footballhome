@@ -9,11 +9,11 @@
     "status": "success"
   },
   "casa-rosters": {
-    "updatedAt": "2026-04-29T16:01:04.309Z",
+    "updatedAt": "2026-04-29T17:33:24.484Z",
     "status": "success"
   },
   "casa-schedule": {
-    "updatedAt": "2026-04-29T16:00:55.189Z",
+    "updatedAt": "2026-04-29T17:33:15.402Z",
     "status": "success"
   },
   "csl-teams": {
@@ -26,7 +26,7 @@
     "details": "110 KB"
   },
   "casa-standings": {
-    "updatedAt": "2026-04-29T16:00:52.832Z",
+    "updatedAt": "2026-04-29T17:33:12.969Z",
     "status": "success"
   }
 }

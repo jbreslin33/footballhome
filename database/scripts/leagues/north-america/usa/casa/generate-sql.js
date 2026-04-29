@@ -103,37 +103,43 @@ class CasaSqlGenerator extends BaseGenerator {
     // Parse teams
     this.parseTeams(data);
     this.applyLighthouseScope();
-    
+
     console.log(`   Found ${this.teams.length} teams`);
-    
+
+    // Parse matches FIRST so any LIGHTHOUSE_ONLY-mode stub opponents
+    // (cup / cross-division teams not in this division's standings) are
+    // appended to this.teams BEFORE we group by club / write teams SQL.
+    // Without this, matches reference team external_ids that never get
+    // INSERTed and the matches load silently (INSERT 0 0 → empty schedule).
+    console.log('\n⚽ Parsing matches from JSON...');
+    await this.parseMatches();
+    console.log(`   Found ${this.matches.length} matches`);
+
     // Group teams by club (deduplicates clubs with multiple teams)
     const teamGroups = this.groupTeamsByClub(this.teams);
     this.clubs = this.extractClubsFromGroups(teamGroups);
     this.organizations = this.extractOrganizationsFromClubs(this.clubs);
-    
+
     console.log(`   Extracted ${this.clubs.size} unique clubs (grouped from teams)`);
     console.log(`   Extracted ${this.organizations.size} unique organizations`);
-    
+
     // Generate SQL files
     this.writeOrganizationsSql();
     this.writeClubsSql();
     this.writeTeamsSql();
-    
+
     // Parse standings from schedule HTML
     console.log('\n📈 Parsing standings from schedule HTML...');
     await this.parseStandings();
     this.writeStandingsSql();
-    
+
     // Parse rosters and generate players SQL
     console.log('\n👥 Parsing player rosters...');
     await this.parseTeamRosters();
     this.writePlayersSql();
     this.writeRostersSql();
-    
-    // Parse matches from JSON
-    console.log('\n⚽ Parsing matches from JSON...');
-    await this.parseMatches();
-    console.log(`   Found ${this.matches.length} matches`);
+
+    // Write matches SQL last (after teams/clubs/orgs exist for FK lookups)
     this.writeMatchesSql();
     
     // Apply team logos from SportsEngine API
@@ -551,6 +557,24 @@ WHERE name = '${this.escapeSql(teamName)}';
           console.log(`   ⚠️  Skipping match - team not found: ${match.home} vs ${match.away}`);
           continue;
         }
+
+        // In LIGHTHOUSE_ONLY mode, opponents that DID exist in the full
+        // standings (this.allTeams) were resolved via teamMap and never
+        // routed through addStub() — so they're absent from this.teams
+        // and never get emitted in writeTeamsSql, leaving the match's
+        // FK lookup to find nothing (INSERT 0 0). Ensure every team
+        // referenced by a Lighthouse-side match is in this.teams.
+        const ensureTeamEmitted = (externalId, displayName) => {
+          if (this.teams.some(t => t.externalId === externalId)) return;
+          const fromAll = this.allTeams.find(t => t.externalId === externalId);
+          if (fromAll) {
+            this.teams.push({ ...fromAll });
+          } else {
+            this.addTeam(displayName, division.external_id, division.name);
+          }
+        };
+        ensureTeamEmitted(homeExternalId, match.home);
+        ensureTeamEmitted(awayExternalId, match.away);
         
         // Parse score if final
         let homeScore = null;

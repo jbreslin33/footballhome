@@ -10,7 +10,7 @@
 
 -- Remove existing roster entries for the teams covered by this sync
 -- This ensures players removed from the official roster are also removed from the DB
-DELETE FROM rosters WHERE team_id IN (SELECT id FROM teams WHERE source_system_id = 2 AND external_id IN ('9096430-lighthouse-boys-club-u23'));
+DELETE FROM rosters WHERE team_id IN (SELECT id FROM teams WHERE source_system_id = 2 AND external_id IN ('9096430-lighthouse-boys-club-u23', '9096430-phoenix-scr', '9096430-lighthouse-boys-club', '9096430-philadelphia-sc-select', '9096430-ade-united-fc', '9096430-persepolis-fc-ii', '9096430-philly-black-stars', '9096430-sewell''s-old-boys', '9096430-oaklyn-united-nor''easters-ii', '9096430-philadelphia-sierra-stars', '9096430-illyrians'));
 
 INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
 SELECT t.id, pl.id, NULL, '1970-01-01'
