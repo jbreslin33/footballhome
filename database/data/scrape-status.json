@@ -1,21 +1,20 @@
 {
   "apsl-standings": {
-    "updatedAt": "2026-04-25T03:03:08.472Z",
+    "updatedAt": "2026-04-29T15:53:14.808Z",
     "status": "success",
-    "details": "179 KB"
+    "details": "115 KB"
   },
   "apsl-teams": {
-    "updatedAt": "2026-04-25T03:04:09.648Z",
+    "updatedAt": "2026-04-29T15:55:49.921Z",
     "status": "success"
   },
   "casa-rosters": {
-    "updatedAt": "2026-04-24T20:23:42.592Z",
+    "updatedAt": "2026-04-29T16:01:04.309Z",
     "status": "success"
   },
   "casa-schedule": {
-    "updatedAt": "2026-03-19T14:10:30.161Z",
-    "status": "success",
-    "details": "256 matches"
+    "updatedAt": "2026-04-29T16:00:55.189Z",
+    "status": "success"
   },
   "csl-teams": {
     "updatedAt": "2026-03-24T15:35:40.468Z",
@@ -25,5 +24,9 @@
     "updatedAt": "2026-03-24T15:35:31.016Z",
     "status": "success",
     "details": "110 KB"
+  },
+  "casa-standings": {
+    "updatedAt": "2026-04-29T16:00:52.832Z",
+    "status": "success"
   }
 }

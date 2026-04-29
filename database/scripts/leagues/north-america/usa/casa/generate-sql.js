@@ -230,7 +230,7 @@ class CasaSqlGenerator extends BaseGenerator {
       const org = this.organizations.get(club.organizationName);
       const escapedOrgName = this.escapeSql(org.name);
       const escapedName = this.escapeSql(name);
-      sql += `INSERT INTO clubs (id, name, organization_id) SELECT ${id}, '${escapedName}', (SELECT id FROM organizations WHERE name = '${escapedOrgName}') WHERE NOT EXISTS (SELECT 1 FROM clubs WHERE name = '${escapedName}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
+      sql += `INSERT INTO clubs (id, name, organization_id) SELECT ${id}, '${escapedName}', (SELECT id FROM organizations WHERE name = '${escapedOrgName}') WHERE NOT EXISTS (SELECT 1 FROM clubs WHERE name = '${escapedName}') ON CONFLICT DO NOTHING;\n`;
       club.id = id;
       id++;
     }
@@ -269,10 +269,7 @@ JOIN seasons s ON d.season_id = s.id
 WHERE d.name = '${this.escapeSql(team.divisionName)}'
   AND s.name = '${this.getSeasonName()}'
   AND s.league_id = ${this.getLeagueId()}
-ON CONFLICT (division_id, name) DO UPDATE SET
-  external_id = EXCLUDED.external_id,
-  club_id = EXCLUDED.club_id,
-  source_system_id = EXCLUDED.source_system_id;\n`;
+ON CONFLICT DO NOTHING;\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-casa.sql`);
@@ -518,9 +515,38 @@ WHERE name = '${this.escapeSql(teamName)}';
         homeTeamKey = aliases[homeTeamKey] || homeTeamKey;
         awayTeamKey = aliases[awayTeamKey] || awayTeamKey;
         
-        const homeExternalId = teamMap.get(homeTeamKey);
-        const awayExternalId = teamMap.get(awayTeamKey);
-        
+        let homeExternalId = teamMap.get(homeTeamKey);
+        let awayExternalId = teamMap.get(awayTeamKey);
+
+        // In LIGHTHOUSE_ONLY mode, the standings JSON for one division is the only
+        // source of "known" teams — but Lighthouse's schedule can include opponents
+        // from cup brackets / cross-division play / late additions that aren't in
+        // standings. Auto-create stub teams for those so the match still loads,
+        // provided at least one side is a Lighthouse team (per "any team with
+        // Lighthouse in the name should be captured").
+        const homeIsLighthouse = /lighthouse/i.test(match.home);
+        const awayIsLighthouse = /lighthouse/i.test(match.away);
+        const addStub = (rawName) => {
+          const stubExternalId = `${division.external_id}-${rawName.toLowerCase().replace(/\s+/g, '-')}`;
+          this.addTeam(rawName, division.external_id, division.name);
+          this.allTeams.push({
+            name: rawName,
+            externalId: stubExternalId,
+            divisionName: division.name,
+            divisionExternalId: division.external_id,
+            sourceSystemId: this.sourceSystemId
+          });
+          teamMap.set(rawName.toLowerCase().trim(), stubExternalId);
+          return stubExternalId;
+        };
+
+        if (!homeExternalId && (homeIsLighthouse || awayIsLighthouse)) {
+          homeExternalId = addStub(match.home);
+        }
+        if (!awayExternalId && (homeIsLighthouse || awayIsLighthouse)) {
+          awayExternalId = addStub(match.away);
+        }
+
         if (!homeExternalId || !awayExternalId) {
           console.log(`   ⚠️  Skipping match - team not found: ${match.home} vs ${match.away}`);
           continue;

@@ -331,7 +331,7 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
     for (const [name, club] of this.clubs) {
       const org = this.organizations.get(club.organizationName);
       const escapedOrgName = this.escapeSql(org.name);
-      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', (SELECT id FROM organizations WHERE name = '${escapedOrgName}')) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
+      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', (SELECT id FROM organizations WHERE name = '${escapedOrgName}')) ON CONFLICT DO NOTHING;\n`;
       club.id = id; // Store for team references
       id++;
     }
@@ -374,10 +374,7 @@ JOIN seasons s ON d.season_id = s.id
 WHERE d.name = '${this.escapeSql(team.divisionName)}'
   AND s.name = '${this.getSeasonName()}'
   AND s.league_id = ${this.getLeagueId()}
-ON CONFLICT (division_id, name) DO UPDATE SET
-  external_id = EXCLUDED.external_id,
-  club_id = EXCLUDED.club_id,
-  source_system_id = EXCLUDED.source_system_id;\n`;
+ON CONFLICT DO NOTHING;\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-csl.sql`);

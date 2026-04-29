@@ -11,7 +11,4 @@ JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Delaware River Conference'
   AND s.name = '2025/2026'
   AND s.league_id = 1
-ON CONFLICT (division_id, name) DO UPDATE SET
-  external_id = EXCLUDED.external_id,
-  club_id = EXCLUDED.club_id,
-  source_system_id = EXCLUDED.source_system_id;
+ON CONFLICT DO NOTHING;

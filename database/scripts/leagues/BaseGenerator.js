@@ -423,7 +423,7 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
 -- 
 -- Architecture: Players looked up by name (no hardcoded IDs)
 -- joined_at uses sentinel date '1970-01-01' for scraped rosters (deterministic for UPSERT)
-- ${scopedExternalIds.length > 0 ? 'Partial replace: DELETE only scoped teams for this sync, then re-INSERT current roster' : 'Full replace: DELETE all rosters for this source system\'s teams, then re-INSERT current roster'}
+-- ${scopedExternalIds.length > 0 ? 'Partial replace: DELETE only scoped teams for this sync, then re-INSERT current roster' : 'Full replace: DELETE all rosters for this source system\'s teams, then re-INSERT current roster'}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- Remove existing roster entries for the teams covered by this sync

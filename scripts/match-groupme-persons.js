@@ -11,7 +11,7 @@
  *   node scripts/match-groupme-persons.js --show-all    # Show all members including unmatched
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', 'env') });
 const https = require('https');
 const { Client } = require('pg');
 

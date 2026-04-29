@@ -5,6 +5,7 @@
 #
 # Currently decrypts:
 #   scrape-vpn.conf.age  →  scrape-vpn.conf   (gitignored, chmod 600)
+#   env.age              →  env               (gitignored, chmod 600)
 #
 # Reproducing on a new server:
 #   1. Clone the repo (the .age file is already in it).

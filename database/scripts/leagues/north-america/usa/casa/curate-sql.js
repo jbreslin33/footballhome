@@ -234,7 +234,7 @@ class CasaSqlCurator extends BaseSqlCurator {
     );
 
     for (const club of newClubs) {
-      sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
+      sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT DO NOTHING;\n`;
     }
 
     // Teams: NEW SCHEMA - copy INSERT...SELECT statements and update club_id

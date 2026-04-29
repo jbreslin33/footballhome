@@ -2,7 +2,7 @@
 /**
  * Fetch GroupMe calendar events (structured data) for all 5 Lighthouse groups
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', 'env') });
 const https = require('https');
 
 const TOKEN = process.env.GROUPME_ACCESS_TOKEN;

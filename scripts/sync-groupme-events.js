@@ -19,7 +19,7 @@
  *   node scripts/sync-groupme-events.js --dry-run  # Preview without DB writes
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', 'env') });
 const https = require('https');
 const { Client } = require('pg');
 

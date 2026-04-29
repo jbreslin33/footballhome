@@ -1323,153 +1323,6 @@
     }
   },
   {
-    "id": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed",
-    "title": "Philly Black Stars at Philadelphia SC Select",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Northeast High School",
-    "location_address": "1601 Cottman Avenue, Philadelphia, PA 19111-3430",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "completed",
-    "start_date_time": "2025-10-12T18:45:00.000Z",
-    "end_date_time": "2025-10-12T20:30:00.000Z",
-    "created_at": "2025-09-12T13:17:45.000Z",
-    "updated_at": "2025-11-04T17:47:13.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "162599",
-    "subvenue_id": "501332",
-    "source": {
-      "id": "68c41d7a0d3d1c0001d07f07",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "home_team_score": "2",
-        "away_team_id": "11f08bf6-6767-9fae-815f-b69b703c4158",
-        "away_team_score": "2",
-        "score_allowed": true,
-        "status": "completed",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f99aa1400fcdcee33",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Philadelphia SC Select",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8fb3eb08013b755a47",
-          "primary_color": "",
-          "seed_id": "3279219",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f99aa1400fcdcee33",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68bd95ae7365f5000188deb7",
-        "extended_attributes": {
-          "outside_team": true,
-          "division_name": "Liga 2",
-          "name": "Philly Black Stars",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": null,
-          "team_id": "68bd95ae7365f5000188deb6",
-          "primary_color": null,
-          "seed_id": "3284765",
-          "logos": {
-            "large_square": null
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68bd95ae7365f5000188deb7",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f08bf6-6767-9fae-815f-b69b703c4158",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "682f9676528c0e00bfc9d2f2",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "682f967a5d052e0001c4ec30"
-        },
-        "system": "StatNgin",
-        "id": "682f967a5d052e0001c4ec2f",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "68c41d7a0d3d1c0001d07f07",
-      "originator_type": "game_slot",
-      "status": "completed",
-      "team_1": {
-        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "originator_id": "68b9ec8f99aa1400fcdcee33",
-        "name": "Philadelphia SC Select",
-        "score": "2",
-        "is_home_team": true,
-        "interval_scores": []
-      },
-      "team_2": {
-        "id": "11f08bf6-6767-9fae-815f-b69b703c4158",
-        "originator_id": "68bd95ae7365f5000188deb7",
-        "name": "Philly Black Stars",
-        "score": "2",
-        "is_home_team": false,
-        "interval_scores": []
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "quick",
-      "number_of_overtime": 0
-    }
-  },
-  {
     "id": "d4060108-b706-4f5f-a165-8a93b1d36f75",
     "title": "Lighthouse Boys Club U23 at Persepolis FC II",
     "event_type": "game",
@@ -1607,6 +1460,153 @@
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Boys Club U23",
         "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed",
+    "title": "Philly Black Stars at Philadelphia SC Select",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Northeast High School",
+    "location_address": "1601 Cottman Avenue, Philadelphia, PA 19111-3430",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-12T18:45:00.000Z",
+    "end_date_time": "2025-10-12T20:30:00.000Z",
+    "created_at": "2025-09-12T13:17:45.000Z",
+    "updated_at": "2025-11-04T17:47:13.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "162599",
+    "subvenue_id": "501332",
+    "source": {
+      "id": "68c41d7a0d3d1c0001d07f07",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "home_team_score": "2",
+        "away_team_id": "11f08bf6-6767-9fae-815f-b69b703c4158",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f99aa1400fcdcee33",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Philadelphia SC Select",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8fb3eb08013b755a47",
+          "primary_color": "",
+          "seed_id": "3279219",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f99aa1400fcdcee33",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68bd95ae7365f5000188deb7",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Philly Black Stars",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": null,
+          "team_id": "68bd95ae7365f5000188deb6",
+          "primary_color": null,
+          "seed_id": "3284765",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68bd95ae7365f5000188deb7",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f08bf6-6767-9fae-815f-b69b703c4158",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "682f9676528c0e00bfc9d2f2",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "682f967a5d052e0001c4ec30"
+        },
+        "system": "StatNgin",
+        "id": "682f967a5d052e0001c4ec2f",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68c41d7a0d3d1c0001d07f07",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "originator_id": "68b9ec8f99aa1400fcdcee33",
+        "name": "Philadelphia SC Select",
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08bf6-6767-9fae-815f-b69b703c4158",
+        "originator_id": "68bd95ae7365f5000188deb7",
+        "name": "Philly Black Stars",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
@@ -6068,11 +6068,11 @@
     "location_description": "Grass",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-26T17:05:00.000Z",
     "end_date_time": "2026-04-26T18:35:00.000Z",
     "created_at": "2026-02-23T21:57:29.000Z",
-    "updated_at": "2026-04-04T04:28:25.000Z",
+    "updated_at": "2026-04-27T00:15:30.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -6084,11 +6084,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "home_team_score": "",
+        "home_team_score": "5",
         "away_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -6096,8 +6096,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -6175,6 +6179,8 @@
           "flight_stage_id": "682f967a5d052e0001c4ec30"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "682f967a5d052e0001c4ec2f",
         "id": "682f967a5d052e0001c4ec2f",
         "type": "division"
       }
@@ -6182,12 +6188,12 @@
     "game_details": {
       "originator_id": "699ccd4a4685970001a2eac2",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Boys Club U23",
-        "score": "",
+        "score": "5",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -6195,13 +6201,13 @@
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis FC II",
-        "score": "",
+        "score": "0",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -6211,15 +6217,15 @@
     "event_type": "game",
     "description": "",
     "location_name": "Bartram Highschool",
-    "location_address": "5847R Elmwood Avenue, Philadelphia, PA 19143",
+    "location_address": "5847R Elmwood Avenue, Philadelphia, PA 19143, US",
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "postponed",
     "start_date_time": "2026-04-26T19:00:00.000Z",
     "end_date_time": "2026-04-26T20:30:00.000Z",
     "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:29.000Z",
+    "updated_at": "2026-04-27T14:21:37.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -6235,7 +6241,7 @@
         "away_team_id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
         "away_team_score": "",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "postponed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -6243,39 +6249,17 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9ec8f99aa1400fcdcee33",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Philadelphia SC Select",
-          "division_id": "682f967a5d052e0001c4ec2f",
-          "secondary_color": "",
-          "team_id": "68b9ec8fb3eb08013b755a47",
-          "primary_color": "",
-          "seed_id": "3279219",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9ec8f99aa1400fcdcee33",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "682f967a5d052e0001c4ec2f",
-        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
       {
         "originator_type": "season_team",
         "principal_originator_id": "68b9ec8f2fa76700fb2eef25",
@@ -6303,6 +6287,32 @@
         "principal_originator_type": "season_team"
       },
       {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b9ec8f99aa1400fcdcee33",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Philadelphia SC Select",
+          "division_id": "682f967a5d052e0001c4ec2f",
+          "secondary_color": "",
+          "team_id": "68b9ec8fb3eb08013b755a47",
+          "primary_color": "",
+          "seed_id": "3279219",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b9ec8f99aa1400fcdcee33",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "682f967a5d052e0001c4ec2f",
+        "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
         "extended_attributes": {},
         "system": "StatNgin",
         "id": "8058",
@@ -6322,6 +6332,8 @@
           "flight_stage_id": "682f967a5d052e0001c4ec30"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "682f967a5d052e0001c4ec2f",
         "id": "682f967a5d052e0001c4ec2f",
         "type": "division"
       }
@@ -6329,20 +6341,22 @@
     "game_details": {
       "originator_id": "699ccd494685970001a2eabc",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "postponed",
       "team_1": {
         "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
         "originator_id": "68b9ec8f99aa1400fcdcee33",
         "name": "Philadelphia SC Select",
         "score": "",
-        "is_home_team": true
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6ce-f59e-a770-e61f3017bc57",
         "originator_id": "68b9ec8f2fa76700fb2eef25",
         "name": "Phoenix SCR",
         "score": "",
-        "is_home_team": false
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,

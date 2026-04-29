@@ -295,11 +295,26 @@ async function main() {
   await fetcher.closeBrowser();
 
   const liveCount = fetcher._fetchCount;
+  const cachedCount = teamIds.length - liveCount - failed;
   console.log(`\n   📊 Summary:`);
   console.log(`      Teams in standings: ${teamIds.length}`);
   console.log(`      Live fetches: ${liveCount}`);
-  console.log(`      Served from cache: ${teamIds.length - liveCount - failed}`);
+  console.log(`      Served from cache: ${cachedCount}`);
   console.log(`      Failed: ${failed}`);
+
+  // Loud failure modes — refuse to silently exit clean when something is wrong.
+  if (failed > 0) {
+    console.error(`\n❌ ${leagueName}: ${failed} team page(s) failed to fetch.`);
+    console.error(`   Failed team IDs: ${failedTeams.join(', ')}`);
+    process.exit(2);
+  }
+  if (args.force && liveCount === 0 && teamIds.length > 0) {
+    console.error(`\n❌ ${leagueName}: --force was set but ZERO live fetches occurred.`);
+    console.error(`   The scraper served everything from cache despite the force flag.`);
+    console.error(`   This usually means env vars (e.g. FORCE_SCRAPE) were dropped at`);
+    console.error(`   the VPN-container boundary, or the cache path is wrong.`);
+    process.exit(3);
+  }
   console.log(`\n✅ ${leagueName} team pages done\n`);
 }
 

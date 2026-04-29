@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Players - APSL
 -- Player roster data from team pages
--- Total Records: 27
+-- Total Records: 31
 -- 
 -- Architecture: Auto-generated IDs, name-based deduplication
 -- Same name = same person across all sources (curation overrides via name change)
@@ -248,6 +248,38 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Henry', 'Gamez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Henry' AND last_name = 'Gamez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'lighthouse-1893-sc-henry-gamez', '116079'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Henry' AND per.last_name = 'Gamez' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brian', 'Gately', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brian' AND last_name = 'Gately' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'lighthouse-1893-sc-brian-gately', '116079'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brian' AND per.last_name = 'Gately' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('John', 'Gonzalez', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
@@ -404,6 +436,38 @@ SELECT pl.id, 1, 'lighthouse-1893-sc-kouassi-nguessan', '116079'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Kouassi' AND per.last_name = 'Nguessan' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Som', 'Safavi', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Som' AND last_name = 'Safavi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'lighthouse-1893-sc-som-safavi', '116079'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Som' AND per.last_name = 'Safavi' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Marcos', 'Santos', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Marcos' AND last_name = 'Santos' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'lighthouse-1893-sc-marcos-santos', '116079'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Marcos' AND per.last_name = 'Santos' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 

@@ -374,7 +374,7 @@ sync-groupme:
 # ── APSL ───────────────────────────────────────────────────────────────
 lighthouse-apsl-standings:
 	@echo "🏟️  Lighthouse → APSL standings (whole league)..."
-	@$(MAKE) scrape-apsl-standings
+	@FORCE_SCRAPE=1 $(MAKE) scrape-apsl-standings
 	@$(MAKE) parse-apsl
 	@$(MAKE) load-apsl
 	@echo "✓ lighthouse-apsl-standings done"

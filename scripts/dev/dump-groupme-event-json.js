@@ -2,7 +2,7 @@
 /**
  * Dump full JSON for one event from each group to see complete structure
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', 'env') });
 const https = require('https');
 
 const TOKEN = process.env.GROUPME_ACCESS_TOKEN;

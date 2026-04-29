@@ -47,7 +47,7 @@ VALUES ('st joseph academy - moss mill park turf', '1111 Moss Mill Rd  Hammonton
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
-VALUES ('tbd', NULL)
+VALUES ('westampton sports complex', '301 Bridge St  Westampton Township NJ 08060')
 ON CONFLICT (name) DO UPDATE SET
   address = COALESCE(EXCLUDED.address, venues.address);
 INSERT INTO venues (name, address) 
@@ -372,7 +372,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-04-08', '20:30:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  1, 6,
   1, '262668'
 FROM teams ht
 JOIN teams at ON at.external_id = '114850' AND at.source_system_id = 1
@@ -394,7 +394,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-04-12', '18:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 4,
   1, '262673'
 FROM teams ht
 JOIN teams at ON at.external_id = '116079' AND at.source_system_id = 1
@@ -414,9 +414,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-19', '15:00:00', 3,
+  4, '2026-04-19', '12:45:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 8,
   1, '262679'
 FROM teams ht
 JOIN teams at ON at.external_id = '114808' AND at.source_system_id = 1
@@ -436,9 +436,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-26', '15:00:00', 1,
+  4, '2026-04-26', '15:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  3, 2,
   1, '262685'
 FROM teams ht
 JOIN teams at ON at.external_id = '114822' AND at.source_system_id = 1
@@ -458,13 +458,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-04-29', '19:00:00', 1,
+  4, '2026-04-29', '21:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '231085'
 FROM teams ht
 JOIN teams at ON at.external_id = '116079' AND at.source_system_id = 1
-LEFT JOIN venues v ON v.name = 'tbd'
+LEFT JOIN venues v ON v.name = 'westampton sports complex'
 WHERE ht.external_id = '115227' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,

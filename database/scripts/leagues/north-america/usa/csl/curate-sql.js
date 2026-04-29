@@ -142,7 +142,7 @@ class CslSqlCurator extends BaseSqlCurator {
     );
     
     for (const club of newClubs) {
-      sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
+      sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT DO NOTHING;\n`;
     }
     
     // Teams: Read original SQL and replace club_ids for matched clubs

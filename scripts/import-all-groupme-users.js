@@ -15,7 +15,7 @@
  *   instead of creating users. Admin must manually link/merge via Division Roster Management UI.
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', 'env') });
 const https = require('https');
 const { Client } = require('pg');
 

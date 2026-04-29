@@ -2,7 +2,7 @@
 /**
  * Explore GroupMe messages to understand format for practice/game parsing
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', 'env') });
 const https = require('https');
 
 const TOKEN = process.env.GROUPME_ACCESS_TOKEN;

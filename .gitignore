@@ -59,7 +59,8 @@ package-lock.json
 # Environment and credentials
 .groupme-cookies.json
 footballhome-git-crypt.key.env
-env
+# Plaintext env (decrypted from env.age by setup-age.sh) — never commit
+/env
 .aider*
 # frontend/vendor/ is tracked - vis-network library needed for schema viewer
 # Large binary files from roster scraping

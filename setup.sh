@@ -21,9 +21,14 @@ source scripts/setup/_lib.sh
 
 # Load LE_EMAIL (and any other vars) from env file if present, so the
 # nginx step can auto-issue a cert without the caller exporting it.
-if [ -f env ]; then
-  set -a; source ./env; set +a
-fi
+# On a fresh clone env may not exist yet (it's decrypted from env.age by
+# the `age` step below) — we re-source after that step runs.
+load_env() {
+  if [ -f env ]; then
+    set -a; source ./env; set +a
+  fi
+}
+load_env
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Football Home - First-Time Setup${NC}"
@@ -94,6 +99,10 @@ for step in "${STEPS[@]}"; do
       ./scripts/setup/setup-${step}.sh
       ;;
   esac
+
+  # After age decrypts env.age (on first clone), pick up env vars
+  # so subsequent steps (nginx LE_EMAIL, env Docker Hub creds) see them.
+  [ "$step" = "age" ] && load_env
 done
 
 # ── Done ──────────────────────────────────────────────────────────────

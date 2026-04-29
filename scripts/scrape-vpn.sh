@@ -210,10 +210,21 @@ cmd_exec() {
     exit 2
   fi
   if ! container_running; then cmd_up; fi
+  # Forward scrape-control env vars from host into the container.
+  # Without this, things like FORCE_SCRAPE / LIGHTHOUSE_ONLY get silently
+  # dropped at the container boundary and the scraper serves stale cache.
+  ENV_FORWARD=( -e VPN_ACTIVE=1 )
+  for var in FORCE_SCRAPE LIGHTHOUSE_ONLY LIGHTHOUSE_DIVISION NO_VPN \
+             WIREGUARD_CONFIG_FILE GROUPME_ACCESS_TOKEN \
+             SCRAPE_DEBUG SEASON_EXTERNAL_ID; do
+    if [ -n "${!var:-}" ]; then
+      ENV_FORWARD+=( -e "${var}=${!var}" )
+    fi
+  done
   # -i (no -t) so this works in non-tty environments like cron / make.
   exec "${ENGINE_PREFIX[@]}" "$ENGINE_BIN" exec -i \
     -w "$REPO_ROOT" \
-    -e VPN_ACTIVE=1 \
+    "${ENV_FORWARD[@]}" \
     "$CONTAINER" "$@"
 }
 

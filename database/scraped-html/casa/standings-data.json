@@ -1,101 +1,6 @@
 {
-  "generated": "2026-04-24T20:23:21.763Z",
+  "generated": "2026-04-29T16:00:52.795Z",
   "divisions": [
-    {
-      "id": 54,
-      "name": "Philadelphia Liga 1",
-      "external_id": "9090889",
-      "teams": [
-        {
-          "teamName": "Adé United FC",
-          "played": 38,
-          "wins": 12,
-          "draws": 4,
-          "losses": 2,
-          "goalsFor": 18,
-          "goalsAgainst": 55,
-          "goalDiff": 31,
-          "points": 24
-        },
-        {
-          "teamName": "Persepolis FC",
-          "played": 37,
-          "wins": 11,
-          "draws": 1,
-          "losses": 4,
-          "goalsFor": 16,
-          "goalsAgainst": 61,
-          "goalDiff": 14,
-          "points": 47
-        },
-        {
-          "teamName": "Oaklyn United FC II",
-          "played": 35,
-          "wins": 11,
-          "draws": 4,
-          "losses": 2,
-          "goalsFor": 17,
-          "goalsAgainst": 45,
-          "goalDiff": 22,
-          "points": 23
-        },
-        {
-          "teamName": "Philadelphia Sierra Stars",
-          "played": 33,
-          "wins": 10,
-          "draws": 4,
-          "losses": 3,
-          "goalsFor": 17,
-          "goalsAgainst": 34,
-          "goalDiff": 19,
-          "points": 15
-        },
-        {
-          "teamName": "Lighthouse Boys Club",
-          "played": 22,
-          "wins": 7,
-          "draws": 8,
-          "losses": 1,
-          "goalsFor": 16,
-          "goalsAgainst": 34,
-          "goalDiff": 36,
-          "points": -2
-        },
-        {
-          "teamName": "Illyrians FC",
-          "played": 21,
-          "wins": 7,
-          "draws": 10,
-          "losses": 0,
-          "goalsFor": 17,
-          "goalsAgainst": 45,
-          "goalDiff": 58,
-          "points": -13
-        },
-        {
-          "teamName": "Phoenix SCM",
-          "played": 16,
-          "wins": 5,
-          "draws": 11,
-          "losses": 1,
-          "goalsFor": 17,
-          "goalsAgainst": 29,
-          "goalDiff": 37,
-          "points": -8
-        },
-        {
-          "teamName": "Philly BlackStars",
-          "played": 16,
-          "wins": 5,
-          "draws": 12,
-          "losses": 1,
-          "goalsFor": 18,
-          "goalsAgainst": 25,
-          "goalDiff": 59,
-          "points": -34
-        }
-      ]
-    },
     {
       "id": 55,
       "name": "Philadelphia Liga 2",
@@ -105,12 +10,12 @@
           "teamName": "Persepolis FC II",
           "played": 17,
           "wins": 5,
-          "draws": 3,
+          "draws": 4,
           "losses": 2,
-          "goalsFor": 10,
+          "goalsFor": 11,
           "goalsAgainst": 24,
-          "goalDiff": 8,
-          "points": 16
+          "goalDiff": 13,
+          "points": 11
         },
         {
           "teamName": "Sewell's Old Boys",
@@ -147,14 +52,14 @@
         },
         {
           "teamName": "Lighthouse Boys Club U23",
-          "played": 3,
-          "wins": 1,
+          "played": 6,
+          "wins": 2,
           "draws": 13,
           "losses": 0,
-          "goalsFor": 14,
-          "goalsAgainst": 8,
+          "goalsFor": 15,
+          "goalsAgainst": 13,
           "goalDiff": 59,
-          "points": -51
+          "points": -46
         },
         {
           "teamName": "Club de Futbol Armada",
