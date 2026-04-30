@@ -123,6 +123,7 @@ void SocialController::ensurePromotionalPostsSchema() {
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS footer VARCHAR(200)");
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS overlay_logos TEXT");
     db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS overlay_text VARCHAR(300)");
+    db_->query("ALTER TABLE promotional_posts ADD COLUMN IF NOT EXISTS video_path TEXT");
 }
 
 void SocialController::ensureSocialSchema() {
@@ -1683,44 +1684,99 @@ Response SocialController::handleUploadPromoMedia(const Request& request) {
         }
         std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
 
+        // Detect media type from data URL prefix
+        bool isVideo = (dataValue.find("data:video/") == 0);
+
         std::string b64Data = dataValue;
         size_t commaPos = b64Data.find(',');
         if (commaPos != std::string::npos) {
             b64Data = b64Data.substr(commaPos + 1);
         }
 
-        std::string imageBytes = base64Decode(b64Data);
-        if (imageBytes.empty()) {
+        std::string mediaBytes = base64Decode(b64Data);
+        if (mediaBytes.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
-                createJSONResponse(false, "Failed to decode image data"));
+                createJSONResponse(false, "Failed to decode media data"));
         }
 
-        const std::string imageDir = "/app/images/posts";
-        mkdir(imageDir.c_str(), 0755);
+        const std::string mediaDir = "/app/images/posts";
+        mkdir(mediaDir.c_str(), 0755);
 
-        std::string filename = "promo_" + promoId + ".jpg";
-        std::string filepath = imageDir + "/" + filename;
-        std::ofstream outFile(filepath, std::ios::binary);
-        if (!outFile.is_open()) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, "Failed to write image file"));
+        if (isVideo) {
+            std::string webmFile = mediaDir + "/promo_" + promoId + ".webm";
+            std::string mp4File  = mediaDir + "/promo_" + promoId + ".mp4";
+            {
+                std::ofstream outFile(webmFile, std::ios::binary);
+                if (!outFile.is_open()) {
+                    return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Failed to write video file"));
+                }
+                outFile.write(mediaBytes.data(), mediaBytes.size());
+                outFile.close();
+            }
+
+            std::string ffmpegCmd = "ffmpeg -y -i " + webmFile +
+                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                " -movflags +faststart -an " + mp4File + " 2>&1";
+            std::cout << "🎬 Converting promo video: " << ffmpegCmd << std::endl;
+            int ffResult = system(ffmpegCmd.c_str());
+            std::remove(webmFile.c_str());
+
+            if (ffResult != 0) {
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                    createJSONResponse(false, "FFmpeg conversion failed"));
+            }
+
+            std::string videoFilename = "promo_" + promoId + ".mp4";
+            std::string videoPublicUrl = "https://footballhome.org/images/posts/" + videoFilename;
+
+            // Generate poster image (first frame) for preview
+            std::string posterFile = mediaDir + "/promo_" + promoId + ".jpg";
+            std::string posterCmd = "ffmpeg -y -i " + mp4File +
+                " -vframes 1 -q:v 2 " + posterFile + " 2>&1";
+            system(posterCmd.c_str());
+            std::string imageFilename = "promo_" + promoId + ".jpg";
+            std::string imagePublicUrl = "https://footballhome.org/images/posts/" + imageFilename;
+
+            db_->query(
+                "UPDATE promotional_posts SET video_path = '" + escapeSql(videoFilename) +
+                "', image_path = '" + escapeSql(imageFilename) +
+                "', image_url = '" + escapeSql(imagePublicUrl) +
+                "', updated_at = NOW() WHERE id = " + promoId
+            );
+
+            std::cout << "🎬 Promo video uploaded for " << promoId << ": " << mp4File << std::endl;
+
+            return Response(HttpStatus::OK,
+                createJSONResponse(true, "Video uploaded and converted",
+                    "{\"video_url\":\"" + escapeJson(videoPublicUrl) +
+                    "\",\"image_url\":\"" + escapeJson(imagePublicUrl) +
+                    "\",\"media_type\":\"video\"}"));
+        } else {
+            std::string filename = "promo_" + promoId + ".jpg";
+            std::string filepath = mediaDir + "/" + filename;
+            std::ofstream outFile(filepath, std::ios::binary);
+            if (!outFile.is_open()) {
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                    createJSONResponse(false, "Failed to write image file"));
+            }
+            outFile.write(mediaBytes.data(), mediaBytes.size());
+            outFile.close();
+
+            std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
+
+            db_->query(
+                "UPDATE promotional_posts SET image_path = '" + escapeSql(filename) +
+                "', image_url = '" + escapeSql(publicUrl) +
+                "', updated_at = NOW() WHERE id = " + promoId
+            );
+
+            std::cout << "📸 Promo media uploaded for " << promoId << ": " << filepath << std::endl;
+
+            return Response(HttpStatus::OK,
+                createJSONResponse(true, "Media uploaded",
+                    "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"filename\":\"" + escapeJson(filename) + "\",\"media_type\":\"image\"}"));
         }
-        outFile.write(imageBytes.data(), imageBytes.size());
-        outFile.close();
-
-        std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
-
-        db_->query(
-            "UPDATE promotional_posts SET image_path = '" + escapeSql(filename) +
-            "', image_url = '" + escapeSql(publicUrl) +
-            "', updated_at = NOW() WHERE id = " + promoId
-        );
-
-        std::cout << "📸 Promo media uploaded for " << promoId << ": " << filepath << std::endl;
-
-        return Response(HttpStatus::OK,
-            createJSONResponse(true, "Media uploaded",
-                "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"filename\":\"" + escapeJson(filename) + "\"}"));
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));
@@ -1765,11 +1821,14 @@ bool SocialController::publishPromoById(const std::string& promoId, std::string&
     }
 
     const auto& row = result[0];
-    std::string imageUrl = row["image_url"].is_null() ? "" : row["image_url"].c_str();
-    std::string caption = row["caption"].is_null() ? "" : row["caption"].c_str();
+    std::string imageUrl  = row["image_url"].is_null()  ? "" : row["image_url"].c_str();
+    std::string videoPath = row["video_path"].is_null() ? "" : row["video_path"].c_str();
+    std::string videoUrl  = videoPath.empty() ? "" : ("https://footballhome.org/images/posts/" + videoPath);
+    std::string caption   = row["caption"].is_null()   ? "" : row["caption"].c_str();
+    bool isVideo = !videoPath.empty();
 
-    if (imageUrl.empty()) {
-        errorOut = "No image uploaded. Upload media first.";
+    if (imageUrl.empty() && videoUrl.empty()) {
+        errorOut = "No media uploaded. Upload media first.";
         return false;
     }
 
@@ -1790,9 +1849,17 @@ bool SocialController::publishPromoById(const std::string& promoId, std::string&
 
     CURL* encoderCurl = curl_easy_init();
     std::string createUrl = apiBase + "/" + igUserId + "/media";
-    std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-        "&caption=" + urlEncode(encoderCurl, caption) +
-        "&access_token=" + urlEncode(encoderCurl, igToken);
+    std::string createData;
+    if (isVideo) {
+        createData = "media_type=REELS"
+            "&video_url=" + urlEncode(encoderCurl, videoUrl) +
+            "&caption=" + urlEncode(encoderCurl, caption) +
+            "&access_token=" + urlEncode(encoderCurl, igToken);
+    } else {
+        createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
+            "&caption=" + urlEncode(encoderCurl, caption) +
+            "&access_token=" + urlEncode(encoderCurl, igToken);
+    }
     curl_easy_cleanup(encoderCurl);
 
     std::cout << "📤 Instagram: Creating media container for promo " << promoId << std::endl;
@@ -1811,8 +1878,10 @@ bool SocialController::publishPromoById(const std::string& promoId, std::string&
     }
 
     std::string statusUrl = apiBase + "/" + creationId + "?fields=status_code&access_token=" + igToken;
-    for (int attempt = 0; attempt < 10; attempt++) {
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+    int maxAttempts  = isVideo ? 30 : 10;
+    int pollInterval = isVideo ? 5  : 3;
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+        std::this_thread::sleep_for(std::chrono::seconds(pollInterval));
         std::string statusResp = httpGet(statusUrl);
         std::string statusCode = extractJsonField(statusResp, "status_code");
         std::cout << "📤 Instagram: Container status (attempt " << attempt+1 << "): " << statusCode << std::endl;

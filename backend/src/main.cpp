@@ -214,7 +214,7 @@ private:
     void processRequest(int client_fd) {
         try {
             // Read request with support for large bodies (up to 10MB)
-            static const size_t MAX_BODY_SIZE = 10 * 1024 * 1024;
+            static const size_t MAX_BODY_SIZE = 200 * 1024 * 1024;
             static const size_t CHUNK_SIZE = 65536;
 
             // Read initial chunk (headers + start of body)

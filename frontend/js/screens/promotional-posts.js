@@ -29,6 +29,7 @@ class PromotionalPostsScreen extends Screen {
     this.mediaType = 'card'; // 'card' or 'media'
     this.animFrameId = null;
     this.animStartTime = null;
+    this.activeTab = 'all';
     this.loadLogos();
   }
 
@@ -125,6 +126,13 @@ class PromotionalPostsScreen extends Screen {
 
       const cancelBtn = e.target.closest('.cancel-schedule-btn');
       if (cancelBtn) { this.cancelSchedule(parseInt(cancelBtn.dataset.id)); return; }
+
+      const tabBtn = e.target.closest('.promo-tab-btn');
+      if (tabBtn) {
+        this.activeTab = tabBtn.dataset.tab;
+        this.renderArea();
+        return;
+      }
 
       const deleteBtn = e.target.closest('.delete-btn');
       if (deleteBtn) { this.deletePromo(parseInt(deleteBtn.dataset.id)); return; }
@@ -546,6 +554,28 @@ class PromotionalPostsScreen extends Screen {
     });
   }
 
+  recordCanvasToBase64(canvas, durationMs = 10000) {
+    return new Promise((resolve, reject) => {
+      const stream = canvas.captureStream(30);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2_500_000 });
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      };
+      recorder.onerror = reject;
+      recorder.start();
+      setTimeout(() => recorder.stop(), durationMs);
+    });
+  }
+
   async saveDraft() {
     const data = this.getFormData();
     if (!data.title) { alert('Please enter a title.'); return; }
@@ -609,15 +639,21 @@ class PromotionalPostsScreen extends Screen {
           if (!uploadResult.success) throw new Error(uploadResult.message);
         }
       } else {
-        // Upload the canvas-generated card image
+        // Record the animated canvas as video (captures lightbeam, fish, logo animations)
         const canvas = this.find('#promo-canvas');
         if (canvas) {
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-          await this.auth.fetch(`/api/social/promos/${postId}/media`, {
+          if (btn) btn.textContent = '⏳ Recording animation (30s)...';
+          const videoDataUrl = await this.recordCanvasToBase64(canvas, 30000);
+          if (btn) btn.textContent = '⏳ Uploading video...';
+          const uploadResp = await this.auth.fetch(`/api/social/promos/${postId}/media`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: dataUrl })
+            body: JSON.stringify({ data: videoDataUrl })
           });
+          if (!uploadResp.ok) {
+            const errData = await uploadResp.json().catch(() => ({}));
+            throw new Error(errData.message || `Media upload failed (HTTP ${uploadResp.status})`);
+          }
         }
       }
 
@@ -633,16 +669,34 @@ class PromotionalPostsScreen extends Screen {
   }
 
   renderList(container) {
-    const posts = this.posts;
+    const allPosts = this.posts;
+    const tabDefs = [
+      { key: 'all',       label: 'All',       filter: () => true },
+      { key: 'draft',     label: 'Drafts',    filter: p => p.status === 'draft' },
+      { key: 'scheduled', label: 'Scheduled', filter: p => p.status === 'scheduled' },
+      { key: 'published', label: 'Published', filter: p => p.status === 'posted' },
+      { key: 'error',     label: 'Errors',    filter: p => p.status === 'error' },
+    ];
+    const activeTabDef = tabDefs.find(t => t.key === this.activeTab) || tabDefs[0];
+    const posts = allPosts.filter(activeTabDef.filter);
+
+    const tabCounts = Object.fromEntries(tabDefs.map(t => [t.key, t.key === 'all' ? allPosts.length : allPosts.filter(t.filter).length]));
+
+    const tabsHtml = tabDefs.map(t => {
+      const active = t.key === this.activeTab;
+      const count = tabCounts[t.key];
+      return `<button class="promo-tab-btn" data-tab="${t.key}" style="padding:8px 16px;border:none;border-bottom:3px solid ${active ? 'var(--accent-color)' : 'transparent'};background:transparent;color:${active ? 'var(--accent-color)' : 'inherit'};font-weight:${active ? '700' : '400'};cursor:pointer;font-size:0.95rem;white-space:nowrap;">${t.label}${count > 0 ? ` <span style="font-size:0.75rem;background:${active ? 'var(--accent-color)' : 'var(--bg-secondary)'};color:${active ? '#fff' : 'inherit'};border-radius:10px;padding:1px 7px;">${count}</span>` : ''}</button>`;
+    }).join('');
 
     let html = `
-      <div style="margin-bottom:16px;">
-        <button class="btn btn-primary create-btn" style="padding:10px 20px;">➕ Create New Promo</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;overflow-x:auto;border-bottom:1px solid var(--border-color);flex:1;min-width:0;">${tabsHtml}</div>
+        <button class="btn btn-primary create-btn" style="padding:10px 20px;flex-shrink:0;">➕ New Promo</button>
       </div>
     `;
 
     if (posts.length === 0) {
-      html += `<p style="opacity:0.6;text-align:center;padding:40px 0;">No promotional posts yet. Create your first one!</p>`;
+      html += `<p style="opacity:0.6;text-align:center;padding:40px 0;">No ${activeTabDef.key === 'all' ? '' : activeTabDef.label.toLowerCase() + ' '}posts yet.${activeTabDef.key === 'all' ? ' Create your first one!' : ''}</p>`;
     }
 
     html += posts.map(p => {
@@ -687,7 +741,12 @@ class PromotionalPostsScreen extends Screen {
 
           <div style="display: flex; flex-direction: column; gap: 10px;">
             ${isPosted
-              ? `<span style="color: #4CAF50; font-weight: 600;">✅ Published${p.posted_at ? ' ' + new Date(p.posted_at).toLocaleDateString() : ''}</span>`
+              ? `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                  <span style="color:#4CAF50;font-weight:600;">✅ Published${p.posted_at ? ' ' + new Date(p.posted_at).toLocaleDateString() : ''}</span>
+                  <button class="btn btn-secondary edit-btn" data-id="${p.id}" style="padding:6px 14px;font-size:0.85rem;">✏️ Edit</button>
+                  <button class="btn btn-primary publish-btn" data-id="${p.id}" style="padding:8px 16px;font-size:0.85rem;">🔁 Re-post</button>
+                  <button class="btn btn-danger delete-btn" data-id="${p.id}" style="padding:6px 14px;font-size:0.85rem;background:#d32f2f;color:#fff;border:none;border-radius:6px;cursor:pointer;">🗑️</button>
+                </div>`
               : isScheduled
                 ? `<div style="display:flex;gap:8px;align-items:center;">
                     <span style="color:#FF9800;font-weight:600;">⏰ Scheduled</span>
@@ -1033,12 +1092,23 @@ class PromotionalPostsScreen extends Screen {
     const rotPeriod = 30;
     const rotSpeed = (2 * Math.PI) / rotPeriod;
 
-    if (!this.animStartTime) this.animStartTime = performance.now();
+    if (!this.animStartTime) {
+      // Start beam pointing toward nearest wall (off-canvas) so first frame isn't jarring.
+      // beamAngle = angle + PI*0.25, so to start pointing east (right wall): angle = -PI/4
+      // to start pointing west (left wall): angle = 3PI/4
+      let startAngleOffset = 0;
+      if (lhX !== null) {
+        startAngleOffset = lhX < w / 2
+          ? Math.PI - Math.PI * 0.25   // left-side lighthouse → beam starts pointing west
+          : -Math.PI * 0.25;            // right-side lighthouse → beam starts pointing east
+      }
+      this.animStartTime = performance.now() - (startAngleOffset / rotSpeed) * 1000;
+    }
     const startTime = this.animStartTime;
 
     const drawFrame = (now) => {
       const elapsed = (now - startTime) / 1000;
-      const angle = (elapsed * rotSpeed) % (Math.PI * 2);
+      const angle = elapsed * rotSpeed; // continuous — no modulo wrap, cos/sin handle large angles fine
 
       // Clear canvas
       ctx.clearRect(0, 0, w, h);
