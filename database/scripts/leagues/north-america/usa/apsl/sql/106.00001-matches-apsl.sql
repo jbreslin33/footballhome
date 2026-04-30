@@ -460,7 +460,7 @@ INSERT INTO matches (
 SELECT 
   4, '2026-04-29', '21:00:00', 3,
   ht.id, at.id, v.id,
-  NULL, NULL,
+  2, 2,
   1, '231085'
 FROM teams ht
 JOIN teams at ON at.external_id = '116079' AND at.source_system_id = 1
