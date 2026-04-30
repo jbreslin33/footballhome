@@ -58,10 +58,15 @@ class SocialPostCard {
   load() {
     this.container.innerHTML = '<div style="padding:16px;opacity:0.5;font-size:0.85em;">Loading...</div>';
 
+    const statsPromise = this.postTypeName === 'post_game'
+      ? this.auth.fetch(`/api/social/match/${this.matchId}/stats`).then(r => r.json()).catch(() => ({ success: false, data: [] }))
+      : Promise.resolve({ success: false, data: [] });
+
     Promise.all([
       this.auth.fetch(`/api/social/match/${this.matchId}/team/${this.teamId}`).then(r => r.json()),
-      this.auth.fetch('/api/social/post-types').then(r => r.json())
-    ]).then(([postsData, typesData]) => {
+      this.auth.fetch('/api/social/post-types').then(r => r.json()),
+      statsPromise
+    ]).then(([postsData, typesData, statsData]) => {
       if (postsData.success) {
         const posts = postsData.data || [];
         this.post = posts.find(p => p.post_type === this.postTypeName) || null;
@@ -70,6 +75,7 @@ class SocialPostCard {
         const pt = (typesData.data || []).find(t => t.name === this.postTypeName);
         if (pt) this.postTypeId = pt.id;
       }
+      this.matchStats = (statsData && statsData.success) ? (statsData.data || []) : [];
 
       // Auto-generate if no existing post
       if (!this.post || this.post.post_id === null) {
@@ -77,8 +83,8 @@ class SocialPostCard {
       } else {
         this.render();
       }
-    }).catch(() => {
-      this.container.innerHTML = '';
+    }).catch((err) => {
+      this.container.innerHTML = `<div style="padding:16px;color:#f44336;">Error loading post: ${err.message}</div>`;
     });
   }
 
@@ -162,7 +168,28 @@ class SocialPostCard {
         const hs = m.home_team_score ?? m.home_score ?? '?';
         const as = m.away_team_score ?? m.away_score ?? '?';
         const result = Number(hs) > Number(as) ? '🟢 WIN' : Number(hs) < Number(as) ? '🔴 LOSS' : '🟡 DRAW';
-        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #MatchResult`;
+        let statsLines = '';
+        const stats = this.matchStats || [];
+        if (stats.length > 0) {
+          // Group goals by team
+          const goals = stats.filter(s => s.event_type === 'goal' || s.event_type === 'own_goal');
+          const cards = stats.filter(s => s.event_type === 'yellow_card' || s.event_type === 'red_card');
+          if (goals.length > 0) {
+            statsLines += '\n\n⚽ Goals:';
+            goals.forEach(g => {
+              const og = g.event_type === 'own_goal' ? ' (OG)' : '';
+              const assist = g.assist_player_name ? ` (assist: ${g.assist_player_name})` : '';
+              statsLines += `\n  ${g.minute}' ${g.player_name}${og}${assist} (${g.team_name})`;
+            });
+          }
+          if (cards.length > 0) {
+            const yellows = cards.filter(c => c.event_type === 'yellow_card');
+            const reds = cards.filter(c => c.event_type === 'red_card');
+            if (yellows.length > 0) statsLines += `\n\n🟨 Yellow cards: ${yellows.map(c => c.player_name).join(', ')}`;
+            if (reds.length > 0) statsLines += `\n\n🟥 Red cards: ${reds.map(c => c.player_name).join(', ')}`;
+          }
+        }
+        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #MatchResult`;
       }
       default:
         return '';

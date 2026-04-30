@@ -344,6 +344,11 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
         return this->handleDeletePromoPost(request);
     });
 
+    // GET /api/social/match/:matchId/stats - Player stats (goals/assists/cards) for a match
+    router.get(prefix + "/match/:matchId/stats", [this](const Request& request) {
+        return this->handleGetMatchStats(request);
+    });
+
     // ---------- Content Posts (User-uploaded media) ----------
 
     // GET /api/social/content - List all content posts
@@ -2661,6 +2666,61 @@ Response SocialController::handleLogoProxy(const Request& request) {
         resp.setHeader("Cache-Control", "public, max-age=86400");
         resp.setCorsHeaders();
         return resp;
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleGetMatchStats(const Request& request) {
+    try {
+        // Extract matchId from /api/social/match/:matchId/stats
+        std::string path = request.getPath();
+        std::regex r(R"(/api/social/match/(\d+)/stats)");
+        std::smatch m;
+        if (!std::regex_search(path, m, r)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid match ID"));
+        }
+        std::string matchId = m[1].str();
+
+        // Goals and assists per player per team
+        pqxx::result rows = db_->query(
+            "SELECT "
+            "  p.id as player_id, "
+            "  COALESCE(pe.first_name || ' ' || pe.last_name, pe.last_name) as player_name, "
+            "  me.team_id, "
+            "  t.name as team_name, "
+            "  met.name as event_type, "
+            "  me.minute, "
+            "  COALESCE(ape.first_name || ' ' || ape.last_name, ape.last_name) as assist_player_name "
+            "FROM match_events me "
+            "JOIN players p ON me.player_id = p.id "
+            "JOIN persons pe ON pe.id = p.person_id "
+            "JOIN teams t ON me.team_id = t.id "
+            "JOIN match_event_types met ON me.event_type_id = met.id "
+            "LEFT JOIN players ap ON me.assisted_by_player_id = ap.id "
+            "LEFT JOIN persons ape ON ape.id = ap.person_id "
+            "WHERE me.match_id = " + matchId +
+            "  AND met.name IN ('goal','assist','yellow_card','red_card','own_goal') "
+            "ORDER BY me.minute ASC"
+        );
+
+        std::ostringstream json;
+        json << "{\"success\":true,\"data\":[";
+        for (size_t i = 0; i < rows.size(); i++) {
+            if (i > 0) json << ",";
+            json << "{"
+                 << "\"player_id\":" << rows[i]["player_id"].c_str() << ","
+                 << "\"player_name\":\"" << escapeJson(rows[i]["player_name"].c_str()) << "\","
+                 << "\"team_id\":" << rows[i]["team_id"].c_str() << ","
+                 << "\"team_name\":\"" << escapeJson(rows[i]["team_name"].c_str()) << "\","
+                 << "\"event_type\":\"" << escapeJson(rows[i]["event_type"].c_str()) << "\","
+                 << "\"minute\":" << rows[i]["minute"].c_str() << ","
+                 << "\"assist_player_name\":" << (rows[i]["assist_player_name"].is_null() ? "null" : "\"" + escapeJson(rows[i]["assist_player_name"].c_str()) + "\"")
+                 << "}";
+        }
+        json << "]}";
+        return Response(HttpStatus::OK, json.str());
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));

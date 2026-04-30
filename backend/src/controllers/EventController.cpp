@@ -673,23 +673,24 @@ Response EventController::handleGetMatch(const Request& request) {
         // Query single match with all details
         // matches extends events via matches.id = events.id FK
         std::ostringstream query;
-        query << "SELECT m.id, COALESCE(e.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
-        query << "e.event_date::text as event_date, ";
-        query << "COALESCE(e.duration_minutes, 90) as duration_minutes, e.venue_id, ";
-        query << "m.home_team_id, m.away_team_id, m.competition_name, ";
-        query << "m.match_status, ";
-        query << "m.home_team_score, m.away_team_score, ";
-        query << "e.description as notes, ";
+        query << "SELECT m.id, COALESCE(NULLIF(m.title,''), CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) as title, ";
+        query << "(m.match_date + COALESCE(m.match_time, '00:00'::time))::text as event_date, ";
+        query << "90 as duration_minutes, m.venue_id, ";
+        query << "m.home_team_id, m.away_team_id, UPPER(COALESCE(ss.name, '')) as competition_name, ";
+        query << "COALESCE(ms.name, 'scheduled') as match_status, ";
+        query << "m.home_score, m.away_score, ";
+        query << "m.description as notes, ";
         query << "v.name as venue_name, ";
         query << "ht.name as home_team_name, awt.name as away_team_name, ";
         query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo, ";
-        query << "'' as source_name, ";
+        query << "COALESCE(ss.name, '') as source_name, ";
         query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, '' as venue_zip, ";
-        query << "et.name as division_name ";
+        query << "mt.name as division_name ";
         query << "FROM matches m ";
-        query << "JOIN events e ON m.id = e.id ";
-        query << "LEFT JOIN event_types et ON e.event_type_id = et.id ";
-        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
+        query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
+        query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
+        query << "LEFT JOIN source_systems ss ON m.source_system_id = ss.id ";
+        query << "LEFT JOIN venues v ON v.id = m.venue_id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "WHERE m.id = '" << match_id << "'";

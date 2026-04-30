@@ -57,6 +57,7 @@ private:
     Response handleUploadPromoMedia(const Request& request);
     Response handlePublishPromoPost(const Request& request);
     Response handleDeletePromoPost(const Request& request);
+    Response handleGetMatchStats(const Request& request);
     std::string extractPromoIdFromPath(const std::string& path);
     void ensureSocialSchema();
     void ensurePromotionalPostsSchema();
