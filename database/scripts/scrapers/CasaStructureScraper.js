@@ -419,7 +419,8 @@ class CasaStructureScraper {
         awayScore,
         externalId: event.id,
         startDateTime: event.start_date_time,
-        location: event.location_name || null
+        location: event.location_name || null,
+        locationAddress: event.location_address || null
       });
     }
 
@@ -518,7 +519,9 @@ class CasaStructureScraper {
               status: match.status === 'Final' ? 'completed' : 'scheduled',
               homeScore: match.homeScore,
               awayScore: match.awayScore,
-              externalId: match.externalId  // SportsEngine UUID
+              externalId: match.externalId,  // SportsEngine UUID
+              location: match.location || null,
+              locationAddress: match.locationAddress || null
             });
           }
         } catch (error) {
@@ -626,7 +629,9 @@ class CasaStructureScraper {
             status: m.status === 'completed' ? 'Final' : m.status,
             score: (m.homeScore !== null && m.awayScore !== null)
               ? `${m.homeScore} - ${m.awayScore}` : null,
-            externalId: m.externalId
+            externalId: m.externalId,
+            location: m.location || null,
+            locationAddress: m.locationAddress || null
           }))
         };
       })

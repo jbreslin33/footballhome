@@ -31,6 +31,7 @@ class CasaSqlGenerator extends BaseGenerator {
     this.allTeams = [];
     this.standings = [];
     this.teamLogos = new Map();  // Map of team name -> logo URL from SportsEngine API
+    this.venueMap = new Map();   // Map of venue name (lowercase) -> {name, address}
   }
 
   normalizeScopeKey(value) {
@@ -141,6 +142,12 @@ class CasaSqlGenerator extends BaseGenerator {
 
     // Write matches SQL last (after teams/clubs/orgs exist for FK lookups)
     this.writeMatchesSql();
+
+    // Write venues SQL (upsert venues from CASA match location data)
+    if (this.venueMap.size > 0) {
+      console.log('\n📍 Writing venues SQL...');
+      this.writeVenuesSql();
+    }
     
     // Apply team logos from SportsEngine API
     if (this.teamLogos.size > 0) {
@@ -281,6 +288,27 @@ ON CONFLICT DO NOTHING;\n`;
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-casa.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Write venues SQL — upsert venues from CASA schedule location data
+   */
+  writeVenuesSql() {
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Venues - CASA (from SportsEngine schedule API)
+-- Total: ${this.venueMap.size}
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+    for (const [, v] of this.venueMap) {
+      const name = this.escapeSql(v.name);
+      const addr = v.address ? `'${this.escapeSql(v.address)}'` : 'NULL';
+      sql += `INSERT INTO venues (name, address) VALUES ('${name}', ${addr}) ON CONFLICT (name) DO UPDATE SET address = COALESCE(EXCLUDED.address, venues.address);\n`;
+    }
+
+    const outputPath = path.join(__dirname, 'sql', `104b.${this.leagueId}-venues-casa.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath} (${this.venueMap.size} venues)`);
   }
 
   /**
@@ -600,6 +628,15 @@ WHERE name = '${this.escapeSql(teamName)}';
         if (match.awayLogoUrl && !this.teamLogos.has(match.away)) {
           this.teamLogos.set(match.away, match.awayLogoUrl);
         }
+
+        // Capture venue from match location
+        let venueKey = null;
+        if (match.location) {
+          venueKey = match.location.toLowerCase().trim();
+          if (!this.venueMap.has(venueKey)) {
+            this.venueMap.set(venueKey, { name: match.location, address: match.locationAddress || null });
+          }
+        }
         
         // Parse match_time from ISO UTC start_date_time, converted to America/New_York local time
         let matchTime = null;
@@ -629,6 +666,7 @@ WHERE name = '${this.escapeSql(teamName)}';
           divisionExternalId: division.external_id,
           matchDate: match.date ? match.date.substring(0, 10) : '2026-01-01', // ISO date from API
           matchTime: matchTime,
+          venueName: match.location || null,
           venueId: null,
           homeScore: homeScore,
           awayScore: awayScore,
@@ -659,6 +697,9 @@ WHERE name = '${this.escapeSql(teamName)}';
     for (const match of this.matches) {
       const matchType = 1; // league
       const matchStatus = match.status === 'completed' ? 3 : 1;
+      const venueExpr = match.venueName
+        ? `(SELECT id FROM venues WHERE name = '${this.escapeSql(match.venueName)}' LIMIT 1)`
+        : 'NULL';
       
       sql += `INSERT INTO matches (
   match_type_id, match_date, match_time, match_status_id,
@@ -667,7 +708,7 @@ WHERE name = '${this.escapeSql(teamName)}';
 )
 SELECT 
   ${matchType}, '${match.matchDate}', ${match.matchTime ? `'${match.matchTime}'` : 'NULL'}, ${matchStatus},
-  ht.id, at.id, NULL,
+  ht.id, at.id, ${venueExpr},
   ${match.homeScore !== null ? match.homeScore : 'NULL'}, ${match.awayScore !== null ? match.awayScore : 'NULL'},
   ${match.sourceSystemId}, '${this.escapeSql(match.externalId)}'
 FROM teams ht
@@ -678,7 +719,8 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   home_score = EXCLUDED.home_score,
   away_score = EXCLUDED.away_score,
   match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time;\n\n`;
+  match_time = EXCLUDED.match_time,
+  venue_id = COALESCE(EXCLUDED.venue_id, matches.venue_id);\n\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-casa.sql`);

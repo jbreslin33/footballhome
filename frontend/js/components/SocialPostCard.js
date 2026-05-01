@@ -7,6 +7,7 @@ class SocialPostCard {
     this.container = null;
     this.matchId = null;
     this.teamId = null;
+    this.scorersText = '';
     this.postTypeName = null;
     this.matchContext = null;
     this.postTypeId = null;
@@ -167,7 +168,11 @@ class SocialPostCard {
       case 'post_game': {
         const hs = m.home_team_score ?? m.home_score ?? '?';
         const as = m.away_team_score ?? m.away_score ?? '?';
-        const result = Number(hs) > Number(as) ? '🟢 WIN' : Number(hs) < Number(as) ? '🔴 LOSS' : '🟡 DRAW';
+        // Determine result from Lighthouse's perspective (we may be home or away)
+        const isHome = String(m.home_team_id) === String(this.teamId);
+        const ourScore = isHome ? Number(hs) : Number(as);
+        const theirScore = isHome ? Number(as) : Number(hs);
+        const result = ourScore > theirScore ? '🟢 WIN' : ourScore < theirScore ? '🔴 LOSS' : '🟡 DRAW';
         let statsLines = '';
         const stats = this.matchStats || [];
         if (stats.length > 0) {
@@ -188,6 +193,9 @@ class SocialPostCard {
             if (yellows.length > 0) statsLines += `\n\n🟨 Yellow cards: ${yellows.map(c => c.player_name).join(', ')}`;
             if (reds.length > 0) statsLines += `\n\n🟥 Red cards: ${reds.map(c => c.player_name).join(', ')}`;
           }
+        } else if (this.scorersText && this.scorersText.trim()) {
+          // Manual scorers fallback
+          statsLines = `\n\n⚽ Goals:\n  ${this.scorersText.trim().split('\n').map(s => s.trim()).filter(Boolean).join('\n  ')}`;
         }
         return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #MatchResult`;
       }
@@ -262,6 +270,11 @@ class SocialPostCard {
         </div>
         ${imageHtml}
         <div class="spc-body">
+          ${this.postTypeName === 'post_game' && !isPosted ? `
+          <div class="spc-scorers-row">
+            <label class="spc-scorers-label">⚽ Scorers (one per line)</label>
+            <textarea class="spc-scorers" rows="3" placeholder="e.g. 23' John Smith\n67' Jane Doe (assist: Alex)">${this.escapeHtml(this.scorersText || '')}</textarea>
+          </div>` : ''}
           <textarea class="spc-caption" rows="6" ${isPosted ? 'disabled' : ''}>${this.escapeHtml(caption)}</textarea>
           <div class="spc-char-count"><span class="spc-char-num">${caption.length}</span> / 2,200</div>
         </div>
@@ -1023,6 +1036,17 @@ class SocialPostCard {
     if (textarea && charCount) {
       textarea.addEventListener('input', () => {
         charCount.textContent = textarea.value.length;
+      });
+    }
+
+    const scorersInput = this.container.querySelector('.spc-scorers');
+    if (scorersInput) {
+      scorersInput.addEventListener('input', () => {
+        this.scorersText = scorersInput.value;
+        if (textarea) {
+          textarea.value = this.buildCaption();
+          if (charCount) charCount.textContent = textarea.value.length;
+        }
       });
     }
 
