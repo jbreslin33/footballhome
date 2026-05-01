@@ -1066,8 +1066,6 @@ class SocialPostCard {
         // Debounce: regenerate graphic 800ms after user stops typing
         clearTimeout(scorersRegen);
         scorersRegen = setTimeout(() => {
-          this.baseImage = null;
-          this.generatedImageUrl = null;
           this.generateCardImage();
         }, 800);
       });
