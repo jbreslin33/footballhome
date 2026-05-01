@@ -42,8 +42,13 @@ class ApslMatchEventScraper {
       const eventCounts = {};
       
       for (const match of matches) {
-        const htmlFile = this.findEventHtmlFile(match.external_id);
-        
+        let htmlFile = this.findEventHtmlFile(match.external_id);
+
+        // Auto-fetch if not cached but we have the URL hash
+        if (!htmlFile && match.event_url_hash) {
+          htmlFile = await this.fetchEventPage(match.external_id, match.event_url_hash);
+        }
+
         if (!htmlFile) {
           skipped++;
           continue;
@@ -123,7 +128,7 @@ class ApslMatchEventScraper {
    */
   async getCompletedMatches() {
     const result = await this.client.query(`
-      SELECT id, external_id, home_team_id, away_team_id
+      SELECT id, external_id, event_url_hash, home_team_id, away_team_id
       FROM matches
       WHERE source_system_id = 1  -- APSL
         AND home_score IS NOT NULL
@@ -148,7 +153,39 @@ class ApslMatchEventScraper {
     const matchingFile = files.find(f => oldPattern.test(f) || newPattern.test(f));
     return matchingFile ? path.join(this.cacheDir, matchingFile) : null;
   }
-  
+
+  /**
+   * Fetch event page from APSL and cache it.
+   * Only called when HTML is not already cached but event_url_hash is stored in DB.
+   * @returns {string|null} Path to cached HTML file, or null on failure
+   */
+  async fetchEventPage(externalId, eventUrlHash) {
+    const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
+    const fetcher = new HtmlFetcher(this.cacheDir, {
+      delayMs: 3000,
+      delayJitterMs: 4000,
+      cacheFreshnessDays: 0, // Always fetch fresh for event pages
+      maxFetchesPerSession: 0
+    });
+
+    const url = `https://www.apslsoccer.com/APSL/Event/${externalId}_${eventUrlHash}`;
+    console.log(`   🌐 Fetching event page: ${url}`);
+
+    try {
+      const html = await fetcher.fetch(url, false);
+      if (html && html.length > 1000) {
+        // findEventHtmlFile will locate it by the new naming convention next time
+        return this.findEventHtmlFile(externalId);
+      }
+      return null;
+    } catch (err) {
+      console.warn(`   ⚠️  Failed to fetch event page for ${externalId}: ${err.message}`);
+      return null;
+    } finally {
+      await fetcher.closeBrowser();
+    }
+  }
+
   /**
    * Save events to database
    */

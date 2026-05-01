@@ -134,20 +134,27 @@ class ApslMatchParser {
     
     // Extract external match ID from view link in result cell (cell 3)
     let externalId = null;
+    let eventUrlHash = null;
     if (cells.length > 3) {
       const resultCell = cells[3];
       const viewLink = resultCell.querySelector('a[href*="/APSL/Event/"]');
       if (viewLink) {
         const href = viewLink.getAttribute('href');
-        const match = href.match(/\/Event\/(\d+)/);
+        const match = href.match(/\/Event\/(\d+)_([A-Fa-f0-9]+)/i);
         if (match) {
-          externalId = match[1]; // Just the numeric ID
+          externalId = match[1]; // Numeric ID only (primary key / conflict key)
+          eventUrlHash = match[2].toUpperCase(); // Hex hash needed to construct event URL
+        } else {
+          // Fallback: URL without hash
+          const simpleMatch = href.match(/\/Event\/(\d+)/);
+          if (simpleMatch) externalId = simpleMatch[1];
         }
       }
     }
     
     return {
       externalId,
+      eventUrlHash,
       matchDate: date,
       matchTime: time,
       homeTeamId: isHomeMatch ? teamId : opponentId,

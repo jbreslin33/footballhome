@@ -420,7 +420,8 @@ class ApslSqlGenerator extends BaseGenerator {
           matchType: matchData.matchType || 'league',
           status: matchData.matchStatusId >= 2 ? 'completed' : 'scheduled',
           sourceSystemId: this.sourceSystemId,
-          externalId: matchData.externalId
+          externalId: matchData.externalId,
+          eventUrlHash: matchData.eventUrlHash || null
         });
       }
     }
@@ -549,13 +550,13 @@ ON CONFLICT (name) DO UPDATE SET
       sql += `INSERT INTO matches (
   match_type_id, match_date, match_time, match_status_id,
   home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
+  home_score, away_score, source_system_id, external_id, event_url_hash
 )
 SELECT 
   ${matchType}, '${match.matchDate}', ${match.matchTime ? `'${match.matchTime}'` : 'NULL'}, ${matchStatus},
   ht.id, at.id, ${match.venueId ? `v.id` : 'NULL'},
   ${match.homeScore !== null ? match.homeScore : 'NULL'}, ${match.awayScore !== null ? match.awayScore : 'NULL'},
-  ${match.sourceSystemId}, ${match.externalId ? `'${match.externalId}'` : 'NULL'}
+  ${match.sourceSystemId}, ${match.externalId ? `'${match.externalId}'` : 'NULL'}, ${match.eventUrlHash ? `'${match.eventUrlHash}'` : 'NULL'}
 FROM teams ht
 JOIN teams at ON at.external_id = '${match.awayTeamExternalId}' AND at.source_system_id = ${match.sourceSystemId}
 ${match.venueId ? `LEFT JOIN venues v ON v.name = '${this.escapeSql(Array.from(this.venues.values()).find(v => v.id === match.venueId).name)}'` : ''}
@@ -566,7 +567,8 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   away_score = COALESCE(EXCLUDED.away_score, matches.away_score),
   match_date = EXCLUDED.match_date,
   match_time = EXCLUDED.match_time,
-  venue_id = COALESCE(EXCLUDED.venue_id, matches.venue_id);\n\n`;
+  venue_id = COALESCE(EXCLUDED.venue_id, matches.venue_id),
+  event_url_hash = COALESCE(EXCLUDED.event_url_hash, matches.event_url_hash);\n\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-apsl.sql`);
