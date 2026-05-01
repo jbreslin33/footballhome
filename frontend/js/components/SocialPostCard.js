@@ -64,11 +64,16 @@ class SocialPostCard {
       ? this.auth.fetch(`/api/social/match/${this.matchId}/stats`).then(r => r.json()).catch(() => ({ success: false, data: [] }))
       : Promise.resolve({ success: false, data: [] });
 
+    const allEventsPromise = this.postTypeName === 'post_game'
+      ? this.auth.fetch(`/api/stats/matches/${this.matchId}/events`).then(r => r.json()).catch(() => ({ data: [] }))
+      : Promise.resolve({ data: [] });
+
     Promise.all([
       this.auth.fetch(`/api/social/match/${this.matchId}/team/${this.teamId}`).then(r => r.json()),
       this.auth.fetch('/api/social/post-types').then(r => r.json()),
-      statsPromise
-    ]).then(([postsData, typesData, statsData]) => {
+      statsPromise,
+      allEventsPromise
+    ]).then(([postsData, typesData, statsData, eventsData]) => {
       if (postsData.success) {
         const posts = postsData.data || [];
         this.post = posts.find(p => p.post_type === this.postTypeName) || null;
@@ -78,6 +83,30 @@ class SocialPostCard {
         if (pt) this.postTypeId = pt.id;
       }
       this.matchStats = (statsData && statsData.success) ? (statsData.data || []) : [];
+
+      // Auto-populate playersPlayedText from lineup (starters + subs) for our team
+      if (this.postTypeName === 'post_game' && !this.playersPlayedText) {
+        const allEvents = (eventsData && eventsData.data) ? eventsData.data : [];
+        const teamName = (this.matchContext.home_team_id && String(this.matchContext.home_team_id) === String(this.teamId))
+          ? this.matchContext.home_team_name
+          : this.matchContext.away_team_name;
+        const normalize = s => (s || '').toLowerCase().trim();
+
+        const ourStarters = allEvents
+          .filter(e => e.event_type === 'starter' && normalize(e.team_name) === normalize(teamName))
+          .map(e => e.player_name);
+        const ourSubs = allEvents
+          .filter(e => e.event_type === 'sub_listed' && normalize(e.team_name) === normalize(teamName))
+          .map(e => e.player_name);
+
+        const lines = [];
+        if (ourStarters.length > 0) lines.push(...ourStarters);
+        if (ourSubs.length > 0) {
+          if (lines.length > 0) lines.push('--- Subs ---');
+          lines.push(...ourSubs);
+        }
+        if (lines.length > 0) this.playersPlayedText = lines.join('\n');
+      }
 
       // Auto-generate if no existing post
       if (!this.post || this.post.post_id === null) {
@@ -445,6 +474,39 @@ class SocialPostCard {
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo);
     }
 
+    // Build goal scorers block for post_game graphic
+    let goalScorerHtml = '';
+    if (this.postTypeName === 'post_game') {
+      const stats = this.matchStats || [];
+      const ourGoals = stats.filter(s =>
+        (s.event_type === 'goal' || s.event_type === 'own_goal') &&
+        String(s.team_id) === String(this.teamId)
+      );
+      if (ourGoals.length > 0) {
+        const goalMap = new Map();
+        ourGoals.forEach(g => {
+          const key = String(g.player_id);
+          if (goalMap.has(key)) {
+            goalMap.get(key).count++;
+            goalMap.get(key).minutes.push(g.minute);
+          } else {
+            goalMap.set(key, { name: g.player_name, count: 1, minutes: [g.minute], isOG: g.event_type === 'own_goal' });
+          }
+        });
+        const lines = Array.from(goalMap.values()).map(({ name, count, minutes, isOG }) => {
+          const og = isOG ? ' <span style="opacity:0.6;font-size:0.85em;">(OG)</span>' : '';
+          const mins = minutes.map(min => `${min}'`).join(', ');
+          return `<div style="font-size:12px;color:rgba(255,255,255,0.95);line-height:1.7;">${'⚽'.repeat(count)} ${this.escapeHtml(name)}${og} <span style="opacity:0.6;font-size:0.9em;">${mins}</span></div>`;
+        });
+        goalScorerHtml = `
+          <div style="width:100%;text-align:left;margin-bottom:10px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:4px;">Goalscorers</div>
+            ${lines.join('')}
+          </div>
+        `;
+      }
+    }
+
     // Build players-played block for post_game graphic (2-column grid)
     let playersPlayedHtml = '';
     if (this.postTypeName === 'post_game' && this.playersPlayedText && this.playersPlayedText.trim()) {
@@ -464,10 +526,11 @@ class SocialPostCard {
       `;
     }
 
-    // Adjust size: taller for lineup with roster, or post_game with players
+    // Adjust size: taller for lineup with roster, or post_game with players/scorers
     const hasRoster = rosterHtml.length > 0;
     const hasPlayersPlayed = playersPlayedHtml.length > 0;
-    const cardHeight = hasRoster ? 700 : (hasPlayersPlayed ? 640 : 540);
+    const hasGoalScorers = goalScorerHtml.length > 0;
+    const cardHeight = hasRoster ? 700 : (hasPlayersPlayed ? 640 : hasGoalScorers ? 580 : 540);
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
@@ -492,6 +555,8 @@ class SocialPostCard {
         ${leagueBadgeHtml}
 
         ${middleHtml}
+
+        ${goalScorerHtml}
 
         ${playersPlayedHtml}
 

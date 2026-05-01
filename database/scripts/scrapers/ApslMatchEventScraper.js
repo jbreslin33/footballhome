@@ -61,29 +61,34 @@ class ApslMatchEventScraper {
         const homeTeam = await this.getTeam(match.home_team_id);
         const awayTeam = await this.getTeam(match.away_team_id);
         
+        // Parse play-by-play events + lineup (starters & subs)
         const events = this.parser.parse(html, homeTeam.name, awayTeam.name);
+        const lineupEvents = this.parser.parseLineup(html, homeTeam.name, awayTeam.name);
+        const allEvents = [...lineupEvents, ...events];
         
-        if (events.length === 0) {
+        if (allEvents.length === 0) {
           skipped++;
           continue;
         }
         
         // Debug: Log parsed events
-        console.log(`   📋 Match ${match.id}: Parsed ${events.length} events`);
+        const starterCount = lineupEvents.filter(e => e.eventType === 'starter').length;
+        const subListedCount = lineupEvents.filter(e => e.eventType === 'sub_listed').length;
+        console.log(`   📋 Match ${match.id}: ${events.length} play-by-play events, ${starterCount} starters, ${subListedCount} subs listed`);
         const goalEvents = events.filter(e => e.eventType === 'goal');
         if (goalEvents.length > 0) {
           console.log(`   ⚽ ${goalEvents.length} goals: ${goalEvents.map(g => g.playerName).join(', ')}`);
         }
         
         // Save events to database
-        const savedCount = await this.saveEvents(match, events, homeTeam, awayTeam);
+        const savedCount = await this.saveEvents(match, allEvents, homeTeam, awayTeam);
         
         if (savedCount > 0) {
           totalMatches++;
           totalEvents += savedCount;
           
           // Count by event type
-          for (const event of events) {
+          for (const event of allEvents) {
             eventCounts[event.eventType] = (eventCounts[event.eventType] || 0) + 1;
           }
         }

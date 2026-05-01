@@ -11,6 +11,59 @@ class ApslMatchEventParser {
   constructor() {}
   
   /**
+   * Parse lineup (starters + subs) from APSL event page HTML.
+   * HTML has separate tables: one with header ['Starter', HomeTeam, AwayTeam]
+   * containing nested per-team tables with all names in a single td.
+   * @returns {Array} Array of { playerName, eventType: 'starter'|'sub_listed', minute: 0, teamName }
+   */
+  parseLineup(html, homeTeamName, awayTeamName) {
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    const tables = Array.from(document.querySelectorAll('table'));
+    const events = [];
+
+    const extractNames = (td) => {
+      // All names are in a single td, separated by whitespace/newlines
+      return td.textContent.split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 1 && /[a-zA-Z]/.test(s));
+    };
+
+    const findTeamTable = (outerTable, teamName) => {
+      // The outer table contains nested per-team tables as th/td headers
+      // Find nested table whose th text matches teamName
+      const nested = Array.from(outerTable.querySelectorAll('table'));
+      return nested.find(t => {
+        const th = t.querySelector('th');
+        return th && th.textContent.trim() === teamName;
+      });
+    };
+
+    for (let i = 0; i < tables.length; i++) {
+      const t = tables[i];
+      const headers = Array.from(t.querySelectorAll('tr:first-child th')).map(h => h.textContent.trim());
+
+      let eventType = null;
+      if (headers[0] === 'Starter') eventType = 'starter';
+      else if (headers[0] === 'Substitute') eventType = 'sub_listed';
+      else continue;
+
+      // Find per-team nested tables
+      [homeTeamName, awayTeamName].forEach(teamName => {
+        const teamTable = findTeamTable(t, teamName);
+        if (!teamTable) return;
+        const td = teamTable.querySelector('td');
+        if (!td) return;
+        extractNames(td).forEach(name => {
+          events.push({ playerName: name, eventType, minute: 0, teamName, assistedByPlayerName: null });
+        });
+      });
+    }
+
+    return events;
+  }
+
+  /**
    * Parse events from match event HTML
    * @param {string} html - Full HTML content of match event page
    * @param {string} homeTeamName - Home team name (from match record)
