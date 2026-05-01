@@ -5974,11 +5974,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-25T17:00:00.000Z",
     "end_date_time": "2026-04-25T18:30:00.000Z",
     "created_at": "2026-02-17T20:19:39.000Z",
-    "updated_at": "2026-04-03T17:49:22.000Z",
+    "updated_at": "2026-04-27T14:25:49.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -5990,11 +5990,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0843b-baf4-be8a-9300-9a54c51d190f",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f0843b-baf1-6956-b82e-3ac1f37d2e66",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -6085,6 +6085,8 @@
           "flight_stage_id": "6827a1206da77900013c3218"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "6827a11f6da77900013c3217",
         "id": "6827a11f6da77900013c3217",
         "type": "division"
       }
@@ -6092,12 +6094,12 @@
     "game_details": {
       "originator_id": "6994cd5c95167e0001b16225",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0843b-baf4-be8a-9300-9a54c51d190f",
         "originator_id": "68b09e0396f50330210548d3",
         "name": "F&M FC\t",
-        "score": "",
+        "score": "3",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -6105,13 +6107,13 @@
         "id": "11f0843b-baf1-6956-b82e-3ac1f37d2e66",
         "originator_id": "68b09e0310946a00fcd86ad3",
         "name": "Kutztown Men's Soccer\t",
-        "score": "",
+        "score": "0",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -6125,11 +6127,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-26T14:30:00.000Z",
     "end_date_time": "2026-04-26T16:00:00.000Z",
     "created_at": "2026-02-17T20:19:40.000Z",
-    "updated_at": "2026-02-17T20:19:42.000Z",
+    "updated_at": "2026-04-27T14:25:47.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -6141,11 +6143,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0843b-baf4-be8a-9300-9a54c51d190f",
-        "home_team_score": "",
+        "home_team_score": "0",
         "away_team_id": "11f10c3d-f990-42e2-91fb-12e0a713a5c9",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -6153,8 +6155,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -6232,6 +6238,8 @@
           "flight_stage_id": "6827a1206da77900013c3218"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "6827a11f6da77900013c3217",
         "id": "6827a11f6da77900013c3217",
         "type": "division"
       }
@@ -6239,24 +6247,26 @@
     "game_details": {
       "originator_id": "6994cd5daab4520001394c0b",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0843b-baf4-be8a-9300-9a54c51d190f",
         "originator_id": "68b09e0396f50330210548d3",
         "name": "F&M FC\t",
-        "score": "",
-        "is_home_team": true
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3d-f990-42e2-91fb-12e0a713a5c9",
         "originator_id": "6994cd56dfa9c30001336393",
         "name": "West Chester University Club",
-        "score": "",
-        "is_home_team": false
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -6270,11 +6280,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-26T15:00:00.000Z",
     "end_date_time": "2026-04-26T16:30:00.000Z",
     "created_at": "2026-02-17T20:19:37.000Z",
-    "updated_at": "2026-02-17T20:19:40.000Z",
+    "updated_at": "2026-04-27T14:25:46.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -6286,20 +6296,35 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f0843b-baee-c232-885c-ee8a9659780f",
-        "away_team_score": "",
+        "away_team_score": "4",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
-        "event_attendees": [],
+        "event_attendees": [
+          {
+            "principal_triad": "TeamService__team__11f0843b-baee-c232-885c-ee8a9659780f",
+            "event_id": "af416431-dada-4544-a356-4b36208d57d2",
+            "response": "yes",
+            "principal_system": "TeamService",
+            "persona_id": "104059393",
+            "id": "af416431-dada-4544-a356-4b36208d57d2_11f0843b-baee-c232-885c-ee8a9659780f_104059393",
+            "principal_type": "team",
+            "principal_id": "11f0843b-baee-c232-885c-ee8a9659780f"
+          }
+        ],
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -6377,6 +6402,8 @@
           "flight_stage_id": "6827a1206da77900013c3218"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "6827a11f6da77900013c3217",
         "id": "6827a11f6da77900013c3217",
         "type": "division"
       }
@@ -6384,24 +6411,26 @@
     "game_details": {
       "originator_id": "6994cd5aaab4520001394c05",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
         "originator_id": "68b09e03a99c9f00fc3b4ad6",
         "name": "Lancaster City FC\t",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0843b-baee-c232-885c-ee8a9659780f",
         "originator_id": "68b09e03a4ac6ddcbb7bfed9",
         "name": "Alloy Soccer Club Reserves\t",
-        "score": "",
-        "is_home_team": false
+        "score": "4",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -6415,11 +6444,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-05-03T23:00:00.000Z",
     "end_date_time": "2026-05-04T00:30:00.000Z",
     "created_at": "2026-02-17T20:19:37.000Z",
-    "updated_at": "2026-03-19T18:21:11.000Z",
+    "updated_at": "2026-04-27T14:25:46.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -6431,11 +6460,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0843b-baf1-6956-b82e-3ac1f37d2e66",
-        "home_team_score": "",
+        "home_team_score": "0",
         "away_team_id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
-        "away_team_score": "",
+        "away_team_score": "3",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -6443,8 +6472,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -6522,6 +6555,8 @@
           "flight_stage_id": "6827a1206da77900013c3218"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "6827a11f6da77900013c3217",
         "id": "6827a11f6da77900013c3217",
         "type": "division"
       }
@@ -6529,12 +6564,12 @@
     "game_details": {
       "originator_id": "6994cd5a2a1178000164b681",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0843b-baf1-6956-b82e-3ac1f37d2e66",
         "originator_id": "68b09e0310946a00fcd86ad3",
         "name": "Kutztown Men's Soccer\t",
-        "score": "",
+        "score": "0",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -6542,15 +6577,212 @@
         "id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
         "originator_id": "68b09e03a99c9f00fc3b4ad6",
         "name": "Lancaster City FC\t",
-        "score": "",
+        "score": "3",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
+  },
+  {
+    "id": "1a0595ca-c83c-489e-ac46-38a693a21ef3",
+    "title": "Local Lancaster League Playoff Semifinal",
+    "event_type": "event",
+    "description": "Alloy SC Reserves vs York PA FC",
+    "location_name": "Lancaster Bible College",
+    "location_address": "901 Eden Rd, Lancaster, PA 17601, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-05-09T22:00:00.000Z",
+    "end_date_time": "2026-05-10T00:00:00.000Z",
+    "created_at": "2026-04-30T18:52:01.000Z",
+    "updated_at": "2026-04-30T18:52:01.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "582309",
+    "subvenue_id": "685048",
+    "source": {
+      "id": "",
+      "type": "",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "is_shared_event": false,
+          "management_org_name": null,
+          "read_only": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "id": "11f0843b-baee-c232-885c-ee8a9659780f",
+        "type": "team",
+        "system": "TeamService",
+        "originator_id": "68b09e03a4ac6ddcbb7bfed9",
+        "originator_type": "season_team",
+        "originator_system": "StatNgin",
+        "principal_originator_id": "68b09e03a4ac6ddcbb7bfed9",
+        "principal_originator_type": "season_team",
+        "principal_originator_system": "StatNgin",
+        "extended_attributes": {
+          "primary_color": "",
+          "secondary_color": "",
+          "name": "Alloy Soccer Club Reserves\t",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0843b-baee-c232-885c-ee8a9659780f/large_square_Alloy.png"
+          }
+        },
+        "division_name": "Liga 1",
+        "division_id": "6827a11f6da77900013c3217"
+      },
+      {
+        "id": "8058",
+        "type": "organization",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      },
+      {
+        "id": "6827a11eaca2fea950917a73",
+        "type": "program",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      },
+      {
+        "id": "6827a11f6da77900013c3217",
+        "originator_id": "6827a11f6da77900013c3217",
+        "originator_system": "StatNgin",
+        "originator_type": "division",
+        "type": "division",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      }
+    ],
+    "game_details": {}
+  },
+  {
+    "id": "da56dc4b-0bc9-4a08-9b1a-0926026a2669",
+    "title": "Local Lancaster League Playoff Semifinal",
+    "event_type": "event",
+    "description": "",
+    "location_name": "Lancaster Catholic High School Stadium",
+    "location_address": "655 Stadium Road, Lancaster, PA 17601, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-05-09T22:30:00.000Z",
+    "end_date_time": "2026-05-10T00:30:00.000Z",
+    "created_at": "2026-04-30T18:46:30.000Z",
+    "updated_at": "2026-04-30T18:46:30.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462567",
+    "subvenue_id": "495112",
+    "source": {
+      "id": "",
+      "type": "",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "is_shared_event": false,
+          "management_org_name": null,
+          "read_only": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
+        "type": "team",
+        "system": "TeamService",
+        "originator_id": "68b09e03a99c9f00fc3b4ad6",
+        "originator_type": "season_team",
+        "originator_system": "StatNgin",
+        "principal_originator_id": "68b09e03a99c9f00fc3b4ad6",
+        "principal_originator_type": "season_team",
+        "principal_originator_system": "StatNgin",
+        "extended_attributes": {
+          "primary_color": "",
+          "secondary_color": "",
+          "name": "Lancaster City FC\t",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0843b-baf6-cfea-9300-9a54c51d190f/large_square_Lancaster_City.png"
+          }
+        },
+        "division_name": "Liga 1",
+        "division_id": "6827a11f6da77900013c3217"
+      },
+      {
+        "id": "11f0843b-baf5-b0e2-9e93-5a41c5fa4aa0",
+        "type": "team",
+        "system": "TeamService",
+        "originator_id": "68b09e0310946a013ad86576",
+        "originator_type": "season_team",
+        "originator_system": "StatNgin",
+        "principal_originator_id": "68b09e0310946a013ad86576",
+        "principal_originator_type": "season_team",
+        "principal_originator_system": "StatNgin",
+        "extended_attributes": {
+          "primary_color": "",
+          "secondary_color": "",
+          "name": "Keystone Elite\t",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0843b-baf5-b0e2-9e93-5a41c5fa4aa0/large_square_Keystone_Elite.png"
+          }
+        },
+        "division_name": "Liga 1",
+        "division_id": "6827a11f6da77900013c3217"
+      },
+      {
+        "id": "8058",
+        "type": "organization",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      },
+      {
+        "id": "6827a11eaca2fea950917a73",
+        "type": "program",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      },
+      {
+        "id": "6827a11f6da77900013c3217",
+        "originator_id": "6827a11f6da77900013c3217",
+        "originator_system": "StatNgin",
+        "originator_type": "division",
+        "type": "division",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      }
+    ],
+    "game_details": {}
   },
   {
     "id": "6b240617-5162-465e-9247-cde4503dfbb3",

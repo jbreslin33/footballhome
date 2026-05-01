@@ -2389,12 +2389,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -2514,11 +2510,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-26T14:30:00.000Z",
     "end_date_time": "2026-04-26T16:00:00.000Z",
     "created_at": "2026-02-17T20:26:33.000Z",
-    "updated_at": "2026-02-17T20:26:35.000Z",
+    "updated_at": "2026-04-27T14:23:30.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -2530,11 +2526,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -2621,6 +2617,8 @@
           "flight_stage_id": "68f132e1e548c30001696842"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "68f132e1e548c30001696841",
         "id": "68f132e1e548c30001696841",
         "type": "division"
       }
@@ -2628,24 +2626,26 @@
     "game_details": {
       "originator_id": "6994cefa2a1178000164b6a5",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf47ffccf5025fcc635",
         "name": "West Chester University Club",
-        "score": "",
-        "is_home_team": true
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
         "originator_id": "6994cef3dc42b30001420042",
         "name": "F&M FC",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -2659,11 +2659,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-04-26T18:00:00.000Z",
     "end_date_time": "2026-04-26T19:30:00.000Z",
     "created_at": "2026-02-17T20:26:27.000Z",
-    "updated_at": "2026-04-22T17:37:55.000Z",
+    "updated_at": "2026-04-27T15:27:26.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -2675,11 +2675,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -2687,12 +2687,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -2770,6 +2766,8 @@
           "flight_stage_id": "68f132e1e548c30001696842"
         },
         "system": "StatNgin",
+        "originator_system": "StatNgin",
+        "originator_id": "68f132e1e548c30001696841",
         "id": "68f132e1e548c30001696841",
         "type": "division"
       }
@@ -2777,12 +2775,12 @@
     "game_details": {
       "originator_id": "6994cef52a1178000164b69d",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf40d4c144e5db64656",
         "name": "Millersville Men's Club Soccer",
-        "score": "",
+        "score": "3",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -2790,13 +2788,13 @@
         "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
         "originator_id": "6994cdf46c4d0b61853257ac",
         "name": "YorkPA FC",
-        "score": "",
+        "score": "2",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -2949,5 +2947,93 @@
       "scoring_type": "quick",
       "number_of_overtime": 0
     }
+  },
+  {
+    "id": "5b3f3349-af62-4e3e-b81a-2cca5e4574ae",
+    "title": "Local Lancaster League Playoff Semifinal",
+    "event_type": "event",
+    "description": "Final Score:\n\nAlloy SC Reserves vs York PA FC",
+    "location_name": "Lancaster Bible College",
+    "location_address": "901 Eden Rd, Lancaster, PA 17601, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-05-09T22:00:00.000Z",
+    "end_date_time": "2026-05-10T00:00:00.000Z",
+    "created_at": "2026-04-30T18:53:16.000Z",
+    "updated_at": "2026-04-30T18:53:16.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "582309",
+    "subvenue_id": "685048",
+    "source": {
+      "id": "",
+      "type": "",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "is_shared_event": false,
+          "management_org_name": null,
+          "read_only": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "system": "TeamService",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "originator_type": "season_team",
+        "originator_system": "StatNgin",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_type": "season_team",
+        "principal_originator_system": "StatNgin",
+        "extended_attributes": {
+          "primary_color": "",
+          "secondary_color": "",
+          "name": "YorkPA FC",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841"
+      },
+      {
+        "id": "8058",
+        "type": "organization",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      },
+      {
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      },
+      {
+        "id": "68f132e1e548c30001696841",
+        "originator_id": "68f132e1e548c30001696841",
+        "originator_system": "StatNgin",
+        "originator_type": "division",
+        "type": "division",
+        "system": "StatNgin",
+        "extended_attributes": {}
+      }
+    ],
+    "game_details": {}
   }
 ]
