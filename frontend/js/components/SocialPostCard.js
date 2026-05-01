@@ -337,6 +337,7 @@ class SocialPostCard {
         </div>
         <div class="spc-actions">
           ${!isPosted ? `
+            <button class="spc-btn spc-btn-regen">🔄 Regenerate</button>
             <button class="spc-btn spc-btn-download-video">📹 Download Video</button>
             <button class="spc-btn spc-btn-save" ${this.saving ? 'disabled' : ''}>💾 Save</button>
             <div class="spc-schedule-row">
@@ -1144,6 +1145,20 @@ class SocialPostCard {
         playersRegen = setTimeout(() => {
           this.generateImage();
         }, 800);
+      });
+    }
+
+    const regenBtn = this.container.querySelector('.spc-btn-regen');
+    if (regenBtn) {
+      regenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ta = this.container.querySelector('.spc-caption');
+        const cc = this.container.querySelector('.spc-char-num');
+        if (ta) {
+          ta.value = this.buildCaption();
+          if (cc) cc.textContent = ta.value.length;
+        }
+        this.generateImage();
       });
     }
 

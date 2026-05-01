@@ -24,8 +24,9 @@ class ApslMatchEventScraper {
     this.autoCreatedPlayers = new Map(); // Track players created from match events
   }
   
-  async run() {
+  async run(teamFilter = null) {
     console.log(`\n⚽ APSL Match Event Scraper`);
+    if (teamFilter) console.log(`   Team filter: ${teamFilter}`);
     console.log('='.repeat(60));
     
     try {
@@ -33,7 +34,7 @@ class ApslMatchEventScraper {
       await this.cacheEventTypes();
       
       // Get all completed matches with external IDs
-      const matches = await this.getCompletedMatches();
+      const matches = await this.getCompletedMatches(teamFilter);
       console.log(`⚽ Found ${matches.length} completed matches to process\n`);
       
       let totalMatches = 0;
@@ -125,17 +126,24 @@ class ApslMatchEventScraper {
   
   /**
    * Get all completed matches (those with scores)
+   * @param {string|null} teamFilter - Optional team name ILIKE filter
    */
-  async getCompletedMatches() {
-    const result = await this.client.query(`
-      SELECT id, external_id, event_url_hash, home_team_id, away_team_id
-      FROM matches
-      WHERE source_system_id = 1  -- APSL
-        AND home_score IS NOT NULL
-        AND away_score IS NOT NULL
-      ORDER BY match_date DESC
-    `);
-    
+  async getCompletedMatches(teamFilter = null) {
+    let query = `
+      SELECT m.id, m.external_id, m.event_url_hash, m.home_team_id, m.away_team_id
+      FROM matches m
+      JOIN teams ht ON ht.id = m.home_team_id
+      JOIN teams at ON at.id = m.away_team_id
+      WHERE m.source_system_id = 1  -- APSL
+        AND m.home_score IS NOT NULL
+        AND m.away_score IS NOT NULL`;
+    const params = [];
+    if (teamFilter) {
+      params.push(`%${teamFilter}%`);
+      query += `\n        AND (ht.name ILIKE $1 OR at.name ILIKE $1)`;
+    }
+    query += `\n      ORDER BY m.match_date DESC`;
+    const result = await this.client.query(query, params);
     return result.rows;
   }
   
@@ -464,11 +472,15 @@ async function main() {
   try {
     client = await pool.connect();
     
+    const args = process.argv.slice(2);
+    const teamIdx = args.indexOf('--team');
+    const teamFilter = teamIdx !== -1 ? args[teamIdx + 1] : null;
+
     const matchEventRepo = new MatchEventRepository(client);
     const parser = new ApslMatchEventParser();
     const scraper = new ApslMatchEventScraper(client, matchEventRepo, parser);
     
-    await scraper.run();
+    await scraper.run(teamFilter);
   } catch (error) {
     console.error('Fatal error:', error);
     process.exit(1);
