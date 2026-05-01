@@ -1056,16 +1056,20 @@ class SocialPostCard {
 
     const scorersInput = this.container.querySelector('.spc-scorers');
     if (scorersInput) {
+      let scorersRegen = null;
       scorersInput.addEventListener('input', () => {
         this.scorersText = scorersInput.value;
         if (textarea) {
           textarea.value = this.buildCaption();
           if (charCount) charCount.textContent = textarea.value.length;
         }
-        // Regenerate graphic so scorers appear on the image
-        this.baseImage = null;
-        this.generatedImageUrl = null;
-        this.generateCardImage();
+        // Debounce: regenerate graphic 800ms after user stops typing
+        clearTimeout(scorersRegen);
+        scorersRegen = setTimeout(() => {
+          this.baseImage = null;
+          this.generatedImageUrl = null;
+          this.generateCardImage();
+        }, 800);
       });
     }
 
