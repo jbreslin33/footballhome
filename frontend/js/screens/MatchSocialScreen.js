@@ -117,7 +117,7 @@ class MatchSocialScreen extends Screen {
         this.matchMap[row.match_id] = {
           id: row.match_id,
           title: row.match_title || `${row.home_team_name || 'Home'} vs ${row.away_team_name || 'Away'}`,
-          event_date: row.match_date,
+          event_date: row.match_date && row.match_time ? `${row.match_date} ${row.match_time}` : row.match_date,
           match_date: row.match_date,
           match_time: row.match_time,
           home_team_name: row.home_team_name,
