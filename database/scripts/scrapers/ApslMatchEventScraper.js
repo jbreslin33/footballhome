@@ -139,9 +139,13 @@ class ApslMatchEventScraper {
    */
   findEventHtmlFile(externalId) {
     const files = fs.readdirSync(this.cacheDir);
-    const pattern = new RegExp(`^apsl-event-${externalId}_[a-f0-9-]+\\.html$`);
-    
-    const matchingFile = files.find(f => pattern.test(f));
+
+    // Old naming: apsl-event-{numericId}_{hash}-{urlhash}.html  (batch-scraped files)
+    // New naming: {numericId}-{hash}-{urlhash}.html              (HtmlFetcher.fetch() default)
+    const oldPattern = new RegExp(`^apsl-event-${externalId}_[a-f0-9-]+\\.html$`);
+    const newPattern = new RegExp(`^${externalId}[_-][a-f0-9-]+\\.html$`);
+
+    const matchingFile = files.find(f => oldPattern.test(f) || newPattern.test(f));
     return matchingFile ? path.join(this.cacheDir, matchingFile) : null;
   }
   
