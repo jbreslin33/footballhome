@@ -8,6 +8,7 @@ class SocialPostCard {
     this.matchId = null;
     this.teamId = null;
     this.scorersText = '';
+    this.playersPlayedText = '';
     this.postTypeName = null;
     this.matchContext = null;
     this.postTypeId = null;
@@ -122,6 +123,48 @@ class SocialPostCard {
     }).catch(() => this.render());
   }
 
+  // Parse freeform scorers text into box score format:
+  // "23' John Smith" → ⚽ John Smith
+  // Two lines with same name → ⚽⚽ John Smith
+  // "67' Bob Jones yellow" → 🟨 Bob Jones
+  parseScorersBoxScore(text) {
+    if (!text || !text.trim()) return '';
+    const lines = text.trim().split('\n').map(s => s.trim()).filter(Boolean);
+    const goalMap = new Map(); // key: lowercase name → {name, count, isOG}
+    const cardLines = [];
+
+    for (const line of lines) {
+      // Strip leading time prefix e.g. "23' " or "45+"
+      const clean = line.replace(/^\d+[+']?\s*/, '').trim();
+      if (/yellow|🟨/i.test(clean)) {
+        const name = clean.replace(/\(?yellow\s*card?\)?|🟨/gi, '').replace(/[()]/g, '').trim();
+        if (name) cardLines.push({ type: 'yellow', name });
+      } else if (/\bred\b|🟥/i.test(clean)) {
+        const name = clean.replace(/\(?red\s*card?\)?|🟥/gi, '').replace(/[()]/g, '').trim();
+        if (name) cardLines.push({ type: 'red', name });
+      } else {
+        const isOG = /\bOG\b|\bown\s*goal\b/i.test(clean);
+        const name = clean.replace(/\bOG\b|\bown\s*goal\b/gi, '').replace(/\(assist:[^)]*\)/gi, '').replace(/[()]/g, '').trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (goalMap.has(key)) {
+          goalMap.get(key).count++;
+        } else {
+          goalMap.set(key, { name, count: 1, isOG });
+        }
+      }
+    }
+
+    const result = [];
+    for (const [, { name, count, isOG }] of goalMap) {
+      result.push(`${'⚽'.repeat(count)}${isOG ? ' (OG)' : ''} ${name}`);
+    }
+    for (const { type, name } of cardLines) {
+      result.push(`${type === 'yellow' ? '🟨' : '🟥'} ${name}`);
+    }
+    return result.join('\n');
+  }
+
   buildCaption() {
     const m = this.matchContext;
     let homeName = 'Home';
@@ -176,26 +219,36 @@ class SocialPostCard {
         let statsLines = '';
         const stats = this.matchStats || [];
         if (stats.length > 0) {
-          // Group goals by team
+          // Group goals by player, show ⚽⚽ for multiples
           const goals = stats.filter(s => s.event_type === 'goal' || s.event_type === 'own_goal');
           const cards = stats.filter(s => s.event_type === 'yellow_card' || s.event_type === 'red_card');
+          const eventLines = [];
           if (goals.length > 0) {
-            statsLines += '\n\n⚽ Goals:';
+            const goalMap = new Map();
             goals.forEach(g => {
-              const og = g.event_type === 'own_goal' ? ' (OG)' : '';
-              const assist = g.assist_player_name ? ` (assist: ${g.assist_player_name})` : '';
-              statsLines += `\n  ${g.minute}' ${g.player_name}${og}${assist} (${g.team_name})`;
+              const key = String(g.player_id || g.player_name);
+              if (goalMap.has(key)) {
+                goalMap.get(key).count++;
+              } else {
+                goalMap.set(key, { name: g.player_name, count: 1, isOG: g.event_type === 'own_goal', assist: g.assist_player_name });
+              }
             });
+            for (const [, { name, count, isOG, assist }] of goalMap) {
+              const og = isOG ? ' (OG)' : '';
+              const ast = assist ? ` (assist: ${assist})` : '';
+              eventLines.push(`${'⚽'.repeat(count)}${og} ${name}${ast}`);
+            }
           }
           if (cards.length > 0) {
-            const yellows = cards.filter(c => c.event_type === 'yellow_card');
-            const reds = cards.filter(c => c.event_type === 'red_card');
-            if (yellows.length > 0) statsLines += `\n\n🟨 Yellow cards: ${yellows.map(c => c.player_name).join(', ')}`;
-            if (reds.length > 0) statsLines += `\n\n🟥 Red cards: ${reds.map(c => c.player_name).join(', ')}`;
+            cards.forEach(c => {
+              eventLines.push(`${c.event_type === 'yellow_card' ? '🟨' : '🟥'} ${c.player_name}`);
+            });
           }
+          if (eventLines.length > 0) statsLines = '\n\n' + eventLines.join('\n');
         } else if (this.scorersText && this.scorersText.trim()) {
-          // Manual scorers fallback
-          statsLines = `\n\n⚽ Goals:\n  ${this.scorersText.trim().split('\n').map(s => s.trim()).filter(Boolean).join('\n  ')}`;
+          // Manual scorers — parse into box score format
+          const boxScore = this.parseScorersBoxScore(this.scorersText);
+          if (boxScore) statsLines = '\n\n' + boxScore;
         }
         return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #MatchResult`;
       }
@@ -272,8 +325,12 @@ class SocialPostCard {
         <div class="spc-body">
           ${this.postTypeName === 'post_game' && !isPosted ? `
           <div class="spc-scorers-row">
-            <label class="spc-scorers-label">⚽ Scorers (one per line)</label>
-            <textarea class="spc-scorers" rows="3" placeholder="e.g. 23' John Smith\n67' Jane Doe (assist: Alex)">${this.escapeHtml(this.scorersText || '')}</textarea>
+            <label class="spc-scorers-label">⚽ Scorers &amp; cards (one per line → caption)</label>
+            <textarea class="spc-scorers" rows="3" placeholder="e.g. 23' John Smith&#10;67' John Smith&#10;45' Bob Jones yellow">${this.escapeHtml(this.scorersText || '')}</textarea>
+          </div>
+          <div class="spc-scorers-row">
+            <label class="spc-scorers-label">👥 Players who played (one per line → graphic)</label>
+            <textarea class="spc-players-played" rows="5" placeholder="e.g. John Smith&#10;Jane Doe&#10;Bob Jones">${this.escapeHtml(this.playersPlayedText || '')}</textarea>
           </div>` : ''}
           <textarea class="spc-caption" rows="6" ${isPosted ? 'disabled' : ''}>${this.escapeHtml(caption)}</textarea>
           <div class="spc-char-count"><span class="spc-char-num">${caption.length}</span> / 2,200</div>
@@ -387,22 +444,29 @@ class SocialPostCard {
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo);
     }
 
-    // Build scorers block for post_game graphic
-    let scorersHtml = '';
-    if (this.postTypeName === 'post_game' && this.scorersText && this.scorersText.trim()) {
-      const lines = this.scorersText.trim().split('\n').map(s => s.trim()).filter(Boolean);
-      const lineItems = lines.map(l => `<div style="font-size:12px;color:rgba(255,255,255,0.92);letter-spacing:0.3px;line-height:1.5;">${this.escapeHtml(l)}</div>`).join('');
-      scorersHtml = `
-        <div style="width:100%;text-align:left;margin-bottom:14px;">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">⚽ Goals</div>
-          ${lineItems}
+    // Build players-played block for post_game graphic (2-column grid)
+    let playersPlayedHtml = '';
+    if (this.postTypeName === 'post_game' && this.playersPlayedText && this.playersPlayedText.trim()) {
+      const players = this.playersPlayedText.trim().split('\n').map(s => s.trim()).filter(Boolean);
+      const mid = Math.ceil(players.length / 2);
+      const left = players.slice(0, mid);
+      const right = players.slice(mid);
+      const rowsHtml = left.map((p, i) =>
+        `<div style="font-size:11px;color:rgba(255,255,255,0.88);line-height:1.6;">${this.escapeHtml(p)}</div>` +
+        `<div style="font-size:11px;color:rgba(255,255,255,0.88);line-height:1.6;">${right[i] ? this.escapeHtml(right[i]) : ''}</div>`
+      ).join('');
+      playersPlayedHtml = `
+        <div style="width:100%;text-align:left;margin-bottom:12px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">👥 Squad</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 12px;width:100%;">${rowsHtml}</div>
         </div>
       `;
     }
 
-    // Adjust size: taller for lineup with roster list
+    // Adjust size: taller for lineup with roster, or post_game with players
     const hasRoster = rosterHtml.length > 0;
-    const cardHeight = hasRoster ? 700 : 540;
+    const hasPlayersPlayed = playersPlayedHtml.length > 0;
+    const cardHeight = hasRoster ? 700 : (hasPlayersPlayed ? 640 : 540);
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
@@ -428,7 +492,7 @@ class SocialPostCard {
 
         ${middleHtml}
 
-        ${scorersHtml}
+        ${playersPlayedHtml}
 
         ${rosterHtml}
 
@@ -1066,7 +1130,19 @@ class SocialPostCard {
         // Debounce: regenerate graphic 800ms after user stops typing
         clearTimeout(scorersRegen);
         scorersRegen = setTimeout(() => {
-          this.generateCardImage();
+          this.generateImage();
+        }, 800);
+      });
+    }
+
+    const playersPlayedInput = this.container.querySelector('.spc-players-played');
+    if (playersPlayedInput) {
+      let playersRegen = null;
+      playersPlayedInput.addEventListener('input', () => {
+        this.playersPlayedText = playersPlayedInput.value;
+        clearTimeout(playersRegen);
+        playersRegen = setTimeout(() => {
+          this.generateImage();
         }, 800);
       });
     }
