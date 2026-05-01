@@ -387,6 +387,19 @@ class SocialPostCard {
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo);
     }
 
+    // Build scorers block for post_game graphic
+    let scorersHtml = '';
+    if (this.postTypeName === 'post_game' && this.scorersText && this.scorersText.trim()) {
+      const lines = this.scorersText.trim().split('\n').map(s => s.trim()).filter(Boolean);
+      const lineItems = lines.map(l => `<div style="font-size:12px;color:rgba(255,255,255,0.92);letter-spacing:0.3px;line-height:1.5;">${this.escapeHtml(l)}</div>`).join('');
+      scorersHtml = `
+        <div style="width:100%;text-align:left;margin-bottom:14px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">⚽ Goals</div>
+          ${lineItems}
+        </div>
+      `;
+    }
+
     // Adjust size: taller for lineup with roster list
     const hasRoster = rosterHtml.length > 0;
     const cardHeight = hasRoster ? 700 : 540;
@@ -414,6 +427,8 @@ class SocialPostCard {
         ${leagueBadgeHtml}
 
         ${middleHtml}
+
+        ${scorersHtml}
 
         ${rosterHtml}
 
@@ -1047,6 +1062,10 @@ class SocialPostCard {
           textarea.value = this.buildCaption();
           if (charCount) charCount.textContent = textarea.value.length;
         }
+        // Regenerate graphic so scorers appear on the image
+        this.baseImage = null;
+        this.generatedImageUrl = null;
+        this.generateCardImage();
       });
     }
 
