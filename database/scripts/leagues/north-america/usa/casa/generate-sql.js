@@ -601,6 +601,24 @@ WHERE name = '${this.escapeSql(teamName)}';
           this.teamLogos.set(match.away, match.awayLogoUrl);
         }
         
+        // Parse match_time from ISO UTC start_date_time, converted to America/New_York local time
+        let matchTime = null;
+        if (match.date) {
+          try {
+            const d = new Date(match.date);
+            if (!isNaN(d)) {
+              const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+              }).formatToParts(d);
+              const h = parts.find(p => p.type === 'hour')?.value;
+              const m = parts.find(p => p.type === 'minute')?.value;
+              const s = parts.find(p => p.type === 'second')?.value;
+              if (h && m) matchTime = `${h}:${m}:${s || '00'}`;
+            }
+          } catch (e) { /* leave null */ }
+        }
+
         // Add match (will be deduplicated by BaseGenerator)
         this.addMatch({
           homeTeamExternalId: homeExternalId,
@@ -610,7 +628,7 @@ WHERE name = '${this.escapeSql(teamName)}';
           divisionName: division.name,
           divisionExternalId: division.external_id,
           matchDate: match.date ? match.date.substring(0, 10) : '2026-01-01', // ISO date from API
-          matchTime: null,
+          matchTime: matchTime,
           venueId: null,
           homeScore: homeScore,
           awayScore: awayScore,
