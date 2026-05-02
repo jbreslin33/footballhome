@@ -247,13 +247,13 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        external_user_id, person_id
                 FROM (
                     SELECT cem.external_user_id,
-                           cem.person_id::text as person_id,
+                           cem.person_id,
                            cem.synced_at as ts
                     FROM chat_external_members cem
                     WHERE cem.person_id IS NOT NULL
                     UNION ALL
                     SELECT ei.external_user_id,
-                           ei.person_id::text as person_id,
+                           ei.person_id,
                            ei.last_synced_at as ts
                     FROM external_identities ei
                     WHERE ei.provider_id = 1
