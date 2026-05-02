@@ -919,6 +919,13 @@ Response GroupMeController::handleLinkMember(const Request& request) {
             {personIdStr, externalUserId}
         );
 
+        // Also update chat_external_members so eligibility query picks up the link immediately
+        db_->query(
+            "UPDATE chat_external_members SET person_id = $1::int "
+            "WHERE external_user_id = $2 AND person_id IS NULL",
+            {personIdStr, externalUserId}
+        );
+
         std::cout << "🔗 Linked GroupMe user " << externalUserId << " → person " << personIdStr << std::endl;
 
         return Response(HttpStatus::OK,

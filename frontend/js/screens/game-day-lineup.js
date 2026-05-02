@@ -592,8 +592,8 @@ class GameDayLineupScreen extends Screen {
           });
         }
       } else {
-        // Unlinked GroupMe member
-        if (gm.externalUserId && !unmatchedByExtId.has(gm.externalUserId)) {
+        // Unlinked GroupMe member — only add to pool if they have an RSVP for this match
+        if (gm.externalUserId && gm.matchRsvp && !unmatchedByExtId.has(gm.externalUserId)) {
           this.unmatchedRsvps.push({
             externalUserId: gm.externalUserId,
             externalUsername: gm.nickname,
@@ -1385,12 +1385,16 @@ class GameDayLineupScreen extends Screen {
     renderGroup('maybe', 'maybe', groups.maybe);
     renderGroup('no', 'no', groups.no);
 
-    // Unlinked GroupMe RSVPs
+    // Unlinked GroupMe RSVPs — sorted yes → maybe → no
     const unlinkedContainer = this.find('#pool-rows-unlinked');
     const unlinkedGroup = this.find('#pool-group-unlinked');
     if (unlinkedContainer && this.unmatchedRsvps?.length) {
+      const rsvpOrder = { yes: 0, maybe: 1, no: 2 };
+      const sorted = [...this.unmatchedRsvps].sort((a, b) =>
+        (rsvpOrder[a.matchRsvp] ?? 1) - (rsvpOrder[b.matchRsvp] ?? 1)
+      );
       unlinkedContainer.innerHTML = '';
-      for (const u of this.unmatchedRsvps) {
+      for (const u of sorted) {
         unlinkedContainer.appendChild(this.createUnmatchedPoolRow(u));
       }
       if (unlinkedGroup) unlinkedGroup.style.display = '';

@@ -239,13 +239,26 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 WHERE ce.id = ANY($2::int[])
             ),
             -- Map external GroupMe user IDs to person IDs (for training/pickup
-            -- RSVPs that have NULL person_id but valid external_user_id)
+            -- RSVPs that have NULL person_id but valid external_user_id).
+            -- Reads both chat_external_members and external_identities so that
+            -- newly-linked users are picked up immediately.
             user_person_map AS (
-                SELECT DISTINCT ON (cem.external_user_id)
-                       cem.external_user_id, cem.person_id
-                FROM chat_external_members cem
-                WHERE cem.person_id IS NOT NULL
-                ORDER BY cem.external_user_id, cem.synced_at DESC NULLS LAST
+                SELECT DISTINCT ON (external_user_id)
+                       external_user_id, person_id
+                FROM (
+                    SELECT cem.external_user_id,
+                           cem.person_id::text as person_id,
+                           cem.synced_at as ts
+                    FROM chat_external_members cem
+                    WHERE cem.person_id IS NOT NULL
+                    UNION ALL
+                    SELECT ei.external_user_id,
+                           ei.person_id::text as person_id,
+                           ei.last_synced_at as ts
+                    FROM external_identities ei
+                    WHERE ei.provider_id = 1
+                ) combined
+                ORDER BY external_user_id, ts DESC NULLS LAST
             ),
             -- Resolve person_id for all RSVPs in the session window
             resolved_rsvps AS (
