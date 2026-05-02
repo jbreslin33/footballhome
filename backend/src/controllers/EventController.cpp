@@ -475,13 +475,16 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "ELSE false END AS has_ended, ";
         query << "NULLIF(ht.logo_url, '') AS home_team_logo, ";
         query << "NULLIF(awt.logo_url, '') AS away_team_logo, ";
-        query << "ht.id AS home_team_id, awt.id AS away_team_id ";
+        query << "ht.id AS home_team_id, awt.id AS away_team_id, ";
+        query << "ce.image_url AS calendar_image_url ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
-        query << "WHERE (m.home_team_id = $1 OR m.away_team_id = $1) ";
+        query << "LEFT JOIN chat_events ce ON ce.match_id = m.id ";
+        query << "  AND ce.chat_id = (SELECT id FROM chats WHERE team_id = $1::int LIMIT 1) ";
+        query << "WHERE (m.home_team_id = $1 OR m.away_team_id = $1 OR m.home_team_id = $1::int) ";
         query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
         query << "LIMIT 100";
         
@@ -522,6 +525,9 @@ Response EventController::handleGetMatches(const Request& request) {
             }
             if (!result[i][12].is_null()) {
                 matches_json << ",\"away_team_logo\":\"" << escapeJSON(result[i][12].c_str()) << "\"";
+            }
+            if (!result[i][14].is_null()) {
+                matches_json << ",\"calendar_image_url\":\"" << escapeJSON(result[i][14].c_str()) << "\"";
             }
             
             matches_json << "}";

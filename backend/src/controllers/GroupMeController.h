@@ -46,6 +46,9 @@ private:
     // Handler: get last successful sync timestamp for a team
     Response handleGetSyncStatus(const Request& request);
 
+    // Handler: sync GroupMe calendar events → matches + chat_events for a team
+    Response handleSyncCalendar(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 

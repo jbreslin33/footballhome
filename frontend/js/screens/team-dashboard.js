@@ -18,6 +18,9 @@ class TeamDashboardScreen extends Screen {
       
       <div class="team-tab-content">
         <div id="tab-schedule" class="tab-panel active">
+          <div id="schedule-coach-actions" style="display:none; padding: var(--space-3) var(--space-3) 0;">
+            <button data-action="sync-calendar" class="btn btn-secondary btn-sm">🔄 Sync from GroupMe</button>
+          </div>
           <div id="schedule-list" class="match-cards"></div>
         </div>
         
@@ -153,6 +156,13 @@ class TeamDashboardScreen extends Screen {
         this.loadSchedule();
         return;
       }
+
+      // Sync calendar from GroupMe
+      const syncCalBtn = e.target.closest('[data-action="sync-calendar"]');
+      if (syncCalBtn) {
+        this.syncCalendarFromGroupMe(syncCalBtn);
+        return;
+      }
     });
   }
   
@@ -189,7 +199,13 @@ class TeamDashboardScreen extends Screen {
   loadSchedule() {
     const teamId = this.navigation.context.team?.id;
     if (!teamId) return;
-    
+
+    // Show sync button for coaches
+    const coachActions = this.find('#schedule-coach-actions');
+    if (coachActions && this.navigation.context.role === 'coach') {
+      coachActions.style.display = '';
+    }
+
     const container = this.find('#schedule-list');
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading schedule...</p></div>';
     
@@ -275,8 +291,16 @@ class TeamDashboardScreen extends Screen {
               <span class="score">${m.home_team_score} - ${m.away_team_score}</span>
             </div>` : '';
         
-        const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { alt: 'Home', placeholder: 'H' });
-        const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { alt: 'Away', placeholder: 'A' });
+        const myTeamId = String(this.navigation.context.team?.id);
+        const isHome = String(m.home_team_id) === myTeamId;
+        // For calendar-synced matches (no away_team), use calendar_image_url as opponent logo
+        const opponentLogo = isHome
+          ? (m.away_team_logo || m.calendar_image_url || null)
+          : (m.home_team_logo || m.calendar_image_url || null);
+        const myLogo = isHome ? m.home_team_logo : m.away_team_logo;
+
+        const homeLogo = this.buildTeamLogoMarkup(isHome ? myLogo : opponentLogo, { alt: 'Home', placeholder: 'H' });
+        const awayLogo = this.buildTeamLogoMarkup(isHome ? opponentLogo : myLogo, { alt: 'Away', placeholder: 'A' });
         
         const rsvpSection = m.has_ended ? '' : `
           <div class="match-card-actions">
@@ -338,7 +362,32 @@ class TeamDashboardScreen extends Screen {
     .then(() => { this.matchesLoaded = false; this.loadSchedule(); })
     .catch(err => this.handleError(err, 'rsvp'));
   }
-  
+
+  syncCalendarFromGroupMe(btn) {
+    const teamId = this.navigation.context.team?.id;
+    if (!teamId) return;
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Syncing...';
+    this.auth.fetch(`/api/groupme/sync-calendar/${teamId}`, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const d = data.data || {};
+          btn.textContent = `✅ ${d.created || 0} new, ${d.updated || 0} updated`;
+          this.matchesLoaded = false;
+          this.loadSchedule();
+        } else {
+          btn.textContent = `⚠️ ${data.message || 'Sync failed'}`;
+        }
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      })
+      .catch(() => {
+        btn.textContent = '❌ Error';
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      });
+  }
+
   // --- Roster Tab ---
   
   loadRoster() {

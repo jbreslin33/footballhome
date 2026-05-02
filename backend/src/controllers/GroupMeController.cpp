@@ -73,6 +73,11 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/sync-status/:teamId", [this](const Request& request) {
         return this->handleGetSyncStatus(request);
     });
+
+    // POST /api/groupme/sync-calendar/:teamId — Sync GroupMe calendar events → matches
+    router.post(prefix + "/sync-calendar/:teamId", [this](const Request& request) {
+        return this->handleSyncCalendar(request);
+    });
 }
 
 // ============================================================================
@@ -1545,6 +1550,200 @@ Response GroupMeController::handleGetSyncStatus(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Sync status error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to get sync status"));
+    }
+}
+
+// ============================================================================
+// Handler: Sync GroupMe calendar events → matches + chat_events
+// POST /api/groupme/sync-calendar/:teamId
+// ============================================================================
+Response GroupMeController::handleSyncCalendar(const Request& request) {
+    if (accessToken_.empty()) {
+        return Response(HttpStatus::OK, createJsonResponse(true, "GroupMe token not configured",
+            "{\"synced\":false,\"reason\":\"no_token\"}"));
+    }
+
+    std::string teamId = extractIdFromPath(request.getPath(), "/api/groupme/sync-calendar/(\\d+)");
+    if (teamId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Team ID required"));
+    }
+
+    try {
+        // Get chat + GroupMe group ID for this team
+        pqxx::result ciResult = db_->query(
+            "SELECT c.id AS chat_id, ci.external_id AS group_id "
+            "FROM chats c "
+            "JOIN chat_integrations ci ON ci.chat_id = c.id AND ci.provider_id = 1 "
+            "WHERE c.team_id = $1::int AND ci.sync_events = true "
+            "LIMIT 1",
+            {teamId}
+        );
+        if (ciResult.empty()) {
+            return Response(HttpStatus::OK, createJsonResponse(true, "No GroupMe integration found for team",
+                "{\"synced\":false,\"reason\":\"no_integration\"}"));
+        }
+        std::string chatId = ciResult[0]["chat_id"].c_str();
+        std::string groupId = ciResult[0]["group_id"].c_str();
+
+        // Fetch calendar events from GroupMe
+        std::string eventsUrl = "https://api.groupme.com/v3/conversations/" + groupId
+                              + "/events/list?token=" + accessToken_;
+        std::string eventsJson = httpGet(eventsUrl);
+        if (eventsJson.empty()) {
+            return Response(HttpStatus::OK, createJsonResponse(false, "Failed to fetch GroupMe events",
+                "{\"synced\":false,\"reason\":\"fetch_failed\"}"));
+        }
+
+        // Parse events array — each event is bounded by "event_id" keys
+        int created = 0, updated = 0;
+        size_t cursor = 0;
+        while (true) {
+            size_t eventIdPos = eventsJson.find("\"event_id\":", cursor);
+            if (eventIdPos == std::string::npos) break;
+
+            // Find next event boundary
+            size_t nextEventIdPos = eventsJson.find("\"event_id\":", eventIdPos + 11);
+            size_t searchEnd = (nextEventIdPos != std::string::npos) ? nextEventIdPos : eventsJson.length();
+
+            // Extract event_id
+            size_t eidStart = eventsJson.find('"', eventIdPos + 11);
+            size_t eidEnd = (eidStart != std::string::npos) ? eventsJson.find('"', eidStart + 1) : std::string::npos;
+            if (eidStart == std::string::npos || eidEnd == std::string::npos) { cursor = eventIdPos + 11; continue; }
+            std::string eventId = eventsJson.substr(eidStart + 1, eidEnd - eidStart - 1);
+
+            // Helper lambda: extract a string field value within this event's range
+            auto extractField = [&](const std::string& field) -> std::string {
+                std::string needle = "\"" + field + "\":\"";
+                size_t pos = eventsJson.find(needle, eventIdPos);
+                if (pos == std::string::npos || pos >= searchEnd) {
+                    // try null check
+                    return "";
+                }
+                size_t valStart = pos + needle.size();
+                size_t valEnd = valStart;
+                while (valEnd < eventsJson.size() && valEnd < searchEnd) {
+                    if (eventsJson[valEnd] == '"' && (valEnd == 0 || eventsJson[valEnd-1] != '\\')) break;
+                    valEnd++;
+                }
+                return eventsJson.substr(valStart, valEnd - valStart);
+            };
+
+            std::string eventName = extractField("name");
+            std::string startAt   = extractField("start_at");   // ISO timestamp
+            std::string endAt     = extractField("end_at");
+            std::string location  = extractField("name");       // GroupMe location.name
+            // Try location sub-object name
+            {
+                std::string locNeedle = "\"location\":{";
+                size_t locPos = eventsJson.find(locNeedle, eventIdPos);
+                if (locPos != std::string::npos && locPos < searchEnd) {
+                    std::string locNameNeedle = "\"name\":\"";
+                    size_t lnPos = eventsJson.find(locNameNeedle, locPos);
+                    if (lnPos != std::string::npos && lnPos < searchEnd) {
+                        size_t lnStart = lnPos + locNameNeedle.size();
+                        size_t lnEnd = lnStart;
+                        while (lnEnd < eventsJson.size() && lnEnd < searchEnd &&
+                               !(eventsJson[lnEnd] == '"' && eventsJson[lnEnd-1] != '\\')) lnEnd++;
+                        location = eventsJson.substr(lnStart, lnEnd - lnStart);
+                    }
+                }
+            }
+            // Image: try "cover_photo_url", then "image_url"
+            std::string imageUrl = extractField("cover_photo_url");
+            if (imageUrl.empty()) imageUrl = extractField("image_url");
+
+            // Parse date/time from start_at (format: "2026-05-15T14:00:00-04:00" or similar)
+            std::string matchDate, matchTime;
+            if (startAt.size() >= 10) {
+                matchDate = startAt.substr(0, 10); // YYYY-MM-DD
+            }
+            if (startAt.size() >= 16) {
+                matchTime = startAt.substr(11, 5); // HH:MM
+            }
+
+            if (eventName.empty() || matchDate.empty()) {
+                cursor = eventIdPos + 11;
+                continue;
+            }
+
+            std::cout << "📅 Calendar event: [" << eventId << "] " << eventName
+                      << " on " << matchDate << " at " << matchTime << std::endl;
+
+            // Check if chat_event already exists for this external_id
+            pqxx::result existing = db_->query(
+                "SELECT ce.id, ce.match_id FROM chat_events ce WHERE ce.external_id = $1 LIMIT 1",
+                {eventId}
+            );
+
+            if (!existing.empty()) {
+                // Update image_url if it changed
+                std::string ceId = existing[0]["id"].c_str();
+                if (!imageUrl.empty()) {
+                    db_->query(
+                        "UPDATE chat_events SET image_url = $1, updated_at = CURRENT_TIMESTAMP "
+                        "WHERE id = $2::int AND (image_url IS DISTINCT FROM $1)",
+                        {imageUrl, ceId}
+                    );
+                }
+                updated++;
+            } else {
+                // Create match (match_type=2 custom, home_team=this team, no away_team)
+                std::string matchId;
+                {
+                    std::vector<std::string> matchParams = {eventName, matchDate, teamId};
+                    std::string matchTimeClause = "NULL";
+                    std::string matchQuery;
+                    if (!matchTime.empty()) {
+                        matchQuery =
+                            "INSERT INTO matches "
+                            "  (match_type_id, title, match_date, match_time, home_team_id, match_status_id) "
+                            "VALUES (2, $1, $2::date, $3::time, $4::int, 1) "
+                            "RETURNING id";
+                        matchParams = {eventName, matchDate, matchTime, teamId};
+                    } else {
+                        matchQuery =
+                            "INSERT INTO matches "
+                            "  (match_type_id, title, match_date, home_team_id, match_status_id) "
+                            "VALUES (2, $1, $2::date, $3::int, 1) "
+                            "RETURNING id";
+                        matchParams = {eventName, matchDate, teamId};
+                    }
+                    pqxx::result matchResult = db_->query(matchQuery, matchParams);
+                    if (matchResult.empty()) {
+                        std::cerr << "❌ Failed to insert match for event " << eventId << std::endl;
+                        cursor = eventIdPos + 11;
+                        continue;
+                    }
+                    matchId = matchResult[0]["id"].c_str();
+                }
+
+                // Create chat_event linked to match
+                std::vector<std::string> ceParams = {chatId, matchId, eventName, matchDate, eventId};
+                std::string ceQuery =
+                    "INSERT INTO chat_events "
+                    "  (chat_id, match_id, title, event_date, external_id, image_url, location, start_at, end_at, is_active) "
+                    "VALUES ($1::int, $2::int, $3, $4::date, $5, "
+                    "  NULLIF($6,''), NULLIF($7,''), "
+                    "  NULLIF($8,'')::timestamptz, NULLIF($9,'')::timestamptz, true)";
+                db_->query(ceQuery, {chatId, matchId, eventName, matchDate, eventId,
+                                     imageUrl, location, startAt, endAt});
+
+                std::cout << "✅ Created match " << matchId << " + chat_event for [" << eventId << "]" << std::endl;
+                created++;
+            }
+
+            cursor = eventIdPos + 11;
+        }
+
+        std::ostringstream data;
+        data << "{\"created\":" << created << ",\"updated\":" << updated << "}";
+        return Response(HttpStatus::OK, createJsonResponse(true,
+            "Synced " + std::to_string(created) + " new, " + std::to_string(updated) + " updated",
+            data.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleSyncCalendar error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Sync failed"));
     }
 }
 
