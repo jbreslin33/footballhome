@@ -375,7 +375,8 @@ class GameDayRosterScreen extends Screen {
       const comp = `${m.competition_name || ''} ${m.division_name || ''}`;
       const isCasa = m.source_name === 'casa' || /casa|liga\s*[12]/i.test(comp);
       if (isCasa) {
-        const liga = /liga\s*2/i.test(comp) ? '2' : '1';
+        const isLiga2 = String(m.home_team_id) === '121' || String(m.away_team_id) === '121' || /liga\s*2/i.test(comp);
+        const liga = isLiga2 ? '2' : '1';
         brandEl.textContent = `\u26bd Philadelphia CASA Select Liga ${liga}`;
       } else if (m.source_name) {
         const leagueMap = { apsl: 'APSL', csl: 'CSL' };

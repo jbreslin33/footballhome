@@ -439,7 +439,8 @@ class SocialPostCard {
     let league;
     if (isCasa) {
       const div = `${m.division_name || ''} ${m.competition_name || ''}`;
-      if (/liga\s*2/i.test(div)) league = 'Philadelphia CASA Select Liga 2';
+      const isLiga2 = String(m.home_team_id) === '121' || String(m.away_team_id) === '121' || /liga\s*2/i.test(div);
+      if (isLiga2) league = 'Philadelphia CASA Select Liga 2';
       else league = 'Philadelphia CASA Select Liga 1';
     } else {
       league = 'Delaware River Conference';
