@@ -154,7 +154,39 @@ class GameDayLineupScreen extends Screen {
 
           <!-- Policy summary bar -->
           <div id="policy-bar" class="policy-bar"></div>
-          
+
+          <!-- ── Player Pool ─────────────────────────────────────── -->
+          <div class="player-pool-section">
+            <div class="player-pool-header">
+              <span class="player-pool-title">👥 Players</span>
+              <span class="player-pool-hint">Drag to pitch · click RSVP to update</span>
+              <button id="pool-add-btn" class="btn btn-secondary btn-sm">+ Add Player</button>
+            </div>
+
+            <!-- Going -->
+            <div class="pool-group" id="pool-group-yes">
+              <div class="pool-group-label pool-group-going">✓ Going <span id="pool-count-yes" class="pool-count"></span></div>
+              <div class="pool-rows" id="pool-rows-yes"></div>
+            </div>
+
+            <!-- Maybe / Pending -->
+            <div class="pool-group" id="pool-group-maybe">
+              <div class="pool-group-label pool-group-maybe">? Maybe / Pending <span id="pool-count-maybe" class="pool-count"></span></div>
+              <div class="pool-rows" id="pool-rows-maybe"></div>
+            </div>
+
+            <!-- Not Going -->
+            <div class="pool-group" id="pool-group-no">
+              <div class="pool-group-label pool-group-no">✗ Not Going <span id="pool-count-no" class="pool-count"></span></div>
+              <div class="pool-rows" id="pool-rows-no"></div>
+            </div>
+
+            <!-- Unlinked GroupMe RSVPs -->
+            <div class="pool-group" id="pool-group-unlinked" style="display:none;">
+              <div class="pool-group-label pool-group-unlinked">🔗 Unlinked GroupMe RSVPs</div>
+              <div class="pool-rows" id="pool-rows-unlinked"></div>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -268,7 +300,7 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
-      // Link button on unmatched cards
+      // Link button on unmatched cards (overlay or pool)
       const linkBtn = e.target.closest('.btn-link-player');
       if (linkBtn) {
         e.stopPropagation();
@@ -276,6 +308,32 @@ class GameDayLineupScreen extends Screen {
         const gmNickname = linkBtn.dataset.gmNickname;
         const gmImage = linkBtn.dataset.gmImage;
         this.openLinkPopup(gmUserId, gmNickname, gmImage);
+        return;
+      }
+
+      // RSVP toggle buttons in player pool
+      const rsvpBtn = e.target.closest('.rsvp-btn');
+      if (rsvpBtn) {
+        e.stopPropagation();
+        const playerId = parseInt(rsvpBtn.dataset.playerId);
+        const rsvpStatus = rsvpBtn.dataset.rsvp;
+        this.updatePlayerRsvp(playerId, rsvpStatus);
+        return;
+      }
+
+      // Add to bench button in player pool
+      const addBenchBtn = e.target.closest('.pool-add-bench-btn');
+      if (addBenchBtn) {
+        e.stopPropagation();
+        const playerId = parseInt(addBenchBtn.dataset.playerId);
+        const maxBench = this.rosterSize - 11;
+        if (this.zones.bench.length >= maxBench) {
+          this.showLineupToast(`Bench is full (${maxBench}/${maxBench})`);
+          return;
+        }
+        this.removePlayerFromAllZones(playerId);
+        this.zones.bench.push(playerId);
+        this.renderAllZones();
         return;
       }
 
@@ -1290,53 +1348,132 @@ class GameDayLineupScreen extends Screen {
   }
 
   renderUnavailablePlayers() {
-    const container = this.find('#unavailable-players');
-    if (!container) return;
-    container.innerHTML = '';
+    // Delegated to renderPlayerPool — pool is always shown below the pitch
+    this.renderPlayerPool();
+  }
 
-    const eligRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3, 'not_computed': 4, 'not_on_roster': 5 };
-    const sorted = [...this.zones.unavailable].sort((idA, idB) => {
-      const a = this.getPlayerById(idA);
-      const b = this.getPlayerById(idB);
-      if (!a || !b) return 0;
-      switch (this.poolSort) {
-        case 'practices':
-          return (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
-        case 'eligibility': {
-          const cmp = (eligRank[a.eligibilityStatus] ?? 4) - (eligRank[b.eligibilityStatus] ?? 4);
-          return cmp !== 0 ? cmp : (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
-        }
-        case 'name':
-          return ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || ''));
-        default:
-          return 0;
-      }
-    });
+  renderPlayerPool() {
+    const groups = { yes: [], maybe: [], no: [] };
 
-    for (const playerId of sorted) {
+    for (const playerId of this.players.map(p => p.playerId)) {
       const player = this.getPlayerById(playerId);
       if (!player) continue;
-      const row = this.createPoolRow(player);
-      container.appendChild(row);
+      const rsvp = player.matchRsvp;
+      if (rsvp === 'yes') groups.yes.push(player);
+      else if (rsvp === 'no') groups.no.push(player);
+      else groups.maybe.push(player);
+    }
+
+    // Sort each group by sessions attended desc
+    const byPrac = (a, b) => (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+    groups.yes.sort(byPrac);
+    groups.maybe.sort(byPrac);
+    groups.no.sort(byPrac);
+
+    const renderGroup = (groupId, countId, players) => {
+      const container = this.find(`#pool-rows-${groupId}`);
+      const countEl = this.find(`#pool-count-${groupId}`);
+      if (!container) return;
+      container.innerHTML = '';
+      if (countEl) countEl.textContent = `(${players.length})`;
+      for (const player of players) {
+        container.appendChild(this.createPoolRow(player));
+      }
+    };
+
+    renderGroup('yes', 'yes', groups.yes);
+    renderGroup('maybe', 'maybe', groups.maybe);
+    renderGroup('no', 'no', groups.no);
+
+    // Unlinked GroupMe RSVPs
+    const unlinkedContainer = this.find('#pool-rows-unlinked');
+    const unlinkedGroup = this.find('#pool-group-unlinked');
+    if (unlinkedContainer && this.unmatchedRsvps?.length) {
+      unlinkedContainer.innerHTML = '';
+      for (const u of this.unmatchedRsvps) {
+        unlinkedContainer.appendChild(this.createUnmatchedPoolRow(u));
+      }
+      if (unlinkedGroup) unlinkedGroup.style.display = '';
+    } else if (unlinkedGroup) {
+      unlinkedGroup.style.display = 'none';
     }
   }
 
   createPoolRow(player) {
     const row = document.createElement('div');
     const eligClass = this.getEligibilityClass(player);
-    row.className = `pool-row ${eligClass}`;
+    const zone = this.findPlayerZone(player.playerId) || 'unavailable';
+    row.className = `pool-row ${eligClass} pool-zone-${zone}`;
     row.setAttribute('draggable', 'true');
     row.setAttribute('data-player-id', player.playerId);
-    row.setAttribute('data-zone', 'unavailable');
+    row.setAttribute('data-zone', zone);
 
-    const rsvp = player.matchRsvp === 'yes' ? '✓' : player.matchRsvp === 'no' ? '✗' : '?';
-    const rsvpClass = player.matchRsvp === 'yes' ? 'rsvp-yes' : player.matchRsvp === 'no' ? 'rsvp-no' : 'rsvp-unknown';
-    const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
-    const name = `${player.firstName} ${player.lastName || ''}`;
+    const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '—';
+    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim();
     const prac = player.sessionsAttended || 0;
+    const eligIcon = this.getStatusIcon(player.eligibilityStatus);
+    const zoneLabel = zone === 'starting' ? '⚽' : zone === 'bench' ? '🪑' : '';
+    const rsvp = player.matchRsvp || null;
 
-    row.innerHTML = `<span class="pool-rsvp ${rsvpClass}">${rsvp}</span><span class="pool-jersey">${jersey}</span><span class="pool-name">${name}</span><span class="pool-prac">${prac}</span>`;
+    row.innerHTML = `
+      <span class="pool-jersey">${jersey}</span>
+      <span class="pool-name">${name}</span>
+      <span class="pool-elig" title="${player.eligibilityStatus || ''}">${eligIcon}</span>
+      <span class="pool-prac">${prac}${this.policy?.lookbackCount ? '/' + this.policy.lookbackCount : ''}</span>
+      <span class="pool-zone-badge">${zoneLabel}</span>
+      <span class="pool-rsvp-btns">
+        <button class="rsvp-btn rsvp-btn-yes${rsvp === 'yes' ? ' active' : ''}" data-player-id="${player.playerId}" data-rsvp="yes" title="Going">✓</button>
+        <button class="rsvp-btn rsvp-btn-maybe${(!rsvp || rsvp === 'maybe') && rsvp !== 'yes' && rsvp !== 'no' ? ' active' : ''}" data-player-id="${player.playerId}" data-rsvp="maybe" title="Maybe">?</button>
+        <button class="rsvp-btn rsvp-btn-no${rsvp === 'no' ? ' active' : ''}" data-player-id="${player.playerId}" data-rsvp="no" title="Not Going">✗</button>
+      </span>
+      <button class="pool-add-bench-btn btn btn-sm" data-player-id="${player.playerId}" title="Add to bench">+🪑</button>
+    `;
     return row;
+  }
+
+  createUnmatchedPoolRow(user) {
+    const row = document.createElement('div');
+    row.className = 'pool-row pool-unlinked';
+    const rsvp = user.matchRsvp === 'yes' ? '✓' : user.matchRsvp === 'no' ? '✗' : '?';
+    const rsvpClass = user.matchRsvp === 'yes' ? 'rsvp-yes' : user.matchRsvp === 'no' ? 'rsvp-no' : 'rsvp-unknown';
+    row.innerHTML = `
+      <span class="pool-jersey">—</span>
+      <span class="pool-name">${user.externalUsername || 'Unknown'}</span>
+      <span class="pool-elig"></span>
+      <span class="pool-prac"></span>
+      <span class="pool-zone-badge"></span>
+      <span class="pool-rsvp-btns"><span class="pool-rsvp ${rsvpClass}">${rsvp}</span></span>
+      <button class="rt-btn btn-link-player"
+        data-gm-user-id="${user.externalUserId || ''}"
+        data-gm-nickname="${(user.externalUsername || '').replace(/"/g, '&quot;')}"
+        data-gm-image="${(user.gmImageUrl || '').replace(/"/g, '&quot;')}"
+        title="Link to player">🔗 Link</button>
+    `;
+    return row;
+  }
+
+  async updatePlayerRsvp(playerId, rsvpStatus) {
+    const matchId = this.navigation.context.match?.id;
+    if (!matchId || !playerId) return;
+    try {
+      const res = await this.auth.fetch(`/api/matches/${matchId}/player-rsvp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: String(playerId), rsvp_status: rsvpStatus })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+
+      // Update local player state
+      const player = this.getPlayerById(parseInt(playerId));
+      if (player) player.matchRsvp = rsvpStatus;
+
+      // Re-render pool (and re-classify if auto-fill was applied)
+      this.renderPlayerPool();
+    } catch (err) {
+      console.error('RSVP update failed:', err);
+      this.showLineupToast('Failed to update RSVP');
+    }
   }
 
   createZoneChip(player, zone) {

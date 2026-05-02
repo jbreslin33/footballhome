@@ -440,6 +440,82 @@
 .pool-row.eligibility-bench { background: #eff6ff; border-left: 3px solid #60a5fa; }
 .pool-row.eligibility-ineligible { background: #fef2f2; border-left: 3px solid #f87171; opacity: 0.6; }
 
+/* Zone badge in pool row */
+.pool-zone-badge { font-size: 0.8em; flex-shrink: 0; width: 16px; text-align: center; }
+.pool-row.pool-zone-starting { border-left-color: #10b981; }
+.pool-row.pool-zone-bench { border-left-color: #60a5fa; }
+.pool-elig { flex-shrink: 0; width: 18px; text-align: center; font-size: 0.85em; }
+
+/* RSVP toggle buttons in pool */
+.pool-rsvp-btns { display: flex; gap: 2px; flex-shrink: 0; }
+.rsvp-btn {
+  border: 1px solid var(--gray-300, #d1d5db);
+  background: var(--gray-100, #f3f4f6);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.75em;
+  cursor: pointer;
+  color: var(--gray-500, #6b7280);
+  line-height: 1.4;
+  transition: background 0.1s, color 0.1s;
+}
+.rsvp-btn:hover { background: var(--gray-200, #e5e7eb); }
+.rsvp-btn-yes.active  { background: #dcfce7; border-color: #16a34a; color: #16a34a; font-weight: 700; }
+.rsvp-btn-maybe.active { background: #fef9c3; border-color: #ca8a04; color: #92400e; font-weight: 700; }
+.rsvp-btn-no.active   { background: #fee2e2; border-color: #dc2626; color: #dc2626; font-weight: 700; }
+
+/* Add to bench button */
+.pool-add-bench-btn {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  font-size: 0.72em;
+  border: 1px solid var(--gray-300, #d1d5db);
+  background: var(--gray-50, #f9fafb);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pool-add-bench-btn:hover { background: var(--gray-200, #e5e7eb); }
+
+/* Unlinked pool row */
+.pool-unlinked { opacity: 0.75; font-style: italic; }
+
+/* ── Player Pool Section ──────────────────────────────────── */
+.player-pool-section {
+  margin: var(--space-3, 12px) var(--space-3, 12px) 0;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: var(--radius-md, 6px);
+  background: var(--surface, #fff);
+  overflow: hidden;
+}
+.player-pool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--gray-50, #f9fafb);
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+.player-pool-title { font-weight: 600; font-size: 0.95em; }
+.player-pool-hint  { font-size: 0.78em; color: var(--gray-400, #9ca3af); flex: 1; }
+
+.pool-group { border-bottom: 1px solid var(--gray-100, #f3f4f6); }
+.pool-group:last-child { border-bottom: none; }
+.pool-group-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  padding: 4px 12px 2px;
+  color: var(--gray-500, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pool-group-going  { color: #16a34a; }
+.pool-group-maybe  { color: #92400e; }
+.pool-group-no     { color: #dc2626; }
+.pool-group-unlinked { color: var(--gray-400, #9ca3af); }
+.pool-count { font-weight: 400; color: var(--gray-400, #9ca3af); }
+.pool-rows  { padding: 0 8px 4px; }
+
 /* Bench — brown sideline running down the right side of the pitch */
 .pitch-bench-area {
   width: 80px;

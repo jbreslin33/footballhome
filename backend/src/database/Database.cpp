@@ -112,8 +112,10 @@ pqxx::result Database::query(const std::string& sql, const std::vector<std::stri
             result = work.exec_params(sql, params[0], params[1], params[2], params[3]);
         } else if (params.size() == 5) {
             result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4]);
+        } else if (params.size() == 6) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5]);
         } else {
-            throw std::runtime_error("Too many parameters (max 5 supported)");
+            throw std::runtime_error("Too many parameters (max 6 supported)");
         }
         
         work.commit();
