@@ -1256,16 +1256,18 @@ std::vector<int> EligibilityController::getRecentSessionIds(
         chatTypeFilter = "c.chat_type_id IN (3, 5)";
     }
 
-    // Get the N most recent sessions before the match date
-    // from club-associated chats filtered by type.
-    // Dedup by local date (America/New_York) so two events on the same
-    // evening only count as one practice day.
-    // Exclude Sunday games (chat_type_id=1) — they don't count as training.
+    // Get the N most recent sessions before the match date.
+    // Dedup by (local date, chat_type_id) so:
+    //   - Two practices on the same day      = 1 session
+    //   - A weekday game + practice same day = 2 sessions ("double" day)
+    //   - A pickup + practice same day       = 2 sessions
+    // Exclude Sunday games (chat_type_id=1) — league games, not training.
     std::string query = R"(
         SELECT session_id FROM (
             SELECT DISTINCT ON (
                 (COALESCE(ce.start_at, ce.event_date::timestamptz)
-                   AT TIME ZONE 'America/New_York')::date
+                   AT TIME ZONE 'America/New_York')::date,
+                c.chat_type_id
             )
             ce.id as session_id,
             COALESCE(ce.start_at, ce.event_date::timestamptz) as effective_ts
@@ -1285,6 +1287,7 @@ std::vector<int> EligibilityController::getRecentSessionIds(
               AND ce.is_active = true
             ORDER BY (COALESCE(ce.start_at, ce.event_date::timestamptz)
                         AT TIME ZONE 'America/New_York')::date DESC,
+                     c.chat_type_id,
                      ce.id DESC
         ) deduped
         LIMIT $3
