@@ -469,7 +469,7 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "90 AS duration_minutes, 'match' AS event_type, ";
         query << "m.home_score, m.away_score, ";
         query << "COALESCE(ms.name, 'scheduled') AS match_status, ";
-        query << "NULL::text AS competition_name, v.name AS venue_name, ";
+        query << "NULL::text AS competition_name, COALESCE(v.name, ce.location) AS venue_name, ";
         query << "CASE WHEN ms.name = 'completed' THEN true ";
         query << "WHEN (m.match_date + COALESCE(m.match_time, '00:00'::time)) < NOW() - INTERVAL '90 minutes' THEN true ";
         query << "ELSE false END AS has_ended, ";
@@ -526,8 +526,14 @@ Response EventController::handleGetMatches(const Request& request) {
             if (!result[i][12].is_null()) {
                 matches_json << ",\"away_team_logo\":\"" << escapeJSON(result[i][12].c_str()) << "\"";
             }
+            if (!result[i][13].is_null()) {
+                matches_json << ",\"home_team_id\":" << result[i][13].c_str();
+            }
             if (!result[i][14].is_null()) {
-                matches_json << ",\"calendar_image_url\":\"" << escapeJSON(result[i][14].c_str()) << "\"";
+                matches_json << ",\"away_team_id\":" << result[i][14].c_str();
+            }
+            if (!result[i][15].is_null()) {
+                matches_json << ",\"calendar_image_url\":\"" << escapeJSON(result[i][15].c_str()) << "\"";
             }
             
             matches_json << "}";

@@ -410,8 +410,8 @@ class SocialPostCard {
     }
     awayName = awayName || 'Away';
     const homeLogo = this.resolveAssetUrl(m.home_team_logo || '');
-    // Use calendar_image_url (GroupMe event image) as fallback away logo
-    const awayLogo = this.resolveAssetUrl(m.away_team_logo || m.calendar_image_url || '');
+    // For calendar-synced matches: fall back to Tri County Women's league logo
+    const awayLogo = this.resolveAssetUrl(m.away_team_logo || (m.source_name === undefined && !m.away_team_id ? '/images/leagues/tcwsl.png' : '') || '');
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
     if (rawDate) {
