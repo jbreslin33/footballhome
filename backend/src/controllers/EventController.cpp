@@ -691,7 +691,8 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo, ";
         query << "COALESCE(ss.name, '') as source_name, ";
         query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, '' as venue_zip, ";
-        query << "mt.name as division_name ";
+        query << "mt.name as division_name, ";
+        query << "ce.image_url AS calendar_image_url ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
@@ -699,6 +700,7 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
+        query << "LEFT JOIN LATERAL (SELECT image_url FROM chat_events WHERE match_id = m.id LIMIT 1) ce ON true ";
         query << "WHERE m.id = '" << match_id << "'";
         
         pqxx::result result = db_->query(query.str());
@@ -770,6 +772,9 @@ Response EventController::handleGetMatch(const Request& request) {
         }
         if (!result[0][22].is_null()) {
             match_json << ",\"division_name\":\"" << escapeJSON(result[0][22].c_str()) << "\"";
+        }
+        if (!result[0][23].is_null()) {
+            match_json << ",\"calendar_image_url\":\"" << escapeJSON(result[0][23].c_str()) << "\"";
         }
         
         match_json << "}";

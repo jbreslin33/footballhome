@@ -208,6 +208,10 @@ class SocialPostCard {
     }
     if (m.away_team_name) awayName = m.away_team_name;
     else if (m.awayTeam) awayName = m.awayTeam;
+    // For calendar-synced matches with no away_team linked, parse from title
+    if (awayName === 'Away' && m.title && / vs /i.test(m.title)) {
+      awayName = m.title.split(/ vs /i)[1]?.trim() || 'Away';
+    }
 
     homeName = this.titleCase(homeName);
     awayName = this.titleCase(awayName);
@@ -223,20 +227,22 @@ class SocialPostCard {
       }
     }
     const venue = this.buildVenueString(m) || this.titleCase(m.venue_name || 'TBD');
-    const league = m.competition_name || 'APSL';
+    // source_name is empty for calendar-synced (women's) matches — no APSL/CASA default
+    const league = m.competition_name || (m.source_name ? 'APSL' : '');
     const isCASA = /casa/i.test(league);
-    const leagueTag = isCASA ? '#CASA' : '#APSL';
+    const leagueTag = league ? (isCASA ? '#CASA' : '#APSL') : '';
+    const leagueLine = league ? `\n${league} ⚽` : '';
 
     switch (this.postTypeName) {
       case 'pre_match_announcement':
-        return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #StartingXI`;
+        return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}${leagueLine}\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer #StartingXI`;
       case 'game_day': {
         const gameDayLabel = this.getGameDayLabel(rawDate);
         const gameDayEmoji = gameDayLabel === 'GAME DAY' ? '' : gameDayLabel === 'TOMORROW' ? 'See you there! 💪' : 'Mark your calendars! 📌';
-        return `⚽ ${gameDayLabel}!\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}${gameDayEmoji ? '\n\n' + gameDayEmoji : ''}\n\n#Lighthouse1893 ${leagueTag} #GameDay #PhillySoccer`;
+        return `⚽ ${gameDayLabel}!\n\n${homeName} vs ${awayName}${leagueLine}\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}${gameDayEmoji ? '\n\n' + gameDayEmoji : ''}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #GameDay #PhillySoccer`;
       }
       case 'lineup':
-        return `📋 MATCH DAY SQUAD\n\n${homeName} vs ${awayName}\n${league} ⚽\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893 ${leagueTag} #MatchDaySquad #PhillySoccer`;
+        return `📋 MATCH DAY SQUAD\n\n${homeName} vs ${awayName}${leagueLine}\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #MatchDaySquad #PhillySoccer`;
       case 'post_game': {
         const hs = m.home_team_score ?? m.home_score ?? '?';
         const as = m.away_team_score ?? m.away_score ?? '?';
@@ -279,7 +285,7 @@ class SocialPostCard {
           const boxScore = this.parseScorersBoxScore(this.scorersText);
           if (boxScore) statsLines = '\n\n' + boxScore;
         }
-        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}\n${league} ⚽\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893 ${leagueTag} #PhillySoccer #MatchResult`;
+        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}${leagueLine}\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer #MatchResult`;
       }
       default:
         return '';
@@ -397,9 +403,15 @@ class SocialPostCard {
 
     const m = this.matchContext;
     const homeName = this.titleCase(m.home_team_name || m.homeTeam || 'Home');
-    const awayName = this.titleCase(m.away_team_name || m.awayTeam || 'Away');
+    let awayName = this.titleCase(m.away_team_name || m.awayTeam || '');
+    // For calendar-synced matches with no away_team linked, parse from title
+    if (!awayName && m.title && / vs /i.test(m.title)) {
+      awayName = this.titleCase(m.title.split(/ vs /i)[1]?.trim() || '');
+    }
+    awayName = awayName || 'Away';
     const homeLogo = this.resolveAssetUrl(m.home_team_logo || '');
-    const awayLogo = this.resolveAssetUrl(m.away_team_logo || '');
+    // Use calendar_image_url (GroupMe event image) as fallback away logo
+    const awayLogo = this.resolveAssetUrl(m.away_team_logo || m.calendar_image_url || '');
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
     if (rawDate) {
@@ -412,6 +424,7 @@ class SocialPostCard {
     const venueStr = this.buildVenueString(m);
     const competitionText = `${m.competition_name || ''} ${m.division_name || ''}`;
     const isCasa = (m.source_name === 'casa') || /casa|liga\s*[12]/i.test(competitionText);
+    const isCustomMatch = !m.source_name; // GroupMe calendar-synced or manually created (no source system)
 
     // Fetch accolades for both teams
     const homeTeamId = m.home_team_id || null;
@@ -442,6 +455,8 @@ class SocialPostCard {
       const isLiga2 = String(m.home_team_id) === '121' || String(m.away_team_id) === '121' || /liga\s*2/i.test(div);
       if (isLiga2) league = 'Philadelphia CASA Select Liga 2';
       else league = 'Philadelphia CASA Select Liga 1';
+    } else if (isCustomMatch) {
+      league = ''; // Calendar-synced match — no league association
     } else {
       league = 'Delaware River Conference';
     }
@@ -1056,6 +1071,7 @@ class SocialPostCard {
   }
 
   buildLeagueBadge(league, isCasa, compact) {
+    if (!league) return '';
     const logoSrc = isCasa ? '/images/leagues/casa.png' : '/images/leagues/apsl.png';
     if (compact) {
       // Small inline badge for lineup / starters & bench
