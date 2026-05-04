@@ -86,6 +86,11 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
     router.put(prefix + "/player/:playerId/attendance", [this](const Request& request) {
         return this->handleUpdatePlayerAttendance(request);
     });
+
+    // PUT /api/eligibility/player/:playerId/flags - Update designated/clubs/family/jersey flags
+    router.put(prefix + "/player/:playerId/flags", [this](const Request& request) {
+        return this->handleUpdatePlayerFlags(request);
+    });
 }
 
 // ============================================================================
@@ -211,6 +216,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 SELECT DISTINCT ON (cp.person_id)
                        p.id as player_id, r.jersey_number,
                        p.has_family_discount, p.is_keeper, p.photo_url,
+                       p.is_designated, COALESCE(p.num_clubs, 1) as num_clubs,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        -- On official roster = any sibling team in same league
                        EXISTS(
@@ -337,7 +343,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             )
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.has_family_discount, rp.is_keeper, rp.photo_url, rp.person_id,
-                   rp.on_official_roster,
+                   rp.on_official_roster, rp.is_designated, rp.num_clubs,
                    COALESCE(aa.sessions_attended, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
@@ -426,7 +432,16 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"status\":\"" << groupmeStatus << "\"";
         json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
         if (!groupmeLastSync.empty()) {
-            json << ",\"lastSync\":\"" << groupmeLastSync << "\"";
+            // Convert Postgres "YYYY-MM-DD HH:MM:SS" (UTC) to ISO 8601 "YYYY-MM-DDTHH:MM:SSZ"
+            // so JavaScript's new Date() parses it as UTC, not local time.
+            std::string isoSync = groupmeLastSync;
+            auto spacePos = isoSync.find(' ');
+            if (spacePos != std::string::npos) isoSync[spacePos] = 'T';
+            // Trim microseconds if present, then append Z
+            auto dotPos = isoSync.find('.');
+            if (dotPos != std::string::npos) isoSync = isoSync.substr(0, dotPos);
+            isoSync += "Z";
+            json << ",\"lastSync\":\"" << isoSync << "\"";
             json << ",\"minutesAgo\":" << groupmeMinutesAgo;
         }
         json << "},";
@@ -468,6 +483,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.photo_url = row["photo_url"].is_null() ? "" : row["photo_url"].c_str();
             pe.has_family_discount = !row["has_family_discount"].is_null() && row["has_family_discount"].as<bool>();
             pe.is_keeper = !row["is_keeper"].is_null() && row["is_keeper"].as<bool>();
+            pe.is_designated = !row["is_designated"].is_null() && row["is_designated"].as<bool>();
+            pe.num_clubs = row["num_clubs"].is_null() ? 1 : row["num_clubs"].as<int>();
             pe.sessions_attended = row["sessions_attended"].as<int>();
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
@@ -521,6 +538,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"photoUrl\":" << (pe.photo_url.empty() ? "null" : "\"" + escapeJson(pe.photo_url) + "\"") << ",";
             json << "\"hasFamilyDiscount\":" << (pe.has_family_discount ? "true" : "false") << ",";
             json << "\"isKeeper\":" << (pe.is_keeper ? "true" : "false") << ",";
+            json << "\"isDesignated\":" << (pe.is_designated ? "true" : "false") << ",";
+            json << "\"numClubs\":" << pe.num_clubs << ",";
             json << "\"sessionsInWindow\":" << pe.sessions_in_window << ",";
             json << "\"sessionsAttended\":" << pe.sessions_attended << ",";
             json << "\"projectedSessions\":" << pe.projected_sessions << ",";
@@ -1471,4 +1490,78 @@ std::string EligibilityController::escapeJson(const std::string& str) {
         }
     }
     return escaped.str();
+}
+
+// ============================================================================
+// PUT /api/eligibility/player/:playerId/flags
+// Update is_designated, num_clubs, has_family_discount, jersey_number
+// Frontend calls this as /api/players/:id/flags — note: we also accept that path
+// via the route pattern below, but the controller prefix is /api/eligibility.
+// ============================================================================
+Response EligibilityController::handleUpdatePlayerFlags(const Request& request) {
+    std::string playerId = extractIdFromPath(request.getPath(),
+        "/api/eligibility/player/(\\d+)/flags");
+    if (playerId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Player ID required"));
+    }
+
+    const std::string& body = request.getBody();
+    bool isDesignated   = parseJsonBool(body, "isDesignated");
+    int  numClubs       = parseJsonInt(body, "numClubs", 1);
+    bool hasFamilyDisc  = parseJsonBool(body, "hasFamilyDiscount");
+    std::string jersey  = parseJsonString(body, "jerseyNumber");
+
+    if (numClubs < 1) numClubs = 1;
+    if (numClubs > 2) numClubs = 2;
+
+    try {
+        // Update players table flags
+        std::string flagQuery = R"(
+            UPDATE players
+               SET is_designated     = $2::bool,
+                   num_clubs         = $3::int,
+                   has_family_discount = $4::bool,
+                   updated_at        = CURRENT_TIMESTAMP
+             WHERE id = $1::int
+        )";
+        db_->query(flagQuery, {
+            playerId,
+            isDesignated ? "true" : "false",
+            std::to_string(numClubs),
+            hasFamilyDisc ? "true" : "false"
+        });
+
+        // Update jersey number on ALL roster entries for this player if provided
+        if (!jersey.empty()) {
+            std::string jerseyQuery = R"(
+                UPDATE rosters
+                   SET jersey_number = $2,
+                       updated_at    = CURRENT_TIMESTAMP
+                 WHERE player_id = $1::int
+            )";
+            db_->query(jerseyQuery, {playerId, jersey});
+        } else {
+            // Null out jersey if empty string sent
+            std::string jerseyQuery = R"(
+                UPDATE rosters
+                   SET jersey_number = NULL,
+                       updated_at    = CURRENT_TIMESTAMP
+                 WHERE player_id = $1::int
+            )";
+            db_->query(jerseyQuery, {playerId});
+        }
+
+        std::ostringstream data;
+        data << "{\"playerId\":" << playerId
+             << ",\"isDesignated\":" << (isDesignated ? "true" : "false")
+             << ",\"numClubs\":"     << numClubs
+             << ",\"hasFamilyDiscount\":" << (hasFamilyDisc ? "true" : "false")
+             << "}";
+        return Response(HttpStatus::OK, createJsonResponse(true, "Player flags updated", data.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error updating player flags: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, "Failed to update player flags"));
+    }
 }

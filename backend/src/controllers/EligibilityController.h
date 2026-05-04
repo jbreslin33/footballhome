@@ -36,6 +36,8 @@ struct PlayerEligibility {
     std::string photo_url;
     bool has_family_discount;
     bool is_keeper;
+    bool is_designated;
+    int  num_clubs;
     int sessions_in_window;
     int sessions_attended;
     int projected_sessions;        // sessions_attended + future RSVP "yes" count
@@ -74,6 +76,9 @@ private:
     // Player attendance
     Response handleGetPlayerAttendance(const Request& request);
     Response handleUpdatePlayerAttendance(const Request& request);
+
+    // Player flags (designated, numClubs, hasFamilyDiscount, jerseyNumber)
+    Response handleUpdatePlayerFlags(const Request& request);
     
     // Helper: resolve cascading policy
     EligibilityPolicy resolvePolicy(const std::string& matchId, 

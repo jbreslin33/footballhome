@@ -24,6 +24,15 @@ class GameDayLineupScreen extends Screen {
     this.trainingEvents = [];
     this.trainingData = new Map();
     this._listenersAttached = false;
+    this.viewMode = 'pitch';
+    this._activePitchPopover = null;
+    this._pitchRafId = null;
+    this._pitchHitZones = [];
+    // Auto-orient based on screen: landscape if wider than tall
+    this.pitchOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    this.pitchFit = true; // always full screen
+    this.formationLocked = true; // locked = formation positions enforced; unlocked = custom/free
+    this._stopPitchLoop = this._stopPitchLoop || (() => {}); // forward-declare for early calls
   }
 
   render() {
@@ -58,6 +67,10 @@ class GameDayLineupScreen extends Screen {
               <span style="font-size:0.85rem;opacity:0.7;">Roster:</span>
               <button id="roster-size-18" class="btn-roster-size" data-size="18" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border-color);cursor:pointer;font-size:0.85rem;">18</button>
               <button id="roster-size-20" class="btn-roster-size active" data-size="20" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border-color);cursor:pointer;font-size:0.85rem;">20</button>
+            </div>
+            <div style="display:flex;gap:0;border:1px solid var(--border-color);border-radius:6px;overflow:hidden;">
+              <button class="btn-view-toggle active" data-view="list" style="padding:4px 10px;font-size:0.82rem;border:none;cursor:pointer;background:var(--bg-secondary);color:inherit;">📋 List</button>
+              <button class="btn-view-toggle" data-view="pitch" style="padding:4px 10px;font-size:0.82rem;border:none;border-left:1px solid var(--border-color);cursor:pointer;background:transparent;color:inherit;">⚽ Pitch</button>
             </div>
             <div id="lineup-counts" style="font-size:0.85rem;opacity:0.7;flex:1;text-align:right;">
               ⚽ <span id="starting-count">0/11</span> · 🪑 <span id="bench-count-display">0/9</span> · 🔄 <span id="alt-count">0</span>
@@ -138,6 +151,66 @@ class GameDayLineupScreen extends Screen {
       if (e.target.id === 'groupme-refresh-btn' || e.target.closest('#groupme-refresh-btn')) {
         this.refreshGroupMe();
         return;
+      }
+
+      // View toggle
+      const viewToggle = e.target.closest('.btn-view-toggle');
+      if (viewToggle) {
+        this.switchView(viewToggle.dataset.view);
+        return;
+      }
+
+      // Pitch orientation toggle
+      if (e.target.id === 'pitch-orient-btn' || e.target.closest('#pitch-orient-btn')) {
+        this.pitchOrientation = this.pitchOrientation === 'portrait' ? 'landscape' : 'portrait';
+        this.renderPitchView();
+        return;
+      }
+
+      // Pitch fit-to-screen toggle (exit)
+      if (e.target.id === 'pitch-fit-btn' || e.target.closest('#pitch-fit-btn')) {
+        this.togglePitchFit();
+        return;
+      }
+
+      // Formation lock/custom toggle
+      if (e.target.id === 'pitch-lock-btn' || e.target.closest('#pitch-lock-btn')) {
+        this.formationLocked = !this.formationLocked;
+        this.renderPitchView();
+        return;
+      }
+
+      // Formation pill click
+      const formPill = e.target.closest('.formation-pill');
+      if (formPill) {
+        const id = parseInt(formPill.dataset.formationId);
+        this.selectedFormation = this.formations.find(f => f.id === id) || this.formations[0];
+        if (!this.formationLocked) this.formationLocked = true; // picking a formation re-locks
+        this.renderPitchView();
+        return;
+      }
+
+      // Pitch chip tap (filled slot)
+      const pitchChip = e.target.closest('.pitch-chip');
+      if (pitchChip && !e.target.closest('.pitch-popover')) {
+        e.stopPropagation();
+        this._dismissPitchPopover();
+        this.openChipActions(parseInt(pitchChip.dataset.playerId), parseInt(pitchChip.dataset.slotIndex), e);
+        return;
+      }
+
+      // Pitch empty slot tap
+      const pitchSlot = e.target.closest('.pitch-empty-slot');
+      if (pitchSlot && !e.target.closest('.pitch-popover')) {
+        e.stopPropagation();
+        this._dismissPitchPopover();
+        this.openSlotPicker(parseInt(pitchSlot.dataset.slot), e);
+        return;
+      }
+
+      // Dismiss popover on outside click
+      if (!e.target.closest('.pitch-popover')) {
+        this._dismissPitchPopover();
       }
 
       // Roster size toggle
@@ -836,7 +909,11 @@ class GameDayLineupScreen extends Screen {
   }
 
   renderAllZones() {
-    this.renderZoneSections();
+    if (this.viewMode === 'pitch') {
+      this.renderPitchView();
+    } else {
+      this.renderZoneSections();
+    }
     this.updateCounts();
   }
 
@@ -2117,9 +2194,982 @@ class GameDayLineupScreen extends Screen {
     }
   }
 
+  // ============================================================================
+  // View Switching
+  // ============================================================================
+  switchView(mode) {
+    this.viewMode = mode;
+    this._dismissPitchPopover();
+    if (mode !== 'pitch') this._stopPitchLoop();
+    this.element.querySelectorAll('.btn-view-toggle').forEach(btn => {
+      const active = btn.dataset.view === mode;
+      btn.classList.toggle('active', active);
+      btn.style.background = active ? 'var(--bg-secondary)' : 'transparent';
+    });
+    this.renderAllZones();
+  }
+
+  // ============================================================================
+  // Pitch View — Canvas game-loop renderer
+  // ============================================================================
+
+  // Stop the running RAF loop (if any)
+  _stopPitchLoop() {
+    if (this._pitchRafId) {
+      cancelAnimationFrame(this._pitchRafId);
+      this._pitchRafId = null;
+    }
+  }
+
+  // Draw the full pitch + players onto a canvas using a RAF game loop.
+  // Returns the wrapper element (already appended to `container`).
+  _startPitchCanvas(container) {
+    this._stopPitchLoop();
+
+    // ── wrapper ──────────────────────────────────────────────────────────────
+    const landscape = this.pitchOrientation === 'landscape';
+    const wrapper = document.createElement('div');
+    wrapper.id = 'pitch-canvas-wrapper';
+
+    if (this.pitchFit) {
+      wrapper.style.cssText = 'position:fixed;inset:0;z-index:900;background:#0a1a0a;display:flex;flex-direction:column;';
+      document.body.classList.add('pitch-fit-active');
+    } else {
+      wrapper.style.cssText = 'display:flex;flex-direction:column;background:#0a1a0a;border-radius:14px;overflow:hidden;margin-bottom:14px;';
+      document.body.classList.remove('pitch-fit-active');
+    }
+
+    // ── canvas container (gives the canvas its size) ──────────────────────────
+    const canvasPart = document.createElement('div');
+    canvasPart.style.cssText = this.pitchFit
+      ? 'flex:1;position:relative;overflow:hidden;'
+      : `position:relative;width:100%;${landscape ? 'aspect-ratio:16/9;' : 'aspect-ratio:9/16;max-height:60vh;'}`;
+
+    // ── canvas ───────────────────────────────────────────────────────────────
+    const canvas = document.createElement('canvas');
+    canvas.id = 'pitch-canvas';
+    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:pointer;touch-action:manipulation;';
+    canvasPart.appendChild(canvas);
+    wrapper.appendChild(canvasPart);
+
+    // ── player shelf (bench + alternates + pool) ──────────────────────────────
+    wrapper.appendChild(this._buildPlayerShelf());
+
+    // ── bottom bar ────────────────────────────────────────────────────────────
+    const bar = document.createElement('div');
+    bar.id = 'pitch-bottom-bar';
+    bar.style.cssText = 'flex-shrink:0;background:#000;border-top:1px solid rgba(255,255,255,0.1);';
+
+    // Row 1: controls
+    const ctrlRow = document.createElement('div');
+    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;';
+
+    const lockBtn = document.createElement('button');
+    lockBtn.id = 'pitch-lock-btn';
+    lockBtn.title = this.formationLocked ? 'Switch to custom / free placement' : 'Lock to formation';
+    lockBtn.style.cssText = `padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.78rem;background:${this.formationLocked ? 'rgba(59,130,246,0.8)' : 'rgba(168,85,247,0.7)'};color:#fff;`;
+    lockBtn.textContent = this.formationLocked ? '🔒 Formation' : '✏️ Custom';
+    ctrlRow.appendChild(lockBtn);
+
+    const orientBtn2 = document.createElement('button');
+    orientBtn2.id = 'pitch-orient-btn';
+    orientBtn2.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
+    orientBtn2.textContent = landscape ? '↕ Tall' : '↔ Wide';
+    ctrlRow.appendChild(orientBtn2);
+
+    const exitBtn = document.createElement('button');
+    exitBtn.id = 'pitch-fit-btn';
+    exitBtn.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
+    exitBtn.textContent = '⊠ Exit';
+    ctrlRow.appendChild(exitBtn);
+
+    const countInfo = document.createElement('span');
+    countInfo.style.cssText = 'color:rgba(255,255,255,0.4);font-size:0.78rem;margin-left:auto;';
+    countInfo.textContent = `${this.zones.starting.filter(Boolean).length}/11`;
+    ctrlRow.appendChild(countInfo);
+    bar.appendChild(ctrlRow);
+
+    // Row 2: formation pills (scrollable)
+    const pillScroll = document.createElement('div');
+    pillScroll.style.cssText = 'display:flex;gap:5px;padding:0 10px 6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;';
+    for (const f of this.formations) {
+      const active = this.selectedFormation?.id === f.id;
+      const pill = document.createElement('button');
+      pill.className = 'formation-pill';
+      pill.dataset.formationId = f.id;
+      pill.style.cssText = `padding:3px 12px;border-radius:20px;border:1px solid rgba(255,255,255,${active ? '0.6' : '0.2'});cursor:pointer;font-size:0.75rem;font-weight:${active ? '700' : '400'};background:${active ? 'rgba(59,130,246,0.85)' : 'rgba(255,255,255,0.05)'};color:${active ? '#fff' : 'rgba(255,255,255,0.55)'};flex-shrink:0;`;
+      pill.textContent = f.name;
+      pillScroll.appendChild(pill);
+    }
+    bar.appendChild(pillScroll);
+    wrapper.appendChild(bar);
+
+    container.appendChild(wrapper);
+
+    // ── hit-test registry (rebuilt each frame when state changes) ────────────
+    this._pitchHitZones = []; // [{ x,y,r, type:'chip'|'slot', payload }]
+
+    // ── animation state ───────────────────────────────────────────────────────
+    let lastW = 0, lastH = 0;
+    const chipAnim = new Map(); // playerId/slotKey → { scale, targetScale, pulse, t }
+
+    const getAnim = (key) => {
+      if (!chipAnim.has(key)) chipAnim.set(key, { scale: 1, targetScale: 1, pulse: 0, t: 0 });
+      return chipAnim.get(key);
+    };
+
+    // ── game loop ─────────────────────────────────────────────────────────────
+    const loop = () => {
+      this._pitchRafId = requestAnimationFrame(loop);
+
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      if (W < 10 || H < 10) return;
+
+      // Resize backing buffer if needed
+      if (canvas.width !== W || canvas.height !== H) {
+        canvas.width  = W;
+        canvas.height = H;
+        lastW = W; lastH = H;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+
+      // ── draw pitch background ─────────────────────────────────────────────
+      this._drawPitchField(ctx, W, H, landscape);
+
+      // ── resolve positions & draw chips ────────────────────────────────────
+      const positions = this.getPositionsForFormation(this.selectedFormation?.code || '4-3-3');
+      const hitZones = [];
+
+      // Coordinate mapping: canonical (x=0-100 across, y=5 GK bottom .. 72 fwd top)
+      // Portrait  → px = x*W/100,  py = (100-y)*H/100
+      // Landscape → px = (100-y)*W/100, py = x*H/100
+      const toCanvas = (cx, cy) => landscape
+        ? [(100 - cy) / 100 * W, cx / 100 * H]
+        : [cx / 100 * W, (100 - cy) / 100 * H];
+
+      // Chip radius scales with smaller dimension
+      const baseR = Math.min(W, H) * 0.052;
+
+      positions.forEach((pos, i) => {
+        const playerId = this.zones.starting[i];
+        const player   = playerId ? this.getPlayerById(playerId) : null;
+        const key      = player ? `p${player.playerId}` : `s${i}`;
+        const anim     = getAnim(key);
+        const [px, py] = toCanvas(pos.x, pos.y);
+
+        // Ease scale toward target
+        anim.scale += (anim.targetScale - anim.scale) * 0.18;
+        anim.t     += 0.04;
+
+        const r = baseR * anim.scale;
+
+        if (player) {
+          this._drawPlayerChip(ctx, px, py, r, player, pos.label, anim);
+        } else {
+          this._drawEmptySlot(ctx, px, py, r, pos.label, anim);
+        }
+
+        hitZones.push({ cx: px, cy: py, r: r + 6, type: player ? 'chip' : 'slot',
+          playerId: player?.playerId, slotIndex: i });
+      });
+
+      this._pitchHitZones = hitZones;
+    };
+
+    // ── input handling ────────────────────────────────────────────────────────
+    const onTap = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+      for (const hz of (this._pitchHitZones || [])) {
+        const dx = cx - hz.cx, dy = cy - hz.cy;
+        if (dx*dx + dy*dy <= hz.r * hz.r) {
+          // Animate bounce
+          const key = hz.type === 'chip' ? `p${hz.playerId}` : `s${hz.slotIndex}`;
+          const anim = chipAnim.get(key);
+          if (anim) { anim.targetScale = 1.35; setTimeout(() => { anim.targetScale = 1; }, 180); }
+
+          // Dismiss any open popover first
+          this._dismissPitchPopover();
+
+          if (hz.type === 'chip') {
+            this.openChipActions(hz.playerId, hz.slotIndex, e);
+          } else {
+            this.openSlotPicker(hz.slotIndex, e);
+          }
+          e.preventDefault();
+          return;
+        }
+      }
+      this._dismissPitchPopover();
+    };
+
+    canvas.addEventListener('click', onTap);
+    canvas.addEventListener('touchend', onTap, { passive: false });
+
+    loop();
+    return wrapper;
+  }
+
+  // ── Draw grass field markings ─────────────────────────────────────────────
+  _drawPitchField(ctx, W, H, landscape) {
+    // Alternating grass stripes
+    const stripes = landscape ? 10 : 8;
+    for (let i = 0; i < stripes; i++) {
+      const even = i % 2 === 0;
+      ctx.fillStyle = even ? 'rgba(255,255,255,0.025)' : 'transparent';
+      if (landscape) {
+        ctx.fillRect(i * W / stripes, 0, W / stripes, H);
+      } else {
+        ctx.fillRect(0, i * H / stripes, W, H / stripes);
+      }
+    }
+
+    // All markings in a normalised 0-1 space, then map to canvas
+    // Field markings: top→bottom of pitch = y 0..1, left-right = x 0..1
+    const M = (fx, fy) => landscape
+      ? [fx * W, fy * H]
+      : [fx * W, fy * H];
+
+    // We define everything in pitch-space (top=0, bottom=1 along the play-direction)
+    // then rotate if landscape: swap axes, mirror
+    const pt = (fx, fy) => landscape ? [(1 - fy) * W, fx * H] : [fx * W, fy * H];
+    const sc = (v) => landscape ? v * H : v * W; // scale across pitch
+    const sl = (v) => landscape ? v * W : v * H; // scale along pitch
+
+    const lw = Math.min(W, H) * 0.004;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Outer boundary
+    this._pitchRect(ctx, pt, 0.05, 0.04, 0.90, 0.92, lw);
+
+    // Halfway line
+    const [hlx1, hly1] = pt(0.05, 0.5);
+    const [hlx2, hly2] = pt(0.95, 0.5);
+    ctx.beginPath(); ctx.moveTo(hlx1, hly1); ctx.lineTo(hlx2, hly2); ctx.stroke();
+
+    // Centre circle
+    const [ccx, ccy] = pt(0.5, 0.5);
+    const ccr = sc(0.12);
+    ctx.beginPath(); ctx.arc(ccx, ccy, ccr, 0, Math.PI * 2); ctx.stroke();
+    // Centre dot
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(ccx, ccy, lw * 2, 0, Math.PI * 2); ctx.fill();
+
+    // Penalty areas (top + bottom)
+    this._pitchRect(ctx, pt, 0.22, 0.04, 0.56, 0.185, lw); // top
+    this._pitchRect(ctx, pt, 0.22, 0.815, 0.56, 0.185, lw); // bottom
+
+    // Goal areas (six-yard boxes)
+    this._pitchRect(ctx, pt, 0.34, 0.04, 0.32, 0.075, lw); // top
+    this._pitchRect(ctx, pt, 0.34, 0.885, 0.32, 0.075, lw); // bottom
+
+    // Goals (thick)
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = lw * 2.5;
+    this._pitchRect(ctx, pt, 0.37, 0.00, 0.26, 0.04, lw * 2.5); // top goal
+    this._pitchRect(ctx, pt, 0.37, 0.96, 0.26, 0.04, lw * 2.5); // bottom goal
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = lw;
+
+    // Penalty spots
+    const spotR = lw * 2;
+    const [ts1x, ts1y] = pt(0.5, 0.13);
+    const [ts2x, ts2y] = pt(0.5, 0.87);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.arc(ts1x, ts1y, spotR, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(ts2x, ts2y, spotR, 0, Math.PI * 2); ctx.fill();
+
+    // Corner arcs — angles computed from canvas quadrant so they always curve inward
+    const cr = sc(0.04);
+    [[0.05, 0.04], [0.95, 0.04], [0.05, 0.96], [0.95, 0.96]].forEach(([fx, fy]) => {
+      const [cx2, cy2] = pt(fx, fy);
+      const left  = cx2 < W / 2;
+      const top   = cy2 < H / 2;
+      const a1 = left ? (top ? 0          : Math.PI * 1.5) : (top ? Math.PI / 2  : Math.PI);
+      const a2 = left ? (top ? Math.PI/2  : Math.PI * 2  ) : (top ? Math.PI      : Math.PI * 1.5);
+      ctx.beginPath(); ctx.arc(cx2, cy2, cr, a1, a2); ctx.stroke();
+    });
+  }
+
+  _pitchRect(ctx, pt, fx, fy, fw, fh, lw) {
+    const [x1, y1] = pt(fx, fy);
+    const [x2, y2] = pt(fx + fw, fy);
+    const [x3, y3] = pt(fx + fw, fy + fh);
+    const [x4, y4] = pt(fx, fy + fh);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x3, y3);
+    ctx.lineTo(x4, y4);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // ── Draw a player chip ────────────────────────────────────────────────────
+  _drawPlayerChip(ctx, px, py, r, player, posLabel, anim) {
+    const color  = this._eligColor(player.eligibilityStatus);
+    const jersey = player.jerseyNumber ? `${player.jerseyNumber}` : (player.firstName?.[0] ?? '?');
+    const name   = (player.firstName || '').slice(0, 10);
+    const prac   = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+
+    // Subtle pulse glow for priority starters
+    if (player.eligibilityStatus === 'priority_starter') {
+      const glow = Math.sin(anim.t) * 0.25 + 0.35;
+      ctx.shadowColor  = color;
+      ctx.shadowBlur   = r * 0.9 * glow;
+    }
+
+    // Drop shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur  = 8;
+
+    // Circle body
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // White ring
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth   = r * 0.12;
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+
+    // Jersey number / initial
+    ctx.fillStyle   = '#fff';
+    ctx.font        = `bold ${r * 0.68}px system-ui,sans-serif`;
+    ctx.textAlign   = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(jersey, px, py);
+
+    // Designated badge (gold star top-right)
+    if (player.isDesignated) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.font      = `${r * 0.45}px system-ui,sans-serif`;
+      ctx.fillText('★', px + r * 0.62, py - r * 0.62);
+    }
+
+    // 2-club badge (orange dot top-left)
+    if ((player.numClubs || 1) > 1) {
+      ctx.beginPath();
+      ctx.arc(px - r * 0.65, py - r * 0.65, r * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = '#f97316';
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${r * 0.28}px system-ui,sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.fillText('2', px - r * 0.65, py - r * 0.65);
+    }
+
+    // Name label below
+    ctx.font        = `${r * 0.42}px system-ui,sans-serif`;
+    ctx.fillStyle   = 'rgba(255,255,255,0.92)';
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur  = 4;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, px, py + r + r * 0.55);
+
+    // Position + sessions (smaller, dimmer)
+    ctx.font        = `${r * 0.32}px system-ui,sans-serif`;
+    ctx.fillStyle   = 'rgba(255,255,255,0.5)';
+    ctx.fillText(`${posLabel} · ${prac}`, px, py + r + r * 1.05);
+    ctx.shadowBlur  = 0;
+  }
+
+  // ── Draw an empty slot ────────────────────────────────────────────────────
+  _drawEmptySlot(ctx, px, py, r, posLabel, anim) {
+    // Dashed circle
+    ctx.save();
+    ctx.setLineDash([r * 0.28, r * 0.18]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth   = r * 0.1;
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // + symbol
+    ctx.fillStyle    = 'rgba(255,255,255,0.3)';
+    ctx.font         = `${r * 0.9}px system-ui,sans-serif`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('+', px, py);
+
+    // Position label
+    ctx.font      = `${r * 0.38}px system-ui,sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur  = 3;
+    ctx.fillText(posLabel, px, py + r + r * 0.55);
+    ctx.shadowBlur  = 0;
+  }
+
+  renderPitchView() {
+    const container = this.find('#zone-sections');
+    if (!container) return;
+    container.innerHTML = '';
+    this._stopPitchLoop();
+    // Always full-screen
+    this.pitchFit = true;
+    document.body.classList.add('pitch-fit-active');
+    this._startPitchCanvas(container);
+  }
+
+  togglePitchFit() {
+    // Exit to the list view
+    this.switchView('list');
+  }
+
+  _eligColor(status) {
+    switch (status) {
+      case 'priority_starter': return '#f59e0b';
+      case 'eligible_starter': return '#22c55e';
+      case 'bench_only':       return '#f97316';
+      case 'ineligible':       return '#ef4444';
+      default:                 return '#6b7280';
+    }
+  }
+
+  _renderBelowPitchZones(container) {
+    const maxBench = this.rosterSize - 11;
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const notResponded = this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp !== 'no');
+    const notGoing = this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp === 'no');
+
+    const moveBtns = (playerId, currentZone) => {
+      const s = 'padding:3px 8px;font-size:0.75rem;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;background:var(--bg-secondary);';
+      const parts = [];
+      if (currentZone !== 'starting') {
+        const full = this.zones.starting.length >= 11;
+        parts.push(`<button class="zone-move-btn" data-player-id="${playerId}" data-to-zone="starting" style="${s}${full ? 'opacity:0.5;' : ''}">⚽ Start</button>`);
+      }
+      if (currentZone !== 'bench') {
+        const full = this.zones.bench.length >= maxBench;
+        parts.push(`<button class="zone-move-btn" data-player-id="${playerId}" data-to-zone="bench" style="${s}${full ? 'opacity:0.5;' : ''}">🪑 Bench</button>`);
+      }
+      if (currentZone !== 'alternates') {
+        parts.push(`<button class="zone-move-btn" data-player-id="${playerId}" data-to-zone="alternates" style="${s}">🔄 Alt</button>`);
+      }
+      if (currentZone !== 'pool') {
+        parts.push(`<button class="zone-move-btn" data-player-id="${playerId}" data-to-zone="pool" style="${s}color:#ef4444;">✕</button>`);
+      }
+      return parts.join('');
+    };
+
+    const sections = [
+      { id: 'bench', label: `🪑 Bench`, countLabel: () => `${this.zones.bench.length}/${maxBench}`,
+        players: this.zones.bench.map(id => this.getPlayerById(id)).filter(Boolean), zone: 'bench', collapsible: false },
+      { id: 'alternates', label: `🔄 Alternates`, countLabel: () => `${this.zones.alternates.length}`,
+        players: this.zones.alternates.map(id => this.getPlayerById(id)).filter(Boolean), zone: 'alternates', collapsible: false },
+      { id: 'notresponded', label: `❔ Not Responded`, countLabel: () => `${notResponded.length}`,
+        players: notResponded, zone: 'pool', collapsible: true, startCollapsed: false },
+      { id: 'notgoing', label: `✗ Not Going`, countLabel: () => `${notGoing.length}`,
+        players: notGoing, zone: 'pool', collapsible: true, startCollapsed: true }
+    ];
+
+    for (const section of sections) {
+      const sectionEl = document.createElement('div');
+      sectionEl.style.cssText = 'margin-bottom:12px;border:1px solid var(--border-color);border-radius:10px;overflow:hidden;';
+      const collapsed = section.startCollapsed;
+      sectionEl.innerHTML = `
+        <div class="lineup-section-header" data-section="${section.id}"
+          style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-secondary);cursor:${section.collapsible ? 'pointer' : 'default'};">
+          <span style="font-weight:600;flex:1;">${section.label}</span>
+          <span style="font-size:0.8rem;opacity:0.6;">${section.countLabel()}</span>
+          ${section.collapsible ? `<span class="section-arrow" style="font-size:0.85rem;opacity:0.6;">${collapsed ? '▸' : '▾'}</span>` : ''}
+        </div>
+        <div id="section-body-${section.id}" style="${collapsed ? 'display:none;' : ''}padding:6px 8px;"></div>
+      `;
+      container.appendChild(sectionEl);
+      const body = sectionEl.querySelector(`#section-body-${section.id}`);
+      if (section.players.length === 0) {
+        body.innerHTML = `<div style="padding:8px 6px;font-size:0.85rem;opacity:0.5;text-align:center;">— empty —</div>`;
+      } else {
+        for (const player of section.players) {
+          body.appendChild(this.createLineupCard(player, section.zone, moveBtns(player.playerId, section.zone)));
+        }
+      }
+      if (section.id === 'notresponded' && this.unmatchedRsvps?.length) {
+        for (const u of this.unmatchedRsvps) body.appendChild(this.createUnlinkedCard(u));
+      }
+    }
+  }
+
+  // ============================================================================
+  // Pitch Popovers
+  // ============================================================================
+  _buildPitchPopover(anchorEvent, html) {
+    this._dismissPitchPopover();
+    const pop = document.createElement('div');
+    pop.className = 'pitch-popover';
+    pop.style.cssText = 'position:fixed;z-index:1100;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:10px;padding:8px;min-width:160px;box-shadow:0 4px 20px rgba(0,0,0,0.35);';
+    pop.innerHTML = html;
+    document.body.appendChild(pop);
+    this._activePitchPopover = pop;
+    const x = Math.max(8, Math.min(anchorEvent.clientX, window.innerWidth - 175));
+    const y = Math.max(8, Math.min(anchorEvent.clientY + 12, window.innerHeight - 220));
+    pop.style.left = `${x}px`;
+    pop.style.top = `${y}px`;
+    return pop;
+  }
+
+  _dismissPitchPopover() {
+    if (this._activePitchPopover) {
+      this._activePitchPopover.remove();
+      this._activePitchPopover = null;
+    }
+  }
+
+  openChipActions(playerId, slotIndex, e) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return;
+    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+    const maxBench = this.rosterSize - 11;
+    const benchFull = this.zones.bench.length >= maxBench;
+    const eligIcon = this.getStatusIcon(player.eligibilityStatus);
+    const prac = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+    const jersey = player.jerseyNumber || '';
+
+    const rsvpOptions = ['yes','no','maybe'].map(v => {
+      const label = v === 'yes' ? '🟢 Going' : v === 'no' ? '🔴 Not Going' : '🟡 Maybe';
+      const sel = player.matchRsvp === v ? 'font-weight:700;' : '';
+      return `<button class="pitch-popover-item" data-action="rsvp" data-rsvp="${v}" data-player-id="${playerId}"
+        style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${sel}">${label}</button>`;
+    }).join('');
+
+    const pop = this._buildPitchPopover(e, `
+      <div style="font-size:0.85rem;font-weight:600;padding:2px 4px 6px;border-bottom:1px solid var(--border-color);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+        ${eligIcon} <span>${name}</span> <span style="opacity:0.45;font-size:0.72rem;">${prac}</span>
+      </div>
+
+      <div style="padding:0 4px 8px;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
+        <div style="font-size:0.72rem;opacity:0.55;margin-bottom:4px;">JERSEY</div>
+        <input id="chip-jersey-input" type="text" inputmode="numeric" value="${jersey}"
+          placeholder="—"
+          style="width:60px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.9rem;text-align:center;">
+        <button class="pitch-popover-item" data-action="set-jersey" data-player-id="${playerId}"
+          style="margin-left:6px;padding:4px 10px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);cursor:pointer;font-size:0.8rem;">Set</button>
+      </div>
+
+      <div style="padding:0 4px 8px;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
+        <div style="font-size:0.72rem;opacity:0.55;margin-bottom:4px;">RSVP OVERRIDE</div>
+        ${rsvpOptions}
+      </div>
+
+      <div style="padding:0 4px;">
+        <div style="font-size:0.72rem;opacity:0.55;margin-bottom:4px;">MOVE</div>
+        <button class="pitch-popover-item" data-action="to-bench" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${benchFull ? 'opacity:0.4;' : ''}">
+          🪑 Move to Bench
+        </button>
+        <button class="pitch-popover-item" data-action="to-alternates" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          🔄 Move to Alternates
+        </button>
+        <button class="pitch-popover-item" data-action="to-pool" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;color:#ef4444;">
+          ✕ Remove from lineup
+        </button>
+        <button class="pitch-popover-item" data-action="swap" data-player-id="${playerId}" data-slot="${slotIndex}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          🔁 Swap Player
+        </button>
+        <button class="pitch-popover-item" data-action="attendance" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          📋 Edit Attendance
+        </button>
+        <button class="pitch-popover-item" data-action="edit-player" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          ✏️ Edit Player
+        </button>
+      </div>
+    `);
+
+    pop.addEventListener('click', async (ev) => {
+      const item = ev.target.closest('.pitch-popover-item');
+      if (!item) return;
+      const pid = parseInt(item.dataset.playerId);
+      const action = item.dataset.action;
+
+      if (action === 'to-bench') { this.movePlayerToZone(pid, 'bench'); this._dismissPitchPopover(); }
+      else if (action === 'to-alternates') { this.movePlayerToZone(pid, 'alternates'); this._dismissPitchPopover(); }
+      else if (action === 'to-pool') { this.movePlayerToZone(pid, 'pool'); this._dismissPitchPopover(); }
+      else if (action === 'swap') {
+        this._dismissPitchPopover();
+        // Remove from starting, open slot picker for that slot
+        const slot = parseInt(item.dataset.slot);
+        this.movePlayerToZone(pid, 'bench');
+        // Reopen the slot picker at the same position
+        this.openSlotPicker(slot, ev);
+      } else if (action === 'rsvp') {
+        await this.updatePlayerRsvp(pid, item.dataset.rsvp);
+        this._dismissPitchPopover();
+      } else if (action === 'set-jersey') {
+        const input = pop.querySelector('#chip-jersey-input');
+        const val = input ? input.value.trim() : '';
+        const p = this.getPlayerById(pid);
+        if (p) { p.jerseyNumber = val || null; }
+        this._dismissPitchPopover();
+        this.renderAllZones();
+      } else if (action === 'attendance') {
+        this._dismissPitchPopover();
+        this.openAttendancePopup(pid);
+      } else if (action === 'edit-player') {
+        this._dismissPitchPopover();
+        this.openEditPlayerModal(pid);
+      }
+    });
+  }
+
+  // Build the horizontal shelf showing bench/alternates/pool players
+  _buildPlayerShelf() {
+    const shelf = document.createElement('div');
+    shelf.id = 'pitch-shelf';
+    shelf.style.cssText = 'display:flex;align-items:stretch;overflow-x:auto;background:#0d1f0d;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;min-height:70px;padding:6px 8px;gap:5px;';
+    // webkit scrollbar hide
+    shelf.style.cssText += 'scrollbar-width:none;';
+
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const sections = [
+      { label: '🪑', title: 'Bench',      color: '#3b82f6', players: this._rankPlayers(this.zones.bench.map(id => this.getPlayerById(id)).filter(Boolean)).map(p => ({ id: p.playerId, zone: 'bench' })) },
+      { label: '🔄', title: 'Alt',        color: '#a855f7', players: this._rankPlayers(this.zones.alternates.map(id => this.getPlayerById(id)).filter(Boolean)).map(p => ({ id: p.playerId, zone: 'alternates' })) },
+      { label: '❔', title: 'Available',  color: '#6b7280', players: this._rankPlayers(this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp !== 'no')).map(p => ({ id: p.playerId, zone: 'pool' })) },
+      { label: '✗',  title: 'Not Going', color: '#ef4444', players: this._rankPlayers(this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp === 'no')).map(p => ({ id: p.playerId, zone: 'pool' })) },
+    ];
+
+    for (const section of sections) {
+      if (section.players.length === 0) continue;
+
+      // Section divider label
+      const lbl = document.createElement('div');
+      lbl.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;gap:2px;opacity:0.55;`;
+      lbl.innerHTML = `<span style="font-size:0.9rem;">${section.label}</span><span style="font-size:0.5rem;color:${section.color};font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">${section.title}</span>`;
+      shelf.appendChild(lbl);
+
+      for (const { id, zone } of section.players) {
+        const player = this.getPlayerById(id);
+        if (!player) continue;
+        const eligColor = this._eligColor(player.eligibilityStatus);
+        const rsvpIcon = player.matchRsvp === 'yes' ? '🟢' : player.matchRsvp === 'no' ? '🔴' : '🟡';
+        const jersey = player.jerseyNumber || (player.firstName?.[0] ?? '?');
+        const name = (player.firstName || '').slice(0, 8);
+        const prac = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+
+        const chip = document.createElement('div');
+        chip.className = 'shelf-chip';
+        chip.dataset.playerId = id;
+        chip.dataset.zone = zone;
+        chip.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;padding:4px 5px;border-radius:8px;gap:2px;border-left:2px solid ${section.color};background:rgba(255,255,255,0.04);min-width:46px;touch-action:manipulation;user-select:none;`;
+        const starBadge = player.isDesignated ? '<span style="color:#fbbf24;font-size:0.5rem;">★</span>' : '';
+        const clubBadge = (player.numClubs || 1) > 1 ? '<span style="background:#f97316;color:#000;border-radius:2px;padding:0 2px;font-size:0.45rem;font-weight:700;">2C</span>' : '';
+        chip.innerHTML = `
+          <div style="position:relative;width:28px;height:28px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.7);">${jersey}${starBadge}</div>
+          <div style="font-size:0.52rem;color:rgba(255,255,255,0.85);white-space:nowrap;">${name}</div>
+          <div style="font-size:0.48rem;color:rgba(255,255,255,0.4);display:flex;align-items:center;gap:2px;">${rsvpIcon} ${prac} ${clubBadge}</div>
+        `;
+        shelf.appendChild(chip);
+      }
+    }
+
+    if (shelf.children.length === 0) {
+      shelf.innerHTML = '<span style="color:rgba(255,255,255,0.25);font-size:0.75rem;padding:0 10px;align-self:center;">All players in lineup</span>';
+    }
+
+    shelf.addEventListener('click', (e) => {
+      const chip = e.target.closest('.shelf-chip');
+      if (chip) {
+        e.stopPropagation();
+        this.openShelfChipActions(parseInt(chip.dataset.playerId), chip.dataset.zone, e);
+      } else {
+        this._dismissPitchPopover();
+      }
+    });
+
+    return shelf;
+  }
+
+  openShelfChipActions(playerId, currentZone, e) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return;
+    const name    = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+    const eligIcon = this.getStatusIcon(player.eligibilityStatus);
+    const prac    = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+    const maxBench = this.rosterSize - 11;
+    const startFull = this.zones.starting.length >= 11;
+    const benchFull = this.zones.bench.length >= maxBench;
+
+    const rsvpOptions = ['yes', 'no', 'maybe'].map(v => {
+      const label = v === 'yes' ? '🟢 Going' : v === 'no' ? '🔴 Not Going' : '🟡 Maybe';
+      const sel   = player.matchRsvp === v ? 'font-weight:700;' : '';
+      return `<button class="pitch-popover-item" data-action="rsvp" data-rsvp="${v}" data-player-id="${playerId}"
+        style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${sel}">${label}</button>`;
+    }).join('');
+
+    const pop = this._buildPitchPopover(e, `
+      <div style="font-size:0.85rem;font-weight:600;padding:2px 4px 6px;border-bottom:1px solid var(--border-color);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+        ${eligIcon} <span>${name}</span> <span style="opacity:0.45;font-size:0.72rem;">${prac}</span>
+      </div>
+
+      <div style="padding:0 4px 8px;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
+        <div style="font-size:0.72rem;opacity:0.55;margin-bottom:4px;">ADD TO LINEUP</div>
+        <button class="pitch-popover-item" data-action="to-starting" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${startFull ? 'opacity:0.4;' : 'color:#22c55e;font-weight:600;'}">
+          ⚽ Add to Starting XI
+        </button>
+        ${currentZone !== 'bench' ? `<button class="pitch-popover-item" data-action="to-bench" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${benchFull ? 'opacity:0.4;' : ''}">
+          🪑 Move to Bench
+        </button>` : ''}
+        ${currentZone !== 'alternates' ? `<button class="pitch-popover-item" data-action="to-alternates" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          🔄 Move to Alternates
+        </button>` : ''}
+        ${currentZone !== 'pool' ? `<button class="pitch-popover-item" data-action="to-pool" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;color:#ef4444;">
+          ✕ Remove from roster
+        </button>` : ''}
+      </div>
+
+      <div style="padding:0 4px 8px;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
+        <div style="font-size:0.72rem;opacity:0.55;margin-bottom:4px;">RSVP OVERRIDE</div>
+        ${rsvpOptions}
+      </div>
+
+      <div style="padding:0 4px;">
+        <button class="pitch-popover-item" data-action="attendance" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          📋 Edit Attendance
+        </button>
+        <button class="pitch-popover-item" data-action="edit-player" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          ✏️ Edit Player
+        </button>
+      </div>
+    `);
+
+    pop.addEventListener('click', async (ev) => {
+      const item = ev.target.closest('.pitch-popover-item');
+      if (!item) return;
+      const pid    = parseInt(item.dataset.playerId);
+      const action = item.dataset.action;
+
+      if (action === 'to-starting') {
+        if (!startFull) { this.movePlayerToZone(pid, 'starting'); }
+        else { this.showLineupToast('Starting XI is full (11/11)'); }
+        this._dismissPitchPopover();
+      } else if (action === 'to-bench') {
+        this.movePlayerToZone(pid, 'bench'); this._dismissPitchPopover();
+      } else if (action === 'to-alternates') {
+        this.movePlayerToZone(pid, 'alternates'); this._dismissPitchPopover();
+      } else if (action === 'to-pool') {
+        this.movePlayerToZone(pid, 'pool'); this._dismissPitchPopover();
+      } else if (action === 'rsvp') {
+        await this.updatePlayerRsvp(pid, item.dataset.rsvp);
+        this._dismissPitchPopover();
+      } else if (action === 'attendance') {
+        this._dismissPitchPopover();
+        this.openAttendancePopup(pid);
+      } else if (action === 'edit-player') {
+        this._dismissPitchPopover();
+        this.openEditPlayerModal(pid);
+      }
+    });
+  }
+
+  // ── Rank players for slot picker ───────────────────────────────────────────
+  // Tier 1: designated players
+  // Tier 2: 2+ sessions AND 1 club
+  // Tier 3: 2+ sessions, 2 clubs
+  // Tier 4: <2 sessions, 1 club
+  // Tier 5: <2 sessions, 2 clubs
+  // Within tier: sort by sessions desc, then name asc
+  _rankPlayers(players) {
+    const tier = (p) => {
+      const sessions = p.sessionsAttended || 0;
+      const clubs    = p.numClubs || 1;
+      if (p.isDesignated) return 0;
+      if (sessions >= 2 && clubs === 1) return 1;
+      if (sessions >= 2 && clubs >  1) return 2;
+      if (sessions <  2 && clubs === 1) return 3;
+      return 4;
+    };
+    return [...players].sort((a, b) => {
+      const td = tier(a) - tier(b);
+      if (td !== 0) return td;
+      const sd = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+      if (sd !== 0) return sd;
+      return ((a.firstName || '') + (a.lastName || '')).localeCompare((b.firstName || '') + (b.lastName || ''));
+    });
+  }
+
+  // ── Edit Player Modal ──────────────────────────────────────────────────────
+  openEditPlayerModal(playerId) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return;
+    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'attendance-overlay';
+    overlay.innerHTML = `
+      <div class="attendance-popup" style="max-width:340px;">
+        <div class="attendance-popup-header">
+          <h3>✏️ ${name}</h3>
+          <button class="attendance-close-btn">✕</button>
+        </div>
+        <div class="attendance-popup-body" style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <span style="font-size:0.9rem;">⭐ Designated Player</span>
+            <input type="checkbox" id="ep-designated" style="width:20px;height:20px;cursor:pointer;" ${player.isDesignated ? 'checked' : ''}>
+          </label>
+
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-size:0.9rem;">🏟️ Number of Clubs</div>
+              <div style="font-size:0.75rem;opacity:0.5;">Players on 2 clubs are ranked lower</div>
+            </div>
+            <select id="ep-numclubs" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:inherit;font-size:0.9rem;">
+              <option value="1" ${(player.numClubs || 1) === 1 ? 'selected' : ''}>1 club</option>
+              <option value="2" ${(player.numClubs || 1) === 2 ? 'selected' : ''}>2 clubs</option>
+            </select>
+          </label>
+
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-size:0.9rem;">👨‍👩‍👦 Family Practice Discount</div>
+              <div style="font-size:0.75rem;opacity:0.5;">Reduces min sessions threshold by ${this.policy?.familyDiscount || 1}</div>
+            </div>
+            <input type="checkbox" id="ep-family" style="width:20px;height:20px;cursor:pointer;" ${player.hasFamilyDiscount ? 'checked' : ''}>
+          </label>
+
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <span style="font-size:0.9rem;"># Jersey</span>
+            <input type="text" id="ep-jersey" inputmode="numeric" value="${player.jerseyNumber || ''}" placeholder="—"
+              style="width:60px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:inherit;font-size:0.9rem;text-align:center;">
+          </label>
+
+          <button id="ep-save-btn" class="btn btn-primary" style="margin-top:4px;">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('.attendance-close-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelector('#ep-save-btn').addEventListener('click', async () => {
+      const designated = overlay.querySelector('#ep-designated').checked;
+      const numClubs   = parseInt(overlay.querySelector('#ep-numclubs').value);
+      const family     = overlay.querySelector('#ep-family').checked;
+      const jersey     = overlay.querySelector('#ep-jersey').value.trim() || null;
+
+      // Apply locally
+      player.isDesignated    = designated;
+      player.numClubs        = numClubs;
+      player.hasFamilyDiscount = family;
+      player.jerseyNumber    = jersey;
+
+      // Recalculate eligibility status based on new discount
+      if (this.policy?.minSessionsToStart !== undefined) {
+        const effectiveMin = family
+          ? Math.max(0, this.policy.minSessionsToStart - (this.policy.familyDiscount || 1))
+          : this.policy.minSessionsToStart;
+        const s = player.sessionsAttended || 0;
+        if (s >= (this.policy.priorityStarterSessions || 999)) {
+          player.eligibilityStatus = 'priority_starter';
+        } else if (s >= effectiveMin) {
+          player.eligibilityStatus = designated ? 'priority_starter' : 'eligible_starter';
+        } else if (s > 0) {
+          player.eligibilityStatus = designated ? 'eligible_starter' : 'bench_only';
+        } else {
+          player.eligibilityStatus = designated ? 'bench_only' : 'ineligible';
+        }
+      }
+
+      // Persist via API if we have a playerId
+      if (player.playerId) {
+        try {
+          await this.auth.fetch(`/api/eligibility/player/${player.playerId}/flags`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isDesignated: designated, numClubs, hasFamilyDiscount: family, jerseyNumber: jersey })
+          });
+        } catch (err) {
+          console.warn('Could not persist player flags:', err.message);
+        }
+      }
+
+      overlay.remove();
+      this.renderAllZones();
+    });
+  }
+
+  openSlotPicker(slotIndex, e) {
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const available = this._rankPlayers([
+      ...this.zones.bench.map(id => this.getPlayerById(id)),
+      ...this.zones.alternates.map(id => this.getPlayerById(id)),
+      ...this.players.filter(p => !allZoned.has(p.playerId))
+    ].filter(Boolean));
+
+    if (available.length === 0) {
+      this.showLineupToast('No players available to assign');
+      return;
+    }
+
+    const positions = this.getPositionsForFormation(this.selectedFormation?.code || '4-3-3');
+    const label = positions[slotIndex]?.label || `Slot ${slotIndex + 1}`;
+
+    const itemsHtml = available.map(p => {
+      const name = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+      const eligIcon = this.getStatusIcon(p.eligibilityStatus);
+      const rsvp = p.matchRsvp === 'yes' ? '🟢' : p.matchRsvp === 'no' ? '🔴' : '🟡';
+      const badges = [];
+      if (p.isDesignated) badges.push('<span style="background:#f59e0b;color:#000;border-radius:3px;padding:0 3px;font-size:0.6rem;font-weight:700;">D</span>');
+      if ((p.sessionsAttended || 0) >= 2) badges.push('<span style="background:#22c55e;color:#000;border-radius:3px;padding:0 3px;font-size:0.6rem;font-weight:700;">✓</span>');
+      if ((p.numClubs || 1) > 1) badges.push('<span style="background:#f97316;color:#000;border-radius:3px;padding:0 3px;font-size:0.6rem;font-weight:700;">2C</span>');
+      const zone = this.zones.bench.includes(p.playerId) ? '<span style="font-size:0.7rem;opacity:0.45;">bench</span>' : '';
+      return `<button class="pitch-popover-item" data-action="assign" data-player-id="${p.playerId}" data-slot="${slotIndex}"
+        style="display:flex;align-items:center;gap:5px;width:100%;text-align:left;padding:6px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+        ${rsvp} <span style="flex:1;">${name}</span> ${badges.join('')} ${zone} ${eligIcon} <span style="opacity:0.45;font-size:0.72rem;">${p.sessionsAttended || 0}</span>
+      </button>`;
+    }).join('');
+
+    const pop = this._buildPitchPopover(e, `
+      <div style="font-size:0.8rem;font-weight:600;padding:2px 4px 6px;border-bottom:1px solid var(--border-color);margin-bottom:4px;">Assign to ${label}</div>
+      <div style="max-height:220px;overflow-y:auto;">${itemsHtml}</div>
+    `);
+
+    pop.addEventListener('click', (ev) => {
+      const item = ev.target.closest('.pitch-popover-item');
+      if (!item || item.dataset.action !== 'assign') return;
+      const pid = parseInt(item.dataset.playerId);
+      const slot = parseInt(item.dataset.slot);
+      this.removePlayerFromAllZones(pid);
+      this.zones.starting.splice(slot, 0, pid);
+      if (this.zones.starting.length > 11) {
+        const overflow = this.zones.starting.splice(11);
+        this.zones.alternates.push(...overflow);
+      }
+      this._dismissPitchPopover();
+      this.renderAllZones();
+    });
+  }
+
   onExit() {
-    // Clean up body overflow in case fit-to-screen was active
     document.body.style.overflow = '';
+    document.body.classList.remove('pitch-fit-active');
+    this.pitchFit = false;
     if (this.element) {
       this.element.classList.remove('lineup-fit-screen');
     }
