@@ -651,33 +651,36 @@ class GameDayLineupScreen extends Screen {
     const sync = this.groupmeSync || {};
     const status = sync.status;
     const minutes = sync.minutesAgo;
+    const hasLinkedEvent = sync.hasLinkedEvent;
     
-    // Format the last sync timestamp
-    const lastSyncTime = this.lastSyncedAt || sync.lastSync;
-    const timeStr = lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const timeStr = sync.lastSync ? new Date(sync.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const refreshBtn = '<button id="groupme-refresh-btn" class="btn-groupme-refresh" style="margin-left:8px;padding:2px 10px;font-size:0.8rem;border:1px solid currentColor;border-radius:4px;cursor:pointer;background:transparent;color:inherit;">🔄 Sync</button>';
     
     let icon, message, level;
-    const refreshBtn = '<button id="groupme-refresh-btn" class="btn-groupme-refresh">🔄 Refresh</button>';
-    
-    if (status === 'fresh') {
-      icon = '✅';
-      message = `GroupMe synced${timeStr ? ' at ' + timeStr : ''}. ${refreshBtn}`;
-      level = 'success';
-    } else if (status === 'no_data') {
-      icon = '🚫';
-      message = `No GroupMe event linked for this match — RSVPs unavailable. ${refreshBtn}`;
+
+    if (!hasLinkedEvent) {
+      icon = '🔗';
+      message = `No GroupMe event linked to this match — RSVPs unavailable. ${refreshBtn}`;
       level = 'error';
-    } else if (status === 'very_stale') {
-      const days = Math.floor(minutes / 1440);
+    } else if (status === 'not_synced') {
       icon = '⚠️';
-      message = `RSVP data is ${days} day${days !== 1 ? 's' : ''} old${timeStr ? ' (last: ' + timeStr + ')' : ''}. ${refreshBtn}`;
-      level = 'error';
+      message = `GroupMe event linked but RSVPs not yet synced. ${refreshBtn}`;
+      level = 'warning';
+    } else if (status === 'fresh') {
+      icon = '✅';
+      message = `RSVPs synced${timeStr ? ' at ' + timeStr : ''}. ${refreshBtn}`;
+      level = 'success';
     } else if (status === 'stale') {
       const hours = Math.floor(minutes / 60);
       const mins = minutes % 60;
       icon = '⏳';
       message = `RSVPs synced ${hours}h ${mins}m ago${timeStr ? ' (' + timeStr + ')' : ''}. ${refreshBtn}`;
       level = 'warning';
+    } else if (status === 'very_stale') {
+      const days = Math.floor(minutes / 1440);
+      icon = '⚠️';
+      message = `RSVP data is ${days} day${days !== 1 ? 's' : ''} old. ${refreshBtn}`;
+      level = 'error';
     }
     
     if (!message) {
@@ -686,8 +689,11 @@ class GameDayLineupScreen extends Screen {
     }
 
     banner.className = `groupme-warning groupme-warning-${level}`;
-    banner.innerHTML = `<span class="groupme-warning-icon">${icon}</span> <span class="groupme-warning-text">${message}</span>`;
-    banner.style.display = 'flex';
+    banner.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    banner.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;margin-bottom:10px;font-size:0.85rem;';
+    if (level === 'error') banner.style.background = 'rgba(239,68,68,0.12)';
+    else if (level === 'warning') banner.style.background = 'rgba(245,158,11,0.12)';
+    else banner.style.background = 'rgba(34,197,94,0.12)';
   }
 
   /**
@@ -697,7 +703,7 @@ class GameDayLineupScreen extends Screen {
     const btn = this.find('#groupme-refresh-btn');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '⏳ Syncing...';
+      btn.textContent = '⏳';
     }
 
     const matchId = this.navigation.context.match?.id;
@@ -708,14 +714,17 @@ class GameDayLineupScreen extends Screen {
         method: 'POST'
       });
       const syncData = await syncResponse.json();
-      
+
       if (syncData.success && syncData.data?.synced) {
-        console.log(`✅ Refresh: ${syncData.data.totalRsvps} RSVPs synced`);
+        this.showLineupToast(`✅ Synced: ${syncData.data.going || 0} going, ${syncData.data.notGoing || 0} not going`);
+      } else if (syncData.data?.reason === 'no_linked_event') {
+        this.showLineupToast('⚠️ No GroupMe event linked to this match');
       } else {
-        console.log('ℹ️ Refresh:', syncData.data?.reason || syncData.message);
+        this.showLineupToast('ℹ️ ' + (syncData.data?.reason || syncData.message || 'Sync complete'));
       }
     } catch (err) {
       console.warn('⚠️ Refresh failed:', err.message);
+      this.showLineupToast('❌ Sync failed: ' + err.message);
     }
 
     // Reload eligibility with fresh data

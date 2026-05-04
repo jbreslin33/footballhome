@@ -357,38 +357,54 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         
         pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId});
         
-        // Step 5: Check GroupMe sync freshness
+        // Step 5: Check GroupMe sync freshness — match-specific
         std::string groupmeStatus = "no_data";
         std::string groupmeLastSync = "";
         int groupmeMinutesAgo = -1;
+        bool hasLinkedEvent = false;
         
         try {
-            pqxx::result syncResult = db_->query(
-                "SELECT MAX(cer.responded_at) as last_sync "
-                "FROM chat_event_rsvps cer "
-                "JOIN chat_events ce ON ce.id = cer.chat_event_id "
+            // First check: does this match have a linked GroupMe chat_event?
+            pqxx::result linkedResult = db_->query(
+                "SELECT ce.id FROM chat_events ce "
                 "JOIN chats c ON c.id = ce.chat_id "
-                "WHERE c.team_id = $1::int",
-                {teamId}
+                "WHERE ce.match_id = $1::int AND c.team_id = $2::int "
+                "LIMIT 1",
+                {matchId, teamId}
             );
-            if (!syncResult.empty() && !syncResult[0]["last_sync"].is_null()) {
-                groupmeLastSync = syncResult[0]["last_sync"].c_str();
-                // Calculate minutes ago
-                pqxx::result ageResult = db_->query(
-                    "SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1::timestamp)) / 60 as minutes_ago",
-                    {groupmeLastSync}
+            hasLinkedEvent = !linkedResult.empty();
+
+            if (hasLinkedEvent) {
+                // Check freshness of RSVPs specifically for this match
+                pqxx::result syncResult = db_->query(
+                    "SELECT MAX(cer.responded_at) as last_sync "
+                    "FROM chat_event_rsvps cer "
+                    "JOIN chat_events ce ON ce.id = cer.chat_event_id "
+                    "WHERE ce.match_id = $1::int",
+                    {matchId}
                 );
-                if (!ageResult.empty()) {
-                    groupmeMinutesAgo = static_cast<int>(ageResult[0]["minutes_ago"].as<double>());
-                    if (groupmeMinutesAgo <= 60) {
-                        groupmeStatus = "fresh";
-                    } else if (groupmeMinutesAgo <= 1440) {
-                        groupmeStatus = "stale";
-                    } else {
-                        groupmeStatus = "very_stale";
+                if (!syncResult.empty() && !syncResult[0]["last_sync"].is_null()) {
+                    groupmeLastSync = syncResult[0]["last_sync"].c_str();
+                    pqxx::result ageResult = db_->query(
+                        "SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1::timestamp)) / 60 as minutes_ago",
+                        {groupmeLastSync}
+                    );
+                    if (!ageResult.empty()) {
+                        groupmeMinutesAgo = static_cast<int>(ageResult[0]["minutes_ago"].as<double>());
+                        if (groupmeMinutesAgo <= 60) {
+                            groupmeStatus = "fresh";
+                        } else if (groupmeMinutesAgo <= 1440) {
+                            groupmeStatus = "stale";
+                        } else {
+                            groupmeStatus = "very_stale";
+                        }
                     }
+                } else {
+                    // Event linked but no RSVPs yet synced
+                    groupmeStatus = "not_synced";
                 }
             }
+            // else: no linked event → status stays "no_data"
         } catch (const std::exception& e) {
             std::cerr << "⚠️ GroupMe freshness check failed: " << e.what() << std::endl;
         }
@@ -408,6 +424,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         // GroupMe sync status
         json << "\"groupmeSync\":{";
         json << "\"status\":\"" << groupmeStatus << "\"";
+        json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
         if (!groupmeLastSync.empty()) {
             json << ",\"lastSync\":\"" << groupmeLastSync << "\"";
             json << ",\"minutesAgo\":" << groupmeMinutesAgo;
