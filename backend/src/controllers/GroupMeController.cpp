@@ -1601,6 +1601,10 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
             size_t eventIdPos = eventsJson.find("\"event_id\":", cursor);
             if (eventIdPos == std::string::npos) break;
 
+            // eventSearchStart: beginning of this event's JSON object (fields like name/start_at
+            // come BEFORE event_id in GroupMe's response, so we search from cursor, not eventIdPos)
+            size_t eventSearchStart = cursor;
+
             // Find next event boundary
             size_t nextEventIdPos = eventsJson.find("\"event_id\":", eventIdPos + 11);
             size_t searchEnd = (nextEventIdPos != std::string::npos) ? nextEventIdPos : eventsJson.length();
@@ -1614,7 +1618,7 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
             // Helper lambda: extract a string field value within this event's range
             auto extractField = [&](const std::string& field) -> std::string {
                 std::string needle = "\"" + field + "\":\"";
-                size_t pos = eventsJson.find(needle, eventIdPos);
+                size_t pos = eventsJson.find(needle, eventSearchStart);
                 if (pos == std::string::npos || pos >= searchEnd) {
                     // try null check
                     return "";
@@ -1631,11 +1635,11 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
             std::string eventName = extractField("name");
             std::string startAt   = extractField("start_at");   // ISO timestamp
             std::string endAt     = extractField("end_at");
-            std::string location  = extractField("name");       // GroupMe location.name
-            // Try location sub-object name
+            std::string location;
+            // Try location sub-object name (search from eventSearchStart, it precedes event_id)
             {
                 std::string locNeedle = "\"location\":{";
-                size_t locPos = eventsJson.find(locNeedle, eventIdPos);
+                size_t locPos = eventsJson.find(locNeedle, eventSearchStart);
                 if (locPos != std::string::npos && locPos < searchEnd) {
                     std::string locNameNeedle = "\"name\":\"";
                     size_t lnPos = eventsJson.find(locNameNeedle, locPos);
@@ -1685,6 +1689,13 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
                         {imageUrl, ceId}
                     );
                 }
+                if (!location.empty()) {
+                    db_->query(
+                        "UPDATE chat_events SET location = $1, updated_at = CURRENT_TIMESTAMP "
+                        "WHERE id = $2::int AND (location IS DISTINCT FROM $1)",
+                        {location, ceId}
+                    );
+                }
                 updated++;
             } else {
                 // Create match (match_type=2 custom, home_team=this team, no away_team)
@@ -1717,16 +1728,22 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
                     matchId = matchResult[0]["id"].c_str();
                 }
 
-                // Create chat_event linked to match
-                std::vector<std::string> ceParams = {chatId, matchId, eventName, matchDate, eventId};
-                std::string ceQuery =
+                // Create chat_event linked to match (split into two queries — 6-param limit)
+                db_->query(
                     "INSERT INTO chat_events "
-                    "  (chat_id, match_id, title, event_date, external_id, image_url, location, start_at, end_at, is_active) "
-                    "VALUES ($1::int, $2::int, $3, $4::date, $5, "
-                    "  NULLIF($6,''), NULLIF($7,''), "
-                    "  NULLIF($8,'')::timestamptz, NULLIF($9,'')::timestamptz, true)";
-                db_->query(ceQuery, {chatId, matchId, eventName, matchDate, eventId,
-                                     imageUrl, location, startAt, endAt});
+                    "  (chat_id, match_id, title, event_date, external_id, image_url) "
+                    "VALUES ($1::int, $2::int, $3, $4::date, $5, NULLIF($6,''))",
+                    {chatId, matchId, eventName, matchDate, eventId, imageUrl}
+                );
+                // Set location and timestamps in a follow-up update
+                db_->query(
+                    "UPDATE chat_events SET "
+                    "  location = NULLIF($1,''), "
+                    "  start_at = NULLIF($2,'')::timestamptz, "
+                    "  end_at   = NULLIF($3,'')::timestamptz "
+                    "WHERE external_id = $4",
+                    {location, startAt, endAt, eventId}
+                );
 
                 std::cout << "✅ Created match " << matchId << " + chat_event for [" << eventId << "]" << std::endl;
                 created++;
