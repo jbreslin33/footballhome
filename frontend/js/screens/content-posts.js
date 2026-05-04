@@ -164,6 +164,24 @@ class ContentPostsScreen extends Screen {
         </div>
 
         <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:6px;">Text on Graphic <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— overlaid directly on the image</span></label>
+          <input type="text" id="content-overlay-text" class="form-input" placeholder="e.g. Game Day! or Training Tonight 7pm" style="width:100%;box-sizing:border-box;">
+          <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+            <label style="font-size:0.85rem;opacity:0.7;">Position:</label>
+            <select id="content-text-pos" class="form-input" style="flex:1;min-width:120px;box-sizing:border-box;">
+              <option value="bc">Bottom center</option>
+              <option value="tc">Top center</option>
+              <option value="bl">Bottom left</option>
+              <option value="br">Bottom right</option>
+              <option value="tl">Top left</option>
+              <option value="tr">Top right</option>
+            </select>
+            <label style="font-size:0.85rem;opacity:0.7;">Color:</label>
+            <input type="color" id="content-text-color" value="#ffffff" style="width:36px;height:32px;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;padding:2px;">
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
           <label style="display:block;font-weight:600;margin-bottom:8px;">Logo Overlays <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— tap a grid cell to place, tap again to remove</span></label>
           <div style="display:flex;flex-direction:column;gap:8px;">
             ${this.overlayOptions.map(o => `
@@ -215,6 +233,14 @@ class ContentPostsScreen extends Screen {
     if (driveBtn) {
       driveBtn.addEventListener('click', () => this.openDriveGallery());
     }
+
+    // Wire up text overlay live preview
+    const textInput = this.find('#content-overlay-text');
+    const textPosInput = this.find('#content-text-pos');
+    const textColorInput = this.find('#content-text-color');
+    if (textInput) textInput.addEventListener('input', () => { if (this.currentFile) this.updatePreview(); });
+    if (textPosInput) textPosInput.addEventListener('change', () => { if (this.currentFile) this.updatePreview(); });
+    if (textColorInput) textColorInput.addEventListener('input', () => { if (this.currentFile) this.updatePreview(); });
 
     // Wire up tic-tac-toe position grid (click = place/move, click active = remove)
     area.querySelectorAll('.pos-btn').forEach(btn => {
@@ -287,16 +313,16 @@ class ContentPostsScreen extends Screen {
 
     // Group selected overlays by position region
     let overlayHtml = '';
-    if (hasOverlays) {
-      const regionStyles = {
-        tl: 'top:6px;left:6px;',
-        tc: 'top:6px;left:50%;transform:translateX(-50%);',
-        tr: 'top:6px;right:6px;',
-        bl: 'bottom:6px;left:6px;',
-        bc: 'bottom:6px;left:50%;transform:translateX(-50%);',
-        br: 'bottom:6px;right:6px;'
-      };
+    const regionStyles = {
+      tl: 'top:6px;left:6px;',
+      tc: 'top:6px;left:50%;transform:translateX(-50%);',
+      tr: 'top:6px;right:6px;',
+      bl: 'bottom:6px;left:6px;',
+      bc: 'bottom:6px;left:50%;transform:translateX(-50%);',
+      br: 'bottom:6px;right:6px;'
+    };
 
+    if (hasOverlays) {
       const regions = {};
       selectedWithPos.forEach(s => {
         if (!regions[s.pos]) regions[s.pos] = [];
@@ -323,6 +349,16 @@ class ContentPostsScreen extends Screen {
       }
     }
 
+    // Text overlay preview
+    const overlayText = (this.find('#content-overlay-text')?.value || '').trim();
+    const textPos = this.find('#content-text-pos')?.value || 'bc';
+    const textColor = this.find('#content-text-color')?.value || '#ffffff';
+    if (overlayText) {
+      overlayHtml += `<div style="position:absolute;${regionStyles[textPos]}max-width:90%;text-align:center;">
+        <span style="font-size:16px;font-weight:700;color:${textColor};text-shadow:0 1px 4px rgba(0,0,0,0.8),0 0 2px rgba(0,0,0,0.9);word-break:break-word;">${this.escapeHtml(overlayText)}</span>
+      </div>`;
+    }
+
     if (isVideo) {
       previewEl.innerHTML = `
         <video src="${this.currentPreviewUrl}" controls muted style="max-width:400px;max-height:400px;display:block;border-radius:8px;"></video>
@@ -340,6 +376,9 @@ class ContentPostsScreen extends Screen {
     const title = (this.find('#content-title')?.value || '').trim();
     const format = this.find('#content-format')?.value || 'post';
     const caption = (this.find('#content-caption')?.value || '').trim();
+    const overlayText = (this.find('#content-overlay-text')?.value || '').trim();
+    const textPos = this.find('#content-text-pos')?.value || 'bc';
+    const textColor = this.find('#content-text-color')?.value || '#ffffff';
     const selectedOverlays = this.getSelectedOverlays();
     const selectedWithPos = this.getSelectedOverlaysWithPositions();
     const overlayLogos = selectedWithPos.map(s => `${s.key}:${s.pos}`).join(',');
@@ -390,7 +429,7 @@ class ContentPostsScreen extends Screen {
       } else {
         // For images: render with canvas to add logo overlays
         if (saveBtn) saveBtn.textContent = '\u23f3 Generating image...';
-        const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, selectedWithPos);
+        const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, selectedWithPos, overlayText, textPos, textColor);
         const uploadResp = await this.auth.fetch(`/api/social/content/${postId}/media`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -424,7 +463,7 @@ class ContentPostsScreen extends Screen {
     });
   }
 
-  renderImageWithOverlay(file, overlaysWithPos) {
+  renderImageWithOverlay(file, overlaysWithPos, overlayText = '', textPos = 'bc', textColor = '#ffffff') {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -557,6 +596,54 @@ class ContentPostsScreen extends Screen {
               }
 
               curX += item.w + gap;
+            });
+          }
+
+          // Draw custom text overlay
+          if (overlayText) {
+            const textFontSize = Math.max(18, Math.round(w * 0.045));
+            ctx.font = `700 ${textFontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+            ctx.textBaseline = 'middle';
+
+            // Word-wrap text to fit within 90% of canvas width
+            const maxTextWidth = w * 0.86;
+            const words = overlayText.split(' ');
+            const lines = [];
+            let currentLine = '';
+            for (const word of words) {
+              const testLine = currentLine ? currentLine + ' ' + word : word;
+              if (ctx.measureText(testLine).width > maxTextWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+              } else {
+                currentLine = testLine;
+              }
+            }
+            if (currentLine) lines.push(currentLine);
+
+            const lineHeight = textFontSize * 1.3;
+            const totalTextH = lines.length * lineHeight;
+            const textMargin = margin + h * 0.04;
+
+            // Determine anchor point
+            let anchorY;
+            if (textPos.startsWith('t')) anchorY = textMargin + textFontSize / 2;
+            else anchorY = h - textMargin - totalTextH + lineHeight / 2;
+
+            let anchorX;
+            if (textPos.endsWith('l')) { anchorX = margin + w * 0.02; ctx.textAlign = 'left'; }
+            else if (textPos.endsWith('r')) { anchorX = w - margin - w * 0.02; ctx.textAlign = 'right'; }
+            else { anchorX = w / 2; ctx.textAlign = 'center'; }
+
+            lines.forEach((line, i) => {
+              const lineY = anchorY + i * lineHeight;
+              // Shadow for readability
+              ctx.shadowColor = 'rgba(0,0,0,0.85)';
+              ctx.shadowBlur = 8;
+              ctx.fillStyle = textColor;
+              ctx.fillText(line, anchorX, lineY);
+              ctx.shadowColor = 'transparent';
+              ctx.shadowBlur = 0;
             });
           }
 
