@@ -177,7 +177,8 @@ class ContentPostsScreen extends Screen {
               <option value="tr">Top right</option>
             </select>
             <label style="font-size:0.85rem;opacity:0.7;">Color:</label>
-            <input type="color" id="content-text-color" value="#ffffff" style="width:36px;height:32px;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;padding:2px;">
+            <div id="content-text-color-swatch" style="width:32px;height:32px;background:#ffffff;border:2px solid #aaa;border-radius:4px;cursor:pointer;flex-shrink:0;" title="Pick text color"></div>
+            <input type="color" id="content-text-color" value="#ffffff" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;">
           </div>
         </div>
 
@@ -238,9 +239,18 @@ class ContentPostsScreen extends Screen {
     const textInput = this.find('#content-overlay-text');
     const textPosInput = this.find('#content-text-pos');
     const textColorInput = this.find('#content-text-color');
+    const textColorSwatch = this.find('#content-text-color-swatch');
     if (textInput) textInput.addEventListener('input', () => { if (this.currentFile) this.updatePreview(); });
     if (textPosInput) textPosInput.addEventListener('change', () => { if (this.currentFile) this.updatePreview(); });
-    if (textColorInput) textColorInput.addEventListener('input', () => { if (this.currentFile) this.updatePreview(); });
+    if (textColorInput) {
+      textColorInput.addEventListener('input', () => {
+        if (textColorSwatch) textColorSwatch.style.background = textColorInput.value;
+        if (this.currentFile) this.updatePreview();
+      });
+    }
+    if (textColorSwatch && textColorInput) {
+      textColorSwatch.addEventListener('click', () => textColorInput.click());
+    }
 
     // Wire up tic-tac-toe position grid (click = place/move, click active = remove)
     area.querySelectorAll('.pos-btn').forEach(btn => {
