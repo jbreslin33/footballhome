@@ -348,7 +348,8 @@ class GameDayRosterScreen extends Screen {
       placeholder: '🏠',
       placeholderClass: 'gdr-logo-placeholder'
     });
-    awayLogo.innerHTML = this.buildTeamLogoMarkup(m.away_team_logo, {
+    const awayLogoUrl = m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : null);
+    awayLogo.innerHTML = this.buildTeamLogoMarkup(awayLogoUrl, {
       className: '',
       alt: 'Away',
       placeholder: '🏟️',
