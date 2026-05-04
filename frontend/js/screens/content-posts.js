@@ -177,7 +177,7 @@ class ContentPostsScreen extends Screen {
               <option value="tr">Top right</option>
             </select>
             <label style="font-size:0.85rem;opacity:0.7;">Color:</label>
-            <div id="content-text-color-swatch" style="width:32px;height:32px;background:#ffffff;border:2px solid #aaa;border-radius:4px;cursor:pointer;flex-shrink:0;" title="Pick text color"></div>
+            <div id="content-text-color-swatch" style="width:32px;height:32px;background:#ffffff;border-width:2px;border-style:solid;border-color:#aaa;border-radius:4px;cursor:pointer;flex-shrink:0;" title="Pick text color"></div>
             <input type="color" id="content-text-color" value="#ffffff" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;">
           </div>
         </div>
