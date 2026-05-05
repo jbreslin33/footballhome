@@ -348,6 +348,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.has_family_discount, rp.is_keeper, rp.photo_url, rp.person_id,
                    rp.on_official_roster, rp.is_designated, rp.num_clubs,
+                   rp.internal_role, rp.is_injured, rp.is_suspended_league, rp.is_suspended_inhouse,
                    COALESCE(aa.sessions_attended, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
@@ -1279,7 +1280,7 @@ EligibilityPolicy EligibilityController::resolvePolicy(
 
         const char* cols = "SELECT id, lookback_count, min_sessions_to_start, "
             "priority_starter_sessions, priority_starter_slots, "
-            "game_counts_as_session, pickup_counts_as_session, family_discount, keeper_discount ";
+            "game_counts_as_session, pickup_counts_as_session, family_discount, 0 as keeper_discount ";
 
         // Match level
         if (!matchId.empty()) {
