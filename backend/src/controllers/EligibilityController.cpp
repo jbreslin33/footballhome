@@ -966,7 +966,7 @@ Response EligibilityController::handleGetLineupMetadata(const Request& request) 
     
     try {
         pqxx::result result = db_->query(R"(
-            SELECT mlm.formation_id, mlm.roster_size, mlm.notes,
+            SELECT mlm.formation_id, mlm.roster_size, mlm.notes, mlm.custom_positions,
                    f.code as formation_code, f.name as formation_name,
                    f.positions_json as formation_positions
             FROM match_lineup_metadata mlm
@@ -976,7 +976,7 @@ Response EligibilityController::handleGetLineupMetadata(const Request& request) 
         
         if (result.empty()) {
             return Response(HttpStatus::OK, 
-                createJsonResponse(true, "No metadata", "{\"formationId\":null,\"rosterSize\":20,\"notes\":null}"));
+                createJsonResponse(true, "No metadata", "{\"formationId\":null,\"rosterSize\":20,\"notes\":null,\"customPositions\":null}"));
         }
         
         const auto& row = result[0];
@@ -985,6 +985,7 @@ Response EligibilityController::handleGetLineupMetadata(const Request& request) 
         json << "\"formationId\":" << (row["formation_id"].is_null() ? "null" : row["formation_id"].c_str()) << ",";
         json << "\"rosterSize\":" << row["roster_size"].c_str() << ",";
         json << "\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"") << ",";
+        json << "\"customPositions\":" << (row["custom_positions"].is_null() ? "null" : row["custom_positions"].c_str()) << ",";
         if (!row["formation_code"].is_null()) {
             json << "\"formationCode\":\"" << escapeJson(row["formation_code"].c_str()) << "\",";
             json << "\"formationName\":\"" << escapeJson(row["formation_name"].c_str()) << "\",";
@@ -1024,6 +1025,32 @@ Response EligibilityController::handleSaveLineupMetadata(const Request& request)
         int formationId = parseJsonInt(body, "formationId", 0);
         int rosterSize = parseJsonInt(body, "rosterSize", 20);
         std::string notes = parseJsonString(body, "notes");
+        std::string customPositions = parseJsonString(body, "__customPositionsRaw__"); // unused — read raw below
+
+        // Extract raw customPositions JSON value (may be array or null)
+        std::string customPosRaw = "NULL";
+        {
+            auto pos = body.find("\"customPositions\"");
+            if (pos != std::string::npos) {
+                pos = body.find(':', pos) + 1;
+                // skip whitespace
+                while (pos < body.size() && (body[pos] == ' ' || body[pos] == '\t')) pos++;
+                if (pos < body.size()) {
+                    if (body[pos] == '[' || body[pos] == '{') {
+                        // find matching bracket
+                        char open = body[pos], close = (open == '[') ? ']' : '}';
+                        int depth = 0; size_t end = pos;
+                        for (; end < body.size(); end++) {
+                            if (body[end] == open) depth++;
+                            else if (body[end] == close) { depth--; if (depth == 0) { end++; break; } }
+                        }
+                        customPosRaw = body.substr(pos, end - pos);
+                    } else if (body.substr(pos, 4) == "null") {
+                        customPosRaw = "NULL";
+                    }
+                }
+            }
+        }
         
         // Get team_id from match
         pqxx::result matchResult = db_->query(
@@ -1033,29 +1060,30 @@ Response EligibilityController::handleSaveLineupMetadata(const Request& request)
             return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Match not found"));
         }
         std::string teamId = matchResult[0]["home_team_id"].c_str();
-        
-        if (formationId > 0) {
-            db_->query(R"(
-                INSERT INTO match_lineup_metadata (match_id, team_id, formation_id, roster_size, notes, created_by_user_id, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-                ON CONFLICT (match_id, team_id) DO UPDATE SET
-                    formation_id = $3,
-                    roster_size = EXCLUDED.roster_size,
-                    notes = EXCLUDED.notes,
-                    updated_at = CURRENT_TIMESTAMP
-            )", {matchId, teamId, std::to_string(formationId), std::to_string(rosterSize), notes, userId});
-        } else {
-            db_->query(R"(
-                INSERT INTO match_lineup_metadata (match_id, team_id, formation_id, roster_size, notes, created_by_user_id, updated_at)
-                VALUES ($1, $2, NULL, $3, $4, $5, CURRENT_TIMESTAMP)
-                ON CONFLICT (match_id, team_id) DO UPDATE SET
-                    formation_id = NULL,
-                    roster_size = EXCLUDED.roster_size,
-                    notes = EXCLUDED.notes,
-                    updated_at = CURRENT_TIMESTAMP
-            )", {matchId, teamId, std::to_string(rosterSize), notes, userId});
-        }
-        
+
+        std::string formIdStr = formationId > 0 ? std::to_string(formationId) : "";
+        std::string customPosParam = (customPosRaw == "NULL") ? "" : customPosRaw;
+
+        db_->query(R"(
+            INSERT INTO match_lineup_metadata
+                (match_id, team_id, formation_id, roster_size, notes, custom_positions, created_by_user_id, updated_at)
+            VALUES (
+                $1, $2,
+                NULLIF($3, '')::int,
+                $4,
+                NULLIF($5, ''),
+                NULLIF($6, '')::jsonb,
+                $7,
+                CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (match_id, team_id) DO UPDATE SET
+                formation_id      = NULLIF($3, '')::int,
+                roster_size       = EXCLUDED.roster_size,
+                notes             = EXCLUDED.notes,
+                custom_positions  = NULLIF($6, '')::jsonb,
+                updated_at        = CURRENT_TIMESTAMP
+        )", {matchId, teamId, formIdStr, std::to_string(rosterSize), notes, customPosParam, userId});
+
         return Response(HttpStatus::OK, createJsonResponse(true, "Metadata saved"));
         
     } catch (const std::exception& e) {

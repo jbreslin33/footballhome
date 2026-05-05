@@ -32,6 +32,8 @@ class GameDayLineupScreen extends Screen {
     this.pitchOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
     this.pitchFit = true; // always full screen
     this.formationLocked = true; // locked = formation positions enforced; unlocked = custom/free
+    this.customPositions = null; // null = not set; array of {x,y,label} in canonical 0-100 space
+    this._saveMetaTimer = null;  // debounce handle for auto-save
     this._stopPitchLoop = this._stopPitchLoop || (() => {}); // forward-declare for early calls
   }
 
@@ -176,6 +178,12 @@ class GameDayLineupScreen extends Screen {
       // Formation lock/custom toggle
       if (e.target.id === 'pitch-lock-btn' || e.target.closest('#pitch-lock-btn')) {
         this.formationLocked = !this.formationLocked;
+        if (!this.formationLocked && !this.customPositions) {
+          // Seed from current formation on first switch to custom mode
+          this.customPositions = this.getPositionsForFormation(
+            this.selectedFormation?.code || '4-3-3'
+          ).map(p => ({ x: p.x, y: p.y, label: p.label }));
+        }
         this.renderPitchView();
         return;
       }
@@ -186,6 +194,7 @@ class GameDayLineupScreen extends Screen {
         const id = parseInt(formPill.dataset.formationId);
         this.selectedFormation = this.formations.find(f => f.id === id) || this.formations[0];
         if (!this.formationLocked) this.formationLocked = true; // picking a formation re-locks
+        this.customPositions = null; // reset custom positions when formation changes
         this.renderPitchView();
         return;
       }
@@ -656,6 +665,11 @@ class GameDayLineupScreen extends Screen {
       if (meta.rosterSize) {
         this.setRosterSize(meta.rosterSize, true); // silent = don't re-save
       }
+
+      // Restore custom positions (if saved)
+      if (meta.customPositions && Array.isArray(meta.customPositions)) {
+        this.customPositions = meta.customPositions;
+      }
     } catch (e) {
       console.warn('Could not load saved metadata:', e);
     }
@@ -706,12 +720,19 @@ class GameDayLineupScreen extends Screen {
         body: JSON.stringify({
           formationId: this.selectedFormation?.id || 0,
           opponentFormationId: oppSelect ? parseInt(oppSelect.value) || 0 : 0,
-          rosterSize: this.rosterSize
+          rosterSize: this.rosterSize,
+          customPositions: this.customPositions || null
         })
       });
     } catch (e) {
       console.warn('Failed to save metadata:', e);
     }
+  }
+
+  // Debounced auto-save of metadata (e.g. after dragging a chip)
+  _scheduleSaveMeta() {
+    if (this._saveMetaTimer) clearTimeout(this._saveMetaTimer);
+    this._saveMetaTimer = setTimeout(() => { this.saveMetadata(); }, 800);
   }
 
   // ============================================================================
@@ -2248,7 +2269,7 @@ class GameDayLineupScreen extends Screen {
     // ── canvas ───────────────────────────────────────────────────────────────
     const canvas = document.createElement('canvas');
     canvas.id = 'pitch-canvas';
-    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:pointer;touch-action:manipulation;';
+    canvas.style.cssText = `position:absolute;inset:0;width:100%;height:100%;cursor:${this.formationLocked ? 'pointer' : 'grab'};touch-action:none;`;
     canvasPart.appendChild(canvas);
     wrapper.appendChild(canvasPart);
 
@@ -2319,6 +2340,8 @@ class GameDayLineupScreen extends Screen {
     };
 
     // ── game loop ─────────────────────────────────────────────────────────────
+    let dragState = null; // { slotIndex, x, y (canonical), startCanvasX, startCanvasY, moved }
+
     const loop = () => {
       this._pitchRafId = requestAnimationFrame(loop);
 
@@ -2340,7 +2363,22 @@ class GameDayLineupScreen extends Screen {
       this._drawPitchField(ctx, W, H, landscape);
 
       // ── resolve positions & draw chips ────────────────────────────────────
-      const positions = this.getPositionsForFormation(this.selectedFormation?.code || '4-3-3');
+      // In formation-locked mode: use formation positions.
+      // In custom mode: use this.customPositions (initialised from formation if not set).
+      const formPositions = this.getPositionsForFormation(this.selectedFormation?.code || '4-3-3');
+
+      // Seed customPositions from formation the first time we enter custom mode
+      if (!this.formationLocked && !this.customPositions) {
+        this.customPositions = formPositions.map(p => ({ x: p.x, y: p.y, label: p.label }));
+      }
+
+      const positions = this.formationLocked
+        ? formPositions
+        : (this.customPositions || formPositions).map((cp, i) => ({
+            x: cp.x, y: cp.y,
+            label: cp.label || (formPositions[i]?.label ?? '')
+          }));
+
       const hitZones = [];
 
       // Coordinate mapping: canonical (x=0-100 across, y=5 GK bottom .. 72 fwd top)
@@ -2350,21 +2388,42 @@ class GameDayLineupScreen extends Screen {
         ? [(100 - cy) / 100 * W, cx / 100 * H]
         : [cx / 100 * W, (100 - cy) / 100 * H];
 
+      // Inverse: canvas px,py → canonical cx,cy
+      const toCanonical = (px, py) => landscape
+        ? [py / H * 100, 100 - px / W * 100]
+        : [px / W * 100, 100 - py / H * 100];
+
       // Chip radius scales with smaller dimension
       const baseR = Math.min(W, H) * 0.052;
 
       positions.forEach((pos, i) => {
+        // If this slot is being dragged, use drag position instead
+        const isDragging = dragState && dragState.slotIndex === i;
+        const drawPos = isDragging ? dragState : pos;
+
         const playerId = this.zones.starting[i];
         const player   = playerId ? this.getPlayerById(playerId) : null;
         const key      = player ? `p${player.playerId}` : `s${i}`;
         const anim     = getAnim(key);
-        const [px, py] = toCanvas(pos.x, pos.y);
+        const [px, py] = toCanvas(drawPos.x, drawPos.y);
 
         // Ease scale toward target
         anim.scale += (anim.targetScale - anim.scale) * 0.18;
         anim.t     += 0.04;
 
-        const r = baseR * anim.scale;
+        const r = baseR * anim.scale * (isDragging ? 1.2 : 1);
+
+        // Dragging chip: draw a ghost circle at original position
+        if (isDragging) {
+          const [opx, opy] = toCanvas(pos.x, pos.y);
+          ctx.beginPath();
+          ctx.arc(opx, opy, baseR * 0.8, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
 
         if (player) {
           this._drawPlayerChip(ctx, px, py, r, player, pos.label, anim);
@@ -2373,17 +2432,85 @@ class GameDayLineupScreen extends Screen {
         }
 
         hitZones.push({ cx: px, cy: py, r: r + 6, type: player ? 'chip' : 'slot',
-          playerId: player?.playerId, slotIndex: i });
+          playerId: player?.playerId, slotIndex: i, canonX: pos.x, canonY: pos.y });
       });
 
       this._pitchHitZones = hitZones;
+      this._toCanonical = toCanonical;
     };
 
     // ── input handling ────────────────────────────────────────────────────────
-    const onTap = (e) => {
+    const getXY = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-      const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      const src  = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+      return [src.clientX - rect.left, src.clientY - rect.top];
+    };
+
+    const DRAG_THRESHOLD = 8; // pixels before we consider it a drag
+
+    const onPointerDown = (e) => {
+      if (!this._toCanonical) return;
+      const [cx, cy] = getXY(e);
+      for (const hz of (this._pitchHitZones || [])) {
+        const dx = cx - hz.cx, dy = cy - hz.cy;
+        if (dx*dx + dy*dy <= hz.r * hz.r) {
+          if (!this.formationLocked) {
+            // Custom mode: start drag
+            dragState = {
+              slotIndex: hz.slotIndex,
+              x: hz.canonX, y: hz.canonY,
+              startCanvasX: cx, startCanvasY: cy,
+              moved: false
+            };
+            e.preventDefault();
+          }
+          return;
+        }
+      }
+    };
+
+    const onPointerMove = (e) => {
+      if (!dragState || this.formationLocked || !this._toCanonical) return;
+      const [cx, cy] = getXY(e);
+      const dx = cx - dragState.startCanvasX, dy = cy - dragState.startCanvasY;
+      if (!dragState.moved && (dx*dx + dy*dy) > DRAG_THRESHOLD*DRAG_THRESHOLD) {
+        dragState.moved = true;
+        this._dismissPitchPopover();
+      }
+      if (dragState.moved) {
+        const [canonX, canonY] = this._toCanonical(cx, cy);
+        // Clamp to field area (leave a margin of ~5%)
+        dragState.x = Math.max(3, Math.min(97, canonX));
+        dragState.y = Math.max(2, Math.min(85, canonY));
+        e.preventDefault();
+      }
+    };
+
+    const onPointerUp = (e) => {
+      if (!this._toCanonical) return;
+      const [cx, cy] = getXY(e);
+
+      if (dragState && dragState.moved) {
+        // Commit drag position
+        const i = dragState.slotIndex;
+        if (!this.customPositions) {
+          this.customPositions = this.getPositionsForFormation(
+            this.selectedFormation?.code || '4-3-3'
+          ).map(p => ({ x: p.x, y: p.y, label: p.label }));
+        }
+        this.customPositions[i] = {
+          x: dragState.x,
+          y: dragState.y,
+          label: this.customPositions[i]?.label || ''
+        };
+        dragState = null;
+        this._scheduleSaveMeta(); // auto-save debounced
+        e.preventDefault();
+        return;
+      }
+
+      // No drag (or locked): treat as tap
+      dragState = null;
 
       for (const hz of (this._pitchHitZones || [])) {
         const dx = cx - hz.cx, dy = cy - hz.cy;
@@ -2393,7 +2520,6 @@ class GameDayLineupScreen extends Screen {
           const anim = chipAnim.get(key);
           if (anim) { anim.targetScale = 1.35; setTimeout(() => { anim.targetScale = 1; }, 180); }
 
-          // Dismiss any open popover first
           this._dismissPitchPopover();
 
           if (hz.type === 'chip') {
@@ -2408,8 +2534,12 @@ class GameDayLineupScreen extends Screen {
       this._dismissPitchPopover();
     };
 
-    canvas.addEventListener('click', onTap);
-    canvas.addEventListener('touchend', onTap, { passive: false });
+    canvas.addEventListener('mousedown',  onPointerDown);
+    canvas.addEventListener('mousemove',  onPointerMove);
+    canvas.addEventListener('mouseup',    onPointerUp);
+    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+    canvas.addEventListener('touchmove',  onPointerMove, { passive: false });
+    canvas.addEventListener('touchend',   onPointerUp,   { passive: false });
 
     loop();
     return wrapper;
