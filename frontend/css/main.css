@@ -14,6 +14,16 @@
     --success-color: #16a34a;
     --error-color: #dc2626;
     --warning-color: #d97706;
+
+    /* ── Lighthouse Theme (dark blue) ─────────────────────── */
+    --bg-primary:   #0f1f3d;   /* deep navy */
+    --bg-secondary: #162b52;   /* slightly lighter navy */
+    --bg-surface:   #1e3a6e;   /* card/panel surface */
+    --border-color: rgba(100,160,255,0.18);
+    --text-primary: #e8f0ff;   /* near-white with blue tint */
+    --text-muted:   #4f8ef7;   /* royal blue */
+    --accent:       #f5c842;   /* lighthouse yellow */
+    --accent-dim:   rgba(245,200,66,0.15);
     
     /* Grays */
     --gray-50: #f9fafb;
@@ -62,8 +72,8 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.5;
-    color: var(--gray-900);
-    background-color: var(--gray-50);
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
     font-size: var(--text-base); /* 16px minimum for mobile */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -71,8 +81,9 @@ body {
 
 /* Context Header */
 .context-header {
-    background-color: var(--gray-800);
-    color: white;
+    background-color: #0a1628;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
     padding: var(--space-3) var(--space-6);
     box-shadow: var(--shadow-md);
     position: sticky;
@@ -210,12 +221,13 @@ body {
 }
 
 .btn-secondary {
-    background-color: var(--gray-200);
-    color: var(--gray-800);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background-color: var(--gray-300);
+    background-color: rgba(100,160,255,0.15);
 }
 
 .btn-success {
@@ -238,13 +250,13 @@ body {
 
 .btn-text {
     background-color: transparent;
-    color: var(--gray-600);
+    color: var(--text-muted);
     padding: var(--space-2) var(--space-3);
 }
 
 .btn-text:hover:not(:disabled) {
-    background-color: var(--gray-100);
-    color: var(--gray-800);
+    background-color: rgba(100,160,255,0.1);
+    color: var(--text-primary);
 }
 
 .btn-lg {
@@ -273,7 +285,7 @@ body {
     margin-bottom: var(--space-2);
     font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--gray-700);
+    color: var(--text-muted);
 }
 
 .form-input,
@@ -283,10 +295,11 @@ textarea.form-input {
     padding: 14px;
     min-height: 48px;
     font-size: var(--text-base); /* 16px prevents iOS zoom */
-    border: 2px solid var(--gray-300);
+    border: 2px solid var(--border-color);
     border-radius: var(--radius-md);
     transition: all 0.2s ease-in-out;
-    background-color: white;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .form-input:focus,
@@ -320,12 +333,12 @@ textarea.form-input {
 
 /* Cards - Enhanced */
 .card {
-    background-color: white;
+    background-color: var(--bg-secondary);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow);
     padding: var(--space-4);
     margin-bottom: var(--space-4);
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--border-color);
 }
 
 .card-clickable {
@@ -344,23 +357,23 @@ textarea.form-input {
 
 /* Screen Header */
 .screen-header {
-    background-color: white;
+    background-color: var(--bg-secondary);
     padding: var(--space-6) var(--space-4);
     margin-bottom: var(--space-4);
-    border-bottom: 2px solid var(--gray-200);
+    border-bottom: 2px solid var(--border-color);
     box-shadow: var(--shadow-sm);
 }
 
 .screen-header h1 {
     font-size: var(--text-2xl);
     font-weight: 700;
-    color: var(--gray-900);
+    color: var(--text-primary);
     margin-bottom: var(--space-2);
 }
 
 .screen-header .subtitle {
     font-size: var(--text-base);
-    color: var(--gray-600);
+    color: var(--text-muted);
     margin-top: var(--space-2);
 }
 
@@ -386,7 +399,7 @@ textarea.form-input {
 .practice-card-header h3 {
     font-size: var(--text-xl);
     font-weight: 700;
-    color: var(--gray-900);
+    color: var(--text-primary);
     margin: 0;
 }
 
@@ -396,7 +409,7 @@ textarea.form-input {
     gap: var(--space-2);
     margin-bottom: var(--space-4);
     padding: var(--space-3);
-    background-color: var(--gray-50);
+    background-color: var(--bg-surface);
     border-radius: var(--radius-md);
 }
 
@@ -405,7 +418,7 @@ textarea.form-input {
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-base);
-    color: var(--gray-700);
+    color: var(--text-muted);
 }
 
 .meta-icon {
@@ -416,10 +429,10 @@ textarea.form-input {
 .practice-notes {
     margin-bottom: var(--space-4);
     padding: var(--space-3);
-    background-color: var(--gray-50);
-    border-left: 3px solid var(--primary-color);
+    background-color: var(--bg-surface);
+    border-left: 3px solid var(--accent);
     border-radius: var(--radius);
-    color: var(--gray-700);
+    color: var(--text-muted);
 }
 
 .practice-card-actions {
@@ -436,24 +449,24 @@ textarea.form-input {
 /* Ended event styling */
 .practice-ended {
     opacity: 0.7;
-    background-color: var(--gray-100);
+    background-color: var(--bg-surface);
 }
 
 .practice-ended .practice-card-header h3 {
-    color: var(--gray-600);
+    color: var(--text-muted);
 }
 
 .badge-muted {
-    background-color: var(--gray-200);
-    color: var(--gray-600);
+    background-color: var(--bg-surface);
+    color: var(--text-muted);
 }
 
 .event-ended-notice {
     text-align: center;
     padding: var(--space-3);
-    background-color: var(--gray-200);
+    background-color: var(--bg-surface);
     border-radius: var(--radius);
-    color: var(--gray-600);
+    color: var(--text-muted);
     font-size: var(--text-sm);
 }
 
@@ -575,7 +588,7 @@ textarea.form-input {
 /* ===== ROLE SWITCHBOARD STYLES ===== */
 .role-switchboard {
     min-height: 100vh;
-    background-color: var(--gray-50);
+    background-color: var(--bg-primary);
 }
 
 .switchboard-main {
@@ -592,13 +605,13 @@ textarea.form-input {
 .switchboard-title {
     font-size: var(--text-3xl);
     font-weight: 700;
-    color: var(--gray-900);
+    color: var(--text-primary);
     margin-bottom: var(--space-4);
 }
 
 .switchboard-subtitle {
     font-size: var(--text-lg);
-    color: var(--gray-600);
+    color: var(--text-muted);
     max-width: 600px;
     margin: 0 auto;
 }
@@ -617,8 +630,8 @@ textarea.form-input {
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid var(--gray-200);
-    border-top: 4px solid var(--primary-color);
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--space-4);
@@ -647,10 +660,10 @@ textarea.form-input {
 }
 
 .role-card {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     border: 2px solid transparent;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -660,14 +673,14 @@ textarea.form-input {
 }
 
 .role-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(245,200,66,0.2);
     transform: translateY(-2px);
 }
 
 .role-card-icon {
     font-size: var(--text-3xl);
-    background: var(--gray-100);
+    background: var(--bg-surface);
     padding: var(--space-4);
     border-radius: var(--radius-md);
     flex-shrink: 0;
@@ -680,13 +693,13 @@ textarea.form-input {
 .role-card-title {
     font-size: var(--text-xl);
     font-weight: 600;
-    color: var(--gray-900);
+    color: var(--text-primary);
     margin-bottom: var(--space-2);
 }
 
 .role-card-description {
     font-size: var(--text-sm);
-    color: var(--gray-600);
+    color: var(--text-muted);
     line-height: 1.5;
     margin-bottom: var(--space-3);
 }
@@ -701,18 +714,18 @@ textarea.form-input {
 
 .role-card-action {
     font-size: var(--text-xl);
-    color: var(--gray-400);
+    color: var(--text-muted);
     transition: color 0.2s ease;
 }
 
 .role-card:hover .role-card-action {
-    color: var(--primary-color);
+    color: var(--accent);
 }
 
 /* Loading Spinner */
 .loading-spinner {
-    border: 4px solid var(--gray-200);
-    border-top: 4px solid var(--primary-color);
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--accent);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -753,12 +766,14 @@ textarea.form-input {
 }
 
 .feedback-content {
-    background: white;
+    background: var(--bg-secondary);
     padding: var(--space-8);
     border-radius: var(--radius-lg);
     text-align: center;
     box-shadow: var(--shadow-md);
     max-width: 400px;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .feedback-content p {
@@ -779,12 +794,12 @@ textarea.form-input {
 .admin-card,
 .coach-card,
 .player-card {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
     box-shadow: var(--shadow);
     text-align: center;
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--border-color);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -806,13 +821,13 @@ textarea.form-input {
 .coach-card h3,
 .player-card h3 {
     margin-bottom: var(--space-3);
-    color: var(--gray-800);
+    color: var(--text-primary);
 }
 
 .admin-card p,
 .coach-card p,
 .player-card p {
-    color: var(--gray-600);
+    color: var(--text-muted);
     margin-bottom: var(--space-4);
 }
 
@@ -821,29 +836,29 @@ textarea.form-input {
 .coach-main,
 .player-main {
     min-height: calc(100vh - 60px);
-    background: var(--gray-50);
+    background: var(--bg-primary);
 }
 
 .admin-header,
 .coach-header,
 .player-header {
-    background: white;
+    background: var(--bg-secondary);
     padding: var(--space-6);
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--border-color);
     text-align: center;
 }
 
 .admin-header h2,
 .coach-header h2,
 .player-header h2 {
-    color: var(--gray-800);
+    color: var(--text-primary);
     margin-bottom: var(--space-2);
 }
 
 .admin-header p,
 .coach-header p,
 .player-header p {
-    color: var(--gray-600);
+    color: var(--text-muted);
 }
 
 /* Responsive adjustments */
@@ -869,9 +884,9 @@ textarea.form-input {
 
 /* Screen Header Styles */
 .screen-header {
-    background: white;
+    background: var(--bg-secondary);
     padding: var(--space-4) var(--space-6);
-    border-bottom: 2px solid var(--gray-200);
+    border-bottom: 2px solid var(--border-color);
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -882,7 +897,7 @@ textarea.form-input {
 
 .screen-header h1 {
     font-size: 1.5rem;
-    color: var(--gray-900);
+    color: var(--text-primary);
     font-weight: 600;
 }
 
@@ -892,17 +907,17 @@ textarea.form-input {
     gap: var(--space-2);
     padding: var(--space-2) var(--space-4);
     background: transparent;
-    border: 1px solid var(--gray-300);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
-    color: var(--gray-700);
+    color: var(--text-muted);
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .back-button:hover {
-    background: var(--gray-100);
-    border-color: var(--gray-400);
+    background: var(--bg-surface);
+    border-color: var(--text-muted);
 }
 
 .back-button .icon {
@@ -918,10 +933,11 @@ textarea.form-input {
 
 /* Form Styles */
 .practice-form {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     padding: var(--space-8);
     box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
 }
 
 .form-section {
@@ -930,10 +946,10 @@ textarea.form-input {
 
 .form-section h2 {
     font-size: 1.25rem;
-    color: var(--gray-800);
+    color: var(--text-primary);
     margin-bottom: var(--space-6);
     padding-bottom: var(--space-3);
-    border-bottom: 2px solid var(--gray-200);
+    border-bottom: 2px solid var(--border-color);
 }
 
 .form-group {
@@ -943,7 +959,7 @@ textarea.form-input {
 .form-group label {
     display: block;
     font-weight: 500;
-    color: var(--gray-700);
+    color: var(--text-muted);
     margin-bottom: var(--space-2);
     font-size: 0.95rem;
 }
@@ -954,10 +970,11 @@ textarea.form-input {
 .form-group textarea {
     width: 100%;
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--gray-300);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
     font-size: 1rem;
-    color: var(--gray-900);
+    color: var(--text-primary);
+    background: var(--bg-primary);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -976,7 +993,7 @@ textarea.form-input {
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-    color: var(--gray-400);
+    color: var(--text-muted);
 }
 
 /* Form Actions */
@@ -985,7 +1002,7 @@ textarea.form-input {
     gap: var(--space-4);
     justify-content: flex-end;
     padding-top: var(--space-6);
-    border-top: 1px solid var(--gray-200);
+    border-top: 1px solid var(--border-color);
 }
 
 .form-actions .btn {
@@ -995,14 +1012,14 @@ textarea.form-input {
 }
 
 .btn-secondary {
-    background: white;
-    color: var(--gray-700);
-    border: 1px solid var(--gray-300);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-    background: var(--gray-100);
-    border-color: var(--gray-400);
+    background: rgba(100,160,255,0.15);
+    border-color: var(--text-muted);
 }
 
 .btn-primary {
@@ -1024,19 +1041,19 @@ textarea.form-input {
 }
 
 .event-type-card {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     padding: var(--space-8);
     text-align: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    border: 2px solid var(--gray-200);
+    border: 2px solid var(--border-color);
 }
 
 .event-type-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-md);
-    border-color: var(--primary-color);
+    border-color: var(--accent);
 }
 
 .event-type-card .icon {
@@ -1046,12 +1063,12 @@ textarea.form-input {
 
 .event-type-card h3 {
     font-size: 1.25rem;
-    color: var(--gray-800);
+    color: var(--text-primary);
     margin-bottom: var(--space-2);
 }
 
 .event-type-card p {
-    color: var(--gray-600);
+    color: var(--text-muted);
     font-size: 0.95rem;
 }
 
@@ -1135,7 +1152,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     justify-content: space-between;
     align-items: center;
     padding: var(--space-4);
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h2 {
@@ -1163,7 +1180,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     justify-content: space-between;
     align-items: center;
     padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .attendance-row:last-child {
@@ -1224,10 +1241,10 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 /* Roster Table Styles */
 .roster-table {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .roster-table table {
@@ -1236,12 +1253,12 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .roster-table th {
-    background: var(--gray-100);
-    color: var(--gray-700);
+    background: var(--bg-surface);
+    color: var(--text-muted);
     font-weight: 600;
     text-align: left;
     padding: var(--space-3);
-    border-bottom: 2px solid var(--gray-300);
+    border-bottom: 2px solid var(--border-color);
     font-size: var(--text-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1249,11 +1266,11 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 .roster-table td {
     padding: var(--space-3);
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .roster-table tbody tr:hover {
-    background: var(--gray-50);
+    background: var(--bg-surface);
 }
 
 .roster-table tbody tr:last-child td {

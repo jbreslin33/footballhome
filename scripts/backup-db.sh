@@ -61,3 +61,21 @@ if [ "$WEEKLY_COUNT" -gt "$WEEKLY_KEEP" ]; then
 fi
 
 echo "Done. Daily: $DAILY_COUNT/$DAILY_KEEP, Weekly: $WEEKLY_COUNT/$WEEKLY_KEEP"
+
+# Push to backup git repo
+BACKUP_REPO="/home/jbreslin/sandbox/github/footballhome-backups"
+if [ -d "$BACKUP_REPO/.git" ]; then
+    cp "$BACKUP_FILE" "$BACKUP_REPO/"
+    # Also sync weekly if created
+    if [ "$DAY_OF_WEEK" -eq 7 ]; then
+        cp "$WEEKLY_FILE" "$BACKUP_REPO/"
+    fi
+    # Remove old backups from repo that have been rotated out locally
+    cd "$BACKUP_REPO"
+    git add -A
+    git commit -m "backup $(date +%Y-%m-%d)" --allow-empty
+    git push origin main
+    echo "Pushed to git backup repo"
+else
+    echo "WARNING: Backup repo not found at $BACKUP_REPO, skipping git push"
+fi

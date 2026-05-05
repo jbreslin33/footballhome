@@ -1171,14 +1171,15 @@ body.pitch-fit-active {
 }
 
 .attendance-popup {
-  background: white;
+  background: var(--bg-secondary, #162b52);
+  color: var(--text-primary, #e8f0ff);
   border-radius: var(--radius-md);
   width: 90%;
   max-width: 420px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 .attendance-popup-header {
@@ -1186,20 +1187,20 @@ body.pitch-fit-active {
   justify-content: space-between;
   align-items: center;
   padding: var(--space-3);
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border-color, rgba(100,160,255,0.18));
 }
-.attendance-popup-header h3 { margin: 0; font-size: 1.1em; }
+.attendance-popup-header h3 { margin: 0; font-size: 1.1em; color: var(--text-primary, #e8f0ff); }
 
 .attendance-close-btn {
   background: none;
   border: none;
   font-size: 1.2em;
   cursor: pointer;
-  color: var(--gray-500);
+  color: var(--text-muted, #4f8ef7);
   padding: 4px 8px;
   border-radius: var(--radius-sm);
 }
-.attendance-close-btn:hover { background: var(--gray-100); color: var(--gray-800); }
+.attendance-close-btn:hover { background: var(--bg-surface, #1e3a6e); color: var(--text-primary, #e8f0ff); }
 
 .attendance-popup-body {
   padding: var(--space-3);
@@ -1212,7 +1213,7 @@ body.pitch-fit-active {
   font-size: 0.95em;
   padding-bottom: var(--space-2);
   margin-bottom: var(--space-2);
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border-color, rgba(100,160,255,0.18));
 }
 
 .attendance-list {
@@ -1229,7 +1230,7 @@ body.pitch-fit-active {
   border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
-.attendance-row:hover { background: var(--gray-50); }
+.attendance-row:hover { background: var(--bg-surface, #1e3a6e); }
 
 .attendance-toggle {
   position: relative;

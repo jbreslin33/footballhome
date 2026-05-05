@@ -221,6 +221,12 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        COALESCE(p.is_injured, false) as is_injured,
                        COALESCE(p.is_suspended_league, false) as is_suspended_league,
                        COALESCE(p.is_suspended_inhouse, false) as is_suspended_inhouse,
+                       COALESCE(p.elig_apsl_starter,  false) as elig_apsl_starter,
+                       COALESCE(p.elig_apsl_bench,    false) as elig_apsl_bench,
+                       COALESCE(p.elig_liga1_starter, false) as elig_liga1_starter,
+                       COALESCE(p.elig_liga1_bench,   false) as elig_liga1_bench,
+                       COALESCE(p.elig_liga2_starter, false) as elig_liga2_starter,
+                       COALESCE(p.elig_liga2_bench,   false) as elig_liga2_bench,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        -- On official roster = any sibling team in same league
                        EXISTS(
@@ -349,6 +355,9 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                    rp.has_family_discount, rp.is_keeper, rp.photo_url, rp.person_id,
                    rp.on_official_roster, rp.is_designated, rp.num_clubs,
                    rp.internal_role, rp.is_injured, rp.is_suspended_league, rp.is_suspended_inhouse,
+                   rp.elig_apsl_starter, rp.elig_apsl_bench,
+                   rp.elig_liga1_starter, rp.elig_liga1_bench,
+                   rp.elig_liga2_starter, rp.elig_liga2_bench,
                    COALESCE(aa.sessions_attended, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
@@ -494,6 +503,12 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.is_injured = !row["is_injured"].is_null() && row["is_injured"].as<bool>();
             pe.is_suspended_league = !row["is_suspended_league"].is_null() && row["is_suspended_league"].as<bool>();
             pe.is_suspended_inhouse = !row["is_suspended_inhouse"].is_null() && row["is_suspended_inhouse"].as<bool>();
+            pe.elig_apsl_starter  = !row["elig_apsl_starter"].is_null()  && row["elig_apsl_starter"].as<bool>();
+            pe.elig_apsl_bench    = !row["elig_apsl_bench"].is_null()    && row["elig_apsl_bench"].as<bool>();
+            pe.elig_liga1_starter = !row["elig_liga1_starter"].is_null() && row["elig_liga1_starter"].as<bool>();
+            pe.elig_liga1_bench   = !row["elig_liga1_bench"].is_null()   && row["elig_liga1_bench"].as<bool>();
+            pe.elig_liga2_starter = !row["elig_liga2_starter"].is_null() && row["elig_liga2_starter"].as<bool>();
+            pe.elig_liga2_bench   = !row["elig_liga2_bench"].is_null()   && row["elig_liga2_bench"].as<bool>();
             pe.sessions_attended = row["sessions_attended"].as<int>();
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
@@ -562,7 +577,13 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"internalRole\":" << (pe.internal_role.empty() ? "null" : "\"" + pe.internal_role + "\"") << ",";
             json << "\"isInjured\":" << (pe.is_injured ? "true" : "false") << ",";
             json << "\"isSuspendedLeague\":" << (pe.is_suspended_league ? "true" : "false") << ",";
-            json << "\"isSuspendedInhouse\":" << (pe.is_suspended_inhouse ? "true" : "false");
+            json << "\"isSuspendedInhouse\":" << (pe.is_suspended_inhouse ? "true" : "false") << ",";
+            json << "\"eligApslStarter\":"  << (pe.elig_apsl_starter  ? "true" : "false") << ",";
+            json << "\"eligApslBench\":"    << (pe.elig_apsl_bench    ? "true" : "false") << ",";
+            json << "\"eligLiga1Starter\":" << (pe.elig_liga1_starter ? "true" : "false") << ",";
+            json << "\"eligLiga1Bench\":"   << (pe.elig_liga1_bench   ? "true" : "false") << ",";
+            json << "\"eligLiga2Starter\":" << (pe.elig_liga2_starter ? "true" : "false") << ",";
+            json << "\"eligLiga2Bench\":"   << (pe.elig_liga2_bench   ? "true" : "false");
             json << "}";
         }
         
@@ -1555,6 +1576,12 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     bool isInjured           = parseJsonBool(body, "isInjured");
     bool isSuspLeague        = parseJsonBool(body, "isSuspendedLeague");
     bool isSuspInhouse       = parseJsonBool(body, "isSuspendedInhouse");
+    bool eligApslStarter     = parseJsonBool(body, "eligApslStarter");
+    bool eligApslBench       = parseJsonBool(body, "eligApslBench");
+    bool eligLiga1Starter    = parseJsonBool(body, "eligLiga1Starter");
+    bool eligLiga1Bench      = parseJsonBool(body, "eligLiga1Bench");
+    bool eligLiga2Starter    = parseJsonBool(body, "eligLiga2Starter");
+    bool eligLiga2Bench      = parseJsonBool(body, "eligLiga2Bench");
 
     if (numClubs < 1) numClubs = 1;
     if (numClubs > 2) numClubs = 2;
@@ -1571,25 +1598,37 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
         // Update players table flags
         std::string flagQuery = R"(
             UPDATE players
-               SET is_designated       = $2::bool,
-                   num_clubs           = $3::int,
-                   has_family_discount = $4::bool,
-                   internal_role       = NULLIF($5, '')::varchar,
-                   is_injured          = $6::bool,
-                   is_suspended_league = $7::bool,
+               SET is_designated        = $2::bool,
+                   num_clubs            = $3::int,
+                   has_family_discount  = $4::bool,
+                   internal_role        = NULLIF($5, '')::varchar,
+                   is_injured           = $6::bool,
+                   is_suspended_league  = $7::bool,
                    is_suspended_inhouse = $8::bool,
-                   updated_at          = CURRENT_TIMESTAMP
+                   elig_apsl_starter    = $9::bool,
+                   elig_apsl_bench      = $10::bool,
+                   elig_liga1_starter   = $11::bool,
+                   elig_liga1_bench     = $12::bool,
+                   elig_liga2_starter   = $13::bool,
+                   elig_liga2_bench     = $14::bool,
+                   updated_at           = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
         db_->query(flagQuery, {
             playerId,
-            isDesignated ? "true" : "false",
+            isDesignated   ? "true" : "false",
             std::to_string(numClubs),
-            hasFamilyDisc ? "true" : "false",
+            hasFamilyDisc  ? "true" : "false",
             internalRole,
-            isInjured   ? "true" : "false",
-            isSuspLeague  ? "true" : "false",
-            isSuspInhouse ? "true" : "false"
+            isInjured      ? "true" : "false",
+            isSuspLeague   ? "true" : "false",
+            isSuspInhouse  ? "true" : "false",
+            eligApslStarter  ? "true" : "false",
+            eligApslBench    ? "true" : "false",
+            eligLiga1Starter ? "true" : "false",
+            eligLiga1Bench   ? "true" : "false",
+            eligLiga2Starter ? "true" : "false",
+            eligLiga2Bench   ? "true" : "false"
         });
 
         // Update jersey number on ALL roster entries for this player if provided

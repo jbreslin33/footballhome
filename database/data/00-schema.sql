@@ -837,7 +837,22 @@ CREATE TABLE players (
     source_system_id INTEGER REFERENCES source_systems(id),  -- Legacy: primary source
     external_id VARCHAR(100),               -- Legacy: primary external ID
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Designated / club flags (migration 029)
+    is_designated BOOLEAN NOT NULL DEFAULT false,
+    num_clubs SMALLINT NOT NULL DEFAULT 1,
+    -- Status flags (migration 031)
+    internal_role VARCHAR(20) CHECK (internal_role IN ('apsl_starter','apsl_bench','liga1_starter','liga1_bench','liga2_starter','liga2_bench')),
+    is_injured BOOLEAN NOT NULL DEFAULT false,
+    is_suspended_league BOOLEAN NOT NULL DEFAULT false,
+    is_suspended_inhouse BOOLEAN NOT NULL DEFAULT false,
+    -- Eligibility role flags (migration 033)
+    elig_apsl_starter  BOOLEAN NOT NULL DEFAULT false,
+    elig_apsl_bench    BOOLEAN NOT NULL DEFAULT false,
+    elig_liga1_starter BOOLEAN NOT NULL DEFAULT false,
+    elig_liga1_bench   BOOLEAN NOT NULL DEFAULT false,
+    elig_liga2_starter BOOLEAN NOT NULL DEFAULT false,
+    elig_liga2_bench   BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE INDEX idx_players_person ON players(person_id);

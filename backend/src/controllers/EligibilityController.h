@@ -38,10 +38,17 @@ struct PlayerEligibility {
     bool is_keeper;
     bool is_designated;
     int  num_clubs;
-    std::string internal_role;   // "apsl_starter", "apsl_bench", "liga1_starter", etc. (empty = unassigned)
+    std::string internal_role;   // legacy single-role field (kept for compat)
     bool is_injured;
     bool is_suspended_league;
     bool is_suspended_inhouse;
+    // Multi-eligibility (a player can be in multiple groups)
+    bool elig_apsl_starter;
+    bool elig_apsl_bench;
+    bool elig_liga1_starter;
+    bool elig_liga1_bench;
+    bool elig_liga2_starter;
+    bool elig_liga2_bench;
     int sessions_in_window;
     int sessions_attended;
     int projected_sessions;        // sessions_attended + future RSVP "yes" count
