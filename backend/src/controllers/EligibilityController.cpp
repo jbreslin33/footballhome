@@ -340,7 +340,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             ),
             -- Get existing lineup
             lineup AS (
-                SELECT ml.player_id, ml.is_starter
+                SELECT ml.player_id, ml.is_starter, ml.zone
                 FROM match_lineups ml
                 WHERE ml.match_id = $3::int
             ),
@@ -364,6 +364,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                    pp.position, pp.position_name,
                    mr.rsvp_status as match_rsvp_status,
                    lu.is_starter as lineup_is_starter,
+                   lu.zone as lineup_zone,
                    lu.player_id IS NOT NULL as on_lineup
             FROM roster_players rp
             LEFT JOIN actual_attendance aa ON aa.player_id = rp.player_id
@@ -538,6 +539,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.match_rsvp = row["match_rsvp_status"].is_null() ? "" : row["match_rsvp_status"].c_str();
             pe.on_lineup = !row["on_lineup"].is_null() && row["on_lineup"].as<bool>();
             pe.is_starter = !row["lineup_is_starter"].is_null() && row["lineup_is_starter"].as<bool>();
+            pe.lineup_zone = row["lineup_zone"].is_null() ? "" : row["lineup_zone"].c_str();
             pe.on_official_roster = !row["on_official_roster"].is_null() && row["on_official_roster"].as<bool>();
             
             if (pe.status == EligibilityStatus::PRIORITY_STARTER) {
@@ -574,6 +576,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"onOfficialRoster\":" << (pe.on_official_roster ? "true" : "false") << ",";
             json << "\"onLineup\":" << (pe.on_lineup ? "true" : "false") << ",";
             json << "\"isStarter\":" << (pe.is_starter ? "true" : "false") << ",";
+            json << "\"lineupZone\":" << (pe.lineup_zone.empty() ? "null" : "\"" + pe.lineup_zone + "\"") << ",";
             json << "\"internalRole\":" << (pe.internal_role.empty() ? "null" : "\"" + pe.internal_role + "\"") << ",";
             json << "\"isInjured\":" << (pe.is_injured ? "true" : "false") << ",";
             json << "\"isSuspendedLeague\":" << (pe.is_suspended_league ? "true" : "false") << ",";
@@ -1000,7 +1003,7 @@ Response EligibilityController::handleGetLineupMetadata(const Request& request) 
     
     try {
         pqxx::result result = db_->query(R"(
-            SELECT mlm.formation_id, mlm.roster_size, mlm.notes, mlm.custom_positions,
+            SELECT mlm.formation_id, mlm.roster_size, mlm.notes, mlm.custom_positions, mlm.formation_locked,
                    f.code as formation_code, f.name as formation_name,
                    f.positions_json as formation_positions
             FROM match_lineup_metadata mlm
@@ -1020,6 +1023,7 @@ Response EligibilityController::handleGetLineupMetadata(const Request& request) 
         json << "\"rosterSize\":" << row["roster_size"].c_str() << ",";
         json << "\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"") << ",";
         json << "\"customPositions\":" << (row["custom_positions"].is_null() ? "null" : row["custom_positions"].c_str()) << ",";
+        json << "\"formationLocked\":" << (row["formation_locked"].as<bool>(true) ? "true" : "false") << ",";
         if (!row["formation_code"].is_null()) {
             json << "\"formationCode\":\"" << escapeJson(row["formation_code"].c_str()) << "\",";
             json << "\"formationName\":\"" << escapeJson(row["formation_name"].c_str()) << "\",";
@@ -1059,6 +1063,7 @@ Response EligibilityController::handleSaveLineupMetadata(const Request& request)
         int formationId = parseJsonInt(body, "formationId", 0);
         int rosterSize = parseJsonInt(body, "rosterSize", 20);
         std::string notes = parseJsonString(body, "notes");
+        bool formationLocked = parseJsonBool(body, "formationLocked", true);
         std::string customPositions = parseJsonString(body, "__customPositionsRaw__"); // unused — read raw below
 
         // Extract raw customPositions JSON value (may be array or null)
@@ -1100,14 +1105,15 @@ Response EligibilityController::handleSaveLineupMetadata(const Request& request)
 
         db_->query(R"(
             INSERT INTO match_lineup_metadata
-                (match_id, team_id, formation_id, roster_size, notes, custom_positions, created_by_user_id, updated_at)
+                (match_id, team_id, formation_id, roster_size, notes, custom_positions, formation_locked, created_by_user_id, updated_at)
             VALUES (
                 $1, $2,
                 NULLIF($3, '')::int,
                 $4,
                 NULLIF($5, ''),
                 NULLIF($6, '')::jsonb,
-                $7,
+                $7::bool,
+                $8,
                 CURRENT_TIMESTAMP
             )
             ON CONFLICT (match_id, team_id) DO UPDATE SET
@@ -1115,8 +1121,9 @@ Response EligibilityController::handleSaveLineupMetadata(const Request& request)
                 roster_size       = EXCLUDED.roster_size,
                 notes             = EXCLUDED.notes,
                 custom_positions  = NULLIF($6, '')::jsonb,
+                formation_locked  = EXCLUDED.formation_locked,
                 updated_at        = CURRENT_TIMESTAMP
-        )", {matchId, teamId, formIdStr, std::to_string(rosterSize), notes, customPosParam, userId});
+        )", {matchId, teamId, formIdStr, std::to_string(rosterSize), notes, customPosParam, formationLocked ? "true" : "false", userId});
 
         return Response(HttpStatus::OK, createJsonResponse(true, "Metadata saved"));
         
@@ -1248,6 +1255,9 @@ Response EligibilityController::handleUpdatePlayerAttendance(const Request& requ
 
     int sessionId = parseJsonInt(request.getBody(), "sessionId");
     bool attended = parseJsonBool(request.getBody(), "attended");
+    std::string source = parseJsonString(request.getBody(), "source");
+    // Valid sources: manual, excused. Default to manual.
+    if (source != "excused") source = "manual";
 
     if (sessionId <= 0) {
         return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "sessionId required"));
@@ -1257,14 +1267,14 @@ Response EligibilityController::handleUpdatePlayerAttendance(const Request& requ
         // UPSERT into training_attendance
         std::string query = R"(
             INSERT INTO training_attendance (player_id, chat_event_id, attended, source, updated_at)
-            VALUES ($1::int, $2::int, $3::bool, 'manual', CURRENT_TIMESTAMP)
+            VALUES ($1::int, $2::int, $3::bool, $4, CURRENT_TIMESTAMP)
             ON CONFLICT (player_id, chat_event_id)
-            DO UPDATE SET attended = $3::bool, source = 'manual', updated_at = CURRENT_TIMESTAMP
+            DO UPDATE SET attended = $3::bool, source = $4, updated_at = CURRENT_TIMESTAMP
             RETURNING id
         )";
 
         pqxx::result result = db_->query(query, {
-            playerId, std::to_string(sessionId), attended ? "true" : "false"
+            playerId, std::to_string(sessionId), attended ? "true" : "false", source
         });
 
         std::string dataJson = "{\"id\":" + std::to_string(result[0]["id"].as<int>()) + "}";
@@ -1635,8 +1645,7 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
         if (!jersey.empty()) {
             std::string jerseyQuery = R"(
                 UPDATE rosters
-                   SET jersey_number = $2,
-                       updated_at    = CURRENT_TIMESTAMP
+                   SET jersey_number = $2
                  WHERE player_id = $1::int
             )";
             db_->query(jerseyQuery, {playerId, jersey});
@@ -1644,8 +1653,7 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             // Null out jersey if empty string sent
             std::string jerseyQuery = R"(
                 UPDATE rosters
-                   SET jersey_number = NULL,
-                       updated_at    = CURRENT_TIMESTAMP
+                   SET jersey_number = NULL
                  WHERE player_id = $1::int
             )";
             db_->query(jerseyQuery, {playerId});

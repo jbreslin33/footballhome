@@ -58,6 +58,7 @@ struct PlayerEligibility {
     std::string match_rsvp;       // "yes", "no", "maybe", or ""
     bool on_lineup;
     bool is_starter;
+    std::string lineup_zone;       // "starter", "bench", "alternate", or ""
     bool on_official_roster;       // true if on the specific team's league roster
     int person_id;
 };

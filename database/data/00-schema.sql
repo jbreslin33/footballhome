@@ -1262,6 +1262,8 @@ CREATE TABLE match_lineups (
     team_id INTEGER NOT NULL REFERENCES teams(id),
     is_starter BOOLEAN NOT NULL,
     position_id INTEGER REFERENCES positions(id),  -- Position played in this match (single position)
+    slot_number INTEGER,                           -- Formation slot index (0-10 for starters)
+    zone VARCHAR(20) NOT NULL DEFAULT 'not_selected', -- Zone: starter, bench, alternate, not_selected
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(match_id, player_id)
 );

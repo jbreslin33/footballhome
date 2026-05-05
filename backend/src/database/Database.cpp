@@ -114,8 +114,28 @@ pqxx::result Database::query(const std::string& sql, const std::vector<std::stri
             result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4]);
         } else if (params.size() == 6) {
             result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5]);
+        } else if (params.size() == 7) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6]);
+        } else if (params.size() == 8) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7]);
+        } else if (params.size() == 9) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8]);
+        } else if (params.size() == 10) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9]);
+        } else if (params.size() == 11) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10]);
+        } else if (params.size() == 12) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11]);
+        } else if (params.size() == 13) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11], params[12]);
+        } else if (params.size() == 14) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11], params[12], params[13]);
+        } else if (params.size() == 15) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11], params[12], params[13], params[14]);
+        } else if (params.size() == 16) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11], params[12], params[13], params[14], params[15]);
         } else {
-            throw std::runtime_error("Too many parameters (max 6 supported)");
+            throw std::runtime_error("Too many parameters (max 16 supported)");
         }
         
         work.commit();
