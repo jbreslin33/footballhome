@@ -175,9 +175,14 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
+      // Groups panel
+      if (e.target.id === 'pitch-groups-btn' || e.target.closest('#pitch-groups-btn')) {
+        this.openGroupsPanel();
+        return;
+      }
+
       // Formation lock/custom toggle
-      if (e.target.id === 'pitch-lock-btn' || e.target.closest('#pitch-lock-btn')) {
-        this.formationLocked = !this.formationLocked;
+      if (e.target.id === 'pitch-lock-btn' || e.target.closest('#pitch-lock-btn')) {        this.formationLocked = !this.formationLocked;
         if (!this.formationLocked && !this.customPositions) {
           // Seed from current formation on first switch to custom mode
           this.customPositions = this.getPositionsForFormation(
@@ -2304,6 +2309,12 @@ class GameDayLineupScreen extends Screen {
     exitBtn.textContent = '⊠ Exit';
     ctrlRow.appendChild(exitBtn);
 
+    const groupsBtn = document.createElement('button');
+    groupsBtn.id = 'pitch-groups-btn';
+    groupsBtn.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;';
+    groupsBtn.textContent = '👥 Groups';
+    ctrlRow.appendChild(groupsBtn);
+
     const countInfo = document.createElement('span');
     countInfo.style.cssText = 'color:rgba(255,255,255,0.4);font-size:0.78rem;margin-left:auto;';
     countInfo.textContent = `${this.zones.starting.filter(Boolean).length}/11`;
@@ -2699,6 +2710,32 @@ class GameDayLineupScreen extends Screen {
       ctx.font = `bold ${r * 0.28}px system-ui,sans-serif`;
       ctx.textBaseline = 'middle';
       ctx.fillText('2', px - r * 0.65, py - r * 0.65);
+    }
+
+    // Injured badge: red cross bottom-left
+    if (player.isInjured) {
+      ctx.beginPath();
+      ctx.arc(px - r * 0.65, py + r * 0.65, r * 0.26, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${r * 0.34}px system-ui,sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText('+', px - r * 0.65, py + r * 0.65);
+    }
+
+    // Suspended badge: orange exclamation bottom-right
+    if (player.isSuspendedLeague || player.isSuspendedInhouse) {
+      ctx.beginPath();
+      ctx.arc(px + r * 0.65, py + r * 0.65, r * 0.26, 0, Math.PI * 2);
+      ctx.fillStyle = player.isSuspendedLeague ? '#dc2626' : '#f59e0b';
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${r * 0.32}px system-ui,sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', px + r * 0.65, py + r * 0.65);
     }
 
     // Name label below
@@ -3143,10 +3180,137 @@ class GameDayLineupScreen extends Screen {
   }
 
   // ── Edit Player Modal ──────────────────────────────────────────────────────
+  // ── Groups panel ─────────────────────────────────────────────────────────
+  openGroupsPanel() {
+    const GROUPS = [
+      { key: 'all',             label: '👥 All Players' },
+      { key: 'apsl_starter',    label: 'APSL Starter' },
+      { key: 'apsl_bench',      label: 'APSL Bench' },
+      { key: 'liga1_starter',   label: 'Liga 1 Starter' },
+      { key: 'liga1_bench',     label: 'Liga 1 Bench' },
+      { key: 'liga2_starter',   label: 'Liga 2 Starter' },
+      { key: 'liga2_bench',     label: 'Liga 2 Bench' },
+      { key: 'unassigned',      label: '— Unassigned' },
+      { key: 'injured',         label: '🤕 Injured' },
+      { key: 'susp_league',     label: '🚫 Susp (League)' },
+      { key: 'susp_inhouse',    label: '🚫 Susp (In-House)' },
+    ];
+
+    const ROLE_LABELS = {
+      apsl_starter: 'APSL Starter', apsl_bench: 'APSL Bench',
+      liga1_starter: 'Liga 1 Starter', liga1_bench: 'Liga 1 Bench',
+      liga2_starter: 'Liga 2 Starter', liga2_bench: 'Liga 2 Bench',
+    };
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,0.65);display:flex;flex-direction:column;';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:var(--bg-primary,#111);border-top:1px solid var(--border-color,#333);display:flex;flex-direction:column;max-height:85vh;margin-top:auto;border-radius:14px 14px 0 0;overflow:hidden;';
+
+    // Header
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px;border-bottom:1px solid var(--border-color,#333);flex-shrink:0;">
+        <span style="font-weight:700;font-size:1rem;">👥 Player Groups</span>
+        <button id="groups-close-btn" style="background:transparent;border:none;color:inherit;font-size:1.1rem;cursor:pointer;opacity:0.6;">✕</button>
+      </div>
+    `;
+
+    // Group filter pills
+    const pillRow = document.createElement('div');
+    pillRow.style.cssText = 'display:flex;gap:6px;padding:10px 12px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;border-bottom:1px solid var(--border-color,#333);';
+
+    let activeGroup = 'all';
+
+    const renderList = () => {
+      list.innerHTML = '';
+      const filtered = this.players.filter(p => {
+        if (activeGroup === 'all')         return true;
+        if (activeGroup === 'injured')     return p.isInjured;
+        if (activeGroup === 'susp_league') return p.isSuspendedLeague;
+        if (activeGroup === 'susp_inhouse')return p.isSuspendedInhouse;
+        if (activeGroup === 'unassigned')  return !p.internalRole;
+        return p.internalRole === activeGroup;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<div style="padding:24px;text-align:center;opacity:0.45;font-size:0.9rem;">— No players in this group —</div>';
+        return;
+      }
+
+      for (const p of filtered) {
+        const name = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+        const roleBadge = p.internalRole
+          ? `<span style="background:rgba(59,130,246,0.2);color:#60a5fa;border-radius:4px;padding:1px 6px;font-size:0.72rem;">${ROLE_LABELS[p.internalRole] || p.internalRole}</span>`
+          : '<span style="opacity:0.35;font-size:0.72rem;">unassigned</span>';
+        const injBadge   = p.isInjured           ? '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:1px 5px;font-size:0.68rem;font-weight:700;">INJ</span>' : '';
+        const suspLBadge = p.isSuspendedLeague    ? '<span style="background:#dc2626;color:#fff;border-radius:4px;padding:1px 5px;font-size:0.68rem;font-weight:700;">SUSP-L</span>' : '';
+        const suspHBadge = p.isSuspendedInhouse   ? '<span style="background:#f59e0b;color:#000;border-radius:4px;padding:1px 5px;font-size:0.68rem;font-weight:700;">SUSP-H</span>' : '';
+        const eligColor  = this._eligColor(p.eligibilityStatus);
+        const jersey     = p.jerseyNumber || (p.firstName?.[0] ?? '?');
+
+        const row = document.createElement('div');
+        row.className = 'groups-player-row';
+        row.dataset.playerId = p.playerId;
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);';
+        row.innerHTML = `
+          <div style="width:32px;height:32px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0;">${jersey}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.9rem;font-weight:600;">${name}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;">${roleBadge}${injBadge}${suspLBadge}${suspHBadge}</div>
+          </div>
+          <span style="opacity:0.35;font-size:1rem;">›</span>
+        `;
+        list.appendChild(row);
+      }
+    };
+
+    const rebuildPills = () => {
+      pillRow.innerHTML = '';
+      for (const g of GROUPS) {
+        const active = g.key === activeGroup;
+        const pill = document.createElement('button');
+        pill.dataset.groupKey = g.key;
+        pill.style.cssText = `padding:4px 12px;border-radius:20px;border:1px solid ${active ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'};cursor:pointer;font-size:0.75rem;font-weight:${active ? '700' : '400'};background:${active ? 'rgba(59,130,246,0.85)' : 'rgba(255,255,255,0.05)'};color:${active ? '#fff' : 'rgba(255,255,255,0.6)'};flex-shrink:0;white-space:nowrap;`;
+        pill.textContent = g.label;
+        pillRow.appendChild(pill);
+      }
+    };
+
+    // Player list
+    const list = document.createElement('div');
+    list.style.cssText = 'overflow-y:auto;flex:1;';
+
+    rebuildPills();
+    renderList();
+
+    pillRow.addEventListener('click', (e) => {
+      const pill = e.target.closest('[data-group-key]');
+      if (!pill) return;
+      activeGroup = pill.dataset.groupKey;
+      rebuildPills();
+      renderList();
+    });
+
+    list.addEventListener('click', (e) => {
+      const row = e.target.closest('.groups-player-row');
+      if (!row) return;
+      const pid = parseInt(row.dataset.playerId);
+      overlay.remove();
+      // After closing panel, open edit modal — give DOM a tick to settle
+      setTimeout(() => this.openEditPlayerModal(pid), 30);
+    });
+
+    panel.querySelector('#groups-close-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    panel.appendChild(pillRow);
+    panel.appendChild(list);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
+
   openEditPlayerModal(playerId) {
-    const player = this.getPlayerById(playerId);
-    if (!player) return;
-    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim();
 
     const overlay = document.createElement('div');
     overlay.className = 'attendance-overlay';
@@ -3188,6 +3352,47 @@ class GameDayLineupScreen extends Screen {
               style="width:60px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:inherit;font-size:0.9rem;text-align:center;">
           </label>
 
+          <div style="border-top:1px solid var(--border-color);padding-top:12px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:0.75rem;opacity:0.5;font-weight:600;letter-spacing:0.05em;">INTERNAL GROUP</div>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.9rem;">📋 Internal Role</div>
+                <div style="font-size:0.75rem;opacity:0.5;">Internal assignment only — may differ from league roster</div>
+              </div>
+              <select id="ep-internal-role" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:inherit;font-size:0.85rem;">
+                <option value="" ${!player.internalRole ? 'selected' : ''}>— Unassigned —</option>
+                <option value="apsl_starter"  ${player.internalRole === 'apsl_starter'  ? 'selected' : ''}>APSL Starter</option>
+                <option value="apsl_bench"    ${player.internalRole === 'apsl_bench'    ? 'selected' : ''}>APSL Bench</option>
+                <option value="liga1_starter" ${player.internalRole === 'liga1_starter' ? 'selected' : ''}>Liga 1 Starter</option>
+                <option value="liga1_bench"   ${player.internalRole === 'liga1_bench'   ? 'selected' : ''}>Liga 1 Bench</option>
+                <option value="liga2_starter" ${player.internalRole === 'liga2_starter' ? 'selected' : ''}>Liga 2 Starter</option>
+                <option value="liga2_bench"   ${player.internalRole === 'liga2_bench'   ? 'selected' : ''}>Liga 2 Bench</option>
+              </select>
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <span style="font-size:0.9rem;">🤕 Injured</span>
+              <input type="checkbox" id="ep-injured" style="width:20px;height:20px;cursor:pointer;" ${player.isInjured ? 'checked' : ''}>
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.9rem;">🚫 Suspended (League)</div>
+                <div style="font-size:0.75rem;opacity:0.5;">External league suspension</div>
+              </div>
+              <input type="checkbox" id="ep-susp-league" style="width:20px;height:20px;cursor:pointer;" ${player.isSuspendedLeague ? 'checked' : ''}>
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.9rem;">🚫 Suspended (In-House)</div>
+                <div style="font-size:0.75rem;opacity:0.5;">Internal club suspension</div>
+              </div>
+              <input type="checkbox" id="ep-susp-inhouse" style="width:20px;height:20px;cursor:pointer;" ${player.isSuspendedInhouse ? 'checked' : ''}>
+            </label>
+          </div>
+
           <button id="ep-save-btn" class="btn btn-primary" style="margin-top:4px;">Save</button>
         </div>
       </div>
@@ -3198,16 +3403,24 @@ class GameDayLineupScreen extends Screen {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 
     overlay.querySelector('#ep-save-btn').addEventListener('click', async () => {
-      const designated = overlay.querySelector('#ep-designated').checked;
-      const numClubs   = parseInt(overlay.querySelector('#ep-numclubs').value);
-      const family     = overlay.querySelector('#ep-family').checked;
-      const jersey     = overlay.querySelector('#ep-jersey').value.trim() || null;
+      const designated  = overlay.querySelector('#ep-designated').checked;
+      const numClubs    = parseInt(overlay.querySelector('#ep-numclubs').value);
+      const family      = overlay.querySelector('#ep-family').checked;
+      const jersey      = overlay.querySelector('#ep-jersey').value.trim() || null;
+      const internalRole    = overlay.querySelector('#ep-internal-role').value || null;
+      const isInjured       = overlay.querySelector('#ep-injured').checked;
+      const isSuspLeague    = overlay.querySelector('#ep-susp-league').checked;
+      const isSuspInhouse   = overlay.querySelector('#ep-susp-inhouse').checked;
 
       // Apply locally
-      player.isDesignated    = designated;
-      player.numClubs        = numClubs;
+      player.isDesignated      = designated;
+      player.numClubs          = numClubs;
       player.hasFamilyDiscount = family;
-      player.jerseyNumber    = jersey;
+      player.jerseyNumber      = jersey;
+      player.internalRole      = internalRole;
+      player.isInjured         = isInjured;
+      player.isSuspendedLeague = isSuspLeague;
+      player.isSuspendedInhouse = isSuspInhouse;
 
       // Recalculate eligibility status based on new discount
       if (this.policy?.minSessionsToStart !== undefined) {
@@ -3232,7 +3445,16 @@ class GameDayLineupScreen extends Screen {
           await this.auth.fetch(`/api/eligibility/player/${player.playerId}/flags`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isDesignated: designated, numClubs, hasFamilyDiscount: family, jerseyNumber: jersey })
+            body: JSON.stringify({
+              isDesignated: designated,
+              numClubs,
+              hasFamilyDiscount: family,
+              jerseyNumber: jersey,
+              internalRole: internalRole || '',
+              isInjured,
+              isSuspendedLeague: isSuspLeague,
+              isSuspendedInhouse: isSuspInhouse
+            })
           });
         } catch (err) {
           console.warn('Could not persist player flags:', err.message);

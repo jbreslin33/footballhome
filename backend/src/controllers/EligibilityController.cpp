@@ -217,6 +217,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        p.id as player_id, r.jersey_number,
                        p.has_family_discount, p.is_keeper, p.photo_url,
                        p.is_designated, COALESCE(p.num_clubs, 1) as num_clubs,
+                       COALESCE(p.internal_role, '') as internal_role,
+                       COALESCE(p.is_injured, false) as is_injured,
+                       COALESCE(p.is_suspended_league, false) as is_suspended_league,
+                       COALESCE(p.is_suspended_inhouse, false) as is_suspended_inhouse,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        -- On official roster = any sibling team in same league
                        EXISTS(
@@ -485,6 +489,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.is_keeper = !row["is_keeper"].is_null() && row["is_keeper"].as<bool>();
             pe.is_designated = !row["is_designated"].is_null() && row["is_designated"].as<bool>();
             pe.num_clubs = row["num_clubs"].is_null() ? 1 : row["num_clubs"].as<int>();
+            pe.internal_role = row["internal_role"].is_null() ? "" : row["internal_role"].c_str();
+            pe.is_injured = !row["is_injured"].is_null() && row["is_injured"].as<bool>();
+            pe.is_suspended_league = !row["is_suspended_league"].is_null() && row["is_suspended_league"].as<bool>();
+            pe.is_suspended_inhouse = !row["is_suspended_inhouse"].is_null() && row["is_suspended_inhouse"].as<bool>();
             pe.sessions_attended = row["sessions_attended"].as<int>();
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
@@ -549,7 +557,11 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"matchRsvp\":" << (pe.match_rsvp.empty() ? "null" : "\"" + pe.match_rsvp + "\"") << ",";
             json << "\"onOfficialRoster\":" << (pe.on_official_roster ? "true" : "false") << ",";
             json << "\"onLineup\":" << (pe.on_lineup ? "true" : "false") << ",";
-            json << "\"isStarter\":" << (pe.is_starter ? "true" : "false");
+            json << "\"isStarter\":" << (pe.is_starter ? "true" : "false") << ",";
+            json << "\"internalRole\":" << (pe.internal_role.empty() ? "null" : "\"" + pe.internal_role + "\"") << ",";
+            json << "\"isInjured\":" << (pe.is_injured ? "true" : "false") << ",";
+            json << "\"isSuspendedLeague\":" << (pe.is_suspended_league ? "true" : "false") << ",";
+            json << "\"isSuspendedInhouse\":" << (pe.is_suspended_inhouse ? "true" : "false");
             json << "}";
         }
         
@@ -1534,29 +1546,49 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     }
 
     const std::string& body = request.getBody();
-    bool isDesignated   = parseJsonBool(body, "isDesignated");
-    int  numClubs       = parseJsonInt(body, "numClubs", 1);
-    bool hasFamilyDisc  = parseJsonBool(body, "hasFamilyDiscount");
-    std::string jersey  = parseJsonString(body, "jerseyNumber");
+    bool isDesignated        = parseJsonBool(body, "isDesignated");
+    int  numClubs            = parseJsonInt(body, "numClubs", 1);
+    bool hasFamilyDisc       = parseJsonBool(body, "hasFamilyDiscount");
+    std::string jersey       = parseJsonString(body, "jerseyNumber");
+    std::string internalRole = parseJsonString(body, "internalRole");
+    bool isInjured           = parseJsonBool(body, "isInjured");
+    bool isSuspLeague        = parseJsonBool(body, "isSuspendedLeague");
+    bool isSuspInhouse       = parseJsonBool(body, "isSuspendedInhouse");
 
     if (numClubs < 1) numClubs = 1;
     if (numClubs > 2) numClubs = 2;
+
+    // Validate internal_role value
+    static const std::vector<std::string> validRoles = {
+        "apsl_starter","apsl_bench","liga1_starter","liga1_bench","liga2_starter","liga2_bench"
+    };
+    bool roleValid = internalRole.empty() ||
+        std::find(validRoles.begin(), validRoles.end(), internalRole) != validRoles.end();
+    if (!roleValid) internalRole = "";
 
     try {
         // Update players table flags
         std::string flagQuery = R"(
             UPDATE players
-               SET is_designated     = $2::bool,
-                   num_clubs         = $3::int,
+               SET is_designated       = $2::bool,
+                   num_clubs           = $3::int,
                    has_family_discount = $4::bool,
-                   updated_at        = CURRENT_TIMESTAMP
+                   internal_role       = NULLIF($5, '')::varchar,
+                   is_injured          = $6::bool,
+                   is_suspended_league = $7::bool,
+                   is_suspended_inhouse = $8::bool,
+                   updated_at          = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
         db_->query(flagQuery, {
             playerId,
             isDesignated ? "true" : "false",
             std::to_string(numClubs),
-            hasFamilyDisc ? "true" : "false"
+            hasFamilyDisc ? "true" : "false",
+            internalRole,
+            isInjured   ? "true" : "false",
+            isSuspLeague  ? "true" : "false",
+            isSuspInhouse ? "true" : "false"
         });
 
         // Update jersey number on ALL roster entries for this player if provided
@@ -1584,6 +1616,10 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
              << ",\"isDesignated\":" << (isDesignated ? "true" : "false")
              << ",\"numClubs\":"     << numClubs
              << ",\"hasFamilyDiscount\":" << (hasFamilyDisc ? "true" : "false")
+             << ",\"internalRole\":" << (internalRole.empty() ? "null" : "\"" + internalRole + "\"")
+             << ",\"isInjured\":" << (isInjured ? "true" : "false")
+             << ",\"isSuspendedLeague\":" << (isSuspLeague ? "true" : "false")
+             << ",\"isSuspendedInhouse\":" << (isSuspInhouse ? "true" : "false")
              << "}";
         return Response(HttpStatus::OK, createJsonResponse(true, "Player flags updated", data.str()));
 

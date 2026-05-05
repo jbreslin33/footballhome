@@ -38,6 +38,10 @@ struct PlayerEligibility {
     bool is_keeper;
     bool is_designated;
     int  num_clubs;
+    std::string internal_role;   // "apsl_starter", "apsl_bench", "liga1_starter", etc. (empty = unassigned)
+    bool is_injured;
+    bool is_suspended_league;
+    bool is_suspended_inhouse;
     int sessions_in_window;
     int sessions_attended;
     int projected_sessions;        // sessions_attended + future RSVP "yes" count
