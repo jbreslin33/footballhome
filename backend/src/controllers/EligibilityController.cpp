@@ -1401,10 +1401,11 @@ std::vector<int> EligibilityController::getRecentSessionIds(
                 OR t.club_id = $1::int
             )
               AND )" + chatTypeFilter + R"(
-              AND NOT (c.chat_type_id = 1 AND EXTRACT(DOW FROM
+              AND NOT (c.chat_type_id = 1 AND
                   (COALESCE(ce.start_at, ce.event_date::timestamptz)
-                     AT TIME ZONE 'America/New_York')::date) = 0)
-              AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
+                     AT TIME ZONE 'America/New_York')::date = $2::date)
+              AND (COALESCE(ce.start_at, ce.event_date::timestamptz)
+                     AT TIME ZONE 'America/New_York')::date <= $2::date
               AND ce.is_active = true
             ORDER BY (COALESCE(ce.start_at, ce.event_date::timestamptz)
                         AT TIME ZONE 'America/New_York')::date DESC,

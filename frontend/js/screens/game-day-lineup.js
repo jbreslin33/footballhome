@@ -195,23 +195,12 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
-      // Formation pill click
-      const formPill = e.target.closest('.formation-pill');
-      if (formPill) {
-        const id = parseInt(formPill.dataset.formationId);
-        this.selectedFormation = this.formations.find(f => f.id === id) || this.formations[0];
-        if (!this.formationLocked) this.formationLocked = true; // picking a formation re-locks
-        this.customPositions = null; // reset custom positions when formation changes
-        this.renderPitchView();
-        return;
-      }
-
       // Pitch chip tap (filled slot)
       const pitchChip = e.target.closest('.pitch-chip');
       if (pitchChip && !e.target.closest('.pitch-popover')) {
         e.stopPropagation();
         this._dismissPitchPopover();
-        this.openChipActions(parseInt(pitchChip.dataset.playerId), parseInt(pitchChip.dataset.slotIndex), e);
+        this.openEditPlayerModal(parseInt(pitchChip.dataset.playerId), parseInt(pitchChip.dataset.slotIndex));
         return;
       }
 
@@ -263,11 +252,11 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
-      // Attendance popup on player card tap (not on buttons)
+      // Full edit modal on player card tap (not on buttons)
       const card = e.target.closest('.lineup-player-card');
       if (card && !e.target.closest('button')) {
         const playerId = parseInt(card.dataset.playerId);
-        this.openAttendancePopup(playerId);
+        this.openEditPlayerModal(playerId);
         return;
       }
 
@@ -2340,42 +2329,46 @@ class GameDayLineupScreen extends Screen {
     bar.id = 'pitch-bottom-bar';
     bar.style.cssText = 'flex-shrink:0;background:#000;border-top:1px solid rgba(255,255,255,0.1);';
 
-    // Row 1: controls
+    // Single compact control row
     const ctrlRow = document.createElement('div');
-    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;';
+    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:5px 8px;';
 
+    // Mode toggle (🔒 Formation / ✏️ Custom)
     const lockBtn = document.createElement('button');
     lockBtn.id = 'pitch-lock-btn';
-    lockBtn.title = this.formationLocked ? 'Switch to custom / free placement' : 'Lock to formation';
-    lockBtn.style.cssText = `padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.78rem;background:${this.formationLocked ? 'rgba(59,130,246,0.8)' : 'rgba(168,85,247,0.7)'};color:#fff;`;
-    lockBtn.textContent = this.formationLocked ? '🔒 Formation' : '✏️ Custom';
+    lockBtn.title = this.formationLocked ? 'Switch to custom placement' : 'Lock to formation';
+    lockBtn.style.cssText = `padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.75rem;background:${this.formationLocked ? 'rgba(59,130,246,0.8)' : 'rgba(168,85,247,0.7)'};color:#fff;white-space:nowrap;`;
+    lockBtn.textContent = this.formationLocked ? '🔒' : '✏️';
     ctrlRow.appendChild(lockBtn);
 
-    const orientBtn2 = document.createElement('button');
-    orientBtn2.id = 'pitch-orient-btn';
-    orientBtn2.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
-    orientBtn2.textContent = landscape ? '↕ Tall' : '↔ Wide';
-    ctrlRow.appendChild(orientBtn2);
+    // Formation dropdown (inline, compact)
+    const formSelect = document.createElement('select');
+    formSelect.id = 'pitch-formation-select';
+    formSelect.style.cssText = 'width:90px;flex-shrink:0;padding:4px 6px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;';
+    for (const f of this.formations) {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.name;
+      if (this.selectedFormation?.id === f.id) opt.selected = true;
+      formSelect.appendChild(opt);
+    }
+    formSelect.addEventListener('change', () => {
+      const id = parseInt(formSelect.value);
+      this.selectedFormation = this.formations.find(f => f.id === id) || this.formations[0];
+      if (!this.formationLocked) this.formationLocked = true;
+      this.customPositions = null;
+      this.renderPitchView();
+    });
+    ctrlRow.appendChild(formSelect);
 
-    const exitBtn = document.createElement('button');
-    exitBtn.id = 'pitch-fit-btn';
-    exitBtn.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
-    exitBtn.textContent = '⊠ Exit';
-    ctrlRow.appendChild(exitBtn);
-
-    const groupsBtn = document.createElement('button');
-    groupsBtn.id = 'pitch-groups-btn';
-    groupsBtn.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;';
-    groupsBtn.textContent = '👥 Groups';
-    ctrlRow.appendChild(groupsBtn);
-
-    // Drag mode toggle — only visible in custom (unlocked) mode
+    // Drag mode toggle — only in custom mode
     if (!this.formationLocked) {
       const dragModeBtn = document.createElement('button');
       dragModeBtn.id = 'pitch-drag-mode-btn';
       const updateDragModeBtn = () => {
-        dragModeBtn.textContent = this.customDragMode === 'players' ? '👤 Players' : '⊞ Slots';
-        dragModeBtn.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.78rem;color:#fff;background:' +
+        dragModeBtn.textContent = this.customDragMode === 'players' ? '👤' : '⊞';
+        dragModeBtn.title = this.customDragMode === 'players' ? 'Swap players' : 'Move slots';
+        dragModeBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.78rem;color:#fff;background:' +
           (this.customDragMode === 'players' ? 'rgba(59,130,246,0.7)' : 'rgba(168,85,247,0.5)') + ';';
       };
       updateDragModeBtn();
@@ -2386,25 +2379,37 @@ class GameDayLineupScreen extends Screen {
       ctrlRow.appendChild(dragModeBtn);
     }
 
+    // Orientation toggle (icon only)
+    const orientBtn2 = document.createElement('button');
+    orientBtn2.id = 'pitch-orient-btn';
+    orientBtn2.title = landscape ? 'Switch to portrait' : 'Switch to landscape';
+    orientBtn2.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
+    orientBtn2.textContent = landscape ? '↕' : '↔';
+    ctrlRow.appendChild(orientBtn2);
+
+    // Groups (icon only)
+    const groupsBtn = document.createElement('button');
+    groupsBtn.id = 'pitch-groups-btn';
+    groupsBtn.title = 'Groups';
+    groupsBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;';
+    groupsBtn.textContent = '👥';
+    ctrlRow.appendChild(groupsBtn);
+
+    // Exit fullscreen (icon only)
+    const exitBtn = document.createElement('button');
+    exitBtn.id = 'pitch-fit-btn';
+    exitBtn.title = 'Exit fullscreen';
+    exitBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
+    exitBtn.textContent = '⊠';
+    ctrlRow.appendChild(exitBtn);
+
+    // Count indicator
     const countInfo = document.createElement('span');
-    countInfo.style.cssText = 'color:rgba(255,255,255,0.4);font-size:0.78rem;margin-left:auto;';
+    countInfo.style.cssText = 'color:rgba(255,255,255,0.4);font-size:0.75rem;white-space:nowrap;';
     countInfo.textContent = `${this.zones.starting.filter(Boolean).length}/11`;
     ctrlRow.appendChild(countInfo);
-    bar.appendChild(ctrlRow);
 
-    // Row 2: formation pills (scrollable)
-    const pillScroll = document.createElement('div');
-    pillScroll.style.cssText = 'display:flex;gap:5px;padding:0 10px 6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;';
-    for (const f of this.formations) {
-      const active = this.selectedFormation?.id === f.id;
-      const pill = document.createElement('button');
-      pill.className = 'formation-pill';
-      pill.dataset.formationId = f.id;
-      pill.style.cssText = `padding:3px 12px;border-radius:20px;border:1px solid rgba(255,255,255,${active ? '0.6' : '0.2'});cursor:pointer;font-size:0.75rem;font-weight:${active ? '700' : '400'};background:${active ? 'rgba(59,130,246,0.85)' : 'rgba(255,255,255,0.05)'};color:${active ? '#fff' : 'rgba(255,255,255,0.55)'};flex-shrink:0;`;
-      pill.textContent = f.name;
-      pillScroll.appendChild(pill);
-    }
-    bar.appendChild(pillScroll);
+    bar.appendChild(ctrlRow);
     wrapper.appendChild(bar);
 
     container.appendChild(wrapper);
@@ -2479,7 +2484,7 @@ class GameDayLineupScreen extends Screen {
         : [px / W * 100, 100 - py / H * 100];
 
       // Chip radius scales with smaller dimension
-      const baseR = Math.min(W, H) * 0.030;
+      const baseR = Math.min(W, H) * 0.024;
 
       // ── drag feedback overlay ─────────────────────────────────────────────
       if (dragState && dragState.moved) {
@@ -2730,12 +2735,12 @@ class GameDayLineupScreen extends Screen {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Outer boundary
-    this._pitchRect(ctx, pt, 0.05, 0.04, 0.90, 0.92, lw);
+    // Outer boundary — flush to canvas edges (1% pad so stroke isn't clipped)
+    this._pitchRect(ctx, pt, 0.01, 0.01, 0.98, 0.98, lw);
 
     // Halfway line
-    const [hlx1, hly1] = pt(0.05, 0.5);
-    const [hlx2, hly2] = pt(0.95, 0.5);
+    const [hlx1, hly1] = pt(0.01, 0.5);
+    const [hlx2, hly2] = pt(0.99, 0.5);
     ctx.beginPath(); ctx.moveTo(hlx1, hly1); ctx.lineTo(hlx2, hly2); ctx.stroke();
 
     // Centre circle
@@ -2746,33 +2751,37 @@ class GameDayLineupScreen extends Screen {
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath(); ctx.arc(ccx, ccy, lw * 2, 0, Math.PI * 2); ctx.fill();
 
-    // Penalty areas (top + bottom)
-    this._pitchRect(ctx, pt, 0.22, 0.04, 0.56, 0.185, lw); // top
-    this._pitchRect(ctx, pt, 0.22, 0.815, 0.56, 0.185, lw); // bottom
+    // Penalty areas — top/bottom edges share boundary goal line
+    this._pitchRect(ctx, pt, 0.22, 0.01, 0.56, 0.18, lw); // top 18-yard box
+    this._pitchRect(ctx, pt, 0.22, 0.81, 0.56, 0.18, lw); // bottom 18-yard box
 
     // Goal areas (six-yard boxes)
-    this._pitchRect(ctx, pt, 0.34, 0.04, 0.32, 0.075, lw); // top
-    this._pitchRect(ctx, pt, 0.34, 0.885, 0.32, 0.075, lw); // bottom
+    this._pitchRect(ctx, pt, 0.34, 0.01, 0.32, 0.07, lw); // top
+    this._pitchRect(ctx, pt, 0.34, 0.92, 0.32, 0.07, lw); // bottom
 
-    // Goals (thick) — drawn inside the pitch boundary, not outside
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = lw * 2.5;
-    this._pitchRect(ctx, pt, 0.37, 0.04, 0.26, 0.038, lw * 2.5); // top goal (inside boundary)
-    this._pitchRect(ctx, pt, 0.37, 0.922, 0.26, 0.038, lw * 2.5); // bottom goal (inside boundary)
+    // Goals — extra-thick white segment on the goal line only
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = lw * 4;
+    const [g1a, g1b] = pt(0.37, 0.01);
+    const [g1c, g1d] = pt(0.63, 0.01);
+    ctx.beginPath(); ctx.moveTo(g1a, g1b); ctx.lineTo(g1c, g1d); ctx.stroke();
+    const [g2a, g2b] = pt(0.37, 0.99);
+    const [g2c, g2d] = pt(0.63, 0.99);
+    ctx.beginPath(); ctx.moveTo(g2a, g2b); ctx.lineTo(g2c, g2d); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
     ctx.lineWidth = lw;
 
     // Penalty spots
     const spotR = lw * 2;
-    const [ts1x, ts1y] = pt(0.5, 0.13);
-    const [ts2x, ts2y] = pt(0.5, 0.87);
+    const [ts1x, ts1y] = pt(0.5, 0.14);
+    const [ts2x, ts2y] = pt(0.5, 0.86);
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.beginPath(); ctx.arc(ts1x, ts1y, spotR, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(ts2x, ts2y, spotR, 0, Math.PI * 2); ctx.fill();
 
-    // Corner arcs — angles computed from canvas quadrant so they always curve inward
+    // Corner arcs
     const cr = sc(0.04);
-    [[0.05, 0.04], [0.95, 0.04], [0.05, 0.96], [0.95, 0.96]].forEach(([fx, fy]) => {
+    [[0.01, 0.01], [0.99, 0.01], [0.01, 0.99], [0.99, 0.99]].forEach(([fx, fy]) => {
       const [cx2, cy2] = pt(fx, fy);
       const left  = cx2 < W / 2;
       const top   = cy2 < H / 2;
@@ -2807,7 +2816,7 @@ class GameDayLineupScreen extends Screen {
     // Subtle pulse glow for priority starters
     if (player.eligibilityStatus === 'priority_starter') {
       const glow = Math.sin(anim.t) * 0.25 + 0.35;
-      ctx.shadowColor  = color;
+      ctx.shadowColor  = '#ffffff';
       ctx.shadowBlur   = r * 0.9 * glow;
     }
 
@@ -2815,23 +2824,23 @@ class GameDayLineupScreen extends Screen {
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur  = 8;
 
-    // Circle body
+    // Circle body — royal blue fill
     ctx.beginPath();
     ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.fillStyle = color;
+    ctx.fillStyle = '#1a3dbd';
     ctx.fill();
 
-    // White ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-    ctx.lineWidth   = r * 0.12;
+    // White border (Lighthouse colours)
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth   = r * 0.14;
     ctx.stroke();
 
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
 
     // Initials inside chip
-    ctx.fillStyle    = '#fff';
-    ctx.font         = `bold ${r * 0.60}px system-ui,sans-serif`;
+    ctx.fillStyle    = '#ffd700';
+    ctx.font         = `bold ${r * 0.72}px system-ui,sans-serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(initials, px, py);
@@ -2882,22 +2891,22 @@ class GameDayLineupScreen extends Screen {
     }
 
     // First name ABOVE chip
-    ctx.font         = `${r * 0.44}px system-ui,sans-serif`;
+    ctx.font         = `${r * 0.56}px system-ui,sans-serif`;
     ctx.fillStyle    = 'rgba(255,255,255,0.92)';
     ctx.shadowColor  = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur   = 4;
     ctx.textBaseline = 'middle';
-    ctx.fillText(firstName, px, py - r - r * 0.52);
+    ctx.fillText(firstName, px, py - r - r * 0.58);
 
     // Last name BELOW chip
-    ctx.font         = `${r * 0.44}px system-ui,sans-serif`;
+    ctx.font         = `${r * 0.56}px system-ui,sans-serif`;
     ctx.fillStyle    = 'rgba(255,255,255,0.92)';
-    ctx.fillText(lastName, px, py + r + r * 0.52);
+    ctx.fillText(lastName, px, py + r + r * 0.58);
 
     // Position + sessions (smaller, dimmer, further below)
-    ctx.font         = `${r * 0.34}px system-ui,sans-serif`;
+    ctx.font         = `${r * 0.42}px system-ui,sans-serif`;
     ctx.fillStyle    = 'rgba(255,255,255,0.45)';
-    ctx.fillText(`${posLabel} · ${prac}`, px, py + r + r * 1.10);
+    ctx.fillText(`${posLabel} · ${prac}`, px, py + r + r * 1.22);
     ctx.shadowBlur   = 0;
   }
 
@@ -2975,7 +2984,8 @@ class GameDayLineupScreen extends Screen {
     `;
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.openShelfChipActions(player.playerId, zone, e);
+      this._dismissPitchPopover();
+      this.openEditPlayerModal(player.playerId);
     });
     return chip;
   }
@@ -3002,28 +3012,51 @@ class GameDayLineupScreen extends Screen {
   }
 
   // ── Build the top strip: APSL-eligible unassigned players ────────────────
-  _buildTopPlayerStrip() {
-    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
-    const available = this._rankPlayers(
-      this.players.filter(p =>
-        (p.eligApslStarter || p.eligApslBench) &&
-        !allZoned.has(p.playerId) &&
-        p.matchRsvp !== 'no'
-      )
-    );
+  _buildAvailableStrip(players, label, borderSide) {
     const strip = document.createElement('div');
-    strip.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,0.28);border-bottom:1px solid rgba(255,255,255,0.07);padding:4px 6px;gap:4px;flex-shrink:0;min-height:60px;scrollbar-width:none;';
-    if (available.length === 0) {
+    const border = borderSide === 'top'
+      ? 'border-bottom:1px solid rgba(255,255,255,0.07);'
+      : 'border-top:1px solid rgba(255,255,255,0.07);';
+    strip.style.cssText = `display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,0.28);${border}padding:4px 6px;gap:4px;flex-shrink:0;min-height:60px;scrollbar-width:none;`;
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:0.55rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:4px;';
+    lbl.textContent = label;
+    strip.appendChild(lbl);
+    if (players.length === 0) {
       const empty = document.createElement('span');
-      empty.style.cssText = 'color:rgba(255,255,255,0.2);font-size:0.7rem;padding:0 8px;align-self:center;';
-      empty.textContent = 'No available APSL-eligible players';
+      empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;align-self:center;';
+      empty.textContent = '—';
       strip.appendChild(empty);
     } else {
-      for (const p of available) {
+      for (const p of players) {
         strip.appendChild(this._buildPanelChipEl(p, 'pool'));
       }
     }
     return strip;
+  }
+
+  _buildTopPlayerStrip() {
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const starters = this._rankPlayers(
+      this.players.filter(p =>
+        p.eligApslStarter &&
+        !allZoned.has(p.playerId) &&
+        p.matchRsvp !== 'no'
+      )
+    );
+    return this._buildAvailableStrip(starters, 'Starters', 'top');
+  }
+
+  _buildBottomPlayerStrip() {
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const benchOnly = this._rankPlayers(
+      this.players.filter(p =>
+        !p.eligApslStarter && p.eligApslBench &&
+        !allZoned.has(p.playerId) &&
+        p.matchRsvp !== 'no'
+      )
+    );
+    return this._buildAvailableStrip(benchOnly, 'Bench eligible', 'bottom');
   }
 
   _renderBelowPitchZones(container) {
