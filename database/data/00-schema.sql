@@ -852,7 +852,8 @@ CREATE TABLE players (
     elig_liga1_starter BOOLEAN NOT NULL DEFAULT false,
     elig_liga1_bench   BOOLEAN NOT NULL DEFAULT false,
     elig_liga2_starter BOOLEAN NOT NULL DEFAULT false,
-    elig_liga2_bench   BOOLEAN NOT NULL DEFAULT false
+    elig_liga2_bench   BOOLEAN NOT NULL DEFAULT false,
+    required_sessions_override SMALLINT NULL  -- Override automatic required-sessions calculation
 );
 
 CREATE INDEX idx_players_person ON players(person_id);

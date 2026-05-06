@@ -1,0 +1,200 @@
+[
+  {
+    "firstName": "Musa",
+    "lastName": "Abdelgadir",
+    "dateOfBirth": "2002-06-06",
+    "teamPassPlayerId": "1173830"
+  },
+  {
+    "firstName": "Amar",
+    "lastName": "Abdelrazek",
+    "dateOfBirth": "2003-01-19",
+    "teamPassPlayerId": "1173734"
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "Ali",
+    "dateOfBirth": "1998-11-03",
+    "teamPassPlayerId": "1174015"
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Ali",
+    "dateOfBirth": "1997-09-09",
+    "teamPassPlayerId": "1173900"
+  },
+  {
+    "firstName": "Erwa",
+    "lastName": "Babiker",
+    "dateOfBirth": "1996-01-01",
+    "teamPassPlayerId": "1171572"
+  },
+  {
+    "firstName": "Arsene",
+    "lastName": "Bado",
+    "dateOfBirth": "2002-10-21",
+    "teamPassPlayerId": "1174064"
+  },
+  {
+    "firstName": "Logan",
+    "lastName": "Bersani",
+    "dateOfBirth": "1998-06-18",
+    "teamPassPlayerId": "1170797"
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Bility",
+    "dateOfBirth": "2002-04-05",
+    "teamPassPlayerId": "1181623"
+  },
+  {
+    "firstName": "Hamzah",
+    "lastName": "Dabbour",
+    "dateOfBirth": "2000-08-29",
+    "teamPassPlayerId": "1181133"
+  },
+  {
+    "firstName": "Terrence",
+    "lastName": "Doe",
+    "dateOfBirth": "2004-07-22",
+    "teamPassPlayerId": "1181626"
+  },
+  {
+    "firstName": "Musa",
+    "lastName": "Donza",
+    "dateOfBirth": "2003-09-06",
+    "teamPassPlayerId": "1173936"
+  },
+  {
+    "firstName": "Alexander",
+    "lastName": "Duopu",
+    "dateOfBirth": "2002-08-04",
+    "teamPassPlayerId": "1173989"
+  },
+  {
+    "firstName": "Christopher",
+    "lastName": "Fletcher",
+    "dateOfBirth": "2002-06-18",
+    "teamPassPlayerId": "1170647"
+  },
+  {
+    "firstName": "Mujtaba",
+    "lastName": "Galas",
+    "dateOfBirth": "1999-10-18",
+    "teamPassPlayerId": "1192214"
+  },
+  {
+    "firstName": "Mustafa",
+    "lastName": "Galas",
+    "dateOfBirth": "1999-10-18",
+    "teamPassPlayerId": "1181142"
+  },
+  {
+    "firstName": "Henry",
+    "lastName": "Gamez",
+    "dateOfBirth": "2002-04-21",
+    "teamPassPlayerId": "1394705"
+  },
+  {
+    "firstName": "Brian",
+    "lastName": "Gately",
+    "dateOfBirth": "1995-09-19",
+    "teamPassPlayerId": "1421391"
+  },
+  {
+    "firstName": "John",
+    "lastName": "Gonzalez",
+    "dateOfBirth": "2000-01-01",
+    "teamPassPlayerId": "1157764"
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Gosie",
+    "dateOfBirth": "1997-06-03",
+    "teamPassPlayerId": "1173806"
+  },
+  {
+    "firstName": "Maccarrey",
+    "lastName": "Guillaume",
+    "dateOfBirth": "1996-07-12",
+    "teamPassPlayerId": "1173794"
+  },
+  {
+    "firstName": "Otmane",
+    "lastName": "Houasli",
+    "dateOfBirth": "1997-10-18",
+    "teamPassPlayerId": "1171563"
+  },
+  {
+    "firstName": "Esnayder",
+    "lastName": "Josue",
+    "dateOfBirth": "1998-04-05",
+    "teamPassPlayerId": "1173994"
+  },
+  {
+    "firstName": "Abdoulaye",
+    "lastName": "Kamagate",
+    "dateOfBirth": "2004-03-23",
+    "teamPassPlayerId": "1181843"
+  },
+  {
+    "firstName": "Amadou",
+    "lastName": "Kamagate",
+    "dateOfBirth": "1998-10-26",
+    "teamPassPlayerId": "1171942"
+  },
+  {
+    "firstName": "Majid",
+    "lastName": "Kawa",
+    "dateOfBirth": "2001-12-08",
+    "teamPassPlayerId": "1170809"
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Khalafalla",
+    "dateOfBirth": "1999-12-13",
+    "teamPassPlayerId": "1173967"
+  },
+  {
+    "firstName": "Gabriel",
+    "lastName": "Alejandro Baccelliere Mariman",
+    "dateOfBirth": "1993-02-19",
+    "teamPassPlayerId": "1462942"
+  },
+  {
+    "firstName": "Kouassi",
+    "lastName": "Nguessan",
+    "dateOfBirth": "1992-11-20",
+    "teamPassPlayerId": "1174575"
+  },
+  {
+    "firstName": "Som",
+    "lastName": "Safavi",
+    "dateOfBirth": "1999-12-11",
+    "teamPassPlayerId": "1415653"
+  },
+  {
+    "firstName": "Marcos",
+    "lastName": "Santos",
+    "dateOfBirth": "1996-10-10",
+    "teamPassPlayerId": "1374638"
+  },
+  {
+    "firstName": "Benell",
+    "lastName": "Saygarn",
+    "dateOfBirth": "2004-05-17",
+    "teamPassPlayerId": "1173835"
+  },
+  {
+    "firstName": "Bryan",
+    "lastName": "Anthony Garcia Sirias",
+    "dateOfBirth": "1995-08-21",
+    "teamPassPlayerId": "1465383"
+  },
+  {
+    "firstName": "Oumar",
+    "lastName": "Sylla",
+    "dateOfBirth": "1998-06-04",
+    "teamPassPlayerId": "1171577"
+  }
+]
