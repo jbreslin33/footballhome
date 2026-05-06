@@ -1446,7 +1446,7 @@ std::vector<int> EligibilityController::getRecentSessionIds(
                      AT TIME ZONE 'America/New_York')::date = $2::date)
               AND (COALESCE(ce.start_at, ce.event_date::timestamptz)
                      AT TIME ZONE 'America/New_York')::date <= $2::date
-              AND ce.is_active = true
+              AND (ce.is_active = true OR ce.count_when_canceled = true)
             ORDER BY (COALESCE(ce.start_at, ce.event_date::timestamptz)
                         AT TIME ZONE 'America/New_York')::date DESC,
                      c.chat_type_id,
