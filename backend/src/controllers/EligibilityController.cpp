@@ -1421,6 +1421,8 @@ std::vector<int> EligibilityController::getRecentSessionIds(
     //   - A weekday game + practice same day = 2 sessions ("double" day)
     //   - A pickup + practice same day       = 2 sessions
     // Exclude Sunday games (chat_type_id=1) — league games, not training.
+    // Only include sessions that have at least one RSVP or attendance record,
+    // so empty placeholder sessions don't displace sessions with real data.
     std::string query = R"(
         SELECT session_id FROM (
             SELECT DISTINCT ON (

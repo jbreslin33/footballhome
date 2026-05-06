@@ -31,7 +31,7 @@ class GameDayLineupScreen extends Screen {
     // Auto-orient based on screen: landscape if wider than tall
     this.pitchOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
     this.pitchFit = true; // always full screen
-    this.formationLocked = true; // locked = formation positions enforced; unlocked = custom/free
+    this.formationLocked = false; // locked = formation positions enforced; unlocked = custom/free
     this.customPositions = null; // null = not set; array of {x,y,label} in canonical 0-100 space
     this.customDragMode = 'slots'; // 'slots' = move holder; 'players' = swap players between slots
     this._saveMetaTimer = null;  // debounce handle for auto-save
@@ -123,11 +123,14 @@ class GameDayLineupScreen extends Screen {
         const syncData = await syncResponse.json();
         if (syncData.success && syncData.data?.synced) {
           this.lastSyncedAt = syncData.data.syncedAt || new Date().toISOString();
+          this.syncFailed = false;
           console.log(`✅ GroupMe sync: ${syncData.data.totalRsvps} RSVPs (${syncData.data.going} going)`);
         } else {
+          this.syncFailed = false; // skipped is not a failure
           console.log('ℹ️ GroupMe sync skipped:', syncData.data?.reason || syncData.message);
         }
       } catch (err) {
+        this.syncFailed = true;
         console.warn('⚠️ GroupMe sync failed:', err.message);
       }
     }
@@ -1826,6 +1829,7 @@ class GameDayLineupScreen extends Screen {
 
     this.zones.starting.push(playerId);
     this.renderAllZones();
+    this._scheduleAutoSaveLineup();
   }
 
   movePlayer(playerId, fromZone, toZone) {
@@ -1853,6 +1857,7 @@ class GameDayLineupScreen extends Screen {
     }
     this.zones[toZone].push(playerId);
     this.renderAllZones();
+    this._scheduleAutoSaveLineup();
   }
 
   // ============================================================================
@@ -2314,28 +2319,32 @@ class GameDayLineupScreen extends Screen {
     // ── canvas ───────────────────────────────────────────────────────────────
     const canvas = document.createElement('canvas');
     canvas.id = 'pitch-canvas';
-    canvas.style.cssText = `position:absolute;inset:0;width:100%;height:100%;cursor:${this.formationLocked ? 'pointer' : 'grab'};touch-action:none;`;
+    canvas.style.cssText = `position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;`;
     canvasPart.appendChild(canvas);
 
-    // ── top strip: APSL-eligible unassigned players ───────────────────────────
-    const topStrip = this._buildTopPlayerStrip();
+    // ── top strip: bench-only (1 session / partial) ────────────────────────
+    const topStrip = this._buildTopStrip();
     wrapper.appendChild(topStrip);
 
-    // ── middle row: bench panel | pitch canvas | alternates panel ─────────────
+    // ── middle row: qualified panel | pitch canvas | zero-session panel ──────
     const middleRow = document.createElement('div');
     middleRow.id = 'pitch-middle-row';
     middleRow.style.cssText = 'display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden;';
 
-    const benchPanel = this._buildSidePlayerPanel(this.zones.bench, '#3b82f6', 'bench', 'Bench');
-    benchPanel.style.borderRight = '1px solid rgba(255,255,255,0.08)';
+    const qualPanel = this._buildQualifiedPanel();
+    qualPanel.style.borderRight = '1px solid rgba(255,255,255,0.08)';
 
-    const altPanel = this._buildSidePlayerPanel(this.zones.alternates, '#a855f7', 'alternates', 'Alt');
-    altPanel.style.borderLeft = '1px solid rgba(255,255,255,0.08)';
+    const zeroPanel = this._buildZeroSessionPanel();
+    zeroPanel.style.borderLeft = '1px solid rgba(255,255,255,0.08)';
 
-    middleRow.appendChild(benchPanel);
+    middleRow.appendChild(qualPanel);
     middleRow.appendChild(canvasPart);
-    middleRow.appendChild(altPanel);
+    middleRow.appendChild(zeroPanel);
     wrapper.appendChild(middleRow);
+
+    // ── bench strip: assigned bench players ───────────────────────────────────
+    const benchStrip = this._buildBenchStrip();
+    wrapper.appendChild(benchStrip);
 
     // ── bottom bar ────────────────────────────────────────────────────────────
     const bar = document.createElement('div');
@@ -2374,23 +2383,7 @@ class GameDayLineupScreen extends Screen {
     });
     ctrlRow.appendChild(formSelect);
 
-    // Drag mode toggle — only in custom mode
-    if (!this.formationLocked) {
-      const dragModeBtn = document.createElement('button');
-      dragModeBtn.id = 'pitch-drag-mode-btn';
-      const updateDragModeBtn = () => {
-        dragModeBtn.textContent = this.customDragMode === 'players' ? '👤' : '⊞';
-        dragModeBtn.title = this.customDragMode === 'players' ? 'Swap players' : 'Move slots';
-        dragModeBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.78rem;color:#fff;background:' +
-          (this.customDragMode === 'players' ? 'rgba(59,130,246,0.7)' : 'rgba(168,85,247,0.5)') + ';';
-      };
-      updateDragModeBtn();
-      dragModeBtn.addEventListener('click', () => {
-        this.customDragMode = this.customDragMode === 'players' ? 'slots' : 'players';
-        updateDragModeBtn();
-      });
-      ctrlRow.appendChild(dragModeBtn);
-    }
+    // No drag-mode toggle needed — empty slots auto-move the slot, filled chips auto-move the player
 
     // Orientation toggle (icon only)
     const orientBtn2 = document.createElement('button');
@@ -2421,6 +2414,29 @@ class GameDayLineupScreen extends Screen {
     countInfo.style.cssText = 'color:rgba(255,255,255,0.4);font-size:0.75rem;white-space:nowrap;';
     countInfo.textContent = `${this.zones.starting.filter(Boolean).length}/11`;
     ctrlRow.appendChild(countInfo);
+
+    // GroupMe sync status pill
+    const syncStatus = this.groupmeSync || {};
+    const syncBad = this.syncFailed ||
+      syncStatus.status === 'very_stale' ||
+      syncStatus.status === 'not_synced' ||
+      !syncStatus.hasLinkedEvent;
+    const syncWarn = !syncBad && syncStatus.status === 'stale';
+    if (syncBad || syncWarn) {
+      const syncPill = document.createElement('button');
+      syncPill.title = this.syncFailed ? 'GroupMe sync failed — tap to retry'
+        : !syncStatus.hasLinkedEvent ? 'No GroupMe event linked'
+        : syncStatus.status === 'not_synced' ? 'RSVPs not synced yet — tap to sync'
+        : 'RSVP data is stale — tap to sync';
+      syncPill.style.cssText = `padding:2px 7px;border-radius:10px;border:none;cursor:pointer;font-size:0.72rem;font-weight:600;white-space:nowrap;background:${syncBad ? 'rgba(239,68,68,0.85)' : 'rgba(245,158,11,0.75)'};color:#fff;`;
+      syncPill.textContent = syncBad ? '⚠ No Sync' : '⏳ Stale';
+      syncPill.addEventListener('click', async () => {
+        syncPill.textContent = '⟳';
+        syncPill.disabled = true;
+        await this.syncThenLoad();
+      });
+      ctrlRow.appendChild(syncPill);
+    }
 
     bar.appendChild(ctrlRow);
     wrapper.appendChild(bar);
@@ -2501,8 +2517,8 @@ class GameDayLineupScreen extends Screen {
 
       // ── drag feedback overlay ─────────────────────────────────────────────
       if (dragState && dragState.moved) {
-        const swapMode = this.formationLocked || this.customDragMode === 'players';
-        if (!swapMode) {
+        const isDraggingEmpty = !this.zones.starting[dragState.slotIndex];
+        if (isDraggingEmpty) {
           // Slot-move mode: show grid dots + snap ring
           ctx.fillStyle = 'rgba(255,255,255,0.08)';
           for (let gx = 0; gx <= 100; gx += GRID_SNAP) {
@@ -2517,7 +2533,7 @@ class GameDayLineupScreen extends Screen {
           ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
           ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
         } else {
-          // Player-swap mode: highlight nearest target slot
+          // Player-move mode: highlight nearest empty slot as snap target
           let nearestIdx = -1, nearestDist = Infinity;
           positions.forEach((p, idx) => {
             if (idx === dragState.slotIndex) return;
@@ -2578,13 +2594,8 @@ class GameDayLineupScreen extends Screen {
     // ── input handling ────────────────────────────────────────────────────────
     const getXY = (e) => {
       const rect = canvas.getBoundingClientRect();
-      // e.touches is a TouchList — truthy but may be empty on touchend
-      const src = (e.touches && e.touches.length > 0)
-        ? e.touches[0]
-        : (e.changedTouches && e.changedTouches.length > 0)
-          ? e.changedTouches[0]
-          : e;
-      return [src.clientX - rect.left, src.clientY - rect.top];
+      // pointer events have clientX/clientY directly
+      return [e.clientX - rect.left, e.clientY - rect.top];
     };
 
     const DRAG_THRESHOLD = 8; // pixels before we consider it a drag
@@ -2639,24 +2650,10 @@ class GameDayLineupScreen extends Screen {
       if (dragState && dragState.moved) {
         if (!this._toCanonical) { dragState = null; return; }
         const i = dragState.slotIndex;
-        const swapMode = this.formationLocked || this.customDragMode === 'players';
+        const isDraggingEmpty = !this.zones.starting[i];
 
-        if (swapMode) {
-          // Swap player with nearest slot
-          let nearestIdx = -1, nearestDist = Infinity;
-          positions.forEach((p, idx) => {
-            if (idx === i) return;
-            const d = Math.hypot(p.x - dragState.x, p.y - dragState.y);
-            if (d < nearestDist) { nearestDist = d; nearestIdx = idx; }
-          });
-          if (nearestIdx >= 0 && nearestDist < 20) {
-            const tmp = this.zones.starting[i];
-            this.zones.starting[i] = this.zones.starting[nearestIdx];
-            this.zones.starting[nearestIdx] = tmp;
-            this._scheduleAutoSaveLineup();
-          }
-        } else {
-          // Move slot holder — snap to grid
+        if (isDraggingEmpty) {
+          // Empty slot drag → move the slot position, snap to grid
           if (!this.customPositions) {
             this.customPositions = this.getPositionsForFormation(
               this.selectedFormation?.code || '4-3-3'
@@ -2667,6 +2664,32 @@ class GameDayLineupScreen extends Screen {
             y: snapGrid(dragState.y),
             label: this.customPositions[i]?.label || ''
           };
+          this._scheduleSaveMeta();
+        } else {
+          // Filled chip drag → move the player freely; snap to nearest other slot if close
+          let nearestIdx = -1, nearestDist = Infinity;
+          positions.forEach((p, idx) => {
+            if (idx === i) return;
+            const d = Math.hypot(p.x - dragState.x, p.y - dragState.y);
+            if (d < nearestDist) { nearestDist = d; nearestIdx = idx; }
+          });
+          if (nearestIdx >= 0 && nearestDist < 15) {
+            // Snap: swap players between slots
+            const tmp = this.zones.starting[i];
+            this.zones.starting[i] = this.zones.starting[nearestIdx];
+            this.zones.starting[nearestIdx] = tmp;
+          } else {
+            // Free move: update the player's canonical position AND the slot position
+            const playerId = this.zones.starting[i];
+            if (playerId) this.playerPositions[playerId] = { x: dragState.x, y: dragState.y };
+            if (!this.customPositions) {
+              this.customPositions = this.getPositionsForFormation(
+                this.selectedFormation?.code || '4-3-3'
+              ).map(p => ({ x: p.x, y: p.y, label: p.label }));
+            }
+            this.customPositions[i] = { x: dragState.x, y: dragState.y, label: this.customPositions[i]?.label || '' };
+          }
+          this._scheduleAutoSaveLineup();
           this._scheduleSaveMeta();
         }
         dragState = null;
@@ -2696,12 +2719,70 @@ class GameDayLineupScreen extends Screen {
       e.preventDefault();
     };
 
-    canvas.addEventListener('mousedown',  onPointerDown);
-    canvas.addEventListener('mousemove',  onPointerMove);
-    canvas.addEventListener('mouseup',    onPointerUp);
-    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
-    canvas.addEventListener('touchmove',  onPointerMove, { passive: false });
-    canvas.addEventListener('touchend',   onPointerUp,   { passive: false });
+    // Use pointer events with capture so drags are tracked even outside the canvas
+    canvas.addEventListener('pointerdown', (e) => {
+      onPointerDown(e);
+      if (dragState) canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', (e) => {
+      if (dragState && dragState.moved) {
+        const rect = canvas.getBoundingClientRect();
+        const outside = e.clientX < rect.left || e.clientX > rect.right ||
+                        e.clientY < rect.top  || e.clientY > rect.bottom;
+        if (outside) {
+          // Player dragged off canvas — remove from pitch back to pool
+          const slotIdx = dragState.slotIndex;
+          const playerId = this.zones.starting[slotIdx];
+          if (playerId != null) {
+            dragState = null;
+            this.removePlayerFromAllZones(playerId);
+            this.renderAllZones();
+            this._scheduleAutoSaveLineup();
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+      onPointerUp(e);
+    });
+    canvas.addEventListener('pointercancel', () => { dragState = null; });
+
+    // Accept HTML5 drags from side-panel chips onto the canvas
+    canvas.addEventListener('dragover', (e) => {
+      if (e.dataTransfer.types.includes('text/player-id')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }
+    });
+    canvas.addEventListener('drop', (e) => {
+      const pid = parseInt(e.dataTransfer.getData('text/player-id'));
+      if (!pid || !this._toCanonical) return;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const rawX = (e.clientX - rect.left) / rect.width * 100;
+      const rawY = (e.clientY - rect.top)  / rect.height * 100;
+      const [canonX, canonY] = this._toCanonical(rawX, rawY);
+      const dropX = Math.max(3, Math.min(97, canonX));
+      const dropY = Math.max(2, Math.min(85, canonY));
+
+      // Snap to nearest empty slot within 18 canonical units
+      const positions = this._pitchHitZones || [];
+      let snapIdx = -1, snapDist = 18;
+      positions.forEach(hz => {
+        if (hz.type !== 'slot') return; // only empty slots
+        const d = Math.hypot(hz.canonX - dropX, hz.canonY - dropY);
+        if (d < snapDist) { snapDist = d; snapIdx = hz.slotIndex; }
+      });
+
+      if (snapIdx >= 0) {
+        // Place player directly into the snapped slot position
+        const snapPos = this._pitchHitZones.find(hz => hz.slotIndex === snapIdx);
+        this.movePlayerToPitch(pid, 'pool', snapPos.canonX, snapPos.canonY);
+      } else {
+        this.movePlayerToPitch(pid, 'pool', dropX, dropY);
+      }
+    });
 
     // Dismiss popover when tapping outside it
     const onOutsideTap = (e) => {
@@ -2709,8 +2790,7 @@ class GameDayLineupScreen extends Screen {
         this._dismissPitchPopover();
       }
     };
-    document.addEventListener('mousedown', onOutsideTap);
-    document.addEventListener('touchstart', onOutsideTap, { passive: true });
+    document.addEventListener('pointerdown', onOutsideTap);
 
     loop();
     return wrapper;
@@ -2989,12 +3069,21 @@ class GameDayLineupScreen extends Screen {
     chip.className = 'shelf-chip';
     chip.dataset.playerId = player.playerId;
     chip.dataset.zone = zone;
-    chip.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;padding:3px 2px;border-radius:6px;gap:1px;background:rgba(255,255,255,0.04);min-width:44px;touch-action:manipulation;user-select:none;';
+    chip.draggable = true;
+    chip.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 2px;border-radius:6px;gap:1px;background:rgba(255,255,255,0.04);min-width:44px;touch-action:manipulation;user-select:none;';
     chip.innerHTML = `
       <div style="font-size:0.44rem;color:rgba(255,255,255,0.85);white-space:nowrap;max-width:42px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
       <div style="position:relative;width:26px;height:26px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.65);">${initials}${starBadge}</div>
       <div style="font-size:0.44rem;color:rgba(255,255,255,0.85);white-space:nowrap;max-width:42px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${lastName}</div>
     `;
+    chip.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/player-id', String(player.playerId));
+      chip.style.opacity = '0.4';
+    });
+    chip.addEventListener('dragend', () => {
+      chip.style.opacity = '';
+    });
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
       this._dismissPitchPopover();
@@ -3048,28 +3137,87 @@ class GameDayLineupScreen extends Screen {
     return strip;
   }
 
-  _buildTopPlayerStrip() {
+  // Top strip: 4 labelled segments (left→right):
+  //   1. blue   – RSVP yes, 0 sessions
+  //   2. yellow – RSVP yes + partial (bench_only)
+  //   3. orange – met threshold, no RSVP
+  //   4. dim    – partial practice, no RSVP
+  _buildTopStrip() {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
-    const starters = this._rankPlayers(
-      this.players.filter(p =>
-        p.eligApslStarter &&
-        !allZoned.has(p.playerId) &&
-        p.matchRsvp !== 'no'
-      )
-    );
-    return this._buildAvailableStrip(starters, 'Starters', 'top');
+    const pool = this.players.filter(p => !allZoned.has(p.playerId));
+
+    const metPrac   = (p) => p.eligibilityStatus === 'priority_starter' || p.eligibilityStatus === 'eligible_starter';
+    const partPrac  = (p) => p.eligibilityStatus === 'bench_only';
+
+    const segments = [
+      { color: '#60a5fa', label: 'RSVP only',          players: this._rankPlayers(pool.filter(p =>  p.matchRsvp === 'yes' && !metPrac(p) && !partPrac(p))) },
+      { color: '#eab308', label: 'RSVP + partial',     players: this._rankPlayers(pool.filter(p =>  p.matchRsvp === 'yes' && partPrac(p))) },
+      { color: '#f97316', label: 'Full prac, no RSVP', players: this._rankPlayers(pool.filter(p =>  p.matchRsvp !== 'yes' && metPrac(p))) },
+      { color: '#9ca3af', label: 'Partial, no RSVP',   players: this._rankPlayers(pool.filter(p =>  p.matchRsvp !== 'yes' && partPrac(p))) },
+    ];
+
+    const strip = document.createElement('div');
+    strip.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,0.28);border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;min-height:62px;scrollbar-width:none;';
+
+    let anyContent = false;
+    for (const seg of segments) {
+      if (seg.players.length === 0) continue;
+      anyContent = true;
+
+      const group = document.createElement('div');
+      group.style.cssText = `display:flex;flex-direction:row;align-items:center;gap:3px;padding:4px 6px;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;`;
+
+      const lbl = document.createElement('span');
+      lbl.style.cssText = `font-size:0.48rem;color:${seg.color};text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.7;`;
+      lbl.textContent = seg.label;
+      group.appendChild(lbl);
+
+      for (const p of seg.players) {
+        group.appendChild(this._buildPanelChipEl(p, 'pool'));
+      }
+      strip.appendChild(group);
+    }
+
+    if (!anyContent) {
+      strip.style.minHeight = '0';
+      strip.style.display = 'none';
+    }
+
+    return strip;
   }
 
-  _buildBottomPlayerStrip() {
+  // Left panel: green only — RSVP yes + met practice threshold
+  _buildQualifiedPanel() {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
-    const benchOnly = this._rankPlayers(
+    const qualified = this._rankPlayers(
       this.players.filter(p =>
-        !p.eligApslStarter && p.eligApslBench &&
         !allZoned.has(p.playerId) &&
-        p.matchRsvp !== 'no'
+        p.matchRsvp === 'yes' &&
+        (p.eligibilityStatus === 'priority_starter' || p.eligibilityStatus === 'eligible_starter')
       )
     );
-    return this._buildAvailableStrip(benchOnly, 'Bench eligible', 'bottom');
+    return this._buildSidePlayerPanel(qualified.map(p => p.playerId), '#22c55e', 'pool', '✓');
+  }
+
+  // Right panel: 0 sessions AND no game RSVP
+  _buildZeroSessionPanel() {
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const zero = this._rankPlayers(
+      this.players.filter(p =>
+        !allZoned.has(p.playerId) &&
+        (p.sessionsAttended || 0) === 0 &&
+        p.matchRsvp !== 'yes'
+      )
+    );
+    return this._buildSidePlayerPanel(zero.map(p => p.playerId), '#6b7280', 'pool', '0');
+  }
+
+  // Bottom strip: assigned bench players
+  _buildBenchStrip() {
+    const bench = this.zones.bench.map(id => this.getPlayerById(id)).filter(Boolean);
+    const strip = this._buildAvailableStrip(bench, '🪑 Bench', 'top');
+    strip.style.borderTop = '2px solid rgba(59,130,246,0.4)';
+    return strip;
   }
 
   _renderBelowPitchZones(container) {
