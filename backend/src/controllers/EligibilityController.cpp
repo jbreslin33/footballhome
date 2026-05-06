@@ -310,7 +310,6 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                     ON ta.player_id = rp.player_id AND ta.chat_event_id = ws.session_id
                 LEFT JOIN resolved_rsvps rr
                     ON rr.person_id = rp.person_id AND rr.chat_event_id = ws.session_id
-                WHERE ws.is_past
             ),
             -- Count attended sessions per player
             actual_attendance AS (
@@ -1446,6 +1445,7 @@ std::vector<int> EligibilityController::getRecentSessionIds(
                      AT TIME ZONE 'America/New_York')::date = $2::date)
               AND (COALESCE(ce.start_at, ce.event_date::timestamptz)
                      AT TIME ZONE 'America/New_York')::date <= $2::date
+              AND ce.external_id IS NOT NULL
               AND (ce.is_active = true OR ce.count_when_canceled = true)
             ORDER BY (COALESCE(ce.start_at, ce.event_date::timestamptz)
                         AT TIME ZONE 'America/New_York')::date DESC,
