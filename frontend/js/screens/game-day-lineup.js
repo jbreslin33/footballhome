@@ -2811,7 +2811,7 @@ class GameDayLineupScreen extends Screen {
     const firstName = player.firstName || '';
     const lastName  = player.lastName  || '';
     const initials  = (firstName[0] || '') + (lastName[0] || '') || '?';
-    const prac      = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+    const prac      = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
 
     // Subtle pulse glow for priority starters
     if (player.eligibilityStatus === 'priority_starter') {
@@ -3156,7 +3156,7 @@ class GameDayLineupScreen extends Screen {
     const maxBench = this.rosterSize - 11;
     const benchFull = this.zones.bench.length >= maxBench;
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
-    const prac = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+    const prac = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
     const jersey = player.jerseyNumber || '';
 
     const rsvpOptions = ['yes','no','maybe'].map(v => {
@@ -3282,7 +3282,7 @@ class GameDayLineupScreen extends Screen {
         const rsvpIcon = player.matchRsvp === 'yes' ? '🟢' : player.matchRsvp === 'no' ? '🔴' : '🟡';
         const jersey = player.jerseyNumber || (player.firstName?.[0] ?? '?');
         const name = (player.firstName || '').slice(0, 8);
-        const prac = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+        const prac = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
 
         const chip = document.createElement('div');
         chip.className = 'shelf-chip';
@@ -3323,7 +3323,7 @@ class GameDayLineupScreen extends Screen {
     if (!player) return;
     const name    = `${player.firstName || ''} ${player.lastName || ''}`.trim();
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
-    const prac    = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+    const prac    = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
     const maxBench = this.rosterSize - 11;
     const startFull = this.zones.starting.length >= 11;
     const benchFull = this.zones.bench.length >= maxBench;
@@ -3569,7 +3569,7 @@ class GameDayLineupScreen extends Screen {
     if (!player) return;
 
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
-    const prac     = `${player.sessionsAttended || 0}/${this.policy?.lookbackCount || '?'}`;
+    const prac     = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
     const pos      = player.position || '—';
     const isOnPitch = slotIndex !== undefined && this.zones.starting[slotIndex] === playerId;
     const currentZone = isOnPitch ? 'starting'
@@ -3647,6 +3647,29 @@ class GameDayLineupScreen extends Screen {
               <span style="font-size:0.88rem;"># Jersey</span>
               <input type="text" id="ep-jersey" inputmode="numeric" value="${player.jerseyNumber || ''}" placeholder="—"
                 style="width:64px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.9rem;text-align:center;">
+            </label>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">🎂 Date of Birth</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">U19 (born after 2007) = 3 req · U23 (born after 2003) = 2 req · Senior = 1 req</div>
+              </div>
+              <input type="date" id="ep-dob" value="${player.dateOfBirth || ''}" placeholder="YYYY-MM-DD"
+                style="padding:5px 6px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.82rem;">
+            </div>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">🏃 Required Sessions</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Auto-set from DOB · override if needed</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span id="ep-req-auto" style="font-size:0.78rem;color:var(--text-muted);">(auto: ${player.requiredSessions ?? '?'})</span>
+                <input type="number" id="ep-req-override" min="0" max="10"
+                  value="${player.requiredSessionsOverride != null ? player.requiredSessionsOverride : ''}"
+                  placeholder="—"
+                  style="width:52px;padding:5px 6px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.9rem;text-align:center;">
+              </div>
             </label>
 
             <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -3829,6 +3852,9 @@ class GameDayLineupScreen extends Screen {
         const eligLiga1Bench   = overlay.querySelector('#elig-liga1-bench').checked;
         const eligLiga2Starter = overlay.querySelector('#elig-liga2-starter').checked;
         const eligLiga2Bench   = overlay.querySelector('#elig-liga2-bench').checked;
+        const dobVal           = overlay.querySelector('#ep-dob')?.value.trim() || '';
+        const reqOverrideStr   = overlay.querySelector('#ep-req-override')?.value.trim();
+        const reqOverride      = reqOverrideStr !== '' ? parseInt(reqOverrideStr) : null;
 
         player.isDesignated       = designated;
         player.numClubs           = numClubs;
@@ -3843,6 +3869,8 @@ class GameDayLineupScreen extends Screen {
         player.eligLiga1Bench     = eligLiga1Bench;
         player.eligLiga2Starter   = eligLiga2Starter;
         player.eligLiga2Bench     = eligLiga2Bench;
+        if (dobVal) player.dateOfBirth = dobVal;
+        player.requiredSessionsOverride = reqOverride;
 
         if (this.policy?.minSessionsToStart !== undefined) {
           const effectiveMin = family
@@ -3856,17 +3884,30 @@ class GameDayLineupScreen extends Screen {
         }
 
         try {
-          await this.auth.fetch(`/api/eligibility/player/${player.playerId}/flags`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              isDesignated: designated, numClubs, hasFamilyDiscount: family,
-              jerseyNumber: jersey, internalRole: player.internalRole || '',
-              isInjured, isSuspendedLeague: isSuspLeague, isSuspendedInhouse: isSuspInhouse,
-              eligApslStarter, eligApslBench, eligLiga1Starter, eligLiga1Bench,
-              eligLiga2Starter, eligLiga2Bench
+          const flagsPayload = {
+            isDesignated: designated, numClubs, hasFamilyDiscount: family,
+            jerseyNumber: jersey, internalRole: player.internalRole || '',
+            isInjured, isSuspendedLeague: isSuspLeague, isSuspendedInhouse: isSuspInhouse,
+            eligApslStarter, eligApslBench, eligLiga1Starter, eligLiga1Bench,
+            eligLiga2Starter, eligLiga2Bench,
+            requiredSessionsOverride: reqOverride
+          };
+          const saves = [
+            this.auth.fetch(`/api/eligibility/player/${player.playerId}/flags`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(flagsPayload)
             })
-          });
+          ];
+          // Save DOB to persons table if changed
+          if (dobVal && dobVal !== (player.dateOfBirth || '')) {
+            saves.push(this.auth.fetch(`/api/eligibility/person/${player.personId}/dob`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dateOfBirth: dobVal })
+            }));
+          }
+          await Promise.all(saves);
           if (saveStatus) { saveStatus.textContent = '✓ Saved'; setTimeout(() => { if (saveStatus) saveStatus.textContent = ''; }, 2000); }
         } catch (err) {
           if (saveStatus) saveStatus.textContent = '⚠ Save failed';

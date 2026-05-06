@@ -284,6 +284,35 @@ class CasaRosterScraper {
       dateAdded: headers.indexOf('date added')
     };
 
+    // DOB column may have a blank header in the CSV fallback (gviz export drops it).
+    // Auto-detect: scan first few data rows for a column containing a date value in
+    // the valid birth-year range (1950–2010), skipping firstName/lastName columns.
+    // XLSX with cellDates:true converts date strings to Date objects, so check both.
+    if (colMap.dob === -1) {
+      const strDateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+      outer:
+      for (let di = headerRowIdx + 1; di < Math.min(rows.length, headerRowIdx + 6); di++) {
+        const dataRow = rows[di];
+        if (!dataRow) continue;
+        for (let ci = 0; ci < dataRow.length; ci++) {
+          if (ci === colMap.firstName || ci === colMap.lastName) continue;
+          const cell = dataRow[ci];
+          if (!cell) continue;
+          let year = null;
+          if (cell instanceof Date) {
+            year = cell.getFullYear();
+          } else if (typeof cell === 'string') {
+            const parsed = strDateRegex.test(cell.trim()) ? new Date(cell) : new Date(cell);
+            if (!isNaN(parsed.getTime())) year = parsed.getFullYear();
+          }
+          if (year !== null && year >= 1950 && year <= 2010) {
+            colMap.dob = ci;
+            break outer;
+          }
+        }
+      }
+    }
+
     // Extract manager name from row 4 (col D = index 3)
     let manager = null;
     for (let i = 2; i < Math.min(rows.length, 8); i++) {
@@ -394,6 +423,32 @@ class CasaRosterScraper {
       dob: headers.indexOf('date of birth'),
       team: headers.indexOf('team'),
     };
+
+    // Auto-detect blank DOB column (CSV fallback strips the header label)
+    // XLSX with cellDates:true converts date strings to Date objects, so check both.
+    if (colMap.dob === -1) {
+      outer:
+      for (let di = headerRowIdx + 1; di < Math.min(rows.length, headerRowIdx + 6); di++) {
+        const dataRow = rows[di];
+        if (!dataRow) continue;
+        for (let ci = 0; ci < dataRow.length; ci++) {
+          if (ci === colMap.firstName || ci === colMap.lastName) continue;
+          const cell = dataRow[ci];
+          if (!cell) continue;
+          let year = null;
+          if (cell instanceof Date) {
+            year = cell.getFullYear();
+          } else if (typeof cell === 'string') {
+            const parsed = new Date(cell);
+            if (!isNaN(parsed.getTime())) year = parsed.getFullYear();
+          }
+          if (year !== null && year >= 1950 && year <= 2010) {
+            colMap.dob = ci;
+            break outer;
+          }
+        }
+      }
+    }
 
     // Build reverse lookup: normalize team column values → DB team names
     // tabMap keys are tab names but may also match team column values

@@ -91,6 +91,11 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
     router.put(prefix + "/player/:playerId/flags", [this](const Request& request) {
         return this->handleUpdatePlayerFlags(request);
     });
+
+    // PUT /api/eligibility/person/:personId/dob - Update date of birth on persons table
+    router.put(prefix + "/person/:personId/dob", [this](const Request& request) {
+        return this->handleUpdatePersonDob(request);
+    });
 }
 
 // ============================================================================
@@ -227,7 +232,9 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        COALESCE(p.elig_liga1_bench,   false) as elig_liga1_bench,
                        COALESCE(p.elig_liga2_starter, false) as elig_liga2_starter,
                        COALESCE(p.elig_liga2_bench,   false) as elig_liga2_bench,
+                       p.required_sessions_override,
                        pe.id as person_id, pe.first_name, pe.last_name,
+                       pe.birth_date,
                        -- On official roster = any sibling team in same league
                        EXISTS(
                            SELECT 1 FROM rosters r2
@@ -358,6 +365,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                    rp.elig_apsl_starter, rp.elig_apsl_bench,
                    rp.elig_liga1_starter, rp.elig_liga1_bench,
                    rp.elig_liga2_starter, rp.elig_liga2_bench,
+                   rp.required_sessions_override,
+                   rp.birth_date,
                    COALESCE(aa.sessions_attended, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
@@ -513,13 +522,39 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.sessions_attended = row["sessions_attended"].as<int>();
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
+            pe.date_of_birth = row["birth_date"].is_null() ? "" : row["birth_date"].c_str();
+            pe.required_sessions_override = row["required_sessions_override"].is_null() ? -1
+                                             : row["required_sessions_override"].as<int>();
+
+            // Derive required sessions from DOB (U19=3, U23=2, senior=1)
+            // Cutoffs: U19 born after 2007-12-31, U23 born after 2003-12-31
+            int ageRequired = policy.min_sessions_to_start; // fallback to policy
+            if (!pe.date_of_birth.empty()) {
+                // Extract birth year from "YYYY-MM-DD"
+                int birthYear  = std::stoi(pe.date_of_birth.substr(0, 4));
+                int birthMonth = std::stoi(pe.date_of_birth.substr(5, 2));
+                int birthDay   = std::stoi(pe.date_of_birth.substr(8, 2));
+                // U19: born strictly after 2007-12-31 (i.e. 2008-01-01 or later)
+                if (birthYear > 2007 || (birthYear == 2007 && (birthMonth > 12 || (birthMonth == 12 && birthDay > 31)))) {
+                    ageRequired = 3;
+                // U23: born strictly after 2003-12-31
+                } else if (birthYear > 2003 || (birthYear == 2003 && (birthMonth > 12 || (birthMonth == 12 && birthDay > 31)))) {
+                    ageRequired = 2;
+                } else {
+                    ageRequired = 1;
+                }
+            }
+            // Override wins if set
+            pe.required_sessions = (pe.required_sessions_override >= 0)
+                                    ? pe.required_sessions_override
+                                    : ageRequired;
             
             // Projected: current attendance + future RSVP yes count
             int futureRsvpYes = row["future_rsvp_yes"].as<int>();
             pe.projected_sessions = pe.sessions_attended + futureRsvpYes;
             
-            // Compute effective minimum sessions (apply family/keeper discount)
-            pe.effective_min_sessions = policy.min_sessions_to_start;
+            // Compute effective minimum sessions (apply family/keeper discount to age-based requirement)
+            pe.effective_min_sessions = pe.required_sessions;
             if (pe.is_keeper) {
                 pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.keeper_discount);
             } else if (pe.has_family_discount) {
@@ -586,7 +621,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"eligLiga1Starter\":" << (pe.elig_liga1_starter ? "true" : "false") << ",";
             json << "\"eligLiga1Bench\":"   << (pe.elig_liga1_bench   ? "true" : "false") << ",";
             json << "\"eligLiga2Starter\":" << (pe.elig_liga2_starter ? "true" : "false") << ",";
-            json << "\"eligLiga2Bench\":"   << (pe.elig_liga2_bench   ? "true" : "false");
+            json << "\"eligLiga2Bench\":"   << (pe.elig_liga2_bench   ? "true" : "false") << ",";
+            json << "\"dateOfBirth\":" << (pe.date_of_birth.empty() ? "null" : "\"" + pe.date_of_birth + "\"") << ",";
+            json << "\"requiredSessions\":" << pe.required_sessions << ",";
+            json << "\"requiredSessionsOverride\":" << (pe.required_sessions_override < 0 ? "null" : std::to_string(pe.required_sessions_override));
             json << "}";
         }
         
@@ -1593,6 +1631,9 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     bool eligLiga1Bench      = parseJsonBool(body, "eligLiga1Bench");
     bool eligLiga2Starter    = parseJsonBool(body, "eligLiga2Starter");
     bool eligLiga2Bench      = parseJsonBool(body, "eligLiga2Bench");
+    // -1 sentinel means "not provided / clear override" (use age rule)
+    int reqSessionsOverride  = parseJsonInt(body, "requiredSessionsOverride", -999);
+    bool hasReqOverride      = (reqSessionsOverride != -999);
 
     if (numClubs < 1) numClubs = 1;
     if (numClubs > 2) numClubs = 2;
@@ -1622,6 +1663,7 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
                    elig_liga1_bench     = $12::bool,
                    elig_liga2_starter   = $13::bool,
                    elig_liga2_bench     = $14::bool,
+                   required_sessions_override = CASE WHEN $15::boolean THEN NULLIF($16::text,'')::smallint ELSE required_sessions_override END,
                    updated_at           = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
@@ -1639,7 +1681,9 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             eligLiga1Starter ? "true" : "false",
             eligLiga1Bench   ? "true" : "false",
             eligLiga2Starter ? "true" : "false",
-            eligLiga2Bench   ? "true" : "false"
+            eligLiga2Bench   ? "true" : "false",
+            hasReqOverride   ? "true" : "false",
+            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : ""
         });
 
         // Update jersey number on ALL roster entries for this player if provided
@@ -1676,5 +1720,41 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
         std::cerr << "❌ Error updating player flags: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, "Failed to update player flags"));
+    }
+}
+
+// ============================================================================
+// PUT /api/eligibility/person/:personId/dob
+// Update birth_date on persons table
+// ============================================================================
+Response EligibilityController::handleUpdatePersonDob(const Request& request) {
+    std::string personId = extractIdFromPath(request.getPath(),
+        "/api/eligibility/person/(\\d+)/dob");
+    if (personId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Person ID required"));
+    }
+
+    const std::string& body = request.getBody();
+    std::string dob = parseJsonString(body, "dateOfBirth");
+
+    // Basic format validation: must be YYYY-MM-DD or empty
+    static const std::regex dobRx(R"(\d{4}-\d{2}-\d{2})");
+    if (!dob.empty() && !std::regex_match(dob, dobRx)) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Invalid date format, expected YYYY-MM-DD"));
+    }
+
+    try {
+        if (dob.empty()) {
+            db_->query("UPDATE persons SET birth_date = NULL WHERE id = $1::int", {personId});
+        } else {
+            db_->query("UPDATE persons SET birth_date = $2::date WHERE id = $1::int", {personId, dob});
+        }
+        std::ostringstream data;
+        data << "{\"personId\":" << personId << ",\"dateOfBirth\":" << (dob.empty() ? "null" : "\"" + dob + "\"") << "}";
+        return Response(HttpStatus::OK, createJsonResponse(true, "Date of birth updated", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error updating person DOB: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, "Failed to update date of birth"));
     }
 }
