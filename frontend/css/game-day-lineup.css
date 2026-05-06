@@ -442,11 +442,12 @@ body.pitch-fit-active {
   text-align: right;
 }
 
-/* Eligibility colors on pool rows */
-.pool-row.eligibility-priority { background: #fef9e7; border-left: 3px solid #fbbf24; }
-.pool-row.eligibility-eligible { background: #ecfdf5; border-left: 3px solid #34d399; }
-.pool-row.eligibility-bench { background: #eff6ff; border-left: 3px solid #60a5fa; }
-.pool-row.eligibility-ineligible { background: #fef2f2; border-left: 3px solid #f87171; opacity: 0.6; }
+/* Eligibility colors on pool rows (RSVP + practice combined) */
+.pool-row.elig-green  { background: #dcfce7; border-left: 3px solid #22c55e; }
+.pool-row.elig-yellow { background: #fef9c3; border-left: 3px solid #eab308; }
+.pool-row.elig-blue   { background: #dbeafe; border-left: 3px solid #60a5fa; }
+.pool-row.elig-orange { background: #ffedd5; border-left: 3px solid #f97316; }
+.pool-row.elig-red    { background: #fee2e2; border-left: 3px solid #ef4444; opacity: 0.75; }
 
 /* Zone badge in pool row */
 .pool-zone-badge { font-size: 0.8em; flex-shrink: 0; width: 16px; text-align: center; }
@@ -905,11 +906,12 @@ body.pitch-fit-active {
   display: inline-block;
 }
 
-/* Eligibility colors on chips */
-.eligibility-priority .chip-circle { border-color: #fbbf24; background: #fef3c7; color: #92400e; }
-.eligibility-eligible .chip-circle { border-color: #34d399; background: #d1fae5; color: #065f46; }
-.eligibility-bench .chip-circle { border-color: #60a5fa; background: #dbeafe; color: #1e40af; }
-.eligibility-ineligible .chip-circle { border-color: #f87171; background: #fee2e2; color: #991b1b; }
+/* Eligibility colors on chips (RSVP + practice combined) */
+.elig-green .chip-circle  { border-color: #22c55e; background: #dcfce7; color: #14532d; }
+.elig-yellow .chip-circle { border-color: #eab308; background: #fef9c3; color: #713f12; }
+.elig-blue .chip-circle   { border-color: #60a5fa; background: #dbeafe; color: #1e40af; }
+.elig-orange .chip-circle { border-color: #f97316; background: #ffedd5; color: #7c2d12; }
+.elig-red .chip-circle    { border-color: #ef4444; background: #fee2e2; color: #7f1d1d; }
 
 /* ============================================================================
    Policy Bar (compact)
@@ -1070,11 +1072,12 @@ body.pitch-fit-active {
   white-space: nowrap;
 }
 
-/* Eligibility colors on rows (left border) */
-.rt-player-row.eligibility-priority { border-left: 3px solid #f59e0b; }
-.rt-player-row.eligibility-eligible { border-left: 3px solid #10b981; }
-.rt-player-row.eligibility-bench { border-left: 3px solid #3b82f6; }
-.rt-player-row.eligibility-ineligible { border-left: 3px solid #ef4444; }
+/* Eligibility colors on rows (left border, RSVP + practice combined) */
+.rt-player-row.elig-green  { border-left: 3px solid #22c55e; }
+.rt-player-row.elig-yellow { border-left: 3px solid #eab308; }
+.rt-player-row.elig-blue   { border-left: 3px solid #60a5fa; }
+.rt-player-row.elig-orange { border-left: 3px solid #f97316; }
+.rt-player-row.elig-red    { border-left: 3px solid #ef4444; }
 
 /* Zone badge */
 .rt-zone-badge {

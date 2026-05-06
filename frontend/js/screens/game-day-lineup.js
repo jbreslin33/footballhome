@@ -993,8 +993,8 @@ class GameDayLineupScreen extends Screen {
 
     // Derive pool players (not in any active zone)
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
-    const notResponded = this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp !== 'no');
-    const notGoing = this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp === 'no');
+    const notResponded = this._rankPlayers(this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp !== 'no'));
+    const notGoing = this._rankPlayers(this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp === 'no'));
 
     // Helper: build move buttons for a card in a given zone
     const moveBtns = (playerId, currentZone) => {
@@ -1544,13 +1544,26 @@ class GameDayLineupScreen extends Screen {
     this.renderAllZones();
   }
 
+  // Combined RSVP + practice state → one of: green, yellow, blue, orange, red
+  _eligState(player) {
+    const rsvpYes   = player.matchRsvp === 'yes';
+    const status    = player.eligibilityStatus;
+    const metPrac   = status === 'priority_starter' || status === 'eligible_starter';
+    const partPrac  = status === 'bench_only';
+    if (rsvpYes && metPrac)   return 'green';
+    if (rsvpYes && partPrac)  return 'yellow';
+    if (rsvpYes)              return 'blue';
+    if (metPrac)              return 'orange';
+    return 'red';
+  }
+
   getEligibilityClass(player) {
-    switch (player.eligibilityStatus) {
-      case 'priority_starter': return 'eligibility-priority';
-      case 'eligible_starter': return 'eligibility-eligible';
-      case 'bench_only': return 'eligibility-bench';
-      case 'ineligible': return 'eligibility-ineligible';
-      default: return '';
+    switch (this._eligState(player)) {
+      case 'green':  return 'elig-green';
+      case 'yellow': return 'elig-yellow';
+      case 'blue':   return 'elig-blue';
+      case 'orange': return 'elig-orange';
+      default:       return 'elig-red';
     }
   }
 
@@ -2807,7 +2820,7 @@ class GameDayLineupScreen extends Screen {
 
   // ── Draw a player chip ────────────────────────────────────────────────────
   _drawPlayerChip(ctx, px, py, r, player, posLabel, anim) {
-    const color     = this._eligColor(player.eligibilityStatus);
+    const color     = this._eligColor(player);
     const firstName = player.firstName || '';
     const lastName  = player.lastName  || '';
     const initials  = (firstName[0] || '') + (lastName[0] || '') || '?';
@@ -2954,19 +2967,19 @@ class GameDayLineupScreen extends Screen {
     this.switchView('list');
   }
 
-  _eligColor(status) {
-    switch (status) {
-      case 'priority_starter': return '#f59e0b';
-      case 'eligible_starter': return '#22c55e';
-      case 'bench_only':       return '#f97316';
-      case 'ineligible':       return '#ef4444';
-      default:                 return '#6b7280';
+  _eligColor(player) {
+    switch (this._eligState(player)) {
+      case 'green':  return '#22c55e';
+      case 'yellow': return '#eab308';
+      case 'blue':   return '#60a5fa';
+      case 'orange': return '#f97316';
+      default:       return '#ef4444';
     }
   }
 
   // ── Build a single chip element for side/top panels ──────────────────────
   _buildPanelChipEl(player, zone) {
-    const eligColor = this._eligColor(player.eligibilityStatus);
+    const eligColor = this._eligColor(player);
     const firstName = player.firstName || '';
     const lastName  = player.lastName  || '';
     const initials  = (firstName[0] || '') + (lastName[0] || '') || '?';
@@ -3278,7 +3291,7 @@ class GameDayLineupScreen extends Screen {
       for (const { id, zone } of section.players) {
         const player = this.getPlayerById(id);
         if (!player) continue;
-        const eligColor = this._eligColor(player.eligibilityStatus);
+        const eligColor = this._eligColor(player);
         const rsvpIcon = player.matchRsvp === 'yes' ? '🟢' : player.matchRsvp === 'no' ? '🔴' : '🟡';
         const jersey = player.jerseyNumber || (player.firstName?.[0] ?? '?');
         const name = (player.firstName || '').slice(0, 8);
@@ -3413,19 +3426,22 @@ class GameDayLineupScreen extends Screen {
   // Tier 4: <2 sessions, 1 club
   // Tier 5: <2 sessions, 2 clubs
   // Within tier: sort by sessions desc, then name asc
+  // Primary sort for all player lists:
+  //   1. APSL starters (eligApslStarter) first — league-registered
+  //   2. Met practice threshold (priority_starter / eligible_starter)
+  //   3. Chip-color priority (green → yellow → blue → orange → red)
+  //   4. Sessions attended descending
+  //   5. Alphabetical
   _rankPlayers(players) {
-    const tier = (p) => {
-      const sessions = p.sessionsAttended || 0;
-      const clubs    = p.numClubs || 1;
-      if (p.isDesignated) return 0;
-      if (sessions >= 2 && clubs === 1) return 1;
-      if (sessions >= 2 && clubs >  1) return 2;
-      if (sessions <  2 && clubs === 1) return 3;
-      return 4;
-    };
+    const COLOR_ORDER = ['green', 'yellow', 'blue', 'orange', 'red'];
+    const metPrac = (p) => p.eligibilityStatus === 'priority_starter' || p.eligibilityStatus === 'eligible_starter';
     return [...players].sort((a, b) => {
-      const td = tier(a) - tier(b);
-      if (td !== 0) return td;
+      const apslDiff = (b.eligApslStarter ? 1 : 0) - (a.eligApslStarter ? 1 : 0);
+      if (apslDiff !== 0) return apslDiff;
+      const pracDiff = (metPrac(b) ? 1 : 0) - (metPrac(a) ? 1 : 0);
+      if (pracDiff !== 0) return pracDiff;
+      const colorDiff = COLOR_ORDER.indexOf(this._eligState(a)) - COLOR_ORDER.indexOf(this._eligState(b));
+      if (colorDiff !== 0) return colorDiff;
       const sd = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
       if (sd !== 0) return sd;
       return ((a.firstName || '') + (a.lastName || '')).localeCompare((b.firstName || '') + (b.lastName || ''));
@@ -3499,7 +3515,7 @@ class GameDayLineupScreen extends Screen {
         const injBadge   = p.isInjured           ? '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:1px 5px;font-size:0.68rem;font-weight:700;">INJ</span>' : '';
         const suspLBadge = p.isSuspendedLeague    ? '<span style="background:#dc2626;color:#fff;border-radius:4px;padding:1px 5px;font-size:0.68rem;font-weight:700;">SUSP-L</span>' : '';
         const suspHBadge = p.isSuspendedInhouse   ? '<span style="background:#f59e0b;color:#000;border-radius:4px;padding:1px 5px;font-size:0.68rem;font-weight:700;">SUSP-H</span>' : '';
-        const eligColor  = this._eligColor(p.eligibilityStatus);
+        const eligColor  = this._eligColor(p);
         const jersey     = p.jerseyNumber || (p.firstName?.[0] ?? '?');
 
         const row = document.createElement('div');
