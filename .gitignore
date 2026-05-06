@@ -34,6 +34,9 @@ backups/
 # WireGuard provider config — plaintext is gitignored;
 # encrypted scrape-vpn.conf.age IS committed and decrypted at setup time.
 scrape-vpn.conf
+# APSL login credentials — plaintext is gitignored;
+# encrypted apsl-credentials.conf.age IS committed and decrypted at setup time.
+apsl-credentials.conf
 # Generated COPY format SQL files (created from INSERT SQL for fast loading)
 database/data/*.copy.sql
 database/data/99-*.sql
