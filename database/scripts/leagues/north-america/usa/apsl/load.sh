@@ -55,23 +55,6 @@ for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* 
     fi
 done
 
-# Post-load: set team logos (teams must exist before this runs)
-echo "  Setting APSL team logos..."
-$DB_EXEC psql -U footballhome_user -d footballhome -c "
-UPDATE teams SET logo_url = '/images/teams/logos/wc-predators.jpg' WHERE name = 'WC Predators' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/alloy-sc.jpg' WHERE name = 'Alloy Soccer Club' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/oaklyn-united.jpg' WHERE name = 'Oaklyn United FC' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/real-central-nj.png' WHERE name = 'Real Central NJ Soccer' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/philly-soccer-club.png' WHERE name = 'Philadelphia Soccer Club' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/philly-heritage.jpeg' WHERE name = 'Philadelphia Heritage SC' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/vidas-united.jpg' WHERE name = 'Vidas United FC' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/jersey-shore-boca.jpg' WHERE name = 'Jersey Shore Boca' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/gak.png' WHERE name = 'GAK' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/lighthouse-1893.png' WHERE name = 'Lighthouse 1893 SC' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/medford-strikers.png' WHERE name = 'Medford Strikers' AND source_system_id = 1;
-UPDATE teams SET logo_url = '/images/teams/logos/sewell-old-boys.jpg' WHERE name = 'Sewell Old Boys FC' AND source_system_id = 1;
-"
-
 # Post-load: assign coaches to APSL teams (teams must exist before this runs)
 echo "  Assigning coaches to APSL teams..."
 $DB_EXEC psql -U footballhome_user -d footballhome -c "
