@@ -2589,18 +2589,29 @@ class GameDayLineupScreen extends Screen {
     middleRow.appendChild(zeroPanel);
     wrapper.appendChild(middleRow);
 
-    // ── bench strip: assigned bench players ───────────────────────────────────
-    const benchStrip = this._buildBenchStrip();
-    wrapper.appendChild(benchStrip);
-
     // ── bottom bar ────────────────────────────────────────────────────────────
     const bar = document.createElement('div');
     bar.id = 'pitch-bottom-bar';
     bar.style.cssText = 'flex-shrink:0;background:#000;border-top:1px solid rgba(255,255,255,0.1);';
 
-    // Single compact control row
+    // Single scrollable row: bench + sync cards + controls
     const ctrlRow = document.createElement('div');
-    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:5px 8px;';
+    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;min-height:46px;';
+
+    // ── Bench chips ─────────────────────────────────────────────
+    const benchChips = this._buildBenchStrip();
+    benchChips.childNodes.forEach(n => ctrlRow.appendChild(n));
+
+    const mkDiv = () => { const d = document.createElement('div'); d.style.cssText = 'width:1px;align-self:stretch;background:rgba(59,130,246,0.3);margin:0 1px;flex-shrink:0;'; return d; };
+    ctrlRow.appendChild(mkDiv());
+
+    // ── Sync cards ───────────────────────────────────────────────
+    const syncCards = this._buildSyncRow();
+    syncCards.childNodes.forEach(n => ctrlRow.appendChild(n));
+
+    ctrlRow.appendChild(mkDiv());
+
+    // ── Controls ─────────────────────────────────────────────────
 
     // Mode toggle (🔒 Formation / ✏️ Custom)
     const lockBtn = document.createElement('button');
@@ -2695,7 +2706,6 @@ class GameDayLineupScreen extends Screen {
     ctrlRow.appendChild(dataSyncBtn);
 
     bar.appendChild(ctrlRow);
-    bar.appendChild(this._buildSyncRow());
     wrapper.appendChild(bar);
 
     container.appendChild(wrapper);
@@ -3327,11 +3337,11 @@ class GameDayLineupScreen extends Screen {
     chip.dataset.playerId = player.playerId;
     chip.dataset.zone = zone;
     chip.draggable = true;
-    chip.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 2px;border-radius:6px;gap:1px;background:rgba(255,255,255,0.04);min-width:44px;touch-action:manipulation;user-select:none;';
+    chip.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 2px;border-radius:6px;gap:1px;background:rgba(255,255,255,0.04);min-width:52px;touch-action:manipulation;user-select:none;';
     chip.innerHTML = `
-      <div style="font-size:0.44rem;color:rgba(255,255,255,0.85);white-space:nowrap;max-width:42px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
-      <div style="position:relative;width:26px;height:26px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.65);">${initials}${starBadge}</div>
-      <div style="font-size:0.44rem;color:rgba(255,255,255,0.85);white-space:nowrap;max-width:42px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${lastName}</div>
+      <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
+      <div style="position:relative;width:28px;height:28px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.65);">${initials}${starBadge}</div>
+      <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${lastName}</div>
     `;
     chip.addEventListener('dragstart', (e) => {
       e.dataTransfer.effectAllowed = 'move';
@@ -3354,7 +3364,7 @@ class GameDayLineupScreen extends Screen {
     const panel = document.createElement('div');
     panel.style.cssText = `width:52px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;background:rgba(0,0,0,0.25);padding:4px 2px;gap:3px;scrollbar-width:none;`;
     const lbl = document.createElement('div');
-    lbl.style.cssText = `font-size:0.4rem;color:${color};text-align:center;padding:3px 0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;`;
+    lbl.style.cssText = `font-size:0.6rem;color:${color};text-align:center;padding:3px 0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;`;
     lbl.textContent = label;
     panel.appendChild(lbl);
     const players = playerIds.map(id => this.getPlayerById(id)).filter(Boolean);
@@ -3378,7 +3388,7 @@ class GameDayLineupScreen extends Screen {
       : 'border-top:1px solid rgba(255,255,255,0.07);';
     strip.style.cssText = `display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,0.28);${border}padding:4px 6px;gap:4px;flex-shrink:0;min-height:60px;scrollbar-width:none;`;
     const lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:0.55rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:4px;';
+    lbl.style.cssText = 'font-size:0.65rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:4px;';
     lbl.textContent = label;
     strip.appendChild(lbl);
     if (players.length === 0) {
@@ -3425,7 +3435,7 @@ class GameDayLineupScreen extends Screen {
       group.style.cssText = `display:flex;flex-direction:row;align-items:center;gap:3px;padding:4px 6px;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;`;
 
       const lbl = document.createElement('span');
-      lbl.style.cssText = `font-size:0.48rem;color:${seg.color};text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.7;`;
+      lbl.style.cssText = `font-size:0.55rem;color:${seg.color};text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.8;`;
       lbl.textContent = seg.label;
       group.appendChild(lbl);
 
@@ -3482,7 +3492,7 @@ class GameDayLineupScreen extends Screen {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;scrollbar-width:none;';
     const lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:0.55rem;color:rgba(59,130,246,0.6);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:2px;';
+    lbl.style.cssText = 'font-size:0.65rem;color:rgba(59,130,246,0.7);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:2px;';
     lbl.textContent = `🪑 ${bench.length}/${maxBench}`;
     row.appendChild(lbl);
     if (bench.length === 0) {
