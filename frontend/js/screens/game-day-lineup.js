@@ -2695,6 +2695,7 @@ class GameDayLineupScreen extends Screen {
     ctrlRow.appendChild(dataSyncBtn);
 
     bar.appendChild(ctrlRow);
+    bar.appendChild(this._buildSyncRow());
     wrapper.appendChild(bar);
 
     container.appendChild(wrapper);
@@ -3492,11 +3493,13 @@ class GameDayLineupScreen extends Screen {
     } else {
       for (const p of bench) row.appendChild(this._buildPanelChipEl(p, 'bench'));
     }
-    const stripDiv = document.createElement('div');
-    stripDiv.style.cssText = 'width:1px;align-self:stretch;background:rgba(59,130,246,0.3);margin:0 2px;flex-shrink:0;';
-    row.appendChild(stripDiv);
-    // ── sync cards: one per training event + one for the game ────────────────
-    const syncRow = row;
+    wrapper.appendChild(row);
+    return wrapper;
+  }
+
+  _buildSyncRow() {
+    const syncRow = document.createElement('div');
+    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:3px 6px 4px;gap:4px;scrollbar-width:none;border-top:1px solid rgba(59,130,246,0.2);';
 
     const fmtTs = (s) => {
       if (!s) return '';
@@ -3512,13 +3515,11 @@ class GameDayLineupScreen extends Screen {
     };
     const mkCard = (label, eventDt, dot, syncTs, onSync) => {
       const card = document.createElement('div');
-      card.style.cssText = 'flex-shrink:0;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:4px 7px;min-width:60px;max-width:78px;cursor:pointer;';
-      card.innerHTML = `
-        <span style="font-size:0.7rem;color:#7ec8ff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${label}</span>
-        ${eventDt ? `<span style="font-size:0.62rem;color:#c8e0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${eventDt}</span>` : ''}
-        <span style="font-size:1rem;line-height:1;">${dot}</span>
-        <span style="font-size:0.6rem;color:#ffe066;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${syncTs || '–'}</span>
-        <span style="font-size:0.6rem;color:#7ec8ff;border:1px solid rgba(80,140,255,0.4);border-radius:3px;padding:1px 5px;">🔄</span>`;
+      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:5px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap;';
+      card.innerHTML =
+        `<span style="font-size:1rem;line-height:1;">${dot}</span>` +
+        `<span style="font-size:0.72rem;color:#7ec8ff;font-weight:700;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}</span>` +
+        (syncTs ? `<span style="font-size:0.65rem;color:#ffe066;">${syncTs}</span>` : '');
       card.addEventListener('click', onSync);
       return card;
     };
@@ -3528,19 +3529,17 @@ class GameDayLineupScreen extends Screen {
     const dayAbbrev = { sunday:'Su', monday:'Mo', tuesday:'Tu', wednesday:'We', thursday:'Th', friday:'Fr', saturday:'Sa' };
     const now = Date.now();
 
-    // ── Training event cards ──────────────────────────────────────────────────
     const leagueData = this._leaguesSyncData;
     const trainingChat = leagueData?.groupme?.find(c => c.chatType === 5) || leagueData?.groupme?.find(c => c.chatType === 3);
     const trainSyncAge = trainingChat?.lastSyncedAt ? now - new Date(trainingChat.lastSyncedAt).getTime() : Infinity;
     const trainSyncDot = trainSyncAge < 24*60*60*1000 ? '🟢' : trainSyncAge < 48*60*60*1000 ? '🟡' : '🔴';
-
     const trainSyncTime = fmtTs(trainingChat?.lastSyncedAt || '');
 
     for (const evt of (this.trainingEvents || [])) {
       const t = evt.title.toLowerCase();
       const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1] || evt.eventDate.slice(5, 10);
       const isPickup = t.includes('pickup');
-      const label = isPickup ? '⚽ P' : day;
+      const label = isPickup ? '⚽P' : day;
       const going = evt.goingCount ?? 0;
       const evtDt = fmtTs(evt.startAt || '') || evt.eventDate.slice(5, 10);
       const trainSyncTs = (going > 0 ? going + '✓ ' : '') + (trainSyncTime || 'not synced');
@@ -3549,7 +3548,6 @@ class GameDayLineupScreen extends Screen {
       }));
     }
 
-    // ── Game event card ───────────────────────────────────────────────────────
     const gs = this.groupmeSync || {};
     const rsvpOk = gs.hasLinkedEvent && gs.status === 'fresh';
     const rsvpWarn = gs.hasLinkedEvent && gs.status === 'stale';
@@ -3562,8 +3560,7 @@ class GameDayLineupScreen extends Screen {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
 
-    wrapper.appendChild(row);
-    return wrapper;
+    return syncRow;
   }
 
   async _openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId }) {
