@@ -101,12 +101,12 @@ class GameDayLineupScreen extends Screen {
   }
 
   onEnter(params) {
-    if (this._listenersAttached) return;
-    this._listenersAttached = true;
-
-    this.attachEventListeners();
+    if (!this._listenersAttached) {
+      this._listenersAttached = true;
+      this.attachEventListeners();
+      this.loadFormations();
+    }
     this.syncThenLoad();
-    this.loadFormations();
     this.loadSavedMetadata();
     this.loadLeaguesSyncStatus();
   }
@@ -866,10 +866,9 @@ class GameDayLineupScreen extends Screen {
 
     const headerIcon = allGreen ? '🟢' : '🔴';
     panel.innerHTML = `
-      <details style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
+      <details open style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
         <summary style="padding:6px 10px;cursor:pointer;font-size:0.8rem;font-weight:600;list-style:none;display:flex;align-items:center;gap:6px;">
           ${headerIcon} Data Sync
-          <span style="font-size:0.7rem;font-weight:400;color:var(--text-muted);margin-left:4px;">tap to expand</span>
         </summary>
         <div style="padding:6px 4px;display:flex;flex-direction:column;gap:4px;">
           ${rows.join('')}
