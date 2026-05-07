@@ -571,10 +571,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             int futureRsvpYes = row["future_rsvp_yes"].as<int>();
             pe.projected_sessions = pe.sessions_attended + futureRsvpYes;
             
-            // Compute effective minimum sessions (apply family/keeper discount to age-based requirement)
+            // Compute effective minimum sessions (keepers always 0; family discount applies to others)
             pe.effective_min_sessions = pe.required_sessions;
             if (pe.is_keeper) {
-                pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.keeper_discount);
+                pe.effective_min_sessions = 0;
             } else if (pe.has_family_discount) {
                 pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.family_discount);
             }
@@ -1643,6 +1643,7 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     bool hasFamilyDisc       = parseJsonBool(body, "hasFamilyDiscount");
     std::string jersey       = parseJsonString(body, "jerseyNumber");
     std::string internalRole = parseJsonString(body, "internalRole");
+    bool isKeeper            = parseJsonBool(body, "isKeeper");
     bool isInjured           = parseJsonBool(body, "isInjured");
     bool isSuspLeague        = parseJsonBool(body, "isSuspendedLeague");
     bool isSuspInhouse       = parseJsonBool(body, "isSuspendedInhouse");
@@ -1675,16 +1676,17 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
                    num_clubs            = $3::int,
                    has_family_discount  = $4::bool,
                    internal_role        = NULLIF($5, '')::varchar,
-                   is_injured           = $6::bool,
-                   is_suspended_league  = $7::bool,
-                   is_suspended_inhouse = $8::bool,
-                   elig_apsl_starter    = $9::bool,
-                   elig_apsl_bench      = $10::bool,
-                   elig_liga1_starter   = $11::bool,
-                   elig_liga1_bench     = $12::bool,
-                   elig_liga2_starter   = $13::bool,
-                   elig_liga2_bench     = $14::bool,
-                   required_sessions_override = CASE WHEN $15::boolean THEN NULLIF($16::text,'')::smallint ELSE required_sessions_override END,
+                   is_keeper            = $6::bool,
+                   is_injured           = $7::bool,
+                   is_suspended_league  = $8::bool,
+                   is_suspended_inhouse = $9::bool,
+                   elig_apsl_starter    = $10::bool,
+                   elig_apsl_bench      = $11::bool,
+                   elig_liga1_starter   = $12::bool,
+                   elig_liga1_bench     = $13::bool,
+                   elig_liga2_starter   = $14::bool,
+                   elig_liga2_bench     = $15::bool,
+                   required_sessions_override = CASE WHEN $16::boolean THEN NULLIF($17::text,'')::smallint ELSE required_sessions_override END,
                    updated_at           = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
@@ -1694,6 +1696,7 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             std::to_string(numClubs),
             hasFamilyDisc  ? "true" : "false",
             internalRole,
+            isKeeper       ? "true" : "false",
             isInjured      ? "true" : "false",
             isSuspLeague   ? "true" : "false",
             isSuspInhouse  ? "true" : "false",

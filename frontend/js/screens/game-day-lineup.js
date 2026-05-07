@@ -3859,6 +3859,14 @@ class GameDayLineupScreen extends Screen {
               </div>
               <input type="checkbox" id="ep-family" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${player.hasFamilyDiscount ? 'checked' : ''}>
             </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">🧤 Goalkeeper</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">0 practices required</div>
+              </div>
+              <input type="checkbox" id="ep-keeper" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${player.isKeeper ? 'checked' : ''}>
+            </label>
           </div>
 
           <!-- Status -->
@@ -4006,6 +4014,7 @@ class GameDayLineupScreen extends Screen {
         const designated       = overlay.querySelector('#ep-designated').checked;
         const numClubs         = parseInt(overlay.querySelector('#ep-numclubs').value);
         const family           = overlay.querySelector('#ep-family').checked;
+        const isKeeper         = overlay.querySelector('#ep-keeper').checked;
         const jersey           = overlay.querySelector('#ep-jersey').value.trim() || null;
         const isInjured        = overlay.querySelector('#ep-injured').checked;
         const isSuspLeague     = overlay.querySelector('#ep-susp-league').checked;
@@ -4023,6 +4032,7 @@ class GameDayLineupScreen extends Screen {
         player.isDesignated       = designated;
         player.numClubs           = numClubs;
         player.hasFamilyDiscount  = family;
+        player.isKeeper           = isKeeper;
         player.jerseyNumber       = jersey;
         player.isInjured          = isInjured;
         player.isSuspendedLeague  = isSuspLeague;
@@ -4049,7 +4059,7 @@ class GameDayLineupScreen extends Screen {
 
         try {
           const flagsPayload = {
-            isDesignated: designated, numClubs, hasFamilyDiscount: family,
+            isDesignated: designated, numClubs, hasFamilyDiscount: family, isKeeper,
             jerseyNumber: jersey, internalRole: player.internalRole || '',
             isInjured, isSuspendedLeague: isSuspLeague, isSuspendedInhouse: isSuspInhouse,
             eligApslStarter, eligApslBench, eligLiga1Starter, eligLiga1Bench,
