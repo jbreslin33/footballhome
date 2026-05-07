@@ -391,7 +391,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         std::string groupmeLastSync = "";
         int groupmeMinutesAgo = -1;
         bool hasLinkedEvent = false;
-        
+        std::string calendarLastSyncedAt = "";
+
         try {
             // First check: does this match have a linked GroupMe chat_event?
             pqxx::result linkedResult = db_->query(
@@ -434,6 +435,19 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 }
             }
             // else: no linked event → status stays "no_data"
+
+            // Get calendar last_synced_at from chat_integrations for this team's chat
+            pqxx::result calSyncResult = db_->query(
+                "SELECT ci.last_synced_at::text as synced_at "
+                "FROM chat_integrations ci "
+                "JOIN chats c ON c.id = ci.chat_id "
+                "WHERE c.team_id = $1::int AND ci.provider_id = 1 "
+                "LIMIT 1",
+                {teamId}
+            );
+            if (!calSyncResult.empty() && !calSyncResult[0]["synced_at"].is_null()) {
+                calendarLastSyncedAt = calSyncResult[0]["synced_at"].c_str();
+            }
         } catch (const std::exception& e) {
             std::cerr << "⚠️ GroupMe freshness check failed: " << e.what() << std::endl;
         }
@@ -467,8 +481,18 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << ",\"lastSync\":\"" << isoSync << "\"";
             json << ",\"minutesAgo\":" << groupmeMinutesAgo;
         }
+        if (!calendarLastSyncedAt.empty()) {
+            // ISO-8601 timestamp of last sync-calendar run for this team
+            std::string isoCalSync = calendarLastSyncedAt;
+            auto sp = isoCalSync.find(' ');
+            if (sp != std::string::npos) isoCalSync[sp] = 'T';
+            auto dp = isoCalSync.find('.');
+            if (dp != std::string::npos) isoCalSync = isoCalSync.substr(0, dp);
+            isoCalSync += "Z";
+            json << ",\"calendarLastSyncedAt\":\"" << isoCalSync << "\"";
+        }
         json << "},";
-        
+
         // Policy info
         json << "\"policy\":{";
         json << "\"lookbackCount\":" << policy.lookback_count << ",";
