@@ -49,6 +49,9 @@ private:
     // Handler: sync GroupMe calendar events → matches + chat_events for a team
     Response handleSyncCalendar(const Request& request);
 
+    // Handler: combined GroupMe + scrape timestamps per league for a team
+    Response handleGetLeaguesSyncStatus(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 

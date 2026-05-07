@@ -6,6 +6,7 @@
 #include <regex>
 #include <iostream>
 #include <chrono>
+#include <fstream>
 
 // ============================================================================
 // CURL write callback
@@ -77,6 +78,11 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     // POST /api/groupme/sync-calendar/:teamId — Sync GroupMe calendar events → matches
     router.post(prefix + "/sync-calendar/:teamId", [this](const Request& request) {
         return this->handleSyncCalendar(request);
+    });
+
+    // GET /api/groupme/leagues-sync-status/:teamId — GroupMe + scrape timestamps per league for a team
+    router.get(prefix + "/leagues-sync-status/:teamId", [this](const Request& request) {
+        return this->handleGetLeaguesSyncStatus(request);
     });
 }
 
@@ -1912,6 +1918,80 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ handleSyncCalendar error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Sync failed"));
+    }
+}
+
+// ============================================================================
+// Handler: Combined GroupMe + scrape timestamps per league for a team
+// GET /api/groupme/leagues-sync-status/:teamId
+// Returns GroupMe calendar last_synced_at + scrape-status.json timestamps
+// so the match-list screen can show freshness per league.
+// ============================================================================
+Response GroupMeController::handleGetLeaguesSyncStatus(const Request& request) {
+    std::string teamId = extractIdFromPath(request.getPath(), "/api/groupme/leagues-sync-status/(\\d+)");
+    if (teamId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "teamId required"));
+    }
+
+    try {
+        // 1. GroupMe calendar last_synced_at for each chat linked to this team's club
+        pqxx::result gmResult = db_->query(
+            "SELECT c.chat_type_id, c.name, ci.last_synced_at::text as synced_at "
+            "FROM chat_integrations ci "
+            "JOIN chats c ON c.id = ci.chat_id "
+            "WHERE ci.provider_id = 1 "
+            "  AND (c.team_id = $1::int "
+            "    OR c.id IN ("
+            "      SELECT cc.chat_id FROM chat_clubs cc "
+            "      JOIN teams t ON t.club_id = cc.club_id "
+            "      WHERE t.id = $1::int"
+            "    )"
+            "  ) "
+            "ORDER BY c.chat_type_id",
+            {teamId}
+        );
+
+        // 2. Read scrape-status.json
+        std::string scrapeJson = "{}";
+        std::ifstream sf("/app/database/data/scrape-status.json");
+        if (sf.is_open()) {
+            scrapeJson = std::string((std::istreambuf_iterator<char>(sf)),
+                                     std::istreambuf_iterator<char>());
+            sf.close();
+        }
+
+        // 3. Build response
+        std::ostringstream out;
+        out << "{";
+
+        out << "\"groupme\":[";
+        bool first = true;
+        for (const auto& row : gmResult) {
+            if (!first) out << ",";
+            first = false;
+            std::string syncedAt = row["synced_at"].is_null() ? "" : row["synced_at"].c_str();
+            // Normalise to ISO: replace space with T, trim micros, append Z
+            if (!syncedAt.empty()) {
+                auto sp = syncedAt.find(' ');
+                if (sp != std::string::npos) syncedAt[sp] = 'T';
+                auto dp = syncedAt.find('.');
+                if (dp != std::string::npos) syncedAt = syncedAt.substr(0, dp);
+                syncedAt += "Z";
+            }
+            out << "{\"chatType\":" << row["chat_type_id"].c_str()
+                << ",\"chatName\":\"" << escapeJson(row["name"].c_str()) << "\""
+                << ",\"lastSyncedAt\":" << (syncedAt.empty() ? "null" : "\"" + syncedAt + "\"")
+                << "}";
+        }
+        out << "],";
+
+        out << "\"scrape\":" << (scrapeJson.empty() ? "{}" : scrapeJson);
+        out << "}";
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "OK", out.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ leagues-sync-status error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed"));
     }
 }
 

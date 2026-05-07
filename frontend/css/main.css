@@ -1790,6 +1790,30 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 .groupme-sync-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
 .groupme-sync-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
 
+.leagues-sync-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: var(--space-3);
+}
+.league-sync-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8em;
+}
+.league-sync-label {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    min-width: 70px;
+}
+.league-sync-val {
+    flex: 1;
+    text-align: right;
+}
+
 .match-card-meta {
     display: flex;
     flex-direction: column;
