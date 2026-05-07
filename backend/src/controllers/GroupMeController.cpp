@@ -1302,15 +1302,43 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             {teamId}
         );
 
+        // Step 6b: Count going/not-going per training event
+        std::map<std::string, int> eventGoingCount;
+        std::map<std::string, int> eventNotGoingCount;
+        if (!events.empty()) {
+            std::string eventIds;
+            for (size_t i = 0; i < events.size(); i++) {
+                if (i > 0) eventIds += ",";
+                eventIds += events[i].id;
+            }
+            pqxx::result countResult = db_->query(
+                "SELECT chat_event_id::text, rsvp_status_id, COUNT(*)::int as cnt "
+                "FROM chat_event_rsvps "
+                "WHERE chat_event_id IN (" + eventIds + ") "
+                "GROUP BY chat_event_id, rsvp_status_id"
+            );
+            for (const auto& row : countResult) {
+                std::string eid = row["chat_event_id"].c_str();
+                int status = std::stoi(row["rsvp_status_id"].c_str());
+                int cnt = row["cnt"].as<int>();
+                if (status == 1) eventGoingCount[eid] = cnt;
+                else if (status == 2) eventNotGoingCount[eid] = cnt;
+            }
+        }
+
         // Step 7: Build response JSON
         std::ostringstream json;
         json << "{\"events\":[";
         for (size_t i = 0; i < events.size(); i++) {
             if (i > 0) json << ",";
+            int going = eventGoingCount.count(events[i].id) ? eventGoingCount[events[i].id] : 0;
+            int notGoing = eventNotGoingCount.count(events[i].id) ? eventNotGoingCount[events[i].id] : 0;
             json << "{\"id\":" << events[i].id
                  << ",\"title\":\"" << escapeJson(events[i].title) << "\""
                  << ",\"eventDate\":\"" << events[i].eventDate << "\""
-                 << ",\"chatName\":\"" << escapeJson(events[i].chatName) << "\"}";
+                 << ",\"chatName\":\"" << escapeJson(events[i].chatName) << "\""
+                 << ",\"goingCount\":" << going
+                 << ",\"notGoingCount\":" << notGoing << "}";
         }
         json << "],\"players\":[";
 

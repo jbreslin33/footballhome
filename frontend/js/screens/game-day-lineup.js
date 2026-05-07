@@ -3494,60 +3494,73 @@ class GameDayLineupScreen extends Screen {
     }
     wrapper.appendChild(benchRow);
 
-    // ── sync info row ─────────────────────────────────────────────────────────
+    // ── sync cards row: one card per training event + one for the game ────────
     const syncRow = document.createElement('div');
-    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;gap:10px;padding:4px 10px;overflow-x:auto;scrollbar-width:none;font-size:0.7rem;';
+    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;gap:4px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;';
 
-    // Game RSVP sync status
+    const mkCard = (label, sublabel, dot, onSync) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 6px;min-width:52px;max-width:68px;cursor:pointer;';
+      card.innerHTML = `
+        <span style="font-size:0.6rem;color:rgba(255,255,255,0.9);font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:100%;">${label}</span>
+        <span style="font-size:0.95rem;line-height:1;">${dot}</span>
+        <span style="font-size:0.55rem;color:rgba(255,255,255,0.45);white-space:nowrap;">${sublabel}</span>
+        <span style="font-size:0.55rem;color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:1px 4px;margin-top:1px;">🔄</span>`;
+      card.addEventListener('click', onSync);
+      return card;
+    };
+
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id;
+    const matchId = this.navigation.context.match?.id;
+    const dayAbbrev = { sunday:'Su', monday:'Mo', tuesday:'Tu', wednesday:'We', thursday:'Th', friday:'Fr', saturday:'Sa' };
+    const now = Date.now();
+
+    // ── Training event cards ──────────────────────────────────────────────────
+    const leagueData = this._leaguesSyncData;
+    const trainingChat = leagueData?.groupme?.find(c => c.chatType === 5) || leagueData?.groupme?.find(c => c.chatType === 3);
+    const trainSyncAge = trainingChat?.lastSyncedAt ? now - new Date(trainingChat.lastSyncedAt).getTime() : Infinity;
+    const trainSyncDot = trainSyncAge < 24*60*60*1000 ? '🟢' : trainSyncAge < 48*60*60*1000 ? '🟡' : '🔴';
+
+    for (const evt of (this.trainingEvents || [])) {
+      const t = evt.title.toLowerCase();
+      const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1] || evt.eventDate.slice(5, 10);
+      const isPickup = t.includes('pickup');
+      const label = isPickup ? '⚽ P' : day;
+      const going = evt.goingCount ?? 0;
+      const sublabel = going > 0 ? `${going}✓` : evt.eventDate.slice(5, 10);
+      syncRow.appendChild(mkCard(label, sublabel, trainSyncDot, async () => {
+        this.showLineupToast('⏳ Syncing training...');
+        try {
+          const r = await this.auth.fetch(`/api/groupme/sync-calendar/${teamId}`, { method: 'POST' });
+          const rd = await r.json();
+          if (rd.success) {
+            this.showLineupToast('✅ Training synced');
+            await this.loadLeaguesSyncStatus();
+            await this.loadEligibilityData();
+          } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
+        } catch (e) { this.showLineupToast('❌ ' + e.message); }
+      }));
+    }
+
+    // ── Game event card ───────────────────────────────────────────────────────
     const gs = this.groupmeSync || {};
     const rsvpOk = gs.hasLinkedEvent && gs.status === 'fresh';
     const rsvpWarn = gs.hasLinkedEvent && gs.status === 'stale';
-    const rsvpDot = rsvpOk ? '🟢' : rsvpWarn ? '🟡' : '🔴';
-    const rsvpTime = gs.lastSync ? new Date(gs.lastSync).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
-    const rsvpLabel = !gs.hasLinkedEvent ? 'No event linked' : rsvpTime ? rsvpTime : gs.status || 'not synced';
-    const rsvpPill = document.createElement('span');
-    rsvpPill.style.cssText = 'white-space:nowrap;color:rgba(255,255,255,0.7);flex-shrink:0;';
-    rsvpPill.textContent = `${rsvpDot} RSVP ${rsvpLabel}`;
-    syncRow.appendChild(rsvpPill);
-
-    // Last 5 training sessions
-    const trainEvents = (this.trainingEvents || []).slice(-5);
-    if (trainEvents.length) {
-      const sep = document.createElement('span');
-      sep.style.cssText = 'color:rgba(255,255,255,0.15);flex-shrink:0;';
-      sep.textContent = '·';
-      syncRow.appendChild(sep);
-      const trainLbl = document.createElement('span');
-      trainLbl.style.cssText = 'white-space:nowrap;color:rgba(255,255,255,0.5);flex-shrink:0;font-size:0.65rem;';
-      const dayAbbrev = { sunday:'Su', monday:'Mo', tuesday:'Tu', wednesday:'We', thursday:'Th', friday:'Fr', saturday:'Sa' };
-      const names = trainEvents.map(e => {
-        const t = e.title.toLowerCase();
-        const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1];
-        return day || e.eventDate.slice(5);
-      });
-      trainLbl.textContent = `📅 ${names.join(' · ')}`;
-      syncRow.appendChild(trainLbl);
-    }
-
-    // GroupMe training sync time
-    const leagueData = this._leaguesSyncData;
-    if (leagueData) {
-      const trainingChat = leagueData.groupme?.find(c => c.chatType === 5) || leagueData.groupme?.find(c => c.chatType === 3);
-      if (trainingChat?.lastSyncedAt) {
-        const sep2 = document.createElement('span');
-        sep2.style.cssText = 'color:rgba(255,255,255,0.15);flex-shrink:0;';
-        sep2.textContent = '·';
-        syncRow.appendChild(sep2);
-        const now = Date.now();
-        const age = now - new Date(trainingChat.lastSyncedAt).getTime();
-        const trainSyncDot = age < 24*60*60*1000 ? '🟢' : age < 48*60*60*1000 ? '🟡' : '🔴';
-        const trainSyncLbl = document.createElement('span');
-        trainSyncLbl.style.cssText = 'white-space:nowrap;color:rgba(255,255,255,0.7);flex-shrink:0;';
-        const tStr = new Date(trainingChat.lastSyncedAt).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-        trainSyncLbl.textContent = `${trainSyncDot} Training synced ${tStr}`;
-        syncRow.appendChild(trainSyncLbl);
-      }
-    }
+    const gameDot = rsvpOk ? '🟢' : rsvpWarn ? '🟡' : '🔴';
+    const gameTime = gs.lastSync ? new Date(gs.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const gameSub = !gs.hasLinkedEvent ? 'no event' : gameTime || gs.status || '?';
+    const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
+    syncRow.appendChild(mkCard(matchDate, gameSub, gameDot, async () => {
+      this.showLineupToast('⏳ Syncing game RSVPs...');
+      try {
+        const r = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, { method: 'POST' });
+        const rd = await r.json();
+        if (rd.success) {
+          this.showLineupToast(`✅ ${rd.data?.going || 0} going, ${rd.data?.notGoing || 0} not going`);
+          await this.loadEligibilityData();
+        } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
+      } catch (e) { this.showLineupToast('❌ ' + e.message); }
+    }));
 
     wrapper.appendChild(syncRow);
     return wrapper;
