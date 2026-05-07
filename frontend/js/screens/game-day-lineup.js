@@ -3543,7 +3543,7 @@ class GameDayLineupScreen extends Screen {
       const t = evt.title.toLowerCase();
       const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1] || evt.eventDate.slice(5, 10);
       const isPickup = t.includes('pickup');
-      const label = isPickup ? '⚽P' : day;
+      const label = (isPickup ? 'P' : 'T') + ' ' + day;
       const going = evt.goingCount ?? 0;
       const evtDt = fmtTs(evt.startAt || '') || evt.eventDate.slice(5, 10);
       const trainSyncTs = (going > 0 ? going + '✓ ' : '') + (trainSyncTime || 'not synced');
@@ -3561,7 +3561,7 @@ class GameDayLineupScreen extends Screen {
     const gameEvtDt = fmtTime(this.matchInfo?.time || '');
     const gameGoing = gs.goingCount ?? 0;
     const gameSyncTs = !gs.hasLinkedEvent ? 'no event' : (gameGoing > 0 ? gameGoing + '✓ ' : '') + (gameTime || '?');
-    syncRow.appendChild(mkCard(matchDate, gameEvtDt, gameDot, gameSyncTs, () => {
+    syncRow.appendChild(mkCard('G ' + matchDate, gameEvtDt, gameDot, gameSyncTs, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
 
@@ -3573,10 +3573,10 @@ class GameDayLineupScreen extends Screen {
 
     const modal = document.createElement('div');
     modal.id = 'event-rsvp-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;justify-content:center;';
     modal.innerHTML = `
       <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);" id="erm-backdrop"></div>
-      <div id="erm-sheet" style="position:relative;width:100%;max-height:85vh;background:#111827;border-radius:16px 16px 0 0;display:flex;flex-direction:column;z-index:1;">
+      <div id="erm-sheet" style="position:relative;width:min(100%,420px);max-height:80vh;background:#111827;border-radius:16px 16px 0 0;display:flex;flex-direction:column;z-index:1;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
           <span id="erm-title" style="font-size:0.9rem;font-weight:700;color:#fff;">Loading...</span>
           <button id="erm-close" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.2rem;cursor:pointer;padding:2px 8px;">✕</button>
@@ -3672,10 +3672,10 @@ class GameDayLineupScreen extends Screen {
 
       const mkRow = (person) => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,0.06);';
 
         const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = `flex:1;font-size:0.82rem;color:${person.linked ? '#7ec8ff' : 'rgba(255,255,255,0.55)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+        nameSpan.style.cssText = `flex:1;min-width:0;font-size:0.82rem;color:${person.linked ? '#7ec8ff' : 'rgba(255,255,255,0.55)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
         nameSpan.textContent = (person.linked && person.gmName) ? `${person.name} (${person.gmName})` : person.name;
         if (person.isOverride) {
           const orig = document.createElement('span');
