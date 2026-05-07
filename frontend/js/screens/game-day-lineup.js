@@ -2594,21 +2594,14 @@ class GameDayLineupScreen extends Screen {
     bar.id = 'pitch-bottom-bar';
     bar.style.cssText = 'flex-shrink:0;background:#000;border-top:1px solid rgba(255,255,255,0.1);';
 
-    // Single scrollable row: bench + sync cards + controls
+    // Single scrollable row: bench chips + controls
     const ctrlRow = document.createElement('div');
-    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;min-height:46px;';
+    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;min-height:46px;border-top:2px solid rgba(59,130,246,0.35);';
 
     // ── Bench chips ─────────────────────────────────────────────
-    const benchChips = this._buildBenchStrip();
-    benchChips.childNodes.forEach(n => ctrlRow.appendChild(n));
+    Array.from(this._buildBenchStrip().childNodes).forEach(n => ctrlRow.appendChild(n));
 
     const mkDiv = () => { const d = document.createElement('div'); d.style.cssText = 'width:1px;align-self:stretch;background:rgba(59,130,246,0.3);margin:0 1px;flex-shrink:0;'; return d; };
-    ctrlRow.appendChild(mkDiv());
-
-    // ── Sync cards ───────────────────────────────────────────────
-    const syncCards = this._buildSyncRow();
-    syncCards.childNodes.forEach(n => ctrlRow.appendChild(n));
-
     ctrlRow.appendChild(mkDiv());
 
     // ── Controls ─────────────────────────────────────────────────
@@ -2706,6 +2699,7 @@ class GameDayLineupScreen extends Screen {
     ctrlRow.appendChild(dataSyncBtn);
 
     bar.appendChild(ctrlRow);
+    bar.appendChild(this._buildSyncRow());
     wrapper.appendChild(bar);
 
     container.appendChild(wrapper);
@@ -3509,7 +3503,7 @@ class GameDayLineupScreen extends Screen {
 
   _buildSyncRow() {
     const syncRow = document.createElement('div');
-    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:3px 6px 4px;gap:4px;scrollbar-width:none;border-top:1px solid rgba(59,130,246,0.2);';
+    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:3px 6px 4px;gap:4px;scrollbar-width:none;border-top:1px solid rgba(59,130,246,0.2);flex-shrink:0;';
 
     const fmtTs = (s) => {
       if (!s) return '';
