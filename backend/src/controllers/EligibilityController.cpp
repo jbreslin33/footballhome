@@ -120,6 +120,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         std::string matchQuery = R"(
             SELECT m.id, m.home_team_id, m.away_team_id,
                    m.match_date::date as match_date,
+                   m.match_time::text as match_time,
                    COALESCE(ht.name, '') as home_team_name,
                    COALESCE(at.name, '') as away_team_name
             FROM matches m
@@ -136,6 +137,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         std::string homeTeamId = matchResult[0]["home_team_id"].c_str();
         std::string awayTeamId = matchResult[0]["away_team_id"].is_null() ? "" : matchResult[0]["away_team_id"].c_str();
         std::string matchDate = matchResult[0]["match_date"].c_str();
+        std::string matchTime = matchResult[0]["match_time"].is_null() ? "" : matchResult[0]["match_time"].c_str();
         std::string homeTeamName = matchResult[0]["home_team_name"].c_str();
         std::string awayTeamName = matchResult[0]["away_team_name"].c_str();
         
@@ -460,6 +462,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"match\":{";
         json << "\"id\":" << matchId << ",";
         json << "\"date\":\"" << matchDate << "\",";
+        if (!matchTime.empty()) json << "\"time\":\"" << matchTime << "\",";
         json << "\"homeTeam\":\"" << escapeJson(homeTeamName) << "\",";
         json << "\"awayTeam\":\"" << escapeJson(awayTeamName) << "\"";
         json << "},";

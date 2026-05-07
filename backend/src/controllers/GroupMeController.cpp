@@ -1032,7 +1032,8 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
         }
 
         pqxx::result eventResult = db_->query(
-            "SELECT ce.id, ce.title, ce.event_date::text as event_date, c.name as chat_name "
+            "SELECT ce.id, ce.title, ce.event_date::text as event_date, "
+            "       ce.start_at::text as start_at, c.name as chat_name "
             "FROM chat_events ce "
             "JOIN chats c ON c.id = ce.chat_id "
             "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
@@ -1047,6 +1048,7 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             std::string id;
             std::string title;
             std::string eventDate;
+            std::string startAt;
             std::string chatName;
         };
         std::vector<TrainingEvent> events;
@@ -1059,6 +1061,7 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             te.id = row["id"].c_str();
             te.title = row["title"].c_str();
             te.eventDate = date;
+            te.startAt = row["start_at"].is_null() ? "" : row["start_at"].c_str();
             te.chatName = row["chat_name"].c_str();
             events.push_back(te);
         }
@@ -1336,6 +1339,7 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             json << "{\"id\":" << events[i].id
                  << ",\"title\":\"" << escapeJson(events[i].title) << "\""
                  << ",\"eventDate\":\"" << events[i].eventDate << "\""
+                 << ",\"startAt\":" << (events[i].startAt.empty() ? std::string("null") : "\"" + events[i].startAt + "\"")
                  << ",\"chatName\":\"" << escapeJson(events[i].chatName) << "\""
                  << ",\"goingCount\":" << going
                  << ",\"notGoingCount\":" << notGoing << "}";

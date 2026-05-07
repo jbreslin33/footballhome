@@ -3498,14 +3498,27 @@ class GameDayLineupScreen extends Screen {
     const syncRow = document.createElement('div');
     syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;gap:4px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;';
 
-    const mkCard = (label, sublabel, dot, onSync) => {
+    const fmtTs = (s) => {
+      if (!s) return '';
+      const d = new Date(s.replace(' ', 'T'));
+      if (isNaN(d)) return '';
+      const h = d.getHours(), min = d.getMinutes(), ap = h >= 12 ? 'pm' : 'am';
+      return `${d.getMonth()+1}/${d.getDate()} ${h%12||12}${min ? ':'+String(min).padStart(2,'0') : ''}${ap}`;
+    };
+    const fmtTime = (t) => {
+      if (!t) return '';
+      const [hh, mm] = t.split(':').map(Number);
+      return `${hh%12||12}${mm ? ':'+String(mm).padStart(2,'0') : ''}${hh >= 12 ? 'pm' : 'am'}`;
+    };
+    const mkCard = (label, eventDt, dot, syncTs, onSync) => {
       const card = document.createElement('div');
-      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 6px;min-width:52px;max-width:68px;cursor:pointer;';
+      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:4px 7px;min-width:62px;max-width:80px;cursor:pointer;';
       card.innerHTML = `
-        <span style="font-size:0.6rem;color:rgba(255,255,255,0.9);font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:100%;">${label}</span>
-        <span style="font-size:0.95rem;line-height:1;">${dot}</span>
-        <span style="font-size:0.55rem;color:rgba(255,255,255,0.45);white-space:nowrap;">${sublabel}</span>
-        <span style="font-size:0.55rem;color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:1px 4px;margin-top:1px;">🔄</span>`;
+        <span style="font-size:0.7rem;color:#7ec8ff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${label}</span>
+        ${eventDt ? `<span style="font-size:0.62rem;color:#c8e0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${eventDt}</span>` : ''}
+        <span style="font-size:1rem;line-height:1;">${dot}</span>
+        <span style="font-size:0.6rem;color:#ffe066;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${syncTs || '–'}</span>
+        <span style="font-size:0.6rem;color:#7ec8ff;border:1px solid rgba(80,140,255,0.4);border-radius:3px;padding:1px 5px;">🔄</span>`;
       card.addEventListener('click', onSync);
       return card;
     };
@@ -3521,14 +3534,17 @@ class GameDayLineupScreen extends Screen {
     const trainSyncAge = trainingChat?.lastSyncedAt ? now - new Date(trainingChat.lastSyncedAt).getTime() : Infinity;
     const trainSyncDot = trainSyncAge < 24*60*60*1000 ? '🟢' : trainSyncAge < 48*60*60*1000 ? '🟡' : '🔴';
 
+    const trainSyncTime = fmtTs(trainingChat?.lastSyncedAt || '');
+
     for (const evt of (this.trainingEvents || [])) {
       const t = evt.title.toLowerCase();
       const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1] || evt.eventDate.slice(5, 10);
       const isPickup = t.includes('pickup');
       const label = isPickup ? '⚽ P' : day;
       const going = evt.goingCount ?? 0;
-      const sublabel = going > 0 ? `${going}✓` : evt.eventDate.slice(5, 10);
-      syncRow.appendChild(mkCard(label, sublabel, trainSyncDot, async () => {
+      const evtDt = fmtTs(evt.startAt || '') || evt.eventDate.slice(5, 10);
+      const trainSyncTs = (going > 0 ? going + '✓ ' : '') + (trainSyncTime || 'not synced');
+      syncRow.appendChild(mkCard(label, evtDt, trainSyncDot, trainSyncTs, async () => {
         this.showLineupToast('⏳ Syncing training...');
         try {
           const r = await this.auth.fetch(`/api/groupme/sync-calendar/${teamId}`, { method: 'POST' });
@@ -3547,10 +3563,11 @@ class GameDayLineupScreen extends Screen {
     const rsvpOk = gs.hasLinkedEvent && gs.status === 'fresh';
     const rsvpWarn = gs.hasLinkedEvent && gs.status === 'stale';
     const gameDot = rsvpOk ? '🟢' : rsvpWarn ? '🟡' : '🔴';
-    const gameTime = gs.lastSync ? new Date(gs.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const gameSub = !gs.hasLinkedEvent ? 'no event' : gameTime || gs.status || '?';
+    const gameTime = fmtTs(gs.lastSync || '');
     const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
-    syncRow.appendChild(mkCard(matchDate, gameSub, gameDot, async () => {
+    const gameEvtDt = fmtTime(this.matchInfo?.time || '');
+    const gameSyncTs = !gs.hasLinkedEvent ? 'no event' : gameTime || '?';
+    syncRow.appendChild(mkCard(matchDate, gameEvtDt, gameDot, gameSyncTs, async () => {
       this.showLineupToast('⏳ Syncing game RSVPs...');
       try {
         const r = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, { method: 'POST' });
