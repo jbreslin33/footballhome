@@ -55,6 +55,9 @@ class GameDayLineupScreen extends Screen {
       </div>
 
       <div class="lineup-container" style="padding:0 12px 80px;">
+        <!-- Data sync panel -->
+        <div id="sync-panel" style="display:none;margin:8px 0 4px;"></div>
+
         <div id="lineup-loading" class="loading-state">
           <div class="spinner"></div>
           <p>Computing eligibility...</p>
@@ -105,6 +108,7 @@ class GameDayLineupScreen extends Screen {
     this.syncThenLoad();
     this.loadFormations();
     this.loadSavedMetadata();
+    this.loadLeaguesSyncStatus();
   }
 
   /**
@@ -157,6 +161,16 @@ class GameDayLineupScreen extends Screen {
       }
       if (e.target.id === 'groupme-refresh-btn' || e.target.closest('#groupme-refresh-btn')) {
         this.refreshGroupMe();
+        return;
+      }
+
+      // Sync panel buttons
+      const syncBtn = e.target.closest('[data-sync-action]');
+      if (syncBtn) {
+        const action = syncBtn.dataset.syncAction;
+        if (action === 'groupme') this.syncGroupMeCalendar();
+        else if (action === 'scrape-apsl') this.requestScrape('apsl-teams');
+        else if (action === 'scrape-casa') this.requestScrape('casa-schedule');
         return;
       }
 
@@ -744,6 +758,158 @@ class GameDayLineupScreen extends Screen {
   _scheduleAutoSaveLineup() {
     if (this._saveLineupTimer) clearTimeout(this._saveLineupTimer);
     this._saveLineupTimer = setTimeout(() => { this.saveLineup(true); }, 1200);
+  }
+
+  // ============================================================================
+  // League Sync Panel
+  // ============================================================================
+
+  async loadLeaguesSyncStatus() {
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id;
+    if (!teamId) return;
+    const panel = this.find('#sync-panel');
+    if (!panel) return;
+    try {
+      const res = await this.auth.fetch(`/api/groupme/leagues-sync-status/${teamId}`);
+      const result = await res.json();
+      if (!result.success || !result.data) return;
+      this._leaguesSyncData = result.data;
+      this._leaguesSyncTeamId = teamId;
+      this.renderSyncPanel();
+    } catch (err) {
+      console.warn('Failed to load leagues sync status:', err.message);
+    }
+  }
+
+  renderSyncPanel() {
+    const panel = this.find('#sync-panel');
+    if (!panel || !this._leaguesSyncData) return;
+
+    const { groupme, scrape } = this._leaguesSyncData;
+    const now = Date.now();
+    const staleMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const rows = [];
+    let allGreen = true;
+
+    const fmtTime = iso => new Date(iso).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    const fmtDay  = iso => new Date(iso).toLocaleString([], { month:'short', day:'numeric' });
+    const statusOf = (iso, thresholdMs) => {
+      if (!iso) return 'missing';
+      const age = now - new Date(iso).getTime();
+      return age < thresholdMs ? 'ok' : age < thresholdMs * 2 ? 'warn' : 'old';
+    };
+    const dot = s => s === 'ok' ? '🟢' : s === 'warn' ? '🟡' : '🔴';
+    const syncBtn = (action, label) =>
+      `<button data-sync-action="${action}" style="font-size:0.72rem;padding:2px 8px;border:1px solid currentColor;border-radius:4px;cursor:pointer;background:transparent;color:inherit;margin-left:6px;">${label}</button>`;
+
+    // ── Determine league from scrape keys ──────────────────────────────────
+    const hasApsl = !!(scrape['apsl-teams'] || scrape['apsl-standings']);
+    const hasCasa = !!(scrape['casa-schedule'] || scrape['casa-rosters']);
+
+    // ── APSL row ──────────────────────────────────────────────────────────
+    if (hasApsl) {
+      const scrapeTs = [scrape['apsl-teams']?.updatedAt, scrape['apsl-standings']?.updatedAt]
+        .filter(Boolean).sort().pop();
+      const scrapeFail = scrape['apsl-teams']?.status === 'error' || scrape['apsl-standings']?.status === 'error';
+      const gmChat = groupme.find(c => c.chatType === 1 && c.chatName?.toLowerCase().includes('apsl'));
+      const scrapeStatus = scrapeFail ? 'old' : statusOf(scrapeTs, staleMs);
+      const gmStatus = statusOf(gmChat?.lastSyncedAt, 24 * 60 * 60 * 1000);
+      const rowStatus = (scrapeStatus === 'ok' && gmStatus === 'ok') ? 'ok' : (scrapeStatus === 'old' || gmStatus === 'old') ? 'old' : 'warn';
+      if (rowStatus !== 'ok') allGreen = false;
+      rows.push(`
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:var(--bg-secondary);font-size:0.78rem;">
+          <span style="font-weight:700;min-width:38px;">APSL</span>
+          <span title="Schedule last scraped">${dot(scrapeStatus)} ${scrapeTs ? fmtDay(scrapeTs) : 'never'}${scrapeFail ? ' ⚠️' : ''}</span>
+          <span style="color:var(--text-muted)">·</span>
+          <span title="GroupMe last synced">💬 ${gmChat?.lastSyncedAt ? fmtTime(gmChat.lastSyncedAt) : 'never'}</span>
+          <span style="flex:1;"></span>
+          ${syncBtn('scrape-apsl', '🌐')}
+          ${syncBtn('groupme', '💬')}
+        </div>`);
+    }
+
+    // ── CASA row ──────────────────────────────────────────────────────────
+    if (hasCasa) {
+      const scrapeTs = [scrape['casa-schedule']?.updatedAt, scrape['casa-rosters']?.updatedAt]
+        .filter(Boolean).sort().pop();
+      const scrapeFail = scrape['casa-schedule']?.status === 'error' || scrape['casa-rosters']?.status === 'error';
+      const gmChat = groupme.find(c => c.chatType === 1 && (c.chatName?.toLowerCase().includes('liga') || c.chatName?.toLowerCase().includes('casa')));
+      const scrapeStatus = scrapeFail ? 'old' : statusOf(scrapeTs, staleMs);
+      const gmStatus = statusOf(gmChat?.lastSyncedAt, 24 * 60 * 60 * 1000);
+      const rowStatus = (scrapeStatus === 'ok' && gmStatus === 'ok') ? 'ok' : (scrapeStatus === 'old' || gmStatus === 'old') ? 'old' : 'warn';
+      if (rowStatus !== 'ok') allGreen = false;
+      rows.push(`
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:var(--bg-secondary);font-size:0.78rem;">
+          <span style="font-weight:700;min-width:38px;">CASA</span>
+          <span title="Schedule last scraped">${dot(scrapeStatus)} ${scrapeTs ? fmtDay(scrapeTs) : 'never'}${scrapeFail ? ' ⚠️' : ''}</span>
+          <span style="color:var(--text-muted)">·</span>
+          <span title="GroupMe last synced">💬 ${gmChat?.lastSyncedAt ? fmtTime(gmChat.lastSyncedAt) : 'never'}</span>
+          <span style="flex:1;"></span>
+          ${syncBtn('scrape-casa', '🌐')}
+          ${syncBtn('groupme', '💬')}
+        </div>`);
+    }
+
+    // ── Training row ──────────────────────────────────────────────────────
+    const trainingChat = groupme.find(c => c.chatType === 5);
+    const pickupChat   = groupme.find(c => c.chatType === 3);
+    const trainTs = trainingChat?.lastSyncedAt || pickupChat?.lastSyncedAt;
+    const trainStatus = statusOf(trainTs, 24 * 60 * 60 * 1000);
+    if (trainStatus !== 'ok') allGreen = false;
+    rows.push(`
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:var(--bg-secondary);font-size:0.78rem;">
+        <span style="font-weight:700;min-width:38px;">Train</span>
+        <span>💬 ${trainTs ? fmtTime(trainTs) : 'never'}</span>
+        <span style="flex:1;"></span>
+        ${syncBtn('groupme', '💬 Sync')}
+      </div>`);
+
+    const headerIcon = allGreen ? '🟢' : '🔴';
+    panel.innerHTML = `
+      <details style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
+        <summary style="padding:6px 10px;cursor:pointer;font-size:0.8rem;font-weight:600;list-style:none;display:flex;align-items:center;gap:6px;">
+          ${headerIcon} Data Sync
+          <span style="font-size:0.7rem;font-weight:400;color:var(--text-muted);margin-left:4px;">tap to expand</span>
+        </summary>
+        <div style="padding:6px 4px;display:flex;flex-direction:column;gap:4px;">
+          ${rows.join('')}
+        </div>
+      </details>`;
+    panel.style.display = 'block';
+  }
+
+  async syncGroupMeCalendar() {
+    const teamId = this._leaguesSyncTeamId;
+    if (!teamId) return;
+    this.showLineupToast('⏳ Syncing GroupMe...');
+    try {
+      const res = await this.auth.fetch(`/api/groupme/sync-calendar/${teamId}`, { method: 'POST' });
+      const result = await res.json();
+      if (result.success) {
+        this.showLineupToast('✅ GroupMe synced');
+        await this.loadLeaguesSyncStatus();
+        await this.loadEligibilityData();
+      } else {
+        this.showLineupToast('❌ Sync failed: ' + (result.message || 'unknown error'));
+      }
+    } catch (err) {
+      this.showLineupToast('❌ ' + err.message);
+    }
+  }
+
+  async requestScrape(scraperType) {
+    this.showLineupToast(`⏳ Requesting ${scraperType} scrape...`);
+    try {
+      const res = await this.auth.fetch(`/api/system-admin/scrapers/trigger?scraper_type=${scraperType}`, { method: 'POST' });
+      const result = await res.json();
+      if (result.success) {
+        this.showLineupToast(`✅ Scrape queued — check back in a few minutes`);
+      } else {
+        this.showLineupToast('❌ ' + (result.error || 'Request failed'));
+      }
+    } catch (err) {
+      this.showLineupToast('❌ ' + err.message);
+    }
   }
 
   // ============================================================================
