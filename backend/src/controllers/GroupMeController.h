@@ -52,6 +52,12 @@ private:
     // Handler: combined GroupMe + scrape timestamps per league for a team
     Response handleGetLeaguesSyncStatus(const Request& request);
 
+    // Handler: get RSVP list for a specific chat event (with overrides + attendance)
+    Response handleGetEventRsvps(const Request& request);
+
+    // Handler: set or clear an RSVP override for a person on a training/chat event
+    Response handleSetEventRsvpOverride(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 

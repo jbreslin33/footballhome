@@ -3544,17 +3544,8 @@ class GameDayLineupScreen extends Screen {
       const going = evt.goingCount ?? 0;
       const evtDt = fmtTs(evt.startAt || '') || evt.eventDate.slice(5, 10);
       const trainSyncTs = (going > 0 ? going + '✓ ' : '') + (trainSyncTime || 'not synced');
-      syncRow.appendChild(mkCard(label, evtDt, trainSyncDot, trainSyncTs, async () => {
-        this.showLineupToast('⏳ Syncing training...');
-        try {
-          const r = await this.auth.fetch(`/api/groupme/sync-calendar/${teamId}`, { method: 'POST' });
-          const rd = await r.json();
-          if (rd.success) {
-            this.showLineupToast('✅ Training synced');
-            await this.loadLeaguesSyncStatus();
-            await this.loadEligibilityData();
-          } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
-        } catch (e) { this.showLineupToast('❌ ' + e.message); }
+      syncRow.appendChild(mkCard(label, evtDt, trainSyncDot, trainSyncTs, () => {
+        this._openEventRsvpModal({ type: 'training', chatEventId: evt.id, title: evt.title, startAt: evt.startAt, eventDate: evt.eventDate, teamId });
       }));
     }
 
@@ -3567,20 +3558,187 @@ class GameDayLineupScreen extends Screen {
     const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
     const gameEvtDt = fmtTime(this.matchInfo?.time || '');
     const gameSyncTs = !gs.hasLinkedEvent ? 'no event' : gameTime || '?';
-    syncRow.appendChild(mkCard(matchDate, gameEvtDt, gameDot, gameSyncTs, async () => {
-      this.showLineupToast('⏳ Syncing game RSVPs...');
-      try {
-        const r = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, { method: 'POST' });
-        const rd = await r.json();
-        if (rd.success) {
-          this.showLineupToast(`✅ ${rd.data?.going || 0} going, ${rd.data?.notGoing || 0} not going`);
-          await this.loadEligibilityData();
-        } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
-      } catch (e) { this.showLineupToast('❌ ' + e.message); }
+    syncRow.appendChild(mkCard(matchDate, gameEvtDt, gameDot, gameSyncTs, () => {
+      this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
 
     wrapper.appendChild(syncRow);
     return wrapper;
+  }
+
+  async _openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId }) {
+    document.getElementById('event-rsvp-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'event-rsvp-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;';
+    modal.innerHTML = `
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);" id="erm-backdrop"></div>
+      <div id="erm-sheet" style="position:relative;width:100%;max-height:85vh;background:#111827;border-radius:16px 16px 0 0;display:flex;flex-direction:column;z-index:1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+          <span id="erm-title" style="font-size:0.9rem;font-weight:700;color:#fff;">Loading...</span>
+          <button id="erm-close" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.2rem;cursor:pointer;padding:2px 8px;">✕</button>
+        </div>
+        <div id="erm-actions" style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;"></div>
+        <div id="erm-body" style="overflow-y:auto;padding:0 0 24px;"><div style="padding:24px;color:rgba(255,255,255,0.5);text-align:center;">Loading RSVPs...</div></div>
+      </div>`;
+
+    modal.querySelector('#erm-backdrop').addEventListener('click', () => modal.remove());
+    modal.querySelector('#erm-close').addEventListener('click', () => modal.remove());
+    document.body.appendChild(modal);
+
+    const fmtSAt = (s) => {
+      if (!s) return '';
+      const d = new Date(s.includes('T') ? s : s.replace(' ', 'T'));
+      if (isNaN(d)) return '';
+      const mo = d.getMonth()+1, dy = d.getDate(), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'pm' : 'am';
+      return `${mo}/${dy} ${h%12||12}${m ? ':'+String(m).padStart(2,'0') : ''}${ap}`;
+    };
+    const dotFor = s => s==='yes' ? '🟢' : s==='no' ? '🔴' : s==='maybe' ? '🟡' : '❔';
+
+    // Sync button
+    const actionsDiv = modal.querySelector('#erm-actions');
+    const syncBtn = document.createElement('button');
+    syncBtn.style.cssText = 'flex:1;padding:8px;border-radius:8px;border:none;background:rgba(99,102,241,0.7);color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer;';
+    syncBtn.textContent = type === 'game' ? '🔄 Sync Game RSVPs' : '🔄 Sync Training RSVPs';
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true; syncBtn.textContent = '⏳ Syncing...';
+      try {
+        const url = type === 'game'
+          ? `/api/groupme/sync-match/${matchId}?teamId=${teamId}`
+          : `/api/groupme/sync-calendar/${teamId}`;
+        const r = await this.auth.fetch(url, { method: 'POST' });
+        const rd = await r.json();
+        if (rd.success) {
+          this.showLineupToast('✅ Synced');
+          modal.remove();
+          await this.loadLeaguesSyncStatus();
+          await this.loadEligibilityData();
+        } else { syncBtn.disabled = false; syncBtn.textContent = '🔄 Sync'; this.showLineupToast('❌ ' + (rd.message||'failed')); }
+      } catch (e) { syncBtn.disabled = false; syncBtn.textContent = '🔄 Sync'; this.showLineupToast('❌ ' + e.message); }
+    });
+    actionsDiv.appendChild(syncBtn);
+
+    // Load RSVP data
+    try {
+      let resolvedChatEventId = chatEventId;
+
+      if (type === 'game') {
+        resolvedChatEventId = this.groupmeSync?.chatEventId || null;
+      }
+
+      if (!resolvedChatEventId) {
+        modal.querySelector('#erm-body').innerHTML = `<div style="padding:24px;color:rgba(255,255,255,0.5);text-align:center;">No GroupMe event linked to this ${type === 'game' ? 'match' : 'training session'}</div>`;
+        return;
+      }
+
+      const r = await this.auth.fetch(`/api/groupme/event-rsvps/${resolvedChatEventId}`);
+      const data = await r.json();
+      if (!data.success) throw new Error(data.message);
+
+      const { rsvps, noResponse, title: evtTitle, startAt: evtStartAt } = data.data;
+      const dispTitle = evtTitle || title || 'Event';
+      modal.querySelector('#erm-title').textContent =
+        `${dispTitle.length > 32 ? dispTitle.slice(0,32)+'…' : dispTitle} · ${fmtSAt(evtStartAt) || eventDate || ''}`;
+
+      const isPast = evtStartAt
+        ? new Date(evtStartAt.includes('T') ? evtStartAt : evtStartAt.replace(' ','T')) < new Date()
+        : true;
+
+      const mkOverrideBtn = (icon, status, personId, active) => {
+        const b = document.createElement('button');
+        b.textContent = icon;
+        b.title = status === 'clear' ? 'Clear override' : `Override: ${status}`;
+        b.style.cssText = `padding:3px 7px;border-radius:4px;font-size:0.75rem;cursor:pointer;border:1px solid ${active ? 'rgba(99,102,241,0.8)' : 'rgba(255,255,255,0.15)'};background:${active ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.06)'};color:#fff;`;
+        b.addEventListener('click', async () => {
+          try {
+            const res = await this.auth.fetch('/api/groupme/event-rsvp-override', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chatEventId: Number(resolvedChatEventId), personId, status })
+            });
+            const rd = await res.json();
+            if (rd.success) {
+              modal.remove();
+              this._openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId });
+              await this.loadEligibilityData();
+            } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
+          } catch (e) { this.showLineupToast('❌ ' + e.message); }
+        });
+        return b;
+      };
+
+      const mkRow = (person) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = `flex:1;font-size:0.82rem;color:${person.linked ? '#7ec8ff' : 'rgba(255,255,255,0.55)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+        nameSpan.textContent = person.name;
+        if (person.isOverride) {
+          const orig = document.createElement('span');
+          orig.style.cssText = 'font-size:0.65rem;color:rgba(255,255,255,0.35);margin-left:4px;';
+          orig.textContent = `(GM:${dotFor(person.rsvpStatus)})`;
+          nameSpan.appendChild(orig);
+        }
+        row.appendChild(nameSpan);
+
+        const btns = document.createElement('div');
+        btns.style.cssText = 'display:flex;gap:3px;align-items:center;flex-shrink:0;';
+
+        if (person.personId && isPast && type !== 'game') {
+          const cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.checked = person.attended || false;
+          cb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:#6366f1;margin-right:2px;';
+          cb.title = 'Attended';
+          cb.addEventListener('change', async () => {
+            try {
+              const res = await this.auth.fetch('/api/groupme/training-attendance', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ personId: person.personId, chatEventId: Number(resolvedChatEventId), attended: cb.checked })
+              });
+              const rd = await res.json();
+              if (!rd.success) { cb.checked = !cb.checked; this.showLineupToast('❌ ' + (rd.message||'failed')); }
+              else await this.loadEligibilityData();
+            } catch (e) { cb.checked = !cb.checked; this.showLineupToast('❌ ' + e.message); }
+          });
+          btns.appendChild(cb);
+        }
+
+        if (person.personId) {
+          [['✓','yes'],['✗','no'],['?','maybe'],['×','clear']].forEach(([icon, status]) => {
+            const active = status !== 'clear' && person.isOverride && person.overrideStatus === status;
+            btns.appendChild(mkOverrideBtn(icon, status, person.personId, active));
+          });
+        }
+        row.appendChild(btns);
+        return row;
+      };
+
+      const body = modal.querySelector('#erm-body');
+      body.innerHTML = '';
+
+      const sections = [
+        { label: '🟢 Going',       items: rsvps.filter(r => r.effStatus === 'yes') },
+        { label: '🔴 Not Going',   items: rsvps.filter(r => r.effStatus === 'no') },
+        { label: '🟡 Maybe',       items: rsvps.filter(r => r.effStatus === 'maybe') },
+        { label: '❔ No Response', items: noResponse },
+      ];
+      for (const sec of sections) {
+        if (!sec.items.length) continue;
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.45);letter-spacing:0.05em;background:rgba(255,255,255,0.03);';
+        hdr.textContent = `${sec.label} (${sec.items.length})`;
+        body.appendChild(hdr);
+        for (const p of sec.items) body.appendChild(mkRow(p));
+      }
+      if (!rsvps.length && !noResponse.length) {
+        body.innerHTML = '<div style="padding:24px;color:rgba(255,255,255,0.4);text-align:center;">No RSVP data yet — tap Sync to load</div>';
+      }
+
+    } catch (err) {
+      modal.querySelector('#erm-body').innerHTML = `<div style="padding:24px;color:#ef4444;text-align:center;">❌ ${err.message}</div>`;
+    }
   }
 
   _renderBelowPitchZones(container) {

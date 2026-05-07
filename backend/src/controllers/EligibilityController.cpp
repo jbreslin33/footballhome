@@ -393,6 +393,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         std::string groupmeLastSync = "";
         int groupmeMinutesAgo = -1;
         bool hasLinkedEvent = false;
+        int linkedChatEventId = 0;
         std::string calendarLastSyncedAt = "";
 
         try {
@@ -405,6 +406,9 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 {matchId, teamId}
             );
             hasLinkedEvent = !linkedResult.empty();
+            if (hasLinkedEvent) {
+                linkedChatEventId = linkedResult[0]["id"].as<int>();
+            }
 
             if (hasLinkedEvent) {
                 // Check freshness of RSVPs specifically for this match
@@ -471,6 +475,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"groupmeSync\":{";
         json << "\"status\":\"" << groupmeStatus << "\"";
         json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
+        if (linkedChatEventId > 0) json << ",\"chatEventId\":" << linkedChatEventId;
         if (!groupmeLastSync.empty()) {
             // Convert Postgres "YYYY-MM-DD HH:MM:SS" (UTC) to ISO 8601 "YYYY-MM-DDTHH:MM:SSZ"
             // so JavaScript's new Date() parses it as UTC, not local time.
