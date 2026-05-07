@@ -3477,26 +3477,26 @@ class GameDayLineupScreen extends Screen {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'flex-shrink:0;border-top:2px solid rgba(59,130,246,0.4);background:rgba(0,0,0,0.35);';
 
-    // ── bench chips row ───────────────────────────────────────────────────────
-    const benchRow = document.createElement('div');
-    benchRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.06);';
+    // ── single row: bench chips + sync cards ─────────────────────────────────
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;scrollbar-width:none;';
     const lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:0.55rem;color:rgba(59,130,246,0.6);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:4px;';
-    lbl.textContent = `🪑 Bench ${bench.length}/${maxBench}`;
-    benchRow.appendChild(lbl);
+    lbl.style.cssText = 'font-size:0.55rem;color:rgba(59,130,246,0.6);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:2px;';
+    lbl.textContent = `🪑 ${bench.length}/${maxBench}`;
+    row.appendChild(lbl);
     if (bench.length === 0) {
       const empty = document.createElement('span');
-      empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;align-self:center;';
+      empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;';
       empty.textContent = '—';
-      benchRow.appendChild(empty);
+      row.appendChild(empty);
     } else {
-      for (const p of bench) benchRow.appendChild(this._buildPanelChipEl(p, 'bench'));
+      for (const p of bench) row.appendChild(this._buildPanelChipEl(p, 'bench'));
     }
-    wrapper.appendChild(benchRow);
-
-    // ── sync cards row: one card per training event + one for the game ────────
-    const syncRow = document.createElement('div');
-    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;gap:4px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;';
+    const stripDiv = document.createElement('div');
+    stripDiv.style.cssText = 'width:1px;align-self:stretch;background:rgba(59,130,246,0.3);margin:0 2px;flex-shrink:0;';
+    row.appendChild(stripDiv);
+    // ── sync cards: one per training event + one for the game ────────────────
+    const syncRow = row;
 
     const fmtTs = (s) => {
       if (!s) return '';
@@ -3512,7 +3512,7 @@ class GameDayLineupScreen extends Screen {
     };
     const mkCard = (label, eventDt, dot, syncTs, onSync) => {
       const card = document.createElement('div');
-      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:4px 7px;min-width:62px;max-width:80px;cursor:pointer;';
+      card.style.cssText = 'flex-shrink:0;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:4px 7px;min-width:60px;max-width:78px;cursor:pointer;';
       card.innerHTML = `
         <span style="font-size:0.7rem;color:#7ec8ff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${label}</span>
         ${eventDt ? `<span style="font-size:0.62rem;color:#c8e0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${eventDt}</span>` : ''}
@@ -3562,7 +3562,7 @@ class GameDayLineupScreen extends Screen {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
 
-    wrapper.appendChild(syncRow);
+    wrapper.appendChild(row);
     return wrapper;
   }
 
@@ -3674,7 +3674,7 @@ class GameDayLineupScreen extends Screen {
 
         const nameSpan = document.createElement('span');
         nameSpan.style.cssText = `flex:1;font-size:0.82rem;color:${person.linked ? '#7ec8ff' : 'rgba(255,255,255,0.55)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
-        nameSpan.textContent = person.name;
+        nameSpan.textContent = (person.linked && person.gmName) ? `${person.name} (${person.gmName})` : person.name;
         if (person.isOverride) {
           const orig = document.createElement('span');
           orig.style.cssText = 'font-size:0.65rem;color:rgba(255,255,255,0.35);margin-left:4px;';

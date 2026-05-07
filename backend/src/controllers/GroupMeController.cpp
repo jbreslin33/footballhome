@@ -2381,11 +2381,12 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
 
         for (size_t i = 0; i < rsvpResult.size(); i++) {
             if (i > 0) json << ",";
+            std::string gmName = rsvpResult[i]["external_username"].is_null() ? "" : rsvpResult[i]["external_username"].c_str();
             std::string name;
             if (!rsvpResult[i]["first_name"].is_null()) {
                 name = std::string(rsvpResult[i]["first_name"].c_str()) + " " + rsvpResult[i]["last_name"].c_str();
-            } else if (!rsvpResult[i]["external_username"].is_null()) {
-                name = rsvpResult[i]["external_username"].c_str();
+            } else if (!gmName.empty()) {
+                name = gmName;
             } else {
                 name = "Unknown";
             }
@@ -2397,6 +2398,7 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
                  << "\"rsvpId\":" << rsvpResult[i]["rsvp_id"].c_str() << ","
                  << "\"personId\":" << pid << ","
                  << "\"name\":\"" << escapeJson(name) << "\","
+                 << "\"gmName\":" << (gmName.empty() || !rsvpResult[i]["first_name"].is_null() == false ? "null" : "\"" + escapeJson(gmName) + "\"") << ","
                  << "\"linked\":" << (rsvpResult[i]["person_id"].is_null() ? "false" : "true") << ","
                  << "\"rsvpStatus\":\"" << rsvpResult[i]["rsvp_status"].c_str() << "\","
                  << "\"rsvpStatusId\":" << rsvpResult[i]["rsvp_status_id"].c_str() << ","
@@ -2411,11 +2413,13 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
         json << "],\"noResponse\":[";
         for (size_t i = 0; i < noRspResult.size(); i++) {
             if (i > 0) json << ",";
+            std::string noGmName = noRspResult[i]["external_username"].is_null() ? "" : noRspResult[i]["external_username"].c_str();
             std::string name;
-            if (!noRspResult[i]["first_name"].is_null()) {
+            bool noLinked = !noRspResult[i]["first_name"].is_null();
+            if (noLinked) {
                 name = std::string(noRspResult[i]["first_name"].c_str()) + " " + noRspResult[i]["last_name"].c_str();
-            } else if (!noRspResult[i]["external_username"].is_null()) {
-                name = noRspResult[i]["external_username"].c_str();
+            } else if (!noGmName.empty()) {
+                name = noGmName;
             } else {
                 name = "Unknown";
             }
@@ -2423,6 +2427,7 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
             json << "{"
                  << "\"personId\":" << pid << ","
                  << "\"name\":\"" << escapeJson(name) << "\","
+                 << "\"gmName\":" << (noLinked && !noGmName.empty() ? "\"" + escapeJson(noGmName) + "\"" : "null") << ","
                  << "\"linked\":" << (noRspResult[i]["person_id"].is_null() ? "false" : "true")
                  << "}";
         }
