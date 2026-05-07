@@ -865,6 +865,7 @@ class GameDayLineupScreen extends Screen {
       </div>`);
 
     const headerIcon = allGreen ? '🟢' : '🔴';
+    this._syncAllGreen = allGreen;
     panel.innerHTML = `
       <details open style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
         <summary style="padding:6px 10px;cursor:pointer;font-size:0.8rem;font-weight:600;list-style:none;display:flex;align-items:center;gap:6px;">
@@ -875,6 +876,87 @@ class GameDayLineupScreen extends Screen {
         </div>
       </details>`;
     panel.style.display = 'block';
+  }
+
+  _openPitchSyncModal() {
+    // Remove any existing modal
+    document.getElementById('pitch-sync-modal')?.remove();
+
+    const { groupme, scrape } = this._leaguesSyncData || { groupme: [], scrape: {} };
+    const now = Date.now();
+    const staleMs = 7 * 24 * 60 * 60 * 1000;
+    const statusOf = (iso, ms) => !iso ? 'old' : (now - new Date(iso).getTime()) < ms ? 'ok' : 'warn';
+    const dot = s => s === 'ok' ? '🟢' : s === 'warn' ? '🟡' : '🔴';
+    const fmtTime = iso => new Date(iso).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    const fmtDay  = iso => new Date(iso).toLocaleString([], { month:'short', day:'numeric' });
+
+    const rows = [];
+    const addRow = (label, items, syncAction) => {
+      rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
+        <span style="font-weight:700;min-width:52px;color:#fff;">${label}</span>
+        <div style="flex:1;font-size:0.78rem;color:rgba(255,255,255,0.75);">${items}</div>
+        <button data-sync-action="${syncAction}" onclick="this.closest('#pitch-sync-modal').dispatchEvent(new CustomEvent('sync-action',{detail:'${syncAction}',bubbles:true}))" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:#fff;font-size:0.75rem;cursor:pointer;">Sync</button>
+      </div>`);
+    };
+
+    const hasApsl = !!(scrape['apsl-teams'] || scrape['apsl-standings']);
+    const hasCasa = !!(scrape['casa-schedule'] || scrape['casa-rosters']);
+
+    if (hasApsl) {
+      const scrapeTs = [scrape['apsl-teams']?.updatedAt, scrape['apsl-standings']?.updatedAt].filter(Boolean).sort().pop();
+      const scrapeFail = scrape['apsl-teams']?.status === 'error';
+      const gmChat = groupme.find(c => c.chatType === 1 && c.chatName?.toLowerCase().includes('apsl'));
+      const scrSt = scrapeFail ? 'old' : statusOf(scrapeTs, staleMs);
+      const gmSt  = statusOf(gmChat?.lastSyncedAt, 24*60*60*1000);
+      addRow('APSL',
+        `${dot(scrSt)} Schedule: ${scrapeTs ? fmtDay(scrapeTs) : 'never'}${scrapeFail?' ⚠️':''} &nbsp; ${dot(gmSt)} GroupMe: ${gmChat?.lastSyncedAt ? fmtTime(gmChat.lastSyncedAt) : 'never'}`,
+        'groupme');
+    }
+
+    if (hasCasa) {
+      const scrapeTs = [scrape['casa-schedule']?.updatedAt, scrape['casa-rosters']?.updatedAt].filter(Boolean).sort().pop();
+      const scrapeFail = scrape['casa-schedule']?.status === 'error';
+      const gmChat = groupme.find(c => c.chatType === 1 && (c.chatName?.toLowerCase().includes('liga') || c.chatName?.toLowerCase().includes('casa')));
+      const scrSt = scrapeFail ? 'old' : statusOf(scrapeTs, staleMs);
+      const gmSt  = statusOf(gmChat?.lastSyncedAt, 24*60*60*1000);
+      addRow('CASA',
+        `${dot(scrSt)} Schedule: ${scrapeTs ? fmtDay(scrapeTs) : 'never'}${scrapeFail?' ⚠️':''} &nbsp; ${dot(gmSt)} GroupMe: ${gmChat?.lastSyncedAt ? fmtTime(gmChat.lastSyncedAt) : 'never'}`,
+        'groupme');
+    }
+
+    const trainingChat = groupme.find(c => c.chatType === 5) || groupme.find(c => c.chatType === 3);
+    const trainSt = statusOf(trainingChat?.lastSyncedAt, 24*60*60*1000);
+    addRow('Training',
+      `${dot(trainSt)} GroupMe: ${trainingChat?.lastSyncedAt ? fmtTime(trainingChat.lastSyncedAt) : 'never'}`,
+      'groupme');
+
+    const modal = document.createElement('div');
+    modal.id = 'pitch-sync-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;';
+    modal.innerHTML = `
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);" id="pitch-sync-backdrop"></div>
+      <div style="position:relative;width:100%;background:#1a1a2e;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom,12px);z-index:1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.1);">
+          <span style="font-size:0.95rem;font-weight:700;color:#fff;">📡 Data Sync</span>
+          <button id="pitch-sync-close" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.2rem;cursor:pointer;padding:2px 6px;">✕</button>
+        </div>
+        ${rows.join('')}
+        <div style="padding:10px 12px;">
+          <button data-sync-action="groupme" onclick="this.closest('#pitch-sync-modal').dispatchEvent(new CustomEvent('sync-action',{detail:'groupme',bubbles:true}))" style="width:100%;padding:10px;border-radius:8px;border:none;background:rgba(99,102,241,0.8);color:#fff;font-size:0.9rem;font-weight:600;cursor:pointer;">🔄 Sync All GroupMe</button>
+        </div>
+      </div>`;
+
+    modal.querySelector('#pitch-sync-backdrop').addEventListener('click', () => modal.remove());
+    modal.querySelector('#pitch-sync-close').addEventListener('click', () => modal.remove());
+    modal.addEventListener('sync-action', async (e) => {
+      const action = e.detail;
+      modal.remove();
+      if (action === 'groupme') await this.syncGroupMeCalendar();
+      else if (action === 'scrape-apsl') await this.requestScrape('apsl-teams');
+      else if (action === 'scrape-casa') await this.requestScrape('casa-schedule');
+    });
+
+    document.body.appendChild(modal);
   }
 
   async syncGroupMeCalendar() {
@@ -2602,6 +2684,15 @@ class GameDayLineupScreen extends Screen {
       });
       ctrlRow.appendChild(syncPill);
     }
+
+    // Data sync button (always shown)
+    const dataSyncBtn = document.createElement('button');
+    dataSyncBtn.id = 'pitch-data-sync-btn';
+    dataSyncBtn.title = 'Data sync status';
+    dataSyncBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;margin-left:auto;';
+    dataSyncBtn.textContent = this._leaguesSyncData ? (this._syncAllGreen ? '🟢' : '🔴') : '📡';
+    dataSyncBtn.addEventListener('click', () => this._openPitchSyncModal());
+    ctrlRow.appendChild(dataSyncBtn);
 
     bar.appendChild(ctrlRow);
     wrapper.appendChild(bar);
