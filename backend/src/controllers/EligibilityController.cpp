@@ -550,21 +550,16 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                                              : row["required_sessions_override"].as<int>();
 
             // Derive required sessions from DOB (U19=3, U23=2, senior=1)
-            // Cutoffs: U19 born after 2007-12-31, U23 born after 2003-12-31
+            // US Soccer cutoffs (birth year): U19 = 2007+, U23 = 2003-2006, senior = 2002 and older
             int ageRequired = policy.min_sessions_to_start; // fallback to policy
             if (!pe.date_of_birth.empty()) {
-                // Extract birth year from "YYYY-MM-DD"
-                int birthYear  = std::stoi(pe.date_of_birth.substr(0, 4));
-                int birthMonth = std::stoi(pe.date_of_birth.substr(5, 2));
-                int birthDay   = std::stoi(pe.date_of_birth.substr(8, 2));
-                // U19: born strictly after 2007-12-31 (i.e. 2008-01-01 or later)
-                if (birthYear > 2007 || (birthYear == 2007 && (birthMonth > 12 || (birthMonth == 12 && birthDay > 31)))) {
-                    ageRequired = 3;
-                // U23: born strictly after 2003-12-31
-                } else if (birthYear > 2003 || (birthYear == 2003 && (birthMonth > 12 || (birthMonth == 12 && birthDay > 31)))) {
-                    ageRequired = 2;
+                int birthYear = std::stoi(pe.date_of_birth.substr(0, 4));
+                if (birthYear >= 2007) {
+                    ageRequired = 3; // U19
+                } else if (birthYear >= 2003) {
+                    ageRequired = 2; // U23
                 } else {
-                    ageRequired = 1;
+                    ageRequired = 1; // Senior
                 }
             }
             // Override wins if set
