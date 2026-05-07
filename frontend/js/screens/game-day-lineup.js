@@ -3470,10 +3470,87 @@ class GameDayLineupScreen extends Screen {
 
   // Bottom strip: assigned bench players
   _buildBenchStrip() {
-    const bench = this.zones.bench.map(id => this.getPlayerById(id)).filter(Boolean);
-    const strip = this._buildAvailableStrip(bench, '🪑 Bench', 'top');
-    strip.style.borderTop = '2px solid rgba(59,130,246,0.4)';
-    return strip;
+    const maxBench = this.rosterSize - 11; // 9 for 20-man, 7 for 18-man
+    const bench = this.zones.bench.slice(0, maxBench).map(id => this.getPlayerById(id)).filter(Boolean);
+
+    // ── outer wrapper: bench + sync info row ─────────────────────────────────
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'flex-shrink:0;border-top:2px solid rgba(59,130,246,0.4);background:rgba(0,0,0,0.35);';
+
+    // ── bench chips row ───────────────────────────────────────────────────────
+    const benchRow = document.createElement('div');
+    benchRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.06);';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:0.55rem;color:rgba(59,130,246,0.6);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:4px;';
+    lbl.textContent = `🪑 Bench ${bench.length}/${maxBench}`;
+    benchRow.appendChild(lbl);
+    if (bench.length === 0) {
+      const empty = document.createElement('span');
+      empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;align-self:center;';
+      empty.textContent = '—';
+      benchRow.appendChild(empty);
+    } else {
+      for (const p of bench) benchRow.appendChild(this._buildPanelChipEl(p, 'bench'));
+    }
+    wrapper.appendChild(benchRow);
+
+    // ── sync info row ─────────────────────────────────────────────────────────
+    const syncRow = document.createElement('div');
+    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;gap:10px;padding:4px 10px;overflow-x:auto;scrollbar-width:none;font-size:0.7rem;';
+
+    // Game RSVP sync status
+    const gs = this.groupmeSync || {};
+    const rsvpOk = gs.hasLinkedEvent && gs.status === 'fresh';
+    const rsvpWarn = gs.hasLinkedEvent && gs.status === 'stale';
+    const rsvpDot = rsvpOk ? '🟢' : rsvpWarn ? '🟡' : '🔴';
+    const rsvpTime = gs.lastSync ? new Date(gs.lastSync).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
+    const rsvpLabel = !gs.hasLinkedEvent ? 'No event linked' : rsvpTime ? rsvpTime : gs.status || 'not synced';
+    const rsvpPill = document.createElement('span');
+    rsvpPill.style.cssText = 'white-space:nowrap;color:rgba(255,255,255,0.7);flex-shrink:0;';
+    rsvpPill.textContent = `${rsvpDot} RSVP ${rsvpLabel}`;
+    syncRow.appendChild(rsvpPill);
+
+    // Last 5 training sessions
+    const trainEvents = (this.trainingEvents || []).slice(-5);
+    if (trainEvents.length) {
+      const sep = document.createElement('span');
+      sep.style.cssText = 'color:rgba(255,255,255,0.15);flex-shrink:0;';
+      sep.textContent = '·';
+      syncRow.appendChild(sep);
+      const trainLbl = document.createElement('span');
+      trainLbl.style.cssText = 'white-space:nowrap;color:rgba(255,255,255,0.5);flex-shrink:0;font-size:0.65rem;';
+      const dayAbbrev = { sunday:'Su', monday:'Mo', tuesday:'Tu', wednesday:'We', thursday:'Th', friday:'Fr', saturday:'Sa' };
+      const names = trainEvents.map(e => {
+        const t = e.title.toLowerCase();
+        const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1];
+        return day || e.eventDate.slice(5);
+      });
+      trainLbl.textContent = `📅 ${names.join(' · ')}`;
+      syncRow.appendChild(trainLbl);
+    }
+
+    // GroupMe training sync time
+    const leagueData = this._leaguesSyncData;
+    if (leagueData) {
+      const trainingChat = leagueData.groupme?.find(c => c.chatType === 5) || leagueData.groupme?.find(c => c.chatType === 3);
+      if (trainingChat?.lastSyncedAt) {
+        const sep2 = document.createElement('span');
+        sep2.style.cssText = 'color:rgba(255,255,255,0.15);flex-shrink:0;';
+        sep2.textContent = '·';
+        syncRow.appendChild(sep2);
+        const now = Date.now();
+        const age = now - new Date(trainingChat.lastSyncedAt).getTime();
+        const trainSyncDot = age < 24*60*60*1000 ? '🟢' : age < 48*60*60*1000 ? '🟡' : '🔴';
+        const trainSyncLbl = document.createElement('span');
+        trainSyncLbl.style.cssText = 'white-space:nowrap;color:rgba(255,255,255,0.7);flex-shrink:0;';
+        const tStr = new Date(trainingChat.lastSyncedAt).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+        trainSyncLbl.textContent = `${trainSyncDot} Training synced ${tStr}`;
+        syncRow.appendChild(trainSyncLbl);
+      }
+    }
+
+    wrapper.appendChild(syncRow);
+    return wrapper;
   }
 
   _renderBelowPitchZones(container) {
