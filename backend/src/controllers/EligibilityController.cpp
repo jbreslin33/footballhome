@@ -394,6 +394,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         int groupmeMinutesAgo = -1;
         bool hasLinkedEvent = false;
         int linkedChatEventId = 0;
+        int linkedGoingCount = 0;
         std::string calendarLastSyncedAt = "";
 
         try {
@@ -408,6 +409,14 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             hasLinkedEvent = !linkedResult.empty();
             if (hasLinkedEvent) {
                 linkedChatEventId = linkedResult[0]["id"].as<int>();
+                // Count going RSVPs (effective status = yes, id=1)
+                pqxx::result goingResult = db_->query(
+                    "SELECT COUNT(*) as cnt FROM chat_event_rsvps "
+                    "WHERE chat_event_id = $1::int "
+                    "  AND COALESCE(override_rsvp_status_id, rsvp_status_id) = 1",
+                    {std::to_string(linkedChatEventId)}
+                );
+                if (!goingResult.empty()) linkedGoingCount = goingResult[0]["cnt"].as<int>();
             }
 
             if (hasLinkedEvent) {
@@ -476,6 +485,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"status\":\"" << groupmeStatus << "\"";
         json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
         if (linkedChatEventId > 0) json << ",\"chatEventId\":" << linkedChatEventId;
+        if (linkedGoingCount > 0) json << ",\"goingCount\":" << linkedGoingCount;
         if (!groupmeLastSync.empty()) {
             // Convert Postgres "YYYY-MM-DD HH:MM:SS" (UTC) to ISO 8601 "YYYY-MM-DDTHH:MM:SSZ"
             // so JavaScript's new Date() parses it as UTC, not local time.

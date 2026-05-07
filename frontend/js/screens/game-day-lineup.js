@@ -3559,7 +3559,8 @@ class GameDayLineupScreen extends Screen {
     const gameTime = fmtTs(gs.lastSync || '');
     const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
     const gameEvtDt = fmtTime(this.matchInfo?.time || '');
-    const gameSyncTs = !gs.hasLinkedEvent ? 'no event' : gameTime || '?';
+    const gameGoing = gs.goingCount ?? 0;
+    const gameSyncTs = !gs.hasLinkedEvent ? 'no event' : (gameGoing > 0 ? gameGoing + '✓ ' : '') + (gameTime || '?');
     syncRow.appendChild(mkCard(matchDate, gameEvtDt, gameDot, gameSyncTs, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
