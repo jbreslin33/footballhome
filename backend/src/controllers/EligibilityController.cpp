@@ -395,6 +395,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         bool hasLinkedEvent = false;
         int linkedChatEventId = 0;
         int linkedGoingCount = 0;
+        int linkedNotGoingCount = 0;
+        int linkedNoResponseCount = 0;
         std::string calendarLastSyncedAt = "";
 
         try {
@@ -417,6 +419,27 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                     {std::to_string(linkedChatEventId)}
                 );
                 if (!goingResult.empty()) linkedGoingCount = goingResult[0]["cnt"].as<int>();
+                // Count not-going RSVPs
+                pqxx::result notGoingResult = db_->query(
+                    "SELECT COUNT(*) as cnt FROM chat_event_rsvps "
+                    "WHERE chat_event_id = $1::int "
+                    "  AND COALESCE(override_rsvp_status_id, rsvp_status_id) = 2",
+                    {std::to_string(linkedChatEventId)}
+                );
+                if (!notGoingResult.empty()) linkedNotGoingCount = notGoingResult[0]["cnt"].as<int>();
+                // Count no-response (in chat but no RSVP row)
+                pqxx::result noRspResult = db_->query(
+                    "SELECT COUNT(cem.external_user_id)::int as cnt "
+                    "FROM chat_external_members cem "
+                    "WHERE cem.chat_id = (SELECT chat_id FROM chat_events WHERE id = $1::int) "
+                    "  AND NOT EXISTS ( "
+                    "    SELECT 1 FROM chat_event_rsvps cer "
+                    "    WHERE cer.chat_event_id = $1::int "
+                    "      AND (cer.person_id = cem.person_id OR cer.external_user_id = cem.external_user_id) "
+                    "  )",
+                    {std::to_string(linkedChatEventId)}
+                );
+                if (!noRspResult.empty()) linkedNoResponseCount = noRspResult[0]["cnt"].as<int>();
             }
 
             if (hasLinkedEvent) {
@@ -486,6 +509,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
         if (linkedChatEventId > 0) json << ",\"chatEventId\":" << linkedChatEventId;
         if (linkedGoingCount > 0) json << ",\"goingCount\":" << linkedGoingCount;
+        if (linkedNotGoingCount > 0) json << ",\"notGoingCount\":" << linkedNotGoingCount;
+        if (linkedNoResponseCount > 0) json << ",\"noResponseCount\":" << linkedNoResponseCount;
         if (!groupmeLastSync.empty()) {
             // Convert Postgres "YYYY-MM-DD HH:MM:SS" (UTC) to ISO 8601 "YYYY-MM-DDTHH:MM:SSZ"
             // so JavaScript's new Date() parses it as UTC, not local time.

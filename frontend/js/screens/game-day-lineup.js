@@ -3517,13 +3517,18 @@ class GameDayLineupScreen extends Screen {
       const [hh, mm] = t.split(':').map(Number);
       return `${hh%12||12}${mm ? ':'+String(mm).padStart(2,'0') : ''}${hh >= 12 ? 'pm' : 'am'}`;
     };
-    const mkCard = (label, eventDt, dot, syncTs, onSync) => {
+    const mkDot = (color, n) =>
+      `<span style="display:inline-flex;align-items:center;gap:2px;">` +
+      `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>` +
+      `<span style="font-size:0.75rem;color:#e2e8f0;font-weight:600;">${n}</span>` +
+      `</span>`;
+    const mkCard = (label, eventDt, counts, onSync) => {
+      const { going = 0, noResp = 0, notGoing = 0 } = counts || {};
       const card = document.createElement('div');
-      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:5px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap;';
+      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:7px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;';
       card.innerHTML =
-        `<span style="font-size:1rem;line-height:1;">${dot}</span>` +
-        `<span style="font-size:0.72rem;color:#7ec8ff;font-weight:700;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}</span>` +
-        (syncTs ? `<span style="font-size:0.65rem;color:#ffe066;">${syncTs}</span>` : '');
+        `<span style="font-size:0.78rem;color:#7ec8ff;font-weight:700;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}</span>` +
+        `<span style="display:inline-flex;align-items:center;gap:5px;">${mkDot('#4ade80', going)}${mkDot('#fbbf24', noResp)}${mkDot('#f87171', notGoing)}</span>`;
       card.addEventListener('click', onSync);
       return card;
     };
@@ -3534,34 +3539,28 @@ class GameDayLineupScreen extends Screen {
     const now = Date.now();
 
     const leagueData = this._leaguesSyncData;
-    const trainingChat = leagueData?.groupme?.find(c => c.chatType === 5) || leagueData?.groupme?.find(c => c.chatType === 3);
-    const trainSyncAge = trainingChat?.lastSyncedAt ? now - new Date(trainingChat.lastSyncedAt).getTime() : Infinity;
-    const trainSyncDot = trainSyncAge < 24*60*60*1000 ? '🟢' : trainSyncAge < 48*60*60*1000 ? '🟡' : '🔴';
-    const trainSyncTime = fmtTs(trainingChat?.lastSyncedAt || '');
 
     for (const evt of (this.trainingEvents || [])) {
       const t = evt.title.toLowerCase();
       const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1] || evt.eventDate.slice(5, 10);
       const isPickup = t.includes('pickup');
       const label = (isPickup ? 'P' : 'T') + ' ' + day;
-      const going = evt.goingCount ?? 0;
       const evtDt = fmtTs(evt.startAt || '') || evt.eventDate.slice(5, 10);
-      const trainSyncTs = (going > 0 ? going + '✓ ' : '') + (trainSyncTime || 'not synced');
-      syncRow.appendChild(mkCard(label, evtDt, trainSyncDot, trainSyncTs, () => {
+      const going = evt.goingCount ?? 0;
+      const noResp = (evt.noResponseCount ?? 0) + (evt.maybeCount ?? 0);
+      const notGoing = evt.notGoingCount ?? 0;
+      syncRow.appendChild(mkCard(label, evtDt, { going, noResp, notGoing }, () => {
         this._openEventRsvpModal({ type: 'training', chatEventId: evt.id, title: evt.title, startAt: evt.startAt, eventDate: evt.eventDate, teamId });
       }));
     }
 
     const gs = this.groupmeSync || {};
-    const rsvpOk = gs.hasLinkedEvent && gs.status === 'fresh';
-    const rsvpWarn = gs.hasLinkedEvent && gs.status === 'stale';
-    const gameDot = rsvpOk ? '🟢' : rsvpWarn ? '🟡' : '🔴';
-    const gameTime = fmtTs(gs.lastSync || '');
     const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
     const gameEvtDt = fmtTime(this.matchInfo?.time || '');
     const gameGoing = gs.goingCount ?? 0;
-    const gameSyncTs = !gs.hasLinkedEvent ? 'no event' : (gameGoing > 0 ? gameGoing + '✓ ' : '') + (gameTime || '?');
-    syncRow.appendChild(mkCard('G ' + matchDate, gameEvtDt, gameDot, gameSyncTs, () => {
+    const gameNoResp = gs.noResponseCount ?? 0;
+    const gameNotGoing = gs.notGoingCount ?? 0;
+    syncRow.appendChild(mkCard('G ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
 
