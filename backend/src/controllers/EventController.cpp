@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <curl/curl.h>
 #include <openssl/buffer.h>
 
 EventController::EventController() {
@@ -28,6 +29,11 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     // GET /api/matches/team/:teamId - Get matches for a team
     router.get("/api/matches/team/:teamId", [this](const Request& request) {
         return this->handleGetMatches(request);
+    });
+
+    // POST /api/matches/team/:teamId/sync-league - Sync match scores from league website
+    router.post("/api/matches/team/:teamId/sync-league", [this](const Request& request) {
+        return this->handleSyncLeague(request);
     });
     
     // POST /api/matches - Create new match
@@ -2748,5 +2754,233 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
         std::cerr << "\u274c Error setting practice RSVP: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, "Failed to set practice RSVP"));
+    }
+}
+
+// ============================================================================
+// POST /api/matches/team/:teamId/sync-league
+// Sync match scores from the league website (SportsEngine API for CASA teams)
+// ============================================================================
+
+static size_t LeagueSyncWriteCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
+    size_t total = size * nmemb;
+    out->append(static_cast<char*>(contents), total);
+    return total;
+}
+
+static std::string leagueHttpGet(const std::string& url) {
+    CURL* curl = curl_easy_init();
+    if (!curl) return "";
+    std::string buf;
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, LeagueSyncWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Accept: application/json");
+    headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0 (compatible; FootballHome/1.0)");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    CURLcode res = curl_easy_perform(curl);
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    if (res != CURLE_OK || httpCode != 200) return "";
+    return buf;
+}
+
+// Minimal JSON helpers — find a scalar value by key in a flat JSON string
+static std::string jsonStr(const std::string& json, const std::string& key) {
+    std::string search = "\"" + key + "\":\"";
+    auto pos = json.find(search);
+    if (pos == std::string::npos) return "";
+    pos += search.size();
+    auto end = json.find('"', pos);
+    if (end == std::string::npos) return "";
+    return json.substr(pos, end - pos);
+}
+
+static std::string jsonVal(const std::string& json, const std::string& key) {
+    std::string search = "\"" + key + "\":";
+    auto pos = json.find(search);
+    if (pos == std::string::npos) return "";
+    pos += search.size();
+    while (pos < json.size() && json[pos] == ' ') pos++;
+    auto end = pos;
+    while (end < json.size() && json[end] != ',' && json[end] != '}' && json[end] != ']') end++;
+    std::string v = json.substr(pos, end - pos);
+    if (!v.empty() && v.front() == '"') { v = v.substr(1); if (!v.empty() && v.back() == '"') v.pop_back(); }
+    return v;
+}
+
+Response EventController::handleSyncLeague(const Request& request) {
+    try {
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        }
+
+        std::string path = request.getPath();
+        std::regex re("/api/matches/team/(\\d+)/sync-league");
+        std::smatch m;
+        if (!std::regex_search(path, m, re)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid team ID"));
+        }
+        std::string teamId = m[1].str();
+
+        // Determine source system for this team
+        auto ssResult = db_->query(
+            "SELECT DISTINCT ss.name as ss_name "
+            "FROM matches mt "
+            "JOIN source_systems ss ON ss.id = mt.source_system_id "
+            "WHERE (mt.home_team_id = $1::int OR mt.away_team_id = $1::int) "
+            "AND ss.name IN ('casa','apsl') "
+            "LIMIT 1",
+            {teamId});
+
+        if (ssResult.empty()) {
+            return Response(HttpStatus::OK,
+                "{\"success\":false,\"message\":\"No league data found for this team\"}");
+        }
+        std::string sourceSystem = ssResult[0]["ss_name"].c_str();
+
+        if (sourceSystem == "apsl") {
+            return Response(HttpStatus::OK,
+                "{\"success\":false,\"message\":\"APSL scores require running: make lighthouse-apsl-team\"}");
+        }
+
+        // CASA: determine which programId(s) to call
+        // Philadelphia Liga 1 (team 120) → 6827a0840b95c8019f7e2b38
+        // Philadelphia Liga 2 (team 121) → 682f9676528c0e00bfc9d2f2
+        // We look up the team against known division IDs in the DB
+        auto divResult = db_->query(
+            "SELECT d.external_id "
+            "FROM matches mt "
+            "JOIN source_systems ss ON ss.id = mt.source_system_id "
+            "JOIN divisions d ON (mt.title ILIKE '%' || d.name || '%' OR "
+            "  EXISTS (SELECT 1 FROM matches m2 "
+            "          JOIN division_matches dm ON dm.match_id = m2.id "
+            "          WHERE m2.id = mt.id AND dm.division_id = d.id)) "
+            "WHERE (mt.home_team_id = $1::int OR mt.away_team_id = $1::int) "
+            "AND ss.name = 'casa' "
+            "AND d.external_id IS NOT NULL "
+            "LIMIT 1",
+            {teamId});
+
+        // Fallback: map by team ID directly
+        std::string programId;
+        std::string divisionName;
+        int teamIdInt = std::stoi(teamId);
+        if (teamIdInt == 120) {
+            programId = "6827a0840b95c8019f7e2b38";
+            divisionName = "Philadelphia Liga 1";
+        } else if (teamIdInt == 121) {
+            programId = "682f9676528c0e00bfc9d2f2";
+            divisionName = "Philadelphia Liga 2";
+        } else {
+            return Response(HttpStatus::OK,
+                "{\"success\":false,\"message\":\"Unknown CASA team — cannot determine program ID\"}");
+        }
+
+        // Call SportsEngine API (paginated)
+        int updated = 0, notFound = 0, totalEvents = 0;
+        for (int page = 1; page <= 5; page++) {
+            std::string url = "https://se-api.sportsengine.com/v3/microsites/events"
+                "?page=" + std::to_string(page) +
+                "&per_page=100&program_id=" + programId +
+                "&order_by=starts_at&direction=asc";
+            std::string body = leagueHttpGet(url);
+            if (body.empty()) break;
+
+            // Count events and check pagination
+            auto metaPos = body.find("\"totalPages\":");
+            int totalPages = 1;
+            if (metaPos != std::string::npos) {
+                std::string tp = jsonVal(body.substr(metaPos - 1), "totalPages");
+                if (!tp.empty()) try { totalPages = std::stoi(tp); } catch (...) {}
+            }
+
+            // Find each game event block
+            size_t pos = 0;
+            while (true) {
+                auto evStart = body.find("\"event_type\":\"game\"", pos);
+                if (evStart == std::string::npos) break;
+
+                // Walk back to find the enclosing object start
+                auto objStart = body.rfind('{', evStart);
+                if (objStart == std::string::npos) { pos = evStart + 1; continue; }
+
+                // Extract event ID
+                std::string evId = jsonStr(body.substr(objStart, evStart - objStart + 200), "id");
+                if (evId.empty()) { pos = evStart + 1; continue; }
+
+                // Find game_details block
+                auto gdPos = body.find("\"game_details\":", evStart);
+                if (gdPos == std::string::npos) { pos = evStart + 1; continue; }
+                auto gdStart = body.find('{', gdPos);
+                if (gdStart == std::string::npos) { pos = evStart + 1; continue; }
+
+                // Find team_1 and team_2 within game_details
+                auto t1Pos = body.find("\"team_1\":", gdStart);
+                auto t2Pos = body.find("\"team_2\":", gdStart);
+                // Next event starts after these
+                size_t searchLimit = std::min(body.size(), gdStart + 2000);
+                if (t1Pos == std::string::npos || t1Pos > searchLimit) { pos = evStart + 1; continue; }
+
+                // Extract team 1 fields
+                auto t1Start = body.find('{', t1Pos);
+                auto t1End = body.find('}', t1Start);
+                std::string t1Block = body.substr(t1Start, t1End - t1Start + 1);
+                std::string t1Name = jsonStr(t1Block, "name");
+                std::string t1ScoreStr = jsonVal(t1Block, "score");
+                std::string t1IsHome = jsonVal(t1Block, "is_home_team");
+
+                // Extract team 2 fields
+                auto t2Start = body.find('{', t2Pos);
+                auto t2End = body.find('}', t2Start);
+                std::string t2Block = body.substr(t2Start, t2End - t2Start + 1);
+                std::string t2Name = jsonStr(t2Block, "name");
+                std::string t2ScoreStr = jsonVal(t2Block, "score");
+
+                pos = evStart + 1;
+                totalEvents++;
+
+                // Only update if both scores present
+                if (t1ScoreStr.empty() || t1ScoreStr == "null" ||
+                    t2ScoreStr.empty() || t2ScoreStr == "null") continue;
+
+                int t1Score = 0, t2Score = 0;
+                try { t1Score = std::stoi(t1ScoreStr); } catch (...) { continue; }
+                try { t2Score = std::stoi(t2ScoreStr); } catch (...) { continue; }
+
+                int homeScore = (t1IsHome == "true") ? t1Score : t2Score;
+                int awayScore = (t1IsHome == "true") ? t2Score : t1Score;
+
+                // Update match by external_id
+                auto upd = db_->query(
+                    "UPDATE matches SET home_score = $1, away_score = $2 "
+                    "WHERE external_id = $3 "
+                    "AND (home_score IS DISTINCT FROM $1 OR away_score IS DISTINCT FROM $2) "
+                    "RETURNING id",
+                    {std::to_string(homeScore), std::to_string(awayScore), evId});
+                if (!upd.empty()) updated++;
+                else notFound++;
+            }
+
+            if (page >= totalPages) break;
+        }
+
+        std::ostringstream result;
+        result << "{\"success\":true,\"updated\":" << updated
+               << ",\"skipped\":" << notFound
+               << ",\"totalEvents\":" << totalEvents
+               << ",\"division\":\"" << divisionName << "\"}";
+        return Response(HttpStatus::OK, result.str());
+
+    } catch (const std::exception& e) {
+        std::cerr << "\u274c handleSyncLeague error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, "Sync failed"));
     }
 }

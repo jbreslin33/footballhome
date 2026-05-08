@@ -474,7 +474,7 @@ textarea.form-input {
 .empty-state {
     text-align: center;
     padding: var(--space-12) var(--space-4);
-    color: var(--gray-600);
+    color: var(--text-muted);
 }
 
 .empty-state p {
@@ -484,7 +484,7 @@ textarea.form-input {
 
 .empty-state .text-muted {
     font-size: var(--text-base);
-    color: var(--gray-500);
+    color: var(--text-muted);
 }
 
 /* Badge Component */
@@ -499,23 +499,27 @@ textarea.form-input {
 }
 
 .badge-success {
-    background-color: #dcfce7;
-    color: #15803d;
+    background-color: rgba(22,163,74,0.25);
+    color: #4ade80;
+    border: 1px solid rgba(22,163,74,0.4);
 }
 
 .badge-error {
-    background-color: #fee2e2;
-    color: #b91c1c;
+    background-color: rgba(220,38,38,0.25);
+    color: #f87171;
+    border: 1px solid rgba(220,38,38,0.4);
 }
 
 .badge-warning {
-    background-color: #fef3c7;
-    color: #a16207;
+    background-color: rgba(245,200,66,0.2);
+    color: var(--accent);
+    border: 1px solid rgba(245,200,66,0.4);
 }
 
 .badge-info {
-    background-color: #dbeafe;
-    color: #1e40af;
+    background-color: rgba(37,99,235,0.25);
+    color: #7ec8ff;
+    border: 1px solid rgba(37,99,235,0.4);
 }
 
 /* Login specific styles */
@@ -1327,18 +1331,19 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 .team-logo-placeholder {
     width: 48px;
     height: 48px;
-    background-color: var(--gray-200);
+    background-color: var(--bg-surface);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    color: var(--gray-500);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
 }
 
 .match-vs {
     font-weight: bold;
-    color: var(--gray-500);
+    color: var(--text-muted);
     font-size: var(--text-sm);
 }
 
@@ -1348,20 +1353,21 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .team-stats-section {
-    background: var(--card-background);
+    background: var(--bg-secondary);
     border-radius: var(--radius);
     padding: var(--space-4);
     margin-bottom: var(--space-6);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
 }
 
 .team-stats-section .team-name {
     font-size: var(--text-xl);
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--text-primary);
     margin-bottom: var(--space-4);
     padding-bottom: var(--space-2);
-    border-bottom: 2px solid var(--primary-color);
+    border-bottom: 2px solid var(--accent);
 }
 
 .player-group {
@@ -1375,10 +1381,10 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 .group-label {
     font-size: var(--text-base);
     font-weight: 600;
-    color: var(--gray-700);
+    color: var(--text-primary);
     margin-bottom: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    background: var(--gray-100);
+    background: var(--bg-surface);
     border-radius: var(--radius-sm);
 }
 
@@ -1389,7 +1395,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .player-stats-table thead {
-    background: var(--gray-50);
+    background: var(--bg-surface);
 }
 
 .player-stats-table th {
@@ -1397,8 +1403,8 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     text-align: left;
     font-weight: 600;
     font-size: var(--text-sm);
-    color: var(--gray-700);
-    border-bottom: 2px solid var(--gray-200);
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
 }
 
 .player-stats-table th:not(:first-child) {
@@ -1408,7 +1414,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 .player-stats-table td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--border-color);
     font-size: var(--text-sm);
 }
 
@@ -1417,23 +1423,23 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .player-stats-table tbody tr:hover {
-    background: var(--gray-50);
+    background: var(--bg-surface);
 }
 
 .player-stats-table .player-name {
     font-weight: 500;
-    color: var(--text-color);
+    color: var(--text-primary);
 }
 
 .player-stats-table .stat-value {
     text-align: center;
-    color: var(--gray-600);
+    color: var(--text-primary);
     font-weight: 500;
 }
 
 .player-stats-table .sub-info {
     font-size: var(--text-xs);
-    color: var(--gray-500);
+    color: var(--text-muted);
 }
 
 /* Match Events Table */
@@ -1443,16 +1449,17 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 .match-events-list h2 {
   margin-bottom: var(--space-3);
-  color: var(--text-color);
+  color: var(--text-primary);
 }
 
 .events-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
 }
 
 .events-table thead {
@@ -1470,11 +1477,12 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 .events-table td {
   padding: var(--space-3);
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .events-table tbody tr:hover {
-  background: var(--gray-50);
+  background: var(--bg-surface);
 }
 
 .events-table tbody tr:last-child td {
@@ -1493,16 +1501,17 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .events-table .team-cell {
-  color: var(--gray-600);
+  color: var(--text-muted);
   font-size: var(--text-sm);
 }
 
 .events-table .event-cell {
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .events-table .details-cell {
-  color: var(--gray-600);
+  color: var(--text-muted);
   font-size: var(--text-sm);
   font-style: italic;
 }
@@ -1538,8 +1547,8 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 .team-tabs {
     display: flex;
-    background: white;
-    border-bottom: 2px solid var(--gray-200);
+    background: var(--bg-secondary);
+    border-bottom: 2px solid var(--border-color);
     padding: 0 var(--space-4);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1559,7 +1568,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     border-bottom: 3px solid transparent;
     font-size: var(--text-base);
     font-weight: 500;
-    color: var(--gray-600);
+    color: var(--text-muted);
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
@@ -1567,13 +1576,13 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .team-tab:hover {
-    color: var(--gray-900);
-    background: var(--gray-50);
+    color: var(--text-primary);
+    background: var(--bg-surface);
 }
 
 .team-tab.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
+    color: var(--accent);
+    border-bottom-color: var(--accent);
     font-weight: 600;
 }
 
@@ -1598,10 +1607,10 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 .roster-section-title {
     font-size: var(--text-lg);
     font-weight: 600;
-    color: var(--gray-800);
+    color: var(--text-primary);
     margin-bottom: var(--space-3);
     padding-bottom: var(--space-2);
-    border-bottom: 2px solid var(--gray-200);
+    border-bottom: 2px solid var(--border-color);
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -1612,15 +1621,15 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3) var(--space-4);
-    background: white;
+    background: var(--bg-surface);
     border-radius: var(--radius);
     margin-bottom: var(--space-2);
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--border-color);
     transition: background 0.15s ease;
 }
 
 .roster-card:hover {
-    background: var(--gray-50);
+    background: rgba(100,160,255,0.2);
 }
 
 .roster-card-left {
@@ -1646,13 +1655,13 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 
 .roster-name {
     font-weight: 500;
-    color: var(--gray-900);
+    color: var(--text-primary);
     font-size: var(--text-base);
 }
 
 .roster-detail {
     font-size: var(--text-sm);
-    color: var(--gray-500);
+    color: var(--text-muted);
 }
 
 .roster-card-right {
@@ -1671,28 +1680,28 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
    ===================================================== */
 
 .standings-wrapper {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow);
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--border-color);
 }
 
 .standings-header-info {
     padding: var(--space-4);
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .standings-header-info h3 {
     font-size: var(--text-lg);
     font-weight: 600;
-    color: var(--gray-900);
+    color: var(--text-primary);
     margin: 0;
 }
 
 .standings-header-info .text-muted {
     font-size: var(--text-sm);
-    color: var(--gray-500);
+    color: var(--text-muted);
 }
 
 .standings-table-wrapper {
@@ -1706,18 +1715,18 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .standings-table thead {
-    background: var(--gray-100);
+    background: var(--bg-surface);
 }
 
 .standings-table th {
     padding: var(--space-2) var(--space-3);
     text-align: center;
     font-weight: 600;
-    color: var(--gray-600);
+    color: var(--text-muted);
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 2px solid var(--gray-300);
+    border-bottom: 2px solid var(--border-color);
 }
 
 .standings-table th.standings-team {
@@ -1727,40 +1736,41 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 .standings-table td {
     padding: var(--space-2) var(--space-3);
     text-align: center;
-    border-bottom: 1px solid var(--gray-100);
-    color: var(--gray-700);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 
 .standings-table td.standings-team {
     text-align: left;
     font-weight: 500;
-    color: var(--gray-900);
+    color: var(--text-primary);
 }
 
 .standings-table td.standings-pos {
     font-weight: 600;
-    color: var(--gray-500);
+    color: var(--text-muted);
 }
 
 .standings-table td.standings-pts {
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--accent);
 }
 
 .standings-table tbody tr:hover {
-    background: var(--gray-50);
+    background: var(--bg-surface);
 }
 
 .standings-table .standings-highlight {
-    background: rgba(37, 99, 235, 0.06);
+    background: rgba(245, 200, 66, 0.08);
 }
 
 .standings-table .standings-highlight td {
     font-weight: 600;
+    color: var(--accent);
 }
 
 .standings-table .standings-highlight:hover {
-    background: rgba(37, 99, 235, 0.1);
+    background: rgba(245, 200, 66, 0.15);
 }
 
 /* =====================================================
@@ -1775,7 +1785,8 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 .match-score .score {
     font-size: var(--text-2xl);
     font-weight: 700;
-    color: var(--gray-900);
+    color: var(--accent);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
 /* GroupMe sync status banner on schedule page */
@@ -1820,7 +1831,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     gap: var(--space-2);
     margin: var(--space-3) 0;
     padding: var(--space-3);
-    background: var(--gray-50);
+    background: var(--bg-surface);
     border-radius: var(--radius);
 }
 

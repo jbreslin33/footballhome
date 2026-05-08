@@ -27,6 +27,7 @@ private:
     Response handleGetMatch(const Request& request);
     Response handleUpdateMatch(const Request& request);
     Response handleDeleteMatch(const Request& request);
+    Response handleSyncLeague(const Request& request);
 
     // Practice-specific endpoints
     Response handleGetPractices(const Request& request);

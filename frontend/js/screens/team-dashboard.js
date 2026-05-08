@@ -18,8 +18,9 @@ class TeamDashboardScreen extends Screen {
       
       <div class="team-tab-content">
         <div id="tab-schedule" class="tab-panel active">
-          <div id="schedule-coach-actions" style="display:none; padding: var(--space-3) var(--space-3) 0;">
+          <div id="schedule-coach-actions" style="display:none; padding: var(--space-3) var(--space-3) 0; gap:var(--space-2); flex-wrap:wrap;">
             <button data-action="sync-calendar" class="btn btn-secondary btn-sm">🔄 Sync from GroupMe</button>
+            <button data-action="sync-league" class="btn btn-secondary btn-sm">🌐 Sync from League</button>
           </div>
           <div id="schedule-list" class="match-cards"></div>
         </div>
@@ -163,6 +164,13 @@ class TeamDashboardScreen extends Screen {
         this.syncCalendarFromGroupMe(syncCalBtn);
         return;
       }
+
+      // Sync scores from league website
+      const syncLeagueBtn = e.target.closest('[data-action="sync-league"]');
+      if (syncLeagueBtn) {
+        this.syncFromLeague(syncLeagueBtn);
+        return;
+      }
     });
   }
   
@@ -200,10 +208,10 @@ class TeamDashboardScreen extends Screen {
     const teamId = this.navigation.context.team?.id;
     if (!teamId) return;
 
-    // Show sync button for coaches
+    // Show sync buttons for coaches
     const coachActions = this.find('#schedule-coach-actions');
     if (coachActions && this.navigation.context.role === 'coach') {
-      coachActions.style.display = '';
+      coachActions.style.display = 'flex';
     }
 
     const container = this.find('#schedule-list');
@@ -381,6 +389,31 @@ class TeamDashboardScreen extends Screen {
           btn.textContent = `⚠️ ${data.message || 'Sync failed'}`;
         }
         setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      })
+      .catch(() => {
+        btn.textContent = '❌ Error';
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      });
+  }
+
+  syncFromLeague(btn) {
+    const teamId = this.navigation.context.team?.id;
+    if (!teamId) return;
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Syncing...';
+    this.auth.fetch(`/api/matches/team/${teamId}/sync-league`, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const d = data;
+          btn.textContent = `✅ ${d.updated || 0} scores updated`;
+          this.matchesLoaded = false;
+          this.loadSchedule();
+        } else {
+          btn.textContent = `⚠️ ${data.message || 'Sync failed'}`;
+        }
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 4000);
       })
       .catch(() => {
         btn.textContent = '❌ Error';
