@@ -401,10 +401,16 @@ class TeamDashboardScreen extends Screen {
     if (!teamId) return;
     const orig = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ Syncing...';
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const secs = Math.floor((Date.now() - startTime) / 1000);
+      btn.textContent = `⏳ Syncing league… ${secs}s`;
+    }, 1000);
+    btn.textContent = '⏳ Syncing league… 0s';
     this.auth.fetch(`/api/matches/team/${teamId}/sync-league`, { method: 'POST' })
       .then(r => r.json())
       .then(data => {
+        clearInterval(timer);
         if (data.success) {
           const d = data;
           btn.textContent = `✅ ${d.updated || 0} scores updated`;
@@ -416,6 +422,7 @@ class TeamDashboardScreen extends Screen {
         setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 4000);
       })
       .catch(() => {
+        clearInterval(timer);
         btn.textContent = '❌ Error';
         setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
       });

@@ -2846,8 +2846,34 @@ Response EventController::handleSyncLeague(const Request& request) {
         std::string sourceSystem = ssResult[0]["ss_name"].c_str();
 
         if (sourceSystem == "apsl") {
+            // Delegate to host task server (runs Chrome/Puppeteer scraper)
+            // Use long timeout — scraper can take 2-3 minutes
+            std::string taskUrl = "http://10.89.0.1:3002/run-task?task=apsl-team";
+            CURL* taskCurl = curl_easy_init();
+            std::string taskResp;
+            if (taskCurl) {
+                curl_easy_setopt(taskCurl, CURLOPT_URL, taskUrl.c_str());
+                curl_easy_setopt(taskCurl, CURLOPT_WRITEFUNCTION, LeagueSyncWriteCallback);
+                curl_easy_setopt(taskCurl, CURLOPT_WRITEDATA, &taskResp);
+                curl_easy_setopt(taskCurl, CURLOPT_TIMEOUT, 200L);
+                curl_easy_setopt(taskCurl, CURLOPT_FOLLOWLOCATION, 1L);
+                curl_easy_perform(taskCurl);
+                curl_easy_cleanup(taskCurl);
+            }
+            if (taskResp.find("\"success\":true") != std::string::npos) {
+                return Response(HttpStatus::OK,
+                    "{\"success\":true,\"message\":\"APSL sync complete — scores updated from league website\"}");
+            }
+            // Task server not reachable or failed
+            std::string errMsg = "APSL sync failed";
+            auto msgPos = taskResp.find("\"message\":\"");
+            if (msgPos != std::string::npos) {
+                msgPos += 11;
+                auto msgEnd = taskResp.find('"', msgPos);
+                if (msgEnd != std::string::npos) errMsg = taskResp.substr(msgPos, msgEnd - msgPos);
+            }
             return Response(HttpStatus::OK,
-                "{\"success\":false,\"message\":\"APSL scores require running: make lighthouse-apsl-team\"}");
+                "{\"success\":false,\"message\":\"" + errMsg + "\"}");
         }
 
         // CASA: determine which programId(s) to call
@@ -2915,47 +2941,30 @@ Response EventController::handleSyncLeague(const Request& request) {
                 std::string evId = jsonStr(body.substr(objStart, evStart - objStart + 200), "id");
                 if (evId.empty()) { pos = evStart + 1; continue; }
 
-                // Find game_details block
-                auto gdPos = body.find("\"game_details\":", evStart);
-                if (gdPos == std::string::npos) { pos = evStart + 1; continue; }
-                auto gdStart = body.find('{', gdPos);
-                if (gdStart == std::string::npos) { pos = evStart + 1; continue; }
+                // Scores are in source.extended_attributes
+                // Search within 5000 chars after event_type for extended_attributes
+                size_t searchEnd = std::min(body.size(), evStart + 5000);
+                auto extPos = body.find("\"extended_attributes\":", evStart);
+                if (extPos == std::string::npos || extPos > searchEnd) { pos = evStart + 1; continue; }
+                auto extStart = body.find('{', extPos);
+                if (extStart == std::string::npos) { pos = evStart + 1; continue; }
+                // Find closing brace for extended_attributes (scan up to 1000 chars)
+                size_t extEnd = std::min(body.size(), extStart + 1000);
+                std::string extBlock = body.substr(extStart, extEnd - extStart);
 
-                // Find team_1 and team_2 within game_details
-                auto t1Pos = body.find("\"team_1\":", gdStart);
-                auto t2Pos = body.find("\"team_2\":", gdStart);
-                // Next event starts after these
-                size_t searchLimit = std::min(body.size(), gdStart + 2000);
-                if (t1Pos == std::string::npos || t1Pos > searchLimit) { pos = evStart + 1; continue; }
-
-                // Extract team 1 fields
-                auto t1Start = body.find('{', t1Pos);
-                auto t1End = body.find('}', t1Start);
-                std::string t1Block = body.substr(t1Start, t1End - t1Start + 1);
-                std::string t1Name = jsonStr(t1Block, "name");
-                std::string t1ScoreStr = jsonVal(t1Block, "score");
-                std::string t1IsHome = jsonVal(t1Block, "is_home_team");
-
-                // Extract team 2 fields
-                auto t2Start = body.find('{', t2Pos);
-                auto t2End = body.find('}', t2Start);
-                std::string t2Block = body.substr(t2Start, t2End - t2Start + 1);
-                std::string t2Name = jsonStr(t2Block, "name");
-                std::string t2ScoreStr = jsonVal(t2Block, "score");
+                std::string homeScoreStr = jsonStr(extBlock, "home_team_score");
+                std::string awayScoreStr = jsonStr(extBlock, "away_team_score");
 
                 pos = evStart + 1;
                 totalEvents++;
 
                 // Only update if both scores present
-                if (t1ScoreStr.empty() || t1ScoreStr == "null" ||
-                    t2ScoreStr.empty() || t2ScoreStr == "null") continue;
+                if (homeScoreStr.empty() || homeScoreStr == "null" ||
+                    awayScoreStr.empty() || awayScoreStr == "null") continue;
 
-                int t1Score = 0, t2Score = 0;
-                try { t1Score = std::stoi(t1ScoreStr); } catch (...) { continue; }
-                try { t2Score = std::stoi(t2ScoreStr); } catch (...) { continue; }
-
-                int homeScore = (t1IsHome == "true") ? t1Score : t2Score;
-                int awayScore = (t1IsHome == "true") ? t2Score : t1Score;
+                int homeScore = 0, awayScore = 0;
+                try { homeScore = std::stoi(homeScoreStr); } catch (...) { continue; }
+                try { awayScore = std::stoi(awayScoreStr); } catch (...) { continue; }
 
                 // Update match by external_id
                 auto upd = db_->query(
