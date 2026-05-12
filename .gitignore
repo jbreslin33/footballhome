@@ -29,6 +29,9 @@ lighthouse_*.txt
 # Docker data
 /docker/data/
 
+# Post media (images/videos are disposable after posting to Instagram)
+frontend/images/posts/
+
 # Database backups (pg_dump snapshots)
 backups/
 # WireGuard provider config — plaintext is gitignored;

@@ -88,39 +88,95 @@ class ContentPostsScreen extends Screen {
     const area = this.find('#content-posts-area');
     if (!area) return;
 
-    // Existing posts list
+    // Existing posts list — rendered as Instagram-style mock-ups
     const postsHtml = this.posts.map(p => {
       const isPosted = p.status === 'posted';
-      const badge = isPosted
-        ? '<span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">\u2705 Posted</span>'
+      const statusBadge = isPosted
+        ? '<span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">✅ Posted</span>'
         : p.status === 'error'
-        ? `<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">\u274c ${this.escapeHtml(p.error_message || 'Error')}</span>`
-        : '<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">Draft</span>';
+        ? `<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">❌ ${this.escapeHtml(p.error_message || 'Error')}</span>`
+        : '<span style="background:#f5c400;color:#003087;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">Draft</span>';
 
-      const preview = p.image_url
-        ? `<img src="${this.escapeHtml(p.image_url)}" style="max-width:100%;max-height:400px;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">`
-        : p.video_url
-        ? `<video src="${this.escapeHtml(p.video_url)}" controls muted style="max-width:100%;max-height:400px;border-radius:8px;display:block;margin:0 auto;"></video>`
-        : '<div style="padding:40px;text-align:center;background:#e5e7eb;border-radius:8px;opacity:0.5;">No media uploaded</div>';
+      const isDriveUrl = p.image_url && p.image_url.includes('drive.google.com');
+      const isVideo = !!p.video_url;
 
-      const formatLabel = { post: '\ud83d\uddbc\ufe0f Post', reel: '\ud83c\udfac Reel', story: '\ud83d\udcf1 Story' }[p.format] || p.format;
-      const overlayInfo = p.overlay_logos ? p.overlay_logos.split(',').join(', ') : (p.include_sponsor ? 'sponsor' : 'none');
+      // Instagram aspect ratios: post=1:1, story/reel=9:16
+      const isStoryOrReel = p.format === 'story' || p.format === 'reel';
+      const mediaStyle = isStoryOrReel
+        ? 'width:100%;aspect-ratio:9/16;max-height:600px;'
+        : 'width:100%;aspect-ratio:1/1;';
+
+      let mediaHtml;
+      if (p.image_url) {
+        if (isDriveUrl) {
+          // Extract file ID and use thumbnail URL so background colour shows around image
+          const driveMatch = p.image_url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          const thumbSrc = driveMatch
+            ? `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1200`
+            : p.image_url;
+          mediaHtml = `<img src="${this.escapeHtml(thumbSrc)}" style="${mediaStyle}object-fit:contain;display:block;background:#1a3a8f;">`;
+        } else {
+          mediaHtml = `<img src="${this.escapeHtml(p.image_url)}" style="${mediaStyle}object-fit:contain;display:block;background:#1a3a8f;">`;
+        }
+      } else if (isVideo) {
+        mediaHtml = `<video src="${this.escapeHtml(p.video_url)}" controls muted style="${mediaStyle}object-fit:cover;display:block;"></video>`;
+      } else {
+        mediaHtml = `<div style="${mediaStyle}display:flex;align-items:center;justify-content:center;background:#e5e7eb;font-size:3rem;">📷</div>`;
+      }
+
+      // Format caption: collapsed with clickable "more" to expand
+      const captionText = p.caption || '';
+      const captionId = `caption-${p.id}`;
+      const needsTruncation = captionText.length > 125;
+      const captionPreview = needsTruncation
+        ? `<span id="${captionId}-short"><span style="white-space:pre-line;">${this.escapeHtml(captionText.slice(0, 125))}</span><span style="color:#8e8e8e;cursor:pointer;" onclick="document.getElementById('${captionId}-short').style.display='none';document.getElementById('${captionId}-full').style.display='inline';"> … more</span></span><span id="${captionId}-full" style="display:none;white-space:pre-line;">${this.escapeHtml(captionText)}</span>`
+        : `<span style="white-space:pre-line;">${this.escapeHtml(captionText)}</span>`;
 
       return `
-        <div style="background:var(--bg-secondary);border-radius:12px;overflow:hidden;margin-bottom:8px;">
-          <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-weight:600;font-size:1.1rem;">${this.escapeHtml(p.title)}</div>
-              <div style="font-size:0.85rem;opacity:0.7;">${formatLabel} \u2022 Logos: ${overlayInfo}</div>
-              ${p.caption ? `<div style="font-size:0.8rem;opacity:0.6;margin-top:4px;">${this.escapeHtml(p.caption)}</div>` : ''}
+        <div style="max-width:468px;margin:0 auto 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <!-- Instagram card shell -->
+          <div style="background:#fff;border:1px solid #dbdbdb;border-radius:8px;overflow:hidden;color:#000;">
+
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(45deg,#003087,#1a3a8f,#f5c400);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚽</div>
+                <div>
+                  <div style="font-weight:600;font-size:14px;line-height:1.2;">lighthouse1893sc</div>
+                  <div style="font-size:11px;color:#8e8e8e;">${this.escapeHtml(p.title)}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                ${statusBadge}
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              ${badge}
-              ${!isPosted && p.image_url ? `<button class="btn btn-sm btn-primary publish-content-btn" data-id="${p.id}">\ud83d\ude80 Publish</button>` : ''}
-              <button class="btn btn-sm delete-content-btn" data-id="${p.id}" style="background:#ef4444;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">\ud83d\uddd1\ufe0f Delete</button>
+
+            <!-- Media -->
+            <div style="width:100%;overflow:hidden;background:#1a3a8f;">
+              ${mediaHtml}
+            </div>
+
+            <!-- Action bar -->
+            <div style="padding:8px 12px 4px;display:flex;justify-content:space-between;align-items:center;">
+              <div style="display:flex;gap:16px;">
+                <span style="font-size:24px;cursor:default;">🤍</span>
+                <span style="font-size:24px;cursor:default;">💬</span>
+                <span style="font-size:24px;cursor:default;">📤</span>
+              </div>
+              <span style="font-size:24px;cursor:default;">🔖</span>
+            </div>
+
+            <!-- Caption -->
+            <div style="padding:4px 12px 12px;font-size:14px;line-height:1.5;color:#000;">
+              ${captionText ? `<span style="font-weight:600;">lighthouse1893sc</span> ${captionPreview}` : '<span style="color:#8e8e8e;font-style:italic;">No caption</span>'}
             </div>
           </div>
-          <div style="padding:0 16px 16px;">${preview}</div>
+
+          <!-- Controls below card -->
+          <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+            ${!isPosted && (p.image_url || p.video_url) ? `<button class="btn btn-sm btn-primary publish-content-btn" data-id="${p.id}" style="font-size:0.8rem;">🚀 Publish to Instagram</button>` : ''}
+            <button class="btn btn-sm delete-content-btn" data-id="${p.id}" style="background:#003087;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;">🗑️ Delete</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -214,8 +270,8 @@ class ContentPostsScreen extends Screen {
 
       <!-- Existing Posts -->
       ${this.posts.length ? `
-        <h3>\ud83d\udcda Previous Content Posts</h3>
-        <div style="display:flex;flex-direction:column;gap:12px;">
+        <h3 style="text-align:center;opacity:0.7;font-size:0.9rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:24px;">📸 Posts</h3>
+        <div>
           ${postsHtml}
         </div>
       ` : ''}
