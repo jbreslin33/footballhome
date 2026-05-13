@@ -589,6 +589,20 @@ class GameDayLineupScreen extends Screen {
       }
       this.trainingData.get(personId)[eventId] = { attended, source: 'manual' };
 
+      // Update cell styling immediately: red tint = no-show, clear = attended
+      const td = cb.closest('td');
+      if (td) {
+        if (attended) {
+          td.style.background = '';
+          td.removeAttribute('title');
+          td.classList.remove('train-noshow');
+        } else {
+          td.style.background = 'rgba(239,68,68,0.18)';
+          td.title = 'No-show (RSVPd going)';
+          td.classList.add('train-noshow');
+        }
+      }
+
       // Update sessionsAttended count on player (dedup by event date)
       const player = this.players.find(p => p.personId === personId);
       if (player) {
@@ -1643,6 +1657,9 @@ class GameDayLineupScreen extends Screen {
       } else if (att && att.attended) {
         const cls = att.source === 'rsvp' ? 'train-rsvp' : 'train-yes';
         trainingCells += `<td class="ot-col-train ${cls}"><input type="checkbox" class="train-cb" data-person-id="${player.personId}" data-event-id="${evt.id}" checked></td>`;
+      } else if (att && !att.attended) {
+        // No-show: RSVPd yes (or had a manual record) but explicitly marked as not attended
+        trainingCells += `<td class="ot-col-train train-noshow" title="No-show (RSVPd going)" style="background:rgba(239,68,68,0.18);"><input type="checkbox" class="train-cb" data-person-id="${player.personId}" data-event-id="${evt.id}"></td>`;
       } else {
         trainingCells += `<td class="ot-col-train"><input type="checkbox" class="train-cb" data-person-id="${player.personId}" data-event-id="${evt.id}"></td>`;
       }
