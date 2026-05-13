@@ -14,7 +14,6 @@ struct EligibilityPolicy {
     int priority_starter_slots;
     bool game_counts_as_session;
     bool pickup_counts_as_session;
-    int family_discount;
     int keeper_discount;
 };
 
@@ -34,8 +33,8 @@ struct PlayerEligibility {
     std::string jersey_number;
     std::string position;
     std::string photo_url;
-    bool has_family_discount;
     bool is_keeper;
+    bool is_child;
     bool is_designated;
     int  num_clubs;
     std::string internal_role;   // legacy single-role field (kept for compat)

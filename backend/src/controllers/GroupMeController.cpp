@@ -239,6 +239,24 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
         upsertRsvps(notGoing, 2);   // no
         upsertRsvps(maybeGoing, 3); // maybe
 
+        // Remove stale RSVPs: anyone not in the current GroupMe response set
+        // but already in our DB (preserves admin override_rsvp_status_id rows).
+        std::vector<std::string> allResponded;
+        for (const auto& u : going) allResponded.push_back(u);
+        for (const auto& u : notGoing) allResponded.push_back(u);
+        for (const auto& u : maybeGoing) allResponded.push_back(u);
+        if (!allResponded.empty()) {
+            std::string inList = "'" + allResponded[0] + "'";
+            for (size_t i = 1; i < allResponded.size(); i++)
+                inList += ",'" + allResponded[i] + "'";
+            db_->query(
+                "DELETE FROM chat_event_rsvps "
+                "WHERE chat_event_id = " + chatEventId + " "
+                "  AND override_rsvp_status_id IS NULL "
+                "  AND external_user_id NOT IN (" + inList + ")"
+            );
+        }
+
         std::cout << "  ✅ Synced " << rsvpCount << " RSVPs" << std::endl;
 
         // Update chat_integrations.last_synced_at and fetch server timestamp
@@ -379,6 +397,23 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
                     upsertRsvp(chatEventId, notGoing, 2, totalSynced);
                     upsertRsvp(chatEventId, maybeGoing, 3, totalSynced);
 
+                    // Remove stale RSVPs not in current GroupMe response
+                    std::vector<std::string> allResp;
+                    for (const auto& u : going) allResp.push_back(u);
+                    for (const auto& u : notGoing) allResp.push_back(u);
+                    for (const auto& u : maybeGoing) allResp.push_back(u);
+                    if (!allResp.empty()) {
+                        std::string inList = "'" + allResp[0] + "'";
+                        for (size_t i = 1; i < allResp.size(); i++)
+                            inList += ",'" + allResp[i] + "'";
+                        db_->query(
+                            "DELETE FROM chat_event_rsvps "
+                            "WHERE chat_event_id = " + chatEventId + " "
+                            "  AND override_rsvp_status_id IS NULL "
+                            "  AND external_user_id NOT IN (" + inList + ")"
+                        );
+                    }
+
                     std::cout << "🔄 Match " << matchId << " RSVPs: "
                               << going.size() << "G " << notGoing.size() << "N "
                               << maybeGoing.size() << "M" << std::endl;
@@ -466,6 +501,23 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
                         upsertRsvp(evt.id, notGoing, 2, totalSynced);
                         upsertRsvp(evt.id, maybeGoing, 3, totalSynced);
                         groupSynced += going.size() + notGoing.size() + maybeGoing.size();
+
+                        // Remove stale RSVPs not in current GroupMe response
+                        std::vector<std::string> allResp;
+                        for (const auto& u : going) allResp.push_back(u);
+                        for (const auto& u : notGoing) allResp.push_back(u);
+                        for (const auto& u : maybeGoing) allResp.push_back(u);
+                        if (!allResp.empty()) {
+                            std::string inList = "'" + allResp[0] + "'";
+                            for (size_t i = 1; i < allResp.size(); i++)
+                                inList += ",'" + allResp[i] + "'";
+                            db_->query(
+                                "DELETE FROM chat_event_rsvps "
+                                "WHERE chat_event_id = " + evt.id + " "
+                                "  AND override_rsvp_status_id IS NULL "
+                                "  AND external_user_id NOT IN (" + inList + ")"
+                            );
+                        }
                     }
                     std::cout << "🔄 Training sync " << chatName << ": " << groupSynced << " RSVPs" << std::endl;
                 }
@@ -1931,9 +1983,9 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
                         }
 
                         // Sync RSVPs (by external_user_id; person resolution handled at query time)
-                        auto tGoing      = extractStringArray(tEventsJson, tSearchStart, tEnd, "going");
-                        auto tNotGoing   = extractStringArray(tEventsJson, tSearchStart, tEnd, "not_going");
-                        auto tMaybe      = extractStringArray(tEventsJson, tSearchStart, tEnd, "maybe_going");
+                        auto tGoing      = extractStringArray(tEventsJson, tEidPos, tEnd, "going");
+                        auto tNotGoing   = extractStringArray(tEventsJson, tEidPos, tEnd, "not_going");
+                        auto tMaybe      = extractStringArray(tEventsJson, tEidPos, tEnd, "maybe_going");
 
                         auto upsertTRsvp = [&](const std::vector<std::string>& users, int statusId) {
                             for (const auto& uid : users) {
@@ -1954,6 +2006,23 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
                         upsertTRsvp(tGoing, 1);
                         upsertTRsvp(tNotGoing, 2);
                         upsertTRsvp(tMaybe, 3);
+
+                        // Remove stale RSVPs not in current GroupMe response
+                        std::vector<std::string> tAllResp;
+                        for (const auto& u : tGoing) tAllResp.push_back(u);
+                        for (const auto& u : tNotGoing) tAllResp.push_back(u);
+                        for (const auto& u : tMaybe) tAllResp.push_back(u);
+                        if (!tAllResp.empty()) {
+                            std::string tInList = "'" + tAllResp[0] + "'";
+                            for (size_t i = 1; i < tAllResp.size(); i++)
+                                tInList += ",'" + tAllResp[i] + "'";
+                            db_->query(
+                                "DELETE FROM chat_event_rsvps "
+                                "WHERE chat_event_id = " + tChatEventId + " "
+                                "  AND override_rsvp_status_id IS NULL "
+                                "  AND external_user_id NOT IN (" + tInList + ")"
+                            );
+                        }
 
                         tc = tEidPos + 11;
                     }

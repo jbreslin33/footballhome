@@ -1102,10 +1102,6 @@ class GameDayLineupScreen extends Screen {
         <span class="policy-label">Priority Starter</span>
         <span class="policy-value">${p.priorityStarterSessions}/${p.lookbackCount} (${p.priorityStarterSlots} slots)</span>
       </div>
-      <div class="policy-item">
-        <span class="policy-label">Family Discount</span>
-        <span class="policy-value">−${p.familyDiscount}</span>
-      </div>
     `;
   }
 
@@ -1140,8 +1136,7 @@ class GameDayLineupScreen extends Screen {
       return;
     }
 
-    // No saved lineup — auto-distribute from RSVP
-    this._autoDistribute();
+    // No saved lineup — start empty; coach builds manually (use Auto Fill button)
   }
 
   _isApslEligible(player) {
@@ -2219,10 +2214,9 @@ class GameDayLineupScreen extends Screen {
       const newCount = sessions.filter(s => s.attended).length;
       player.sessionsAttended = newCount;
 
-      // Re-classify this player's eligibility status
-      const effectiveMin = player.hasFamilyDiscount
-        ? Math.max(0, this.policy.minSessionsToStart - this.policy.familyDiscount)
-        : this.policy.minSessionsToStart;
+      // Re-classify this player's eligibility status using per-player effective minimum
+      const effectiveMin = (player.isKeeper || player.isChild) ? 0
+        : player.effectiveMinSessions ?? (player.requiredSessions ?? this.policy.minSessionsToStart);
       player.effectiveMinSessions = effectiveMin;
 
       if (newCount >= this.policy.priorityStarterSessions) {
@@ -4376,18 +4370,18 @@ class GameDayLineupScreen extends Screen {
 
             <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div>
-                <div style="font-size:0.88rem;">👨‍👩‍👦 Family Discount</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">−${this.policy?.familyDiscount||1} min sessions</div>
-              </div>
-              <input type="checkbox" id="ep-family" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${player.hasFamilyDiscount ? 'checked' : ''}>
-            </label>
-
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-              <div>
                 <div style="font-size:0.88rem;">🧤 Goalkeeper</div>
                 <div style="font-size:0.72rem;color:var(--text-muted);">0 practices required</div>
               </div>
               <input type="checkbox" id="ep-keeper" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${player.isKeeper ? 'checked' : ''}>
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">👶 Child</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">0 practices required</div>
+              </div>
+              <input type="checkbox" id="ep-child" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${player.isChild ? 'checked' : ''}>
             </label>
           </div>
 
@@ -4535,8 +4529,8 @@ class GameDayLineupScreen extends Screen {
       saveTimer = setTimeout(async () => {
         const designated       = overlay.querySelector('#ep-designated').checked;
         const numClubs         = parseInt(overlay.querySelector('#ep-numclubs').value);
-        const family           = overlay.querySelector('#ep-family').checked;
         const isKeeper         = overlay.querySelector('#ep-keeper').checked;
+        const isChild          = overlay.querySelector('#ep-child').checked;
         const jersey           = overlay.querySelector('#ep-jersey').value.trim() || null;
         const isInjured        = overlay.querySelector('#ep-injured').checked;
         const isSuspLeague     = overlay.querySelector('#ep-susp-league').checked;
@@ -4553,8 +4547,8 @@ class GameDayLineupScreen extends Screen {
 
         player.isDesignated       = designated;
         player.numClubs           = numClubs;
-        player.hasFamilyDiscount  = family;
         player.isKeeper           = isKeeper;
+        player.isChild            = isChild;
         player.jerseyNumber       = jersey;
         player.isInjured          = isInjured;
         player.isSuspendedLeague  = isSuspLeague;
@@ -4569,9 +4563,11 @@ class GameDayLineupScreen extends Screen {
         player.requiredSessionsOverride = reqOverride;
 
         if (this.policy?.minSessionsToStart !== undefined) {
-          const effectiveMin = family
-            ? Math.max(0, this.policy.minSessionsToStart - (this.policy.familyDiscount || 1))
-            : this.policy.minSessionsToStart;
+          const ageReq = player.requiredSessions ?? this.policy.minSessionsToStart;
+          const effectiveMin = (isKeeper || isChild) ? 0
+            : reqOverride != null ? reqOverride
+            : ageReq;
+          player.effectiveMinSessions = effectiveMin;
           const s = player.sessionsAttended || 0;
           if (s >= (this.policy.priorityStarterSessions || 999)) player.eligibilityStatus = 'priority_starter';
           else if (s >= effectiveMin) player.eligibilityStatus = designated ? 'priority_starter' : 'eligible_starter';
@@ -4581,7 +4577,7 @@ class GameDayLineupScreen extends Screen {
 
         try {
           const flagsPayload = {
-            isDesignated: designated, numClubs, hasFamilyDiscount: family, isKeeper,
+            isDesignated: designated, numClubs, isKeeper, isChild,
             jerseyNumber: jersey, internalRole: player.internalRole || '',
             isInjured, isSuspendedLeague: isSuspLeague, isSuspendedInhouse: isSuspInhouse,
             eligApslStarter, eligApslBench, eligLiga1Starter, eligLiga1Bench,

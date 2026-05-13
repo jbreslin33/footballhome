@@ -222,7 +222,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 -- Resolve each person to their player record
                 SELECT DISTINCT ON (cp.person_id)
                        p.id as player_id, r.jersey_number,
-                       p.has_family_discount, p.is_keeper, p.photo_url,
+                       p.is_keeper, p.is_child, p.photo_url,
                        p.is_designated, COALESCE(p.num_clubs, 1) as num_clubs,
                        COALESCE(p.internal_role, '') as internal_role,
                        COALESCE(p.is_injured, false) as is_injured,
@@ -360,7 +360,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 WHERE pp.is_primary = true
             )
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
-                   rp.has_family_discount, rp.is_keeper, rp.photo_url, rp.person_id,
+                   rp.is_keeper, rp.is_child, rp.photo_url, rp.person_id,
                    rp.on_official_roster, rp.is_designated, rp.num_clubs,
                    rp.internal_role, rp.is_injured, rp.is_suspended_league, rp.is_suspended_inhouse,
                    rp.elig_apsl_starter, rp.elig_apsl_bench,
@@ -544,7 +544,6 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"priorityStarterSlots\":" << policy.priority_starter_slots << ",";
         json << "\"gameCountsAsSession\":" << (policy.game_counts_as_session ? "true" : "false") << ",";
         json << "\"pickupCountsAsSession\":" << (policy.pickup_counts_as_session ? "true" : "false") << ",";
-        json << "\"familyDiscount\":" << policy.family_discount << ",";
         json << "\"keeperDiscount\":" << policy.keeper_discount;
         json << "},";
         
@@ -571,7 +570,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.jersey_number = row["jersey_number"].is_null() ? "" : row["jersey_number"].c_str();
             pe.position = row["position"].is_null() ? "" : row["position"].c_str();
             pe.photo_url = row["photo_url"].is_null() ? "" : row["photo_url"].c_str();
-            pe.has_family_discount = !row["has_family_discount"].is_null() && row["has_family_discount"].as<bool>();
+            pe.is_child           = !row["is_child"].is_null()           && row["is_child"].as<bool>();
             pe.is_keeper = !row["is_keeper"].is_null() && row["is_keeper"].as<bool>();
             pe.is_designated = !row["is_designated"].is_null() && row["is_designated"].as<bool>();
             pe.num_clubs = row["num_clubs"].is_null() ? 1 : row["num_clubs"].as<int>();
@@ -614,12 +613,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             int futureRsvpYes = row["future_rsvp_yes"].as<int>();
             pe.projected_sessions = pe.sessions_attended + futureRsvpYes;
             
-            // Compute effective minimum sessions (keepers always 0; family discount applies to others)
+            // Compute effective minimum sessions (keepers and children always 0)
             pe.effective_min_sessions = pe.required_sessions;
-            if (pe.is_keeper) {
+            if (pe.is_keeper || pe.is_child) {
                 pe.effective_min_sessions = 0;
-            } else if (pe.has_family_discount) {
-                pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.family_discount);
             }
             
             // Classify current eligibility
@@ -658,8 +655,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"jerseyNumber\":" << (pe.jersey_number.empty() ? "null" : "\"" + pe.jersey_number + "\"") << ",";
             json << "\"position\":" << (pe.position.empty() ? "null" : "\"" + pe.position + "\"") << ",";
             json << "\"photoUrl\":" << (pe.photo_url.empty() ? "null" : "\"" + escapeJson(pe.photo_url) + "\"") << ",";
-            json << "\"hasFamilyDiscount\":" << (pe.has_family_discount ? "true" : "false") << ",";
             json << "\"isKeeper\":" << (pe.is_keeper ? "true" : "false") << ",";
+            json << "\"isChild\":" << (pe.is_child ? "true" : "false") << ",";
             json << "\"isDesignated\":" << (pe.is_designated ? "true" : "false") << ",";
             json << "\"numClubs\":" << pe.num_clubs << ",";
             json << "\"sessionsInWindow\":" << pe.sessions_in_window << ",";
@@ -765,7 +762,6 @@ Response EligibilityController::handleGetTeamPolicy(const Request& request) {
         json << "\"priorityStarterSlots\":" << policy.priority_starter_slots << ",";
         json << "\"gameCountsAsSession\":" << (policy.game_counts_as_session ? "true" : "false") << ",";
         json << "\"pickupCountsAsSession\":" << (policy.pickup_counts_as_session ? "true" : "false") << ",";
-        json << "\"familyDiscount\":" << policy.family_discount << ",";
         json << "\"keeperDiscount\":" << policy.keeper_discount;
         json << "}}";
         
@@ -802,7 +798,6 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
         int prioritySlots = parseJsonInt(body, "priority_starter_slots", 3);
         bool gameCounts = parseJsonBool(body, "game_counts_as_session", true);
         bool pickupCounts = parseJsonBool(body, "pickup_counts_as_session", true);
-        int familyDiscount = parseJsonInt(body, "family_discount", 1);
         int keeperDiscount = parseJsonInt(body, "keeper_discount", 2);
         
         std::string upsertQuery = R"(
@@ -810,8 +805,8 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
                 (team_id, lookback_count, min_sessions_to_start, 
                  priority_starter_sessions, priority_starter_slots,
                  game_counts_as_session, pickup_counts_as_session, 
-                 family_discount, keeper_discount, created_by_user_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 keeper_discount, created_by_user_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (club_id, team_id, match_id)
             DO UPDATE SET
                 lookback_count = EXCLUDED.lookback_count,
@@ -820,7 +815,6 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
                 priority_starter_slots = EXCLUDED.priority_starter_slots,
                 game_counts_as_session = EXCLUDED.game_counts_as_session,
                 pickup_counts_as_session = EXCLUDED.pickup_counts_as_session,
-                family_discount = EXCLUDED.family_discount,
                 keeper_discount = EXCLUDED.keeper_discount
             RETURNING id
         )";
@@ -833,7 +827,6 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
             std::to_string(prioritySlots),
             gameCounts ? "true" : "false",
             pickupCounts ? "true" : "false",
-            std::to_string(familyDiscount),
             std::to_string(keeperDiscount),
             userId
         });
@@ -1292,24 +1285,52 @@ Response EligibilityController::handleGetPlayerAttendance(const Request& request
         }
         std::string personId = personResult[0]["person_id"].c_str();
 
-        // Query sessions with attendance + RSVP status for this player
+        // Query sessions with attendance + RSVP status for this player.
+        // Resolves RSVPs by both direct person_id AND external_user_id (for
+        // GroupMe users not yet directly linked via person_id).
         std::string query = R"(
+            WITH user_person_map AS (
+                SELECT DISTINCT ON (external_user_id)
+                       external_user_id, person_id
+                FROM (
+                    SELECT cem.external_user_id, cem.person_id, cem.synced_at as ts
+                    FROM chat_external_members cem
+                    WHERE cem.person_id IS NOT NULL
+                    UNION ALL
+                    SELECT ei.external_user_id, ei.person_id, ei.last_synced_at as ts
+                    FROM external_identities ei
+                    WHERE ei.provider_id = 1
+                ) combined
+                ORDER BY external_user_id, ts DESC NULLS LAST
+            ),
+            resolved_rsvps AS (
+                SELECT cer.chat_event_id,
+                       COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) as eff_status_id,
+                       rs.name as rsvp_status_name
+                FROM chat_event_rsvps cer
+                LEFT JOIN user_person_map upm
+                    ON upm.external_user_id = cer.external_user_id
+                    AND cer.person_id IS NULL
+                LEFT JOIN rsvp_statuses rs
+                    ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
+                WHERE (cer.person_id = $3::int OR upm.person_id = $3::int)
+                  AND cer.chat_event_id = ANY($1::int[])
+            )
             SELECT ce.id as session_id,
                    ce.title,
                    COALESCE(ce.event_date::text, to_char(ce.start_at, 'YYYY-MM-DD')) as session_date,
                    CASE WHEN ta.id IS NOT NULL THEN ta.attended
-                        ELSE (COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1)
+                        ELSE (rr.eff_status_id = 1)
                    END as attended,
                    CASE WHEN ta.id IS NOT NULL THEN 'manual'
-                        WHEN cer.id IS NOT NULL THEN 'rsvp'
+                        WHEN rr.chat_event_id IS NOT NULL THEN 'rsvp'
                         ELSE 'none'
                    END as source,
-                   rs.name as rsvp_status
+                   COALESCE(rr.rsvp_status_name, '') as rsvp_status
             FROM unnest($1::int[]) WITH ORDINALITY AS s(id, ord)
             JOIN chat_events ce ON ce.id = s.id
             LEFT JOIN training_attendance ta ON ta.chat_event_id = ce.id AND ta.player_id = $2::int
-            LEFT JOIN chat_event_rsvps cer ON cer.chat_event_id = ce.id AND cer.person_id = $3::int
-            LEFT JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
+            LEFT JOIN resolved_rsvps rr ON rr.chat_event_id = ce.id
             ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
         )";
 
@@ -1403,14 +1424,13 @@ EligibilityPolicy EligibilityController::resolvePolicy(
                 result[0]["priority_starter_slots"].as<int>(),
                 result[0]["game_counts_as_session"].as<bool>(),
                 result[0]["pickup_counts_as_session"].as<bool>(),
-                result[0]["family_discount"].as<int>(),
                 result[0]["keeper_discount"].as<int>()
             };
         };
 
         const char* cols = "SELECT id, lookback_count, min_sessions_to_start, "
             "priority_starter_sessions, priority_starter_slots, "
-            "game_counts_as_session, pickup_counts_as_session, family_discount, 0 as keeper_discount ";
+            "game_counts_as_session, pickup_counts_as_session, 0 as keeper_discount ";
 
         // Match level
         if (!matchId.empty()) {
@@ -1449,7 +1469,7 @@ EligibilityPolicy EligibilityController::resolvePolicy(
     }
     
     // Hardcoded fallback if no policy exists at all
-    return {0, 5, 2, 3, 3, true, true, 1, 2};
+    return {0, 5, 2, 3, 3, true, true, 2};
 }
 
 // ============================================================================
@@ -1669,7 +1689,7 @@ std::string EligibilityController::escapeJson(const std::string& str) {
 
 // ============================================================================
 // PUT /api/eligibility/player/:playerId/flags
-// Update is_designated, num_clubs, has_family_discount, jersey_number
+// Update is_designated, num_clubs, is_keeper, is_child, jersey_number
 // Frontend calls this as /api/players/:id/flags — note: we also accept that path
 // via the route pattern below, but the controller prefix is /api/eligibility.
 // ============================================================================
@@ -1683,10 +1703,10 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     const std::string& body = request.getBody();
     bool isDesignated        = parseJsonBool(body, "isDesignated");
     int  numClubs            = parseJsonInt(body, "numClubs", 1);
-    bool hasFamilyDisc       = parseJsonBool(body, "hasFamilyDiscount");
     std::string jersey       = parseJsonString(body, "jerseyNumber");
     std::string internalRole = parseJsonString(body, "internalRole");
     bool isKeeper            = parseJsonBool(body, "isKeeper");
+    bool isChild             = parseJsonBool(body, "isChild");
     bool isInjured           = parseJsonBool(body, "isInjured");
     bool isSuspLeague        = parseJsonBool(body, "isSuspendedLeague");
     bool isSuspInhouse       = parseJsonBool(body, "isSuspendedInhouse");
@@ -1717,19 +1737,19 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             UPDATE players
                SET is_designated        = $2::bool,
                    num_clubs            = $3::int,
-                   has_family_discount  = $4::bool,
-                   internal_role        = NULLIF($5, '')::varchar,
-                   is_keeper            = $6::bool,
-                   is_injured           = $7::bool,
-                   is_suspended_league  = $8::bool,
-                   is_suspended_inhouse = $9::bool,
-                   elig_apsl_starter    = $10::bool,
-                   elig_apsl_bench      = $11::bool,
-                   elig_liga1_starter   = $12::bool,
-                   elig_liga1_bench     = $13::bool,
-                   elig_liga2_starter   = $14::bool,
-                   elig_liga2_bench     = $15::bool,
-                   required_sessions_override = CASE WHEN $16::boolean THEN NULLIF($17::text,'')::smallint ELSE required_sessions_override END,
+                   internal_role        = NULLIF($4, '')::varchar,
+                   is_keeper            = $5::bool,
+                   is_child             = $17::bool,
+                   is_injured           = $6::bool,
+                   is_suspended_league  = $7::bool,
+                   is_suspended_inhouse = $8::bool,
+                   elig_apsl_starter    = $9::bool,
+                   elig_apsl_bench      = $10::bool,
+                   elig_liga1_starter   = $11::bool,
+                   elig_liga1_bench     = $12::bool,
+                   elig_liga2_starter   = $13::bool,
+                   elig_liga2_bench     = $14::bool,
+                   required_sessions_override = CASE WHEN $15::boolean THEN NULLIF($16::text,'')::smallint ELSE required_sessions_override END,
                    updated_at           = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
@@ -1737,7 +1757,6 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             playerId,
             isDesignated   ? "true" : "false",
             std::to_string(numClubs),
-            hasFamilyDisc  ? "true" : "false",
             internalRole,
             isKeeper       ? "true" : "false",
             isInjured      ? "true" : "false",
@@ -1750,7 +1769,8 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             eligLiga2Starter ? "true" : "false",
             eligLiga2Bench   ? "true" : "false",
             hasReqOverride   ? "true" : "false",
-            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : ""
+            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : "",
+            isChild          ? "true" : "false"
         });
 
         // Update jersey number on ALL roster entries for this player if provided
@@ -1775,7 +1795,6 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
         data << "{\"playerId\":" << playerId
              << ",\"isDesignated\":" << (isDesignated ? "true" : "false")
              << ",\"numClubs\":"     << numClubs
-             << ",\"hasFamilyDiscount\":" << (hasFamilyDisc ? "true" : "false")
              << ",\"internalRole\":" << (internalRole.empty() ? "null" : "\"" + internalRole + "\"")
              << ",\"isInjured\":" << (isInjured ? "true" : "false")
              << ",\"isSuspendedLeague\":" << (isSuspLeague ? "true" : "false")

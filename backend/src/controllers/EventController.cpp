@@ -2047,7 +2047,6 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 pe.first_name,
                 pe.last_name,
                 false::boolean as is_keeper,
-                false::boolean as has_family_discount,
                 NULL::text as position,
                 CASE WHEN ml.id IS NOT NULL THEN true ELSE false END as on_game_roster,
                 COALESCE(r.jersey_number::text, '') as jersey_number,
@@ -2176,7 +2175,6 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
             json << "\"isKeeper\":" << (row["is_keeper"].as<bool>() ? "true" : "false") << ",";
-            json << "\"hasFamilyDiscount\":" << (row["has_family_discount"].as<bool>() ? "true" : "false") << ",";
             json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"") << ",";
             json << "\"rsvpStatus\":" << (effectiveRsvp.empty() ? "null" : "\"" + effectiveRsvp + "\"") << ",";
             json << "\"rsvpSource\":" << (rsvpSource.empty() ? "null" : "\"" + rsvpSource + "\"") << ",";
