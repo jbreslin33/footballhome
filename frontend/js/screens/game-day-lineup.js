@@ -4114,18 +4114,10 @@ class GameDayLineupScreen extends Screen {
   //   4. Sessions attended descending
   //   5. Alphabetical
   _rankPlayers(players) {
-    const COLOR_ORDER = ['green', 'yellow', 'blue', 'orange', 'red'];
-    const metPrac = (p) => p.eligibilityStatus === 'priority_starter' || p.eligibilityStatus === 'eligible_starter';
     return [...players].sort((a, b) => {
-      const apslDiff = (b.eligApslStarter ? 1 : 0) - (a.eligApslStarter ? 1 : 0);
-      if (apslDiff !== 0) return apslDiff;
-      const pracDiff = (metPrac(b) ? 1 : 0) - (metPrac(a) ? 1 : 0);
-      if (pracDiff !== 0) return pracDiff;
-      const colorDiff = COLOR_ORDER.indexOf(this._eligState(a)) - COLOR_ORDER.indexOf(this._eligState(b));
-      if (colorDiff !== 0) return colorDiff;
-      const sd = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
-      if (sd !== 0) return sd;
-      return ((a.firstName || '') + (a.lastName || '')).localeCompare((b.firstName || '') + (b.lastName || ''));
+      const last = (a.lastName || '').localeCompare(b.lastName || '');
+      if (last !== 0) return last;
+      return (a.firstName || '').localeCompare(b.firstName || '');
     });
   }
 
