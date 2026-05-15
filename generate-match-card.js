@@ -704,7 +704,7 @@ async function main() {
     const lighthouseLogo = findLogo('lighthouse-1893');
     const { filepath, filename } = await generateCard('u23-ad', {
       division: "Men's", genderEmoji: '⚽👨',
-      colorPrimary: '#002868', colorSecondary: '#BF0A30',
+      colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo,
     });
     console.log(`\nImage saved: ${filepath}`);

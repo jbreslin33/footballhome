@@ -697,18 +697,18 @@ class PromotionalPostsScreen extends Screen {
         key: 'grassroots-brazil',
         label: '🇧🇷 Brazil — Grassroots Cup',
         imageUrl: '/images/posts/grassroots-cup-ad-1778886477962.png',
-        caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
+        caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
       },
       {
         key: 'grassroots-puertorico',
         label: '🇵🇷 Puerto Rico — Grassroots Cup',
         imageUrl: '/images/posts/grassroots-cup-ad-1778886546341.png',
-        caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
+        caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
       },
       {
         key: 'u23-mens',
         label: '⚽ U23 Men\'s Team',
-        imageUrl: '/images/posts/u23-ad-1778886549478.png',
+        imageUrl: '/images/posts/u23-ad-1778888461864.png',
         caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball`,
       },
     ];
@@ -720,10 +720,22 @@ class PromotionalPostsScreen extends Screen {
       return `
         <div class="card" style="padding:var(--space-3);margin-bottom:var(--space-3);border:2px solid rgba(99,102,241,0.3);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <strong style="font-size:1rem;">${ad.label}</strong>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="/images/leagues/casa.png" style="height:32px;width:auto;object-fit:contain;" alt="CASA">
+              <strong style="font-size:1rem;">${ad.label}</strong>
+            </div>
             ${isPosted ? `<span style="background:#4CAF50;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">✅ POSTED</span>` : `<span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:2px 10px;border-radius:12px;font-size:0.8rem;">⚡ QUICK POST</span>`}
           </div>
           <img src="${ad.imageUrl}" style="width:100%;border-radius:8px;margin-bottom:10px;border:1px solid var(--border-color);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;">
+            <span style="font-size:0.8rem;opacity:0.7;white-space:nowrap;">Sponsored by</span>
+            <img src="/images/sponsors/welovejunk_logo.png" style="height:28px;width:auto;object-fit:contain;" alt="We Love Junk">
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;">
+            <span style="font-size:0.8rem;opacity:0.7;white-space:nowrap;">Hosted by</span>
+            <img src="/images/teams/logos/lighthouse-1893.png" style="height:28px;width:auto;object-fit:contain;" alt="Lighthouse 1893 SC">
+            <span style="font-size:0.85rem;font-weight:600;">Lighthouse 1893 SC</span>
+          </div>
           <details style="margin-bottom:10px;">
             <summary style="cursor:pointer;font-weight:600;opacity:0.8;">📝 Caption</summary>
             <p style="white-space:pre-wrap;opacity:0.85;margin-top:8px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:0.85rem;">${ad.caption.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
@@ -1995,9 +2007,9 @@ class PromotionalPostsScreen extends Screen {
 
   async saveAndPublishQuickPost(key) {
     const quickAds = [
-      { key: 'grassroots-brazil',    label: '🇧🇷 Brazil — Grassroots Cup',    imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886477962.png', caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
-      { key: 'grassroots-puertorico', label: '🇵🇷 Puerto Rico — Grassroots Cup', imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886546341.png', caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
-      { key: 'u23-mens',             label: `⚽ U23 Men's Team`,               imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778886549478.png',           caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball` },
+      { key: 'grassroots-brazil',    label: '🇧🇷 Brazil — Grassroots Cup',    imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886477962.png', caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
+      { key: 'grassroots-puertorico', label: '🇵🇷 Puerto Rico — Grassroots Cup', imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886546341.png', caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
+      { key: 'u23-mens',             label: `⚽ U23 Men's Team`,               imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778888461864.png',           caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball` },
     ];
     const ad = quickAds.find(a => a.key === key);
     if (!ad) return;
