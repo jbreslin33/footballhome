@@ -732,9 +732,9 @@ class PromotionalPostsScreen extends Screen {
             <img src="/images/sponsors/welovejunk_logo.png" style="height:28px;width:auto;object-fit:contain;" alt="We Love Junk">
           </div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;">
-            <span style="font-size:0.8rem;opacity:0.7;white-space:nowrap;">Hosted by</span>
-            <img src="/images/teams/logos/lighthouse-1893.png" style="height:28px;width:auto;object-fit:contain;" alt="Lighthouse 1893 SC">
-            <span style="font-size:0.85rem;font-weight:600;">Lighthouse 1893 SC</span>
+            <span style="font-size:0.8rem;opacity:0.7;white-space:nowrap;">Hosted at</span>
+            <img src="/images/lighthouse-complex.png" style="height:32px;width:auto;object-fit:contain;" alt="Lighthouse Sports & Entertainment Complex">
+            <span style="font-size:0.85rem;font-weight:600;">The Lighthouse Sports &amp; Entertainment Complex</span>
           </div>
           <details style="margin-bottom:10px;">
             <summary style="cursor:pointer;font-weight:600;opacity:0.8;">📝 Caption</summary>
