@@ -479,10 +479,11 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
 </body></html>`;
 }
 
-function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo }) {
+function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
+  const casaLogoTag = casaLogo ? logoImgTag(casaLogo, '⚽') : '<span style="font-size:40px;">⚽</span>';
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
@@ -556,7 +557,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
   <div class="gold-bar"></div>
   <div class="bottom-bar"></div>
   <div class="content">
-    <div class="casa-badge">⚽ CASA Soccer × Lighthouse 1893 SC</div>
+    <div class="casa-badge" style="display:flex;align-items:center;gap:12px;"><span style="width:36px;height:36px;background:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:4px;flex-shrink:0;">${casaLogoTag}</span>⚽ CASA U23 ${division} Premier League</div>
     <div class="main-section">
       <div class="division-label">Now Forming</div>
       <div class="team-name">U23</div>
@@ -564,7 +565,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
     </div>
     <div class="details-grid">
       <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">First Match</span>May 30, 2026</span></div>
-      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA Soccer · Philly</span></div>
+      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA U23 ${division} Premier</span></div>
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
       <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>Open to All Players</span></div>
     </div>
@@ -738,10 +739,11 @@ async function main() {
     const lighthouseLogo = findLogo('lighthouse-1893');
     const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
     const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('u23-ad', {
       division: "Men's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
-      lighthouseLogo, welovejunkLogo, complexLogo,
+      lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
