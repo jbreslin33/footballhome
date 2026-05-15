@@ -31,7 +31,8 @@ class GameDayLineupScreen extends Screen {
     // Auto-orient based on screen: landscape if wider than tall
     this.pitchOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
     this.pitchFit = true; // always full screen
-    this.formationLocked = false; // locked = formation positions enforced; unlocked = custom/free
+    this.formationLocked = false; // legacy compat — now means movement locked (no drag)
+    this.pitchMoveLocked = true;  // true = dragging disabled (lock icon)
     this.customPositions = null; // null = not set; array of {x,y,label} in canonical 0-100 space
     this.customDragMode = 'slots'; // 'slots' = move holder; 'players' = swap players between slots
     this._saveMetaTimer = null;  // debounce handle for auto-save
@@ -140,6 +141,13 @@ class GameDayLineupScreen extends Screen {
     }
 
     this.loadEligibilityData();
+
+    // Fire-and-forget: auto-set attendance for all past events from RSVP data
+    // ON CONFLICT DO NOTHING — never overwrites manual records
+    if (teamId) {
+      this.auth.fetch(`/api/groupme/finalize-attendance-batch?teamId=${teamId}`, { method: 'POST' })
+        .catch(() => {});
+    }
   }
 
   // ============================================================================
@@ -201,13 +209,9 @@ class GameDayLineupScreen extends Screen {
       }
 
       // Formation lock/custom toggle
-      if (e.target.id === 'pitch-lock-btn' || e.target.closest('#pitch-lock-btn')) {        this.formationLocked = !this.formationLocked;
-        if (!this.formationLocked && !this.customPositions) {
-          // Seed from current formation on first switch to custom mode
-          this.customPositions = this.getPositionsForFormation(
-            this.selectedFormation?.code || '4-3-3'
-          ).map(p => ({ x: p.x, y: p.y, label: p.label }));
-        }
+      if (e.target.id === 'pitch-lock-btn' || e.target.closest('#pitch-lock-btn')) {
+        this.pitchMoveLocked = !this.pitchMoveLocked;
+        this.formationLocked = this.pitchMoveLocked; // keep in sync for save compat
         this.renderPitchView();
         return;
       }
@@ -636,6 +640,7 @@ class GameDayLineupScreen extends Screen {
   async loadFormations() {
     try {
       this.formations = [
+        { id: 0, code: 'custom', name: 'Custom' },
         { id: 1, code: '4-3-3', name: '4-3-3' },
         { id: 2, code: '4-4-2', name: '4-4-2' },
         { id: 3, code: '3-5-2', name: '3-5-2' },
@@ -647,7 +652,7 @@ class GameDayLineupScreen extends Screen {
         { id: 9, code: '4-5-1', name: '4-5-1' }
       ];
 
-      // Default formation for ghost positions (4-3-3)
+      // Default formation for ghost positions (Custom)
       this.selectedFormation = this.formations[0];
 
       // Populate opponent formation dropdown
@@ -698,9 +703,10 @@ class GameDayLineupScreen extends Screen {
         this.customPositions = meta.customPositions;
       }
 
-      // Restore formation lock state
+      // Restore movement lock state
       if (meta.formationLocked === false) {
         this.formationLocked = false;
+        this.pitchMoveLocked = false;
       }
     } catch (e) {
       console.warn('Could not load saved metadata:', e);
@@ -1479,6 +1485,7 @@ class GameDayLineupScreen extends Screen {
   }
 
   getPositionsForFormation(code) {
+    if (code === 'custom') code = '4-3-3'; // fallback for seeding
     const formations = {
       '4-3-3': [
         { x: 50, y: 5, label: 'GK' },
@@ -2231,7 +2238,7 @@ class GameDayLineupScreen extends Screen {
       const newCount = sessions.filter(s => s.attended).length;
       player.sessionsAttended = newCount;
 
-      // Re-classify this player's eligibility status using per-player effective minimum
+cd      // Re-classify this player's eligibility status using per-player effective minimum
       const effectiveMin = (player.isKeeper || player.isChild) ? 0
         : player.effectiveMinSessions ?? (player.requiredSessions ?? this.policy.minSessionsToStart);
       player.effectiveMinSessions = effectiveMin;
@@ -2617,12 +2624,12 @@ class GameDayLineupScreen extends Screen {
 
     // ── Controls ─────────────────────────────────────────────────
 
-    // Mode toggle (🔒 Formation / ✏️ Custom)
+    // Movement lock toggle (🔒 locked = no drag / 🔓 unlocked = can drag)
     const lockBtn = document.createElement('button');
     lockBtn.id = 'pitch-lock-btn';
-    lockBtn.title = this.formationLocked ? 'Switch to custom placement' : 'Lock to formation';
-    lockBtn.style.cssText = `padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.75rem;background:${this.formationLocked ? 'rgba(59,130,246,0.8)' : 'rgba(168,85,247,0.7)'};color:#fff;white-space:nowrap;`;
-    lockBtn.textContent = this.formationLocked ? '🔒' : '✏️';
+    lockBtn.title = this.pitchMoveLocked ? 'Unlock to move players' : 'Lock movement';
+    lockBtn.style.cssText = `padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.75rem;background:${this.pitchMoveLocked ? 'rgba(59,130,246,0.8)' : 'rgba(168,85,247,0.7)'};color:#fff;white-space:nowrap;`;
+    lockBtn.textContent = this.pitchMoveLocked ? '🔒' : '🔓';
     ctrlRow.appendChild(lockBtn);
 
     // Formation dropdown (inline, compact)
@@ -2639,8 +2646,16 @@ class GameDayLineupScreen extends Screen {
     formSelect.addEventListener('change', () => {
       const id = parseInt(formSelect.value);
       this.selectedFormation = this.formations.find(f => f.id === id) || this.formations[0];
-      if (!this.formationLocked) this.formationLocked = true;
-      this.customPositions = null;
+      if (this.selectedFormation.code === 'custom') {
+        // Entering custom: seed positions from current formation if not already set
+        if (!this.customPositions) {
+          const base = this.getPositionsForFormation('4-3-3');
+          this.customPositions = base.map(p => ({ x: p.x, y: p.y, label: p.label }));
+        }
+      } else {
+        // Named formation selected: clear custom positions so formation layout is used
+        this.customPositions = null;
+      }
       this.renderPitchView();
     });
     ctrlRow.appendChild(formSelect);
@@ -2756,14 +2771,16 @@ class GameDayLineupScreen extends Screen {
       // ── resolve positions & draw chips ────────────────────────────────────
       // In formation-locked mode: use formation positions.
       // In custom mode: use this.customPositions (initialised from formation if not set).
-      const formPositions = this.getPositionsForFormation(this.selectedFormation?.code || '4-3-3');
+      const formCode = (this.selectedFormation?.code === 'custom' || !this.selectedFormation?.code) ? '4-3-3' : this.selectedFormation.code;
+      const formPositions = this.getPositionsForFormation(formCode);
 
-      // Seed customPositions from formation the first time we enter custom mode
-      if (!this.formationLocked && !this.customPositions) {
+      // Seed customPositions when in custom mode and none saved yet
+      const isCustomMode = this.selectedFormation?.code === 'custom';
+      if (isCustomMode && !this.customPositions) {
         this.customPositions = formPositions.map(p => ({ x: p.x, y: p.y, label: p.label }));
       }
 
-      const positions = this.formationLocked
+      const positions = (!isCustomMode && !this.customPositions)
         ? formPositions
         : (this.customPositions || formPositions).map((cp, i) => ({
             x: cp.x, y: cp.y,
@@ -2889,7 +2906,8 @@ class GameDayLineupScreen extends Screen {
         if (dx*dx + dy*dy <= hz.r * hz.r) {
           e.preventDefault(); // always prevent to stop ghost click on touch
           pendingHitZone = hz; // save for pointerUp tap detection
-          // Always allow drag (formation mode = player swap; custom mode = slot move or player swap)
+          // Block drag when movement is locked
+          if (this.pitchMoveLocked) return;
           dragState = {
             slotIndex: hz.slotIndex,
             x: hz.canonX, y: hz.canonY,
@@ -3578,6 +3596,58 @@ class GameDayLineupScreen extends Screen {
     return syncRow;
   }
 
+  getPlayerByPersonId(personId) {
+    if (!personId) return null;
+    return this.players.find(p => String(p.personId) === String(personId)) || null;
+  }
+
+  _mk9Widget({ appRsvp, overrideRsvp, attendanceStatus, isPast, onOverride, onAttendance }) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;padding-left:2px;';
+    const rOpts = [
+      { v:'yes',   label:'Going',     dot:'🟢' },
+      { v:'maybe', label:'Maybe',     dot:'🟡' },
+      { v:'no',    label:'Not Going', dot:'🔴' },
+    ];
+    const aOpts = [
+      { v:'yes',        label:'Yes',        dot:'✅' },
+      { v:'late',       label:'Late',       dot:'🕐' },
+      { v:'left_early', label:'Left Early', dot:'↩️' },
+      { v:'no',         label:'No',         dot:'❌' },
+    ];
+    const mkBtnRow = (label, opts, activeVal, onSelect, readonly) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:5px;';
+      const lbl = document.createElement('span');
+      lbl.style.cssText = 'font-size:0.58rem;color:rgba(255,255,255,0.32);font-weight:700;letter-spacing:0.04em;width:54px;flex-shrink:0;text-align:right;';
+      lbl.textContent = label;
+      row.appendChild(lbl);
+      const btnGroup = document.createElement('div');
+      btnGroup.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap;';
+      opts.forEach(opt => {
+        const isActive = activeVal === opt.v;
+        const btn = document.createElement('button');
+        btn.style.cssText = `display:flex;align-items:center;gap:2px;padding:2px 7px;border-radius:5px;font-size:0.7rem;border:1px solid ${isActive ? 'rgba(99,102,241,0.7)' : 'rgba(255,255,255,0.10)'};background:${isActive ? 'rgba(99,102,241,0.22)' : 'rgba(255,255,255,0.03)'};color:${isActive ? '#c7d2fe' : 'rgba(255,255,255,0.3)'};font-weight:${isActive ? '700' : '400'};cursor:${readonly || !onSelect ? 'default' : 'pointer'};`;
+        btn.textContent = `${opt.dot} ${opt.label}`;
+        if (!readonly && onSelect) btn.addEventListener('click', () => onSelect(isActive && label === 'OVERRIDE' ? 'clear' : opt.v));
+        btnGroup.appendChild(btn);
+      });
+      if (label === 'OVERRIDE' && onSelect && !readonly) {
+        const clr = document.createElement('button');
+        clr.style.cssText = 'padding:2px 6px;border-radius:5px;font-size:0.7rem;cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.3);';
+        clr.textContent = '× CLR';
+        clr.addEventListener('click', () => onSelect('clear'));
+        btnGroup.appendChild(clr);
+      }
+      row.appendChild(btnGroup);
+      return row;
+    };
+    wrap.appendChild(mkBtnRow('APP RSVP', rOpts, appRsvp || '', null, true));
+    wrap.appendChild(mkBtnRow('OVERRIDE', rOpts, overrideRsvp || '', onOverride || null, !onOverride));
+    wrap.appendChild(mkBtnRow('ATTENDED', aOpts, attendanceStatus || '', (isPast && onAttendance) ? onAttendance : null, !isPast || !onAttendance));
+    return wrap;
+  }
+
   async _openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId }) {
     document.getElementById('event-rsvp-modal')?.remove();
 
@@ -3586,7 +3656,7 @@ class GameDayLineupScreen extends Screen {
     modal.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;justify-content:center;';
     modal.innerHTML = `
       <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);" id="erm-backdrop"></div>
-      <div id="erm-sheet" style="position:relative;width:min(100%,420px);max-height:80vh;background:#111827;border-radius:16px 16px 0 0;display:flex;flex-direction:column;z-index:1;">
+      <div id="erm-sheet" style="position:relative;width:min(100%,480px);max-height:80vh;background:#111827;border-radius:16px 16px 0 0;display:flex;flex-direction:column;z-index:1;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
           <span id="erm-title" style="font-size:0.9rem;font-weight:700;color:#fff;">Loading...</span>
           <button id="erm-close" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.2rem;cursor:pointer;padding:2px 8px;">✕</button>
@@ -3636,12 +3706,21 @@ class GameDayLineupScreen extends Screen {
       let resolvedChatEventId = chatEventId;
 
       if (type === 'game') {
-        resolvedChatEventId = this.groupmeSync?.chatEventId || null;
+        resolvedChatEventId = chatEventId || this.groupmeSync?.chatEventId || null;
       }
 
       if (!resolvedChatEventId) {
         modal.querySelector('#erm-body').innerHTML = `<div style="padding:24px;color:rgba(255,255,255,0.5);text-align:center;">No GroupMe event linked to this ${type === 'game' ? 'match' : 'training session'}</div>`;
         return;
+      }
+
+      // Auto-finalize attendance for past training events (idempotent — won't overwrite manual overrides)
+      const preIsPast = startAt
+        ? new Date(startAt.includes('T') ? startAt : startAt.replace(' ','T')) < new Date()
+        : (eventDate ? new Date(eventDate) < new Date() : false);
+      if (preIsPast && type !== 'game') {
+        this.auth.fetch(`/api/groupme/finalize-attendance/${resolvedChatEventId}`, { method: 'POST' })
+          .catch(() => {}); // fire-and-forget, non-blocking
       }
 
       const r = await this.auth.fetch(`/api/groupme/event-rsvps/${resolvedChatEventId}`);
@@ -3657,74 +3736,72 @@ class GameDayLineupScreen extends Screen {
         ? new Date(evtStartAt.includes('T') ? evtStartAt : evtStartAt.replace(' ','T')) < new Date()
         : true;
 
-      const mkOverrideBtn = (icon, status, personId, active) => {
-        const b = document.createElement('button');
-        b.textContent = icon;
-        b.title = status === 'clear' ? 'Clear override' : `Override: ${status}`;
-        b.style.cssText = `padding:3px 7px;border-radius:4px;font-size:0.75rem;cursor:pointer;border:1px solid ${active ? 'rgba(99,102,241,0.8)' : 'rgba(255,255,255,0.15)'};background:${active ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.06)'};color:#fff;`;
-        b.addEventListener('click', async () => {
-          try {
-            const res = await this.auth.fetch('/api/groupme/event-rsvp-override', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chatEventId: Number(resolvedChatEventId), personId, status })
-            });
-            const rd = await res.json();
-            if (rd.success) {
-              modal.remove();
-              this._openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId });
-              await this.loadEligibilityData();
-            } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
-          } catch (e) { this.showLineupToast('❌ ' + e.message); }
-        });
-        return b;
-      };
 
-      const mkRow = (person) => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,0.06);';
 
+      const mkCard = (person) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);';
+
+        // Name (clickable if linked to a roster player)
+        const nameBtn = document.createElement('button');
+        nameBtn.style.cssText = `display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;padding:0 0 5px;cursor:${person.linked ? 'pointer' : 'default'};text-align:left;`;
         const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = `flex:1;min-width:0;font-size:0.82rem;color:${person.linked ? '#7ec8ff' : 'rgba(255,255,255,0.55)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
-        nameSpan.textContent = (person.linked && person.gmName) ? `${person.name} (${person.gmName})` : person.name;
-        if (person.isOverride) {
-          const orig = document.createElement('span');
-          orig.style.cssText = 'font-size:0.65rem;color:rgba(255,255,255,0.35);margin-left:4px;';
-          orig.textContent = `(GM:${dotFor(person.rsvpStatus)})`;
-          nameSpan.appendChild(orig);
+        nameSpan.style.cssText = `font-size:0.85rem;font-weight:600;color:${person.linked ? '#e2e8f0' : 'rgba(255,255,255,0.4)'};`;
+        nameSpan.textContent = person.name;
+        nameBtn.appendChild(nameSpan);
+        if (!person.linked) {
+          const t = document.createElement('span');
+          t.style.cssText = 'font-size:0.58rem;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.25);border-radius:3px;padding:1px 4px;';
+          t.textContent = 'GM';
+          nameBtn.appendChild(t);
+        } else if (person.gmName) {
+          const a = document.createElement('span');
+          a.style.cssText = 'font-size:0.7rem;color:rgba(255,255,255,0.28);';
+          a.textContent = `(${person.gmName})`;
+          nameBtn.appendChild(a);
         }
-        row.appendChild(nameSpan);
-
-        const btns = document.createElement('div');
-        btns.style.cssText = 'display:flex;gap:3px;align-items:center;flex-shrink:0;';
-
-        if (person.personId && isPast && type !== 'game') {
-          const cb = document.createElement('input');
-          cb.type = 'checkbox'; cb.checked = person.attended || false;
-          cb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:#6366f1;margin-right:2px;';
-          cb.title = 'Attended';
-          cb.addEventListener('change', async () => {
+        if (person.linked) {
+          nameBtn.addEventListener('click', () => {
+            const pl = this.getPlayerByPersonId(person.personId);
+            if (pl) { modal.remove(); this.openEditPlayerModal(pl.playerId); }
+          });
+        }
+        card.appendChild(nameBtn);
+        card.appendChild(this._mk9Widget({
+          appRsvp: person.rsvpStatus || null,
+          overrideRsvp: person.isOverride ? person.overrideStatus : null,
+          attendanceStatus: person.attendanceStatus || null,
+          isPast,
+          onOverride: person.personId ? async (status) => {
+            try {
+              const res = await this.auth.fetch('/api/groupme/event-rsvp-override', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatEventId: Number(resolvedChatEventId), personId: person.personId, status })
+              });
+              const rd = await res.json();
+              if (rd.success) {
+                modal.remove();
+                this._openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId });
+                await this.loadEligibilityData();
+              } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
+            } catch (e) { this.showLineupToast('❌ ' + e.message); }
+          } : null,
+          onAttendance: (person.personId && isPast) ? async (status) => {
             try {
               const res = await this.auth.fetch('/api/groupme/training-attendance', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ personId: person.personId, chatEventId: Number(resolvedChatEventId), attended: cb.checked })
+                body: JSON.stringify({ personId: person.personId, chatEventId: Number(resolvedChatEventId), attendanceStatus: status })
               });
               const rd = await res.json();
-              if (!rd.success) { cb.checked = !cb.checked; this.showLineupToast('❌ ' + (rd.message||'failed')); }
-              else await this.loadEligibilityData();
-            } catch (e) { cb.checked = !cb.checked; this.showLineupToast('❌ ' + e.message); }
-          });
-          btns.appendChild(cb);
-        }
-
-        if (person.personId) {
-          [['✓','yes'],['✗','no'],['?','maybe'],['×','clear']].forEach(([icon, status]) => {
-            const active = status !== 'clear' && person.isOverride && person.overrideStatus === status;
-            btns.appendChild(mkOverrideBtn(icon, status, person.personId, active));
-          });
-        }
-        row.appendChild(btns);
-        return row;
+              if (rd.success) {
+                modal.remove();
+                this._openEventRsvpModal({ type, chatEventId, matchId, title, startAt, eventDate, teamId });
+                await this.loadEligibilityData();
+              } else this.showLineupToast('❌ ' + (rd.message || 'failed'));
+            } catch (e) { this.showLineupToast('❌ ' + e.message); }
+          } : null,
+        }));
+        return card;
       };
 
       const body = modal.querySelector('#erm-body');
@@ -3736,16 +3813,18 @@ class GameDayLineupScreen extends Screen {
         { label: '🟡 Maybe',       items: rsvps.filter(r => r.effStatus === 'maybe') },
         { label: '❔ No Response', items: noResponse },
       ];
-      for (const sec of sections) {
-        if (!sec.items.length) continue;
-        const hdr = document.createElement('div');
-        hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.45);letter-spacing:0.05em;background:rgba(255,255,255,0.03);';
-        hdr.textContent = `${sec.label} (${sec.items.length})`;
-        body.appendChild(hdr);
-        for (const p of sec.items) body.appendChild(mkRow(p));
-      }
+
       if (!rsvps.length && !noResponse.length) {
         body.innerHTML = '<div style="padding:24px;color:rgba(255,255,255,0.4);text-align:center;">No RSVP data yet — tap Sync to load</div>';
+      } else {
+        for (const sec of sections) {
+          if (!sec.items.length) continue;
+          const hdr = document.createElement('div');
+          hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.45);letter-spacing:0.05em;background:rgba(255,255,255,0.03);';
+          hdr.textContent = `${sec.label} (${sec.items.length})`;
+          body.appendChild(hdr);
+          for (const p of sec.items) body.appendChild(mkCard(p));
+        }
       }
 
     } catch (err) {
@@ -4417,9 +4496,9 @@ class GameDayLineupScreen extends Screen {
             ${eligRows}
           </div>
 
-          <!-- Last 5 Practices -->
+          <!-- Sessions -->
           <div style="border-top:1px solid var(--border-color);padding:12px 0;">
-            <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;letter-spacing:0.06em;margin-bottom:8px;">LAST 5 PRACTICES</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;letter-spacing:0.06em;margin-bottom:8px;">SESSIONS</div>
             <div id="ep-practices-body" style="font-size:0.78rem;color:var(--text-muted);">Loading...</div>
           </div>
 
@@ -4429,7 +4508,7 @@ class GameDayLineupScreen extends Screen {
     `;
     document.body.appendChild(overlay);
 
-    // Load last 5 practices async
+    // Load sessions async
     const matchId = this.navigation?.context?.match?.id;
     const teamId  = this.navigation?.context?.lineupTeamId || this.navigation?.context?.team?.id || '';
     const practicesBody = overlay.querySelector('#ep-practices-body');
@@ -4442,81 +4521,75 @@ class GameDayLineupScreen extends Screen {
             practicesBody.textContent = 'No recent sessions found.';
             return;
           }
-          // Header row
-          practicesBody.innerHTML = `
-            <table style="width:100%;border-collapse:collapse;">
-              <thead>
-                <tr>
-                  <th style="text-align:left;font-size:0.65rem;color:var(--text-muted);padding-bottom:4px;font-weight:600;">SESSION</th>
-                  <th style="text-align:center;font-size:0.65rem;color:var(--text-muted);padding-bottom:4px;font-weight:600;">RSVP</th>
-                  <th style="text-align:center;font-size:0.65rem;color:var(--text-muted);padding-bottom:4px;font-weight:600;">ATTENDED</th>
-                </tr>
-              </thead>
-              <tbody id="ep-sessions-tbody"></tbody>
-            </table>
-          `;
-          const tbody = practicesBody.querySelector('#ep-sessions-tbody');
           const renderSessions = (sessions) => {
-            tbody.innerHTML = sessions.map(s => {
-              const d = s.date ? s.date.slice(5) : '';
-              const title = s.title.length > 18 ? s.title.slice(0,17)+'…' : s.title;
-              // RSVP
-              const rsvpVal = s.rsvp || '';
-              const rsvpBtns = [
-                { v:'yes',   icon:'🟢', tip:'Going' },
-                { v:'maybe', icon:'🟡', tip:'Maybe' },
-                { v:'no',    icon:'🔴', tip:'No' },
-              ].map(b => `<button data-sid="${s.sessionId}" data-type="rsvp" data-val="${b.v}"
-                style="border:none;background:none;cursor:pointer;font-size:0.85rem;opacity:${rsvpVal===b.v?'1':'0.28'};padding:0 1px;"
-                title="${b.tip}">${b.icon}</button>`).join('');
-              // Attendance
-              const attVal = s.source === 'excused' ? 'excused' : (s.attended ? 'present' : 'absent');
-              const attBtns = [
-                { v:'present', icon:'✅', tip:'Present' },
-                { v:'absent',  icon:'❌', tip:'Absent'  },
-                { v:'excused', icon:'🟦', tip:'Excused' },
-              ].map(b => `<button data-sid="${s.sessionId}" data-type="att" data-val="${b.v}"
-                style="border:none;background:none;cursor:pointer;font-size:0.85rem;opacity:${attVal===b.v?'1':'0.28'};padding:0 1px;"
-                title="${b.tip}">${b.icon}</button>`).join('');
-              return `<tr style="border-top:1px solid var(--border-color);">
-                <td style="padding:5px 0;">
-                  <div style="font-size:0.72rem;color:var(--text-primary);">${title}</div>
-                  <div style="font-size:0.62rem;color:var(--text-muted);">${d}</div>
-                </td>
-                <td style="text-align:center;white-space:nowrap;">${rsvpBtns}</td>
-                <td style="text-align:center;white-space:nowrap;">${attBtns}</td>
-              </tr>`;
-            }).join('');
-
-            // Wire buttons
-            tbody.querySelectorAll('button[data-type]').forEach(btn => {
-              btn.addEventListener('click', async () => {
-                const sid = parseInt(btn.dataset.sid);
-                const type = btn.dataset.type;
-                const val  = btn.dataset.val;
-                const session = sessions.find(s => s.sessionId === sid);
-                if (!session) return;
-
-                if (type === 'att') {
-                  const attended = val === 'present';
-                  const source   = val === 'excused' ? 'excused' : 'manual';
-                  await this.auth.fetch(`/api/eligibility/player/${playerId}/attendance`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId: sid, attended, source })
-                  }).catch(() => {});
-                  session.attended = attended;
-                  session.source   = source;
-                  // Recompute player session count
-                  player.sessionsAttended = sessions.filter(s => s.attended).length;
-                  this.renderAllZones();
-                } else {
-                  // RSVP update — use existing match RSVP endpoint isn't per-session
-                  // Just update visually for now (no per-session RSVP API)
-                  session.rsvp = val;
-                }
-                renderSessions(sessions);
+            practicesBody.innerHTML = '';
+            sessions.forEach(s => {
+              const card = document.createElement('div');
+              card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;';
+              // Session title (clickable → opens event modal)
+              const titleBtn = document.createElement('button');
+              titleBtn.style.cssText = 'display:flex;align-items:baseline;gap:6px;width:100%;background:none;border:none;padding:0 0 6px;cursor:pointer;text-align:left;';
+              const titleSpan = document.createElement('span');
+              titleSpan.style.cssText = 'font-size:0.82rem;font-weight:600;color:var(--text-primary,#e2e8f0);';
+              titleSpan.textContent = s.title.length > 26 ? s.title.slice(0,25)+'\u2026' : s.title;
+              const dateSpan = document.createElement('span');
+              dateSpan.style.cssText = 'font-size:0.65rem;color:var(--text-muted);';
+              dateSpan.textContent = s.date ? s.date.slice(5) : '';
+              titleBtn.appendChild(titleSpan);
+              titleBtn.appendChild(dateSpan);
+              titleBtn.addEventListener('click', () => {
+                overlay.remove();
+                this._openEventRsvpModal({
+                  type: s.matchId ? 'game' : 'training',
+                  chatEventId: s.sessionId,
+                  matchId: s.matchId,
+                  title: s.title,
+                  startAt: s.startAt,
+                  eventDate: s.date,
+                  teamId
+                });
               });
+              card.appendChild(titleBtn);
+              // 9-widget
+              const isPastSession = s.startAt
+                ? new Date(s.startAt.includes('T') ? s.startAt : s.startAt.replace(' ','T')) < new Date()
+                : (s.date ? new Date(s.date) < new Date() : true);
+              card.appendChild(this._mk9Widget({
+                appRsvp: s.rawRsvp || null,
+                overrideRsvp: s.overrideRsvp || null,
+                attendanceStatus: s.attendanceStatus || null,
+                isPast: isPastSession,
+                onOverride: async (status) => {
+                  try {
+                    const res = await this.auth.fetch('/api/groupme/event-rsvp-override', {
+                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ chatEventId: s.sessionId, personId: player.personId, status })
+                    });
+                    const rd = await res.json();
+                    if (rd.success) {
+                      s.overrideRsvp = status === 'clear' ? '' : status;
+                      renderSessions(sessions);
+                      this.loadEligibilityData().catch(() => {});
+                    } else this.showLineupToast('\u274c ' + (rd.message || 'failed'));
+                  } catch (e) { this.showLineupToast('\u274c ' + e.message); }
+                },
+                onAttendance: async (status) => {
+                  try {
+                    const res = await this.auth.fetch(`/api/eligibility/player/${playerId}/attendance`, {
+                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ sessionId: s.sessionId, attendanceStatus: status, source: 'manual' })
+                    });
+                    const rd = await res.json();
+                    if (rd.success) {
+                      s.attendanceStatus = status;
+                      player.sessionsAttended = sessions.filter(x => x.attendanceStatus === 'yes' || x.attendanceStatus === 'partial').length;
+                      renderSessions(sessions);
+                      this.renderAllZones();
+                    } else this.showLineupToast('\u274c ' + (rd.message || 'failed'));
+                  } catch (e) { this.showLineupToast('\u274c ' + e.message); }
+                }
+              }));
+              practicesBody.appendChild(card);
             });
           };
           renderSessions(sessions);

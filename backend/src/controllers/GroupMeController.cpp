@@ -70,6 +70,16 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
         return this->handleToggleAttendance(request);
     });
 
+    // POST /api/groupme/finalize-attendance/:chatEventId — Auto-populate attendance from RSVPs for past events
+    router.post(prefix + "/finalize-attendance/:chatEventId", [this](const Request& request) {
+        return this->handleFinalizeAttendance(request);
+    });
+
+    // POST /api/groupme/finalize-attendance-batch — Auto-populate attendance for all past events for a team
+    router.post(prefix + "/finalize-attendance-batch", [this](const Request& request) {
+        return this->handleFinalizeBatchAttendance(request);
+    });
+
     // GET /api/groupme/sync-status/:teamId — Last successful sync timestamp for a team
     router.get(prefix + "/sync-status/:teamId", [this](const Request& request) {
         return this->handleGetSyncStatus(request);
@@ -1569,6 +1579,211 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
 }
 
 // ============================================================================
+// POST /api/groupme/finalize-attendance/:chatEventId
+// Auto-populate training_attendance from RSVPs for a past event.
+// Uses ON CONFLICT DO NOTHING so manual overrides are never overwritten.
+// Source is 'groupme_rsvp'. Idempotent — safe to call multiple times.
+// ============================================================================
+Response GroupMeController::handleFinalizeAttendance(const Request& request) {
+    std::string chatEventId = extractIdFromPath(request.getPath(), "/api/groupme/finalize-attendance/(\\d+)");
+    if (chatEventId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "chatEventId required"));
+    }
+
+    try {
+        // 1. Verify event exists and is past (end_at or start_at + 2h)
+        pqxx::result evtResult = db_->query(
+            "SELECT ce.id, ce.chat_id, ce.match_id, "
+            "  COALESCE(ce.end_at, ce.start_at + INTERVAL '2 hours') as effective_end "
+            "FROM chat_events ce WHERE ce.id = $1::int",
+            {chatEventId}
+        );
+        if (evtResult.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Event not found"));
+        }
+        std::string effEnd = evtResult[0]["effective_end"].is_null() ? "" : evtResult[0]["effective_end"].c_str();
+        if (!effEnd.empty()) {
+            pqxx::result nowResult = db_->query("SELECT NOW() > $1::timestamptz as is_past", {effEnd});
+            if (!nowResult.empty() && std::string(nowResult[0]["is_past"].c_str()) != "t") {
+                return Response(HttpStatus::OK,
+                    "{\"success\":true,\"data\":{\"created\":0,\"message\":\"Event not yet ended\"}}");
+            }
+        }
+
+        bool isGame = !evtResult[0]["match_id"].is_null();
+        std::string matchId = isGame ? evtResult[0]["match_id"].c_str() : "";
+        std::string chatId  = evtResult[0]["chat_id"].c_str();
+
+        // Common CTEs shared by both game and training insert
+        std::string cteBase =
+            "WITH roster AS ( "
+            "  SELECT p.id as player_id, p.person_id "
+            "  FROM players p "
+            "  JOIN rosters r ON r.player_id = p.id "
+            "  JOIN chats c ON c.team_id = r.team_id "
+            "  WHERE c.id = $1::int AND r.left_at IS NULL AND p.person_id IS NOT NULL "
+            "), "
+            "rsvp_eff AS ( "
+            "  SELECT COALESCE(cer.person_id, upm.person_id) as person_id, "
+            "         COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1 as attended, "
+            "         CASE WHEN COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1 THEN 'yes' ELSE 'no' END as att_status "
+            "  FROM chat_event_rsvps cer "
+            "  LEFT JOIN user_person_map upm ON upm.external_user_id = cer.external_user_id "
+            "                               AND cer.person_id IS NULL "
+            "  WHERE cer.chat_event_id = $2::int "
+            "), "
+            "merged AS ( "
+            "  SELECT ro.player_id, COALESCE(re.attended, false) as attended, "
+            "         COALESCE(re.att_status, 'no') as att_status "
+            "  FROM roster ro "
+            "  LEFT JOIN rsvp_eff re ON re.person_id = ro.person_id "
+            ") ";
+
+        pqxx::result insertResult;
+        if (isGame) {
+            insertResult = db_->query(
+                cteBase +
+                "INSERT INTO training_attendance (player_id, match_id, attended, attendance_status, source) "
+                "SELECT player_id, $3::int, attended, att_status, 'groupme_rsvp' FROM merged "
+                "ON CONFLICT (player_id, match_id) DO NOTHING",
+                {chatId, chatEventId, matchId}
+            );
+        } else {
+            insertResult = db_->query(
+                cteBase +
+                "INSERT INTO training_attendance (player_id, chat_event_id, attended, attendance_status, source) "
+                "SELECT player_id, $2::int, attended, att_status, 'groupme_rsvp' FROM merged "
+                "ON CONFLICT (player_id, chat_event_id) DO NOTHING",
+                {chatId, chatEventId}
+            );
+        }
+
+        int created = insertResult.affected_rows();
+        std::cout << "✅ finalize-attendance event " << chatEventId << ": " << created << " records created" << std::endl;
+
+        return Response(HttpStatus::OK,
+            "{\"success\":true,\"data\":{\"created\":" + std::to_string(created) + "}}");
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleFinalizeAttendance: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to finalize attendance"));
+    }
+}
+
+// ============================================================================
+// Handler: Batch finalize attendance for all past events for a team
+// POST /api/groupme/finalize-attendance-batch?teamId=N
+// Inserts attendance from RSVP for every past event. ON CONFLICT DO NOTHING
+// preserves any existing manual records.
+// ============================================================================
+Response GroupMeController::handleFinalizeBatchAttendance(const Request& request) {
+    std::string teamId = request.getQueryParam("teamId");
+    if (teamId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "teamId required"));
+    }
+
+    try {
+        // Two inserts: one for training/pickup events (keyed by chat_event_id),
+        // one for game events (keyed by match_id). ON CONFLICT DO NOTHING on both.
+        pqxx::result r1 = db_->query(
+            "WITH team_chats AS ( "
+            "  SELECT id FROM chats WHERE team_id = $1::int "
+            "), "
+            "past_training AS ( "
+            "  SELECT ce.id AS chat_event_id, ce.chat_id "
+            "  FROM chat_events ce "
+            "  JOIN team_chats tc ON tc.id = ce.chat_id "
+            "  WHERE ce.match_id IS NULL "
+            "    AND COALESCE(ce.end_at, ce.start_at + INTERVAL '2 hours') < NOW() "
+            "), "
+            "roster AS ( "
+            "  SELECT p.id AS player_id, p.person_id "
+            "  FROM players p "
+            "  JOIN rosters r ON r.player_id = p.id "
+            "  WHERE r.team_id = $1::int AND r.left_at IS NULL AND p.person_id IS NOT NULL "
+            "), "
+            "rsvp_eff AS ( "
+            "  SELECT cer.chat_event_id, "
+            "         COALESCE(cer.person_id, upm.person_id) AS person_id, "
+            "         COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1 AS attended, "
+            "         CASE WHEN COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1 "
+            "              THEN 'yes' ELSE 'no' END AS att_status "
+            "  FROM chat_event_rsvps cer "
+            "  JOIN past_training pe ON pe.chat_event_id = cer.chat_event_id "
+            "  LEFT JOIN user_person_map upm ON upm.external_user_id = cer.external_user_id "
+            "                               AND cer.person_id IS NULL "
+            "), "
+            "merged AS ( "
+            "  SELECT pe.chat_event_id, ro.player_id, "
+            "         COALESCE(re.attended, false) AS attended, "
+            "         COALESCE(re.att_status, 'no') AS att_status "
+            "  FROM past_training pe "
+            "  CROSS JOIN roster ro "
+            "  LEFT JOIN rsvp_eff re ON re.chat_event_id = pe.chat_event_id "
+            "                       AND re.person_id = ro.person_id "
+            ") "
+            "INSERT INTO training_attendance (player_id, chat_event_id, attended, attendance_status, source) "
+            "SELECT player_id, chat_event_id, attended, att_status, 'groupme_rsvp' FROM merged "
+            "ON CONFLICT (player_id, chat_event_id) DO NOTHING",
+            {teamId}
+        );
+
+        // Game events — keyed by match_id
+        pqxx::result r2 = db_->query(
+            "WITH team_chats AS ( "
+            "  SELECT id FROM chats WHERE team_id = $1::int "
+            "), "
+            "past_games AS ( "
+            "  SELECT ce.id AS chat_event_id, ce.chat_id, ce.match_id "
+            "  FROM chat_events ce "
+            "  JOIN team_chats tc ON tc.id = ce.chat_id "
+            "  WHERE ce.match_id IS NOT NULL "
+            "    AND COALESCE(ce.end_at, ce.start_at + INTERVAL '2 hours') < NOW() "
+            "), "
+            "roster AS ( "
+            "  SELECT p.id AS player_id, p.person_id "
+            "  FROM players p "
+            "  JOIN rosters r ON r.player_id = p.id "
+            "  WHERE r.team_id = $1::int AND r.left_at IS NULL AND p.person_id IS NOT NULL "
+            "), "
+            "rsvp_eff AS ( "
+            "  SELECT cer.chat_event_id, "
+            "         COALESCE(cer.person_id, upm.person_id) AS person_id, "
+            "         COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1 AS attended, "
+            "         CASE WHEN COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1 "
+            "              THEN 'yes' ELSE 'no' END AS att_status "
+            "  FROM chat_event_rsvps cer "
+            "  JOIN past_games pg ON pg.chat_event_id = cer.chat_event_id "
+            "  LEFT JOIN user_person_map upm ON upm.external_user_id = cer.external_user_id "
+            "                               AND cer.person_id IS NULL "
+            "), "
+            "merged AS ( "
+            "  SELECT pg.match_id, ro.player_id, "
+            "         COALESCE(re.attended, false) AS attended, "
+            "         COALESCE(re.att_status, 'no') AS att_status "
+            "  FROM past_games pg "
+            "  CROSS JOIN roster ro "
+            "  LEFT JOIN rsvp_eff re ON re.chat_event_id = pg.chat_event_id "
+            "                       AND re.person_id = ro.person_id "
+            ") "
+            "INSERT INTO training_attendance (player_id, match_id, attended, attendance_status, source) "
+            "SELECT player_id, match_id, attended, att_status, 'groupme_rsvp' FROM merged "
+            "ON CONFLICT (player_id, match_id) DO NOTHING",
+            {teamId}
+        );
+
+        int created = r1.affected_rows() + r2.affected_rows();
+        std::cout << "✅ finalize-attendance-batch team " << teamId << ": " << created << " records created" << std::endl;
+        return Response(HttpStatus::OK,
+            "{\"success\":true,\"data\":{\"created\":" + std::to_string(created) + "}}");
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleFinalizeBatchAttendance: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to batch finalize attendance"));
+    }
+}
+
+// ============================================================================
 // Handler: Toggle Training Attendance
 // POST /api/groupme/training-attendance
 // body: {"personId":123, "chatEventId":456, "attended":true}
@@ -1597,9 +1812,32 @@ Response GroupMeController::handleToggleAttendance(const Request& request) {
             return pos < body.size() && body[pos] == 't';
         };
 
+        auto extractJsonStr = [&](const std::string& key) -> std::string {
+            std::string search = "\"" + key + "\":\"";
+            size_t pos = body.find(search);
+            if (pos == std::string::npos) return "";
+            pos += search.size();
+            size_t end = pos;
+            while (end < body.size() && body[end] != '"') {
+                if (body[end] == '\\') end++;
+                end++;
+            }
+            return body.substr(pos, end - pos);
+        };
+
         std::string personId = extractJsonInt("personId");
         std::string chatEventId = extractJsonInt("chatEventId");
+        // Accept attendanceStatus (yes/late/left_early/no) or fall back to attended bool
+        std::string attendanceStatus = extractJsonStr("attendanceStatus");
         bool attended = extractJsonBool("attended");
+        if (attendanceStatus.empty()) {
+            attendanceStatus = attended ? "yes" : "no";
+        }
+        if (attendanceStatus != "yes" && attendanceStatus != "late" &&
+            attendanceStatus != "left_early" && attendanceStatus != "no") {
+            attendanceStatus = "no";
+        }
+        bool derivedAttended = (attendanceStatus == "yes" || attendanceStatus == "late" || attendanceStatus == "left_early");
 
         if (personId.empty() || chatEventId.empty()) {
             return Response(HttpStatus::BAD_REQUEST,
@@ -1619,15 +1857,15 @@ Response GroupMeController::handleToggleAttendance(const Request& request) {
 
         // Upsert into training_attendance
         db_->query(
-            "INSERT INTO training_attendance (player_id, chat_event_id, attended, source) "
-            "VALUES ($1::int, $2::int, $3::boolean, 'manual') "
+            "INSERT INTO training_attendance (player_id, chat_event_id, attended, attendance_status, source) "
+            "VALUES ($1::int, $2::int, $3::boolean, $4, 'manual') "
             "ON CONFLICT (player_id, chat_event_id) DO UPDATE SET "
-            "  attended = $3::boolean, source = 'manual', updated_at = NOW()",
-            {playerId, chatEventId, attended ? "true" : "false"}
+            "  attended = $3::boolean, attendance_status = $4, source = 'manual', updated_at = NOW()",
+            {playerId, chatEventId, derivedAttended ? "true" : "false", attendanceStatus}
         );
 
         std::cout << "✅ Attendance: person " << personId << " event " << chatEventId
-                  << " → " << (attended ? "YES" : "NO") << std::endl;
+                  << " → " << attendanceStatus << std::endl;
 
         return Response(HttpStatus::OK,
             createJsonResponse(true, attended ? "Marked as attended" : "Marked as not attended"));
@@ -1950,20 +2188,29 @@ Response GroupMeController::handleSyncCalendar(const Request& request) {
                         if (tName.empty() || tDate.empty()) { tc = tEidPos + 11; continue; }
 
                         // Upsert chat_event (no match record for training/pickup)
+                        // First try external_id; fall back to chat_id+start_at to avoid duplicating
+                        // placeholder rows that were seeded without an external_id.
                         std::string tChatEventId;
                         pqxx::result texisting = db_->query(
-                            "SELECT id FROM chat_events WHERE external_id = $1 LIMIT 1", {tEventId});
+                            "SELECT id FROM chat_events "
+                            "WHERE external_id = $1 "
+                            "   OR (external_id IS NULL AND chat_id = $2::int "
+                            "       AND start_at = NULLIF($3,'')::timestamptz) "
+                            "ORDER BY external_id NULLS LAST LIMIT 1",
+                            {tEventId, clubChatId, tStartAt});
                         if (!texisting.empty()) {
                             tChatEventId = texisting[0]["id"].c_str();
                             db_->query(
                                 "UPDATE chat_events SET "
+                                "  external_id = COALESCE(external_id, $4), "
                                 "  start_at = NULLIF($1,'')::timestamptz, "
                                 "  end_at   = NULLIF($2,'')::timestamptz, "
                                 "  updated_at = CURRENT_TIMESTAMP "
                                 "WHERE id = $3::int "
-                                "  AND (start_at IS DISTINCT FROM NULLIF($1,'')::timestamptz "
+                                "  AND (external_id IS DISTINCT FROM $4 "
+                                "    OR start_at IS DISTINCT FROM NULLIF($1,'')::timestamptz "
                                 "    OR end_at IS DISTINCT FROM NULLIF($2,'')::timestamptz)",
-                                {tStartAt, tEndAt, tChatEventId}
+                                {tStartAt, tEndAt, tChatEventId, tEventId}
                             );
                             tUpdated++;
                         } else {
@@ -2450,17 +2697,23 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
             {chatId, chatEventId}
         );
 
-        // 4. Attendance overrides
+        // 4. Attendance records (manual overrides or groupme_rsvp auto-set)
         pqxx::result attResult = db_->query(
-            "SELECT p.person_id::text, ta.attended "
+            "SELECT p.person_id::text, ta.attended, ta.source, ta.attendance_status "
             "FROM training_attendance ta "
             "JOIN players p ON p.id = ta.player_id "
             "WHERE ta.chat_event_id = $1::int",
             {chatEventId}
         );
         std::map<std::string, bool> attendance;
+        std::map<std::string, std::string> attSource;
+        std::map<std::string, std::string> attStatusMap;
         for (const auto& row : attResult) {
             attendance[row["person_id"].c_str()] = (std::string(row["attended"].c_str()) == "t");
+            attSource[row["person_id"].c_str()] = row["source"].c_str();
+            attStatusMap[row["person_id"].c_str()] = row["attendance_status"].is_null()
+                ? (std::string(row["attended"].c_str()) == "t" ? "yes" : "no")
+                : row["attendance_status"].c_str();
         }
 
         // Build JSON
@@ -2488,8 +2741,12 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
             firstRsvp = false;
             std::string pid = rsvpResult[i]["person_id"].is_null() ? "null" : rsvpResult[i]["person_id"].c_str();
             bool isOverride = !rsvpResult[i]["override_rsvp_status_id"].is_null();
-            bool att = pid != "null" && attendance.count(rsvpResult[i]["person_id"].c_str())
-                       ? attendance[rsvpResult[i]["person_id"].c_str()] : false;
+            std::string effStatusStr = rsvpResult[i]["eff_status"].c_str();
+            // effAttended: manual/rsvp record if exists, otherwise derive from effective RSVP
+            bool hasAttRecord = pid != "null" && attendance.count(pid) > 0;
+            bool att = hasAttRecord ? attendance.at(pid) : (effStatusStr == "yes");
+            std::string src = hasAttRecord ? attSource.at(pid) : "derived";
+            std::string attSt = hasAttRecord ? attStatusMap.at(pid) : (effStatusStr == "yes" ? "yes" : "no");
             // gmName: show when roster-linked so frontend can display "Roster Name (gmName)"
             std::string gmNameJson = (hasRosterName && !gmName.empty())
                 ? "\"" + escapeJson(gmName) + "\""
@@ -2506,7 +2763,9 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
                  << "\"effStatusId\":" << rsvpResult[i]["eff_status_id"].c_str() << ","
                  << "\"isOverride\":" << (isOverride ? "true" : "false") << ","
                  << "\"overrideStatus\":" << (rsvpResult[i]["override_status"].is_null() ? "null" : "\"" + std::string(rsvpResult[i]["override_status"].c_str()) + "\"") << ","
-                 << "\"attended\":" << (att ? "true" : "false")
+                 << "\"attended\":" << (att ? "true" : "false") << ","
+                 << "\"attSource\":\"" << src << "\"" << ","
+                 << "\"attendanceStatus\":\"" << attSt << "\""
                  << "}";
         }
 
@@ -2526,11 +2785,18 @@ Response GroupMeController::handleGetEventRsvps(const Request& request) {
             if (!firstNoRsp) json << ",";
             firstNoRsp = false;
             std::string pid = noRspResult[i]["person_id"].is_null() ? "null" : noRspResult[i]["person_id"].c_str();
+            bool hasNoAttRecord = pid != "null" && attendance.count(pid) > 0;
+            bool noAtt = hasNoAttRecord ? attendance.at(pid) : false;
+            std::string noSrc = hasNoAttRecord ? attSource.at(pid) : "derived";
+            std::string noAttSt = hasNoAttRecord ? attStatusMap.at(pid) : "no";
             json << "{"
                  << "\"personId\":" << pid << ","
                  << "\"name\":\"" << escapeJson(name) << "\","
                  << "\"gmName\":" << (noLinked && !noGmName.empty() ? "\"" + escapeJson(noGmName) + "\"" : "null") << ","
-                 << "\"linked\":" << (noRspResult[i]["person_id"].is_null() ? "false" : "true")
+                 << "\"linked\":" << (noRspResult[i]["person_id"].is_null() ? "false" : "true") << ","
+                 << "\"attended\":" << (noAtt ? "true" : "false") << ","
+                 << "\"attSource\":\"" << noSrc << "\"" << ","
+                 << "\"attendanceStatus\":\"" << noAttSt << "\""
                  << "}";
         }
         json << "]}}";

@@ -1286,8 +1286,8 @@ Response EligibilityController::handleGetPlayerAttendance(const Request& request
         std::string personId = personResult[0]["person_id"].c_str();
 
         // Query sessions with attendance + RSVP status for this player.
-        // Resolves RSVPs by both direct person_id AND external_user_id (for
-        // GroupMe users not yet directly linked via person_id).
+        // Returns raw GroupMe RSVP and override separately.
+        // Also handles game sessions where attendance is stored via match_id.
         std::string query = R"(
             WITH user_person_map AS (
                 SELECT DISTINCT ON (external_user_id)
@@ -1305,31 +1305,44 @@ Response EligibilityController::handleGetPlayerAttendance(const Request& request
             ),
             resolved_rsvps AS (
                 SELECT cer.chat_event_id,
-                       COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) as eff_status_id,
-                       rs.name as rsvp_status_name
+                       rs.name  AS raw_rsvp_status,
+                       ors.name AS override_rsvp_status
                 FROM chat_event_rsvps cer
                 LEFT JOIN user_person_map upm
                     ON upm.external_user_id = cer.external_user_id
                     AND cer.person_id IS NULL
-                LEFT JOIN rsvp_statuses rs
-                    ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
+                LEFT JOIN rsvp_statuses rs  ON rs.id  = cer.rsvp_status_id
+                LEFT JOIN rsvp_statuses ors ON ors.id = cer.override_rsvp_status_id
                 WHERE (cer.person_id = $3::int OR upm.person_id = $3::int)
                   AND cer.chat_event_id = ANY($1::int[])
             )
             SELECT ce.id as session_id,
                    ce.title,
+                   ce.match_id,
+                   c.chat_type_id,
                    COALESCE(ce.event_date::text, to_char(ce.start_at, 'YYYY-MM-DD')) as session_date,
-                   CASE WHEN ta.id IS NOT NULL THEN ta.attended
-                        ELSE (rr.eff_status_id = 1)
-                   END as attended,
+                   to_char(ce.start_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as start_at,
+                   COALESCE(
+                       ta.attendance_status,
+                       CASE WHEN ta.id IS NOT NULL THEN (CASE WHEN ta.attended THEN 'yes' ELSE 'no' END)
+                            WHEN rr.chat_event_id IS NOT NULL THEN
+                                CASE WHEN COALESCE(rr.override_rsvp_status, rr.raw_rsvp_status) = 'yes' THEN 'yes' ELSE 'no' END
+                            ELSE 'no'
+                       END
+                   ) as attendance_status,
                    CASE WHEN ta.id IS NOT NULL THEN 'manual'
                         WHEN rr.chat_event_id IS NOT NULL THEN 'rsvp'
                         ELSE 'none'
                    END as source,
-                   COALESCE(rr.rsvp_status_name, '') as rsvp_status
+                   COALESCE(rr.raw_rsvp_status, '')      as raw_rsvp,
+                   COALESCE(rr.override_rsvp_status, '') as override_rsvp
             FROM unnest($1::int[]) WITH ORDINALITY AS s(id, ord)
             JOIN chat_events ce ON ce.id = s.id
-            LEFT JOIN training_attendance ta ON ta.chat_event_id = ce.id AND ta.player_id = $2::int
+            JOIN chats c ON c.id = ce.chat_id
+            LEFT JOIN training_attendance ta ON ta.player_id = $2::int AND (
+                ta.chat_event_id = ce.id
+                OR (ce.match_id IS NOT NULL AND ta.match_id = ce.match_id AND ta.chat_event_id IS NULL)
+            )
             LEFT JOIN resolved_rsvps rr ON rr.chat_event_id = ce.id
             ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
         )";
@@ -1346,9 +1359,13 @@ Response EligibilityController::handleGetPlayerAttendance(const Request& request
             json << "\"sessionId\":" << row["session_id"].as<int>() << ",";
             json << "\"title\":\"" << escapeJson(row["title"].c_str()) << "\",";
             json << "\"date\":\"" << escapeJson(row["session_date"].c_str()) << "\",";
-            json << "\"attended\":" << (row["attended"].as<bool>(false) ? "true" : "false") << ",";
+            json << "\"startAt\":" << (row["start_at"].is_null() ? "null" : "\"" + std::string(row["start_at"].c_str()) + "\"") << ",";
+            json << "\"matchId\":" << (row["match_id"].is_null() ? "null" : std::string(row["match_id"].c_str())) << ",";
+            json << "\"chatTypeId\":" << row["chat_type_id"].as<int>() << ",";
+            json << "\"attendanceStatus\":\"" << escapeJson(row["attendance_status"].c_str()) << "\",";
             json << "\"source\":\"" << escapeJson(row["source"].c_str()) << "\",";
-            json << "\"rsvp\":\"" << (row["rsvp_status"].is_null() ? "" : escapeJson(row["rsvp_status"].c_str())) << "\"";
+            json << "\"rawRsvp\":\"" << escapeJson(row["raw_rsvp"].c_str()) << "\",";
+            json << "\"overrideRsvp\":\"" << escapeJson(row["override_rsvp"].c_str()) << "\"";
             json << "}";
         }
         json << "]}";
@@ -1374,7 +1391,17 @@ Response EligibilityController::handleUpdatePlayerAttendance(const Request& requ
     }
 
     int sessionId = parseJsonInt(request.getBody(), "sessionId");
-    bool attended = parseJsonBool(request.getBody(), "attended");
+    std::string attendanceStatus = parseJsonString(request.getBody(), "attendanceStatus");
+    // Backward compat: fall back to attended bool if attendanceStatus not provided
+    if (attendanceStatus.empty()) {
+        bool attended = parseJsonBool(request.getBody(), "attended");
+        attendanceStatus = attended ? "yes" : "no";
+    }
+    if (attendanceStatus != "yes" && attendanceStatus != "late" &&
+        attendanceStatus != "left_early" && attendanceStatus != "no") {
+        attendanceStatus = "no";
+    }
+    bool attended = (attendanceStatus == "yes" || attendanceStatus == "late" || attendanceStatus == "left_early");
     std::string source = parseJsonString(request.getBody(), "source");
     // Valid sources: manual, excused. Default to manual.
     if (source != "excused") source = "manual";
@@ -1384,18 +1411,34 @@ Response EligibilityController::handleUpdatePlayerAttendance(const Request& requ
     }
 
     try {
-        // UPSERT into training_attendance
-        std::string query = R"(
-            INSERT INTO training_attendance (player_id, chat_event_id, attended, source, updated_at)
-            VALUES ($1::int, $2::int, $3::bool, $4, CURRENT_TIMESTAMP)
-            ON CONFLICT (player_id, chat_event_id)
-            DO UPDATE SET attended = $3::bool, source = $4, updated_at = CURRENT_TIMESTAMP
-            RETURNING id
-        )";
+        // Check if this session is a game (has match_id) — game attendance uses match_id column
+        pqxx::result ceResult = db_->query(
+            "SELECT ce.match_id FROM chat_events ce WHERE ce.id = $1::int",
+            {std::to_string(sessionId)}
+        );
+        bool isGame = !ceResult.empty() && !ceResult[0]["match_id"].is_null();
 
-        pqxx::result result = db_->query(query, {
-            playerId, std::to_string(sessionId), attended ? "true" : "false", source
-        });
+        pqxx::result result;
+        if (isGame) {
+            std::string matchId = ceResult[0]["match_id"].c_str();
+            result = db_->query(
+                "INSERT INTO training_attendance (player_id, match_id, attended, attendance_status, source, updated_at) "
+                "VALUES ($1::int, $2::int, $3::bool, $4, $5, CURRENT_TIMESTAMP) "
+                "ON CONFLICT (player_id, match_id) "
+                "DO UPDATE SET attended = $3::bool, attendance_status = $4, source = $5, updated_at = CURRENT_TIMESTAMP "
+                "RETURNING id",
+                {playerId, matchId, attended ? "true" : "false", attendanceStatus, source}
+            );
+        } else {
+            result = db_->query(
+                "INSERT INTO training_attendance (player_id, chat_event_id, attended, attendance_status, source, updated_at) "
+                "VALUES ($1::int, $2::int, $3::bool, $4, $5, CURRENT_TIMESTAMP) "
+                "ON CONFLICT (player_id, chat_event_id) "
+                "DO UPDATE SET attended = $3::bool, attendance_status = $4, source = $5, updated_at = CURRENT_TIMESTAMP "
+                "RETURNING id",
+                {playerId, std::to_string(sessionId), attended ? "true" : "false", attendanceStatus, source}
+            );
+        }
 
         std::string dataJson = "{\"id\":" + std::to_string(result[0]["id"].as<int>()) + "}";
         return Response(HttpStatus::OK, createJsonResponse(true, "Attendance updated", dataJson));

@@ -42,6 +42,8 @@ private:
 
     // Handler: toggle attendance for a player on a training event
     Response handleToggleAttendance(const Request& request);
+    Response handleFinalizeAttendance(const Request& request);
+    Response handleFinalizeBatchAttendance(const Request& request);
 
     // Handler: get last successful sync timestamp for a team
     Response handleGetSyncStatus(const Request& request);
