@@ -118,6 +118,9 @@ class PromotionalPostsScreen extends Screen {
         return;
       }
 
+      const quickPostBtn = e.target.closest('.quick-post-btn');
+      if (quickPostBtn) { this.saveAndPublishQuickPost(quickPostBtn.dataset.key); return; }
+
       const publishBtn = e.target.closest('.publish-btn');
       if (publishBtn) { this.publishPromo(parseInt(publishBtn.dataset.id)); return; }
 
@@ -688,7 +691,53 @@ class PromotionalPostsScreen extends Screen {
       return `<button class="promo-tab-btn" data-tab="${t.key}" style="padding:8px 16px;border:none;border-bottom:3px solid ${active ? 'var(--accent-color)' : 'transparent'};background:transparent;color:${active ? 'var(--accent-color)' : 'inherit'};font-weight:${active ? '700' : '400'};cursor:pointer;font-size:0.95rem;white-space:nowrap;">${t.label}${count > 0 ? ` <span style="font-size:0.75rem;background:${active ? 'var(--accent-color)' : 'var(--bg-secondary)'};color:${active ? '#fff' : 'inherit'};border-radius:10px;padding:1px 7px;">${count}</span>` : ''}</button>`;
     }).join('');
 
+    // Quick-post ads (pre-generated images, one-click publish)
+    const quickAds = [
+      {
+        key: 'grassroots-brazil',
+        label: '🇧🇷 Brazil — Grassroots Cup',
+        imageUrl: '/images/posts/grassroots-cup-ad-1778886477962.png',
+        caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 World Cup Format · 32 Nations\n📅 Games start June 6, 2026\n📍 Philadelphia, PA\n🥅 Final: July 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
+      },
+      {
+        key: 'grassroots-puertorico',
+        label: '🇵🇷 Puerto Rico — Grassroots Cup',
+        imageUrl: '/images/posts/grassroots-cup-ad-1778886546341.png',
+        caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 World Cup Format · 32 Nations\n📅 Games start June 6, 2026\n📍 Philadelphia, PA\n🥅 Final: July 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
+      },
+      {
+        key: 'u23-mens',
+        label: '⚽ U23 Men\'s Team',
+        imageUrl: '/images/posts/u23-ad-1778886549478.png',
+        caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball`,
+      },
+    ];
+
+    const postedTitles = new Set(this.posts.filter(p => p.status === 'posted').map(p => p.title));
+
+    const quickAdsHtml = quickAds.map(ad => {
+      const isPosted = postedTitles.has(ad.label);
+      return `
+        <div class="card" style="padding:var(--space-3);margin-bottom:var(--space-3);border:2px solid rgba(99,102,241,0.3);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <strong style="font-size:1rem;">${ad.label}</strong>
+            ${isPosted ? `<span style="background:#4CAF50;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">✅ POSTED</span>` : `<span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:2px 10px;border-radius:12px;font-size:0.8rem;">⚡ QUICK POST</span>`}
+          </div>
+          <img src="${ad.imageUrl}" style="width:100%;border-radius:8px;margin-bottom:10px;border:1px solid var(--border-color);">
+          <details style="margin-bottom:10px;">
+            <summary style="cursor:pointer;font-weight:600;opacity:0.8;">📝 Caption</summary>
+            <p style="white-space:pre-wrap;opacity:0.85;margin-top:8px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:0.85rem;">${ad.caption.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+          </details>
+          <button class="btn btn-primary quick-post-btn" data-key="${ad.key}" style="padding:10px 20px;" ${isPosted ? '' : ''}>🚀 Save &amp; Post to Instagram</button>
+        </div>
+      `;
+    }).join('');
+
     let html = `
+      <div class="card" style="padding:var(--space-3);margin-bottom:var(--space-3);background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);">
+        <h3 style="margin-bottom:12px;color:#a5b4fc;">⚡ Grassroots Cup Ads — Quick Post</h3>
+        ${quickAdsHtml}
+      </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
         <div style="display:flex;overflow-x:auto;border-bottom:1px solid var(--border-color);flex:1;min-width:0;">${tabsHtml}</div>
         <button class="btn btn-primary create-btn" style="padding:10px 20px;flex-shrink:0;">➕ New Promo</button>
@@ -1942,6 +1991,67 @@ class PromotionalPostsScreen extends Screen {
         img.src = src;
       }
     });
+  }
+
+  async saveAndPublishQuickPost(key) {
+    const quickAds = [
+      { key: 'grassroots-brazil',    label: '🇧🇷 Brazil — Grassroots Cup',    imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886477962.png', caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 World Cup Format · 32 Nations\n📅 Games start June 6, 2026\n📍 Philadelphia, PA\n🥅 Final: July 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
+      { key: 'grassroots-puertorico', label: '🇵🇷 Puerto Rico — Grassroots Cup', imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886546341.png', caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 World Cup Format · 32 Nations\n📅 Games start June 6, 2026\n📍 Philadelphia, PA\n🥅 Final: July 19 at Drexel Vidas\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
+      { key: 'u23-mens',             label: `⚽ U23 Men's Team`,               imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778886549478.png',           caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball` },
+    ];
+    const ad = quickAds.find(a => a.key === key);
+    if (!ad) return;
+    if (!confirm(`Post "${ad.label}" to Instagram now?`)) return;
+
+    const btn = this.element.querySelector(`.quick-post-btn[data-key="${key}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+
+    try {
+      // 1. Save draft
+      const saveResp = await this.auth.fetch('/api/social/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: ad.label, caption: ad.caption, status: 'draft' })
+      });
+      const saveResult = await saveResp.json();
+      if (!saveResult.success) throw new Error(saveResult.message || 'Save failed');
+      const postId = saveResult.data.id;
+
+      if (btn) btn.textContent = '⏳ Fetching image...';
+
+      // 2. Fetch the pre-generated image and upload as base64
+      const imgResp = await fetch(ad.imageUrl);
+      if (!imgResp.ok) throw new Error('Could not fetch image from server');
+      const blob = await imgResp.blob();
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(blob);
+      });
+
+      if (btn) btn.textContent = '⏳ Uploading...';
+      const uploadResp = await this.auth.fetch(`/api/social/promos/${postId}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: b64 })
+      });
+      const uploadResult = await uploadResp.json();
+      if (!uploadResult.success) throw new Error(uploadResult.message || 'Upload failed');
+
+      if (btn) btn.textContent = '⏳ Publishing...';
+
+      // 3. Publish
+      const pubResp = await this.auth.fetch(`/api/social/promos/${postId}/publish`, { method: 'POST' });
+      const pubResult = await pubResp.json();
+      if (!pubResult.success) throw new Error(pubResult.message || 'Publish failed');
+
+      alert('✅ Posted to Instagram!');
+      await this.loadAndRender();
+    } catch (err) {
+      alert('Error: ' + err.message);
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 Save & Post to Instagram'; }
+    }
   }
 
   async publishPromo(postId) {
