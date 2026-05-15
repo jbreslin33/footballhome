@@ -461,7 +461,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
       <div class="logo-wrap">${complexLogoTag}</div>
       <div class="sponsor-text">
         <div class="by">Hosted At</div>
-        <div class="name">The Lighthouse Complex</div>
+        <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
       </div>
       <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
       <div class="logo-wrap">${casaLogoTag}</div>
@@ -580,7 +580,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       <div class="logo-wrap">${complexLogoTag}</div>
       <div class="sponsor-text">
         <div class="by">Hosted At</div>
-        <div class="name">The Lighthouse Complex</div>
+        <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
       </div>
       <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
       <div class="logo-wrap">${lighthouseLogoTag}</div>
