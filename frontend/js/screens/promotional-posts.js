@@ -696,19 +696,19 @@ class PromotionalPostsScreen extends Screen {
       {
         key: 'grassroots-brazil',
         label: '🇧🇷 Brazil — Grassroots Cup',
-        imageUrl: '/images/posts/grassroots-cup-ad-1778886477962.png',
+        imageUrl: '/images/posts/grassroots-cup-ad-1778888839105.png',
         caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
       },
       {
         key: 'grassroots-puertorico',
         label: '🇵🇷 Puerto Rico — Grassroots Cup',
-        imageUrl: '/images/posts/grassroots-cup-ad-1778886546341.png',
+        imageUrl: '/images/posts/grassroots-cup-ad-1778888841958.png',
         caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
       },
       {
         key: 'u23-mens',
         label: '⚽ U23 Men\'s Team',
-        imageUrl: '/images/posts/u23-ad-1778888461864.png',
+        imageUrl: '/images/posts/u23-ad-1778888845404.png',
         caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball`,
       },
     ];
@@ -2007,9 +2007,9 @@ class PromotionalPostsScreen extends Screen {
 
   async saveAndPublishQuickPost(key) {
     const quickAds = [
-      { key: 'grassroots-brazil',    label: '🇧🇷 Brazil — Grassroots Cup',    imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886477962.png', caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
-      { key: 'grassroots-puertorico', label: '🇵🇷 Puerto Rico — Grassroots Cup', imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778886546341.png', caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
-      { key: 'u23-mens',             label: `⚽ U23 Men's Team`,               imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778888461864.png',           caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball` },
+      { key: 'grassroots-brazil',    label: '🇧🇷 Brazil — Grassroots Cup',    imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778888839105.png', caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
+      { key: 'grassroots-puertorico', label: '🇵🇷 Puerto Rico — Grassroots Cup', imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-1778888841958.png', caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 32 nations!\n\n🏆 3-game group stage + knockouts · 32 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the interest form — link in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup` },
+      { key: 'u23-mens',             label: `⚽ U23 Men's Team`,               imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778888845404.png',           caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the form — link in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball` },
     ];
     const ad = quickAds.find(a => a.key === key);
     if (!ad) return;

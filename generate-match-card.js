@@ -335,8 +335,10 @@ function lineupHTML({ homeTeam, awayTeam, homeLogo, awayLogo, date, time, venue,
 </body></html>`;
 }
 
-function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary, colorAccent, lighthouseLogo }) {
+function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary, colorAccent, lighthouseLogo, welovejunkLogo, complexLogo }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
+  const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
+  const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
@@ -442,17 +444,23 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
       <div class="team-label">Grassroots Cup Team</div>
     </div>
     <div class="details-grid">
-      <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">Kickoff</span>June 6, 2026</span></div>
-      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">Format</span>World Cup Style · 32 Nations</span></div>
+      <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">Kickoff</span>June 7, 2026</span></div>
+      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">Format</span>3-Game Group Stage + Knockouts</span></div>
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
-      <div class="detail-pill"><span class="icon">🏅</span><span class="txt"><span class="label">Final</span>July 19 · Drexel Vidas</span></div>
+      <div class="detail-pill"><span class="icon">🏅</span><span class="txt"><span class="label">Final</span>June 19 · Drexel Vidas Field</span></div>
     </div>
     <div class="open-banner">🌎 Open to All Players — Spots Limited!</div>
     <div class="sponsor-row">
-      <div class="logo-wrap">${lighthouseLogoTag}</div>
+      <div class="logo-wrap">${welovejunkLogoTag}</div>
       <div class="sponsor-text">
-        <div class="by">Proudly Sponsored By</div>
-        <div class="name">Lighthouse 1893 SC</div>
+        <div class="by">Sponsored By</div>
+        <div class="name">We Love Junk</div>
+      </div>
+      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
+      <div class="logo-wrap">${complexLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Hosted At</div>
+        <div class="name">The Lighthouse Complex</div>
       </div>
     </div>
     <div class="cta">
@@ -464,8 +472,10 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
 </body></html>`;
 }
 
-function u23AdHTML({ division, genderEmoji, colorPrimary, colorSecondary, lighthouseLogo }) {
+function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
+  const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
+  const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
@@ -541,7 +551,6 @@ function u23AdHTML({ division, genderEmoji, colorPrimary, colorSecondary, lighth
   <div class="content">
     <div class="casa-badge">⚽ CASA Soccer × Lighthouse 1893 SC</div>
     <div class="main-section">
-      <div class="emoji-icon">${genderEmoji}</div>
       <div class="division-label">Now Forming</div>
       <div class="team-name">U23</div>
       <div class="sub-name">${division} Team</div>
@@ -554,9 +563,21 @@ function u23AdHTML({ division, genderEmoji, colorPrimary, colorSecondary, lighth
     </div>
     <div class="open-banner">🌟 Open to All Players — Spots Available!</div>
     <div class="sponsor-row">
+      <div class="logo-wrap">${welovejunkLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Sponsored By</div>
+        <div class="name">We Love Junk</div>
+      </div>
+      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
+      <div class="logo-wrap">${complexLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Hosted At</div>
+        <div class="name">The Lighthouse Complex</div>
+      </div>
+      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
       <div class="logo-wrap">${lighthouseLogoTag}</div>
       <div class="sponsor-text">
-        <div class="by">Proudly Sponsored By</div>
+        <div class="by">Presented By</div>
         <div class="name">Lighthouse 1893 SC</div>
       </div>
     </div>
@@ -682,30 +703,36 @@ async function main() {
 
   } else if (type === 'grassroots-brazil') {
     const lighthouseLogo = findLogo('lighthouse-1893');
+    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
     const { filepath, filename } = await generateCard('grassroots-cup-ad', {
       country: 'Brazil', flagEmoji: '🇧🇷',
       colorPrimary: '#009C3B', colorSecondary: '#002776', colorAccent: '#FFDF00',
-      lighthouseLogo,
+      lighthouseLogo, welovejunkLogo, complexLogo,
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
 
   } else if (type === 'grassroots-puertorico') {
     const lighthouseLogo = findLogo('lighthouse-1893');
+    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
     const { filepath, filename } = await generateCard('grassroots-cup-ad', {
       country: 'Puerto Rico', flagEmoji: '🇵🇷',
       colorPrimary: '#ED0000', colorSecondary: '#0023A0', colorAccent: '#ffffff',
-      lighthouseLogo,
+      lighthouseLogo, welovejunkLogo, complexLogo,
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
 
   } else if (type === 'u23-mens') {
     const lighthouseLogo = findLogo('lighthouse-1893');
+    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
     const { filepath, filename } = await generateCard('u23-ad', {
-      division: "Men's", genderEmoji: '⚽👨',
+      division: "Men's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
-      lighthouseLogo,
+      lighthouseLogo, welovejunkLogo, complexLogo,
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
