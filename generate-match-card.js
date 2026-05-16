@@ -457,7 +457,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
         <div class="name">We Love Junk</div>
       </div>
       <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
-      <div class="logo-wrap" style="width:120px;height:120px;">${complexLogoTag}</div>
+      <div class="logo-wrap" style="width:160px;height:160px;">${complexLogoTag}</div>
       <div class="sponsor-text">
         <div class="by">Hosted At</div>
         <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
@@ -576,7 +576,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
         <div class="name">We Love Junk</div>
       </div>
       <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
-      <div class="logo-wrap" style="width:120px;height:120px;">${complexLogoTag}</div>
+      <div class="logo-wrap" style="width:160px;height:160px;">${complexLogoTag}</div>
       <div class="sponsor-text">
         <div class="by">Hosted At</div>
         <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
