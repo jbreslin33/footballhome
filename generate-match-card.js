@@ -470,7 +470,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
       </div>
     </div>
     <div class="cta">
-      <strong>👉 Interest Form — Link in Bio</strong>
+      <strong>👉 Fill Out Interest Form in Bio</strong>
       linktr.ee/Lighthouse1893Soccer
     </div>
   </div>
@@ -589,7 +589,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       </div>
     </div>
     <div class="cta">
-      <strong>👉 Interest Form — Link in Bio</strong>
+      <strong>👉 Fill Out Interest Form in Bio</strong>
       linktr.ee/Lighthouse1893Soccer
     </div>
   </div>
