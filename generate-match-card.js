@@ -416,9 +416,8 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
     display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%;
   }
   .logo-wrap {
-    width: 80px; height: 80px; background: white; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; padding: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    width: 80px; height: 80px;
+    display: flex; align-items: center; justify-content: center;
   }
   .sponsor-text { text-align: center; }
   .sponsor-text .by { font-size: 17px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
@@ -544,7 +543,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
     color: white; text-align: center; width: 100%;
   }
   .sponsor-row { display: flex; align-items: center; justify-content: center; gap: 24px; }
-  .logo-wrap { width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .logo-wrap { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
   .sponsor-text .by { font-size: 17px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
   .sponsor-text .name { font-size: 26px; font-weight: 800; color: #f5d442; }
   .cta { text-align: center; font-size: 24px; color: rgba(255,255,255,0.7); letter-spacing: 1px; line-height: 1.6; }
@@ -557,7 +556,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
   <div class="gold-bar"></div>
   <div class="bottom-bar"></div>
   <div class="content">
-    <div class="casa-badge" style="display:flex;align-items:center;gap:12px;"><span style="width:36px;height:36px;background:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:4px;flex-shrink:0;">${casaLogoTag}</span>⚽ CASA U23 ${division} Premier League</div>
+    <div class="casa-badge" style="display:flex;align-items:center;gap:12px;"><span style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${casaLogoTag}</span>⚽ CASA U23 ${division} Premier League</div>
     <div class="main-section">
       <div class="division-label">Now Forming</div>
       <div class="team-name">U23</div>
