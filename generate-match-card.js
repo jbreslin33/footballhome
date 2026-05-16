@@ -546,8 +546,19 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
   .logo-wrap { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
   .sponsor-text .by { font-size: 17px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
   .sponsor-text .name { font-size: 26px; font-weight: 800; color: #f5d442; }
-  .cta { text-align: center; font-size: 24px; color: rgba(255,255,255,0.7); letter-spacing: 1px; line-height: 1.6; }
-  .cta strong { color: #f5d442; font-size: 26px; display: block; }
+  .cta { text-align: center; }
+  .cta-action { font-size: 26px; font-weight: 800; color: rgba(255,255,255,0.9); letter-spacing: 1px; margin-bottom: 10px; }
+  .cta-link-box {
+    display: inline-block;
+    background: #f5d442;
+    color: #0a1628;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    padding: 14px 40px;
+    border-radius: 10px;
+    text-transform: uppercase;
+  }
 </style>
 </head><body>
 <div class="card">
@@ -589,8 +600,8 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       </div>
     </div>
     <div class="cta">
-      <strong>👉 Fill Out Interest Form in Bio</strong>
-      linktr.ee/Lighthouse1893Soccer
+      <div class="cta-action">👉 Fill out interest form in bio</div>
+      <div class="cta-link-box">linktr.ee/Lighthouse1893Soccer</div>
     </div>
   </div>
 </div>
