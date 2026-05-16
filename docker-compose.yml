@@ -49,6 +49,9 @@ services:
     environment:
       POSTGRES_PASSWORD: footballhome_pass
       INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-26233831926285183}
+      META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID:-}
+      META_PAGE_ID: ${META_PAGE_ID:-}
+      META_ADS_TOKEN: ${META_ADS_TOKEN:-}
     ports:
       - "3001:3001"
     dns:
@@ -76,9 +79,6 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
-    volumes:
-      # Mount frontend files for live development (no rebuild needed)
-      - ./frontend:/usr/share/nginx/html:ro
     networks:
       - footballhome_network
     depends_on:

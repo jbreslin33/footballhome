@@ -23,15 +23,38 @@ const API           = 'https://graph.facebook.com/v21.0';
 // ── Ad definitions (image + caption + CTA URL per post type) ──────────
 const ADS = {
   'u23-mens': {
-    name:    'U23 Mens Interest Form',
-    imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778954703154.png',
-    caption:  `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the interest form directly:\n\n👉 https://tr.ee/hSxfHUV4jR\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball`,
-    ctaUrl:   'https://tr.ee/hSxfHUV4jR',
-    ctaType:  'SIGN_UP',
+    name:       'U23 Mens Interest Form',
+    imageUrl:   'https://footballhome.org/images/posts/u23-ad-mens.png',
+    caption:    `Now forming Lighthouse Boys Club U23 team in CASA Men's U23 Premier League. Fill out interest form in BIO!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
+
+    ctaUrl:     'https://tr.ee/hSxfHUV4jR',
+    ctaType:    'SIGN_UP',
+    // U23 Men specific targeting overrides
+    defaultBudget: 20,
+    // no defaultDays — runs until manually cancelled
+    targeting: {
+      geo_locations: {
+        // Philadelphia city + 30mi radius covers Bucks, Montgomery, Delaware, Chester (PA) and Camden/Burlington (NJ)
+        cities: [{ key: '2418779', radius: 30, distance_unit: 'mile' }],
+      },
+      age_min: 16,
+      age_max: 23, // born 2003 or later (U23 eligible)
+      genders: [1], // 1 = male
+      flexible_spec: [
+        {
+          interests: [
+            { id: '6003107902433', name: 'Association football (Soccer)' },
+            { id: '6003139537899', name: 'Sports' },
+          ],
+        },
+      ],
+      publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
   },
   'u23-womens': {
     name:    'U23 Womens Interest Form',
-    imageUrl: 'https://footballhome.org/images/posts/u23-ad-1778946255917.png',
+    imageUrl: 'https://footballhome.org/images/posts/u23-ad-womens.png',
     caption:  `⚽ NOW FORMING: LIGHTHOUSE U23 WOMEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Women's team in partnership with CASA Soccer!\n\n📅 First Match: TBD\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the interest form in bio!\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
     ctaType:  'SIGN_UP',
@@ -61,11 +84,7 @@ function getArg(flag, defaultVal) {
   return i !== -1 ? args[i + 1] : defaultVal;
 }
 
-const dailyBudgetUSD = parseFloat(getArg('--budget', '5'));
-const days           = parseInt(getArg('--days', '3'), 10);
-const ageMin         = parseInt(getArg('--age-min', '16'), 10);
-const ageMax         = parseInt(getArg('--age-max', '40'), 10);
-const dryRun         = args.includes('--dry-run');
+const dryRun = args.includes('--dry-run');
 
 // ── Validate ──────────────────────────────────────────────────────────
 if (!adKey || !ADS[adKey]) {
@@ -80,17 +99,19 @@ if (!AD_ACCOUNT_ID || !PAGE_ID || !ACCESS_TOKEN) {
 }
 
 const ad = ADS[adKey];
-const dailyBudgetCents = Math.round(dailyBudgetUSD * 100);
+const dailyBudgetUSD     = parseFloat(getArg('--budget', ad.defaultBudget ?? '5'));
+const days               = getArg('--days', ad.defaultDays ?? null);
+const dailyBudgetCents   = Math.round(dailyBudgetUSD * 100);
 
-// End date = today + days
-const endDate = new Date();
-endDate.setDate(endDate.getDate() + days);
-const endDateStr = endDate.toISOString().split('T')[0] + 'T23:59:59-0500';
+// End date only if --days was specified
+const endDateStr = days
+  ? (() => { const d = new Date(); d.setDate(d.getDate() + parseInt(days, 10)); return d.toISOString().split('T')[0] + 'T23:59:59-0500'; })()
+  : null;
 
-// ── Targeting: Philadelphia metro area ────────────────────────────────
-const targeting = {
+// ── Targeting: use per-ad targeting if defined, else Philadelphia metro default ──
+const targeting = ad.targeting ?? {
   geo_locations: {
-    cities: [{ key: '2418779', radius: 25, distance_unit: 'mile' }], // Philadelphia
+    cities: [{ key: '2418779', radius: 25, distance_unit: 'mile' }],
   },
   age_min: ageMin,
   age_max: ageMax,
@@ -106,8 +127,9 @@ async function apiPost(path, params) {
 
 async function run() {
   console.log(`\n📣 Creating Instagram Ad: ${ad.name}`);
-  console.log(`   Budget: $${dailyBudgetUSD}/day for ${days} days ($${dailyBudgetUSD * days} total)`);
-  console.log(`   Audience: Philadelphia metro, ages ${ageMin}–${ageMax}`);
+  console.log(`   Budget: $${dailyBudgetUSD}/day${days ? ` for ${days} days ($${dailyBudgetUSD * days} total)` : ' (runs until cancelled)'}`);
+  const genderLabel = targeting.genders ? (targeting.genders.includes(1) ? 'Male' : 'Female') : 'All';
+  console.log(`   Audience: Philadelphia +30mi, ages ${targeting.age_min}–${targeting.age_max}, ${genderLabel}, Soccer interests`);
   console.log(`   CTA: ${ad.ctaType} → ${ad.ctaUrl}`);
   console.log(`   Image: ${ad.imageUrl}`);
 
@@ -129,16 +151,17 @@ async function run() {
 
   // Step 2: Create Ad Set
   console.log('2️⃣  Creating ad set...');
-  const adSet = await apiPost(`${AD_ACCOUNT_ID}/adsets`, {
+  const adSetParams = {
     name: `${ad.name} — Ad Set`,
     campaign_id: campaign.id,
     daily_budget: dailyBudgetCents,
-    end_time: endDateStr,
     billing_event: 'IMPRESSIONS',
     optimization_goal: 'LINK_CLICKS',
     targeting: JSON.stringify(targeting),
     status: 'PAUSED',
-  });
+  };
+  if (endDateStr) adSetParams.end_time = endDateStr;
+  const adSet = await apiPost(`${AD_ACCOUNT_ID}/adsets`, adSetParams);
   if (adSet.error) { console.error('Ad set error:', adSet.error.message); process.exit(1); }
   console.log(`   Ad Set ID: ${adSet.id}`);
 

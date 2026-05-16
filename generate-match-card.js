@@ -575,7 +575,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
     </div>
     <div class="details-grid">
       <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">First Match</span>May 30, 2026</span></div>
-      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA U23 ${division} Premier</span></div>
+      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA U23 ${division} Premier League</span></div>
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
       <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>Open to All Players</span></div>
     </div>
@@ -589,14 +589,14 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
       <div class="logo-wrap" style="width:160px;height:160px;">${complexLogoTag}</div>
       <div class="sponsor-text">
-        <div class="by">Hosted At</div>
+        <div class="by">Home Games At</div>
         <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
       </div>
       <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
       <div class="logo-wrap">${lighthouseLogoTag}</div>
       <div class="sponsor-text">
-        <div class="by">Presented By</div>
-        <div class="name">Lighthouse 1893 SC</div>
+        <div class="by">Team</div>
+        <div class="name">Lighthouse Boys Club U23</div>
       </div>
     </div>
     <div class="cta">
@@ -640,7 +640,8 @@ function findLogo(teamName) {
 
 // --- Generate image ---
 
-async function generateCard(type, data) {
+async function generateCard(type, data = {}) {
+  const fixedFilename = data.filename;
   let html;
   if (type === 'match-result' || type === 'post_game') {
     html = matchResultHTML(data);
@@ -667,7 +668,7 @@ async function generateCard(type, data) {
   await page.setViewport({ width: 1080, height: 1080 });
   await page.setContent(html, { waitUntil: 'networkidle0' });
 
-  const filename = `${type}-${Date.now()}.png`;
+  const filename = fixedFilename || `${type}-${Date.now()}.png`;
   const filepath = path.join(POSTS_DIR, filename);
   await page.screenshot({ path: filepath, type: 'png' });
   await browser.close();
@@ -755,6 +756,7 @@ async function main() {
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
       ctaLink: 'tr.ee/hSxfHUV4jR',
+      filename: 'u23-ad-mens.png',
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
@@ -768,6 +770,7 @@ async function main() {
       division: "Women's",
       colorPrimary: '#6A1B9A', colorSecondary: '#4A148C',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      filename: 'u23-ad-womens.png',
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
