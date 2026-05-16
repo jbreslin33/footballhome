@@ -27,6 +27,11 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
 # Let's Encrypt — email used by certbot for renewal notices.
 # When set, ./setup.sh will run `certbot --nginx --obtain-cert` automatically.
 LE_EMAIL=
+
+# Meta Ads (for creating boosted Instagram ads via Marketing API)
+META_AD_ACCOUNT_ID=
+META_PAGE_ID=
+META_ADS_TOKEN=
 EOF
   print_success "env file created"
 else

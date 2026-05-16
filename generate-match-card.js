@@ -478,7 +478,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
 </body></html>`;
 }
 
-function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo }) {
+function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer' }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
@@ -600,8 +600,8 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       </div>
     </div>
     <div class="cta">
-      <div class="cta-action">👉 Fill out interest form in bio</div>
-      <div class="cta-link-box">linktr.ee/Lighthouse1893Soccer</div>
+      <div class="cta-action">👉 Fill out interest form:</div>
+      <div class="cta-link-box">${ctaLink}</div>
     </div>
   </div>
 </div>
@@ -754,6 +754,7 @@ async function main() {
       division: "Men's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      ctaLink: 'tr.ee/hSxfHUV4jR',
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
