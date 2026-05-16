@@ -709,7 +709,7 @@ class PromotionalPostsScreen extends Screen {
         key: 'u23-mens',
         label: '⚽ U23 Men\'s Team',
         imageUrl: '/images/posts/u23-ad-mens.png',
-        caption: `⚽ NOW FORMING: LIGHTHOUSE U23 MEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Men's team in partnership with CASA Soccer!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\nInterested? Fill out the interest form directly:\n\n👉 https://tr.ee/hSxfHUV4jR\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball`,
+        caption: `Now forming Lighthouse Boys Club U23 team in CASA Men's U23 Premier League. Fill out interest form in BIO!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
       },
       {
         key: 'u23-womens',
@@ -733,15 +733,6 @@ class PromotionalPostsScreen extends Screen {
             ${isPosted ? `<span style="background:#4CAF50;color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">✅ POSTED</span>` : `<span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:2px 10px;border-radius:12px;font-size:0.8rem;">⚡ QUICK POST</span>`}
           </div>
           <img src="${ad.imageUrl}" style="width:100%;border-radius:8px;margin-bottom:10px;border:1px solid var(--border-color);">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;">
-            <span style="font-size:0.8rem;opacity:0.7;white-space:nowrap;">Sponsored by</span>
-            <img src="/images/sponsors/welovejunk_logo.png" style="height:28px;width:auto;object-fit:contain;" alt="We Love Junk">
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;">
-            <span style="font-size:0.8rem;opacity:0.7;white-space:nowrap;">Hosted at</span>
-            <img src="/images/lighthouse-complex.png" style="height:32px;width:auto;object-fit:contain;" alt="Lighthouse Sports & Entertainment Complex">
-            <span style="font-size:0.85rem;font-weight:600;">The Lighthouse Sports &amp; Entertainment Complex</span>
-          </div>
           <details style="margin-bottom:10px;">
             <summary style="cursor:pointer;font-weight:600;opacity:0.8;">📝 Caption</summary>
             <p style="white-space:pre-wrap;opacity:0.85;margin-top:8px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:0.85rem;">${ad.caption.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
