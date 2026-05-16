@@ -747,6 +747,19 @@ async function main() {
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
 
+  } else if (type === 'u23-womens') {
+    const lighthouseLogo = findLogo('lighthouse-1893');
+    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const { filepath, filename } = await generateCard('u23-ad', {
+      division: "Women's",
+      colorPrimary: '#6A1B9A', colorSecondary: '#4A148C',
+      lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+    });
+    console.log(`\nImage saved: ${filepath}`);
+    console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
+
   } else {
     console.log(`Match Card Generator
 
@@ -756,6 +769,7 @@ Usage:
   node generate-match-card.js grassroots-brazil
   node generate-match-card.js grassroots-puertorico
   node generate-match-card.js u23-mens
+  node generate-match-card.js u23-womens
 
 Example:
   node generate-match-card.js match-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
