@@ -599,10 +599,6 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
         <div class="name">Lighthouse Boys Club U23</div>
       </div>
     </div>
-    <div class="cta">
-      <div class="cta-action">👉 Fill out interest form:</div>
-      <div class="cta-link-box">${ctaLink}</div>
-    </div>
   </div>
 </div>
 </body></html>`;

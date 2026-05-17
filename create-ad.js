@@ -25,7 +25,7 @@ const ADS = {
   'u23-mens': {
     name:       'U23 Mens Interest Form',
     imageUrl:   'https://footballhome.org/images/posts/u23-ad-mens.png',
-    caption:    `Now forming Lighthouse Boys Club U23 team in CASA Men's U23 Premier League. Fill out interest form in BIO!\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
+    caption:    `Now forming Lighthouse Boys Club U23 team in CASA Men's U23 Premier League.\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
 
     ctaUrl:     'https://tr.ee/hSxfHUV4jR',
     ctaType:    'SIGN_UP',
@@ -37,17 +37,10 @@ const ADS = {
         // Philadelphia city + 30mi radius covers Bucks, Montgomery, Delaware, Chester (PA) and Camden/Burlington (NJ)
         cities: [{ key: '2418779', radius: 30, distance_unit: 'mile' }],
       },
-      age_min: 16,
+      age_min: 18,
       age_max: 23, // born 2003 or later (U23 eligible)
       genders: [1], // 1 = male
-      flexible_spec: [
-        {
-          interests: [
-            { id: '6003107902433', name: 'Association football (Soccer)' },
-            { id: '6003139537899', name: 'Sports' },
-          ],
-        },
-      ],
+      targeting_automation: { advantage_audience: 0 }, // disable Advantage audience
       publisher_platforms: ['instagram'],
       instagram_positions: ['stream', 'explore'],
     },
@@ -144,9 +137,10 @@ async function run() {
     name: `${ad.name} — ${new Date().toLocaleDateString()}`,
     objective: 'OUTCOME_TRAFFIC',
     status: 'PAUSED',
-    special_ad_categories: [],
+    special_ad_categories: JSON.stringify([]),
+    is_adset_budget_sharing_enabled: false,
   });
-  if (campaign.error) { console.error('Campaign error:', campaign.error.message); process.exit(1); }
+  if (campaign.error) { console.error('Campaign error:', JSON.stringify(campaign.error, null, 2)); process.exit(1); }
   console.log(`   Campaign ID: ${campaign.id}`);
 
   // Step 2: Create Ad Set
@@ -157,30 +151,44 @@ async function run() {
     daily_budget: dailyBudgetCents,
     billing_event: 'IMPRESSIONS',
     optimization_goal: 'LINK_CLICKS',
+    bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
     targeting: JSON.stringify(targeting),
     status: 'PAUSED',
   };
   if (endDateStr) adSetParams.end_time = endDateStr;
   const adSet = await apiPost(`${AD_ACCOUNT_ID}/adsets`, adSetParams);
-  if (adSet.error) { console.error('Ad set error:', adSet.error.message); process.exit(1); }
+  if (adSet.error) { console.error('Ad set error:', JSON.stringify(adSet.error, null, 2)); process.exit(1); }
   console.log(`   Ad Set ID: ${adSet.id}`);
 
-  // Step 3: Create Ad Creative
-  console.log('3️⃣  Creating ad creative...');
+  // Step 3a: Upload image to get hash
+  console.log('3️⃣  Uploading image...');
+  const imgRes = await fetch(ad.imageUrl);
+  if (!imgRes.ok) { console.error('Failed to fetch image:', ad.imageUrl); process.exit(1); }
+  const imgBuffer = await imgRes.arrayBuffer();
+  const imgForm = new FormData();
+  imgForm.append('access_token', ACCESS_TOKEN);
+  imgForm.append('filename', new Blob([imgBuffer], { type: 'image/png' }), 'ad.png');
+  const imgUploadRes = await fetch(`${API}/${AD_ACCOUNT_ID}/adimages`, { method: 'POST', body: imgForm });
+  const imgUpload = await imgUploadRes.json();
+  if (imgUpload.error) { console.error('Image upload error:', JSON.stringify(imgUpload.error, null, 2)); process.exit(1); }
+  const imageHash = Object.values(imgUpload.images)[0].hash;
+  console.log(`   Image hash: ${imageHash}`);
+
+  // Step 3b: Create Ad Creative (Facebook Page style — no instagram_actor_id to avoid dev mode restriction)
+  console.log('   Creating ad creative...');
   const creative = await apiPost(`${AD_ACCOUNT_ID}/adcreatives`, {
     name: `${ad.name} — Creative`,
     object_story_spec: JSON.stringify({
       page_id: PAGE_ID,
-      instagram_actor_id: PAGE_ID,
       link_data: {
-        image_url: ad.imageUrl,
+        image_hash: imageHash,
         link: ad.ctaUrl,
         message: ad.caption,
         call_to_action: { type: ad.ctaType, value: { link: ad.ctaUrl } },
       },
     }),
   });
-  if (creative.error) { console.error('Creative error:', creative.error.message); process.exit(1); }
+  if (creative.error) { console.error('Creative error:', JSON.stringify(creative.error, null, 2)); process.exit(1); }
   console.log(`   Creative ID: ${creative.id}`);
 
   // Step 4: Create Ad
