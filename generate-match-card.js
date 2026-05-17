@@ -335,7 +335,7 @@ function lineupHTML({ homeTeam, awayTeam, homeLogo, awayLogo, date, time, venue,
 </body></html>`;
 }
 
-function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary, colorAccent, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo }) {
+function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary, colorAccent, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, openBannerText = '🌎 Open to All Players — Spots Limited!' }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
@@ -449,7 +449,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
       <div class="detail-pill"><span class="icon">🏅</span><span class="txt"><span class="label">Final</span>June 19 · Drexel Vidas Field</span></div>
     </div>
-    <div class="open-banner">🌎 Open to All Players — Spots Limited!</div>
+    <div class="open-banner">${openBannerText}</div>
     <div class="sponsor-row">
       <div class="logo-wrap">${welovejunkLogoTag}</div>
       <div class="sponsor-text">
@@ -469,16 +469,12 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
         <div class="name">CASA Soccer</div>
       </div>
     </div>
-    <div class="cta">
-      <strong>👉 Fill Out Interest Form in Bio</strong>
-      linktr.ee/Lighthouse1893Soccer
-    </div>
   </div>
 </div>
 </body></html>`;
 }
 
-function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer' }) {
+function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players' }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
@@ -577,7 +573,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">First Match</span>May 30, 2026</span></div>
       <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA U23 ${division} Premier League</span></div>
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
-      <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>Open to All Players</span></div>
+      <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>${eligibilityText}</span></div>
     </div>
     <div class="open-banner">🌟 Open to All Players — Spots Available!</div>
     <div class="sponsor-row">
@@ -725,6 +721,8 @@ async function main() {
       country: 'Brazil', flagEmoji: '🇧🇷',
       colorPrimary: '#009C3B', colorSecondary: '#002776', colorAccent: '#FFDF00',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      openBannerText: '🌎 Open to All — Not Just Brazilians! Spots Are Limited!',
+      filename: 'grassroots-cup-ad-brazil.png',
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
@@ -738,6 +736,8 @@ async function main() {
       country: 'Puerto Rico', flagEmoji: '🇵🇷',
       colorPrimary: '#ED0000', colorSecondary: '#0023A0', colorAccent: '#ffffff',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      openBannerText: '🌎 Open to All — Not Just Puerto Ricans! Spots Are Limited!',
+      filename: 'grassroots-cup-ad-puertorico.png',
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
@@ -764,8 +764,9 @@ async function main() {
     const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('u23-ad', {
       division: "Women's",
-      colorPrimary: '#6A1B9A', colorSecondary: '#4A148C',
+      colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      eligibilityText: 'Ages 16–25 Welcome',
       filename: 'u23-ad-womens.png',
     });
     console.log(`\nImage saved: ${filepath}`);
