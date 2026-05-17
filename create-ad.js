@@ -48,7 +48,7 @@ const ADS = {
   'u23-womens': {
     name:    'U23 Womens Interest Form',
     imageUrl: 'https://footballhome.org/images/posts/u23-ad-womens.png',
-    caption:  `⚽ NOW FORMING: LIGHTHOUSE U23 WOMEN'S TEAM!\n\nLighthouse 1893 SC is forming a U23 Women's team in partnership with CASA Soccer!\n\n📅 First Match: TBD\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
+    caption:  `⚽ NOW FORMING: LIGHTHOUSE WOMEN'S CLUB U23!\n\nLighthouse Women's Club U23 is forming a team in partnership with CASA Soccer!\n\n📅 First Match: TBD\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
     ctaType:  'SIGN_UP',
   },
