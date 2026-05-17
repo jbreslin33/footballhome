@@ -696,14 +696,14 @@ class PromotionalPostsScreen extends Screen {
       {
         key: 'grassroots-brazil',
         label: '🇧🇷 Brazil — Grassroots Cup',
-        imageUrl: '/images/posts/grassroots-cup-ad-1778890201372.png',
-        caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 12 nations!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the fill out interest form in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
+        imageUrl: '/images/posts/grassroots-cup-ad-brazil.png',
+        caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 12 nations!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\n🌎 Open to ALL players — you don't have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
       },
       {
         key: 'grassroots-puertorico',
         label: '🇵🇷 Puerto Rico — Grassroots Cup',
-        imageUrl: '/images/posts/grassroots-cup-ad-1778890205134.png',
-        caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 12 nations!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\nSpots are open to ALL players! Fill out the fill out interest form in bio.\n\n👉 linktr.ee/Lighthouse1893Soccer\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
+        imageUrl: '/images/posts/grassroots-cup-ad-puertorico.png',
+        caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup — a World Cup-style city tournament representing 12 nations!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n🥅 Final: June 19 at Drexel Vidas Field\n\n🌎 Open to ALL players — you don't have to be from Puerto Rico!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer #WorldCup2026 #Lighthouse1893SC #GrassrootsCup`,
       },
       {
         key: 'u23-mens',
