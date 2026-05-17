@@ -474,7 +474,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
 </body></html>`;
 }
 
-function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players' }) {
+function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players' }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
@@ -592,7 +592,7 @@ function u23AdHTML({ division, colorPrimary, colorSecondary, lighthouseLogo, wel
       <div class="logo-wrap">${lighthouseLogoTag}</div>
       <div class="sponsor-text">
         <div class="by">Team</div>
-        <div class="name">Lighthouse Boys Club U23</div>
+        <div class="name">${teamName}</div>
       </div>
     </div>
   </div>
@@ -721,7 +721,7 @@ async function main() {
       country: 'Brazil', flagEmoji: '🇧🇷',
       colorPrimary: '#009C3B', colorSecondary: '#002776', colorAccent: '#FFDF00',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
-      openBannerText: '🌎 Open to All — Not Just Brazilians! Spots Are Limited!',
+      openBannerText: '🌎 You Do Not Have To Be Brazilian — Spots Are Limited!',
       filename: 'grassroots-cup-ad-brazil.png',
     });
     console.log(`\nImage saved: ${filepath}`);
@@ -736,7 +736,7 @@ async function main() {
       country: 'Puerto Rico', flagEmoji: '🇵🇷',
       colorPrimary: '#ED0000', colorSecondary: '#0023A0', colorAccent: '#ffffff',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
-      openBannerText: '🌎 Open to All — Not Just Puerto Ricans! Spots Are Limited!',
+      openBannerText: '🌎 You Do Not Have To Be Puerto Rican — Spots Are Limited!',
       filename: 'grassroots-cup-ad-puertorico.png',
     });
     console.log(`\nImage saved: ${filepath}`);
@@ -767,6 +767,7 @@ async function main() {
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
       eligibilityText: 'Ages 16–25 Welcome',
+      teamName: "Lighthouse Women's Club U23",
       filename: 'u23-ad-womens.png',
     });
     console.log(`\nImage saved: ${filepath}`);
