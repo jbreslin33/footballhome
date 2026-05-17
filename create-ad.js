@@ -55,14 +55,14 @@ const ADS = {
   'grassroots-brazil': {
     name:    'Philly Grassroots Cup — Brazil',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-brazil.png',
-    caption:  `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — you don't have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer`,
+    caption:  `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer`,
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
     ctaType:  'LEARN_MORE',
   },
   'grassroots-puertorico': {
     name:    'Philly Grassroots Cup — Puerto Rico',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-puertorico.png',
-    caption:  `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — you don't have to be from Puerto Rico!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer`,
+    caption:  `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Puerto Rican!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer`,
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
     ctaType:  'LEARN_MORE',
   },
