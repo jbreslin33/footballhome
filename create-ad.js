@@ -101,6 +101,9 @@ const endDateStr = days
   ? (() => { const d = new Date(); d.setDate(d.getDate() + parseInt(days, 10)); return d.toISOString().split('T')[0] + 'T23:59:59-0500'; })()
   : null;
 
+const ageMin = parseInt(getArg('--age-min', '16'), 10);
+const ageMax = parseInt(getArg('--age-max', '40'), 10);
+
 // ── Targeting: use per-ad targeting if defined, else Philadelphia metro default ──
 const targeting = ad.targeting ?? {
   geo_locations: {
@@ -108,6 +111,7 @@ const targeting = ad.targeting ?? {
   },
   age_min: ageMin,
   age_max: ageMax,
+  targeting_automation: { advantage_audience: 0 },
   publisher_platforms: ['instagram'],
   instagram_positions: ['stream', 'explore'],
 };
