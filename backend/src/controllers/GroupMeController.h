@@ -60,8 +60,12 @@ private:
     // Handler: set or clear an RSVP override for a person on a training/chat event
     Response handleSetEventRsvpOverride(const Request& request);
 
+    // Handler: push a new event from footballhome to a GroupMe group calendar
+    Response handlePushEvent(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
+    std::string httpPost(const std::string& url, const std::string& body);
 
     // JSON parsing helpers (targeted for GroupMe API responses)
     std::vector<std::string> extractStringArray(const std::string& json, 

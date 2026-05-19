@@ -30,6 +30,7 @@ async function postPhoto(imageUrl, caption) {
   console.log('Media container created:', createData.id);
 
   // Step 2: Wait for container to be ready, then publish
+  await new Promise(resolve => setTimeout(resolve, 5000));
   const publishParams = new URLSearchParams({
     creation_id: createData.id,
     access_token: ACCESS_TOKEN,
@@ -144,6 +145,31 @@ function standingsCaption(position, played, won, drawn, lost, points) {
     `⭐ Points: ${points}\n\n` +
     `#Lighthouse1893 #APSL #PhillySoccer #LeagueStandings #Lighthouse1893SC`;
 }
+
+// --- Recruiting / organic campaign posts ---
+
+const ORGANIC_POSTS = {
+  'grassroots-brazil': {
+    name: 'Philly Grassroots Cup — Brazil (organic)',
+    imageUrl: `${PUBLIC_BASE}/grassroots-cup-ad-brazil.png`,
+    caption: `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n🔗 Fill out the interest form — link in bio!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer`,
+  },
+  'grassroots-puertorico': {
+    name: 'Philly Grassroots Cup — Puerto Rico (organic)',
+    imageUrl: `${PUBLIC_BASE}/grassroots-cup-ad-puertorico.png`,
+    caption: `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Puerto Rican!\n⚠️ Spots are limited and filling fast!\n\n🔗 Fill out the interest form — link in bio!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer`,
+  },
+  'u23-mens': {
+    name: 'U23 Mens — Interest Form (organic)',
+    imageUrl: `${PUBLIC_BASE}/u23-ad-mens.png`,
+    caption: `⚽ NOW FORMING: LIGHTHOUSE BOYS CLUB U23!\n\nLighthouse Boys Club U23 is forming a team in the CASA Men's U23 Premier League!\n\n📅 First Match: May 31, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n🔗 Fill out the interest form — link in bio!\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
+  },
+  'u23-womens': {
+    name: 'U23 Womens — Interest Form (organic)',
+    imageUrl: `${PUBLIC_BASE}/u23-ad-womens.png`,
+    caption: `⚽ NOW FORMING: LIGHTHOUSE WOMEN'S CLUB U23!\n\nLighthouse Women's Club U23 is forming a team in partnership with CASA Soccer!\n\n📅 First Match: May 31, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n🔗 Fill out the interest form — link in bio!\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
+  },
+};
 
 // --- Open image for preview ---
 
@@ -331,6 +357,41 @@ if (command === 'photo') {
     }
   })();
 
+} else if (command === 'recruit') {
+  // node post-to-instagram.js recruit <key>
+  // e.g. node post-to-instagram.js recruit grassroots-brazil
+  (async () => {
+    const key = args[1];
+    const post = ORGANIC_POSTS[key];
+    if (!post) {
+      console.log(`Unknown recruit key: "${key}"`);
+      console.log('Available:', Object.keys(ORGANIC_POSTS).join(', '));
+      process.exit(1);
+    }
+
+    console.log(`\n📋 ${post.name}`);
+    console.log('\n' + '='.repeat(60));
+    console.log('📸 IMAGE');
+    console.log('='.repeat(60));
+    console.log(post.imageUrl);
+    console.log('\n' + '='.repeat(60));
+    console.log('📝 CAPTION PREVIEW');
+    console.log('='.repeat(60));
+    console.log(post.caption.replace(/\\n/g, '\n'));
+    console.log('='.repeat(60));
+
+    const answer = await askConfirm('\n🚀 Post this to Instagram? (yes/no): ');
+    if (answer === 'yes' || answer === 'y') {
+      console.log('\n📤 Posting to Instagram...');
+      const mediaId = await postPhoto(post.imageUrl, post.caption);
+      if (mediaId) {
+        console.log('\n✅ Successfully posted to Instagram!');
+      }
+    } else {
+      console.log('\n❌ Post cancelled.');
+    }
+  })();
+
 } else {
   console.log(`Lighthouse 1893 SC - Instagram Posting Tool
 
@@ -342,6 +403,12 @@ Usage (manual - requires pre-hosted image URL):
 Usage (auto-generate image + preview + confirm):
   node post-to-instagram.js auto-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
   node post-to-instagram.js auto-announcement <home> <away> <league> <date> <time> <venue>
+
+Usage (recruiting / organic campaign posts):
+  node post-to-instagram.js recruit grassroots-brazil
+  node post-to-instagram.js recruit grassroots-puertorico
+  node post-to-instagram.js recruit u23-mens
+  node post-to-instagram.js recruit u23-womens
 
 Usage (preview only - no posting):
   node post-to-instagram.js preview-only match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>

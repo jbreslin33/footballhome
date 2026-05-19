@@ -79,6 +79,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    volumes:
+      # Serve regenerated post images directly from host (no rebuild needed)
+      - ./frontend/images/posts:/usr/share/nginx/html/images/posts
     networks:
       - footballhome_network
     depends_on:

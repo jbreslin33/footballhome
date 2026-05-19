@@ -72,3 +72,4 @@ footballhome-git-crypt.key.env
 # Large binary files from roster scraping
 *.xlsx
 sync.log
+.env

@@ -335,7 +335,7 @@ function lineupHTML({ homeTeam, awayTeam, homeLogo, awayLogo, date, time, venue,
 </body></html>`;
 }
 
-function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary, colorAccent, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, openBannerText = '🌎 Open to All Players — Spots Limited!' }) {
+function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary, colorAccent, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, openBannerText = '🌎 Open to All Players — Spots Limited!', eligibilityText = null }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
@@ -427,6 +427,12 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
     letter-spacing: 1px; line-height: 1.6;
   }
   .cta strong { color: #f5d442; font-size: 26px; display: block; }
+  .bio-cta {
+    background: #f5d442; color: #0a1628;
+    border-radius: 12px; padding: 14px 50px;
+    font-size: 26px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+    text-align: center; width: 100%;
+  }
 </style>
 </head><body>
 <div class="card">
@@ -448,8 +454,10 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
       <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">Format</span>3-Game Group Stage + Knockouts</span></div>
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
       <div class="detail-pill"><span class="icon">🏅</span><span class="txt"><span class="label">Final</span>June 19 · Drexel Vidas Field</span></div>
+      ${eligibilityText ? `<div class="detail-pill" style="grid-column:1/-1"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>${eligibilityText}</span></div>` : ''}
     </div>
     <div class="open-banner">${openBannerText}</div>
+    <div class="bio-cta">🔗 Fill out the Interest Form — Link in Bio!</div>
     <div class="sponsor-row">
       <div class="logo-wrap">${welovejunkLogoTag}</div>
       <div class="sponsor-text">
@@ -474,7 +482,7 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
 </body></html>`;
 }
 
-function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players' }) {
+function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players', firstMatch = 'May 31, 2026' }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
@@ -544,6 +552,12 @@ function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrima
   .sponsor-text .name { font-size: 26px; font-weight: 800; color: #f5d442; }
   .cta { text-align: center; }
   .cta-action { font-size: 26px; font-weight: 800; color: rgba(255,255,255,0.9); letter-spacing: 1px; margin-bottom: 10px; }
+  .bio-cta {
+    background: #f5d442; color: #0a1628;
+    border-radius: 12px; padding: 14px 50px;
+    font-size: 26px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+    text-align: center; width: 100%;
+  }
   .cta-link-box {
     display: inline-block;
     background: #f5d442;
@@ -570,12 +584,13 @@ function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrima
       <div class="sub-name">${division} Team</div>
     </div>
     <div class="details-grid">
-      <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">First Match</span>May 30, 2026</span></div>
+      <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">First Match</span>${firstMatch}</span></div>
       <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA U23 ${division} Premier League</span></div>
       <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
       <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>${eligibilityText}</span></div>
     </div>
     <div class="open-banner">🌟 Open to All Players — Spots Available!</div>
+    <div class="bio-cta">🔗 Fill out the Interest Form — Link in Bio!</div>
     <div class="sponsor-row">
       <div class="logo-wrap">${welovejunkLogoTag}</div>
       <div class="sponsor-text">
@@ -722,6 +737,7 @@ async function main() {
       colorPrimary: '#009C3B', colorSecondary: '#002776', colorAccent: '#FFDF00',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
       openBannerText: '🌎 You Do Not Have To Be Brazilian — Spots Are Limited!',
+      eligibilityText: 'Ages 16+',
       filename: 'grassroots-cup-ad-brazil.png',
     });
     console.log(`\nImage saved: ${filepath}`);
@@ -737,6 +753,7 @@ async function main() {
       colorPrimary: '#ED0000', colorSecondary: '#0023A0', colorAccent: '#ffffff',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
       openBannerText: '🌎 You Do Not Have To Be Puerto Rican — Spots Are Limited!',
+      eligibilityText: 'Ages 16+',
       filename: 'grassroots-cup-ad-puertorico.png',
     });
     console.log(`\nImage saved: ${filepath}`);
@@ -751,7 +768,9 @@ async function main() {
       division: "Men's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      eligibilityText: 'Ages 16–25 Welcome',
       ctaLink: 'tr.ee/hSxfHUV4jR',
+      firstMatch: 'May 31, 2026',
       filename: 'u23-ad-mens.png',
     });
     console.log(`\nImage saved: ${filepath}`);
@@ -768,6 +787,7 @@ async function main() {
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
       eligibilityText: 'Ages 16–25 Welcome',
       teamName: "Lighthouse Women's Club U23",
+      firstMatch: 'May 31, 2026',
       filename: 'u23-ad-womens.png',
     });
     console.log(`\nImage saved: ${filepath}`);

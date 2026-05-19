@@ -104,6 +104,11 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     router.put(prefix + "/event-rsvp-override", [this](const Request& request) {
         return this->handleSetEventRsvpOverride(request);
     });
+
+    // POST /api/groupme/push-event — Create a GroupMe calendar event and store in chat_events
+    router.post(prefix + "/push-event", [this](const Request& request) {
+        return this->handlePushEvent(request);
+    });
 }
 
 // ============================================================================
@@ -2882,4 +2887,200 @@ Response GroupMeController::handleSetEventRsvpOverride(const Request& request) {
         std::cerr << "❌ handleSetEventRsvpOverride: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to set override"));
     }
+}
+
+// ============================================================================
+// Handler: Push a new event to a GroupMe group calendar
+// POST /api/groupme/push-event
+// Body: {chatId, title, startAt, endAt, location, description}
+//   chatId    — internal chats.id (used to look up the GroupMe group_id)
+//   title     — event name (required)
+//   startAt   — ISO 8601 timestamp e.g. "2026-06-01T18:00:00-04:00" (required)
+//   endAt     — ISO 8601 timestamp (optional)
+//   location  — location name string (optional)
+//   description — free text (optional)
+// Creates a GroupMe calendar event and inserts a chat_events row.
+// Returns: {chatEventId, groupmeEventId}
+// ============================================================================
+Response GroupMeController::handlePushEvent(const Request& request) {
+    if (accessToken_.empty()) {
+        return Response(HttpStatus::OK, createJsonResponse(false, "GroupMe token not configured"));
+    }
+
+    try {
+        std::string body = request.getBody();
+
+        auto extractInt = [&](const std::string& key) -> std::string {
+            std::string s = "\"" + key + "\":";
+            size_t p = body.find(s);
+            if (p == std::string::npos) return "";
+            p += s.size();
+            while (p < body.size() && (body[p] == ' ' || body[p] == '\t')) p++;
+            size_t e = p;
+            while (e < body.size() && body[e] >= '0' && body[e] <= '9') e++;
+            return body.substr(p, e - p);
+        };
+        auto extractStr = [&](const std::string& key) -> std::string {
+            std::string s = "\"" + key + "\":\"";
+            size_t p = body.find(s);
+            if (p == std::string::npos) return "";
+            p += s.size();
+            size_t e = p;
+            while (e < body.size()) {
+                if (body[e] == '"' && body[e - 1] != '\\') break;
+                e++;
+            }
+            return body.substr(p, e - p);
+        };
+
+        std::string chatId      = extractInt("chatId");
+        std::string title       = extractStr("title");
+        std::string startAt     = extractStr("startAt");
+        std::string endAt       = extractStr("endAt");
+        std::string location    = extractStr("location");
+        std::string description = extractStr("description");
+
+        if (chatId.empty() || title.empty() || startAt.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJsonResponse(false, "chatId, title, and startAt are required"));
+        }
+
+        // 1. Look up the GroupMe group_id for this chat
+        pqxx::result ciResult = db_->query(
+            "SELECT ci.external_id AS group_id "
+            "FROM chat_integrations ci "
+            "WHERE ci.chat_id = $1::int AND ci.provider_id = 1 "
+            "LIMIT 1",
+            {chatId}
+        );
+        if (ciResult.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJsonResponse(false, "No GroupMe integration found for this chat"));
+        }
+        std::string groupId = ciResult[0]["group_id"].c_str();
+
+        // 2. Build GroupMe API request body
+        std::ostringstream gmBody;
+        gmBody << "{\"event\":{";
+        gmBody << "\"name\":\"" << escapeJson(title) << "\"";
+        gmBody << ",\"start_at\":\"" << escapeJson(startAt) << "\"";
+        if (!endAt.empty()) {
+            gmBody << ",\"end_at\":\"" << escapeJson(endAt) << "\"";
+        }
+        if (!location.empty()) {
+            gmBody << ",\"location\":{\"name\":\"" << escapeJson(location) << "\"}";
+        }
+        if (!description.empty()) {
+            gmBody << ",\"description\":\"" << escapeJson(description) << "\"";
+        }
+        gmBody << "}}";
+
+        // 3. POST to GroupMe
+        std::string apiUrl = "https://api.groupme.com/v3/conversations/" + groupId
+                           + "/events/create?token=" + accessToken_;
+        std::string gmResponse = httpPost(apiUrl, gmBody.str());
+
+        if (gmResponse.empty()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJsonResponse(false, "GroupMe API request failed"));
+        }
+
+        // 4. Extract event_id from response: {"response":{"event":{"event_id":"abc123",...}}}
+        std::string groupmeEventId;
+        {
+            std::string needle = "\"event_id\":\"";
+            size_t pos = gmResponse.find(needle);
+            if (pos != std::string::npos) {
+                pos += needle.size();
+                size_t end = gmResponse.find("\"", pos);
+                if (end != std::string::npos) {
+                    groupmeEventId = gmResponse.substr(pos, end - pos);
+                }
+            }
+        }
+        if (groupmeEventId.empty()) {
+            std::cerr << "❌ push-event: could not parse event_id from GroupMe response: "
+                      << gmResponse << std::endl;
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJsonResponse(false, "GroupMe returned unexpected response"));
+        }
+
+        // 5. Derive event_date from startAt (first 10 chars: YYYY-MM-DD)
+        std::string eventDate = startAt.size() >= 10 ? startAt.substr(0, 10) : "";
+
+        // 6. Insert chat_events record
+        pqxx::result insertResult = db_->query(
+            "INSERT INTO chat_events "
+            "  (chat_id, title, event_date, external_id, start_at, end_at, location, description) "
+            "VALUES ($1::int, $2, NULLIF($3,'')::date, $4, "
+            "        NULLIF($5,'')::timestamptz, NULLIF($6,'')::timestamptz, "
+            "        NULLIF($7,''), NULLIF($8,'')) "
+            "RETURNING id",
+            {chatId, title, eventDate, groupmeEventId, startAt, endAt, location, description}
+        );
+
+        if (insertResult.empty()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                createJsonResponse(false, "Failed to create chat_events record"));
+        }
+        std::string chatEventId = insertResult[0]["id"].c_str();
+
+        std::cout << "✅ push-event: created GroupMe event [" << groupmeEventId
+                  << "] chat_events.id=" << chatEventId << std::endl;
+
+        std::ostringstream data;
+        data << "{\"chatEventId\":" << chatEventId
+             << ",\"groupmeEventId\":\"" << groupmeEventId << "\"}";
+        return Response(HttpStatus::OK, createJsonResponse(true, "Event pushed to GroupMe", data.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handlePushEvent: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to push event"));
+    }
+}
+
+// ============================================================================
+// HTTP POST helper using libcurl
+// Sends a JSON body and returns the response string.
+// ============================================================================
+std::string GroupMeController::httpPost(const std::string& url, const std::string& body) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        std::cerr << "  ❌ Failed to initialize CURL" << std::endl;
+        return "";
+    }
+
+    std::string responseBuffer;
+
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, GroupMeWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        std::cerr << "  ❌ CURL POST error: " << curl_easy_strerror(res) << std::endl;
+        return "";
+    }
+
+    if (httpCode < 200 || httpCode >= 300) {
+        std::cerr << "  ❌ GroupMe API POST HTTP " << httpCode
+                  << " response: " << responseBuffer << std::endl;
+        return "";
+    }
+
+    return responseBuffer;
 }
