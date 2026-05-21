@@ -35,10 +35,10 @@ const ADS = {
     targeting: {
       geo_locations: {
         // Philadelphia city + 30mi radius covers Bucks, Montgomery, Delaware, Chester (PA) and Camden/Burlington (NJ)
-        cities: [{ key: '2418779', radius: 30, distance_unit: 'mile' }],
+        cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }],
       },
       age_min: 18,
-      age_max: 23, // born 2003 or later (U23 eligible)
+      age_max: 25,
       genders: [1], // 1 = male
       targeting_automation: { advantage_audience: 0 }, // disable Advantage audience
       publisher_platforms: ['instagram'],
@@ -49,22 +49,49 @@ const ADS = {
     name:    'U23 Womens Interest Form',
     imageUrl: 'https://footballhome.org/images/posts/u23-ad-womens.png',
     caption:  `⚽ NOW FORMING: LIGHTHOUSE WOMEN'S CLUB U23!\n\nLighthouse Women's Club U23 is forming a team in partnership with CASA Soccer!\n\n📅 First Match: TBD\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
+    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'SIGN_UP',
+    targeting: {
+      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      age_min: 18,
+      age_max: 25,
+      genders: [2], // 2 = female
+      targeting_automation: { advantage_audience: 0 },
+      publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
   },
   'grassroots-brazil': {
     name:    'Philly Grassroots Cup — Brazil',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-brazil.png',
     caption:  `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
+    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'LEARN_MORE',
+    targeting: {
+      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      age_min: 18,
+      age_max: 32,
+      genders: [1], // 1 = male
+      targeting_automation: { advantage_audience: 0 },
+      publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
   },
   'grassroots-puertorico': {
     name:    'Philly Grassroots Cup — Puerto Rico',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-puertorico.png',
     caption:  `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Puerto Rican!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer',
+    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'LEARN_MORE',
+    targeting: {
+      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      age_min: 18,
+      age_max: 32,
+      genders: [1], // 1 = male
+      targeting_automation: { advantage_audience: 0 },
+      publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
   },
 };
 
@@ -107,7 +134,7 @@ const ageMax = parseInt(getArg('--age-max', '40'), 10);
 // ── Targeting: use per-ad targeting if defined, else Philadelphia metro default ──
 const targeting = ad.targeting ?? {
   geo_locations: {
-    cities: [{ key: '2418779', radius: 25, distance_unit: 'mile' }],
+    cities: [{ key: '2421836', radius: 25, distance_unit: 'mile' }],
   },
   age_min: ageMin,
   age_max: ageMax,
