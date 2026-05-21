@@ -40,7 +40,6 @@ const ADS = {
       age_min: 18,
       age_max: 25,
       genders: [1], // 1 = male
-      targeting_automation: { advantage_audience: 0 }, // disable Advantage audience
       publisher_platforms: ['facebook', 'instagram'],
       facebook_positions: ['feed'],
       instagram_positions: ['stream', 'explore'],
@@ -57,7 +56,6 @@ const ADS = {
       age_min: 18,
       age_max: 25,
       genders: [2], // 2 = female
-      targeting_automation: { advantage_audience: 0 },
       publisher_platforms: ['instagram'],
       instagram_positions: ['stream', 'explore'],
     },
@@ -73,7 +71,6 @@ const ADS = {
       age_min: 18,
       age_max: 32,
       genders: [1], // 1 = male
-      targeting_automation: { advantage_audience: 0 },
       publisher_platforms: ['instagram'],
       instagram_positions: ['stream', 'explore'],
     },
@@ -89,7 +86,6 @@ const ADS = {
       age_min: 18,
       age_max: 32,
       genders: [1], // 1 = male
-      targeting_automation: { advantage_audience: 0 },
       publisher_platforms: ['instagram'],
       instagram_positions: ['stream', 'explore'],
     },
@@ -139,7 +135,6 @@ const targeting = ad.targeting ?? {
   },
   age_min: ageMin,
   age_max: ageMax,
-  targeting_automation: { advantage_audience: 0 },
   publisher_platforms: ['facebook', 'instagram'],
   facebook_positions: ['feed'],
   instagram_positions: ['stream', 'explore'],
@@ -186,6 +181,7 @@ async function run() {
     optimization_goal: 'LINK_CLICKS',
     bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
     targeting: JSON.stringify(targeting),
+    targeting_automation: JSON.stringify({ advantage_audience: 0 }),
     status: 'PAUSED',
   };
   if (endDateStr) adSetParams.end_time = endDateStr;
