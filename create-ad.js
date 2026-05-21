@@ -41,7 +41,8 @@ const ADS = {
       age_max: 25,
       genders: [1], // 1 = male
       targeting_automation: { advantage_audience: 0 }, // disable Advantage audience
-      publisher_platforms: ['instagram'],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
       instagram_positions: ['stream', 'explore'],
     },
   },
@@ -139,7 +140,8 @@ const targeting = ad.targeting ?? {
   age_min: ageMin,
   age_max: ageMax,
   targeting_automation: { advantage_audience: 0 },
-  publisher_platforms: ['instagram'],
+  publisher_platforms: ['facebook', 'instagram'],
+  facebook_positions: ['feed'],
   instagram_positions: ['stream', 'explore'],
 };
 
