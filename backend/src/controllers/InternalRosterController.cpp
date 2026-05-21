@@ -390,7 +390,7 @@ Response InternalRosterController::handleCreatePlayer(const Request& request) {
     }
 
     try {
-        // Insert person
+        // Insert person, or reuse existing if name already exists
         std::string birthDate = (birthYear > 0)
             ? std::to_string(birthYear) + "-01-01"
             : "";
@@ -399,11 +399,15 @@ Response InternalRosterController::handleCreatePlayer(const Request& request) {
         if (!birthDate.empty()) {
             personResult = db_->query(
                 "INSERT INTO persons (first_name, last_name, birth_date) "
-                "VALUES ($1, $2, $3::date) RETURNING id",
+                "VALUES ($1, $2, $3::date) "
+                "ON CONFLICT (first_name, last_name) DO UPDATE SET updated_at = CURRENT_TIMESTAMP "
+                "RETURNING id",
                 {firstName, lastName, birthDate});
         } else {
             personResult = db_->query(
-                "INSERT INTO persons (first_name, last_name) VALUES ($1, $2) RETURNING id",
+                "INSERT INTO persons (first_name, last_name) VALUES ($1, $2) "
+                "ON CONFLICT (first_name, last_name) DO UPDATE SET updated_at = CURRENT_TIMESTAMP "
+                "RETURNING id",
                 {firstName, lastName});
         }
 
@@ -413,12 +417,14 @@ Response InternalRosterController::handleCreatePlayer(const Request& request) {
         int personId = personResult[0]["id"].as<int>();
 
         // Insert player (linked to internal source system 5)
+        // If this person is already a player, return a friendly error
         pqxx::result playerResult = db_->query(
-            "INSERT INTO players (person_id, source_system_id) VALUES ($1::int, 5) RETURNING id",
+            "INSERT INTO players (person_id, source_system_id) VALUES ($1::int, 5) "
+            "ON CONFLICT (person_id) DO NOTHING RETURNING id",
             {std::to_string(personId)});
 
         if (playerResult.empty()) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to create player"));
+            return Response(HttpStatus::CONFLICT, createJsonResponse(false, "A player with this name already exists in the system"));
         }
         int playerId = playerResult[0]["id"].as<int>();
 

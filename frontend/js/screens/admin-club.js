@@ -66,6 +66,7 @@ class AdminClubScreen extends Screen {
       { id: 'holiday-posts', icon: '🎉', label: 'Holiday Posts', description: 'Instagram holiday posts' },
       { id: 'promo-posts', icon: '📢', label: 'Promo Posts', description: 'Instagram promotional posts' },
       { id: 'content-posts', icon: '📷', label: 'Content Posts', description: 'Upload photos & videos to Instagram' },
+      { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
       { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' }
     ];
     
@@ -120,7 +121,15 @@ class AdminClubScreen extends Screen {
       });
       return;
     }
-    
+
+    if (section === 'flyers') {
+      this.navigation.goTo('flyers', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
     // Placeholder - will implement actual navigation later
     alert(`${section.toUpperCase()} management coming soon for ${this.clubName}`);
   }

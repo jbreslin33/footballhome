@@ -49,6 +49,14 @@ class RoleSelectionScreen extends Screen {
             <div style="font-size: 0.85rem; opacity: 0.8;">Social media, events & club management</div>
           </div>
         </button>
+
+        <button class="btn btn-lg btn-primary" data-role="summer-planner" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏟️</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Summer Planner</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Assign players to summer squads</div>
+          </div>
+        </button>
         
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
@@ -102,6 +110,8 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'club-admin') {
       // Club Admin - fetch user's club and go to club admin dashboard
       this.loadClubAdmin();
+    } else if (role === 'summer-planner') {
+      this.navigation.goTo('internal-roster');
     } else if (role === 'coach' || role === 'player') {
       // Coach/Player - go to context selection to pick team
       this.navigation.goTo('context-selection', { role: role });

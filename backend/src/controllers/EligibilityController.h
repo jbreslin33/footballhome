@@ -37,11 +37,11 @@ struct PlayerEligibility {
     bool is_child;
     bool is_designated;
     int  num_clubs;
-    std::string internal_role;   // legacy single-role field (kept for compat)
-    bool is_injured;
-    bool is_suspended_league;
-    bool is_suspended_inhouse;
-    // Multi-eligibility (a player can be in multiple groups)
+    std::string internal_role;   // coach_assessments.status for this team (empty if none)
+    bool is_injured;             // player_availability: 'injured' active record exists
+    bool is_suspended_league;    // player_availability: 'suspended_league' active record
+    bool is_suspended_inhouse;   // player_availability: 'suspended_inhouse' active record
+    // Eligibility (sourced from player_eligibilities table)
     bool elig_apsl_starter;
     bool elig_apsl_bench;
     bool elig_liga1_starter;

@@ -7,6 +7,9 @@ class InternalRosterScreen extends Screen {
     this.filterText = '';
     this.activeSourceFilters = new Set();
     this.dragPlayerId = null;
+    this._dragPlaceholder = null;
+    this.dragSourceSlot = null;  // { colId, di, si } | null
+    this.depthChart = new Map(); // Map<colId, Array(33)> null|playerId per slot
     this.hiddenColumns = new Set();
     this.columnOrder = new Map(); // colId (int|null) → [playerId, ...]
   }
@@ -93,6 +96,7 @@ class InternalRosterScreen extends Screen {
       this.teams   = teamsData.data;
       this.players = rosterData.data;
       this.loadColumnOrderFromStorage(); // restore saved order
+      this.loadDepthChartFromStorage();
       this.renderBoard();
     } catch (err) {
       console.error('InternalRosterScreen load error:', err);
@@ -166,22 +170,133 @@ class InternalRosterScreen extends Screen {
       `;
 
       const headerColor = this.columnHeaderColor(col.id);
-      colEl.innerHTML = `
-        <div style="padding:8px 12px; background:${headerColor}; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
-          <span style="font-weight:600; font-size:0.85rem; color:#fff;">${this.escapeHtml(col.name)}</span>
-          <span style="background:rgba(255,255,255,0.25); color:#fff; border-radius:999px;
-                       padding:1px 7px; font-size:0.75rem;" class="ir-col-count">${colPlayers.length}</span>
-        </div>
-        <div class="ir-card-list" data-team-id="${col.id === null ? '' : col.id}"
-             style="flex:1; overflow:hidden; padding:4px; display:grid; grid-template-columns:repeat(2,1fr); gap:2px; align-content:start; min-height:40px;">
-        </div>
-      `;
 
-      const cardList = colEl.querySelector('.ir-card-list');
-      for (const p of colPlayers) {
-        cardList.appendChild(this.makeCard(p, col.id, compact));
+      if (col.id !== null) {
+        // ── Depth chart layout for team columns ────────────────────────────────
+        const chart    = this.getColChart(col.id);
+        const slottedSet = new Set(chart.filter(id => id !== null));
+        const unslotted  = allInCol.filter(p => !slottedSet.has(p.playerId));
+
+        // Header
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'padding:5px 8px;background:' + headerColor + ';display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
+        hdr.innerHTML = '<span style="font-weight:600;font-size:0.78rem;color:#fff;">' + this.escapeHtml(col.name) + '</span>'
+          + '<span class="ir-col-count" style="background:rgba(255,255,255,0.25);color:#fff;border-radius:999px;padding:1px 6px;font-size:0.68rem;">' + allInCol.length + '</span>';
+        colEl.appendChild(hdr);
+
+        // Sub-column labels S / B / 3
+        const subHdr = document.createElement('div');
+        subHdr.style.cssText = 'display:grid;grid-template-columns:12px repeat(3,1fr);background:' + headerColor + 'dd;padding:1px 2px;flex-shrink:0;';
+        subHdr.innerHTML = '<div></div>'
+          + ['S','B','3'].map(l => '<div style="text-align:center;font-size:0.56rem;font-weight:700;color:rgba(255,255,255,0.85);padding:1px 0;">' + l + '</div>').join('');
+        colEl.appendChild(subHdr);
+
+        // Depth grid: row-num col (12px) + 3 slot cols, 11 rows
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display:grid;grid-template-columns:12px repeat(3,1fr);gap:1px;padding:2px;overflow:hidden;flex:1;background:rgba(0,0,0,0.12);align-content:start;';
+
+        for (let si = 0; si < 11; si++) {
+          const rn = document.createElement('div');
+          rn.style.cssText = 'font-size:0.5rem;color:#6b7280;display:flex;align-items:center;justify-content:flex-end;padding-right:1px;';
+          rn.textContent = si + 1;
+          grid.appendChild(rn);
+
+          for (let di = 0; di < 3; di++) {
+            const pid    = chart[di * 11 + si];
+            const player = pid ? this.players.find(p => p.playerId === pid) : null;
+            const slot   = document.createElement('div');
+            slot.dataset.colId = col.id;
+            slot.dataset.di    = di;
+            slot.dataset.si    = si;
+
+            if (player) {
+              slot.draggable = true;
+              slot.dataset.playerId = pid;
+              slot.style.cssText = 'display:flex;align-items:center;padding:1px 3px;background:' + headerColor + '28;border-left:2px solid ' + headerColor + ';border-radius:2px;cursor:grab;overflow:hidden;min-height:18px;';
+              const nameEl = document.createElement('span');
+              nameEl.textContent  = player.lastName || '?';
+              nameEl.title        = player.firstName + ' ' + player.lastName;
+              nameEl.style.cssText = 'font-size:0.62rem;font-weight:500;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;line-height:1.2;pointer-events:none;';
+              slot.appendChild(nameEl);
+
+              let longPressFired = false, holdTimer = null;
+              const startHold  = () => { longPressFired = false; holdTimer = setTimeout(() => { longPressFired = true; holdTimer = null; this.removeFromDepthSlot(col.id, di, si); }, 550); };
+              const cancelHold = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
+              slot.addEventListener('mousedown',  startHold);
+              slot.addEventListener('touchstart', startHold, { passive: true });
+              slot.addEventListener('mouseup',    cancelHold);
+              slot.addEventListener('mouseleave', cancelHold);
+              slot.addEventListener('touchend',   cancelHold);
+              slot.addEventListener('touchmove',  cancelHold);
+              slot.addEventListener('dragstart', e => {
+                cancelHold();
+                this.dragPlayerId   = pid;
+                this.dragSourceSlot = { colId: col.id, di, si };
+                slot.style.opacity  = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(pid));
+              });
+              slot.addEventListener('dragend', () => {
+                slot.style.opacity  = '1';
+                this.dragPlayerId   = null;
+                this.dragSourceSlot = null;
+              });
+              slot.addEventListener('click', e => {
+                if (longPressFired) { longPressFired = false; return; }
+                e.preventDefault(); e.stopPropagation();
+                this.openPlayerCard(player);
+              });
+            } else {
+              slot.style.cssText = 'min-height:18px;border-radius:2px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);';
+            }
+
+            slot.addEventListener('dragover',  e => { if (!this.dragPlayerId) return; e.preventDefault(); e.stopPropagation(); slot.style.outline = '1.5px solid #f59e0b'; });
+            slot.addEventListener('dragleave', e => { if (!slot.contains(e.relatedTarget)) slot.style.outline = ''; });
+            slot.addEventListener('drop', e => {
+              e.preventDefault(); e.stopPropagation();
+              slot.style.outline = '';
+              const droppedPid = parseInt(e.dataTransfer.getData('text/plain'));
+              if (!droppedPid || isNaN(droppedPid)) return;
+              const displaced = chart[di * 11 + si];
+              if (this.dragSourceSlot) {
+                const src     = this.dragSourceSlot;
+                const srcChart = this.getColChart(src.colId);
+                if (src.colId === col.id) {
+                  // same-team: swap displaced into source slot
+                  srcChart[src.di * 11 + src.si] = displaced || null;
+                } else {
+                  // cross-team: just vacate source slot
+                  srcChart[src.di * 11 + src.si] = null;
+                }
+              }
+              this.slotPlayer(droppedPid, col.id, di, si);
+            });
+            grid.appendChild(slot);
+          }
+        }
+        colEl.appendChild(grid);
+
+        // Overflow: players in team but not yet slotted
+        const overflow = document.createElement('div');
+        overflow.className      = 'ir-card-list';
+        overflow.dataset.teamId = col.id;
+        overflow.style.cssText  = 'padding:2px;display:flex;flex-wrap:wrap;gap:2px;min-height:20px;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+        for (const p of unslotted) overflow.appendChild(this.makeCard(p, col.id, true));
+        this.bindDropZone(overflow, col.id);
+        colEl.appendChild(overflow);
+
+      } else {
+        // ── Unassigned column: flat card grid ──────────────────────────────────
+        colEl.innerHTML = '<div style="padding:8px 12px;background:' + headerColor + ';display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">'
+          + '<span style="font-weight:600;font-size:0.85rem;color:#fff;">' + this.escapeHtml(col.name) + '</span>'
+          + '<span class="ir-col-count" style="background:rgba(255,255,255,0.25);color:#fff;border-radius:999px;padding:1px 7px;font-size:0.75rem;">' + colPlayers.length + '</span>'
+          + '</div>'
+          + '<div class="ir-card-list" data-team-id="" style="flex:1;overflow:hidden;padding:4px;display:grid;grid-template-columns:repeat(2,1fr);gap:2px;align-content:start;min-height:40px;"></div>';
+        const cardList = colEl.querySelector('.ir-card-list');
+        for (const p of colPlayers) cardList.appendChild(this.makeCard(p, col.id, compact));
+        this.bindDropZone(cardList, col.id);
       }
-      this.bindDropZone(cardList);
+
       board.appendChild(colEl);
     }
   }
@@ -271,55 +386,11 @@ class InternalRosterScreen extends Screen {
     card.addEventListener('dragend', () => {
       card.style.opacity = '1';
       this.dragPlayerId = null;
+      this._removePlaceholder();
       this.find('#ir-board').querySelectorAll('.ir-card-list').forEach(el => {
         el.style.background = '';
         el.style.outline = '';
       });
-    });
-
-    // ── Intra-column reorder ──────────────────────────────────────────────────
-    card.addEventListener('dragover', e => {
-      if (this.dragPlayerId === null || this.dragPlayerId === player.playerId) return;
-      const dragging = this.players.find(p => p.playerId === this.dragPlayerId);
-      if (!dragging) return;
-      const inSameCol = colId === null
-        ? dragging.workingTeamIds.length === 0
-        : dragging.workingTeamIds.includes(colId);
-      if (!inSameCol) return;
-      e.preventDefault();
-      e.stopPropagation(); // prevent list-level highlight
-      const rect = card.getBoundingClientRect();
-      const before = e.clientY < rect.top + rect.height / 2;
-      card.style.boxShadow = before
-        ? '0 -2px 0 0 #6366f1'
-        : '0 2px 0 0 #6366f1';
-    });
-    card.addEventListener('dragleave', e => {
-      if (!card.contains(e.relatedTarget)) card.style.boxShadow = '';
-    });
-    card.addEventListener('drop', e => {
-      card.style.boxShadow = '';
-      if (this.dragPlayerId === null || this.dragPlayerId === player.playerId) return;
-      const dragging = this.players.find(p => p.playerId === this.dragPlayerId);
-      if (!dragging) return;
-      const inSameCol = colId === null
-        ? dragging.workingTeamIds.length === 0
-        : dragging.workingTeamIds.includes(colId);
-      if (!inSameCol) return;
-      e.preventDefault();
-      e.stopPropagation(); // prevent list-level assignPlayer
-      const rect = card.getBoundingClientRect();
-      const before = e.clientY < rect.top + rect.height / 2;
-      const order = this.columnOrder.get(colId) || [];
-      const fromIdx = order.indexOf(this.dragPlayerId);
-      if (fromIdx === -1) return;
-      order.splice(fromIdx, 1);
-      const toIdx = order.indexOf(player.playerId);
-      if (toIdx === -1) return;
-      order.splice(before ? toIdx : toIdx + 1, 0, this.dragPlayerId);
-      this.columnOrder.set(colId, order);
-      this.saveColumnOrderToStorage();
-      this.renderBoard();
     });
 
     return card;
@@ -368,15 +439,54 @@ class InternalRosterScreen extends Screen {
     }
   }
 
-  bindDropZone(listEl) {
+  _getPlaceholder() {
+    if (!this._dragPlaceholder) {
+      const ph = document.createElement('div');
+      ph.className = 'ir-drag-placeholder';
+      ph.style.cssText = 'height:26px;background:rgba(99,102,241,0.15);border:1.5px dashed #6366f1;border-radius:4px;box-sizing:border-box;pointer-events:none;';
+      this._dragPlaceholder = ph;
+    }
+    return this._dragPlaceholder;
+  }
+
+  _removePlaceholder() {
+    if (this._dragPlaceholder && this._dragPlaceholder.parentNode) {
+      this._dragPlaceholder.parentNode.removeChild(this._dragPlaceholder);
+    }
+  }
+
+  bindDropZone(listEl, colId) {
     listEl.addEventListener('dragover', e => {
+      if (this.dragPlayerId === null) return;
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      listEl.style.background = 'rgba(99,102,241,0.08)';
-      listEl.style.outline = '2px dashed #6366f1';
+      const dragging = this.players.find(p => p.playerId === this.dragPlayerId);
+      if (!dragging) return;
+      const inSameCol = colId === null
+        ? dragging.workingTeamIds.length === 0
+        : dragging.workingTeamIds.includes(colId);
+      if (inSameCol) {
+        listEl.style.background = '';
+        listEl.style.outline = '';
+        const ph = this._getPlaceholder();
+        const cardEls = Array.from(listEl.children).filter(c =>
+          c !== ph && c.dataset.playerId !== String(this.dragPlayerId));
+        let insertBefore = null;
+        for (const cardEl of cardEls) {
+          const rect = cardEl.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) { insertBefore = cardEl; break; }
+        }
+        if (insertBefore) listEl.insertBefore(ph, insertBefore);
+        else listEl.appendChild(ph);
+      } else {
+        this._removePlaceholder();
+        e.dataTransfer.dropEffect = 'move';
+        listEl.style.background = 'rgba(99,102,241,0.08)';
+        listEl.style.outline = '2px dashed #6366f1';
+      }
     });
     listEl.addEventListener('dragleave', e => {
       if (!listEl.contains(e.relatedTarget)) {
+        this._removePlaceholder();
         listEl.style.background = '';
         listEl.style.outline = '';
       }
@@ -385,11 +495,29 @@ class InternalRosterScreen extends Screen {
       e.preventDefault();
       listEl.style.background = '';
       listEl.style.outline = '';
-      const playerId = parseInt(e.dataTransfer.getData('text/plain'));
-      const teamIdStr = listEl.dataset.teamId;
-      const teamId = teamIdStr === '' ? null : parseInt(teamIdStr);
-      if (playerId && !isNaN(playerId)) {
-        this.assignPlayer(playerId, teamId);
+      if (this.dragPlayerId === null) return;
+      const dragging = this.players.find(p => p.playerId === this.dragPlayerId);
+      if (!dragging) return;
+      const inSameCol = colId === null
+        ? dragging.workingTeamIds.length === 0
+        : dragging.workingTeamIds.includes(colId);
+      if (inSameCol) {
+        const ph = this._dragPlaceholder;
+        if (!ph || ph.parentNode !== listEl) { this._removePlaceholder(); return; }
+        const newOrder = [];
+        for (const child of listEl.children) {
+          if (child === ph) newOrder.push(this.dragPlayerId);
+          else if (child.dataset.playerId && child.dataset.playerId !== String(this.dragPlayerId))
+            newOrder.push(parseInt(child.dataset.playerId));
+        }
+        this.columnOrder.set(colId, newOrder);
+        this.saveColumnOrderToStorage();
+        this._removePlaceholder();
+        this.renderBoard();
+      } else {
+        this._removePlaceholder();
+        const playerId = parseInt(e.dataTransfer.getData('text/plain'));
+        if (playerId && !isNaN(playerId)) this.assignPlayer(playerId, colId !== null ? colId : null);
       }
     });
   }
@@ -1038,6 +1166,58 @@ class InternalRosterScreen extends Screen {
     if (p.isInjured)
       badges.push('<span style="background:#dc2626;color:#fff;padding:1px 4px;border-radius:3px;font-size:0.65rem;">INJ</span>');
     return badges.join('');
+  }
+
+  // ── Depth chart ───────────────────────────────────────────────────────────────
+
+  getColChart(colId) {
+    if (!this.depthChart.has(colId)) this.depthChart.set(colId, new Array(33).fill(null));
+    return this.depthChart.get(colId);
+  }
+
+  slotPlayer(playerId, colId, di, si) {
+    const chart = this.getColChart(colId);
+    // Remove player from any other slot in this column first
+    for (let i = 0; i < chart.length; i++) { if (chart[i] === playerId) chart[i] = null; }
+    chart[di * 11 + si] = playerId;
+    this.saveDepthChartToStorage();
+    const player = this.players.find(p => p.playerId === playerId);
+    if (player && colId !== null && !player.workingTeamIds.includes(colId)) {
+      this.addToTeam(playerId, colId); // addToTeam calls renderBoard
+      return;
+    }
+    this.renderBoard();
+  }
+
+  removeFromDepthSlot(colId, di, si) {
+    const chart    = this.getColChart(colId);
+    const idx      = di * 11 + si;
+    const playerId = chart[idx];
+    if (!playerId) return;
+    chart[idx] = null;
+    this.saveDepthChartToStorage();
+    if (!chart.some(id => id === playerId)) {
+      this.unassignFromTeam(playerId, colId); // calls renderBoard
+      return;
+    }
+    this.renderBoard();
+  }
+
+  saveDepthChartToStorage() {
+    try {
+      const obj = {};
+      for (const [k, v] of this.depthChart.entries()) obj[k === null ? 'null' : String(k)] = v;
+      localStorage.setItem('ir-depth-chart', JSON.stringify(obj));
+    } catch (e) {}
+  }
+
+  loadDepthChartFromStorage() {
+    try {
+      const raw = localStorage.getItem('ir-depth-chart');
+      if (!raw) return;
+      for (const [k, v] of Object.entries(JSON.parse(raw)))
+        this.depthChart.set(k === 'null' ? null : parseInt(k), v);
+    } catch (e) { this.depthChart = new Map(); }
   }
 
   saveColumnOrderToStorage() {

@@ -224,16 +224,46 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        p.id as player_id, r.jersey_number,
                        p.is_keeper, p.is_child, p.photo_url,
                        p.is_designated, COALESCE(p.num_clubs, 1) as num_clubs,
-                       COALESCE(p.internal_role, '') as internal_role,
-                       COALESCE(p.is_injured, false) as is_injured,
-                       COALESCE(p.is_suspended_league, false) as is_suspended_league,
-                       COALESCE(p.is_suspended_inhouse, false) as is_suspended_inhouse,
-                       COALESCE(p.elig_apsl_starter,  false) as elig_apsl_starter,
-                       COALESCE(p.elig_apsl_bench,    false) as elig_apsl_bench,
-                       COALESCE(p.elig_liga1_starter, false) as elig_liga1_starter,
-                       COALESCE(p.elig_liga1_bench,   false) as elig_liga1_bench,
-                       COALESCE(p.elig_liga2_starter, false) as elig_liga2_starter,
-                       COALESCE(p.elig_liga2_bench,   false) as elig_liga2_bench,
+                       COALESCE(ca.status, '') as internal_role,
+                       EXISTS(SELECT 1 FROM player_availability pa
+                              WHERE pa.player_id = p.id AND pa.status = 'injured'
+                                AND (pa.until_date IS NULL OR pa.until_date >= CURRENT_DATE)) as is_injured,
+                       EXISTS(SELECT 1 FROM player_availability pa
+                              WHERE pa.player_id = p.id AND pa.status = 'suspended_league'
+                                AND (pa.until_date IS NULL OR pa.until_date >= CURRENT_DATE)) as is_suspended_league,
+                       EXISTS(SELECT 1 FROM player_availability pa
+                              WHERE pa.player_id = p.id AND pa.status = 'suspended_inhouse'
+                                AND (pa.until_date IS NULL OR pa.until_date >= CURRENT_DATE)) as is_suspended_inhouse,
+                       EXISTS(SELECT 1 FROM player_eligibilities ple
+                              WHERE ple.player_id = p.id AND ple.source_system_id = 1
+                                AND ple.category = 'starter' AND ple.subdivision = ''
+                                AND ple.status = 'eligible'
+                                AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_apsl_starter,
+                       EXISTS(SELECT 1 FROM player_eligibilities ple
+                              WHERE ple.player_id = p.id AND ple.source_system_id = 1
+                                AND ple.category = 'bench' AND ple.subdivision = ''
+                                AND ple.status = 'eligible'
+                                AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_apsl_bench,
+                       EXISTS(SELECT 1 FROM player_eligibilities ple
+                              WHERE ple.player_id = p.id AND ple.source_system_id = 2
+                                AND ple.category = 'starter' AND ple.subdivision = ''
+                                AND ple.status = 'eligible'
+                                AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_liga1_starter,
+                       EXISTS(SELECT 1 FROM player_eligibilities ple
+                              WHERE ple.player_id = p.id AND ple.source_system_id = 2
+                                AND ple.category = 'bench' AND ple.subdivision = ''
+                                AND ple.status = 'eligible'
+                                AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_liga1_bench,
+                       EXISTS(SELECT 1 FROM player_eligibilities ple
+                              WHERE ple.player_id = p.id AND ple.source_system_id = 2
+                                AND ple.category = 'starter' AND ple.subdivision = 'liga2'
+                                AND ple.status = 'eligible'
+                                AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_liga2_starter,
+                       EXISTS(SELECT 1 FROM player_eligibilities ple
+                              WHERE ple.player_id = p.id AND ple.source_system_id = 2
+                                AND ple.category = 'bench' AND ple.subdivision = 'liga2'
+                                AND ple.status = 'eligible'
+                                AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_liga2_bench,
                        p.required_sessions_override,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        pe.birth_date,
@@ -252,6 +282,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 JOIN players p ON p.person_id = pe.id
                 LEFT JOIN rosters r ON r.player_id = p.id
                     AND r.team_id = $1 AND r.left_at IS NULL
+                LEFT JOIN coach_assessments ca ON ca.team_id = $1::int AND ca.player_id = p.id
                 ORDER BY cp.person_id,
                          CASE WHEN r.player_id IS NOT NULL THEN 0 ELSE 1 END,
                          p.id DESC
@@ -1775,24 +1806,16 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     if (!roleValid) internalRole = "";
 
     try {
-        // Update players table flags
+        // Update players table — designated/clubs/keeper/child/requiredSessionsOverride
+        // (availability and eligibility flags now live in separate tables below)
         std::string flagQuery = R"(
             UPDATE players
                SET is_designated        = $2::bool,
                    num_clubs            = $3::int,
                    internal_role        = NULLIF($4, '')::varchar,
                    is_keeper            = $5::bool,
-                   is_child             = $17::bool,
-                   is_injured           = $6::bool,
-                   is_suspended_league  = $7::bool,
-                   is_suspended_inhouse = $8::bool,
-                   elig_apsl_starter    = $9::bool,
-                   elig_apsl_bench      = $10::bool,
-                   elig_liga1_starter   = $11::bool,
-                   elig_liga1_bench     = $12::bool,
-                   elig_liga2_starter   = $13::bool,
-                   elig_liga2_bench     = $14::bool,
-                   required_sessions_override = CASE WHEN $15::boolean THEN NULLIF($16::text,'')::smallint ELSE required_sessions_override END,
+                   is_child             = $6::bool,
+                   required_sessions_override = CASE WHEN $7::boolean THEN NULLIF($8::text,'')::smallint ELSE required_sessions_override END,
                    updated_at           = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
@@ -1802,19 +1825,51 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             std::to_string(numClubs),
             internalRole,
             isKeeper       ? "true" : "false",
-            isInjured      ? "true" : "false",
-            isSuspLeague   ? "true" : "false",
-            isSuspInhouse  ? "true" : "false",
-            eligApslStarter  ? "true" : "false",
-            eligApslBench    ? "true" : "false",
-            eligLiga1Starter ? "true" : "false",
-            eligLiga1Bench   ? "true" : "false",
-            eligLiga2Starter ? "true" : "false",
-            eligLiga2Bench   ? "true" : "false",
-            hasReqOverride   ? "true" : "false",
-            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : "",
-            isChild          ? "true" : "false"
+            isChild        ? "true" : "false",
+            hasReqOverride ? "true" : "false",
+            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : ""
         });
+
+        // --- player_availability upserts ---
+        // Strategy: delete active record for each status, re-insert if flag is true
+        auto upsertAvailability = [&](const std::string& status, bool active) {
+            db_->query(
+                "DELETE FROM player_availability WHERE player_id=$1::int AND status=$2",
+                {playerId, status});
+            if (active) {
+                db_->query(
+                    "INSERT INTO player_availability (player_id, status) VALUES ($1::int, $2)",
+                    {playerId, status});
+            }
+        };
+        upsertAvailability("injured",           isInjured);
+        upsertAvailability("suspended_league",  isSuspLeague);
+        upsertAvailability("suspended_inhouse", isSuspInhouse);
+
+        // --- player_eligibilities upserts ---
+        // source_system_id: 1=APSL, 2=CASA; subdivision: ''=Liga1/top, 'liga2'=Liga2
+        struct EligRow { int ss; std::string cat; std::string sub; bool flag; };
+        std::vector<EligRow> eligRows = {
+            {1, "starter", "",      eligApslStarter},
+            {1, "bench",   "",      eligApslBench},
+            {2, "starter", "",      eligLiga1Starter},
+            {2, "bench",   "",      eligLiga1Bench},
+            {2, "starter", "liga2", eligLiga2Starter},
+            {2, "bench",   "liga2", eligLiga2Bench},
+        };
+        for (const auto& row : eligRows) {
+            db_->query(
+                "DELETE FROM player_eligibilities "
+                "WHERE player_id=$1::int AND source_system_id=$2::int AND category=$3 AND subdivision=$4",
+                {playerId, std::to_string(row.ss), row.cat, row.sub});
+            if (row.flag) {
+                db_->query(
+                    "INSERT INTO player_eligibilities "
+                    "  (player_id, source_system_id, category, subdivision, status) "
+                    "VALUES ($1::int, $2::int, $3, $4, 'eligible')",
+                    {playerId, std::to_string(row.ss), row.cat, row.sub});
+            }
+        }
 
         // Update jersey number on ALL roster entries for this player if provided
         if (!jersey.empty()) {
