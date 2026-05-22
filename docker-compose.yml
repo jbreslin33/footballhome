@@ -70,6 +70,24 @@ services:
       db:
         condition: service_healthy
 
+  # Meta Lead Gen Webhook receiver + leads API
+  meta-leads-webhook:
+    build:
+      context: ./meta-leads-webhook
+      dockerfile: Dockerfile
+    container_name: footballhome_meta_leads
+    restart: unless-stopped
+    env_file: ./env
+    environment:
+      POSTGRES_PASSWORD: footballhome_pass
+    ports:
+      - "3003:3003"
+    networks:
+      - footballhome_network
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Frontend (Vanilla JS)
   frontend:
     build:

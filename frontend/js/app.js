@@ -53,7 +53,8 @@ class App {
       promoPosts: new PromotionalPostsScreen(this.navigation, this.auth),
       contentPosts: new ContentPostsScreen(this.navigation, this.auth),
       flyers: new FlyersScreen(this.navigation, this.auth),
-      internalRoster: new InternalRosterScreen(this.navigation, this.auth)
+      internalRoster: new InternalRosterScreen(this.navigation, this.auth),
+      leads: new LeadsScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
@@ -106,6 +107,7 @@ class App {
     this.screenManager.register('content-posts', this.screens.contentPosts);
     this.screenManager.register('flyers', this.screens.flyers);
     this.screenManager.register('internal-roster', this.screens.internalRoster);
+    this.screenManager.register('leads', this.screens.leads);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }
