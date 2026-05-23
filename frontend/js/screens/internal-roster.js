@@ -133,6 +133,7 @@ class InternalRosterScreen extends Screen {
       return !this.hiddenColumns.has(k);
     }).length;
     const compact = visibleColCount > 3;
+    const tier = visibleColCount <= 1 ? 1 : visibleColCount <= 2 ? 2 : visibleColCount <= 4 ? 3 : 4;
 
     for (const col of this.columns()) {
       const colKey = col.id === null ? 'null' : String(col.id);
@@ -193,11 +194,12 @@ class InternalRosterScreen extends Screen {
 
         // Depth grid: row-num col (12px) + 3 slot cols, 11 rows
         const grid = document.createElement('div');
-        grid.style.cssText = 'display:grid;grid-template-columns:12px repeat(3,1fr);gap:1px;padding:2px;overflow:hidden;flex:1;background:rgba(0,0,0,0.12);align-content:start;';
+        grid.style.cssText = 'display:grid;grid-template-columns:12px repeat(3,1fr);grid-template-rows:repeat(11,1fr);gap:1px;padding:2px;overflow:hidden;flex:1;background:rgba(0,0,0,0.12);';
 
         for (let si = 0; si < 11; si++) {
           const rn = document.createElement('div');
-          rn.style.cssText = 'font-size:0.5rem;color:#6b7280;display:flex;align-items:center;justify-content:flex-end;padding-right:1px;';
+          const rnFs = tier <= 2 ? '0.62rem' : '0.5rem';
+          rn.style.cssText = 'font-size:' + rnFs + ';color:#6b7280;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;';
           rn.textContent = si + 1;
           grid.appendChild(rn);
 
@@ -212,12 +214,37 @@ class InternalRosterScreen extends Screen {
             if (player) {
               slot.draggable = true;
               slot.dataset.playerId = pid;
-              slot.style.cssText = 'display:flex;align-items:center;padding:1px 3px;background:' + headerColor + '28;border-left:2px solid ' + headerColor + ';border-radius:2px;cursor:grab;overflow:hidden;min-height:18px;';
+              const slotFs  = tier === 1 ? '0.82rem' : tier === 2 ? '0.72rem' : tier === 3 ? '0.68rem' : '0.62rem';
+              const slotDir = tier <= 2 ? 'column' : 'row';
+              const slotPad = tier <= 2 ? '3px 5px' : '1px 3px';
+              slot.style.cssText = 'display:flex;flex-direction:' + slotDir + ';align-items:center;justify-content:center;padding:' + slotPad + ';background:' + headerColor + '28;border-left:2px solid ' + headerColor + ';border-radius:2px;cursor:grab;overflow:hidden;';
               const nameEl = document.createElement('span');
-              nameEl.textContent  = player.lastName || '?';
-              nameEl.title        = player.firstName + ' ' + player.lastName;
-              nameEl.style.cssText = 'font-size:0.62rem;font-weight:500;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;line-height:1.2;pointer-events:none;';
+              const slotName = tier === 1
+                ? ((player.firstName || '') + ' ' + (player.lastName || '?')).trim()
+                : tier === 2
+                  ? ((player.firstName || '?')[0] + '. ' + (player.lastName || '?'))
+                  : (player.lastName || '?');
+              nameEl.textContent   = slotName;
+              nameEl.title         = player.firstName + ' ' + player.lastName;
+              nameEl.style.cssText = 'font-size:' + slotFs + ';font-weight:500;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;pointer-events:none;';
               slot.appendChild(nameEl);
+              if (tier <= 2 && (player.jerseyNumber || player.position)) {
+                const metaEl = document.createElement('div');
+                metaEl.style.cssText = 'display:flex;gap:3px;align-items:center;pointer-events:none;';
+                if (player.jerseyNumber) {
+                  const jEl = document.createElement('span');
+                  jEl.textContent    = '#' + player.jerseyNumber;
+                  jEl.style.cssText  = 'font-size:0.58rem;color:rgba(255,255,255,0.5);flex-shrink:0;pointer-events:none;';
+                  metaEl.appendChild(jEl);
+                }
+                if (player.position) {
+                  const pEl = document.createElement('span');
+                  pEl.textContent   = player.position;
+                  pEl.style.cssText = 'font-size:0.54rem;background:rgba(255,255,255,0.15);color:#d1d5db;padding:0 3px;border-radius:2px;flex-shrink:0;pointer-events:none;';
+                  metaEl.appendChild(pEl);
+                }
+                slot.appendChild(metaEl);
+              }
 
               let longPressFired = false, holdTimer = null;
               const startHold  = () => { longPressFired = false; holdTimer = setTimeout(() => { longPressFired = true; holdTimer = null; this.removeFromDepthSlot(col.id, di, si); }, 550); };
@@ -247,7 +274,7 @@ class InternalRosterScreen extends Screen {
                 this.openPlayerCard(player);
               });
             } else {
-              slot.style.cssText = 'min-height:18px;border-radius:2px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);';
+              slot.style.cssText = 'border-radius:2px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);';
             }
 
             slot.addEventListener('dragover',  e => { if (!this.dragPlayerId) return; e.preventDefault(); e.stopPropagation(); slot.style.outline = '1.5px solid #f59e0b'; });
@@ -281,7 +308,7 @@ class InternalRosterScreen extends Screen {
         overflow.className      = 'ir-card-list';
         overflow.dataset.teamId = col.id;
         overflow.style.cssText  = 'padding:2px;display:flex;flex-wrap:wrap;gap:2px;min-height:20px;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
-        for (const p of unslotted) overflow.appendChild(this.makeCard(p, col.id, true));
+        for (const p of unslotted) overflow.appendChild(this.makeCard(p, col.id, visibleColCount > 2));
         this.bindDropZone(overflow, col.id);
         colEl.appendChild(overflow);
 
