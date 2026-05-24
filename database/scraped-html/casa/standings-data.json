@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-02T00:47:11.727Z",
+  "generated": "2026-05-19T15:48:18.239Z",
   "divisions": [
     {
       "id": 55,
@@ -8,58 +8,58 @@
       "teams": [
         {
           "teamName": "Persepolis FC II",
-          "played": 17,
-          "wins": 5,
-          "draws": 4,
-          "losses": 2,
-          "goalsFor": 11,
-          "goalsAgainst": 24,
-          "goalDiff": 13,
-          "points": 11
+          "played": 21,
+          "wins": 6,
+          "draws": 5,
+          "losses": 3,
+          "goalsFor": 14,
+          "goalsAgainst": 29,
+          "goalDiff": 26,
+          "points": 3
         },
         {
           "teamName": "Sewell's Old Boys",
-          "played": 16,
+          "played": 17,
           "wins": 5,
-          "draws": 2,
-          "losses": 1,
-          "goalsFor": 8,
-          "goalsAgainst": 17,
-          "goalDiff": 15,
-          "points": 2
+          "draws": 3,
+          "losses": 2,
+          "goalsFor": 10,
+          "goalsAgainst": 21,
+          "goalDiff": 22,
+          "points": -1
         },
         {
           "teamName": "Philadelphia SC Select",
-          "played": 15,
+          "played": 16,
           "wins": 4,
-          "draws": 7,
-          "losses": 3,
-          "goalsFor": 14,
-          "goalsAgainst": 25,
-          "goalDiff": 25,
-          "points": 0
+          "draws": 8,
+          "losses": 4,
+          "goalsFor": 16,
+          "goalsAgainst": 27,
+          "goalDiff": 33,
+          "points": -6
         },
         {
           "teamName": "Phoenix SCR",
-          "played": 15,
+          "played": 16,
           "wins": 5,
-          "draws": 9,
-          "losses": 0,
-          "goalsFor": 14,
-          "goalsAgainst": 19,
-          "goalDiff": 38,
-          "points": -19
+          "draws": 10,
+          "losses": 1,
+          "goalsFor": 16,
+          "goalsAgainst": 21,
+          "goalDiff": 42,
+          "points": -21
         },
         {
           "teamName": "Lighthouse Boys Club U23",
-          "played": 6,
-          "wins": 2,
+          "played": 9,
+          "wins": 3,
           "draws": 13,
           "losses": 0,
-          "goalsFor": 15,
-          "goalsAgainst": 13,
+          "goalsFor": 16,
+          "goalsAgainst": 19,
           "goalDiff": 59,
-          "points": -46
+          "points": -40
         },
         {
           "teamName": "Club de Futbol Armada",

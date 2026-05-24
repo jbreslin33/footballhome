@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-02T00:47:11.744Z",
+  "generated": "2026-05-19T15:48:20.594Z",
   "total_matches": 18,
   "divisions": [
     {
@@ -236,8 +236,8 @@
           "awayLogoUrl": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c7-d6be-f6b2-a2a6-cabfdee30661/large_square_PSC_II__1_.png",
           "time": "4:30 PM - 6:00 PM",
           "date": "2026-05-03T20:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "6 - 0",
           "externalId": "e2350470-d8a1-4cfe-8d33-210ece9f3904",
           "location": "Lighthouse Sport Complex",
           "locationAddress": "101-199 East Erie Avenue, Philadelphia, PA 19140, US"

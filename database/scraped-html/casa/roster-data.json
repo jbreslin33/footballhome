@@ -1,249 +1,9 @@
 {
   "players": [
     {
-      "firstName": "Weder",
-      "lastName": "Aguire",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Issac",
-      "lastName": "Anderson",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Victor",
-      "lastName": "Baidel",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Inaldo",
-      "lastName": "Botelho",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Samuel",
-      "lastName": "Botelho",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Christopher",
-      "lastName": "Braz",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Luke",
-      "lastName": "Breslin",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Walter",
-      "lastName": "Candido",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Kayke Maciel",
-      "lastName": "Da Silva",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Nycolas Kayke",
-      "lastName": "De Jesus",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Emmanuel",
-      "lastName": "Dennis",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Abdoul",
-      "lastName": "Diallo",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Abouya",
-      "lastName": "Gangue",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Andy",
-      "lastName": "Hizdri",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Denis",
-      "lastName": "Jhony",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Alexander",
-      "lastName": "Lara",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Pedro",
-      "lastName": "Lara",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Gian",
-      "lastName": "Maldonado",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Valentino",
-      "lastName": "Martinez",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "David",
-      "lastName": "Masi",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Lucas",
-      "lastName": "Morais",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Babacar",
-      "lastName": "Ndiaye",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "John",
-      "lastName": "Oladele",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Junior",
-      "lastName": "Oliveira",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Jemirkel",
-      "lastName": "Ornaque",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Owen",
-      "lastName": "Rhydderch",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Marcos",
-      "lastName": "Ribeiro",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Igor",
-      "lastName": "Santos Bonfim",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Cleubimar Teixeira",
-      "lastName": "Souza",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
-      "firstName": "Brendan",
-      "lastName": "Werner",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club",
-      "divisionName": "Philadelphia Liga 1"
-    },
-    {
       "firstName": "Hassane",
       "lastName": "Abdellaoui",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-07-30",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -251,7 +11,7 @@
     {
       "firstName": "Lucas",
       "lastName": "AMBROSIO  SOUSA",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-12-28",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -259,7 +19,7 @@
     {
       "firstName": "Issac",
       "lastName": "Anderson",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-06-23",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -267,7 +27,7 @@
     {
       "firstName": "Oumar",
       "lastName": "Barry",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-10-17",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -275,7 +35,7 @@
     {
       "firstName": "Aboubacar",
       "lastName": "Bayo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-06-08",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -283,151 +43,7 @@
     {
       "firstName": "Cesar",
       "lastName": "Coronado",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Danilo",
-      "lastName": "De almeida",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Luis",
-      "lastName": "De Jesus",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Marco",
-      "lastName": "Delgado",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Cleiton",
-      "lastName": "Dias",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Cloves",
-      "lastName": "Ferreira da Silva JÃºnior",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Cloves",
-      "lastName": "Filho",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Edwin",
-      "lastName": "Garcia",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Miles",
-      "lastName": "Henry",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Owen",
-      "lastName": "Magee",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Elmer",
-      "lastName": "Mendoza",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Zion",
-      "lastName": "Nwalipenja",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Fabian",
-      "lastName": "Padilla",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Matheus",
-      "lastName": "Rodrigues",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Caleb",
-      "lastName": "Rojas",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Anthony",
-      "lastName": "Sagustume",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Ali",
-      "lastName": "Salah",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Valentino",
-      "lastName": "Martinez",
-      "dateOfBirth": null,
-      "jerseyNumber": null,
-      "teamName": "Lighthouse Boys Club U23",
-      "divisionName": "Philadelphia Liga 2"
-    },
-    {
-      "firstName": "Maccarrey",
-      "lastName": "Guillaume",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-11-01",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -435,7 +51,63 @@
     {
       "firstName": "Hamzah",
       "lastName": "Dabbour",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-08-29",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Danilo",
+      "lastName": "De almeida",
+      "dateOfBirth": "1993-07-01",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Luis",
+      "lastName": "De Jesus",
+      "dateOfBirth": "2007-04-16",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Marco",
+      "lastName": "Delgado",
+      "dateOfBirth": "2001-12-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Cleiton",
+      "lastName": "Dias",
+      "dateOfBirth": "1984-04-14",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Cloves",
+      "lastName": "Ferreira da Silva JÃºnior",
+      "dateOfBirth": "1989-11-14",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Cloves",
+      "lastName": "Filho",
+      "dateOfBirth": "1997-12-19",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Edwin",
+      "lastName": "Garcia",
+      "dateOfBirth": "2006-02-19",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -443,7 +115,95 @@
     {
       "firstName": "Marcos",
       "lastName": "Gomes Santos",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-10-10",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Maccarrey",
+      "lastName": "Guillaume",
+      "dateOfBirth": "2000-07-12",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Miles",
+      "lastName": "Henry",
+      "dateOfBirth": "2000-06-20",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Dolph",
+      "lastName": "Janvier",
+      "dateOfBirth": "1997-09-23",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Owen",
+      "lastName": "Magee",
+      "dateOfBirth": "2003-01-13",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Valentino",
+      "lastName": "Martinez",
+      "dateOfBirth": "2002-10-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Elmer",
+      "lastName": "Mendoza",
+      "dateOfBirth": "2003-08-04",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Zion",
+      "lastName": "Nwalipenja",
+      "dateOfBirth": "2005-01-07",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Matheus",
+      "lastName": "Rodrigues",
+      "dateOfBirth": "2005-01-03",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Caleb",
+      "lastName": "Rojas",
+      "dateOfBirth": "2001-12-03",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Anthony",
+      "lastName": "Sagustume",
+      "dateOfBirth": "1995-07-10",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club U23",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ali",
+      "lastName": "Salah",
+      "dateOfBirth": "2007-03-10",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -451,7 +211,7 @@
     {
       "firstName": "Hedayatullah",
       "lastName": "Sangin",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-09-24",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -459,7 +219,7 @@
     {
       "firstName": "Leo",
       "lastName": "Santa",
-      "dateOfBirth": null,
+      "dateOfBirth": "1977-12-12",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -467,7 +227,7 @@
     {
       "firstName": "Christopher",
       "lastName": "Solis",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-10-21",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
@@ -475,18 +235,13 @@
     {
       "firstName": "Idris",
       "lastName": "Washington",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-01-23",
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club U23",
       "divisionName": "Philadelphia Liga 2"
     }
   ],
   "teamSummaries": {
-    "Lighthouse Boys Club": {
-      "division": "Philadelphia Liga 1",
-      "tab": "Lighthouse Boys Club",
-      "playerCount": 30
-    },
     "Lighthouse Boys Club U23": {
       "division": "Philadelphia Liga 2",
       "tab": "Lighthouse Boys Club U23",

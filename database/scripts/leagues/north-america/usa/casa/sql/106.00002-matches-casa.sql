@@ -369,9 +369,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-05-03', '16:30:00', 1,
+  1, '2026-05-03', '16:30:00', 3,
   ht.id, at.id, (SELECT id FROM venues WHERE name = 'Lighthouse Sport Complex' LIMIT 1),
-  NULL, NULL,
+  6, 0,
   2, 'e2350470-d8a1-4cfe-8d33-210ece9f3904'
 FROM teams ht
 JOIN teams at ON at.external_id = '9096430-philadelphia-sc-select' AND at.source_system_id = 2
