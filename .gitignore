@@ -64,6 +64,9 @@ package-lock.json
 
 # Environment and credentials
 .groupme-cookies.json
+# Certificate and private key files
+config/*.p12
+config/*.pem
 footballhome-git-crypt.key.env
 # Plaintext env (decrypted from env.age by setup-age.sh) — never commit
 /env

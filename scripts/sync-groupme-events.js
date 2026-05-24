@@ -72,6 +72,18 @@ const GROUPS = [
     teamLookup: null, // Community pickup
     clubIds: [134, 20006, 20008], // All Lighthouse clubs
   },
+  {
+    name: 'Lighthouse Women\'s Club U23',
+    groupmeId: '114664870',
+    chatTypeId: 1,  // team
+    teamLookup: null, // No official league team yet
+  },
+  {
+    name: 'Tri County Women\'s Lighthouse',
+    groupmeId: '114666358',
+    chatTypeId: 1,  // team
+    teamLookup: null,
+  },
 ];
 
 // Event classification patterns

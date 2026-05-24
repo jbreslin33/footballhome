@@ -615,6 +615,125 @@ function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrima
 </body></html>`;
 }
 
+function u23FlyerHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaUrl = 'tr.ee/hSxfHUV4jR', eligibilityText = 'Open to All Players', firstMatch = 'May 31, 2026' }) {
+  const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
+  const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
+  const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
+  const casaLogoTag = casaLogo ? logoImgTag(casaLogo, '⚽') : '<span style="font-size:40px;">⚽</span>';
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent('https://' + ctaUrl)}&format=png`;
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+  .card {
+    width: 1080px; height: 1080px; position: relative; overflow: hidden;
+    background: linear-gradient(160deg, ${colorPrimary} 0%, #0a1628 55%, ${colorSecondary} 100%);
+    color: white;
+  }
+  .pattern {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.04;
+    background-image: radial-gradient(#ffffff 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .glow { position: absolute; top: -60px; right: -60px; width: 450px; height: 450px; opacity: 0.1; border-radius: 50%; background: radial-gradient(circle, #ffffff 0%, transparent 70%); }
+  .gold-bar { position: absolute; top: 0; left: 0; right: 0; height: 10px; background: linear-gradient(90deg, ${colorPrimary}, #f5d442, ${colorSecondary}); }
+  .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, ${colorPrimary}, #f5d442, ${colorSecondary}); }
+  .content {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 28px 60px 28px;
+  }
+  .casa-badge {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 40px; padding: 10px 30px; margin-top: 12px;
+    font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+    color: #f5d442;
+  }
+  .main-section { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .division-label { font-size: 28px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+  .team-name { font-size: 84px; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 6px 20px rgba(0,0,0,0.7); color: white; line-height: 1; text-align: center; }
+  .sub-name { font-size: 40px; font-weight: 700; letter-spacing: 5px; color: #f5d442; text-align: center; }
+  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+  .detail-pill {
+    background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 14px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px; font-size: 23px; font-weight: 500;
+  }
+  .detail-pill .icon { font-size: 26px; flex-shrink: 0; }
+  .detail-pill .txt .label { font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px; letter-spacing: 1px; text-transform: uppercase; }
+  .open-banner {
+    background: rgba(255,255,255,0.1); border: 2px solid #f5d442;
+    border-radius: 12px; padding: 12px 40px;
+    font-size: 26px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;
+    color: white; text-align: center; width: 100%;
+  }
+  .qr-section {
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 16px; padding: 18px 36px;
+    display: flex; align-items: center; gap: 28px; width: 100%;
+  }
+  .qr-img { background: white; padding: 10px; border-radius: 10px; flex-shrink: 0; }
+  .qr-text .heading { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .qr-text .url { font-size: 20px; opacity: 0.7; }
+  .qr-text .note { font-size: 17px; opacity: 0.5; margin-top: 4px; }
+  .sponsor-row { display: flex; align-items: center; justify-content: center; gap: 24px; }
+  .logo-wrap { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
+  .sponsor-text .by { font-size: 17px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
+  .sponsor-text .name { font-size: 24px; font-weight: 800; color: #f5d442; }
+</style>
+</head><body>
+<div class="card">
+  <div class="pattern"></div>
+  <div class="glow"></div>
+  <div class="gold-bar"></div>
+  <div class="bottom-bar"></div>
+  <div class="content">
+    <div class="casa-badge" style="display:flex;align-items:center;gap:12px;"><span style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${casaLogoTag}</span>⚽ CASA U23 ${division} Premier League</div>
+    <div class="main-section">
+      <div class="division-label">Now Forming</div>
+      <div class="team-name">U23</div>
+      <div class="sub-name">${division} Team</div>
+    </div>
+    <div class="details-grid">
+      <div class="detail-pill"><span class="icon">📅</span><span class="txt"><span class="label">First Match</span>${firstMatch}</span></div>
+      <div class="detail-pill"><span class="icon">🏆</span><span class="txt"><span class="label">League</span>CASA U23 ${division} Premier League</span></div>
+      <div class="detail-pill"><span class="icon">📍</span><span class="txt"><span class="label">Location</span>Philadelphia, PA</span></div>
+      <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>${eligibilityText}</span></div>
+    </div>
+    <div class="open-banner">🌟 Open to All Players — Spots Available!</div>
+    <div class="qr-section">
+      <img class="qr-img" src="${qrImgUrl}" width="220" height="220">
+      <div class="qr-text">
+        <div class="heading">📲 Scan to Fill Out the Interest Form</div>
+        <div class="url">Or visit: ${ctaUrl}</div>
+        <div class="note">Free to join · All skill levels welcome</div>
+      </div>
+    </div>
+    <div class="sponsor-row">
+      <div class="logo-wrap">${welovejunkLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Sponsored By</div>
+        <div class="name">We Love Junk</div>
+      </div>
+      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
+      <div class="logo-wrap" style="width:160px;height:160px;">${complexLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Home Games At</div>
+        <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
+      </div>
+      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
+      <div class="logo-wrap">${lighthouseLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Team</div>
+        <div class="name">${teamName}</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>`;
+}
+
 // --- Logo lookup ---
 
 function findLogo(teamName) {
@@ -662,6 +781,8 @@ async function generateCard(type, data = {}) {
     html = grassrootsCupAdHTML(data);
   } else if (type === 'u23-ad') {
     html = u23AdHTML(data);
+  } else if (type === 'u23-flyer') {
+    html = u23FlyerHTML(data);
   } else {
     throw new Error(`Unknown card type: ${type}`);
   }
@@ -793,6 +914,24 @@ async function main() {
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
 
+  } else if (type === 'u23-womens-flyer') {
+    const lighthouseLogo = findLogo('lighthouse-1893');
+    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const { filepath, filename } = await generateCard('u23-flyer', {
+      division: "Women's",
+      colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
+      lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
+      eligibilityText: 'Ages 16–25 Welcome',
+      teamName: "Lighthouse Women's Club U23",
+      firstMatch: 'May 31, 2026',
+      ctaUrl: 'tr.ee/hSxfHUV4jR',
+      filename: 'u23-flyer-womens.png',
+    });
+    console.log(`\nImage saved: ${filepath}`);
+    console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
+
   } else {
     console.log(`Match Card Generator
 
@@ -803,6 +942,7 @@ Usage:
   node generate-match-card.js grassroots-puertorico
   node generate-match-card.js u23-mens
   node generate-match-card.js u23-womens
+  node generate-match-card.js u23-womens-flyer
 
 Example:
   node generate-match-card.js match-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
@@ -810,5 +950,5 @@ Example:
   }
 }
 
-module.exports = { generateCard, findLogo, matchResultHTML, matchAnnouncementHTML, gameDayHTML, lineupHTML, grassrootsCupAdHTML, u23AdHTML, POSTS_DIR };
+module.exports = { generateCard, findLogo, matchResultHTML, matchAnnouncementHTML, gameDayHTML, lineupHTML, grassrootsCupAdHTML, u23AdHTML, u23FlyerHTML, POSTS_DIR };
 main();
