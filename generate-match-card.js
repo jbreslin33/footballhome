@@ -590,7 +590,7 @@ function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrima
       <div class="detail-pill"><span class="icon">🎯</span><span class="txt"><span class="label">Eligibility</span>${eligibilityText}</span></div>
     </div>
     <div class="open-banner">🌟 Open to All Players — Spots Available!</div>
-    <div class="bio-cta">🔗 Fill out the Interest Form — Link in Bio!</div>
+
     <div class="sponsor-row">
       <div class="logo-wrap">${welovejunkLogoTag}</div>
       <div class="sponsor-text">
@@ -906,7 +906,7 @@ async function main() {
       division: "Women's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo,
-      eligibilityText: 'Ages 16–25 Welcome',
+      eligibilityText: 'Ages 16–23 Welcome',
       teamName: "Lighthouse Women's Club U23",
       firstMatch: 'May 31, 2026',
       filename: 'u23-ad-womens.png',
