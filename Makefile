@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 lighthouse-groupme lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty
+.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 lighthouse-groupme lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -51,6 +51,7 @@ help:
 	@echo "  make build         Build images and start containers"
 	@echo "  make deploy        Build + replace backend container (for C++ changes)"
 	@echo "  make up            Start containers"
+	@echo "  make restart       Stop everything, start fresh, reload nginx"
 	@echo "  make down          Stop containers"
 	@echo "  make rebuild       Destroy everything + fresh build (wipes DB)"
 	@echo "  make migrate       Apply pending schema migrations (preserves data)"
@@ -143,6 +144,22 @@ up:
 	@echo "🚀 Starting containers..."
 	@$(COMPOSE) --env-file env up -d
 	@echo "✓ Containers started"
+	@echo ""
+	@echo "Frontend:  http://localhost:3000"
+	@echo "Backend:   http://localhost:3001"
+
+restart:
+	@echo "🔄 Restarting all containers..."
+	@$(COMPOSE) --env-file env down 2>&1 | grep -v "no container" || true
+	@$(ENGINE) rm -f footballhome_db footballhome_backend footballhome_frontend footballhome_meta_leads 2>/dev/null || true
+	@$(COMPOSE) --env-file env up -d
+	@echo "⏳ Waiting for webhook service..."
+	@for i in $$(seq 1 20); do \
+		$(ENGINE) exec footballhome_meta_leads wget -q --spider http://localhost:3003/ 2>/dev/null && break; \
+		sleep 1; \
+	done
+	@$(ENGINE) exec footballhome_frontend nginx -s reload 2>/dev/null || true
+	@echo "✓ All containers restarted"
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"
 	@echo "Backend:   http://localhost:3001"

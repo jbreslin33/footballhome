@@ -91,6 +91,43 @@ app.post('/webhook/meta-leads', async (req, res) => {
   }
 });
 
+// ── GET /api/ads/preview — return active ads with creative details ────
+app.get('/api/ads/preview', requireAuth, async (req, res) => {
+  try {
+    const fields = [
+      'name', 'status',
+      'creative{name,body,title,image_url,object_story_spec}'
+    ].join(',');
+    const url = `${API}/act_1792823854148245/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${ACCESS_TOKEN}`;
+    const metaRes  = await fetch(url);
+    const metaData = await metaRes.json();
+
+    if (metaData.error) {
+      return res.status(502).json({ error: metaData.error.message });
+    }
+
+    const ads = (metaData.data || []).map(ad => {
+      const c    = ad.creative || {};
+      const spec = c.object_story_spec?.link_data || {};
+      return {
+        id:        ad.id,
+        name:      ad.name,
+        status:    ad.status,
+        headline:  c.title  || spec.name  || null,
+        body:      c.body   || spec.message || null,
+        image_url: c.image_url || null,
+        cta:       spec.call_to_action?.type || null,
+        link:      spec.link || null,
+      };
+    });
+
+    res.json(ads);
+  } catch (err) {
+    console.error('Error fetching ad preview:', err.message);
+    res.status(500).json({ error: 'Failed to fetch ads' });
+  }
+});
+
 // ── GET /api/leads — serve leads to frontend ──────────────────────────
 app.get('/api/leads', requireAuth, async (req, res) => {
   try {

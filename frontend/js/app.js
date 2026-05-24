@@ -54,7 +54,8 @@ class App {
       contentPosts: new ContentPostsScreen(this.navigation, this.auth),
       flyers: new FlyersScreen(this.navigation, this.auth),
       internalRoster: new InternalRosterScreen(this.navigation, this.auth),
-      leads: new LeadsScreen(this.navigation, this.auth)
+      leads: new LeadsScreen(this.navigation, this.auth),
+      adPreview: new AdPreviewScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
@@ -108,6 +109,7 @@ class App {
     this.screenManager.register('flyers', this.screens.flyers);
     this.screenManager.register('internal-roster', this.screens.internalRoster);
     this.screenManager.register('leads', this.screens.leads);
+    this.screenManager.register('ad-preview', this.screens.adPreview);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

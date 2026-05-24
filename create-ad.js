@@ -101,7 +101,8 @@ function getArg(flag, defaultVal) {
   return i !== -1 ? args[i + 1] : defaultVal;
 }
 
-const dryRun = args.includes('--dry-run');
+const dryRun  = args.includes('--dry-run');
+const formIdArg = getArg('--form-id', null);  // skip form creation if provided
 
 // ── Validate ──────────────────────────────────────────────────────────
 if (!adKey || !ADS[adKey]) {
@@ -163,7 +164,7 @@ async function run() {
   console.log('\n1️⃣  Creating campaign...');
   const campaign = await apiPost(`${AD_ACCOUNT_ID}/campaigns`, {
     name: `${ad.name} — ${new Date().toLocaleDateString()}`,
-    objective: 'OUTCOME_TRAFFIC',
+    objective: 'OUTCOME_LEADS',
     status: 'PAUSED',
     special_ad_categories: JSON.stringify([]),
     is_adset_budget_sharing_enabled: false,
@@ -178,10 +179,9 @@ async function run() {
     campaign_id: campaign.id,
     daily_budget: dailyBudgetCents,
     billing_event: 'IMPRESSIONS',
-    optimization_goal: 'LINK_CLICKS',
+    optimization_goal: 'LEAD_GENERATION',
     bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-    targeting: JSON.stringify(targeting),
-    targeting_automation: JSON.stringify({ advantage_audience: 0 }),
+    targeting: JSON.stringify({ ...targeting, targeting_automation: { advantage_audience: 0 } }),
     status: 'PAUSED',
   };
   if (endDateStr) adSetParams.end_time = endDateStr;
@@ -189,8 +189,48 @@ async function run() {
   if (adSet.error) { console.error('Ad set error:', JSON.stringify(adSet.error, null, 2)); process.exit(1); }
   console.log(`   Ad Set ID: ${adSet.id}`);
 
-  // Step 3a: Upload image to get hash
-  console.log('3️⃣  Uploading image...');
+  // Step 3a: Create Lead Form (or reuse existing one via --form-id)
+  let leadForm;
+  if (formIdArg) {
+    console.log('3️⃣  Using existing lead form ID:', formIdArg);
+    leadForm = { id: formIdArg };
+  } else {
+    console.log('3️⃣  Creating lead form...');
+  const leadForm = await apiPost(`${PAGE_ID}/leadgen_forms`, {
+    name: `${ad.name} — Lead Form — ${new Date().toLocaleDateString()}`,
+    questions: JSON.stringify([
+      { type: 'FULL_NAME' },
+      { type: 'EMAIL' },
+      { type: 'PHONE' },
+      { type: 'DOB' },
+      { type: 'GENDER' },
+    ]),
+    privacy_policy: JSON.stringify({
+      url: 'https://footballhome.org/privacy',
+      link_text: 'Privacy Policy',
+    }),
+    context_card: JSON.stringify({
+      style: 'LIST_STYLE',
+      title: 'Join Lighthouse 1893 Soccer Club',
+      content: ['Express your interest in joining. We will be in touch with next steps.'],
+      button_text: 'Continue',
+    }),
+    thank_you_page: JSON.stringify({
+      title: 'Thanks for your interest!',
+      body: 'A Lighthouse 1893 coach will reach out to you soon.',
+      button_type: 'VIEW_WEBSITE',
+      button_text: 'Visit Website',
+      website_url: 'https://footballhome.org',
+    }),
+    locale: 'EN_US',
+    follow_up_action_url: 'https://footballhome.org',
+  });
+    if (leadForm.error) { console.error('Lead form error:', JSON.stringify(leadForm.error, null, 2)); process.exit(1); }
+    console.log(`   Lead Form ID: ${leadForm.id}`);
+  }
+
+  // Step 3b: Upload image to get hash
+  console.log('   Uploading image...');
   const imgRes = await fetch(ad.imageUrl);
   if (!imgRes.ok) { console.error('Failed to fetch image:', ad.imageUrl); process.exit(1); }
   const imgBuffer = await imgRes.arrayBuffer();
@@ -203,7 +243,7 @@ async function run() {
   const imageHash = Object.values(imgUpload.images)[0].hash;
   console.log(`   Image hash: ${imageHash}`);
 
-  // Step 3b: Create Ad Creative (Facebook Page style — no instagram_actor_id to avoid dev mode restriction)
+  // Step 3c: Create Ad Creative with native lead form
   console.log('   Creating ad creative...');
   const creative = await apiPost(`${AD_ACCOUNT_ID}/adcreatives`, {
     name: `${ad.name} — Creative`,
@@ -211,9 +251,8 @@ async function run() {
       page_id: PAGE_ID,
       link_data: {
         image_hash: imageHash,
-        link: ad.ctaUrl,
         message: ad.caption,
-        call_to_action: { type: ad.ctaType, value: { link: ad.ctaUrl } },
+        call_to_action: { type: 'SIGN_UP', value: { lead_gen_form_id: leadForm.id } },
       },
     }),
   });

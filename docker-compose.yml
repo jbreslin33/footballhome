@@ -98,7 +98,8 @@ services:
     ports:
       - "3000:80"
     volumes:
-      # Serve regenerated post images directly from host (no rebuild needed)
+      # Serve all frontend files directly from host — no rebuild needed on changes
+      - ./frontend:/usr/share/nginx/html
       - ./frontend/images/posts:/usr/share/nginx/html/images/posts
     networks:
       - footballhome_network

@@ -68,6 +68,7 @@ class AdminClubScreen extends Screen {
       { id: 'content-posts', icon: '📷', label: 'Content Posts', description: 'Upload photos & videos to Instagram' },
       { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
       { id: 'leads', icon: '📋', label: 'Leads', description: 'Ad interest form submissions' },
+      { id: 'ad-preview', icon: '📱', label: 'Ad Preview', description: 'See exactly what your ads look like' },
       { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' }
     ];
     
@@ -133,6 +134,14 @@ class AdminClubScreen extends Screen {
 
     if (section === 'leads') {
       this.navigation.goTo('leads', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'ad-preview') {
+      this.navigation.goTo('ad-preview', {
         clubId: this.clubId,
         clubName: this.clubName
       });
