@@ -442,7 +442,8 @@ class GameDayLineupScreen extends Screen {
           existing.gmNickname = gm.nickname;
           existing.gmImageUrl = gm.imageUrl;
           existing.gmUserId = gm.externalUserId;
-          existing.gmLinked = true;
+          // Only mark as in-chat if they're an actual GroupMe member (not roster_only)
+          existing.gmLinked = gm.source !== 'roster_only';
           existing.source = gm.source || 'both';
           existing.teams = teams;
           if (!existing.matchRsvp && gm.matchRsvp) {
