@@ -1269,6 +1269,20 @@ class GameDayLineupScreen extends Screen {
     const notResponded = this._rankPlayers(this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp !== 'no'));
     const notGoing = this._rankPlayers(this.players.filter(p => !allZoned.has(p.playerId) && p.matchRsvp === 'no'));
 
+    // Helper: build buttons for a player card — Link button for unlinked GM-only players
+    const cardBtns = (player, currentZone) => {
+      if (!player.playerId && player.gmUserId) {
+        const nick = (player.gmNickname || '').replace(/"/g, '&quot;');
+        const img  = (player.gmImageUrl || '').replace(/"/g, '&quot;');
+        return `<button class="btn-link-player"
+          style="padding:3px 8px;font-size:0.75rem;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;background:var(--bg-secondary);"
+          data-gm-user-id="${player.gmUserId}"
+          data-gm-nickname="${nick}"
+          data-gm-image="${img}">🔗 Link</button>`;
+      }
+      return moveBtns(player.playerId, currentZone);
+    };
+
     // Helper: build move buttons for a card in a given zone
     const moveBtns = (playerId, currentZone) => {
       const btnStyle = 'padding:3px 8px;font-size:0.75rem;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;background:var(--bg-secondary);';
@@ -1365,14 +1379,7 @@ class GameDayLineupScreen extends Screen {
         body.innerHTML = `<div style="padding:8px 6px;font-size:0.85rem;opacity:0.5;text-align:center;">— empty —</div>`;
       } else {
         for (const player of section.players) {
-          body.appendChild(this.createLineupCard(player, section.zone, moveBtns(player.playerId, section.zone)));
-        }
-      }
-
-      // Unlinked GroupMe RSVPs in "not responded" section
-      if (section.id === 'notresponded' && this.unmatchedRsvps?.length) {
-        for (const u of this.unmatchedRsvps) {
-          body.appendChild(this.createUnlinkedCard(u));
+          body.appendChild(this.createLineupCard(player, section.zone, cardBtns(player, section.zone)));
         }
       }
     }
@@ -1385,7 +1392,9 @@ class GameDayLineupScreen extends Screen {
     card.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);';
 
     const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '—';
-    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+    const name = player.personId
+      ? `${player.firstName || ''} ${player.lastName || ''}`.trim()
+      : (player.gmNickname || `${player.firstName || ''} ${player.lastName || ''}`.trim());
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
     const rsvpDot = player.matchRsvp === 'yes' ? '🟢' : player.matchRsvp === 'no' ? '🔴' : '🟡';
     const prac = player.sessionsAttended || 0;
