@@ -348,6 +348,8 @@ class GameDayLineupScreen extends Screen {
           this.clubTeams = membersData.data.teams || [];
           this.allChats = membersData.data.chats || [];
           this.mergeGroupMeMembers();
+          // If GroupMe is linked, restrict pool to chat members only
+          this.players = this.players.filter(p => p.gmLinked === true);
         }
       }
 
