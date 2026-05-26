@@ -492,24 +492,29 @@ class GameDayLineupScreen extends Screen {
             teams: teams
           });
         }
-      } else {
-        // Unlinked GroupMe member — only add to pool if they have an RSVP for this match
-        if (gm.externalUserId && gm.matchRsvp && !unmatchedByExtId.has(gm.externalUserId)) {
-          this.unmatchedRsvps.push({
-            externalUserId: gm.externalUserId,
-            externalUsername: gm.nickname,
-            matchRsvp: gm.matchRsvp,
+      } else if (gm.externalUserId && gm.source !== 'roster_only') {
+        // Unlinked GroupMe chat member — add to player pool by GroupMe identity alone
+        if (!unmatchedByExtId.has(gm.externalUserId)) {
+          const gmPlayer = {
+            personId: null,
+            playerId: null,
+            firstName: gm.firstName || gm.nickname,
+            lastName: gm.lastName || '',
+            jerseyNumber: null,
+            matchRsvp: gm.matchRsvp || null,
+            practiceCount: 0,
+            sessionsAttended: 0,
+            eligibilityStatus: 'not_on_roster',
+            isGuest: true,
+            gmNickname: gm.nickname,
             gmImageUrl: gm.imageUrl,
-            gmLinked: false,
-            source: 'groupme_only'
-          });
-          unmatchedByExtId.set(gm.externalUserId, true);
-        } else if (gm.externalUserId && unmatchedByExtId.has(gm.externalUserId)) {
-          // Already in unmatched — enrich with image
-          const existing = unmatchedByExtId.get(gm.externalUserId);
-          if (existing && typeof existing === 'object') {
-            existing.gmImageUrl = gm.imageUrl;
-          }
+            gmUserId: gm.externalUserId,
+            gmLinked: true,
+            source: 'groupme_only',
+            teams: []
+          };
+          this.players.push(gmPlayer);
+          unmatchedByExtId.set(gm.externalUserId, gmPlayer);
         }
       }
     }
