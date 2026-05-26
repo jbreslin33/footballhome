@@ -69,10 +69,24 @@ class LeadsScreen extends Screen {
     `;
   }
 
+  formLabel(formId) {
+    const map = {
+      '1668570657681917': 'PR Men',
+      '2062202517690808': 'PR Men',
+      '875990184755538':  'U23 Women',
+      '1696381158350766': 'U23 Women',
+      '1552835789741946': 'Brazil Men',
+      '1333581472007910': 'Brazil Men',
+      '1052472267432735': 'U23 Men',
+    };
+    return map[formId] || null;
+  }
+
   renderLead(lead) {
     const date = new Date(lead.created_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
+    const source = this.formLabel(lead.form_id);
 
     // Parse extra fields from raw_fields for display
     const extras = [];
@@ -88,7 +102,10 @@ class LeadsScreen extends Screen {
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-1);">
-          <strong>${lead.name || '(no name)'}</strong>
+          <div style="display:flex; align-items:center; gap:var(--space-2);">
+            <strong>${lead.name || '(no name)'}</strong>
+            ${source ? `<span style="font-size:0.75rem; background:#2563eb; color:#fff; border-radius:var(--radius-sm); padding:1px 6px;">${source}</span>` : ''}
+          </div>
           <span style="font-size:0.8rem; opacity:0.5;">${date}</span>
         </div>
         ${lead.email ? `<div style="font-size:0.9rem;">${lead.email}</div>` : ''}
