@@ -122,9 +122,9 @@ bool UserService::updateUserBasicInfo(const std::string& user_id,
         // Update primary email in person_emails
         if (!email.empty()) {
             db_->query(
-                "INSERT INTO person_emails (person_id, email, email_type_id, is_primary) "
-                "VALUES ($1, $2, 1, true) "
-                "ON CONFLICT (person_id, email) DO UPDATE SET email = $2 ",
+                "INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified) "
+                "VALUES ($1, $2, 1, true, true) "
+                "ON CONFLICT (person_id, email) DO UPDATE SET email = $2, is_verified = true ",
                 {person_id, email});
         }
 

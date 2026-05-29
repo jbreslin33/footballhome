@@ -72,12 +72,12 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                          "oa.organization_id, o.name as organization_name "
                          "FROM users u "
                          "JOIN persons p ON u.person_id = p.id "
-                         "JOIN person_emails pe ON p.id = pe.person_id "
+                 "JOIN person_emails pe ON p.id = pe.person_id AND pe.is_primary = true "
                          "LEFT JOIN admins a ON u.id = a.user_id "
                          "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
                          "LEFT JOIN organization_admins oa ON a.id = oa.admin_id AND oa.ended_at IS NULL "
                          "LEFT JOIN organizations o ON oa.organization_id = o.id "
-                         "WHERE pe.email = $1 AND pe.is_verified = true "
+                 "WHERE pe.email = $1 "
                          "LIMIT 1";
         
         pqxx::result result = executeQuery(sql, {email});

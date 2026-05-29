@@ -34,9 +34,20 @@ class Auth {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: username, password })
     })
-    .then(r => {
-      if (!r.ok) throw new Error('Login failed');
-      return r.json();
+    .then(async (r) => {
+      let responseBody = null;
+      try {
+        responseBody = await r.json();
+      } catch (_) {
+        // Non-JSON responses are unexpected, keep a null body fallback.
+      }
+
+      if (!r.ok) {
+        const message = responseBody?.message || `Login failed (HTTP ${r.status})`;
+        throw new Error(message);
+      }
+
+      return responseBody;
     })
     .then(response => {
       // Backend returns {success, message, data: {user, token}}

@@ -116,12 +116,21 @@ class LeadsScreen extends Screen {
       month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 
+    const fieldMap = this.extractFieldMap(lead.raw_fields);
+    const location = this.buildLocationLabel(fieldMap);
+
     // Parse extra fields from raw_fields for display
     const extras = [];
+    const locationKeys = new Set([
+      'city', 'current_city', 'state', 'region', 'zip', 'zipcode', 'postal_code',
+      'country', 'country_code', 'address', 'street_address'
+    ]);
     if (Array.isArray(lead.raw_fields)) {
       for (const f of lead.raw_fields) {
         const key = f.name;
-        if (['full_name','name','email','email_address','phone_number','phone'].includes(key)) continue;
+        const keyLower = String(key || '').trim().toLowerCase();
+        if (['full_name','name','email','email_address','phone_number','phone'].includes(keyLower)) continue;
+        if (locationKeys.has(keyLower)) continue;
         const val = f.values?.[0];
         if (val) extras.push(`<span style="opacity:0.7;">${key}:</span> ${val}`);
       }
@@ -135,8 +144,41 @@ class LeadsScreen extends Screen {
         </div>
         ${lead.email ? `<div style="font-size:0.85rem;">${lead.email}</div>` : ''}
         ${lead.phone ? `<div style="font-size:0.85rem; opacity:0.8;">${lead.phone}</div>` : ''}
+        ${location ? `<div style="font-size:0.85rem; opacity:0.85;">📍 ${location}</div>` : ''}
         ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
       </div>
     `;
+  }
+
+  extractFieldMap(rawFields) {
+    const map = {};
+    if (!Array.isArray(rawFields)) return map;
+
+    for (const field of rawFields) {
+      const name = String(field?.name || '').trim().toLowerCase();
+      if (!name) continue;
+      const value = field?.values?.[0];
+      if (value !== undefined && value !== null && value !== '') {
+        map[name] = String(value).trim();
+      }
+    }
+
+    return map;
+  }
+
+  buildLocationLabel(fieldMap) {
+    const city = fieldMap.current_city || fieldMap.city || null;
+    const state = fieldMap.state || fieldMap.region || null;
+    const postal = fieldMap.zip || fieldMap.zipcode || fieldMap.postal_code || null;
+    const country = fieldMap.country || fieldMap.country_code || null;
+    const address = fieldMap.address || fieldMap.street_address || null;
+
+    const localityParts = [city, state].filter(Boolean);
+    let locality = localityParts.join(', ');
+    if (postal) locality = locality ? `${locality} ${postal}` : postal;
+    if (country) locality = locality ? `${locality}, ${country}` : country;
+
+    if (address && locality) return `${address} • ${locality}`;
+    return address || locality || '';
   }
 }
