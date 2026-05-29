@@ -267,7 +267,13 @@ class TeamDashboardScreen extends Screen {
   }
   
   renderSchedule(matches) {
-    const transformed = matches.map(m => {
+    const sortedMatches = [...matches].sort((a, b) => {
+      const aTime = new Date(a.event_date).getTime();
+      const bTime = new Date(b.event_date).getTime();
+      return bTime - aTime;
+    });
+
+    const transformed = sortedMatches.map(m => {
       const eventDate = new Date(m.event_date);
       const today = new Date();
       const tomorrow = new Date(today);

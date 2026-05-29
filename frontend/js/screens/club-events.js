@@ -98,7 +98,15 @@ class ClubEventsScreen extends Screen {
       return;
     }
 
-    content.innerHTML = this.events.map(evt => this.renderEventCard(evt)).join('');
+    const sortedEvents = [...this.events].sort((a, b) => {
+      const aKey = a.start_at || a.event_date || '';
+      const bKey = b.start_at || b.event_date || '';
+      if (aKey !== bKey) return aKey < bKey ? 1 : -1;
+
+      return (b.id || 0) - (a.id || 0);
+    });
+
+    content.innerHTML = sortedEvents.map(evt => this.renderEventCard(evt)).join('');
   }
 
   renderEventCard(evt) {

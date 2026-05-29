@@ -494,7 +494,7 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "  AND ce.chat_id = (SELECT id FROM chats WHERE team_id = $1::int LIMIT 1) ";
         query << "LEFT JOIN source_systems ss ON ss.id = m.source_system_id ";
         query << "WHERE (m.home_team_id = $1 OR m.away_team_id = $1 OR m.home_team_id = $1::int) ";
-        query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
+        query << "ORDER BY m.match_date DESC, m.match_time DESC NULLS LAST ";
         query << "LIMIT 100";
         
         pqxx::result result;

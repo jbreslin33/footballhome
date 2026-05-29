@@ -7,13 +7,33 @@ const app  = express();
 app.use(express.json());
 
 // ── Config ────────────────────────────────────────────────────────────
-const PORT               = process.env.META_LEADS_PORT   || 3003;
-const VERIFY_TOKEN       = process.env.META_LEADS_VERIFY_TOKEN;
-const ACCESS_TOKEN       = process.env.META_ADS_TOKEN;
-const API                = 'https://graph.facebook.com/v21.0';
+const PORT              = process.env.META_LEADS_PORT || 3003;
+const VERIFY_TOKEN      = process.env.META_LEADS_VERIFY_TOKEN;
+const LEADS_PAGE_ID     = process.env.META_PAGE_ID;
+// Prefer a stable Page token for lead fetches. Keep META_LEADS_TOKEN as fallback.
+const LEADS_TOKEN       = process.env.META_ADS_TOKEN || process.env.META_LEADS_TOKEN;
+const ADS_TOKEN         = process.env.META_ADS_TOKEN || process.env.META_LEADS_TOKEN;
+const AD_ACCOUNT_ID     = process.env.META_AD_ACCOUNT_ID || 'act_1792823854148245';
+const SYNC_TTL_MS       = parseInt(process.env.META_LEADS_SYNC_TTL_MS || '30000', 10);
+const FORM_IDS          = parseFormIds(
+  process.env.META_LEAD_FORM_IDS,
+  [
+    '1696381158350766',
+    '1052472267432735',
+    '1333581472007910',
+    '2062202517690808',
+    '875990184755538',
+    '1552835789741946',
+    '1668570657681917',
+  ]
+);
+const API               = 'https://graph.facebook.com/v21.0';
+let lastSyncAtMs        = 0;
+let leadsTokenValidated = false;
 
 if (!VERIFY_TOKEN)   { console.error('Missing META_LEADS_VERIFY_TOKEN'); process.exit(1); }
-if (!ACCESS_TOKEN)   { console.error('Missing META_ADS_TOKEN');          process.exit(1); }
+if (!LEADS_TOKEN)    { console.error('Missing META_ADS_TOKEN (or META_LEADS_TOKEN fallback)'); process.exit(1); }
+if (!LEADS_PAGE_ID)  { console.error('Missing META_PAGE_ID'); process.exit(1); }
 
 const pool = new Pool({
   host:     process.env.POSTGRES_HOST     || 'db',
@@ -22,6 +42,106 @@ const pool = new Pool({
   user:     process.env.POSTGRES_USER     || 'footballhome_user',
   password: process.env.POSTGRES_PASSWORD || 'footballhome_pass',
 });
+
+function parseFormIds(rawValue, fallback) {
+  if (!rawValue) return fallback;
+  return rawValue
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function extractLeadFields(fieldData) {
+  const fields = {};
+  for (const field of (fieldData || [])) {
+    fields[field.name] = field.values?.[0] ?? null;
+  }
+  return fields;
+}
+
+async function upsertLead(lead) {
+  const fieldData = lead.field_data || [];
+  const fields = extractLeadFields(fieldData);
+
+  await pool.query(
+    `INSERT INTO leads (leadgen_id, form_id, page_id, ad_id, name, email, phone, raw_fields, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT (leadgen_id) DO UPDATE
+     SET form_id = EXCLUDED.form_id,
+         page_id = EXCLUDED.page_id,
+         ad_id = EXCLUDED.ad_id,
+         name = EXCLUDED.name,
+         email = EXCLUDED.email,
+         phone = EXCLUDED.phone,
+         raw_fields = EXCLUDED.raw_fields,
+         created_at = COALESCE(leads.created_at, EXCLUDED.created_at)`,
+    [
+      lead.id,
+      lead.form_id || null,
+      lead.page_id || null,
+      lead.ad_id || null,
+      fields.full_name || fields.name || null,
+      fields.email || fields.email_address || null,
+      fields.phone_number || fields.phone || null,
+      JSON.stringify(fieldData),
+      lead.created_time || new Date().toISOString(),
+    ]
+  );
+
+  return fields;
+}
+
+async function fetchMetaJson(url) {
+  const metaRes = await fetch(url);
+  return metaRes.json();
+}
+
+async function syncFormLeads(formId) {
+  if (!leadsTokenValidated) {
+    throw new Error('META_LEADS_TOKEN not validated; sync disabled until token is fixed');
+  }
+
+  let url = `${API}/${formId}/leads?access_token=${encodeURIComponent(LEADS_TOKEN)}&limit=100&fields=id,created_time,field_data,ad_id,form_id,page_id`;
+  let insertedOrUpdated = 0;
+
+  while (url) {
+    const data = await fetchMetaJson(url);
+    if (data?.error) {
+      throw new Error(`Form ${formId}: ${data.error.message}`);
+    }
+
+    for (const lead of (data.data || [])) {
+      await upsertLead(lead);
+      insertedOrUpdated += 1;
+    }
+
+    url = data.paging?.next || null;
+  }
+
+  return insertedOrUpdated;
+}
+
+async function syncAllFormLeads() {
+  const nowMs = Date.now();
+  if (nowMs - lastSyncAtMs < SYNC_TTL_MS) {
+    return { syncedRows: 0, skippedByTtl: true, failedForms: [] };
+  }
+
+  let total = 0;
+  const failedForms = [];
+
+  for (const formId of FORM_IDS) {
+    try {
+      total += await syncFormLeads(formId);
+    } catch (err) {
+      failedForms.push({ formId, error: err.message });
+      console.error(`Meta leads sync error for form ${formId}: ${err.message}`);
+    }
+  }
+
+  lastSyncAtMs = nowMs;
+  return { syncedRows: total, skippedByTtl: false, failedForms };
+}
 
 // ── Meta webhook verification ─────────────────────────────────────────
 app.get('/webhook/meta-leads', (req, res) => {
@@ -52,7 +172,7 @@ app.post('/webhook/meta-leads', async (req, res) => {
 
       try {
         // Fetch full lead data from Meta
-        const url = `${API}/${leadgen_id}?fields=field_data&access_token=${ACCESS_TOKEN}`;
+        const url = `${API}/${leadgen_id}?fields=field_data&access_token=${LEADS_TOKEN}`;
         const metaRes  = await fetch(url);
         const metaData = await metaRes.json();
 
@@ -61,27 +181,13 @@ app.post('/webhook/meta-leads', async (req, res) => {
           continue;
         }
 
-        // Extract common fields from field_data array
-        const fields = {};
-        for (const f of (metaData.field_data || [])) {
-          fields[f.name] = f.values?.[0] ?? null;
-        }
-
-        await pool.query(
-          `INSERT INTO leads (leadgen_id, form_id, page_id, ad_id, name, email, phone, raw_fields)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-           ON CONFLICT (leadgen_id) DO NOTHING`,
-          [
-            leadgen_id,
-            form_id  || null,
-            page_id  || null,
-            ad_id    || null,
-            fields['full_name']    || fields['name']         || null,
-            fields['email']        || fields['email_address'] || null,
-            fields['phone_number'] || fields['phone']         || null,
-            JSON.stringify(metaData.field_data || []),
-          ]
-        );
+        const fields = await upsertLead({
+          id: leadgen_id,
+          form_id,
+          page_id,
+          ad_id,
+          field_data: metaData.field_data || [],
+        });
 
         console.log(`Lead saved: ${leadgen_id} (${fields['full_name'] || 'unknown'})`);
       } catch (err) {
@@ -94,11 +200,15 @@ app.post('/webhook/meta-leads', async (req, res) => {
 // ── GET /api/ads/preview — return active ads with creative details ────
 app.get('/api/ads/preview', requireAuth, async (req, res) => {
   try {
+    if (!ADS_TOKEN) {
+      return res.status(500).json({ error: 'Missing META_ADS_TOKEN configuration' });
+    }
+
     const fields = [
       'name', 'status',
       'creative{name,body,title,image_url,object_story_spec}'
     ].join(',');
-    const url = `${API}/act_1792823854148245/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${ACCESS_TOKEN}`;
+    const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${ADS_TOKEN}`;
     const metaRes  = await fetch(url);
     const metaData = await metaRes.json();
 
@@ -130,6 +240,15 @@ app.get('/api/ads/preview', requireAuth, async (req, res) => {
 
 // ── GET /api/leads — serve leads to frontend ──────────────────────────
 app.get('/api/leads', requireAuth, async (req, res) => {
+  let syncResult = { skippedByTtl: false, syncedRows: 0, failedForms: [] };
+
+  try {
+    syncResult = await syncAllFormLeads();
+  } catch (err) {
+    // Defensive fallback — leads endpoint should remain available using DB cache.
+    console.error('Unexpected Meta leads sync failure:', err.message);
+  }
+
   try {
     const result = await pool.query(
       `SELECT id, leadgen_id, form_id, page_id, ad_id,
@@ -137,9 +256,20 @@ app.get('/api/leads', requireAuth, async (req, res) => {
        FROM leads
        ORDER BY created_at DESC`
     );
+
+    if (syncResult.skippedByTtl) {
+      console.log(`Meta leads sync skipped by TTL (${SYNC_TTL_MS}ms)`);
+    } else if (syncResult.failedForms.length) {
+      console.log(
+        `Meta leads partial sync before /api/leads: ${syncResult.syncedRows} rows refreshed, ${syncResult.failedForms.length} forms failed`
+      );
+    } else {
+      console.log(`Meta leads sync completed before /api/leads: ${syncResult.syncedRows} rows refreshed from ${FORM_IDS.length} forms`);
+    }
+
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching leads:', err.message);
+    console.error('Error fetching leads from DB:', err.message);
     res.status(500).json({ error: 'Failed to fetch leads' });
   }
 });
@@ -162,4 +292,28 @@ function requireAuth(req, res, next) {
   }
 }
 
-app.listen(PORT, () => console.log(`Meta leads webhook listening on :${PORT}`));
+async function validateLeadsTokenOrExit() {
+  const url = `${API}/${LEADS_PAGE_ID}?fields=id&access_token=${LEADS_TOKEN}`;
+  const metaRes = await fetch(url);
+  const data = await metaRes.json();
+
+  if (data?.error) {
+    console.error('Invalid Meta token for webhook lead fetch (META_ADS_TOKEN or META_LEADS_TOKEN):', data.error.message);
+    console.error('Token must include page permissions and be valid for the configured page. Running in degraded mode (DB-only leads).');
+    leadsTokenValidated = false;
+    return;
+  }
+
+  leadsTokenValidated = true;
+  console.log(`Meta leads token validated for page ${data.id}`);
+}
+
+validateLeadsTokenOrExit()
+  .then(() => {
+    app.listen(PORT, () => console.log(`Meta leads webhook listening on :${PORT}`));
+  })
+  .catch((err) => {
+    console.error('Failed to validate META_LEADS_TOKEN:', err.message);
+    console.error('Running in degraded mode (DB-only leads).');
+    app.listen(PORT, () => console.log(`Meta leads webhook listening on :${PORT}`));
+  });

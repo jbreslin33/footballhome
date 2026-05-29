@@ -68,6 +68,7 @@ class GameDayLineupScreen extends Screen {
 
           <!-- GroupMe sync warning -->
           <div id="groupme-warning" class="groupme-warning" style="display:none;"></div>
+          <div id="gm-last-sync" style="margin:-4px 0 10px;font-size:0.78rem;color:var(--text-muted);">Last GroupMe sync: checking...</div>
 
           <!-- Controls bar -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
@@ -122,9 +123,14 @@ class GameDayLineupScreen extends Screen {
     
     if (matchId && teamId) {
       try {
-        const syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+        let syncResponse = await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}?teamId=${teamId}`, {
           method: 'POST'
         });
+        if (!syncResponse.ok) {
+          syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+            method: 'POST'
+          });
+        }
         const syncData = await syncResponse.json();
         if (syncData.success && syncData.data?.synced) {
           this.lastSyncedAt = syncData.data.syncedAt || new Date().toISOString();
@@ -139,6 +145,8 @@ class GameDayLineupScreen extends Screen {
         console.warn('⚠️ GroupMe sync failed:', err.message);
       }
     }
+
+    this.refreshLastSyncIndicator(teamId);
 
     this.loadEligibilityData();
 
@@ -347,9 +355,9 @@ class GameDayLineupScreen extends Screen {
           this.groupmeMembers = membersData.data.members;
           this.clubTeams = membersData.data.teams || [];
           this.allChats = membersData.data.chats || [];
-          this.mergeGroupMeMembers();
-          // If GroupMe is linked, restrict pool to chat members only
-          this.players = this.players.filter(p => p.gmLinked === true);
+          // GroupMe is source of truth for U23 trialists until official roster exists.
+          // Build pool strictly from GroupMe chat members (one row per GroupMe user).
+          this.players = this._buildGroupMeOnlyPlayers(this.groupmeMembers, teamId);
         }
       }
 
@@ -361,6 +369,7 @@ class GameDayLineupScreen extends Screen {
         if (trainingResult.success && trainingResult.data) {
           this.trainingEvents = trainingResult.data.events || [];
           this.mergeTrainingData(trainingResult.data.players || []);
+          this.recomputeSessionsFromTrainingWeek();
         }
       }
 
@@ -527,6 +536,214 @@ class GameDayLineupScreen extends Screen {
     }
   }
 
+  _buildGroupMeOnlyPlayers(groupmeMembers, teamId) {
+    const currentTeamId = String(teamId || '');
+
+    const out = [];
+    const seenKeys = new Set();
+
+    for (const gm of groupmeMembers || []) {
+      if (!gm) continue;
+      if (gm.source === 'roster_only') continue;
+      if (!gm.externalUserId) continue;
+
+      // One entry per linked person when possible; otherwise per GM user.
+      const dedupeKey = gm.personId
+        ? `person:${gm.personId}`
+        : `gm:${gm.externalUserId}`;
+      if (seenKeys.has(dedupeKey)) continue;
+      seenKeys.add(dedupeKey);
+
+      const teams = gm.teams || [];
+      const onCurrentTeam = currentTeamId
+        ? teams.some(t => String(t.teamId) === currentTeamId)
+        : true;
+
+      // Keep current-team members; allow unlinked chat members (no teams yet).
+      if (!onCurrentTeam && teams.length > 0) continue;
+
+      const teamEntry = currentTeamId
+        ? teams.find(t => String(t.teamId) === currentTeamId)
+        : teams[0];
+
+      out.push({
+        personId: gm.personId || null,
+        playerId: teamEntry?.playerId ?? null,
+        firstName: gm.firstName || gm.nickname || '',
+        lastName: gm.lastName || '',
+        jerseyNumber: null,
+        matchRsvp: gm.matchRsvp || null,
+        practiceCount: gm.practiceCount || 0,
+        sessionsAttended: gm.practiceCount || 0,
+        eligibilityStatus: teamEntry ? 'not_computed' : 'not_on_roster',
+        isGuest: true,
+        gmNickname: gm.nickname,
+        gmImageUrl: gm.imageUrl,
+        gmUserId: gm.externalUserId,
+        gmLinked: true,
+        source: gm.source || 'groupme_only',
+        teams
+      });
+    }
+
+    return out;
+  }
+
+  _playerIdentityKey(player) {
+    if (!player) return '';
+    if (player.personId) return `person:${player.personId}`;
+    if (player.gmUserId) return `gm:${player.gmUserId}`;
+    if (player.playerId) return `player:${player.playerId}`;
+    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim().toLowerCase();
+    return name ? `name:${name}` : '';
+  }
+
+  _playerMergeScore(player) {
+    if (!player) return 0;
+    let score = 0;
+    if (player.personId) score += 8;
+    if (player.playerId) score += 5;
+    if (player.gmUserId) score += 4;
+    if (player.onLineup) score += 3;
+    if (player.matchRsvp) score += 2;
+    if ((player.sessionsAttended || 0) > 0) score += 1;
+    if ((player.teams || []).length > 0) score += 1;
+    return score;
+  }
+
+  _mergePlayerRecords(a, b) {
+    const scoreA = this._playerMergeScore(a);
+    const scoreB = this._playerMergeScore(b);
+    const primary = scoreB > scoreA ? b : a;
+    const secondary = primary === a ? b : a;
+    const merged = { ...secondary, ...primary };
+
+    const mergedTeams = [];
+    const seenTeams = new Set();
+    for (const t of [...(a.teams || []), ...(b.teams || [])]) {
+      const teamKey = `${t.teamId || ''}-${t.playerId || ''}`;
+      if (seenTeams.has(teamKey)) continue;
+      seenTeams.add(teamKey);
+      mergedTeams.push(t);
+    }
+
+    merged.teams = mergedTeams;
+    merged.sessionsAttended = Math.max(a.sessionsAttended || 0, b.sessionsAttended || 0);
+    merged.practiceCount = Math.max(a.practiceCount || 0, b.practiceCount || 0);
+    merged.onLineup = !!(a.onLineup || b.onLineup);
+    merged.isStarter = !!(a.isStarter || b.isStarter);
+    merged.gmLinked = !!(a.gmLinked || b.gmLinked);
+
+    // Preserve stable identity fields from either side (never drop to null).
+    merged.playerId = primary.playerId ?? secondary.playerId ?? null;
+    merged.personId = primary.personId ?? secondary.personId ?? null;
+    merged.gmUserId = primary.gmUserId ?? secondary.gmUserId ?? null;
+    merged.dateOfBirth = primary.dateOfBirth || secondary.dateOfBirth || null;
+
+    // Keep most informative name if one side is blank.
+    merged.firstName = (primary.firstName && String(primary.firstName).trim())
+      ? primary.firstName
+      : secondary.firstName;
+    merged.lastName = (primary.lastName && String(primary.lastName).trim())
+      ? primary.lastName
+      : secondary.lastName;
+
+    return merged;
+  }
+
+  _dedupePlayers(players) {
+    const byKey = new Map();
+    const passthrough = [];
+
+    for (const player of players || []) {
+      const key = this._playerIdentityKey(player);
+      if (!key) {
+        passthrough.push(player);
+        continue;
+      }
+      if (!byKey.has(key)) {
+        byKey.set(key, player);
+      } else {
+        byKey.set(key, this._mergePlayerRecords(byKey.get(key), player));
+      }
+    }
+
+    return [...byKey.values(), ...passthrough];
+  }
+
+  _practiceLookbackCount() {
+    return 5;
+  }
+
+  _ageFromDob(dob, asOf = new Date()) {
+    if (!dob) return null;
+    const born = new Date(dob);
+    if (!Number.isFinite(born.getTime())) return null;
+
+    let age = asOf.getFullYear() - born.getFullYear();
+    const monthDelta = asOf.getMonth() - born.getMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && asOf.getDate() < born.getDate())) {
+      age -= 1;
+    }
+    return age >= 0 ? age : null;
+  }
+
+  _ageBasedRequiredSessions(player) {
+    if (!player) return 1;
+    if (player.isKeeper || player.isChild) return 0;
+
+    const age = this._ageFromDob(player.dateOfBirth, new Date());
+    if (age == null) return 1;
+    if (age <= 17) return 3;
+    if (age <= 22) return 2;
+    return 1;
+  }
+
+  _hasKnownAge(player) {
+    return this._ageFromDob(player?.dateOfBirth, new Date()) != null;
+  }
+
+  _requiredSessionsFor(player) {
+    if (!player) return 1;
+    if (player.isKeeper || player.isChild) return 0;
+    if (player.requiredSessionsOverride != null) return player.requiredSessionsOverride;
+    return this._ageBasedRequiredSessions(player);
+  }
+
+  _matchTimeMs() {
+    const raw = this.matchInfo?.eventDate
+      || this.matchInfo?.matchDate
+      || this.matchInfo?.date
+      || this.navigation?.context?.match?.event_date
+      || this.navigation?.context?.match?.date
+      || '';
+    const ts = new Date(raw).getTime();
+    return Number.isFinite(ts) ? ts : null;
+  }
+
+  _canMeetPracticeByMatch(player) {
+    const required = this._requiredSessionsFor(player);
+    const lookback = this._practiceLookbackCount();
+    const attended = Math.min(lookback, player.sessionsAttended || 0);
+    if (attended >= required) return true;
+
+    const matchTs = this._matchTimeMs();
+    if (!matchTs) return false;
+
+    const now = Date.now();
+    let upcoming = 0;
+    for (const evt of this.trainingEvents || []) {
+      const ts = new Date(evt.startAt || evt.eventDate || evt.date || '').getTime();
+      if (!Number.isFinite(ts)) continue;
+      if (ts > now && ts <= matchTs) upcoming += 1;
+    }
+
+    const remainingSlots = Math.max(0, lookback - attended);
+    upcoming = Math.min(upcoming, remainingSlots);
+
+    return (attended + upcoming) >= required;
+  }
+
   /**
    * Merge training attendance data from training-week API onto players.
    * Maps personId → { eventId → {attended, source} }
@@ -544,6 +761,34 @@ class GameDayLineupScreen extends Screen {
         }
       }
       this.trainingData.set(tp.personId, att);
+    }
+  }
+
+  recomputeSessionsFromTrainingWeek() {
+    if (!this.trainingEvents?.length || !this.players?.length) return;
+
+    const eventById = new Map();
+    for (const evt of this.trainingEvents) {
+      eventById.set(String(evt.id), evt);
+    }
+
+    for (const player of this.players) {
+      if (!player?.personId) continue;
+      const personAttendance = this.trainingData.get(player.personId) || {};
+      const attendedDates = new Set();
+
+      for (const [eventId, val] of Object.entries(personAttendance)) {
+        const attended = (val === true) || (val && val.attended === true);
+        if (!attended) continue;
+
+        const evt = eventById.get(String(eventId));
+        if (!evt) continue;
+        if (evt.eventDate) attendedDates.add(evt.eventDate);
+      }
+
+      // Use the same computed value for both fields the UI reads.
+      player.sessionsAttended = attendedDates.size;
+      player.practiceCount = attendedDates.size;
     }
   }
 
@@ -1090,9 +1335,14 @@ class GameDayLineupScreen extends Screen {
     const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
 
     try {
-      const syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+      let syncResponse = await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}?teamId=${teamId}`, {
         method: 'POST'
       });
+      if (!syncResponse.ok) {
+        syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+          method: 'POST'
+        });
+      }
       const syncData = await syncResponse.json();
 
       if (syncData.success && syncData.data?.synced) {
@@ -1107,8 +1357,43 @@ class GameDayLineupScreen extends Screen {
       this.showLineupToast('❌ Sync failed: ' + err.message);
     }
 
+    this.refreshLastSyncIndicator(teamId);
+
     // Reload eligibility with fresh data
     await this.loadEligibilityData();
+  }
+
+  async refreshLastSyncIndicator(teamId) {
+    const el = this.find('#gm-last-sync');
+    if (!el) return;
+    if (!teamId) {
+      el.textContent = 'Last GroupMe sync: n/a';
+      return;
+    }
+
+    try {
+      const res = await this.auth.fetch(`/api/groupme/sync-status/${teamId}`);
+      const data = await res.json();
+      const raw = data?.data?.lastSync;
+      if (!raw) {
+        el.textContent = 'Last GroupMe sync: never';
+        return;
+      }
+
+      const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+      const dt = new Date(normalized);
+      if (Number.isFinite(dt.getTime())) {
+        const stamp = dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const minutes = Number.isFinite(data?.data?.minutesAgo) ? data.data.minutesAgo : null;
+        el.textContent = minutes != null && minutes >= 0
+          ? `Last GroupMe sync: ${stamp} (${minutes}m ago)`
+          : `Last GroupMe sync: ${stamp}`;
+      } else {
+        el.textContent = `Last GroupMe sync: ${raw}`;
+      }
+    } catch (_) {
+      el.textContent = 'Last GroupMe sync: unavailable';
+    }
   }
 
   // ============================================================================
@@ -1228,7 +1513,10 @@ class GameDayLineupScreen extends Screen {
   // Rendering
   // ============================================================================
   getPlayerById(playerId) {
-    return this.players.find(p => p.playerId === playerId);
+    if (playerId == null) return null;
+    const normalized = typeof playerId === 'number' ? playerId : parseInt(playerId, 10);
+    if (!Number.isFinite(normalized)) return null;
+    return this.players.find(p => Number(p.playerId) === normalized) || null;
   }
 
   renderAllZones() {
@@ -1395,6 +1683,9 @@ class GameDayLineupScreen extends Screen {
     const name = player.personId
       ? `${player.firstName || ''} ${player.lastName || ''}`.trim()
       : (player.gmNickname || `${player.firstName || ''} ${player.lastName || ''}`.trim());
+    const noAgeBadge = this._hasKnownAge(player)
+      ? ''
+      : '<span style="font-size:0.62rem;color:#fca5a5;border:1px solid rgba(252,165,165,0.35);border-radius:3px;padding:1px 3px;margin-left:6px;">NO AGE</span>';
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
     const rsvpDot = player.matchRsvp === 'yes' ? '🟢' : player.matchRsvp === 'no' ? '🔴' : '🟡';
     const prac = player.sessionsAttended || 0;
@@ -1403,7 +1694,7 @@ class GameDayLineupScreen extends Screen {
 
     card.innerHTML = `
       <span style="font-size:0.8rem;opacity:0.5;min-width:28px;text-align:right;">${jersey}</span>
-      <span style="flex:1;font-size:0.9rem;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
+      <span style="flex:1;font-size:0.9rem;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}${noAgeBadge}</span>
       <span title="${player.eligibilityStatus || ''}" style="font-size:0.85rem;">${eligIcon}</span>
       <span style="font-size:0.75rem;opacity:0.6;">${pracStr}</span>
       <span style="font-size:0.75rem;">${rsvpDot}</span>
@@ -1833,9 +2124,10 @@ class GameDayLineupScreen extends Screen {
   // Combined RSVP + practice state → one of: green, yellow, blue, orange, red
   _eligState(player) {
     const rsvpYes   = player.matchRsvp === 'yes';
-    const status    = player.eligibilityStatus;
-    const metPrac   = status === 'priority_starter' || status === 'eligible_starter';
-    const partPrac  = status === 'bench_only';
+    const required  = this._requiredSessionsFor(player);
+    const attended  = player.sessionsAttended || 0;
+    const metPrac   = attended >= required;
+    const partPrac  = attended > 0 && attended < required;
     if (rsvpYes && metPrac)   return 'green';
     if (rsvpYes && partPrac)  return 'yellow';
     if (rsvpYes)              return 'blue';
@@ -2255,9 +2547,8 @@ class GameDayLineupScreen extends Screen {
       const newCount = sessions.filter(s => s.attended).length;
       player.sessionsAttended = newCount;
 
-cd      // Re-classify this player's eligibility status using per-player effective minimum
-      const effectiveMin = (player.isKeeper || player.isChild) ? 0
-        : player.effectiveMinSessions ?? (player.requiredSessions ?? this.policy.minSessionsToStart);
+      // Re-classify this player's eligibility status using current age/override rule
+      const effectiveMin = this._requiredSessionsFor(player);
       player.effectiveMinSessions = effectiveMin;
 
       if (newCount >= this.policy.priorityStarterSessions) {
@@ -3372,6 +3663,9 @@ cd      // Re-classify this player's eligibility status using per-player effecti
     const initials  = (firstName[0] || '') + (lastName[0] || '') || '?';
     const starBadge = player.isDesignated
       ? '<span style="color:#fbbf24;font-size:0.4rem;position:absolute;top:-1px;right:-1px;">★</span>' : '';
+    const noAgeBadge = this._hasKnownAge(player)
+      ? ''
+      : '<div style="font-size:0.5rem;color:#fca5a5;font-weight:700;line-height:1;">NO AGE</div>';
     const chip = document.createElement('div');
     chip.className = 'shelf-chip';
     chip.dataset.playerId = player.playerId;
@@ -3382,6 +3676,7 @@ cd      // Re-classify this player's eligibility status using per-player effecti
       <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
       <div style="position:relative;width:28px;height:28px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.65);">${initials}${starBadge}</div>
       <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${lastName}</div>
+      ${noAgeBadge}
     `;
     chip.addEventListener('dragstart', (e) => {
       e.dataTransfer.effectAllowed = 'move';
@@ -3407,7 +3702,8 @@ cd      // Re-classify this player's eligibility status using per-player effecti
     lbl.style.cssText = `font-size:0.6rem;color:${color};text-align:center;padding:3px 0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;`;
     lbl.textContent = label;
     panel.appendChild(lbl);
-    const players = playerIds.map(id => this.getPlayerById(id)).filter(Boolean);
+    const uniqueIds = Array.from(new Set(playerIds));
+    const players = uniqueIds.map(id => this.getPlayerById(id)).filter(Boolean);
     for (const p of players) {
       panel.appendChild(this._buildPanelChipEl(p, zone));
     }
@@ -3445,22 +3741,22 @@ cd      // Re-classify this player's eligibility status using per-player effecti
   }
 
   // Top strip: 4 labelled segments (left→right):
-  //   1. blue   – RSVP yes, 0 sessions
-  //   2. yellow – RSVP yes + partial (bench_only)
-  //   3. orange – met threshold, no RSVP
-  //   4. dim    – partial practice, no RSVP
+  //   1. green  – RSVP + made/predicted practice requirement
+  //   2. blue   – RSVP only
+  //   3. amber  – Practice only
+  //   4. gray   – Nothing yet
   _buildTopStrip() {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
     const pool = this.players.filter(p => !allZoned.has(p.playerId));
 
-    const metPrac   = (p) => p.eligibilityStatus === 'priority_starter' || p.eligibilityStatus === 'eligible_starter';
-    const partPrac  = (p) => p.eligibilityStatus === 'bench_only';
+    const meetsOrPredicted = (p) => this._canMeetPracticeByMatch(p);
+    const rsvpYes = (p) => p.matchRsvp === 'yes';
 
     const segments = [
-      { color: '#60a5fa', label: 'RSVP only',          players: this._rankPlayers(pool.filter(p =>  p.matchRsvp === 'yes' && !metPrac(p) && !partPrac(p))) },
-      { color: '#eab308', label: 'RSVP + partial',     players: this._rankPlayers(pool.filter(p =>  p.matchRsvp === 'yes' && partPrac(p))) },
-      { color: '#f97316', label: 'Full prac, no RSVP', players: this._rankPlayers(pool.filter(p =>  p.matchRsvp !== 'yes' && metPrac(p))) },
-      { color: '#9ca3af', label: 'Partial, no RSVP',   players: this._rankPlayers(pool.filter(p =>  p.matchRsvp !== 'yes' && partPrac(p))) },
+      { color: '#22c55e', label: 'RSVP + Req/Proj', players: this._rankPlayers(pool.filter(p => rsvpYes(p) && meetsOrPredicted(p))) },
+      { color: '#60a5fa', label: 'RSVP Only',        players: this._rankPlayers(pool.filter(p => rsvpYes(p) && !meetsOrPredicted(p))) },
+      { color: '#f59e0b', label: 'Practice Only',    players: this._rankPlayers(pool.filter(p => !rsvpYes(p) && meetsOrPredicted(p))) },
+      { color: '#9ca3af', label: 'Nothing',          players: this._rankPlayers(pool.filter(p => !rsvpYes(p) && !meetsOrPredicted(p))) },
     ];
 
     const strip = document.createElement('div');
@@ -3563,6 +3859,26 @@ cd      // Re-classify this player's eligibility status using per-player effecti
       const [hh, mm] = t.split(':').map(Number);
       return `${hh%12||12}${mm ? ':'+String(mm).padStart(2,'0') : ''}${hh >= 12 ? 'pm' : 'am'}`;
     };
+    const fmtEventStamp = (eventDate, startAt) => {
+      let datePart = '';
+      if (eventDate) {
+        const d = new Date(`${eventDate}T12:00:00`);
+        if (!isNaN(d)) {
+          datePart = `${d.getMonth()+1}/${d.getDate()}`;
+        }
+      }
+
+      let timePart = '';
+      if (startAt) {
+        const d = new Date(startAt.includes('T') ? startAt : startAt.replace(' ', 'T'));
+        if (!isNaN(d)) {
+          const h = d.getHours(), min = d.getMinutes(), ap = h >= 12 ? 'pm' : 'am';
+          timePart = `${h%12||12}${min ? ':'+String(min).padStart(2,'0') : ''}${ap}`;
+        }
+      }
+
+      return [datePart, timePart].filter(Boolean).join(' ');
+    };
     const mkDot = (color, n) =>
       `<span style="display:inline-flex;align-items:center;gap:2px;">` +
       `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>` +
@@ -3578,24 +3894,62 @@ cd      // Re-classify this player's eligibility status using per-player effecti
       card.addEventListener('click', onSync);
       return card;
     };
+    const dayAbbrev = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id;
     const matchId = this.navigation.context.match?.id;
-    const dayAbbrev = { sunday:'Su', monday:'Mo', tuesday:'Tu', wednesday:'We', thursday:'Th', friday:'Fr', saturday:'Sa' };
-    const now = Date.now();
 
-    const leagueData = this._leaguesSyncData;
+    const matchTs = this._matchTimeMs();
+    const trainingForRow = [...(this.trainingEvents || [])]
+      .filter(evt => {
+        const ts = evt.eventDate
+          ? new Date(`${evt.eventDate}T12:00:00`).getTime()
+          : new Date(evt.startAt || evt.date || '').getTime();
+        if (!Number.isFinite(ts)) return false;
+        if (matchTs && ts > matchTs) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const aTs = a.eventDate
+          ? new Date(`${a.eventDate}T12:00:00`).getTime()
+          : new Date(a.startAt || a.date || '').getTime();
+        const bTs = b.eventDate
+          ? new Date(`${b.eventDate}T12:00:00`).getTime()
+          : new Date(b.startAt || b.date || '').getTime();
+        return bTs - aTs;
+      });
 
-    for (const evt of (this.trainingEvents || [])) {
-      const t = evt.title.toLowerCase();
-      const day = Object.entries(dayAbbrev).find(([d]) => t.includes(d))?.[1] || evt.eventDate.slice(5, 10);
-      const isPickup = t.includes('pickup');
-      const label = (isPickup ? 'P' : 'T') + ' ' + day;
-      const evtDt = fmtTs(evt.startAt || '') || evt.eventDate.slice(5, 10);
+    // Last 5 unique event days before game day.
+    const uniqueByDate = [];
+    const seenDates = new Set();
+    for (const evt of trainingForRow) {
+      const dateKey = evt.eventDate || '';
+      if (!dateKey || seenDates.has(dateKey)) continue;
+      seenDates.add(dateKey);
+      uniqueByDate.push(evt);
+      if (uniqueByDate.length >= this._practiceLookbackCount()) break;
+    }
+
+    const recentFive = uniqueByDate
+      .sort((a, b) => {
+        const aTs = a.eventDate
+          ? new Date(`${a.eventDate}T12:00:00`).getTime()
+          : new Date(a.startAt || a.date || '').getTime();
+        const bTs = b.eventDate
+          ? new Date(`${b.eventDate}T12:00:00`).getTime()
+          : new Date(b.startAt || b.date || '').getTime();
+        return aTs - bTs;
+      });
+    for (const evt of recentFive) {
+      const labelTs = evt.eventDate
+        ? new Date(`${evt.eventDate}T12:00:00`).getTime()
+        : new Date(evt.startAt || evt.date || '').getTime();
+      const dayLabel = Number.isFinite(labelTs) ? dayAbbrev[new Date(labelTs).getDay()] : 'Train';
+      const evtDt = fmtEventStamp(evt.eventDate, evt.startAt) || (evt.eventDate ? evt.eventDate.slice(5, 10) : '');
       const going = evt.goingCount ?? 0;
       const noResp = (evt.noResponseCount ?? 0) + (evt.maybeCount ?? 0);
       const notGoing = evt.notGoingCount ?? 0;
-      syncRow.appendChild(mkCard(label, evtDt, { going, noResp, notGoing }, () => {
+      syncRow.appendChild(mkCard(dayLabel, evtDt, { going, noResp, notGoing }, () => {
         this._openEventRsvpModal({ type: 'training', chatEventId: evt.id, title: evt.title, startAt: evt.startAt, eventDate: evt.eventDate, teamId });
       }));
     }
@@ -3606,7 +3960,7 @@ cd      // Re-classify this player's eligibility status using per-player effecti
     const gameGoing = gs.goingCount ?? 0;
     const gameNoResp = gs.noResponseCount ?? 0;
     const gameNotGoing = gs.notGoingCount ?? 0;
-    syncRow.appendChild(mkCard('G ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
+    syncRow.appendChild(mkCard('Game ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }));
 
@@ -3704,7 +4058,7 @@ cd      // Re-classify this player's eligibility status using per-player effecti
       syncBtn.disabled = true; syncBtn.textContent = '⏳ Syncing...';
       try {
         const url = type === 'game'
-          ? `/api/groupme/sync-match/${matchId}?teamId=${teamId}`
+          ? `/api/groupme/sync-for-match/${matchId}?teamId=${teamId}`
           : `/api/groupme/sync-calendar/${teamId}`;
         const r = await this.auth.fetch(url, { method: 'POST' });
         const rd = await r.json();
@@ -4354,7 +4708,8 @@ cd      // Re-classify this player's eligibility status using per-player effecti
     if (!player) return;
 
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
-    const prac     = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
+    const requiredForPlayer = this._requiredSessionsFor(player);
+    const prac     = `${player.sessionsAttended || 0}/${this._practiceLookbackCount()} · req ${requiredForPlayer}`;
     const pos      = player.position || '—';
     const isOnPitch = slotIndex !== undefined && this.zones.starting[slotIndex] === playerId;
     const currentZone = isOnPitch ? 'starting'
@@ -4437,7 +4792,7 @@ cd      // Re-classify this player's eligibility status using per-player effecti
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div>
                 <div style="font-size:0.88rem;">🎂 Date of Birth</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">U19 (born after 2007) = 3 req · U23 (born after 2003) = 2 req · Senior = 1 req</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Age now: 17 and under = 3 · 18-22 = 2 · 23+ = 1 (within last 5)</div>
               </div>
               <input type="date" id="ep-dob" value="${player.dateOfBirth || ''}" placeholder="YYYY-MM-DD"
                 style="padding:5px 6px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.82rem;">
@@ -4446,10 +4801,10 @@ cd      // Re-classify this player's eligibility status using per-player effecti
             <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div>
                 <div style="font-size:0.88rem;">🏃 Required Sessions</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">Auto-set from DOB · override if needed</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Auto from DOB (no DOB = 1) · override if needed</div>
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <span id="ep-req-auto" style="font-size:0.78rem;color:var(--text-muted);">(auto: ${player.requiredSessions ?? '?'})</span>
+                <span id="ep-req-auto" style="font-size:0.78rem;color:var(--text-muted);">(auto: ${this._ageBasedRequiredSessions(player)}${this._hasKnownAge(player) ? '' : ' · NO AGE'})</span>
                 <input type="number" id="ep-req-override" min="0" max="10"
                   value="${player.requiredSessionsOverride != null ? player.requiredSessionsOverride : ''}"
                   placeholder="—"
@@ -4626,6 +4981,7 @@ cd      // Re-classify this player's eligibility status using per-player effecti
       if (saveStatus) saveStatus.textContent = 'Saving...';
       if (saveTimer) clearTimeout(saveTimer);
       saveTimer = setTimeout(async () => {
+        const prevDob          = player.dateOfBirth || '';
         const designated       = overlay.querySelector('#ep-designated').checked;
         const numClubs         = parseInt(overlay.querySelector('#ep-numclubs').value);
         const isKeeper         = overlay.querySelector('#ep-keeper').checked;
@@ -4658,14 +5014,13 @@ cd      // Re-classify this player's eligibility status using per-player effecti
         player.eligLiga1Bench     = eligLiga1Bench;
         player.eligLiga2Starter   = eligLiga2Starter;
         player.eligLiga2Bench     = eligLiga2Bench;
-        if (dobVal) player.dateOfBirth = dobVal;
+        player.dateOfBirth = dobVal || null;
         player.requiredSessionsOverride = reqOverride;
 
         if (this.policy?.minSessionsToStart !== undefined) {
-          const ageReq = player.requiredSessions ?? this.policy.minSessionsToStart;
           const effectiveMin = (isKeeper || isChild) ? 0
             : reqOverride != null ? reqOverride
-            : ageReq;
+            : this._ageBasedRequiredSessions(player);
           player.effectiveMinSessions = effectiveMin;
           const s = player.sessionsAttended || 0;
           if (s >= (this.policy.priorityStarterSessions || 999)) player.eligibilityStatus = 'priority_starter';
@@ -4691,7 +5046,7 @@ cd      // Re-classify this player's eligibility status using per-player effecti
             })
           ];
           // Save DOB to persons table if changed
-          if (dobVal && dobVal !== (player.dateOfBirth || '')) {
+          if (player.personId && dobVal && dobVal !== prevDob) {
             saves.push(this.auth.fetch(`/api/eligibility/person/${player.personId}/dob`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },

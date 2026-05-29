@@ -32,6 +32,9 @@ LE_EMAIL=
 META_AD_ACCOUNT_ID=
 META_PAGE_ID=
 META_ADS_TOKEN=
+# Dedicated Page token used by webhook lead fetch (/leadgen_id)
+# Keep this separate from META_ADS_TOKEN to avoid accidental permission drift.
+META_LEADS_TOKEN=
 EOF
   print_success "env file created"
 else

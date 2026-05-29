@@ -61,10 +61,39 @@ class LeadsScreen extends Screen {
 
   renderLeads(leads) {
     const container = this.find('#leads-list');
+
+    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women'];
+    const COLORS  = {
+      'Brazil Men':  '#15803d',
+      'U23 Men':     '#1d4ed8',
+      'PR Men':      '#7c3aed',
+      'U23 Women':   '#be185d',
+    };
+
+    // Group + sort each column by date descending
+    const grouped = {};
+    for (const col of COLUMNS) grouped[col] = [];
+    for (const l of leads) {
+      const label = this.formLabel(l.form_id) || 'Other';
+      if (grouped[label]) grouped[label].push(l);
+    }
+    for (const col of COLUMNS) {
+      grouped[col].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
     container.innerHTML = `
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">${leads.length} lead${leads.length !== 1 ? 's' : ''}</p>
-      <div style="display:flex; flex-direction:column; gap:var(--space-2);">
-        ${leads.map(l => this.renderLead(l)).join('')}
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); align-items:start;">
+        ${COLUMNS.map(col => `
+          <div>
+            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${COLORS[col]}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-2); text-align:center;">
+              ${col} <span style="opacity:0.8;">(${grouped[col].length})</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:var(--space-2);">
+              ${grouped[col].map(l => this.renderLead(l, false)).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>'}
+            </div>
+          </div>
+        `).join('')}
       </div>
     `;
   }
@@ -86,7 +115,6 @@ class LeadsScreen extends Screen {
     const date = new Date(lead.created_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
-    const source = this.formLabel(lead.form_id);
 
     // Parse extra fields from raw_fields for display
     const extras = [];
@@ -102,15 +130,12 @@ class LeadsScreen extends Screen {
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-1);">
-          <div style="display:flex; align-items:center; gap:var(--space-2);">
-            <strong>${lead.name || '(no name)'}</strong>
-            ${source ? `<span style="font-size:0.75rem; background:#2563eb; color:#fff; border-radius:var(--radius-sm); padding:1px 6px;">${source}</span>` : ''}
-          </div>
-          <span style="font-size:0.8rem; opacity:0.5;">${date}</span>
+          <strong style="font-size:0.9rem;">${lead.name || '(no name)'}</strong>
+          <span style="font-size:0.75rem; opacity:0.5; white-space:nowrap; margin-left:var(--space-2);">${date}</span>
         </div>
-        ${lead.email ? `<div style="font-size:0.9rem;">${lead.email}</div>` : ''}
-        ${lead.phone ? `<div style="font-size:0.9rem; opacity:0.8;">${lead.phone}</div>` : ''}
-        ${extras.length ? `<div style="font-size:0.85rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
+        ${lead.email ? `<div style="font-size:0.85rem;">${lead.email}</div>` : ''}
+        ${lead.phone ? `<div style="font-size:0.85rem; opacity:0.8;">${lead.phone}</div>` : ''}
+        ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
       </div>
     `;
   }
