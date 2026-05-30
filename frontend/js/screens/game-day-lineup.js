@@ -625,20 +625,16 @@ class GameDayLineupScreen extends Screen {
       seenKeys.add(dedupeKey);
 
       const teams = gm.teams || [];
-      const onCurrentTeam = currentTeamId
-        ? teams.some(t => String(t.teamId) === currentTeamId)
-        : true;
-
-      // Keep current-team members; allow unlinked chat members (no teams yet).
-      if (!onCurrentTeam && teams.length > 0) continue;
 
       const teamEntry = currentTeamId
         ? teams.find(t => String(t.teamId) === currentTeamId)
         : teams[0];
 
+      const fallbackPlayerId = this._syntheticPlayerIdFromGmUser(gm.externalUserId);
+
       out.push({
         personId: gm.personId || null,
-        playerId: teamEntry?.playerId ?? null,
+        playerId: teamEntry?.playerId ?? fallbackPlayerId,
         firstName: gm.firstName || gm.nickname || '',
         lastName: gm.lastName || '',
         jerseyNumber: null,
@@ -657,6 +653,17 @@ class GameDayLineupScreen extends Screen {
     }
 
     return out;
+  }
+
+  _syntheticPlayerIdFromGmUser(externalUserId) {
+    const raw = String(externalUserId || '');
+    if (!raw) return -1;
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) {
+      hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
+    }
+    const positive = Math.abs(hash) % 900000000;
+    return -(positive + 1000);
   }
 
   _playerIdentityKey(player) {
@@ -1675,6 +1682,7 @@ class GameDayLineupScreen extends Screen {
         }
       }
       this._enforceApslFilter();
+      this._enforceNoRsvpInLineup();
       return;
     }
 
@@ -1695,6 +1703,16 @@ class GameDayLineupScreen extends Screen {
     this.zones.starting   = strip(this.zones.starting);
     this.zones.bench      = strip(this.zones.bench);
     this.zones.alternates = strip(this.zones.alternates);
+  }
+
+  _enforceNoRsvpInLineup() {
+    const keep = (arr) => arr.filter((id) => {
+      const p = this.getPlayerById(id);
+      return p && !this._isRsvpNo(p);
+    });
+    this.zones.starting = keep(this.zones.starting);
+    this.zones.bench = keep(this.zones.bench);
+    this.zones.alternates = keep(this.zones.alternates);
   }
 
   _autoDistribute() {
@@ -1991,7 +2009,12 @@ class GameDayLineupScreen extends Screen {
 
       // Update local player state
       const player = this.getPlayerById(parseInt(playerId));
-      if (player) player.matchRsvp = rsvpStatus;
+      if (player) {
+        player.matchRsvp = rsvpStatus;
+        if (this._isRsvpNo(player)) {
+          this.removePlayerFromAllZones(player.playerId);
+        }
+      }
 
       // Re-render zones (RSVP change may move player between sections)
       this.renderAllZones();
@@ -2276,7 +2299,7 @@ class GameDayLineupScreen extends Screen {
   }
 
   getRsvpShort(rsvp) {
-    switch (rsvp) {
+    switch (this._normalizeRsvp(rsvp)) {
       case 'yes': return '✓';
       case 'no': return '✗';
       case 'maybe': return '?';
@@ -2285,7 +2308,7 @@ class GameDayLineupScreen extends Screen {
   }
 
   getRsvpClass(rsvp) {
-    switch (rsvp) {
+    switch (this._normalizeRsvp(rsvp)) {
       case 'yes': return 'rsvp-yes';
       case 'no': return 'rsvp-no';
       case 'maybe': return 'rsvp-maybe';
@@ -2294,12 +2317,34 @@ class GameDayLineupScreen extends Screen {
   }
 
   getRsvpLabel(rsvp) {
-    switch (rsvp) {
+    switch (this._normalizeRsvp(rsvp)) {
       case 'yes': return '✓ Going';
       case 'no': return '✗ Not Going';
       case 'maybe': return '? Maybe';
       default: return '… Pending';
     }
+  }
+
+  _normalizeRsvp(rsvp) {
+    const v = String(rsvp || '').trim().toLowerCase();
+    if (!v) return '';
+    if (v === 'yes' || v === 'going' || v === 'attending') return 'yes';
+    if (v === 'no' || v === 'not_going' || v === 'not going' || v === 'notgoing' || v === 'not_attending') return 'no';
+    if (v === 'maybe' || v === 'maybe_going' || v === 'pending') return 'maybe';
+    return v;
+  }
+
+  _isRsvpYes(player) {
+    return this._normalizeRsvp(player?.matchRsvp) === 'yes';
+  }
+
+  _isRsvpNo(player) {
+    return this._normalizeRsvp(player?.matchRsvp) === 'no';
+  }
+
+  _isRsvpPending(player) {
+    const n = this._normalizeRsvp(player?.matchRsvp);
+    return n !== 'yes' && n !== 'no';
   }
 
   // ============================================================================
@@ -3170,10 +3215,8 @@ class GameDayLineupScreen extends Screen {
     lanesRow.appendChild(benchStrip);
     bar.appendChild(lanesRow);
 
-    const countRow = document.createElement('div');
-    countRow.style.cssText = 'padding:4px 8px;border-top:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.45);font-size:0.74rem;';
-    countRow.textContent = `On Pitch ${this.zones.starting.filter(Boolean).length}/11`;
-    bar.appendChild(countRow);
+    // Restore compact event cards (last 5 training/pickup + game) with per-item sync actions.
+    bar.appendChild(this._buildSyncRow());
 
     wrapper.appendChild(bar);
 
@@ -3213,6 +3256,16 @@ class GameDayLineupScreen extends Screen {
 
       // ── draw pitch background ─────────────────────────────────────────────
       this._drawPitchField(ctx, W, H, landscape);
+
+      // Compact in-pitch count label
+      const onPitchCount = this.zones.starting.filter(Boolean).length;
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.7)';
+      ctx.fillRect(8, 8, 92, 20);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = '600 11px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`On Pitch ${onPitchCount}/11`, 14, 18);
 
       // ── draw only players currently on pitch (no formation slots) ─────────
       const starters = this.zones.starting
@@ -3738,22 +3791,27 @@ class GameDayLineupScreen extends Screen {
   // ── Build a vertical side panel (bench or alternates) ────────────────────
   _buildSidePlayerPanel(playerIds, color, zone, label) {
     const panel = document.createElement('div');
-    panel.style.cssText = `width:52px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;min-height:0;max-height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:rgba(0,0,0,0.25);padding:4px 2px;gap:3px;scrollbar-width:thin;`;
+    panel.style.cssText = `width:74px;flex-shrink:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;min-height:0;max-height:100%;background:rgba(0,0,0,0.25);`;
     const lbl = document.createElement('div');
-    lbl.style.cssText = `font-size:0.6rem;color:${color};text-align:center;padding:3px 0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;`;
+    lbl.style.cssText = `font-size:0.52rem;color:${color};text-align:center;padding:4px 1px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);border-right:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.18);`;
     lbl.textContent = label;
     panel.appendChild(lbl);
+
+    const chipsCol = document.createElement('div');
+    chipsCol.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;min-height:0;max-height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px 8px 4px 2px;gap:3px;scrollbar-width:thin;scrollbar-gutter:stable;';
+
     const uniqueIds = Array.from(new Set(playerIds));
     const players = uniqueIds.map(id => this.getPlayerById(id)).filter(Boolean);
     for (const p of players) {
-      panel.appendChild(this._buildPanelChipEl(p, zone));
+      chipsCol.appendChild(this._buildPanelChipEl(p, zone));
     }
     if (players.length === 0) {
       const empty = document.createElement('div');
       empty.style.cssText = 'font-size:0.42rem;color:rgba(255,255,255,0.18);text-align:center;padding:6px 2px;';
       empty.textContent = '—';
-      panel.appendChild(empty);
+      chipsCol.appendChild(empty);
     }
+    panel.appendChild(chipsCol);
     return panel;
   }
 
@@ -3787,7 +3845,7 @@ class GameDayLineupScreen extends Screen {
     const pool = this.players.filter(p => !allZoned.has(p.playerId));
 
     const topPlayers = this._rankPlayers(
-      pool.filter(p => p.matchRsvp !== 'yes' && p.matchRsvp !== 'no')
+      pool.filter(p => this._isRsvpPending(p))
     );
 
     const strip = document.createElement('div');
@@ -3804,7 +3862,7 @@ class GameDayLineupScreen extends Screen {
 
     const lbl = document.createElement('span');
     lbl.style.cssText = 'font-size:0.55rem;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.8;';
-    lbl.textContent = 'Not Responded';
+    lbl.textContent = 'NO RSVP YET';
     group.appendChild(lbl);
 
     for (const p of topPlayers) {
@@ -3821,11 +3879,11 @@ class GameDayLineupScreen extends Screen {
     const qualified = this._rankPlayers(
       this.players.filter(p =>
         !allZoned.has(p.playerId) &&
-        p.matchRsvp === 'yes' &&
+        this._isRsvpYes(p) &&
         !this._canMeetPracticeByMatch(p)
       )
     );
-    return this._buildSidePlayerPanel(qualified.map(p => p.playerId), '#f59e0b', 'pool', '2nd');
+    return this._buildSidePlayerPanel(qualified.map(p => p.playerId), '#f59e0b', 'pool', "RSVP'd GOING but no practice threshold met");
   }
 
   // Right panel: not going.
@@ -3833,11 +3891,9 @@ class GameDayLineupScreen extends Screen {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
     const pool = this.players.filter(p => !allZoned.has(p.playerId));
     const zero = this._rankPlayers(
-      pool.filter(p =>
-        p.matchRsvp === 'no'
-      )
+      pool.filter(p => this._isRsvpNo(p))
     );
-    return this._buildSidePlayerPanel(zero.map(p => p.playerId), '#ef4444', 'pool', 'No');
+    return this._buildSidePlayerPanel(zero.map(p => p.playerId), '#ef4444', 'pool', 'NOT AVAILABLE');
   }
 
   // Bottom strip: RSVP going + made/projected practice requirement (outside pool only).
@@ -3846,7 +3902,7 @@ class GameDayLineupScreen extends Screen {
     const qualified = this._rankPlayers(
       this.players.filter(p =>
         !allZoned.has(p.playerId) &&
-        p.matchRsvp === 'yes' &&
+        this._isRsvpYes(p) &&
         this._canMeetPracticeByMatch(p)
       )
     );
@@ -3854,12 +3910,13 @@ class GameDayLineupScreen extends Screen {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'flex-shrink:0;border-top:2px solid rgba(34,197,94,0.45);background:rgba(0,0,0,0.35);';
 
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:0.62rem;color:rgba(34,197,94,0.9);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;padding:3px 6px 1px;border-bottom:1px solid rgba(255,255,255,0.07);';
+    title.textContent = `Set going & practice threshold met or projected to be met ${qualified.length}`;
+    wrapper.appendChild(title);
+
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:56px;scrollbar-width:none;';
-    const lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:0.65rem;color:rgba(34,197,94,0.85);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:2px;';
-    lbl.textContent = `✅ Going+Practice ${qualified.length}`;
-    row.appendChild(lbl);
 
     if (qualified.length === 0) {
       const empty = document.createElement('span');
@@ -3897,13 +3954,14 @@ class GameDayLineupScreen extends Screen {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'flex-shrink:0;border-top:2px solid rgba(59,130,246,0.4);background:rgba(0,0,0,0.35);';
 
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:0.62rem;color:rgba(59,130,246,0.88);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;padding:3px 6px 1px;border-bottom:1px solid rgba(255,255,255,0.07);';
+    title.textContent = `Bench ${bench.length}/${maxBench}`;
+    wrapper.appendChild(title);
+
     // ── single row: bench chips + sync cards ─────────────────────────────────
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;scrollbar-width:none;';
-    const lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:0.65rem;color:rgba(59,130,246,0.7);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:2px;';
-    lbl.textContent = `🪑 ${bench.length}/${maxBench}`;
-    row.appendChild(lbl);
     if (bench.length === 0) {
       const empty = document.createElement('span');
       empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;';
