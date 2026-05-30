@@ -339,6 +339,13 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
         }
 
         int totalSynced = 0;
+        struct SyncActivity {
+            std::string scope;
+            std::string name;
+            std::string status;
+            int synced;
+        };
+        std::vector<SyncActivity> activities;
 
         // Override-preserving upsert lambda
         auto upsertRsvp = [&](const std::string& chatEventId, const std::vector<std::string>& userIds,
@@ -408,9 +415,11 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
                     auto notGoing = extractStringArray(eventsJson, eventPos, searchEnd, "not_going");
                     auto maybeGoing = extractStringArray(eventsJson, eventPos, searchEnd, "maybe_going");
 
+                    int beforeSynced = totalSynced;
                     upsertRsvp(chatEventId, going, 1, totalSynced);
                     upsertRsvp(chatEventId, notGoing, 2, totalSynced);
                     upsertRsvp(chatEventId, maybeGoing, 3, totalSynced);
+                    int eventSynced = totalSynced - beforeSynced;
 
                     // Remove stale RSVPs not in current GroupMe response
                     std::vector<std::string> allResp;
@@ -432,8 +441,36 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
                     std::cout << "🔄 Match " << matchId << " RSVPs: "
                               << going.size() << "G " << notGoing.size() << "N "
                               << maybeGoing.size() << "M" << std::endl;
+
+                    activities.push_back({
+                        "game",
+                        "Match RSVP",
+                        "success",
+                        eventSynced
+                    });
+                } else {
+                    activities.push_back({
+                        "game",
+                        "Match RSVP",
+                        "not_found_in_group",
+                        0
+                    });
                 }
+            } else {
+                activities.push_back({
+                    "game",
+                    "Match RSVP",
+                    "fetch_failed",
+                    0
+                });
             }
+        } else {
+            activities.push_back({
+                "game",
+                "Match RSVP",
+                "no_linked_event",
+                0
+            });
         }
 
         // ── Part 2: Sync training/pickup RSVPs ──────────────────────────
@@ -503,7 +540,15 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
 
                         std::string eventNeedle = "\"event_id\":\"" + evt.externalId + "\"";
                         size_t eventPos = eventsJson.find(eventNeedle);
-                        if (eventPos == std::string::npos) continue;
+                        if (eventPos == std::string::npos) {
+                            activities.push_back({
+                                "training",
+                                evt.title,
+                                "not_found_in_group",
+                                0
+                            });
+                            continue;
+                        }
 
                         size_t nextEventPos = eventsJson.find("\"event_id\":", eventPos + eventNeedle.length());
                         size_t searchEnd = (nextEventPos != std::string::npos) ? nextEventPos : eventsJson.length();
@@ -512,10 +557,19 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
                         auto notGoing = extractStringArray(eventsJson, eventPos, searchEnd, "not_going");
                         auto maybeGoing = extractStringArray(eventsJson, eventPos, searchEnd, "maybe_going");
 
+                        int beforeSynced = totalSynced;
                         upsertRsvp(evt.id, going, 1, totalSynced);
                         upsertRsvp(evt.id, notGoing, 2, totalSynced);
                         upsertRsvp(evt.id, maybeGoing, 3, totalSynced);
-                        groupSynced += going.size() + notGoing.size() + maybeGoing.size();
+                        int eventSynced = totalSynced - beforeSynced;
+                        groupSynced += eventSynced;
+
+                        activities.push_back({
+                            "training",
+                            evt.title,
+                            "success",
+                            eventSynced
+                        });
 
                         // Remove stale RSVPs not in current GroupMe response
                         std::vector<std::string> allResp;
@@ -546,7 +600,18 @@ Response GroupMeController::handleSyncForMatch(const Request& request) {
 
         std::ostringstream data;
         data << "{\"synced\":true,\"totalRsvps\":" << totalSynced
-             << ",\"elapsed\":" << elapsed << "}";
+               << ",\"elapsed\":" << elapsed
+               << ",\"activities\":[";
+           for (size_t i = 0; i < activities.size(); i++) {
+              if (i > 0) data << ",";
+              data << "{"
+                  << "\"scope\":\"" << escapeJson(activities[i].scope) << "\"," 
+                  << "\"name\":\"" << escapeJson(activities[i].name) << "\"," 
+                  << "\"status\":\"" << escapeJson(activities[i].status) << "\"," 
+                  << "\"synced\":" << activities[i].synced
+                  << "}";
+           }
+           data << "]}";
         return Response(HttpStatus::OK, createJsonResponse(true, "Synced", data.str()));
 
     } catch (const std::exception& e) {
