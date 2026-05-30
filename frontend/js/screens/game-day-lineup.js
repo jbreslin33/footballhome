@@ -3414,9 +3414,9 @@ class GameDayLineupScreen extends Screen {
       if (!pid || !this._toCanonical) return;
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      const rawX = (e.clientX - rect.left) / rect.width * 100;
-      const rawY = (e.clientY - rect.top)  / rect.height * 100;
-      const [canonX, canonY] = this._toCanonical(rawX, rawY);
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const [canonX, canonY] = this._toCanonical(px, py);
       const dropX = Math.max(3, Math.min(97, canonX));
       const dropY = Math.max(2, Math.min(85, canonY));
 
