@@ -79,6 +79,12 @@ const GROUPS = [
     teamLookup: null, // No official league team yet
   },
   {
+    name: 'Lighthouse Boys Club U23 Trialists',
+    groupmeId: '114664832',
+    chatTypeId: 1,  // team
+    teamLookup: null, // Existing chat is already mapped to team 903 (U23 Men)
+  },
+  {
     name: 'Tri County Women\'s Lighthouse',
     groupmeId: '114666358',
     chatTypeId: 1,  // team

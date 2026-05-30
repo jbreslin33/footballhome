@@ -961,6 +961,17 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             }
         }
 
+        // Resolve club for the selected team so training/pickup chats linked at club level
+        // are included in the same lookback window as team chats.
+        std::string clubId;
+        pqxx::result teamMetaResult = db_->query(
+            "SELECT club_id::text FROM teams WHERE id = $1::int",
+            {teamId}
+        );
+        if (!teamMetaResult.empty() && !teamMetaResult[0]["club_id"].is_null()) {
+            clubId = teamMetaResult[0]["club_id"].c_str();
+        }
+
         // Step 1: Get last 5 training/pickup sessions before the reference date
         // Dedup by date so multiple events on the same day count as one session
         std::string dateFilter;
@@ -972,22 +983,36 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             dateFilter = "  AND ce.event_date < CURRENT_DATE ";
         }
 
-        pqxx::result eventResult = db_->query(
-            "SELECT ce.id, ce.title, ce.event_date::text as event_date, "
-            "       ce.start_at::text as start_at, c.name as chat_name "
-            "FROM chat_events ce "
-            "JOIN chats c ON c.id = ce.chat_id "
-            "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
-            "  AND c.team_id = $" + std::to_string(queryParams.size() + 1) + "::int "
-            + dateFilter +
-            "  AND ce.is_active = true "
-            "ORDER BY ce.event_date DESC, ce.title",
-            [&]() {
-                auto p = queryParams;
-                p.push_back(teamId);
-                return p;
-            }()
-        );
+        std::string eventQuery;
+        auto eventParams = queryParams;
+        if (!clubId.empty()) {
+            eventQuery =
+                "SELECT ce.id, ce.title, ce.event_date::text as event_date, "
+                "       ce.start_at::text as start_at, c.name as chat_name "
+                "FROM chat_events ce "
+                "JOIN chats c ON c.id = ce.chat_id "
+                "LEFT JOIN chat_clubs cc ON cc.chat_id = c.id "
+                "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
+                "  AND (c.team_id = $" + std::to_string(queryParams.size() + 1) + "::int "
+                "       OR (cc.club_id IS NOT NULL AND cc.club_id::text = $" + std::to_string(queryParams.size() + 2) + ")) "
+                + dateFilter +
+                "  AND ce.is_active = true "
+                "ORDER BY ce.event_date DESC, ce.title";
+            eventParams.push_back(teamId);
+            eventParams.push_back(clubId);
+        } else {
+            eventQuery =
+                "SELECT ce.id, ce.title, ce.event_date::text as event_date, "
+                "       ce.start_at::text as start_at, c.name as chat_name "
+                "FROM chat_events ce "
+                "JOIN chats c ON c.id = ce.chat_id "
+                "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
+                + dateFilter +
+                "  AND ce.is_active = true "
+                "ORDER BY ce.event_date DESC, ce.title";
+        }
+
+        pqxx::result eventResult = db_->query(eventQuery, eventParams);
 
         // Build events list — limit to 5 unique dates (results are DESC, so newest first)
         struct TrainingEvent {
@@ -1018,15 +1043,27 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
         if (!events.empty() && !accessToken_.empty()) {
             // Group events by chat and find GroupMe group IDs
             std::map<std::string, std::string> chatGroupIds; // chatName → groupmeGroupId
-            pqxx::result ciResult = db_->query(
-                "SELECT c.name, ci.external_id "
-                "FROM chat_integrations ci "
-                "JOIN chats c ON c.id = ci.chat_id "
-                "WHERE ci.provider_id = 1 "
-                "  AND c.team_id = $1::int "
-                "  AND c.name IN ('Training Lighthouse', 'Philadelphia Pickup')",
-                {teamId}
-            );
+            pqxx::result ciResult;
+            if (!clubId.empty()) {
+                ciResult = db_->query(
+                    "SELECT c.name, ci.external_id "
+                    "FROM chat_integrations ci "
+                    "JOIN chats c ON c.id = ci.chat_id "
+                    "LEFT JOIN chat_clubs cc ON cc.chat_id = c.id "
+                    "WHERE ci.provider_id = 1 "
+                    "  AND (c.team_id = $1::int OR (cc.club_id IS NOT NULL AND cc.club_id::text = $2)) "
+                    "  AND c.name IN ('Training Lighthouse', 'Philadelphia Pickup')",
+                    {teamId, clubId}
+                );
+            } else {
+                ciResult = db_->query(
+                    "SELECT c.name, ci.external_id "
+                    "FROM chat_integrations ci "
+                    "JOIN chats c ON c.id = ci.chat_id "
+                    "WHERE ci.provider_id = 1 "
+                    "  AND c.name IN ('Training Lighthouse', 'Philadelphia Pickup')"
+                );
+            }
             for (const auto& row : ciResult) {
                 chatGroupIds[row["name"].c_str()] = row["external_id"].c_str();
             }
@@ -1039,12 +1076,11 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             for (const auto& row : identResult) {
                 personMap[row["external_user_id"].c_str()] = row["person_id"].c_str();
             }
-                "  AND c.team_id = $2::int "
 
             // Fetch and sync each chat's events
             for (const auto& [chatName, groupId] : chatGroupIds) {
-                {matchDate, teamId}
-                                      + "/events/list?token=" + accessToken_;
+                std::string eventsUrl = "https://api.groupme.com/v3/groups/" + groupId
+                    + "/events/list?token=" + accessToken_;
                 std::string eventsJson = httpGet(eventsUrl);
                 if (eventsJson.empty()) continue;
 
@@ -1260,6 +1296,8 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
         std::map<std::string, int> eventNotGoingCount;
         std::map<std::string, int> eventMaybeCount;
         std::map<std::string, int> eventNoResponseCount;
+        std::map<std::string, std::string> eventLastSync;
+        std::map<std::string, int> eventSyncMinutesAgo;
         if (!events.empty()) {
             std::string eventIds;
             for (size_t i = 0; i < events.size(); i++) {
@@ -1297,6 +1335,25 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             for (const auto& row : noRspCountResult) {
                 eventNoResponseCount[row["event_id"].c_str()] = row["cnt"].as<int>();
             }
+
+            // Last successful RSVP sync per event
+            pqxx::result lastSyncResult = db_->query(
+                "SELECT chat_event_id::text as event_id, "
+                "       MAX(responded_at)::text as last_sync, "
+                "       EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - MAX(responded_at))) / 60 as minutes_ago "
+                "FROM chat_event_rsvps "
+                "WHERE chat_event_id IN (" + eventIds + ") "
+                "GROUP BY chat_event_id"
+            );
+            for (const auto& row : lastSyncResult) {
+                std::string eventId = row["event_id"].c_str();
+                if (!row["last_sync"].is_null()) {
+                    eventLastSync[eventId] = row["last_sync"].c_str();
+                }
+                if (!row["minutes_ago"].is_null()) {
+                    eventSyncMinutesAgo[eventId] = static_cast<int>(row["minutes_ago"].as<double>());
+                }
+            }
         }
 
         // Step 7: Build response JSON
@@ -1308,6 +1365,8 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             int notGoing = eventNotGoingCount.count(events[i].id) ? eventNotGoingCount[events[i].id] : 0;
             int maybe = eventMaybeCount.count(events[i].id) ? eventMaybeCount[events[i].id] : 0;
             int noResp = eventNoResponseCount.count(events[i].id) ? eventNoResponseCount[events[i].id] : 0;
+            auto lastSyncIt = eventLastSync.find(events[i].id);
+            auto syncAgeIt = eventSyncMinutesAgo.find(events[i].id);
             json << "{\"id\":" << events[i].id
                  << ",\"title\":\"" << escapeJson(events[i].title) << "\""
                  << ",\"eventDate\":\"" << events[i].eventDate << "\""
@@ -1316,7 +1375,21 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
                  << ",\"goingCount\":" << going
                  << ",\"notGoingCount\":" << notGoing
                  << ",\"maybeCount\":" << maybe
-                 << ",\"noResponseCount\":" << noResp << "}";
+                 << ",\"noResponseCount\":" << noResp;
+
+            if (lastSyncIt != eventLastSync.end()) {
+                std::string isoSync = lastSyncIt->second;
+                auto sp = isoSync.find(' ');
+                if (sp != std::string::npos) isoSync[sp] = 'T';
+                auto dp = isoSync.find('.');
+                if (dp != std::string::npos) isoSync = isoSync.substr(0, dp);
+                isoSync += "Z";
+                json << ",\"lastSync\":\"" << isoSync << "\"";
+            }
+            if (syncAgeIt != eventSyncMinutesAgo.end()) {
+                json << ",\"syncMinutesAgo\":" << syncAgeIt->second;
+            }
+            json << "}";
         }
         json << "],\"players\":[";
 

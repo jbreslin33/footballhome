@@ -423,6 +423,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         std::string groupmeStatus = "no_data";
         std::string groupmeLastSync = "";
         int groupmeMinutesAgo = -1;
+        bool syncedWithin5Min = false;
         bool hasLinkedEvent = false;
         int linkedChatEventId = 0;
         int linkedGoingCount = 0;
@@ -433,9 +434,11 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         try {
             // First check: does this match have a linked GroupMe chat_event?
             pqxx::result linkedResult = db_->query(
-                "SELECT ce.id FROM chat_events ce "
+                "SELECT ce.id "
+                "FROM chat_events ce "
                 "JOIN chats c ON c.id = ce.chat_id "
-                "WHERE ce.match_id = $1::int AND c.team_id = $2::int "
+                "WHERE ce.match_id = $1::int "
+                "ORDER BY CASE WHEN c.team_id = $2::int THEN 0 ELSE 1 END, ce.id DESC "
                 "LIMIT 1",
                 {matchId, teamId}
             );
@@ -490,9 +493,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                     );
                     if (!ageResult.empty()) {
                         groupmeMinutesAgo = static_cast<int>(ageResult[0]["minutes_ago"].as<double>());
-                        if (groupmeMinutesAgo <= 60) {
+                        syncedWithin5Min = (groupmeMinutesAgo >= 0 && groupmeMinutesAgo <= 5);
+                        if (groupmeMinutesAgo <= 5) {
                             groupmeStatus = "fresh";
-                        } else if (groupmeMinutesAgo <= 1440) {
+                        } else if (groupmeMinutesAgo <= 60) {
                             groupmeStatus = "stale";
                         } else {
                             groupmeStatus = "very_stale";
@@ -538,6 +542,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"groupmeSync\":{";
         json << "\"status\":\"" << groupmeStatus << "\"";
         json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
+        json << ",\"isFresh5Min\":" << (syncedWithin5Min ? "true" : "false");
         if (linkedChatEventId > 0) json << ",\"chatEventId\":" << linkedChatEventId;
         if (linkedGoingCount > 0) json << ",\"goingCount\":" << linkedGoingCount;
         if (linkedNotGoingCount > 0) json << ",\"notGoingCount\":" << linkedNotGoingCount;

@@ -68,7 +68,7 @@ class GameDayLineupScreen extends Screen {
 
           <!-- GroupMe sync warning -->
           <div id="groupme-warning" class="groupme-warning" style="display:none;"></div>
-          <div id="gm-last-sync" style="margin:-4px 0 10px;font-size:0.78rem;color:var(--text-muted);">Last GroupMe sync: checking...</div>
+          <div id="gm-last-sync" style="position:sticky;top:0;z-index:6;margin:-4px 0 10px;font-size:0.78rem;color:var(--text-muted);padding:6px 10px;border-radius:8px;background:rgba(2,6,23,0.92);border:1px solid rgba(148,163,184,0.25);">Game RSVPs: checking sync...</div>
 
           <!-- Controls bar -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
@@ -344,6 +344,7 @@ class GameDayLineupScreen extends Screen {
       this.players = data.data.players || [];
       this.unmatchedRsvps = data.data.unmatchedRsvps || [];
       this.groupmeSync = data.data.groupmeSync || {};
+      this.renderMatchSyncIndicator();
 
       // Load GroupMe members and merge
       this.groupmeMembers = [];
@@ -1269,14 +1270,57 @@ class GameDayLineupScreen extends Screen {
   // ============================================================================
   // GroupMe Sync Warning
   // ============================================================================
+  renderMatchSyncIndicator() {
+    const el = this.find('#gm-last-sync');
+    if (!el) return;
+
+    const sync = this.groupmeSync || {};
+    const hasLinkedEvent = sync.hasLinkedEvent === true;
+    const lastSync = sync.lastSync || null;
+    const minutes = Number.isFinite(sync.minutesAgo) ? sync.minutesAgo : null;
+
+    if (!hasLinkedEvent) {
+      el.textContent = 'Game RSVPs: no linked GroupMe event';
+      el.style.color = 'var(--color-danger)';
+      return;
+    }
+
+    if (!lastSync) {
+      el.textContent = 'Game RSVPs: never synced';
+      el.style.color = 'var(--color-danger)';
+      return;
+    }
+
+    const dt = new Date(lastSync);
+    const stamp = Number.isFinite(dt.getTime())
+      ? dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : lastSync;
+
+    if (minutes != null && minutes >= 0) {
+      const fresh = minutes <= 5;
+      const warn = minutes > 5 && minutes <= 60;
+      el.textContent = fresh
+        ? `Game RSVPs synced: ${stamp} (${minutes}m ago, fresh)`
+        : warn
+          ? `Game RSVPs synced: ${stamp} (${minutes}m ago, stale)`
+          : `Game RSVPs synced: ${stamp} (${minutes}m ago, old)`;
+      el.style.color = fresh ? 'var(--text-muted)' : (warn ? '#eab308' : 'var(--color-danger)');
+      return;
+    }
+
+    el.textContent = `Game RSVPs synced: ${stamp}`;
+    el.style.color = 'var(--text-muted)';
+  }
+
   renderGroupmeWarning() {
     const banner = this.find('#groupme-warning');
     if (!banner) return;
     
     const sync = this.groupmeSync || {};
     const status = sync.status;
-    const minutes = sync.minutesAgo;
+    const minutes = Number.isFinite(sync.minutesAgo) ? sync.minutesAgo : null;
     const hasLinkedEvent = sync.hasLinkedEvent;
+    const fresh5 = sync.isFresh5Min === true || (minutes != null && minutes <= 5);
     
     const timeStr = sync.lastSync ? new Date(sync.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const refreshBtn = '<button id="groupme-refresh-btn" class="btn-groupme-refresh" style="margin-left:8px;padding:2px 10px;font-size:0.8rem;border:1px solid currentColor;border-radius:4px;cursor:pointer;background:transparent;color:inherit;">🔄 Sync</button>';
@@ -1285,27 +1329,25 @@ class GameDayLineupScreen extends Screen {
 
     if (!hasLinkedEvent) {
       icon = '🔗';
-      message = `No GroupMe event linked to this match — RSVPs unavailable. ${refreshBtn}`;
+      message = `Game RSVPs are NOT synced: no GroupMe event linked to this match. ${refreshBtn}`;
       level = 'error';
     } else if (status === 'not_synced') {
       icon = '⚠️';
-      message = `GroupMe event linked but RSVPs not yet synced. ${refreshBtn}`;
+      message = `Game RSVPs are NOT synced yet. ${refreshBtn}`;
       level = 'warning';
-    } else if (status === 'fresh') {
+    } else if (fresh5) {
       icon = '✅';
-      message = `RSVPs synced${timeStr ? ' at ' + timeStr : ''}. ${refreshBtn}`;
+      message = `Game RSVPs synced within 5 minutes${timeStr ? ' (last: ' + timeStr + ')' : ''}. ${refreshBtn}`;
       level = 'success';
-    } else if (status === 'stale') {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      icon = '⏳';
-      message = `RSVPs synced ${hours}h ${mins}m ago${timeStr ? ' (' + timeStr + ')' : ''}. ${refreshBtn}`;
-      level = 'warning';
-    } else if (status === 'very_stale') {
-      const days = Math.floor(minutes / 1440);
-      icon = '⚠️';
-      message = `RSVP data is ${days} day${days !== 1 ? 's' : ''} old. ${refreshBtn}`;
-      level = 'error';
+    } else if (status === 'stale' || status === 'very_stale' || minutes != null) {
+      const minsAgo = Math.max(0, minutes || 0);
+      const hours = Math.floor(minsAgo / 60);
+      const mins = minsAgo % 60;
+      icon = minsAgo <= 60 ? '⏳' : '⚠️';
+      message = minsAgo <= 60
+        ? `Game RSVPs are stale (older than 5 minutes): last sync ${hours}h ${mins}m ago${timeStr ? ' at ' + timeStr : ''}. ${refreshBtn}`
+        : `Game RSVPs are NOT synced recently (older than 60 minutes): last sync ${hours}h ${mins}m ago${timeStr ? ' at ' + timeStr : ''}. ${refreshBtn}`;
+      level = minsAgo <= 60 ? 'warning' : 'error';
     }
     
     if (!message) {
@@ -1377,6 +1419,7 @@ class GameDayLineupScreen extends Screen {
       const raw = data?.data?.lastSync;
       if (!raw) {
         el.textContent = 'Last GroupMe sync: never';
+        el.style.color = 'var(--color-danger)';
         return;
       }
 
@@ -1385,14 +1428,23 @@ class GameDayLineupScreen extends Screen {
       if (Number.isFinite(dt.getTime())) {
         const stamp = dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const minutes = Number.isFinite(data?.data?.minutesAgo) ? data.data.minutesAgo : null;
-        el.textContent = minutes != null && minutes >= 0
-          ? `Last GroupMe sync: ${stamp} (${minutes}m ago)`
-          : `Last GroupMe sync: ${stamp}`;
+        if (minutes != null && minutes >= 0) {
+          const fresh = minutes <= 5;
+          el.textContent = fresh
+            ? `Last GroupMe sync: ${stamp} (${minutes}m ago, fresh)`
+            : `Last GroupMe sync: ${stamp} (${minutes}m ago, NOT synced in last 5m)`;
+          el.style.color = fresh ? 'var(--text-muted)' : 'var(--color-danger)';
+        } else {
+          el.textContent = `Last GroupMe sync: ${stamp}`;
+          el.style.color = 'var(--text-muted)';
+        }
       } else {
         el.textContent = `Last GroupMe sync: ${raw}`;
+        el.style.color = 'var(--color-danger)';
       }
     } catch (_) {
       el.textContent = 'Last GroupMe sync: unavailable';
+      el.style.color = 'var(--color-danger)';
     }
   }
 
@@ -3000,21 +3052,27 @@ class GameDayLineupScreen extends Screen {
     countInfo.textContent = `${this.zones.starting.filter(Boolean).length}/11`;
     ctrlRow.appendChild(countInfo);
 
-    // GroupMe sync status pill
+    // GroupMe sync status badge (timestamp + color coding)
     const syncStatus = this.groupmeSync || {};
-    const syncBad = this.syncFailed ||
-      syncStatus.status === 'very_stale' ||
-      syncStatus.status === 'not_synced' ||
-      !syncStatus.hasLinkedEvent;
-    const syncWarn = !syncBad && syncStatus.status === 'stale';
-    if (syncBad || syncWarn) {
+    const syncMinutes = Number.isFinite(syncStatus.minutesAgo) ? syncStatus.minutesAgo : null;
+    const hasLinked = syncStatus.hasLinkedEvent === true;
+    const syncBad = this.syncFailed || !hasLinked || syncStatus.status === 'not_synced' || syncMinutes == null || syncMinutes > 60;
+    const syncWarn = !syncBad && syncMinutes > 5;
+    const syncGood = !syncBad && !syncWarn;
+    if (syncBad || syncWarn || syncGood) {
       const syncPill = document.createElement('button');
       syncPill.title = this.syncFailed ? 'GroupMe sync failed — tap to retry'
         : !syncStatus.hasLinkedEvent ? 'No GroupMe event linked'
         : syncStatus.status === 'not_synced' ? 'RSVPs not synced yet — tap to sync'
-        : 'RSVP data is stale — tap to sync';
-      syncPill.style.cssText = `padding:2px 7px;border-radius:10px;border:none;cursor:pointer;font-size:0.72rem;font-weight:600;white-space:nowrap;background:${syncBad ? 'rgba(239,68,68,0.85)' : 'rgba(245,158,11,0.75)'};color:#fff;`;
-      syncPill.textContent = syncBad ? '⚠ No Sync' : '⏳ Stale';
+        : (syncWarn ? 'RSVP sync is older than 5 minutes — tap to sync' : 'RSVP sync is fresh');
+      const badgeBg = syncGood
+        ? 'rgba(34,197,94,0.85)'
+        : (syncWarn ? 'rgba(234,179,8,0.85)' : 'rgba(239,68,68,0.85)');
+      syncPill.style.cssText = `padding:2px 8px;border-radius:10px;border:none;cursor:pointer;font-size:0.72rem;font-weight:700;white-space:nowrap;background:${badgeBg};color:#fff;`;
+      const syncStamp = syncStatus.lastSync
+        ? new Date(syncStatus.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'never';
+      syncPill.textContent = `Sync ${syncStamp}`;
       syncPill.addEventListener('click', async () => {
         syncPill.textContent = '⟳';
         syncPill.disabled = true;
@@ -3845,7 +3903,7 @@ class GameDayLineupScreen extends Screen {
 
   _buildSyncRow() {
     const syncRow = document.createElement('div');
-    syncRow.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:3px 6px 4px;gap:4px;scrollbar-width:none;border-top:1px solid rgba(59,130,246,0.2);flex-shrink:0;';
+    syncRow.style.cssText = 'display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;overflow-x:hidden;overflow-y:visible;padding:3px 6px 6px;gap:4px;row-gap:5px;border-top:1px solid rgba(59,130,246,0.2);flex-shrink:0;';
 
     const fmtTs = (s) => {
       if (!s) return '';
@@ -3884,17 +3942,27 @@ class GameDayLineupScreen extends Screen {
       `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>` +
       `<span style="font-size:0.75rem;color:#e2e8f0;font-weight:600;">${n}</span>` +
       `</span>`;
-    const mkCard = (label, eventDt, counts, onSync) => {
+    const mkCard = (label, eventDt, counts, onSync, opts = {}) => {
       const { going = 0, noResp = 0, notGoing = 0 } = counts || {};
+      const accent = opts.accentColor || 'rgba(80,140,255,0.35)';
+      const bg = opts.background || 'rgba(30,80,160,0.25)';
+      const metaText = opts.metaText || '';
+      const title = opts.title || '';
       const card = document.createElement('div');
-      card.style.cssText = 'flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:7px;background:rgba(30,80,160,0.25);border:1px solid rgba(80,140,255,0.35);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;';
+      card.style.cssText = `flex:0 1 auto;display:flex;flex-direction:row;align-items:center;gap:7px;background:${bg};border:1px solid ${accent};border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;max-width:100%;`;
+      if (title) card.title = title;
       card.innerHTML =
-        `<span style="font-size:0.78rem;color:#7ec8ff;font-weight:700;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}</span>` +
+        `<span style="font-size:0.78rem;color:#7ec8ff;font-weight:700;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}${metaText ? ' <span style="color:#cbd5e1;font-weight:500;">' + metaText + '</span>' : ''}</span>` +
         `<span style="display:inline-flex;align-items:center;gap:5px;">${mkDot('#4ade80', going)}${mkDot('#fbbf24', noResp)}${mkDot('#f87171', notGoing)}</span>`;
       card.addEventListener('click', onSync);
       return card;
     };
     const dayAbbrev = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const legend = document.createElement('span');
+    legend.style.cssText = 'position:sticky;left:0;z-index:2;flex-shrink:0;font-size:0.68rem;color:#cbd5e1;white-space:nowrap;padding:1px 6px;border-radius:4px;background:rgba(2,6,23,0.85);border:1px solid rgba(148,163,184,0.25);';
+    legend.textContent = 'Sync colors: green <=5m, yellow <=60m, red >60m';
+    syncRow.appendChild(legend);
 
     const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id;
     const matchId = this.navigation.context.match?.id;
@@ -3949,12 +4017,46 @@ class GameDayLineupScreen extends Screen {
       const going = evt.goingCount ?? 0;
       const noResp = (evt.noResponseCount ?? 0) + (evt.maybeCount ?? 0);
       const notGoing = evt.notGoingCount ?? 0;
+      const evtSyncMins = Number.isFinite(evt.syncMinutesAgo) ? evt.syncMinutesAgo : null;
+      const evtAccent = evtSyncMins != null && evtSyncMins <= 5
+        ? '#22c55e'
+        : evtSyncMins != null && evtSyncMins <= 60
+          ? '#eab308'
+          : '#ef4444';
+      const evtBg = evtSyncMins != null && evtSyncMins <= 5
+        ? 'rgba(34,197,94,0.12)'
+        : evtSyncMins != null && evtSyncMins <= 60
+          ? 'rgba(234,179,8,0.12)'
+          : 'rgba(239,68,68,0.12)';
+      const evtMeta = evt.lastSync
+        ? `(last ok ${fmtTs(evt.lastSync)}${evtSyncMins != null ? ` · ${evtSyncMins}m` : ''})`
+        : '(no successful sync)';
+      const evtTitle = evt.lastSync
+        ? `Last successful sync: ${fmtTs(evt.lastSync)}${evtSyncMins != null ? ` (${evtSyncMins} minutes ago)` : ''}`
+        : 'No successful sync recorded for this event';
       syncRow.appendChild(mkCard(dayLabel, evtDt, { going, noResp, notGoing }, () => {
         this._openEventRsvpModal({ type: 'training', chatEventId: evt.id, title: evt.title, startAt: evt.startAt, eventDate: evt.eventDate, teamId });
-      }));
+      }, { accentColor: evtAccent, background: evtBg, metaText: evtMeta, title: evtTitle }));
     }
 
     const gs = this.groupmeSync || {};
+    const gameSyncMins = Number.isFinite(gs.minutesAgo) ? gs.minutesAgo : null;
+    const gameAccent = gameSyncMins != null && gameSyncMins <= 5
+      ? '#22c55e'
+      : gameSyncMins != null && gameSyncMins <= 60
+        ? '#eab308'
+        : '#ef4444';
+    const gameBg = gameSyncMins != null && gameSyncMins <= 5
+      ? 'rgba(34,197,94,0.12)'
+      : gameSyncMins != null && gameSyncMins <= 60
+        ? 'rgba(234,179,8,0.12)'
+        : 'rgba(239,68,68,0.12)';
+    const gameMeta = gs.lastSync
+      ? `(last ok ${fmtTs(gs.lastSync)}${gameSyncMins != null ? ` · ${gameSyncMins}m` : ''})`
+      : '(no successful sync)';
+    const gameTitle = gs.lastSync
+      ? `Last successful sync: ${fmtTs(gs.lastSync)}${gameSyncMins != null ? ` (${gameSyncMins} minutes ago)` : ''}`
+      : 'No successful sync recorded for game RSVPs';
     const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
     const gameEvtDt = fmtTime(this.matchInfo?.time || '');
     const gameGoing = gs.goingCount ?? 0;
@@ -3962,7 +4064,7 @@ class GameDayLineupScreen extends Screen {
     const gameNotGoing = gs.notGoingCount ?? 0;
     syncRow.appendChild(mkCard('Game ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
-    }));
+    }, { accentColor: gameAccent, background: gameBg, metaText: gameMeta, title: gameTitle }));
 
     return syncRow;
   }
