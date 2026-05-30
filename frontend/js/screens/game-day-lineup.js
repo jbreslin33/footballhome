@@ -3903,7 +3903,10 @@ class GameDayLineupScreen extends Screen {
 
   _buildSyncRow() {
     const syncRow = document.createElement('div');
-    syncRow.style.cssText = 'display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;overflow-x:hidden;overflow-y:visible;padding:3px 6px 6px;gap:4px;row-gap:5px;border-top:1px solid rgba(59,130,246,0.2);flex-shrink:0;';
+    syncRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:4px 6px 8px;border-top:1px solid rgba(59,130,246,0.2);flex-shrink:0;';
+
+    const cardsGrid = document.createElement('div');
+    cardsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;align-items:stretch;width:100%;';
 
     const fmtTs = (s) => {
       if (!s) return '';
@@ -3949,18 +3952,18 @@ class GameDayLineupScreen extends Screen {
       const metaText = opts.metaText || '';
       const title = opts.title || '';
       const card = document.createElement('div');
-      card.style.cssText = `flex:0 1 auto;display:flex;flex-direction:row;align-items:center;gap:7px;background:${bg};border:1px solid ${accent};border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;max-width:100%;`;
+      card.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;background:${bg};border:1px solid ${accent};border-radius:8px;padding:7px 9px;cursor:pointer;min-height:56px;`;
       if (title) card.title = title;
       card.innerHTML =
-        `<span style="font-size:0.78rem;color:#7ec8ff;font-weight:700;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}${metaText ? ' <span style="color:#cbd5e1;font-weight:500;">' + metaText + '</span>' : ''}</span>` +
-        `<span style="display:inline-flex;align-items:center;gap:5px;">${mkDot('#4ade80', going)}${mkDot('#fbbf24', noResp)}${mkDot('#f87171', notGoing)}</span>`;
+        `<span style="font-size:0.76rem;line-height:1.2;color:#7ec8ff;font-weight:700;word-break:break-word;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}${metaText ? '<br><span style="color:#cbd5e1;font-weight:500;">' + metaText + '</span>' : ''}</span>` +
+        `<span style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">${mkDot('#4ade80', going)}${mkDot('#fbbf24', noResp)}${mkDot('#f87171', notGoing)}</span>`;
       card.addEventListener('click', onSync);
       return card;
     };
     const dayAbbrev = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     const legend = document.createElement('span');
-    legend.style.cssText = 'position:sticky;left:0;z-index:2;flex-shrink:0;font-size:0.68rem;color:#cbd5e1;white-space:nowrap;padding:1px 6px;border-radius:4px;background:rgba(2,6,23,0.85);border:1px solid rgba(148,163,184,0.25);';
+    legend.style.cssText = 'font-size:0.68rem;color:#cbd5e1;padding:1px 6px;border-radius:4px;background:rgba(2,6,23,0.85);border:1px solid rgba(148,163,184,0.25);width:max-content;';
     legend.textContent = 'Sync colors: green <=5m, yellow <=60m, red >60m';
     syncRow.appendChild(legend);
 
@@ -4034,7 +4037,7 @@ class GameDayLineupScreen extends Screen {
       const evtTitle = evt.lastSync
         ? `Last successful sync: ${fmtTs(evt.lastSync)}${evtSyncMins != null ? ` (${evtSyncMins} minutes ago)` : ''}`
         : 'No successful sync recorded for this event';
-      syncRow.appendChild(mkCard(dayLabel, evtDt, { going, noResp, notGoing }, () => {
+      cardsGrid.appendChild(mkCard(dayLabel, evtDt, { going, noResp, notGoing }, () => {
         this._openEventRsvpModal({ type: 'training', chatEventId: evt.id, title: evt.title, startAt: evt.startAt, eventDate: evt.eventDate, teamId });
       }, { accentColor: evtAccent, background: evtBg, metaText: evtMeta, title: evtTitle }));
     }
@@ -4062,9 +4065,11 @@ class GameDayLineupScreen extends Screen {
     const gameGoing = gs.goingCount ?? 0;
     const gameNoResp = gs.noResponseCount ?? 0;
     const gameNotGoing = gs.notGoingCount ?? 0;
-    syncRow.appendChild(mkCard('Game ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
+    cardsGrid.appendChild(mkCard('Game ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
     }, { accentColor: gameAccent, background: gameBg, metaText: gameMeta, title: gameTitle }));
+
+    syncRow.appendChild(cardsGrid);
 
     return syncRow;
   }
