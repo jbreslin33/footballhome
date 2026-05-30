@@ -3791,14 +3791,14 @@ class GameDayLineupScreen extends Screen {
   // ── Build a vertical side panel (bench or alternates) ────────────────────
   _buildSidePlayerPanel(playerIds, color, zone, label) {
     const panel = document.createElement('div');
-    panel.style.cssText = `width:74px;flex-shrink:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;min-height:0;max-height:100%;background:rgba(0,0,0,0.25);`;
+    panel.style.cssText = `width:90px;flex-shrink:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;min-height:0;max-height:100%;background:rgba(0,0,0,0.25);`;
     const lbl = document.createElement('div');
     lbl.style.cssText = `font-size:0.52rem;color:${color};text-align:center;padding:4px 1px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);border-right:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.18);`;
     lbl.textContent = label;
     panel.appendChild(lbl);
 
     const chipsCol = document.createElement('div');
-    chipsCol.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;min-height:0;max-height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px 8px 4px 2px;gap:3px;scrollbar-width:thin;scrollbar-gutter:stable;';
+    chipsCol.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;min-height:0;max-height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px 14px 4px 4px;gap:3px;scrollbar-width:thin;scrollbar-gutter:stable both-edges;';
 
     const uniqueIds = Array.from(new Set(playerIds));
     const players = uniqueIds.map(id => this.getPlayerById(id)).filter(Boolean);
