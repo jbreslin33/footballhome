@@ -1066,6 +1066,7 @@ class GameDayLineupScreen extends Screen {
     }
 
     this.renderAllZones();
+    this._writeLineupDraft();
 
     // Auto-save metadata (don't block UI)
     if (!silent) {
@@ -1106,8 +1107,76 @@ class GameDayLineupScreen extends Screen {
 
   // Debounced silent auto-save of the lineup (zones) after any zone change
   _scheduleAutoSaveLineup() {
+    this._writeLineupDraft();
     if (this._saveLineupTimer) clearTimeout(this._saveLineupTimer);
     this._saveLineupTimer = setTimeout(() => { this.saveLineup(true); }, 1200);
+  }
+
+  _lineupDraftStorageKey() {
+    const matchId = this.navigation?.context?.match?.id;
+    if (!matchId) return null;
+    const teamId = this.navigation?.context?.lineupTeamId || this.navigation?.context?.team?.id || 'default';
+    return `footballhome:lineup-draft:${teamId}:${matchId}`;
+  }
+
+  _writeLineupDraft() {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return;
+      const key = this._lineupDraftStorageKey();
+      if (!key) return;
+      const payload = {
+        updatedAt: Date.now(),
+        rosterSize: this.rosterSize,
+        zones: {
+          starting: Array.from(this.zones.starting || []),
+          bench: Array.from(this.zones.bench || []),
+          alternates: Array.from(this.zones.alternates || []),
+        },
+      };
+      window.localStorage.setItem(key, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Failed to persist lineup draft:', e);
+    }
+  }
+
+  _readLineupDraft() {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return null;
+      const key = this._lineupDraftStorageKey();
+      if (!key) return null;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || !parsed.zones) return null;
+      return parsed;
+    } catch (e) {
+      console.warn('Failed to read lineup draft:', e);
+      return null;
+    }
+  }
+
+  _normalizeZonesFromSource(sourceZones) {
+    const maxBench = this.rosterSize - 11;
+    const validIds = new Set(this.players.map(p => p.playerId));
+    const seen = new Set();
+
+    const normalize = (arr, max) => {
+      const out = [];
+      for (const rawId of (Array.isArray(arr) ? arr : [])) {
+        const id = typeof rawId === 'number' ? rawId : parseInt(rawId, 10);
+        if (!Number.isFinite(id) || !validIds.has(id) || seen.has(id)) continue;
+        out.push(id);
+        seen.add(id);
+        if (typeof max === 'number' && out.length >= max) break;
+      }
+      return out;
+    };
+
+    return {
+      starting: normalize(sourceZones?.starting, 11),
+      bench: normalize(sourceZones?.bench, maxBench),
+      alternates: normalize(sourceZones?.alternates),
+    };
   }
 
   // ============================================================================
@@ -1662,27 +1731,39 @@ class GameDayLineupScreen extends Screen {
 
     const maxBench = this.rosterSize - 11;
 
+    // Restore the latest local draft first so in-session edits survive reloads.
+    const localDraft = this._readLineupDraft();
+    if (localDraft?.zones) {
+      this.zones = this._normalizeZonesFromSource(localDraft.zones);
+      this._enforceApslFilter();
+      this._enforceNoRsvpInLineup();
+      return;
+    }
+
     // If saved lineup exists (onLineup flag set by API), restore it
     const hasSavedLineup = this.players.some(p => p.onLineup);
     if (hasSavedLineup) {
+      const fromServer = { starting: [], bench: [], alternates: [] };
       for (const player of this.players) {
         if (!player.onLineup) continue;
         const zone = player.lineupZone || (player.isStarter ? 'starter' : 'bench');
         if (zone === 'starter') {
-          this.zones.starting.push(player.playerId);
+          fromServer.starting.push(player.playerId);
         } else if (zone === 'alternate') {
-          this.zones.alternates.push(player.playerId);
+          fromServer.alternates.push(player.playerId);
         } else {
           // bench (or legacy rows without zone)
-          if (this.zones.bench.length < maxBench) {
-            this.zones.bench.push(player.playerId);
+          if (fromServer.bench.length < maxBench) {
+            fromServer.bench.push(player.playerId);
           } else {
-            this.zones.alternates.push(player.playerId);
+            fromServer.alternates.push(player.playerId);
           }
         }
       }
+      this.zones = this._normalizeZonesFromSource(fromServer);
       this._enforceApslFilter();
       this._enforceNoRsvpInLineup();
+      this._writeLineupDraft();
       return;
     }
 
@@ -1754,6 +1835,7 @@ class GameDayLineupScreen extends Screen {
   autoFillFromEligibility() {
     this._autoDistribute();
     this.renderAllZones();
+    this._scheduleAutoSaveLineup();
   }
 
   // ============================================================================
@@ -2013,6 +2095,7 @@ class GameDayLineupScreen extends Screen {
         player.matchRsvp = rsvpStatus;
         if (this._isRsvpNo(player)) {
           this.removePlayerFromAllZones(player.playerId);
+          this._scheduleAutoSaveLineup();
         }
       }
 
