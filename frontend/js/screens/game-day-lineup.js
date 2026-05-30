@@ -32,7 +32,7 @@ class GameDayLineupScreen extends Screen {
     this.pitchOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
     this.pitchFit = true; // always full screen
     this.formationLocked = false; // legacy compat — now means movement locked (no drag)
-    this.pitchMoveLocked = true;  // true = dragging disabled (lock icon)
+    this.pitchMoveLocked = false;  // keep dragging enabled by default in fluid pitch mode
     this.customPositions = null; // null = not set; array of {x,y,label} in canonical 0-100 space
     this.customDragMode = 'slots'; // 'slots' = move holder; 'players' = swap players between slots
     this._saveMetaTimer = null;  // debounce handle for auto-save
@@ -61,7 +61,16 @@ class GameDayLineupScreen extends Screen {
 
         <div id="lineup-loading" class="loading-state">
           <div class="spinner"></div>
-          <p>Computing eligibility...</p>
+          <p id="lineup-loading-text">Computing eligibility...</p>
+          <div id="loading-sync-activity" style="display:none;margin:8px auto 6px;max-width:760px;text-align:left;font-size:0.75rem;line-height:1.35;color:#cbd5e1;padding:8px 10px;border-radius:8px;background:rgba(2,6,23,0.8);border:1px solid rgba(100,116,139,0.3);"></div>
+          <div id="loading-progress-log" style="display:none;margin:0 auto;max-width:760px;text-align:left;font-size:0.74rem;line-height:1.35;color:#cbd5e1;padding:8px 10px;border-radius:8px;background:rgba(2,6,23,0.7);border:1px solid rgba(100,116,139,0.25);"></div>
+          <div id="loading-continue-panel" style="display:none;margin:10px auto 0;max-width:760px;text-align:left;padding:10px;border-radius:8px;background:rgba(15,23,42,0.85);border:1px solid rgba(148,163,184,0.35);">
+            <div id="loading-continue-message" style="font-size:0.8rem;color:#e2e8f0;margin-bottom:8px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="loading-continue-btn" class="btn btn-primary" style="font-size:0.8rem;padding:6px 12px;">Continue to lineup</button>
+              <button id="loading-retry-btn" class="btn btn-secondary" style="font-size:0.8rem;padding:6px 12px;">Retry load</button>
+            </div>
+          </div>
         </div>
 
         <div id="lineup-content" style="display:none;">
@@ -69,6 +78,7 @@ class GameDayLineupScreen extends Screen {
           <!-- GroupMe sync warning -->
           <div id="groupme-warning" class="groupme-warning" style="display:none;"></div>
           <div id="gm-last-sync" style="position:sticky;top:0;z-index:6;margin:-4px 0 10px;font-size:0.78rem;color:var(--text-muted);padding:6px 10px;border-radius:8px;background:rgba(2,6,23,0.92);border:1px solid rgba(148,163,184,0.25);">Game RSVPs: checking sync...</div>
+          <div id="sync-activity" style="display:none;margin:0 0 10px;font-size:0.75rem;line-height:1.35;color:#cbd5e1;padding:8px 10px;border-radius:8px;background:rgba(2,6,23,0.8);border:1px solid rgba(100,116,139,0.3);"></div>
 
           <!-- Controls bar -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
@@ -120,14 +130,27 @@ class GameDayLineupScreen extends Screen {
   async syncThenLoad() {
     const matchId = this.navigation.context.match?.id;
     const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
+    const failures = [];
+
+    this.find('#lineup-content').style.display = 'none';
+    this.find('#lineup-loading').style.display = 'block';
+    this.hideLoadingContinuePanel();
+    this.clearLoadingProgressLog();
+    this.setLoadingStatus('Computing eligibility...');
     
     if (matchId && teamId) {
+      this.appendLoadingProgress('Starting GroupMe sync for game + training/pickup window...');
+      this.renderSyncActivity([
+        { name: 'Match RSVP', status: 'attempting', synced: 0 },
+        { name: 'Training/Pickup sessions', status: 'attempting', synced: 0 }
+      ], 'Attempting GroupMe sync...');
       try {
-        let syncResponse = await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}?teamId=${teamId}`, {
+        const ts = Date.now(); // cache buster: always attempt a fresh sync on page load
+        let syncResponse = await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}?teamId=${teamId}&_=${ts}`, {
           method: 'POST'
         });
         if (!syncResponse.ok) {
-          syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+          syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}&_=${ts}`, {
             method: 'POST'
           });
         }
@@ -135,20 +158,45 @@ class GameDayLineupScreen extends Screen {
         if (syncData.success && syncData.data?.synced) {
           this.lastSyncedAt = syncData.data.syncedAt || new Date().toISOString();
           this.syncFailed = false;
+          const syncActivities = syncData.data.activities || [
+            { name: 'GroupMe sync', status: 'success', synced: syncData.data.totalRsvps || 0 }
+          ];
+          this.renderSyncActivity(syncActivities, `Sync completed (${syncData.data.totalRsvps || 0} updates)`);
+          const hadSyncFailure = syncActivities.some((a) => {
+            const s = String(a?.status || '').toLowerCase();
+            return s === 'failed' || s === 'error' || s === 'not_found';
+          });
+          if (hadSyncFailure) failures.push('Some GroupMe sync steps failed.');
+          this.appendLoadingProgress(`GroupMe sync completed (${syncData.data.totalRsvps || 0} RSVP updates).`);
           console.log(`✅ GroupMe sync: ${syncData.data.totalRsvps} RSVPs (${syncData.data.going} going)`);
         } else {
-          this.syncFailed = false; // skipped is not a failure
+          this.syncFailed = true;
+          failures.push(`GroupMe sync skipped: ${syncData.data?.reason || syncData.message || 'unknown reason'}.`);
+          this.renderSyncActivity([
+            { name: 'GroupMe sync', status: syncData.data?.reason || 'skipped', synced: 0 }
+          ], 'Sync skipped');
+          this.appendLoadingProgress(`GroupMe sync skipped: ${syncData.data?.reason || syncData.message || 'unknown reason'}.`);
           console.log('ℹ️ GroupMe sync skipped:', syncData.data?.reason || syncData.message);
         }
       } catch (err) {
         this.syncFailed = true;
+        failures.push(`GroupMe sync failed: ${err.message}`);
+        this.renderSyncActivity([
+          { name: 'GroupMe sync', status: 'failed', synced: 0 }
+        ], `Sync failed: ${err.message}`);
+        this.appendLoadingProgress(`GroupMe sync failed: ${err.message}`);
         console.warn('⚠️ GroupMe sync failed:', err.message);
       }
+    } else {
+      failures.push('Missing match or team context for GroupMe sync.');
+      this.appendLoadingProgress('Skipped GroupMe sync: missing match/team context.');
     }
 
     this.refreshLastSyncIndicator(teamId);
 
-    this.loadEligibilityData();
+    const loaded = await this.loadEligibilityData();
+    if (!loaded) failures.push('Eligibility load failed.');
+    this.showLoadingContinuePanel(failures);
 
     // Fire-and-forget: auto-set attendance for all past events from RSVP data
     // ON CONFLICT DO NOTHING — never overwrites manual records
@@ -177,6 +225,14 @@ class GameDayLineupScreen extends Screen {
       }
       if (e.target.id === 'groupme-refresh-btn' || e.target.closest('#groupme-refresh-btn')) {
         this.refreshGroupMe();
+        return;
+      }
+      if (e.target.id === 'loading-continue-btn' || e.target.closest('#loading-continue-btn')) {
+        this.continueToLineupContent();
+        return;
+      }
+      if (e.target.id === 'loading-retry-btn' || e.target.closest('#loading-retry-btn')) {
+        this.syncThenLoad();
         return;
       }
 
@@ -321,12 +377,14 @@ class GameDayLineupScreen extends Screen {
     const matchId = this.navigation.context.match?.id;
     if (!matchId) {
       this.find('#lineup-loading').innerHTML = '<p style="color:var(--color-danger);">No match selected</p>';
-      return;
+      return false;
     }
 
     try {
       const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
       const teamParam = teamId ? `?teamId=${teamId}` : '';
+      this.setLoadingStatus('Computing eligibility and lineup data...');
+      this.appendLoadingProgress('Fetching eligibility, GroupMe members, training week, and game roster...');
 
       // Fetch eligibility, GroupMe members, training week, AND game roster in parallel
       const [eligResponse, membersResponse, trainingResponse, rosterResponse] = await Promise.all([
@@ -335,6 +393,7 @@ class GameDayLineupScreen extends Screen {
         teamId ? this.auth.fetch(`/api/groupme/training-week/${teamId}?matchId=${matchId}`) : Promise.resolve(null),
         this.auth.fetch(`/api/matches/${matchId}/game-roster`)
       ]);
+      this.appendLoadingProgress('Responses received. Parsing eligibility and sync metadata...');
 
       const data = await eligResponse.json();
       if (!data.success) throw new Error(data.message || 'Failed to load eligibility');
@@ -345,6 +404,7 @@ class GameDayLineupScreen extends Screen {
       this.unmatchedRsvps = data.data.unmatchedRsvps || [];
       this.groupmeSync = data.data.groupmeSync || {};
       this.renderMatchSyncIndicator();
+      this.appendLoadingProgress('Eligibility + match sync status loaded.');
 
       // Load GroupMe members and merge
       this.groupmeMembers = [];
@@ -359,6 +419,7 @@ class GameDayLineupScreen extends Screen {
           // GroupMe is source of truth for U23 trialists until official roster exists.
           // Build pool strictly from GroupMe chat members (one row per GroupMe user).
           this.players = this._buildGroupMeOnlyPlayers(this.groupmeMembers, teamId);
+          this.appendLoadingProgress(`GroupMe members loaded: ${this.groupmeMembers.length}.`);
         }
       }
 
@@ -368,9 +429,18 @@ class GameDayLineupScreen extends Screen {
       if (trainingResponse) {
         const trainingResult = await trainingResponse.json();
         if (trainingResult.success && trainingResult.data) {
-          this.trainingEvents = trainingResult.data.events || [];
+          const matchSyncMinutes = Number.isFinite(this.groupmeSync?.minutesAgo) ? this.groupmeSync.minutesAgo : null;
+          const matchSyncTs = this.groupmeSync?.lastSync || null;
+          this.trainingEvents = (trainingResult.data.events || []).map(evt => ({
+            ...evt,
+            // If per-event sync metadata isn't available, use match-level sync as a fallback
+            // so freshness coloring stays consistent instead of defaulting to red.
+            syncMinutesAgo: Number.isFinite(evt?.syncMinutesAgo) ? evt.syncMinutesAgo : matchSyncMinutes,
+            lastSync: evt?.lastSync || matchSyncTs,
+          }));
           this.mergeTrainingData(trainingResult.data.players || []);
           this.recomputeSessionsFromTrainingWeek();
+          this.appendLoadingProgress(`Training/pickup events loaded: ${this.trainingEvents.length}.`);
         }
       }
 
@@ -382,6 +452,7 @@ class GameDayLineupScreen extends Screen {
           for (const rp of rosterResult.data) {
             this.gameDayRosterIds.add(rp.playerId);
           }
+          this.appendLoadingProgress(`Game roster loaded: ${this.gameDayRosterIds.size} players.`);
         }
       }
 
@@ -400,20 +471,18 @@ class GameDayLineupScreen extends Screen {
 
       // Auto-classify players into zones based on eligibility + RSVP + existing lineup
       this.classifyPlayersIntoZones();
-
-      // Show content
-      this.find('#lineup-loading').style.display = 'none';
-      this.find('#lineup-content').style.display = 'block';
+      this.appendLoadingProgress('Lineup zones classified. Rendering screen...');
 
       this.renderAllZones();
+
+      return true;
 
 
 
     } catch (error) {
       console.error('Error loading eligibility:', error);
-      this.find('#lineup-loading').innerHTML = `
-        <p style="color:var(--color-danger);">❌ ${error.message}</p>
-      `;
+      this.appendLoadingProgress(`Eligibility load failed: ${error.message}`);
+      return false;
     }
   }
 
@@ -1361,6 +1430,114 @@ class GameDayLineupScreen extends Screen {
     if (level === 'error') banner.style.background = 'rgba(239,68,68,0.12)';
     else if (level === 'warning') banner.style.background = 'rgba(245,158,11,0.12)';
     else banner.style.background = 'rgba(34,197,94,0.12)';
+  }
+
+  renderSyncActivity(activities, heading = 'Sync Activity') {
+    const panel = this.find('#sync-activity');
+    const loadingPanel = this.find('#loading-sync-activity');
+    if (!panel && !loadingPanel) return;
+
+    const rows = Array.isArray(activities) ? activities : [];
+    if (rows.length === 0) {
+      [panel, loadingPanel].forEach((el) => {
+        if (!el) return;
+        el.style.display = 'none';
+        el.innerHTML = '';
+      });
+      return;
+    }
+
+    const statusLabel = (status) => {
+      if (!status) return 'unknown';
+      const s = String(status);
+      if (s === 'success') return 'Success';
+      if (s === 'attempting') return 'Attempting';
+      if (s === 'not_found_in_group') return 'Not Found';
+      if (s === 'no_linked_event') return 'No Linked Event';
+      if (s === 'fetch_failed' || s === 'failed') return 'Failed';
+      return s.replace(/_/g, ' ');
+    };
+
+    const statusColor = (status) => {
+      const s = String(status || '');
+      if (s === 'success') return '#22c55e';
+      if (s === 'attempting') return '#60a5fa';
+      if (s === 'not_found_in_group' || s === 'no_linked_event') return '#eab308';
+      if (s === 'failed' || s === 'fetch_failed') return '#ef4444';
+      return '#cbd5e1';
+    };
+
+    const items = rows.map((r) => {
+      const name = r?.name || 'Unknown';
+      const status = r?.status || 'unknown';
+      const synced = Number.isFinite(r?.synced) ? r.synced : 0;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0;">`
+        + `<span style="color:#e2e8f0;">${name}</span>`
+        + `<span style="color:${statusColor(status)};font-weight:600;white-space:nowrap;">${statusLabel(status)}${synced > 0 ? ` (${synced})` : ''}</span>`
+        + `</div>`;
+    }).join('');
+
+    [panel, loadingPanel].forEach((el) => {
+      if (!el) return;
+      el.innerHTML = `<div style="font-size:0.72rem;color:#94a3b8;margin-bottom:4px;font-weight:700;">${heading}</div>${items}`;
+      el.style.display = 'block';
+    });
+  }
+
+  setLoadingStatus(text) {
+    const el = this.find('#lineup-loading-text');
+    if (el) el.textContent = text;
+  }
+
+  clearLoadingProgressLog() {
+    const log = this.find('#loading-progress-log');
+    if (!log) return;
+    log.innerHTML = '';
+    log.style.display = 'none';
+  }
+
+  appendLoadingProgress(message) {
+    const log = this.find('#loading-progress-log');
+    if (!log) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:1px 0;';
+    row.textContent = `${time} - ${message}`;
+    log.appendChild(row);
+    log.style.display = 'block';
+  }
+
+  hideLoadingContinuePanel() {
+    const panel = this.find('#loading-continue-panel');
+    if (!panel) return;
+    panel.style.display = 'none';
+    const msg = this.find('#loading-continue-message');
+    if (msg) msg.textContent = '';
+    const spinner = this.find('#lineup-loading .spinner');
+    if (spinner) spinner.style.display = 'block';
+  }
+
+  showLoadingContinuePanel(failures = []) {
+    const panel = this.find('#loading-continue-panel');
+    if (!panel) return;
+    const msg = this.find('#loading-continue-message');
+    const hasFailures = Array.isArray(failures) && failures.length > 0;
+    const summary = hasFailures
+      ? `Load completed with issues. Review logs above, then continue anyway. ${failures[0]}`
+      : 'Load completed successfully. Review logs above, then continue to lineup.';
+    if (msg) {
+      msg.textContent = summary;
+      msg.style.color = hasFailures ? '#fca5a5' : '#86efac';
+    }
+    panel.style.display = 'block';
+    const spinner = this.find('#lineup-loading .spinner');
+    if (spinner) spinner.style.display = 'none';
+    this.setLoadingStatus('Review load output and choose how to proceed.');
+  }
+
+  continueToLineupContent() {
+    this.find('#lineup-loading').style.display = 'none';
+    this.find('#lineup-content').style.display = 'block';
   }
 
   /**
@@ -2947,19 +3124,22 @@ class GameDayLineupScreen extends Screen {
     canvas.style.cssText = `position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;`;
     canvasPart.appendChild(canvas);
 
-    // ── top strip: bench-only (1 session / partial) ────────────────────────
+    // ── top strip: not responded ───────────────────────────────────────────
     const topStrip = this._buildTopStrip();
+    topStrip.dataset.pitchDropzone = 'pool';
     wrapper.appendChild(topStrip);
 
-    // ── middle row: qualified panel | pitch canvas | zero-session panel ──────
+    // ── middle row: 2nd tier panel | pitch canvas | not going panel ─────────
     const middleRow = document.createElement('div');
     middleRow.id = 'pitch-middle-row';
     middleRow.style.cssText = 'display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden;';
 
     const qualPanel = this._buildQualifiedPanel();
+    qualPanel.dataset.pitchDropzone = 'pool';
     qualPanel.style.borderRight = '1px solid rgba(255,255,255,0.08)';
 
     const zeroPanel = this._buildZeroSessionPanel();
+    zeroPanel.dataset.pitchDropzone = 'pool';
     zeroPanel.style.borderLeft = '1px solid rgba(255,255,255,0.08)';
 
     middleRow.appendChild(qualPanel);
@@ -2967,131 +3147,34 @@ class GameDayLineupScreen extends Screen {
     middleRow.appendChild(zeroPanel);
     wrapper.appendChild(middleRow);
 
-    // ── bottom bar ────────────────────────────────────────────────────────────
+    // ── bottom bar (split side-to-side) ─────────────────────────────────────
     const bar = document.createElement('div');
     bar.id = 'pitch-bottom-bar';
     bar.style.cssText = 'flex-shrink:0;background:#000;border-top:1px solid rgba(255,255,255,0.1);';
 
-    // Single scrollable row: bench chips + controls
-    const ctrlRow = document.createElement('div');
-    ctrlRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:4px 6px;overflow-x:auto;scrollbar-width:none;min-height:46px;border-top:2px solid rgba(59,130,246,0.35);';
+    const lanesRow = document.createElement('div');
+    lanesRow.style.cssText = 'display:flex;flex-direction:row;gap:0;align-items:stretch;border-top:1px solid rgba(59,130,246,0.25);';
 
-    // ── Bench chips ─────────────────────────────────────────────
-    Array.from(this._buildBenchStrip().childNodes).forEach(n => ctrlRow.appendChild(n));
+    const goingPracticeStrip = this._buildGoingPracticeStrip();
+    goingPracticeStrip.dataset.pitchDropzone = 'pool';
+    goingPracticeStrip.style.flex = '1 1 50%';
+    goingPracticeStrip.style.minWidth = '0';
+    goingPracticeStrip.style.borderRight = '1px solid rgba(255,255,255,0.12)';
 
-    const mkDiv = () => { const d = document.createElement('div'); d.style.cssText = 'width:1px;align-self:stretch;background:rgba(59,130,246,0.3);margin:0 1px;flex-shrink:0;'; return d; };
-    ctrlRow.appendChild(mkDiv());
+    const benchStrip = this._buildBenchStrip();
+    benchStrip.dataset.pitchDropzone = 'bench';
+    benchStrip.style.flex = '1 1 50%';
+    benchStrip.style.minWidth = '0';
 
-    // ── Controls ─────────────────────────────────────────────────
+    lanesRow.appendChild(goingPracticeStrip);
+    lanesRow.appendChild(benchStrip);
+    bar.appendChild(lanesRow);
 
-    // Movement lock toggle (🔒 locked = no drag / 🔓 unlocked = can drag)
-    const lockBtn = document.createElement('button');
-    lockBtn.id = 'pitch-lock-btn';
-    lockBtn.title = this.pitchMoveLocked ? 'Unlock to move players' : 'Lock movement';
-    lockBtn.style.cssText = `padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);cursor:pointer;font-size:0.75rem;background:${this.pitchMoveLocked ? 'rgba(59,130,246,0.8)' : 'rgba(168,85,247,0.7)'};color:#fff;white-space:nowrap;`;
-    lockBtn.textContent = this.pitchMoveLocked ? '🔒' : '🔓';
-    ctrlRow.appendChild(lockBtn);
+    const countRow = document.createElement('div');
+    countRow.style.cssText = 'padding:4px 8px;border-top:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.45);font-size:0.74rem;';
+    countRow.textContent = `On Pitch ${this.zones.starting.filter(Boolean).length}/11`;
+    bar.appendChild(countRow);
 
-    // Formation dropdown (inline, compact)
-    const formSelect = document.createElement('select');
-    formSelect.id = 'pitch-formation-select';
-    formSelect.style.cssText = 'width:90px;flex-shrink:0;padding:4px 6px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;';
-    for (const f of this.formations) {
-      const opt = document.createElement('option');
-      opt.value = f.id;
-      opt.textContent = f.name;
-      if (this.selectedFormation?.id === f.id) opt.selected = true;
-      formSelect.appendChild(opt);
-    }
-    formSelect.addEventListener('change', () => {
-      const id = parseInt(formSelect.value);
-      this.selectedFormation = this.formations.find(f => f.id === id) || this.formations[0];
-      if (this.selectedFormation.code === 'custom') {
-        // Entering custom: seed positions from current formation if not already set
-        if (!this.customPositions) {
-          const base = this.getPositionsForFormation('4-3-3');
-          this.customPositions = base.map(p => ({ x: p.x, y: p.y, label: p.label }));
-        }
-      } else {
-        // Named formation selected: clear custom positions so formation layout is used
-        this.customPositions = null;
-      }
-      this.renderPitchView();
-    });
-    ctrlRow.appendChild(formSelect);
-
-    // No drag-mode toggle needed — empty slots auto-move the slot, filled chips auto-move the player
-
-    // Orientation toggle (icon only)
-    const orientBtn2 = document.createElement('button');
-    orientBtn2.id = 'pitch-orient-btn';
-    orientBtn2.title = landscape ? 'Switch to portrait' : 'Switch to landscape';
-    orientBtn2.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
-    orientBtn2.textContent = landscape ? '↕' : '↔';
-    ctrlRow.appendChild(orientBtn2);
-
-    // Groups (icon only)
-    const groupsBtn = document.createElement('button');
-    groupsBtn.id = 'pitch-groups-btn';
-    groupsBtn.title = 'Groups';
-    groupsBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;';
-    groupsBtn.textContent = '👥';
-    ctrlRow.appendChild(groupsBtn);
-
-    // Exit fullscreen (icon only)
-    const exitBtn = document.createElement('button');
-    exitBtn.id = 'pitch-fit-btn';
-    exitBtn.title = 'Exit fullscreen';
-    exitBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:0.78rem;cursor:pointer;';
-    exitBtn.textContent = '⊠';
-    ctrlRow.appendChild(exitBtn);
-
-    // Count indicator
-    const countInfo = document.createElement('span');
-    countInfo.style.cssText = 'color:rgba(255,255,255,0.4);font-size:0.75rem;white-space:nowrap;';
-    countInfo.textContent = `${this.zones.starting.filter(Boolean).length}/11`;
-    ctrlRow.appendChild(countInfo);
-
-    // GroupMe sync status badge (timestamp + color coding)
-    const syncStatus = this.groupmeSync || {};
-    const syncMinutes = Number.isFinite(syncStatus.minutesAgo) ? syncStatus.minutesAgo : null;
-    const hasLinked = syncStatus.hasLinkedEvent === true;
-    const syncBad = this.syncFailed || !hasLinked || syncStatus.status === 'not_synced' || syncMinutes == null || syncMinutes > 60;
-    const syncWarn = !syncBad && syncMinutes > 5;
-    const syncGood = !syncBad && !syncWarn;
-    if (syncBad || syncWarn || syncGood) {
-      const syncPill = document.createElement('button');
-      syncPill.title = this.syncFailed ? 'GroupMe sync failed — tap to retry'
-        : !syncStatus.hasLinkedEvent ? 'No GroupMe event linked'
-        : syncStatus.status === 'not_synced' ? 'RSVPs not synced yet — tap to sync'
-        : (syncWarn ? 'RSVP sync is older than 5 minutes — tap to sync' : 'RSVP sync is fresh');
-      const badgeBg = syncGood
-        ? 'rgba(34,197,94,0.85)'
-        : (syncWarn ? 'rgba(234,179,8,0.85)' : 'rgba(239,68,68,0.85)');
-      syncPill.style.cssText = `padding:2px 8px;border-radius:10px;border:none;cursor:pointer;font-size:0.72rem;font-weight:700;white-space:nowrap;background:${badgeBg};color:#fff;`;
-      const syncStamp = syncStatus.lastSync
-        ? new Date(syncStatus.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'never';
-      syncPill.textContent = `Sync ${syncStamp}`;
-      syncPill.addEventListener('click', async () => {
-        syncPill.textContent = '⟳';
-        syncPill.disabled = true;
-        await this.syncThenLoad();
-      });
-      ctrlRow.appendChild(syncPill);
-    }
-
-    // Data sync button (always shown)
-    const dataSyncBtn = document.createElement('button');
-    dataSyncBtn.id = 'pitch-data-sync-btn';
-    dataSyncBtn.title = 'Data sync status';
-    dataSyncBtn.style.cssText = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:0.78rem;cursor:pointer;margin-left:auto;';
-    dataSyncBtn.textContent = this._leaguesSyncData ? (this._syncAllGreen ? '🟢' : '🔴') : '📡';
-    dataSyncBtn.addEventListener('click', () => this._openPitchSyncModal());
-    ctrlRow.appendChild(dataSyncBtn);
-
-    bar.appendChild(ctrlRow);
-    bar.appendChild(this._buildSyncRow());
     wrapper.appendChild(bar);
 
     container.appendChild(wrapper);
@@ -3109,10 +3192,7 @@ class GameDayLineupScreen extends Screen {
     };
 
     // ── game loop ─────────────────────────────────────────────────────────────
-    const GRID_SNAP = 5; // snap to 5-unit grid in canonical 0-100 space
-    const snapGrid = (v) => Math.round(v / GRID_SNAP) * GRID_SNAP;
-
-    let dragState = null; // { slotIndex, x, y (canonical), startCanvasX, startCanvasY, moved }
+    let dragState = null; // { playerId, x, y (canonical), startCanvasX, startCanvasY, moved }
 
     const loop = () => {
       this._pitchRafId = requestAnimationFrame(loop);
@@ -3134,24 +3214,14 @@ class GameDayLineupScreen extends Screen {
       // ── draw pitch background ─────────────────────────────────────────────
       this._drawPitchField(ctx, W, H, landscape);
 
-      // ── resolve positions & draw chips ────────────────────────────────────
-      // In formation-locked mode: use formation positions.
-      // In custom mode: use this.customPositions (initialised from formation if not set).
-      const formCode = (this.selectedFormation?.code === 'custom' || !this.selectedFormation?.code) ? '4-3-3' : this.selectedFormation.code;
-      const formPositions = this.getPositionsForFormation(formCode);
-
-      // Seed customPositions when in custom mode and none saved yet
-      const isCustomMode = this.selectedFormation?.code === 'custom';
-      if (isCustomMode && !this.customPositions) {
-        this.customPositions = formPositions.map(p => ({ x: p.x, y: p.y, label: p.label }));
-      }
-
-      const positions = (!isCustomMode && !this.customPositions)
-        ? formPositions
-        : (this.customPositions || formPositions).map((cp, i) => ({
-            x: cp.x, y: cp.y,
-            label: cp.label || (formPositions[i]?.label ?? '')
-          }));
+      // ── draw only players currently on pitch (no formation slots) ─────────
+      const starters = this.zones.starting
+        .map((playerId, idx) => ({
+          playerId,
+          idx,
+          player: this.getPlayerById(playerId)
+        }))
+        .filter(item => item.playerId != null && item.player);
 
       const hitZones = [];
 
@@ -3170,57 +3240,19 @@ class GameDayLineupScreen extends Screen {
       // Chip radius scales with smaller dimension
       const baseR = Math.min(W, H) * 0.024;
 
-      // ── drag feedback overlay ─────────────────────────────────────────────
-      if (dragState && dragState.moved) {
-        const isDraggingEmpty = !this.zones.starting[dragState.slotIndex];
-        if (isDraggingEmpty) {
-          // Slot-move mode: show grid dots + snap ring
-          ctx.fillStyle = 'rgba(255,255,255,0.08)';
-          for (let gx = 0; gx <= 100; gx += GRID_SNAP) {
-            for (let gy = GRID_SNAP; gy <= 90; gy += GRID_SNAP) {
-              const [gpx, gpy] = toCanvas(gx, gy);
-              ctx.beginPath(); ctx.arc(gpx, gpy, 1.5, 0, Math.PI * 2); ctx.fill();
-            }
-          }
-          const sx = snapGrid(dragState.x), sy = snapGrid(dragState.y);
-          const [spx, spy] = toCanvas(sx, sy);
-          ctx.beginPath(); ctx.arc(spx, spy, baseR * 0.85, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
-          ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
-        } else {
-          // Player-move mode: highlight nearest empty slot as snap target
-          let nearestIdx = -1, nearestDist = Infinity;
-          positions.forEach((p, idx) => {
-            if (idx === dragState.slotIndex) return;
-            const d = Math.hypot(p.x - dragState.x, p.y - dragState.y);
-            if (d < nearestDist) { nearestDist = d; nearestIdx = idx; }
-          });
-          if (nearestIdx >= 0 && nearestDist < 20) {
-            const [tx, ty] = toCanvas(positions[nearestIdx].x, positions[nearestIdx].y);
-            ctx.beginPath(); ctx.arc(tx, ty, baseR * 1.5, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(59,130,246,0.75)'; ctx.lineWidth = 3; ctx.stroke();
-          }
-        }
-      }
-
-      positions.forEach((pos, i) => {
-        // If this slot is being dragged, use drag position instead
-        const isDragging = dragState && dragState.slotIndex === i;
+      starters.forEach((item, i) => {
+        const pos = this.playerPositions[item.playerId] || this.getPositionsForFormation('4-3-3')[i] || { x: 50, y: 50 };
+        const isDragging = dragState && dragState.playerId === item.playerId;
         const drawPos = isDragging ? dragState : pos;
-
-        const playerId = this.zones.starting[i];
-        const player   = playerId ? this.getPlayerById(playerId) : null;
-        const key      = player ? `p${player.playerId}` : `s${i}`;
-        const anim     = getAnim(key);
+        const key = `p${item.playerId}`;
+        const anim = getAnim(key);
         const [px, py] = toCanvas(drawPos.x, drawPos.y);
 
-        // Ease scale toward target
         anim.scale += (anim.targetScale - anim.scale) * 0.18;
-        anim.t     += 0.04;
+        anim.t += 0.04;
 
         const r = baseR * anim.scale * (isDragging ? 1.2 : 1);
 
-        // Dragging chip: draw a ghost circle at original position
         if (isDragging) {
           const [opx, opy] = toCanvas(pos.x, pos.y);
           ctx.beginPath();
@@ -3232,14 +3264,17 @@ class GameDayLineupScreen extends Screen {
           ctx.setLineDash([]);
         }
 
-        if (player) {
-          this._drawPlayerChip(ctx, px, py, r, player, pos.label, anim);
-        } else {
-          this._drawEmptySlot(ctx, px, py, r, pos.label, anim);
-        }
+        this._drawPlayerChip(ctx, px, py, r, item.player, '', anim);
 
-        hitZones.push({ cx: px, cy: py, r: r + 6, type: player ? 'chip' : 'slot',
-          playerId: player?.playerId, slotIndex: i, canonX: pos.x, canonY: pos.y });
+        hitZones.push({
+          cx: px,
+          cy: py,
+          r: r + 6,
+          type: 'chip',
+          playerId: item.playerId,
+          canonX: pos.x,
+          canonY: pos.y
+        });
       });
 
       this._pitchHitZones = hitZones;
@@ -3275,9 +3310,11 @@ class GameDayLineupScreen extends Screen {
           // Block drag when movement is locked
           if (this.pitchMoveLocked) return;
           dragState = {
-            slotIndex: hz.slotIndex,
-            x: hz.canonX, y: hz.canonY,
-            startCanvasX: cx, startCanvasY: cy,
+            playerId: hz.playerId,
+            x: hz.canonX,
+            y: hz.canonY,
+            startCanvasX: cx,
+            startCanvasY: cy,
             moved: false
           };
           return;
@@ -3305,48 +3342,10 @@ class GameDayLineupScreen extends Screen {
     const onPointerUp = (e) => {
       if (dragState && dragState.moved) {
         if (!this._toCanonical) { dragState = null; return; }
-        const i = dragState.slotIndex;
-        const isDraggingEmpty = !this.zones.starting[i];
-
-        if (isDraggingEmpty) {
-          // Empty slot drag → move the slot position, snap to grid
-          if (!this.customPositions) {
-            this.customPositions = this.getPositionsForFormation(
-              this.selectedFormation?.code || '4-3-3'
-            ).map(p => ({ x: p.x, y: p.y, label: p.label }));
-          }
-          this.customPositions[i] = {
-            x: snapGrid(dragState.x),
-            y: snapGrid(dragState.y),
-            label: this.customPositions[i]?.label || ''
-          };
-          this._scheduleSaveMeta();
-        } else {
-          // Filled chip drag → move the player freely; snap to nearest other slot if close
-          let nearestIdx = -1, nearestDist = Infinity;
-          positions.forEach((p, idx) => {
-            if (idx === i) return;
-            const d = Math.hypot(p.x - dragState.x, p.y - dragState.y);
-            if (d < nearestDist) { nearestDist = d; nearestIdx = idx; }
-          });
-          if (nearestIdx >= 0 && nearestDist < 15) {
-            // Snap: swap players between slots
-            const tmp = this.zones.starting[i];
-            this.zones.starting[i] = this.zones.starting[nearestIdx];
-            this.zones.starting[nearestIdx] = tmp;
-          } else {
-            // Free move: update the player's canonical position AND the slot position
-            const playerId = this.zones.starting[i];
-            if (playerId) this.playerPositions[playerId] = { x: dragState.x, y: dragState.y };
-            if (!this.customPositions) {
-              this.customPositions = this.getPositionsForFormation(
-                this.selectedFormation?.code || '4-3-3'
-              ).map(p => ({ x: p.x, y: p.y, label: p.label }));
-            }
-            this.customPositions[i] = { x: dragState.x, y: dragState.y, label: this.customPositions[i]?.label || '' };
-          }
+        const playerId = dragState.playerId;
+        if (playerId != null) {
+          this.playerPositions[playerId] = { x: dragState.x, y: dragState.y };
           this._scheduleAutoSaveLineup();
-          this._scheduleSaveMeta();
         }
         dragState = null;
         e.preventDefault();
@@ -3360,18 +3359,12 @@ class GameDayLineupScreen extends Screen {
       if (!hz) { this._dismissPitchPopover(); return; }
 
       // Animate bounce
-      const key = hz.type === 'chip' ? `p${hz.playerId}` : `s${hz.slotIndex}`;
+      const key = `p${hz.playerId}`;
       const anim = chipAnim.get(key);
       if (anim) { anim.targetScale = 1.35; setTimeout(() => { anim.targetScale = 1; }, 180); }
 
       this._dismissPitchPopover();
-      const anchor = lastDownClient;
-      if (hz.type === 'chip') {
-        // Go directly to full edit modal — remove-from-pitch is inside
-        this.openEditPlayerModal(hz.playerId, hz.slotIndex);
-      } else {
-        this.openSlotPicker(hz.slotIndex, anchor);
-      }
+      this.openEditPlayerModal(hz.playerId);
       e.preventDefault();
     };
 
@@ -3387,12 +3380,17 @@ class GameDayLineupScreen extends Screen {
         const outside = e.clientX < rect.left || e.clientX > rect.right ||
                         e.clientY < rect.top  || e.clientY > rect.bottom;
         if (outside) {
-          // Player dragged off canvas — remove from pitch back to pool
-          const slotIdx = dragState.slotIndex;
-          const playerId = this.zones.starting[slotIdx];
+          // Player dragged off canvas — drop into bench or outside pool.
+          const playerId = dragState.playerId;
           if (playerId != null) {
+            const dropEl = document.elementFromPoint(e.clientX, e.clientY);
+            const dropZone = dropEl?.closest('[data-pitch-dropzone]')?.dataset?.pitchDropzone || 'pool';
             dragState = null;
-            this.removePlayerFromAllZones(playerId);
+            if (dropZone === 'bench') {
+              this.movePlayerToZone(playerId, 'bench');
+            } else {
+              this.movePlayerToZone(playerId, 'pool');
+            }
             this.renderAllZones();
             this._scheduleAutoSaveLineup();
             e.preventDefault();
@@ -3422,22 +3420,7 @@ class GameDayLineupScreen extends Screen {
       const dropX = Math.max(3, Math.min(97, canonX));
       const dropY = Math.max(2, Math.min(85, canonY));
 
-      // Snap to nearest empty slot within 18 canonical units
-      const positions = this._pitchHitZones || [];
-      let snapIdx = -1, snapDist = 18;
-      positions.forEach(hz => {
-        if (hz.type !== 'slot') return; // only empty slots
-        const d = Math.hypot(hz.canonX - dropX, hz.canonY - dropY);
-        if (d < snapDist) { snapDist = d; snapIdx = hz.slotIndex; }
-      });
-
-      if (snapIdx >= 0) {
-        // Place player directly into the snapped slot position
-        const snapPos = this._pitchHitZones.find(hz => hz.slotIndex === snapIdx);
-        this.movePlayerToPitch(pid, 'pool', snapPos.canonX, snapPos.canonY);
-      } else {
-        this.movePlayerToPitch(pid, 'pool', dropX, dropY);
-      }
+      this.movePlayerToPitch(pid, 'pool', dropX, dropY);
     });
 
     // Dismiss popover when tapping outside it
@@ -3755,7 +3738,7 @@ class GameDayLineupScreen extends Screen {
   // ── Build a vertical side panel (bench or alternates) ────────────────────
   _buildSidePlayerPanel(playerIds, color, zone, label) {
     const panel = document.createElement('div');
-    panel.style.cssText = `width:52px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;background:rgba(0,0,0,0.25);padding:4px 2px;gap:3px;scrollbar-width:none;`;
+    panel.style.cssText = `width:52px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;min-height:0;max-height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:rgba(0,0,0,0.25);padding:4px 2px;gap:3px;scrollbar-width:thin;`;
     const lbl = document.createElement('div');
     lbl.style.cssText = `font-size:0.6rem;color:${color};text-align:center;padding:3px 0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;`;
     lbl.textContent = label;
@@ -3798,79 +3781,111 @@ class GameDayLineupScreen extends Screen {
     return strip;
   }
 
-  // Top strip: 4 labelled segments (left→right):
-  //   1. green  – RSVP + made/predicted practice requirement
-  //   2. blue   – RSVP only
-  //   3. amber  – Practice only
-  //   4. gray   – Nothing yet
+  // Top strip: not responded (pending/maybe/no RSVP).
   _buildTopStrip() {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
     const pool = this.players.filter(p => !allZoned.has(p.playerId));
 
-    const meetsOrPredicted = (p) => this._canMeetPracticeByMatch(p);
-    const rsvpYes = (p) => p.matchRsvp === 'yes';
-
-    const segments = [
-      { color: '#22c55e', label: 'RSVP + Req/Proj', players: this._rankPlayers(pool.filter(p => rsvpYes(p) && meetsOrPredicted(p))) },
-      { color: '#60a5fa', label: 'RSVP Only',        players: this._rankPlayers(pool.filter(p => rsvpYes(p) && !meetsOrPredicted(p))) },
-      { color: '#f59e0b', label: 'Practice Only',    players: this._rankPlayers(pool.filter(p => !rsvpYes(p) && meetsOrPredicted(p))) },
-      { color: '#9ca3af', label: 'Nothing',          players: this._rankPlayers(pool.filter(p => !rsvpYes(p) && !meetsOrPredicted(p))) },
-    ];
+    const topPlayers = this._rankPlayers(
+      pool.filter(p => p.matchRsvp !== 'yes' && p.matchRsvp !== 'no')
+    );
 
     const strip = document.createElement('div');
     strip.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,0.28);border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;min-height:62px;scrollbar-width:none;';
 
-    let anyContent = false;
-    for (const seg of segments) {
-      if (seg.players.length === 0) continue;
-      anyContent = true;
-
-      const group = document.createElement('div');
-      group.style.cssText = `display:flex;flex-direction:row;align-items:center;gap:3px;padding:4px 6px;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;`;
-
-      const lbl = document.createElement('span');
-      lbl.style.cssText = `font-size:0.55rem;color:${seg.color};text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.8;`;
-      lbl.textContent = seg.label;
-      group.appendChild(lbl);
-
-      for (const p of seg.players) {
-        group.appendChild(this._buildPanelChipEl(p, 'pool'));
-      }
-      strip.appendChild(group);
-    }
-
-    if (!anyContent) {
+    if (topPlayers.length === 0) {
       strip.style.minHeight = '0';
       strip.style.display = 'none';
+      return strip;
     }
+
+    const group = document.createElement('div');
+    group.style.cssText = 'display:flex;flex-direction:row;align-items:center;gap:3px;padding:4px 6px;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;';
+
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:0.55rem;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.8;';
+    lbl.textContent = 'Not Responded';
+    group.appendChild(lbl);
+
+    for (const p of topPlayers) {
+      group.appendChild(this._buildPanelChipEl(p, 'pool'));
+    }
+    strip.appendChild(group);
 
     return strip;
   }
 
-  // Left panel: green only — RSVP yes + met practice threshold
+  // Left panel: RSVP yes, but did not make / not projected (2nd tier).
   _buildQualifiedPanel() {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
     const qualified = this._rankPlayers(
       this.players.filter(p =>
         !allZoned.has(p.playerId) &&
         p.matchRsvp === 'yes' &&
-        (p.eligibilityStatus === 'priority_starter' || p.eligibilityStatus === 'eligible_starter')
+        !this._canMeetPracticeByMatch(p)
       )
     );
-    return this._buildSidePlayerPanel(qualified.map(p => p.playerId), '#22c55e', 'pool', '✓');
+    return this._buildSidePlayerPanel(qualified.map(p => p.playerId), '#f59e0b', 'pool', '2nd');
   }
 
-  // Right panel: 0 sessions AND no game RSVP
+  // Right panel: not going.
   _buildZeroSessionPanel() {
     const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const pool = this.players.filter(p => !allZoned.has(p.playerId));
     const zero = this._rankPlayers(
-      this.players.filter(p =>
-        !allZoned.has(p.playerId) &&
-        (p.sessionsAttended || 0) === 0 &&
-        p.matchRsvp !== 'yes'
+      pool.filter(p =>
+        p.matchRsvp === 'no'
       )
     );
-    return this._buildSidePlayerPanel(zero.map(p => p.playerId), '#6b7280', 'pool', '0');
+    return this._buildSidePlayerPanel(zero.map(p => p.playerId), '#ef4444', 'pool', 'No');
+  }
+
+  // Bottom strip: RSVP going + made/projected practice requirement (outside pool only).
+  _buildGoingPracticeStrip() {
+    const allZoned = new Set([...this.zones.starting, ...this.zones.bench, ...this.zones.alternates]);
+    const qualified = this._rankPlayers(
+      this.players.filter(p =>
+        !allZoned.has(p.playerId) &&
+        p.matchRsvp === 'yes' &&
+        this._canMeetPracticeByMatch(p)
+      )
+    );
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'flex-shrink:0;border-top:2px solid rgba(34,197,94,0.45);background:rgba(0,0,0,0.35);';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:56px;scrollbar-width:none;';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:0.65rem;color:rgba(34,197,94,0.85);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;padding-right:2px;';
+    lbl.textContent = `✅ Going+Practice ${qualified.length}`;
+    row.appendChild(lbl);
+
+    if (qualified.length === 0) {
+      const empty = document.createElement('span');
+      empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;';
+      empty.textContent = '—';
+      row.appendChild(empty);
+    } else {
+      for (const p of qualified) row.appendChild(this._buildPanelChipEl(p, 'pool'));
+    }
+
+    // Allow dragging from bench back to criteria lanes via pool reset.
+    row.addEventListener('dragover', (e) => {
+      if (e.dataTransfer?.types?.includes('text/player-id')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }
+    });
+    row.addEventListener('drop', (e) => {
+      const pid = parseInt(e.dataTransfer?.getData('text/player-id'));
+      if (!pid) return;
+      e.preventDefault();
+      this.movePlayerToZone(pid, 'pool');
+    });
+
+    wrapper.appendChild(row);
+    return wrapper;
   }
 
   // Bottom strip: assigned bench players
@@ -3897,6 +3912,20 @@ class GameDayLineupScreen extends Screen {
     } else {
       for (const p of bench) row.appendChild(this._buildPanelChipEl(p, 'bench'));
     }
+    // Drag any player chip here to bench.
+    row.addEventListener('dragover', (e) => {
+      if (e.dataTransfer?.types?.includes('text/player-id')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }
+    });
+    row.addEventListener('drop', (e) => {
+      const pid = parseInt(e.dataTransfer?.getData('text/player-id'));
+      if (!pid) return;
+      e.preventDefault();
+      this.movePlayerToZone(pid, 'bench');
+    });
+
     wrapper.appendChild(row);
     return wrapper;
   }
@@ -3951,12 +3980,34 @@ class GameDayLineupScreen extends Screen {
       const bg = opts.background || 'rgba(30,80,160,0.25)';
       const metaText = opts.metaText || '';
       const title = opts.title || '';
+      const showSyncAction = opts.showSyncAction === true;
+      const onManualSync = opts.onManualSync;
       const card = document.createElement('div');
       card.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;background:${bg};border:1px solid ${accent};border-radius:8px;padding:7px 9px;cursor:pointer;min-height:56px;`;
       if (title) card.title = title;
       card.innerHTML =
         `<span style="font-size:0.76rem;line-height:1.2;color:#7ec8ff;font-weight:700;word-break:break-word;">${label}${eventDt ? ' <span style="color:#c8e0ff;font-weight:400;">' + eventDt + '</span>' : ''}${metaText ? '<br><span style="color:#cbd5e1;font-weight:500;">' + metaText + '</span>' : ''}</span>` +
         `<span style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">${mkDot('#4ade80', going)}${mkDot('#fbbf24', noResp)}${mkDot('#f87171', notGoing)}</span>`;
+
+      if (showSyncAction) {
+        const actionRow = document.createElement('div');
+        actionRow.style.cssText = 'width:100%;display:flex;justify-content:flex-end;';
+        const syncBtn = document.createElement('button');
+        syncBtn.type = 'button';
+        syncBtn.textContent = 'Sync';
+        syncBtn.style.cssText = 'padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.35);background:rgba(2,6,23,0.35);color:#e2e8f0;font-size:0.68rem;font-weight:600;cursor:pointer;';
+        syncBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (typeof onManualSync === 'function') {
+            syncBtn.disabled = true;
+            syncBtn.textContent = 'Syncing...';
+            await onManualSync();
+          }
+        });
+        actionRow.appendChild(syncBtn);
+        card.appendChild(actionRow);
+      }
+
       card.addEventListener('click', onSync);
       return card;
     };
@@ -4037,9 +4088,17 @@ class GameDayLineupScreen extends Screen {
       const evtTitle = evt.lastSync
         ? `Last successful sync: ${fmtTs(evt.lastSync)}${evtSyncMins != null ? ` (${evtSyncMins} minutes ago)` : ''}`
         : 'No successful sync recorded for this event';
+      const evtNeedsSync = this.syncFailed || evtSyncMins == null || evtSyncMins > 5;
       cardsGrid.appendChild(mkCard(dayLabel, evtDt, { going, noResp, notGoing }, () => {
         this._openEventRsvpModal({ type: 'training', chatEventId: evt.id, title: evt.title, startAt: evt.startAt, eventDate: evt.eventDate, teamId });
-      }, { accentColor: evtAccent, background: evtBg, metaText: evtMeta, title: evtTitle }));
+      }, {
+        accentColor: evtAccent,
+        background: evtBg,
+        metaText: evtMeta,
+        title: evtTitle,
+        showSyncAction: evtNeedsSync,
+        onManualSync: async () => this.syncThenLoad(),
+      }));
     }
 
     const gs = this.groupmeSync || {};
@@ -4060,6 +4119,7 @@ class GameDayLineupScreen extends Screen {
     const gameTitle = gs.lastSync
       ? `Last successful sync: ${fmtTs(gs.lastSync)}${gameSyncMins != null ? ` (${gameSyncMins} minutes ago)` : ''}`
       : 'No successful sync recorded for game RSVPs';
+    const gameNeedsSync = this.syncFailed || gameSyncMins == null || gameSyncMins > 5;
     const matchDate = this.matchInfo?.date ? this.matchInfo.date.slice(5, 10) : 'Game';
     const gameEvtDt = fmtTime(this.matchInfo?.time || '');
     const gameGoing = gs.goingCount ?? 0;
@@ -4067,7 +4127,14 @@ class GameDayLineupScreen extends Screen {
     const gameNotGoing = gs.notGoingCount ?? 0;
     cardsGrid.appendChild(mkCard('Game ' + matchDate, gameEvtDt, { going: gameGoing, noResp: gameNoResp, notGoing: gameNotGoing }, () => {
       this._openEventRsvpModal({ type: 'game', matchId, title: matchDate, teamId });
-    }, { accentColor: gameAccent, background: gameBg, metaText: gameMeta, title: gameTitle }));
+    }, {
+      accentColor: gameAccent,
+      background: gameBg,
+      metaText: gameMeta,
+      title: gameTitle,
+      showSyncAction: gameNeedsSync,
+      onManualSync: async () => this.syncThenLoad(),
+    }));
 
     syncRow.appendChild(cardsGrid);
 
