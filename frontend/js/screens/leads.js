@@ -118,6 +118,7 @@ class LeadsScreen extends Screen {
 
     const fieldMap = this.extractFieldMap(lead.raw_fields);
     const location = this.buildLocationLabel(fieldMap);
+    const formattedPhone = this.formatPhoneNumber(lead.phone || '');
 
     // Parse extra fields from raw_fields for display
     const extras = [];
@@ -143,11 +144,32 @@ class LeadsScreen extends Screen {
           <span style="font-size:0.75rem; opacity:0.5; white-space:nowrap; margin-left:var(--space-2);">${date}</span>
         </div>
         ${lead.email ? `<div style="font-size:0.85rem;">${lead.email}</div>` : ''}
-        ${lead.phone ? `<div style="font-size:0.85rem; opacity:0.8;">${lead.phone}</div>` : ''}
+        ${lead.phone ? `<div style="font-size:1rem; font-weight:600; opacity:0.95; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${location ? `<div style="font-size:0.85rem; opacity:0.85;">📍 ${location}</div>` : ''}
         ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
       </div>
     `;
+  }
+
+  formatPhoneNumber(rawPhone) {
+    const value = String(rawPhone || '').trim();
+    if (!value) return '';
+
+    const digits = value.replace(/\D/g, '');
+
+    // US/Canada number with country code.
+    if (digits.length === 11 && digits.startsWith('1')) {
+      const local = digits.slice(1);
+      return `+1 (${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
+    }
+
+    // US/Canada local format.
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+
+    // For international/non-standard formats, keep user-provided value.
+    return value;
   }
 
   extractFieldMap(rawFields) {
