@@ -61,6 +61,7 @@ struct PlayerEligibility {
     bool on_official_roster;       // true if on the specific team's league roster
     int person_id;
     std::string date_of_birth;     // ISO date string "YYYY-MM-DD" or ""
+    std::string payment_status;    // LeagueApps payment status string or ""
     int required_sessions;         // final required sessions (age-derived or override)
     int required_sessions_override; // -1 = not set (use age rule)
 };

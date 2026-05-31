@@ -267,6 +267,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        p.required_sessions_override,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        pe.birth_date,
+                       pe.leagueapps_payment_status,
                        -- On official roster = any sibling team in same league
                        EXISTS(
                            SELECT 1 FROM rosters r2
@@ -399,6 +400,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                    rp.elig_liga2_starter, rp.elig_liga2_bench,
                    rp.required_sessions_override,
                    rp.birth_date,
+                   rp.leagueapps_payment_status,
                    COALESCE(aa.sessions_attended, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
@@ -624,6 +626,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
             pe.date_of_birth = row["birth_date"].is_null() ? "" : row["birth_date"].c_str();
+            pe.payment_status = row["leagueapps_payment_status"].is_null() ? "" : row["leagueapps_payment_status"].c_str();
             pe.required_sessions_override = row["required_sessions_override"].is_null() ? -1
                                              : row["required_sessions_override"].as<int>();
 
@@ -715,6 +718,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"eligLiga1Starter\":" << (pe.elig_liga1_starter ? "true" : "false") << ",";
             json << "\"eligLiga1Bench\":"   << (pe.elig_liga1_bench   ? "true" : "false") << ",";
             json << "\"eligLiga2Starter\":" << (pe.elig_liga2_starter ? "true" : "false") << ",";
+            json << "\"paymentStatus\":" << (pe.payment_status.empty() ? "null" : "\"" + escapeJson(pe.payment_status) + "\"") << ",";
             json << "\"eligLiga2Bench\":"   << (pe.elig_liga2_bench   ? "true" : "false") << ",";
             json << "\"dateOfBirth\":" << (pe.date_of_birth.empty() ? "null" : "\"" + pe.date_of_birth + "\"") << ",";
             json << "\"requiredSessions\":" << pe.required_sessions << ",";

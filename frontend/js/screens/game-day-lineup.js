@@ -780,6 +780,92 @@ class GameDayLineupScreen extends Screen {
     return this._ageFromDob(player?.dateOfBirth, new Date()) != null;
   }
 
+  _formatDobForCard(player) {
+    const raw = player?.dateOfBirth || player?.dob || player?.date_of_birth || '';
+    if (!raw) return '\u2014';
+
+    const dt = new Date(raw);
+    if (!Number.isFinite(dt.getTime())) return '\u2014';
+
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  _boolish(value) {
+    if (value == null) return null;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value !== 'string') return null;
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return null;
+
+    if (['true', 'yes', 'y', '1', 'paid', 'complete', 'completed', 'confirmed', 'registered', 'active'].includes(normalized)) {
+      return true;
+    }
+    if (['false', 'no', 'n', '0', 'unpaid', 'cancelled', 'canceled', 'withdrawn', 'refunded', 'inactive'].includes(normalized)) {
+      return false;
+    }
+    return null;
+  }
+
+  _registeredLabel(player) {
+    const direct = [
+      player?.registered,
+      player?.isRegistered,
+      player?.registrationComplete,
+      player?.onOfficialRoster,
+    ];
+    for (const val of direct) {
+      const b = this._boolish(val);
+      if (b === true) return 'Yes';
+      if (b === false) return 'No';
+    }
+
+    const statusRaw = String(player?.registrationStatus || player?.registration_status || '').trim();
+    if (!statusRaw) return '\u2014';
+
+    const s = statusRaw.toLowerCase();
+    if (s.includes('reserved') || s.includes('registered') || s.includes('confirmed') || s.includes('complete') || s.includes('active')) {
+      return 'Yes';
+    }
+    if (s.includes('pending') || s.includes('wait')) {
+      return 'Pending';
+    }
+    if (s.includes('cancel') || s.includes('withdrawn') || s.includes('declin') || s.includes('expired')) {
+      return 'No';
+    }
+    return statusRaw;
+  }
+
+  _paidLabel(player) {
+    const direct = [
+      player?.paid,
+      player?.isPaid,
+      player?.paymentComplete,
+    ];
+    for (const val of direct) {
+      const b = this._boolish(val);
+      if (b === true) return 'Yes';
+      if (b === false) return 'No';
+    }
+
+    const statusRaw = String(player?.paymentStatus || player?.payment_status || '').trim();
+    if (!statusRaw) return '\u2014';
+
+    const s = statusRaw.toLowerCase();
+    if (s.includes('partial')) return 'Partial';
+    if (s.includes('paid') || s.includes('complete') || s.includes('free') || s.includes('complimentary')) {
+      return 'Yes';
+    }
+    if (s.includes('unpaid') || s.includes('past_due') || s.includes('past due') || s.includes('due') || s.includes('outstanding')) {
+      return 'No';
+    }
+    return statusRaw;
+  }
+
   _requiredSessionsFor(player) {
     if (!player) return 1;
     if (player.isKeeper || player.isChild) return 0;
@@ -2020,10 +2106,16 @@ class GameDayLineupScreen extends Screen {
     const prac = player.sessionsAttended || 0;
     const pracMax = this.policy?.lookbackCount || '';
     const pracStr = pracMax ? `${prac}/${pracMax}` : `${prac}`;
+    const registeredStr = this._registeredLabel(player);
+    const paidStr = this._paidLabel(player);
+    const dobStr = this._formatDobForCard(player);
 
     card.innerHTML = `
       <span style="font-size:0.8rem;opacity:0.5;min-width:28px;text-align:right;">${jersey}</span>
-      <span style="flex:1;font-size:0.9rem;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}${noAgeBadge}</span>
+      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:0.9rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}${noAgeBadge}</span>
+        <span style="font-size:0.68rem;opacity:0.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Reg: ${registeredStr} • Paid: ${paidStr} • DOB: ${dobStr}</span>
+      </span>
       <span title="${player.eligibilityStatus || ''}" style="font-size:0.85rem;">${eligIcon}</span>
       <span style="font-size:0.75rem;opacity:0.6;">${pracStr}</span>
       <span style="font-size:0.75rem;">${rsvpDot}</span>

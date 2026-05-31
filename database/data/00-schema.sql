@@ -480,6 +480,7 @@ CREATE TABLE persons (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     birth_date DATE,  -- Required for age verification/safety
+    leagueapps_payment_status TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(first_name, last_name)  -- Same name = same person (curation overrides via name change)
@@ -489,6 +490,7 @@ CREATE INDEX idx_persons_birth_date ON persons(birth_date);
 
 COMMENT ON TABLE persons IS 'Core identity for all people in the system (players, coaches, admins, etc.)';
 COMMENT ON COLUMN persons.birth_date IS 'Birth date for age verification and safety compliance';
+COMMENT ON COLUMN persons.leagueapps_payment_status IS 'Latest LeagueApps payment status for membership/registration sync';
 
 -- Users: Authentication entity (represents "can log in")
 -- Links to a person but adds authentication capability
