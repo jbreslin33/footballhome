@@ -26,6 +26,8 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
 
 # LeagueApps API Configuration (private API client id)
 LEAGUEAPPS_API_PRIVATE_KEY=
+LEAGUEAPPS_SITE_ID=
+LEAGUEAPPS_MEMBERSHIP_PROGRAM_ID=
 
 # Let's Encrypt — email used by certbot for renewal notices.
 # When set, ./setup.sh will run `certbot --nginx --obtain-cert` automatically.
