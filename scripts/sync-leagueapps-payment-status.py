@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import datetime
 import os
 import re
 import subprocess
@@ -144,6 +145,48 @@ def extract_payment_status(rec):
     return ""
 
 
+def _parse_dob_value(value):
+    if value is None:
+        return ""
+    raw = str(value).strip()
+    if not raw:
+        return ""
+
+    raw = raw.split("T", 1)[0].strip()
+
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%Y/%m/%d"):
+        try:
+            dt = datetime.datetime.strptime(raw, fmt)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # Last-chance normalization for already close values like YYYY-M-D.
+    m = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$", raw)
+    if m:
+        y, mo, d = m.groups()
+        try:
+            dt = datetime.date(int(y), int(mo), int(d))
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            return ""
+    return ""
+
+
+def extract_dob(rec):
+    for key in [
+        "dateOfBirth",
+        "date_of_birth",
+        "birthDate",
+        "birth_date",
+        "dob",
+    ]:
+        dob = _parse_dob_value(rec.get(key))
+        if dob:
+            return dob
+    return ""
+
+
 def run_psql(sql):
     container = os.getenv("DB_CONTAINER", "footballhome_db")
     db_user = os.getenv("DB_USER", "footballhome_user")
@@ -227,15 +270,19 @@ def apply_updates(updates):
         return 0
 
     values = []
-    for person_id, payment_status in updates:
-        values.append(f"({person_id}, {sql_quote(payment_status)})")
+    for person_id, payment_status, dob in updates:
+        dob_sql = "NULL"
+        if dob:
+            dob_sql = sql_quote(dob)
+        values.append(f"({person_id}, {sql_quote(payment_status)}, {dob_sql})")
 
     sql = (
-        "WITH incoming(person_id, payment_status) AS (VALUES "
+        "WITH incoming(person_id, payment_status, date_of_birth) AS (VALUES "
         + ",".join(values)
         + ") "
         "UPDATE persons p "
         "SET leagueapps_payment_status = incoming.payment_status, "
+        "    birth_date = COALESCE(incoming.date_of_birth::date, p.birth_date), "
         "    updated_at = CURRENT_TIMESTAMP "
         "FROM incoming "
         "WHERE p.id = incoming.person_id"
@@ -273,44 +320,46 @@ def main():
             continue
 
         payment_status = extract_payment_status(rec)
-        if not payment_status:
+        dob = extract_dob(rec)
+        if not payment_status and not dob:
             continue
 
         key = (first, last)
         rec_key = (rec.get("lastUpdated", 0), rec.get("id", 0))
         prev = latest_by_name.get(key)
         if prev is None or rec_key >= prev[0]:
-            latest_by_name[key] = (rec_key, payment_status, rec)
+            latest_by_name[key] = (rec_key, payment_status, dob, rec)
 
     update_candidates = {}
     unmatched = []
     ambiguous = []
     matched_by_alias = 0
 
-    def track_update(person_id, rec_key, payment_status):
+    def track_update(person_id, rec_key, payment_status, dob):
         prev = update_candidates.get(person_id)
         if prev is None or rec_key >= prev[0]:
-            update_candidates[person_id] = (rec_key, payment_status)
+            update_candidates[person_id] = (rec_key, payment_status, dob)
 
     for key, payload in latest_by_name.items():
         rec_key = payload[0]
         payment_status = payload[1]
+        dob = payload[2]
         person_ids = person_index.get(key, [])
         alias_person_id = alias_index.get(key)
 
         if alias_person_id:
-            track_update(alias_person_id, rec_key, payment_status)
+            track_update(alias_person_id, rec_key, payment_status, dob)
             matched_by_alias += 1
             continue
 
         if len(person_ids) == 1:
-            track_update(person_ids[0], rec_key, payment_status)
+            track_update(person_ids[0], rec_key, payment_status, dob)
         elif len(person_ids) == 0:
             unmatched.append((key[0], key[1], payment_status))
         else:
             ambiguous.append((key[0], key[1], payment_status, person_ids))
 
-    updates = [(person_id, payload[1]) for person_id, payload in update_candidates.items()]
+    updates = [(person_id, payload[1], payload[2]) for person_id, payload in update_candidates.items()]
 
     print(f"LeagueApps registrations fetched: {len(records)}")
     print(f"Rows with payment status: {len(latest_by_name)}")

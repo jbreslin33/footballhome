@@ -416,9 +416,10 @@ class GameDayLineupScreen extends Screen {
           this.groupmeMembers = membersData.data.members;
           this.clubTeams = membersData.data.teams || [];
           this.allChats = membersData.data.chats || [];
-          // GroupMe is source of truth for U23 trialists until official roster exists.
-          // Build pool strictly from GroupMe chat members (one row per GroupMe user).
-          this.players = this._buildGroupMeOnlyPlayers(this.groupmeMembers, teamId);
+          // Keep eligibility players (DOB/payment/registration, flags, etc.) and
+          // merge in GroupMe-only members so we do not drop enriched fields.
+          const gmPlayers = this._buildGroupMeOnlyPlayers(this.groupmeMembers, teamId);
+          this.players = this._dedupePlayers([...(this.players || []), ...gmPlayers]);
           this.appendLoadingProgress(`GroupMe members loaded: ${this.groupmeMembers.length}.`);
         }
       }
@@ -715,7 +716,23 @@ class GameDayLineupScreen extends Screen {
     merged.playerId = primary.playerId ?? secondary.playerId ?? null;
     merged.personId = primary.personId ?? secondary.personId ?? null;
     merged.gmUserId = primary.gmUserId ?? secondary.gmUserId ?? null;
-    merged.dateOfBirth = primary.dateOfBirth || secondary.dateOfBirth || null;
+
+    const nonEmpty = (...values) => {
+      for (const value of values) {
+        if (value == null) continue;
+        if (typeof value === 'string' && !value.trim()) continue;
+        return value;
+      }
+      return null;
+    };
+
+    // Keep enriched fields from whichever source has real data.
+    merged.jerseyNumber = nonEmpty(primary.jerseyNumber, secondary.jerseyNumber);
+    merged.position = nonEmpty(primary.position, secondary.position);
+    merged.dateOfBirth = nonEmpty(primary.dateOfBirth, secondary.dateOfBirth, primary.dob, secondary.dob, primary.date_of_birth, secondary.date_of_birth);
+    merged.paymentStatus = nonEmpty(primary.paymentStatus, secondary.paymentStatus, primary.payment_status, secondary.payment_status);
+    merged.registrationStatus = nonEmpty(primary.registrationStatus, secondary.registrationStatus, primary.registration_status, secondary.registration_status);
+    merged.onOfficialRoster = !!(a.onOfficialRoster || b.onOfficialRoster);
 
     // Keep most informative name if one side is blank.
     merged.firstName = (primary.firstName && String(primary.firstName).trim())
@@ -825,7 +842,7 @@ class GameDayLineupScreen extends Screen {
     }
 
     const statusRaw = String(player?.registrationStatus || player?.registration_status || '').trim();
-    if (!statusRaw) return '\u2014';
+    if (!statusRaw) return 'No';
 
     const s = statusRaw.toLowerCase();
     if (s.includes('reserved') || s.includes('registered') || s.includes('confirmed') || s.includes('complete') || s.includes('active')) {
@@ -853,7 +870,7 @@ class GameDayLineupScreen extends Screen {
     }
 
     const statusRaw = String(player?.paymentStatus || player?.payment_status || '').trim();
-    if (!statusRaw) return '\u2014';
+    if (!statusRaw) return 'No';
 
     const s = statusRaw.toLowerCase();
     if (s.includes('partial')) return 'Partial';
@@ -5123,6 +5140,9 @@ class GameDayLineupScreen extends Screen {
       : this.zones.bench.includes(playerId) ? 'bench'
       : this.zones.alternates.includes(playerId) ? 'alternates'
       : 'pool';
+    const registeredStr = this._registeredLabel(player);
+    const paidStr = this._paidLabel(player);
+    const dobStr = this._formatDobForCard(player);
 
     // Remove / move buttons depend on current zone
     const removeBtnHtml = (currentZone === 'starting') ? `
@@ -5166,6 +5186,7 @@ class GameDayLineupScreen extends Screen {
           <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
             <h3 style="margin:0;font-size:1rem;">${eligIcon} ${player.firstName || ''} ${player.lastName || ''}</h3>
             <div style="font-size:0.75rem;color:var(--text-muted);">${pos} · #${player.jerseyNumber || '—'} · ${prac} sessions</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Reg: ${registeredStr} · Paid: ${paidStr} · DOB: ${dobStr}</div>
           </div>
           <button class="attendance-close-btn">✕</button>
         </div>
@@ -5203,6 +5224,16 @@ class GameDayLineupScreen extends Screen {
               </div>
               <input type="date" id="ep-dob" value="${player.dateOfBirth || ''}" placeholder="YYYY-MM-DD"
                 style="padding:5px 6px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:inherit;font-size:0.82rem;">
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div style="font-size:0.88rem;">🧾 Registration</div>
+              <div style="font-size:0.84rem;font-weight:600;">${registeredStr}</div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div style="font-size:0.88rem;">💳 Payment</div>
+              <div style="font-size:0.84rem;font-weight:600;">${paidStr}</div>
             </div>
 
             <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
