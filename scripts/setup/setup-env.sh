@@ -24,6 +24,9 @@ GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
 
+# LeagueApps API Configuration (private API client id)
+LEAGUEAPPS_API_PRIVATE_KEY=
+
 # Let's Encrypt — email used by certbot for renewal notices.
 # When set, ./setup.sh will run `certbot --nginx --obtain-cert` automatically.
 LE_EMAIL=
@@ -39,6 +42,29 @@ EOF
   print_success "env file created"
 else
   print_success "env file already exists"
+fi
+
+source ./env 2>/dev/null || true
+
+# If LeagueApps key material exists, ensure PEM is available for JWT signing.
+if [ -n "${LEAGUEAPPS_API_PRIVATE_KEY:-}" ]; then
+  P12_FILE="config/${LEAGUEAPPS_API_PRIVATE_KEY}.p12"
+  PEM_FILE="config/${LEAGUEAPPS_API_PRIVATE_KEY}.pem"
+  if [ -f "$P12_FILE" ]; then
+    if [ ! -f "$PEM_FILE" ] || [ "$P12_FILE" -nt "$PEM_FILE" ]; then
+      print_status "Generating LeagueApps PEM from $(basename "$P12_FILE")..."
+      if openssl pkcs12 -in "$P12_FILE" -nodes -passin pass:notasecret -out "$PEM_FILE" >/dev/null 2>&1; then
+        chmod 600 "$PEM_FILE"
+        print_success "LeagueApps PEM ready: $(basename "$PEM_FILE")"
+      else
+        print_warning "Failed to build LeagueApps PEM from $(basename "$P12_FILE")"
+      fi
+    else
+      print_success "LeagueApps PEM already up to date"
+    fi
+  else
+    print_warning "LeagueApps P12 not found: $P12_FILE"
+  fi
 fi
 
 # Docker Hub login
