@@ -833,7 +833,6 @@ class GameDayLineupScreen extends Screen {
       player?.registered,
       player?.isRegistered,
       player?.registrationComplete,
-      player?.onOfficialRoster,
     ];
     for (const val of direct) {
       const b = this._boolish(val);
