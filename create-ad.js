@@ -93,7 +93,7 @@ const ADS = {
   'trial-pathway': {
     name:    'APSL & CASA Select — Summer Trial Pathway',
     imageUrl: 'https://footballhome.org/images/posts/trial-pathway-ad.png',
-    caption:  `⚽ LIGHTHOUSE BOYS CLUB — SUMMER PRESEASON TRIAL PATHWAY!\n\nTrial Players & Current Players will play the following to prepare for the APSL & CASA Select season:\n\n📅 June – July: CASA U23 Premier League + Philly Grassroots Cup (Brazil, Puerto Rico)\n📅 August: Friendlies & Tournaments · APSL & CASA Select Rosters Selected · US Amateur Cup Rosters Selected\n📅 September: APSL & CASA Select Season Begins · US Open Cup Qualifiers Round 1\n\n✅ US Soccer Licensed Coaches\n✅ Streamed & Recorded Games\n✅ Weekly Structured Practices & Pickup Sessions\n\n📍 Philadelphia, PA · Recruiting all summer.\n\n#Lighthouse1893 #APSL #CASASoccer #PhillySoccer #TrialPathway #UPSL`,
+    caption:  `Join now and compete in meaningful competitions and train with the teams during summer to prepare for APSL season.`,
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'SIGN_UP',
     targeting: {

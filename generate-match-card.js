@@ -520,7 +520,7 @@ function trialPathwayAdHTML({ lighthouseLogo, welovejunkLogo, complexLogo, casaL
   .content {
     position: absolute; top: 0; left: 0; right: 0; bottom: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-    padding: 30px 60px 30px;
+    padding: 30px 60px 200px;
   }
   .top-row {
     display: flex; align-items: center; justify-content: center; gap: 18px;
@@ -623,26 +623,12 @@ function trialPathwayAdHTML({ lighthouseLogo, welovejunkLogo, complexLogo, casaL
         ${casaLogo ? `<img src="${logoToDataUri(casaLogo)}" class="body-logo">` : ''}
       </div>
     </div>
-    <div class="sponsor-row">
-      <div class="logo-wrap">${welovejunkLogoTag}</div>
-      <div class="sponsor-text">
-        <div class="by">Sponsored By</div>
-        <div class="name">We Love Junk</div>
-      </div>
-      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
-      <div class="logo-wrap" style="width:160px;height:160px;">${complexLogoTag}</div>
-      <div class="sponsor-text">
-        <div class="by">Home Games At</div>
-        <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
-      </div>
-    </div>
   </div>
 </div>
 </body></html>`;
 }
 
 function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players', firstMatch = 'May 31, 2026' }) {
-  const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
   const complexLogoTag = complexLogo ? logoImgTag(complexLogo, '🏟️') : '<span style="font-size:40px;">🏟️</span>';
   const casaLogoTag = casaLogo ? logoImgTag(casaLogo, '⚽') : '<span style="font-size:40px;">⚽</span>';
