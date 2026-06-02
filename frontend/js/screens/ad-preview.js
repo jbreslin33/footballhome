@@ -93,10 +93,11 @@ class AdPreviewScreen extends Screen {
     const profileAvatar = `
       <div style="
         width:40px; height:40px; border-radius:50%;
-        background: #1877F2;
+        background: #fff;
         display:flex; align-items:center; justify-content:center;
-        font-size:18px; flex-shrink:0;
-      ">⚽</div>`;
+        overflow:hidden; flex-shrink:0;
+        border:1px solid #e4e6eb;
+      "><img src="/images/teams/logos/lighthouse-1893.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='⚽';"></div>`;
 
     const facebookMockup = `
       <!-- Facebook post mockup -->
@@ -113,7 +114,7 @@ class AdPreviewScreen extends Screen {
         <div style="display:flex; align-items:center; gap:10px; padding:12px 12px 8px;">
           ${profileAvatar}
           <div style="flex:1; min-width:0;">
-            <div style="font-weight:600; font-size:14px;">Footballhome</div>
+            <div style="font-weight:600; font-size:14px;">The Lighthouse 1893 Soccer Club</div>
             <div style="font-size:12px; color:#65676b;">Sponsored · <span style="font-size:11px;">🌐</span></div>
           </div>
           <div style="font-size:20px; color:#65676b;">···</div>
@@ -152,10 +153,10 @@ class AdPreviewScreen extends Screen {
             background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
             padding: 2px; flex-shrink:0;
           ">
-            <div style="width:100%; height:100%; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:14px;">⚽</div>
+            <div style="width:100%; height:100%; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;"><img src="/images/teams/logos/lighthouse-1893.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='⚽';"></div>
           </div>
           <div style="flex:1; min-width:0;">
-            <div style="font-weight:600; font-size:13px; line-height:1.2;">footballhome</div>
+            <div style="font-weight:600; font-size:13px; line-height:1.2;">lighthouse1893soccerclub</div>
             <div style="font-size:11px; color:#8e8e8e;">Sponsored</div>
           </div>
           <div style="font-size:18px; color:#262626;">···</div>
@@ -175,7 +176,7 @@ class AdPreviewScreen extends Screen {
         </div>
         <!-- IG caption -->
         <div style="padding:0 12px 12px; font-size:13px; line-height:1.5;">
-          <span style="font-weight:600;">footballhome</span>
+          <span style="font-weight:600;">lighthouse1893soccerclub</span>
           ${bodyHtml ? ` ${bodyHtml}` : ''}
         </div>
       </div>`;
