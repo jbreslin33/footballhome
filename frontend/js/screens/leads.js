@@ -62,12 +62,13 @@ class LeadsScreen extends Screen {
   renderLeads(leads) {
     const container = this.find('#leads-list');
 
-    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women'];
+    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials'];
     const COLORS  = {
       'Brazil Men':  '#15803d',
       'U23 Men':     '#1d4ed8',
       'PR Men':      '#7c3aed',
       'U23 Women':   '#be185d',
+      'APSL Trials': '#f59e0b',
     };
 
     // Group + sort each column by date descending
@@ -83,7 +84,7 @@ class LeadsScreen extends Screen {
 
     container.innerHTML = `
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">${leads.length} lead${leads.length !== 1 ? 's' : ''}</p>
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); align-items:start;">
+      <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:var(--space-3); align-items:start;">
         ${COLUMNS.map(col => `
           <div>
             <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${COLORS[col]}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-2); text-align:center;">
@@ -107,6 +108,7 @@ class LeadsScreen extends Screen {
       '1552835789741946': 'Brazil Men',
       '1333581472007910': 'Brazil Men',
       '1052472267432735': 'U23 Men',
+      '1773598717166962': 'APSL Trials',
     };
     return map[formId] || null;
   }

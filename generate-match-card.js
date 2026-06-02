@@ -482,6 +482,165 @@ function grassrootsCupAdHTML({ country, flagEmoji, colorPrimary, colorSecondary,
 </body></html>`;
 }
 
+function trialPathwayAdHTML({ lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, apslLogo, openCupLogo, amateurLogo, fifaLogo, epsaLogo, concacafLogo }) {
+  const colorPrimary   = '#0D47A1';
+  const colorSecondary = '#041D53';
+  const colorAccent    = '#F5D442';
+  const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
+  const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
+  const complexLogoTag    = complexLogo    ? logoImgTag(complexLogo,    '🏟️') : '<span style="font-size:40px;">🏟️</span>';
+  const casaLogoTag       = casaLogo       ? logoImgTag(casaLogo,       '⚽') : '<span style="font-size:40px;">⚽</span>';
+  const casaInline = casaLogo ? `<img src="${logoToDataUri(casaLogo)}" style="height:1.6em;width:1.6em;object-fit:contain;background:white;border-radius:50%;padding:2px;vertical-align:-0.45em;margin-right:8px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">` : '';
+  const chipLogo = (p) => p ? `<img src="${logoToDataUri(p)}" style="height:1.6em;width:1.6em;object-fit:contain;background:white;border-radius:50%;padding:2px;vertical-align:-0.45em;margin-right:6px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">` : '';
+  const apslInline    = chipLogo(apslLogo);
+  const openCupInline = chipLogo(openCupLogo);
+  const amateurInline = '<span style="font-size:1.4em;vertical-align:-0.18em;margin-right:6px;">🇺🇸</span>';
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+  .card {
+    width: 1080px; height: 1080px; position: relative; overflow: hidden;
+    background: linear-gradient(160deg, ${colorPrimary} 0%, #0a1628 55%, ${colorSecondary} 100%);
+    color: white;
+  }
+  .pattern {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.04;
+    background-image: radial-gradient(#ffffff 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .hex-bg {
+    position: absolute; top: -80px; right: -80px; width: 500px; height: 500px;
+    opacity: 0.08; border-radius: 50%;
+    background: radial-gradient(circle, ${colorAccent} 0%, transparent 70%);
+  }
+  .gold-bar { position: absolute; top: 0; left: 0; right: 0; height: 10px; background: linear-gradient(90deg, ${colorAccent}, #f5d442, ${colorAccent}); }
+  .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, ${colorAccent}, #f5d442, ${colorAccent}); }
+  .content {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 30px 60px 30px;
+  }
+  .top-row {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    padding-top: 12px;
+  }
+  .tournament-badge {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 40px; padding: 10px 30px;
+    font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+    color: #f5d442;
+  }
+  .flag-section {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    margin-top: 22px;
+  }
+  .crest-wrap { width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6)); }
+  .country-name {
+    font-size: 96px; font-weight: 900; letter-spacing: 8px; text-transform: uppercase;
+    text-shadow: 0 6px 20px rgba(0,0,0,0.7);
+    color: white;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center; gap: 28px;
+  }
+  .title-logo { height: 140px; width: auto; max-width: 260px; object-fit: contain; background: white; border-radius: 24px; padding: 14px 22px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+  .bodies-row { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 10px 0 6px; }
+  .bodies-label { font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+  .bodies-logos { display: flex; align-items: center; justify-content: center; gap: 18px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 10px 22px; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+  .body-logo { height: 44px; width: auto; max-width: 80px; object-fit: contain; }
+  .team-label {
+    font-size: 30px; font-weight: 600; letter-spacing: 6px; text-transform: uppercase;
+    color: ${colorAccent}; opacity: 0.95; margin-top: 4px;
+  }
+  .details-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%;
+    margin-top: 10px;
+  }
+  .detail-pill {
+    background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 14px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 25px; font-weight: 500;
+  }
+  .detail-pill .icon { font-size: 28px; flex-shrink: 0; }
+  .detail-pill .txt { line-height: 1.2; }
+  .detail-pill .txt .label { font-size: 16px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px; letter-spacing: 1px; text-transform: uppercase; }
+  .open-banner {
+    background: linear-gradient(90deg, ${colorPrimary}, ${colorSecondary});
+    border: 2px solid ${colorAccent};
+    border-radius: 12px; padding: 14px 50px;
+    font-size: 28px; font-weight: 800; letter-spacing: 5px; text-transform: uppercase;
+    color: white; text-align: center; width: 100%;
+  }
+  .sponsor-row {
+    display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%;
+  }
+  .logo-wrap {
+    width: 80px; height: 80px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sponsor-text { text-align: center; }
+  .sponsor-text .by { font-size: 17px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
+  .sponsor-text .name { font-size: 26px; font-weight: 800; color: #f5d442; }
+  .bio-cta {
+    background: #f5d442; color: #0a1628;
+    border-radius: 12px; padding: 14px 50px;
+    font-size: 26px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+    text-align: center; width: 100%;
+  }
+</style>
+</head><body>
+<div class="card">
+  <div class="pattern"></div>
+  <div class="hex-bg"></div>
+  <div class="gold-bar"></div>
+  <div class="bottom-bar"></div>
+  <div class="content">
+    <div class="top-row">
+      <div class="tournament-badge">${lighthouseLogo ? `<img src="${logoToDataUri(lighthouseLogo)}" style="height:1.5em;width:1.5em;object-fit:contain;vertical-align:-0.35em;margin-right:8px;">` : ''}Lighthouse 1893 SC · APSL</div>
+    </div>
+    <div class="flag-section">
+      <div class="crest-wrap">${lighthouseLogoTag}</div>
+      <div class="country-name">${apslLogo ? `<img class="title-logo" src="${logoToDataUri(apslLogo)}">` : ''}<span>TRIALS</span></div>
+      <div class="team-label">APSL 1st Team &amp; APSL Reserves</div>
+    </div>
+    <div class="details-grid">
+      <div class="detail-pill" style="grid-column:1/-1"><span class="txt" style="width:100%"><span class="label">June &amp; July</span>${casaInline}CASA U23 Premier League · Grassroots Cup (<span style="font-size:1.3em;vertical-align:-0.12em;">🇧🇷</span> Brazil or <span style="font-size:1.3em;vertical-align:-0.12em;">🇵🇷</span> Puerto Rico)</span></div>
+      <div class="detail-pill"><span class="txt" style="width:100%"><span class="label">August</span>Roster Selection for: ${openCupInline}US Open Cup · ${amateurInline}US Amateur Cup · ${apslInline}APSL · Friendlies</span></div>
+      <div class="detail-pill"><span class="txt" style="width:100%"><span class="label">September</span>${apslInline}APSL Season Begins · ${openCupInline}US Open Cup &amp; ${amateurInline}US Amateur Cup Local Qualifiers</span></div>
+    </div>
+    <div class="open-banner">Play U23, Grassroots &amp; Friendlies RIGHT NOW · Get Evaluated for APSL</div>
+    <div class="bodies-row">
+      <div class="bodies-label">Officially Affiliated With</div>
+      <div class="bodies-logos">
+        ${fifaLogo ? `<img src="${logoToDataUri(fifaLogo)}" class="body-logo">` : ''}
+        ${concacafLogo ? `<img src="${logoToDataUri(concacafLogo)}" class="body-logo">` : ''}
+        ${amateurLogo ? `<img src="${logoToDataUri(amateurLogo)}" class="body-logo">` : ''}
+        ${openCupLogo ? `<img src="${logoToDataUri(openCupLogo)}" class="body-logo">` : ''}
+        ${epsaLogo ? `<img src="${logoToDataUri(epsaLogo)}" class="body-logo">` : ''}
+        ${apslLogo ? `<img src="${logoToDataUri(apslLogo)}" class="body-logo">` : ''}
+        ${casaLogo ? `<img src="${logoToDataUri(casaLogo)}" class="body-logo">` : ''}
+      </div>
+    </div>
+    <div class="sponsor-row">
+      <div class="logo-wrap">${welovejunkLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Sponsored By</div>
+        <div class="name">We Love Junk</div>
+      </div>
+      <div style="width:1px;height:48px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
+      <div class="logo-wrap" style="width:160px;height:160px;">${complexLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Home Games At</div>
+        <div class="name">The Lighthouse Sports &amp; Entertainment Complex</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>`;
+}
+
 function u23AdHTML({ division, teamName = 'Lighthouse Boys Club U23', colorPrimary, colorSecondary, lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, ctaLink = 'linktr.ee/Lighthouse1893Soccer', eligibilityText = 'Open to All Players', firstMatch = 'May 31, 2026' }) {
   const lighthouseLogoTag = lighthouseLogo ? logoImgTag(lighthouseLogo, '⚓') : '<span style="font-size:60px;">⚓</span>';
   const welovejunkLogoTag = welovejunkLogo ? logoImgTag(welovejunkLogo, '🗑️') : '<span style="font-size:40px;">🗑️</span>';
@@ -779,6 +938,8 @@ async function generateCard(type, data = {}) {
     html = lineupHTML(data);
   } else if (type === 'grassroots-cup-ad') {
     html = grassrootsCupAdHTML(data);
+  } else if (type === 'trial-pathway-ad') {
+    html = trialPathwayAdHTML(data);
   } else if (type === 'u23-ad') {
     html = u23AdHTML(data);
   } else if (type === 'u23-flyer') {
@@ -860,6 +1021,24 @@ async function main() {
       openBannerText: '🌎 You Do Not Have To Be Brazilian — Spots Are Limited!',
       eligibilityText: 'Ages 16+',
       filename: 'grassroots-cup-ad-brazil.png',
+    });
+    console.log(`\nImage saved: ${filepath}`);
+    console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);
+
+  } else if (type === 'trial-pathway') {
+    const lighthouseLogo = findLogo('lighthouse-1893');
+    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const apslLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'apsl.png');
+    const openCupLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'us-open-cup.png');
+    const amateurLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'ussoccer.png');
+    const fifaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'fifa.png');
+    const epsaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'epsa.png');
+    const concacafLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'concacaf.png');
+    const { filepath, filename } = await generateCard('trial-pathway-ad', {
+      lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, apslLogo, openCupLogo, amateurLogo, fifaLogo, epsaLogo, concacafLogo,
+      filename: 'trial-pathway-ad.png',
     });
     console.log(`\nImage saved: ${filepath}`);
     console.log(`Public URL:  https://footballhome.org/images/posts/${filename}`);

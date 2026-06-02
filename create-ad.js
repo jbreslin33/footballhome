@@ -90,6 +90,21 @@ const ADS = {
       instagram_positions: ['stream', 'explore'],
     },
   },
+  'trial-pathway': {
+    name:    'APSL & CASA Select — Summer Trial Pathway',
+    imageUrl: 'https://footballhome.org/images/posts/trial-pathway-ad.png',
+    caption:  `⚽ LIGHTHOUSE BOYS CLUB — SUMMER PRESEASON TRIAL PATHWAY!\n\nTrial Players & Current Players will play the following to prepare for the APSL & CASA Select season:\n\n📅 June – July: CASA U23 Premier League + Philly Grassroots Cup (Brazil, Puerto Rico)\n📅 August: Friendlies & Tournaments · APSL & CASA Select Rosters Selected · US Amateur Cup Rosters Selected\n📅 September: APSL & CASA Select Season Begins · US Open Cup Qualifiers Round 1\n\n✅ US Soccer Licensed Coaches\n✅ Streamed & Recorded Games\n✅ Weekly Structured Practices & Pickup Sessions\n\n📍 Philadelphia, PA · Recruiting all summer.\n\n#Lighthouse1893 #APSL #CASASoccer #PhillySoccer #TrialPathway #UPSL`,
+    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
+    ctaType:  'SIGN_UP',
+    targeting: {
+      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      age_min: 18,
+      age_max: 32,
+      genders: [1], // 1 = male
+      publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
 };
 
 // ── Arg parsing ───────────────────────────────────────────────────────
@@ -181,6 +196,8 @@ async function run() {
     billing_event: 'IMPRESSIONS',
     optimization_goal: 'LEAD_GENERATION',
     bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+    promoted_object: JSON.stringify({ page_id: PAGE_ID }),
+    destination_type: 'ON_AD',
     targeting: JSON.stringify({ ...targeting, targeting_automation: { advantage_audience: 0 } }),
     status: 'PAUSED',
   };
@@ -196,8 +213,8 @@ async function run() {
     leadForm = { id: formIdArg };
   } else {
     console.log('3️⃣  Creating lead form...');
-  const leadForm = await apiPost(`${PAGE_ID}/leadgen_forms`, {
-    name: `${ad.name} — Lead Form — ${new Date().toLocaleDateString()}`,
+  leadForm = await apiPost(`${PAGE_ID}/leadgen_forms`, {
+    name: `${ad.name} — Lead Form — ${new Date().toISOString().replace(/[:.]/g, '-')}`,
     questions: JSON.stringify([
       { type: 'FULL_NAME' },
       { type: 'EMAIL' },
@@ -217,13 +234,13 @@ async function run() {
     }),
     thank_you_page: JSON.stringify({
       title: 'Thanks for your interest!',
-      body: 'A Lighthouse 1893 coach will reach out to you soon.',
+      body: 'A Lighthouse 1893 coach will reach out to you soon. Follow us on Instagram for updates.',
       button_type: 'VIEW_WEBSITE',
-      button_text: 'Visit Website',
-      website_url: 'https://footballhome.org',
+      button_text: 'Follow @lighthouse1893soccerclub',
+      website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
     }),
     locale: 'EN_US',
-    follow_up_action_url: 'https://footballhome.org',
+    follow_up_action_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
   });
     if (leadForm.error) { console.error('Lead form error:', JSON.stringify(leadForm.error, null, 2)); process.exit(1); }
     console.log(`   Lead Form ID: ${leadForm.id}`);
@@ -251,12 +268,14 @@ async function run() {
       page_id: PAGE_ID,
       link_data: {
         image_hash: imageHash,
+        link: ad.ctaUrl,
         message: ad.caption,
         call_to_action: { type: 'SIGN_UP', value: { lead_gen_form_id: leadForm.id } },
       },
     }),
   });
   if (creative.error) { console.error('Creative error:', JSON.stringify(creative.error, null, 2)); process.exit(1); }
+  if (!creative.id) { console.error('Creative response missing id:', JSON.stringify(creative, null, 2)); process.exit(1); }
   console.log(`   Creative ID: ${creative.id}`);
 
   // Step 4: Create Ad
@@ -267,7 +286,7 @@ async function run() {
     creative: JSON.stringify({ creative_id: creative.id }),
     status: 'PAUSED',
   });
-  if (createdAd.error) { console.error('Ad error:', createdAd.error.message); process.exit(1); }
+  if (createdAd.error) { console.error('Ad error:', JSON.stringify(createdAd.error, null, 2)); process.exit(1); }
   console.log(`   Ad ID: ${createdAd.id}`);
 
   console.log(`
