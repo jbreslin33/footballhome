@@ -39,9 +39,13 @@ class LeadsScreen extends Screen {
     this.find('#leads-empty').style.display   = 'none';
 
     try {
-      const res = await this.auth.fetch('/api/leads');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const leads = await res.json();
+      const [leadsRes, spendRes] = await Promise.all([
+        this.auth.fetch('/api/leads'),
+        this.auth.fetch('/api/ads/spend').catch(() => null),
+      ]);
+      if (!leadsRes.ok) throw new Error(`HTTP ${leadsRes.status}`);
+      const leads = await leadsRes.json();
+      const spend = spendRes && spendRes.ok ? await spendRes.json() : [];
 
       this.find('#leads-loading').style.display = 'none';
 
@@ -51,7 +55,7 @@ class LeadsScreen extends Screen {
       }
 
       this.find('#leads-list').style.display = 'block';
-      this.renderLeads(leads);
+      this.renderLeads(leads, spend);
     } catch (err) {
       this.find('#leads-loading').style.display = 'none';
       this.find('#leads-error').style.display   = 'block';
@@ -59,7 +63,7 @@ class LeadsScreen extends Screen {
     }
   }
 
-  renderLeads(leads) {
+  renderLeads(leads, spend = []) {
     const container = this.find('#leads-list');
 
     const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials'];
@@ -70,6 +74,19 @@ class LeadsScreen extends Screen {
       'U23 Women':   '#be185d',
       'APSL Trials': '#f59e0b',
     };
+
+    // Aggregate spend by column (sum across all forms mapping to same column)
+    const spendByCol = {};
+    for (const col of COLUMNS) spendByCol[col] = { daily: 0, total: 0, days: 0, active: false };
+    for (const s of spend) {
+      const col = this.formLabel(s.form_id);
+      if (!col || !spendByCol[col]) continue;
+      spendByCol[col].daily += Number(s.daily_budget_usd || 0);
+      spendByCol[col].total += Number(s.total_spend_usd || 0);
+      if (s.days_running > spendByCol[col].days) spendByCol[col].days = s.days_running;
+      if (s.ad_active) spendByCol[col].active = true;
+    }
+    const fmt = (n) => `$${n.toFixed(2)}`;
 
     // Group + sort each column by date descending
     const grouped = {};
@@ -85,16 +102,24 @@ class LeadsScreen extends Screen {
     container.innerHTML = `
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">${leads.length} lead${leads.length !== 1 ? 's' : ''}</p>
       <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:var(--space-3); align-items:start;">
-        ${COLUMNS.map(col => `
+        ${COLUMNS.map(col => {
+          const s = spendByCol[col];
+          const cpl = grouped[col].length > 0 && s.total > 0 ? (s.total / grouped[col].length) : null;
+          const statusDot = s.active ? '<span style="color:#10b981;">●</span>' : '<span style="opacity:0.4;">○</span>';
+          return `
           <div>
-            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${COLORS[col]}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-2); text-align:center;">
+            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${COLORS[col]}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-1); text-align:center;">
               ${col} <span style="opacity:0.8;">(${grouped[col].length})</span>
+            </div>
+            <div style="font-size:0.7rem; opacity:0.85; text-align:center; margin-bottom:var(--space-2); line-height:1.4;">
+              ${statusDot} ${fmt(s.daily)}/day · ${s.days}d running<br>
+              Spent ${fmt(s.total)}${cpl !== null ? ` · ${fmt(cpl)}/lead` : ''}
             </div>
             <div style="display:flex; flex-direction:column; gap:var(--space-2);">
               ${grouped[col].map(l => this.renderLead(l, false)).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>'}
             </div>
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>
     `;
   }

@@ -239,6 +239,64 @@ app.get('/api/ads/preview', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/ads/spend — aggregate spend stats per lead form ──────────
+app.get('/api/ads/spend', requireAuth, async (req, res) => {
+  try {
+    if (!ADS_TOKEN) {
+      return res.status(500).json({ error: 'Missing META_ADS_TOKEN configuration' });
+    }
+
+    const fields = [
+      'id', 'name', 'effective_status', 'configured_status',
+      'adset{id,daily_budget,start_time,end_time,effective_status,configured_status}',
+      'creative{object_story_spec{link_data{call_to_action}}}',
+      'insights.date_preset(maximum){spend,date_start,date_stop}',
+    ].join(',');
+    const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=200&access_token=${ADS_TOKEN}`;
+    const metaRes  = await fetch(url);
+    const metaData = await metaRes.json();
+    if (metaData.error) return res.status(502).json({ error: metaData.error.message });
+
+    const byForm = {};
+    const now = Date.now();
+
+    for (const ad of (metaData.data || [])) {
+      const cta = ad.creative?.object_story_spec?.link_data?.call_to_action;
+      const formId = cta?.value?.lead_gen_form_id;
+      if (!formId) continue;
+
+      const adset = ad.adset || {};
+      const dailyBudgetUSD = adset.daily_budget ? parseInt(adset.daily_budget, 10) / 100 : 0;
+      const startMs = adset.start_time ? new Date(adset.start_time).getTime() : null;
+      const insightSpend = parseFloat(ad.insights?.data?.[0]?.spend || '0');
+
+      if (!byForm[formId]) {
+        byForm[formId] = {
+          form_id: formId,
+          daily_budget_usd: 0,
+          total_spend_usd: 0,
+          days_running: 0,
+          ad_active: false,
+        };
+      }
+      const slot = byForm[formId];
+      slot.daily_budget_usd += dailyBudgetUSD;
+      slot.total_spend_usd  += insightSpend;
+      if (startMs) {
+        const days = Math.max(0, Math.floor((now - startMs) / 86400000));
+        if (days > slot.days_running) slot.days_running = days;
+      }
+      const adActive = ad.effective_status === 'ACTIVE' && (adset.effective_status === 'ACTIVE');
+      if (adActive) slot.ad_active = true;
+    }
+
+    res.json(Object.values(byForm));
+  } catch (err) {
+    console.error('Error fetching ad spend:', err.message);
+    res.status(500).json({ error: 'Failed to fetch spend' });
+  }
+});
+
 // ── GET /api/leads — serve leads to frontend ──────────────────────────
 app.get('/api/leads', requireAuth, async (req, res) => {
   let syncResult = { skippedByTtl: false, syncedRows: 0, failedForms: [] };
