@@ -533,56 +533,57 @@ function trialPathwayAdHTML({ lighthouseLogo, welovejunkLogo, complexLogo, casaL
     color: #f5d442;
   }
   .flag-section {
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    margin-top: 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    margin-top: 12px;
   }
-  .crest-wrap { width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6)); }
+  .crest-wrap { width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6)); }
   .country-name {
-    font-size: 96px; font-weight: 900; letter-spacing: 8px; text-transform: uppercase;
+    font-size: 80px; font-weight: 900; letter-spacing: 8px; text-transform: uppercase;
     text-shadow: 0 6px 20px rgba(0,0,0,0.7);
     color: white;
     line-height: 1;
-    display: flex; align-items: center; justify-content: center; gap: 28px;
+    display: flex; align-items: center; justify-content: center; gap: 24px;
   }
-  .title-logo { height: 140px; width: auto; max-width: 260px; object-fit: contain; background: white; border-radius: 24px; padding: 14px 22px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
-  .bodies-row { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 10px 0 6px; }
-  .bodies-label { font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.7); }
-  .bodies-logos { display: flex; align-items: center; justify-content: center; gap: 18px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 10px 22px; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
-  .body-logo { height: 44px; width: auto; max-width: 80px; object-fit: contain; }
+  .title-logo { height: 110px; width: auto; max-width: 220px; object-fit: contain; background: white; border-radius: 20px; padding: 12px 18px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+  .bodies-row { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 6px 0 4px; }
+  .bodies-label { font-size: 12px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+  .bodies-logos { display: flex; align-items: center; justify-content: center; gap: 16px; background: rgba(255,255,255,0.95); border-radius: 12px; padding: 8px 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+  .body-logo { height: 36px; width: auto; max-width: 70px; object-fit: contain; }
   .team-label {
-    font-size: 30px; font-weight: 600; letter-spacing: 6px; text-transform: uppercase;
-    color: ${colorAccent}; opacity: 0.95; margin-top: 4px;
+    font-size: 24px; font-weight: 600; letter-spacing: 6px; text-transform: uppercase;
+    color: ${colorAccent}; opacity: 0.95; margin-top: 2px;
   }
   .details-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%;
-    margin-top: 10px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;
+    margin-top: 6px;
   }
   .detail-pill {
     background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 14px; padding: 16px 20px;
-    display: flex; align-items: center; gap: 12px;
-    font-size: 25px; font-weight: 500;
+    border-radius: 12px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 22px; font-weight: 500;
   }
-  .detail-pill .icon { font-size: 28px; flex-shrink: 0; }
+  .detail-pill .icon { font-size: 24px; flex-shrink: 0; }
   .detail-pill .txt { line-height: 1.2; }
-  .detail-pill .txt .label { font-size: 16px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px; letter-spacing: 1px; text-transform: uppercase; }
+  .detail-pill .txt .label { font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px; letter-spacing: 1px; text-transform: uppercase; }
   .open-banner {
     background: linear-gradient(90deg, ${colorPrimary}, ${colorSecondary});
     border: 2px solid ${colorAccent};
-    border-radius: 12px; padding: 14px 50px;
-    font-size: 28px; font-weight: 800; letter-spacing: 5px; text-transform: uppercase;
+    border-radius: 10px; padding: 10px 40px;
+    font-size: 22px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;
     color: white; text-align: center; width: 100%;
   }
   .sponsor-row {
-    display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%;
   }
   .logo-wrap {
-    width: 80px; height: 80px;
+    width: 50px; height: 50px;
     display: flex; align-items: center; justify-content: center;
   }
+  .logo-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
   .sponsor-text { text-align: center; }
-  .sponsor-text .by { font-size: 17px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
-  .sponsor-text .name { font-size: 26px; font-weight: 800; color: #f5d442; }
+  .sponsor-text .by { font-size: 12px; opacity: 0.5; letter-spacing: 1.5px; text-transform: uppercase; }
+  .sponsor-text .name { font-size: 18px; font-weight: 800; color: #f5d442; }
   .bio-cta {
     background: #f5d442; color: #0a1628;
     border-radius: 12px; padding: 14px 50px;
@@ -621,6 +622,19 @@ function trialPathwayAdHTML({ lighthouseLogo, welovejunkLogo, complexLogo, casaL
         ${epsaLogo ? `<img src="${logoToDataUri(epsaLogo)}" class="body-logo">` : ''}
         ${apslLogo ? `<img src="${logoToDataUri(apslLogo)}" class="body-logo">` : ''}
         ${casaLogo ? `<img src="${logoToDataUri(casaLogo)}" class="body-logo">` : ''}
+      </div>
+    </div>
+    <div class="sponsor-row">
+      <div class="logo-wrap">${welovejunkLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Sponsored By</div>
+        <div class="name">We Love Junk</div>
+      </div>
+      <div style="width:1px;height:36px;background:rgba(255,255,255,0.25);margin:0 4px;"></div>
+      <div class="logo-wrap">${complexLogoTag}</div>
+      <div class="sponsor-text">
+        <div class="by">Home Games At</div>
+        <div class="name">Lighthouse Sports Complex</div>
       </div>
     </div>
   </div>
