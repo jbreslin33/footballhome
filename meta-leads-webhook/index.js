@@ -217,16 +217,36 @@ app.get('/api/ads/preview', requireAuth, async (req, res) => {
       return res.status(502).json({ error: metaData.error.message });
     }
 
+    // Collect unique image hashes for full-res lookup
+    const hashes = new Set();
+    for (const ad of metaData.data || []) {
+      const h = ad.creative?.object_story_spec?.link_data?.image_hash;
+      if (h) hashes.add(h);
+    }
+
+    // Fetch full-res image URLs by hash
+    const hashToUrl = {};
+    if (hashes.size > 0) {
+      const hashList = JSON.stringify([...hashes]);
+      const imgUrl = `${API}/${AD_ACCOUNT_ID}/adimages?hashes=${encodeURIComponent(hashList)}&fields=hash,url&access_token=${ADS_TOKEN}`;
+      const imgRes = await fetch(imgUrl);
+      const imgData = await imgRes.json();
+      for (const img of imgData.data || []) {
+        if (img.hash && img.url) hashToUrl[img.hash] = img.url;
+      }
+    }
+
     const ads = (metaData.data || []).map(ad => {
       const c    = ad.creative || {};
       const spec = c.object_story_spec?.link_data || {};
+      const fullResUrl = spec.image_hash ? hashToUrl[spec.image_hash] : null;
       return {
         id:        ad.id,
         name:      ad.name,
         status:    ad.status,
         headline:  c.title  || spec.name  || null,
         body:      c.body   || spec.message || null,
-        image_url: c.image_url || null,
+        image_url: fullResUrl || c.image_url || null,
         cta:       spec.call_to_action?.type || null,
         link:      spec.link || null,
       };
