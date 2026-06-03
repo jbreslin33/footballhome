@@ -103,6 +103,46 @@
   .poster-body {
     padding: 28px 32px 24px;
   }
+  .poster-photo {
+    margin: 0;
+    background: #2b2b2b;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .poster-photo img {
+    display: block;
+    width: 100%;
+    max-height: 320px;
+    object-fit: cover;
+    margin: 0 auto;
+    background: #1a1a1a;
+  }
+  .poster-photo figcaption {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.78rem;
+    color: #d8d8d8;
+    padding: 8px 16px;
+    background: #1a1a1a;
+    font-style: italic;
+  }
+  .poster-photo .placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 220px;
+    background:
+      repeating-linear-gradient(45deg, #f5efe2 0 14px, #ece9e2 14px 28px);
+    color: #6b6b6b;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 0 28px;
+  }
+  @media print {
+    .poster-photo img { max-height: 360px; }
+  }
   .poster-body p,
   .poster-body li {
     font-size: 1rem;
@@ -161,6 +201,26 @@
     font-weight: 700;
   }
   .sources a { color: var(--navy); word-break: break-word; }
+  .sources .src {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 10px;
+  }
+  .sources .src-text { flex: 1; margin: 0; }
+  .sources .qr {
+    width: 68px;
+    height: 68px;
+    flex-shrink: 0;
+    background: #fff;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    display: block;
+  }
+  @media print {
+    .sources .qr { width: 80px; height: 80px; }
+  }
   .note {
     margin-top: 16px;
     padding: 12px 14px;
@@ -212,6 +272,10 @@
       <h2>The Lighthouse Boys Club: Cradle of American Soccer</h2>
       <p class="sub">How a Kensington neighborhood center built a global sports phenomenon.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · Vintage Lighthouse Boys Club building or early team portrait</div>
+      <!-- TODO image: candidates — Historical Society of Pennsylvania “Lighthouse Records” (http://www.hsp.org/files/findingaid1970lighthouse.pdf), or browse https://commons.wikimedia.org/wiki/Category:Kensington,_Philadelphia for period photos. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">1893 — The Settlement House Vision.</span> Philadelphia socialite Esther W. Kelly Bradford established a neighborhood settlement house in Kensington. Its mission was to provide British, Irish, and European industrial textile mill immigrants a safe social community and essential local resources.</p>
@@ -220,8 +284,14 @@
       <p><span class="lead-in">1940 — “The Largest Soccer Organization in the World.”</span> By 1940, global sports audits and publications officially designated the Lighthouse youth system as the single largest soccer club organization on earth, managing roughly <strong>40 age-tiered squads</strong> simultaneously out of Kensington.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>The Philadelphia Soccer Page — History of the Lighthouse: <a href="https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/" rel="noopener">phillysoccerpage.net</a></p>
-        <p>Lighthouse Soccer Club Archive — Foundation Milestones: <a href="https://lighthousesoccerclub.org/about-us/our-history/" rel="noopener">lighthousesoccerclub.org</a></p>
+        <div class="src">
+          <p class="src-text">The Philadelphia Soccer Page — “Great Philly Soccer Teams: Lighthouse”: <a href="https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/" rel="noopener">phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F">
+        </div>
+        <div class="src">
+          <p class="src-text">Wikipedia — Lighthouse Boys Club: <a href="https://en.wikipedia.org/wiki/Lighthouse_Boys_Club" rel="noopener">en.wikipedia.org/wiki/Lighthouse_Boys_Club</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FLighthouse_Boys_Club">
+        </div>
       </div>
     </div>
   </article>
@@ -234,6 +304,10 @@
       <h2>Front Street &amp; Erie Avenue</h2>
       <p class="sub">The legendary events and neighborhood lore of Philadelphia’s soccer mecca.</p>
     </header>
+    <figure class="poster-photo">
+      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Charles_K._Hamilton_LCCN2003654758.jpg?width=900" alt="Aviator Charles K. Hamilton, c.1910">
+      <figcaption>Aviator Charles K. Hamilton, c.1910 · Library of Congress (public domain)</figcaption>
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">The Crucible of Champions.</span> Throughout the 20th century, the expansive multi-pitch playground of Lighthouse Field at Front Street and Erie Avenue served as the epicenter of Philadelphia athletics. It was the ultimate proving ground where the neighborhood's toughest, most skilled players honed their crafts.</p>
@@ -242,8 +316,11 @@
       <p><span class="lead-in">The Concrete Grandstands.</span> To handle the immense, rowdy weekend crowds that gathered to watch high-stakes neighborhood and American Soccer League (ASL) matches, permanent concrete bleachers were erected right on the edge of the pitch.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>U.S. Congressional Record — Historic Tribute to Lighthouse Field: <a href="https://www.govinfo.gov/" rel="noopener">govinfo.gov</a></p>
-        <p>Hidden City Philadelphia — Settlement House Footprints: <a href="https://hiddencityphila.org/" rel="noopener">hiddencityphila.org</a></p>
+        <div class="src">
+          <p class="src-text">Wikipedia — Charles K. Hamilton (June 13, 1910 NY↔Philadelphia flight): <a href="https://en.wikipedia.org/wiki/Charles_K._Hamilton" rel="noopener">en.wikipedia.org/wiki/Charles_K._Hamilton</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FCharles_K._Hamilton">
+        </div>
+        <!-- TODO: add club-archive / Kensington local-history source for Lighthouse Field landing, circus staging, and concrete grandstands. -->
       </div>
     </div>
   </article>
@@ -256,6 +333,10 @@
       <h2>May 11, 1952 · English Kings vs. The Philly All-Stars</h2>
       <p class="sub">The historic afternoon global powerhouses tested their might at Front &amp; Erie.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · 1952 Manchester United squad or Lighthouse Field crowd shot</div>
+      <!-- TODO image: candidates — https://commons.wikimedia.org/wiki/Category:Manchester_United_F.C._in_the_1950s (Busby Babes era PD photos) or club archives. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">The Showcase Tour.</span> Fresh off capturing the English First Division League championship, global soccer giants <strong>Manchester United</strong> embarked on an international showcase tour. Seeking the most respected hotbeds of American soccer, their tour led them straight to Lighthouse Field in Kensington.</p>
@@ -264,8 +345,8 @@
       <p><span class="lead-in">A Gift of Steel and Stone.</span> In anticipation of the massive crowd turnout and to pay homage to the local infrastructure, Manchester United famously financed the construction and installation of permanent concrete bleachers right at Lighthouse Field.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>Lighthouse Soccer Club History — The 1952 Manchester United Clash: <a href="https://lighthousesoccerclub.org/about-us/our-history/" rel="noopener">lighthousesoccerclub.org</a></p>
-        <p>Host City Soccer Playbook — Philadelphia’s Historic Match Lore: <a href="https://www.soccerpost.com/" rel="noopener">soccerpost.com</a></p>
+        <p class="src-text" style="font-style:italic;">Sources pending — archival material on the May 11, 1952 Manchester United visit is currently being collected from club records and Kensington local-history archives.</p>
+        <!-- TODO: replace with verified source(s) for the 1952 Man U match at Lighthouse Field (score, attendance, John Hughes crossbar, concrete-bleachers donation). -->
       </div>
     </div>
   </article>
@@ -278,22 +359,32 @@
       <h2>Kensington on the World Stage</h2>
       <p class="sub">The unmatched global feat of the 1936 United States Olympic team.</p>
     </header>
+    <figure class="poster-photo">
+      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Italy1936_olympic.jpg?width=900" alt="Italy's gold-medal squad at the 1936 Berlin Olympic football tournament">
+      <figcaption>Italy's gold-medal squad at Berlin 1936 — the team that eliminated the United States 1–0 in the opening round · Public domain, University of Regina Archives via Wikimedia Commons</figcaption>
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">A Global Phenomenon.</span> When the United States Men’s National Olympic Soccer Team traveled to Berlin, Germany for the 1936 Summer Olympic Games, the neighborhood of Kensington effectively represented the entire nation.</p>
-      <p><span class="lead-in">Four Men from One Club.</span> In a breathtaking developmental feat that has never been matched by any single American youth soccer club since, <strong>four former Lighthouse players started simultaneously</strong> on the pitch for the United States in Berlin.</p>
-      <p><span class="lead-in">The Olympic Star Lineup.</span> These four homegrown legends formed the absolute spine of the United States international roster:</p>
+      <p><span class="lead-in">Multiple Men from One Club.</span> In a developmental feat unmatched by any American youth soccer club since, <strong>four former Lighthouse players</strong> were on the United States Olympic roster in Berlin — a remarkable concentration of talent from a single Kensington program.</p>
+      <p><span class="lead-in">The Olympic Lineup.</span> Three of the four Lighthouse alumni are confirmed in surviving U.S. Olympic team records:</p>
       <ul class="badge-list">
         <li>🇺🇸 <strong>Francis “Hun” Ryan</strong> — Forward</li>
         <li>🇺🇸 <strong>Peter Pietras</strong> — Midfielder</li>
-        <li>🇺🇸 <strong>James Gallagher</strong> — Midfielder</li>
         <li>🇺🇸 <strong>Robert Denton</strong> — Forward</li>
+        <li>🇺🇸 <em>(Fourth Lighthouse alumnus referenced in club archives — name still being verified.)</em></li>
       </ul>
       <p><span class="lead-in">An Enduring Legacy.</span> This extraordinary achievement solidified the Lighthouse Boys Club's reputation across international soccer circles as a premier breeding ground for world-class soccer talent.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>Olympedia — 1936 United States Olympic Soccer Lineup: <a href="https://www.olympedia.org/teams/2723" rel="noopener">olympedia.org/teams/2723</a></p>
-        <p>The Philadelphia Soccer Page — Lighthouse’s Olympic Core: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+        <div class="src">
+          <p class="src-text">The Philadelphia Soccer Page — “Great Philly Soccer Teams: Lighthouse” (notes four former Lighthouse players on the 1936 squad): <a href="https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/" rel="noopener">phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F">
+        </div>
+        <div class="src">
+          <p class="src-text">Wikipedia — Lighthouse Boys Club (Olympic alumni: Ryan, Pietras, Denton): <a href="https://en.wikipedia.org/wiki/Lighthouse_Boys_Club" rel="noopener">en.wikipedia.org/wiki/Lighthouse_Boys_Club</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FLighthouse_Boys_Club">
+        </div>
       </div>
     </div>
   </article>
@@ -306,6 +397,10 @@
       <h2>Five Times Kings of America</h2>
       <p class="sub">The legendary McGuire Cup dynasty and the 36-game “Invincibles.”</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · McGuire Cup trophy or 1948–1949 “Invincibles” squad</div>
+      <!-- TODO image: candidates — Philadelphia Soccer Page archive ( https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/ ) or US Youth Soccer McGuire Cup gallery. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">The Oldest Trophy in Youth Sports.</span> The National Junior Challenge Cup (officially renamed the <strong>James P. McGuire Cup</strong> in 1975) is the oldest, most prestigious youth soccer national championship trophy in the United States.</p>
@@ -317,11 +412,17 @@
         <li>🏆 <strong>1957</strong> — Reclaimed absolute youth dominance over the American landscape.</li>
         <li>🏆 <strong>1967</strong> — The fifth and final national crown of the historic Kensington era.</li>
       </ul>
-      <p><span class="lead-in">The “Invincibles” (1948–1949).</span> Led by future Hall of Famer <strong>Len Oliver</strong>, the Lighthouse junior squad went on an unprecedented run, stringing together a legendary <strong>36-match consecutive winning streak</strong> against the top senior and academy teams across North America.</p>
+      <p><span class="lead-in">The “Invincibles” (1948–1949).</span> Led by future Hall of Famer <strong>Len Oliver</strong>, the back-to-back national-champion Lighthouse junior squad of 1948 and 1949 became one of the most dominant youth sides in American soccer history.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>US Youth Soccer — Official James P. McGuire Cup Champions Registry: <a href="https://www.usyouthsoccer.org/" rel="noopener">usyouthsoccer.org</a></p>
-        <p>Society for American Soccer History — 1940s Lighthouse Dynasties: <a href="https://www.ussoccerhistory.org/" rel="noopener">ussoccerhistory.org</a></p>
+        <div class="src">
+          <p class="src-text">The Philadelphia Soccer Page — “Great Philly Soccer Teams: Lighthouse” (McGuire Cup years 1938, 1948, 1949, 1957, 1967): <a href="https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/" rel="noopener">phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F">
+        </div>
+        <div class="src">
+          <p class="src-text">Wikipedia — Lighthouse Boys Club (national youth championships): <a href="https://en.wikipedia.org/wiki/Lighthouse_Boys_Club" rel="noopener">en.wikipedia.org/wiki/Lighthouse_Boys_Club</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FLighthouse_Boys_Club">
+        </div>
       </div>
     </div>
   </article>
@@ -334,6 +435,10 @@
       <h2>The Icons Enshrined</h2>
       <p class="sub">The homegrown legends of Kensington who earned American soccer's highest honor.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · Walter Bahr (or composite of NSHOF Lighthouse inductees)</div>
+      <!-- TODO image: candidates — https://commons.wikimedia.org/wiki/Category:Walter_Bahr (Wikipedia infobox shows a Bahr/Biden photo from Philadelphia Union's inaugural match). -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <ul class="badge-list">
@@ -342,12 +447,18 @@
         <li>🇺🇸 <strong>Benny McLaughlin</strong> (Inducted 1977) — Star forward who dominated the American Soccer League (ASL), won four consecutive league titles with the Philadelphia Nationals, was named the 1952 ASL MVP, and competed as a 1948 U.S. Olympian.</li>
         <li>🇺🇸 <strong>Len Oliver</strong> (Inducted 1996) — Joined Lighthouse at age 9, captained the back-to-back National Junior Champions, starred as a two-time All-American at Temple University, and spent his lifetime as a premier global soccer educator.</li>
         <li>🇺🇸 <strong>Bob Gormley</strong> (Inducted 1989) — Prolific goalscorer who honed his instincts at Lighthouse Field before embarking on a stellar 17-year ASL career, serving as team captain for 12 seasons and capturing five league titles.</li>
-        <li>🇺🇸 <strong>Dick Spalding</strong> (Inducted 1950) — An early star halfback for Lighthouse's Kensington squad by 1912 who scored the first-ever goal in the official international history of the United States Men's National Team (1916 vs. Sweden). He also played Major League Baseball for the Philadelphia Phillies.</li>
+        <li>🇺🇸 <strong>Dick Spalding</strong> (Inducted 1950) — An early star halfback for Lighthouse's Kensington squad by 1912 and an original member of the United States Men's National Team. He also played Major League Baseball for the <strong>Philadelphia Phillies</strong> (1927) and the Washington Senators (1928).</li>
       </ul>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>National Soccer Hall of Fame — Official Player Registries: <a href="https://naslhf.org/member-directory/" rel="noopener">naslhf.org/member-directory</a></p>
-        <p>Society for American Soccer History — Biography Archives: <a href="https://www.ussoccerhistory.org/" rel="noopener">ussoccerhistory.org</a></p>
+        <div class="src">
+          <p class="src-text">Wikipedia — National Soccer Hall of Fame (inductee list with years): <a href="https://en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame" rel="noopener">en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FNational_Soccer_Hall_of_Fame">
+        </div>
+        <div class="src">
+          <p class="src-text">Wikipedia — Walter Bahr / Benny McLaughlin / Dick Spalding (career details, Phillies, ASL titles): <a href="https://en.wikipedia.org/wiki/Walter_Bahr" rel="noopener">en.wikipedia.org/wiki/Walter_Bahr</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FWalter_Bahr">
+        </div>
       </div>
     </div>
   </article>
@@ -360,6 +471,10 @@
       <h2>The Miracle Match of 1950</h2>
       <p class="sub">How a Lighthouse legend engineered the greatest upset in World Cup history.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · 1950 USA World Cup team or Bahr/Gaetjens goal</div>
+      <!-- TODO image: candidates — https://commons.wikimedia.org/wiki/Category:United_States_at_the_1950_FIFA_World_Cup ; the famous 1950 team photo is widely reproduced. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">The David vs. Goliath Clash.</span> On June 29, 1950, a ragtag, heavily underestimated team of American underdogs took the pitch at the FIFA World Cup in Brazil to face the absolute kings of the sport: the heavily favored <strong>England national squad</strong>.</p>
@@ -367,8 +482,14 @@
       <p><span class="lead-in">The Armband Strategy.</span> Though Bahr was the undisputed leader and standard team captain during international cycles, a clever psychological trick was played for this specific match. U.S. coaches designated teammate <strong>Ed McIlvenny</strong> (a native of Scotland) as the match-day captain, knowing a Scotsman would be fiercely motivated to lead an army onto the pitch against England! Bahr returned to captain the final match against Chile.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>U.S. Soccer — Remembering the Leadership Legacy of Walter Bahr: <a href="https://www.ussoccer.com/" rel="noopener">ussoccer.com</a></p>
-        <p>The Philly Soccer Page — The 1950 World Cup Core: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+        <div class="src">
+          <p class="src-text">Wikipedia — United States v England (1950 FIFA World Cup): <a href="https://en.wikipedia.org/wiki/United_States_v_England_(1950_FIFA_World_Cup)" rel="noopener">en.wikipedia.org/wiki/United_States_v_England_(1950_FIFA_World_Cup)</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FUnited_States_v_England_%281950_FIFA_World_Cup%29">
+        </div>
+        <div class="src">
+          <p class="src-text">Wikipedia — Walter Bahr (the 25-yard shot, captaincy & McIlvenny anecdote): <a href="https://en.wikipedia.org/wiki/Walter_Bahr" rel="noopener">en.wikipedia.org/wiki/Walter_Bahr</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FWalter_Bahr">
+        </div>
       </div>
     </div>
   </article>
@@ -381,6 +502,10 @@
       <h2>Lighthouse on the Silver Screen</h2>
       <p class="sub">The best-selling book and Hollywood film that immortalized Kensington soccer.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · Book cover &amp; DVD case mocked together (or licensed still)</div>
+      <!-- TODO image: book cover & film poster are copyrighted — use under fair-use for exhibit display, or photograph the physical book/DVD on the cocktail prop table. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">The Best-Selling Book.</span> In 1996, acclaimed author <strong>Geoffrey Douglas</strong> immortalized Walter Bahr and his underdog teammates in the definitive sports history book, <em>The Game of Their Lives</em>. The book deeply chronicles Bahr's early years playing soccer in the industrial, tight-knit neighborhood of Kensington.</p>
@@ -390,8 +515,14 @@
       <div class="note">⚙️ <strong>Staff Setup Note:</strong> Place a small cocktail table right below this easel. Display a paperback copy of the book and the movie's DVD case side-by-side to act as an interactive prop station.</div>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>AFI Catalog of Feature Films — <em>The Game of Their Lives</em> (2005): <a href="https://catalog.afi.com/" rel="noopener">catalog.afi.com</a></p>
-        <p>The Philly Soccer Page — Walter Bahr's Hollywood Legacy: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+        <div class="src">
+          <p class="src-text">Wikipedia — <em>The Game of Their Lives</em> (2005 film): <a href="https://en.wikipedia.org/wiki/The_Game_of_Their_Lives_(2005_film)" rel="noopener">en.wikipedia.org/wiki/The_Game_of_Their_Lives_(2005_film)</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FThe_Game_of_Their_Lives_%282005_film%29">
+        </div>
+        <div class="src">
+          <p class="src-text">IMDb — <em>The Game of Their Lives</em> (2005): <a href="https://www.imdb.com/title/tt0376541/" rel="noopener">imdb.com/title/tt0376541</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.imdb.com%2Ftitle%2Ftt0376541%2F">
+        </div>
       </div>
     </div>
   </article>
@@ -404,6 +535,10 @@
       <h2>The Architects of Recognition</h2>
       <p class="sub">How Lighthouse built the National Hall of Fame and the modern SEPA connection.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · Harry “Pup” Fleming or original NSHOF inaugural class</div>
+      <!-- TODO image: candidates — NSHOF official site (nationalsoccerhof.com) ; SEPA Soccer Hall of Fame archive ; Society for American Soccer History. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">Harry “Pup” Fleming (Inducted 1967 · Builder).</span> After playing for turn-of-the-century Lighthouse teams, Fleming became a key executive officer in the Philadelphia Oldtimers Soccer Association (P.O.S.A.). He spearheaded the campaign to establish a national hall of recognition.</p>
@@ -412,8 +547,14 @@
       <p><span class="lead-in">An Eternal Roster.</span> Because Lighthouse was the absolute epicenter of regional development, scores of historic Lighthouse players, coaches, managers, and builders are permanently honored as foundational icons within the SEPA Hall of Fame's registry of over 400 inductees.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>Society for American Soccer History — Origin of the National Hall of Fame: <a href="https://www.ussoccerhistory.org/" rel="noopener">ussoccerhistory.org</a></p>
-        <p>SEPA Soccer Hall of Fame Official Archive: <a href="https://www.sepasoccerhalloffame.com/" rel="noopener">sepasoccerhalloffame.com</a></p>
+        <div class="src">
+          <p class="src-text">Wikipedia — National Soccer Hall of Fame (“founded in 1950 by the Philadelphia ‘Old-timers’ Association”; Harry G. Fleming – 1967 Builder): <a href="https://en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame" rel="noopener">en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FNational_Soccer_Hall_of_Fame">
+        </div>
+        <div class="src">
+          <p class="src-text">SEPA Soccer Hall of Fame Official Archive: <a href="https://www.sepasoccerhalloffame.com/" rel="noopener">sepasoccerhalloffame.com</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.sepasoccerhalloffame.com%2F">
+        </div>
       </div>
     </div>
   </article>
@@ -426,16 +567,61 @@
       <h2>The Philadelphia Sports Hall of Fame</h2>
       <p class="sub">Enshrining an unrivaled community soccer legacy.</p>
     </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · 2010 Philadelphia Sports HOF induction or Lighthouse Boys Club logo</div>
+      <!-- TODO image: candidates — Philadelphia Sports HOF inductee profile ( http://www.phillyhall.org/inductee_profile.asp?ind=347 ) ; club's modern crest. -->
+    </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
       <p><span class="lead-in">The 2010 Team Induction.</span> In 2010, the Philadelphia Sports Hall of Fame made a historic, unprecedented move. Rather than just honoring a single athlete, they permanently inducted the <strong>entire historic Lighthouse Boys Club soccer program</strong> to honor its century-long contribution to the city’s athletic identity.</p>
-      <p><span class="lead-in">In Elite City Company.</span> By entering the Hall, the boys from Kensington took their rightful place in Philadelphia sports lore. They stand shoulder-to-shoulder with iconic local legends like <strong>Wilt Chamberlain, Chuck Bednarik, Mike Schmidt, and Julius Erving</strong>.</p>
+      <p><span class="lead-in">In Elite City Company.</span> By entering the Hall, the boys from Kensington took their rightful place in Philadelphia sports lore. They stand shoulder-to-shoulder with iconic local legends like <strong>Wilt Chamberlain, Chuck Bednarik, Mike Schmidt, and Julius Erving</strong> — and the Lighthouse roster itself includes a true two-sport Philadelphian in <strong>Dick Spalding</strong>, who suited up for both the original U.S. Men's National Soccer Team and the <strong>Philadelphia Phillies</strong>.</p>
       <p><span class="lead-in">A Century of Neighborhood Grit.</span> The induction celebrated a breathtaking neighborhood pipeline: developing thousands of local youth, securing <strong>5 national youth championships</strong>, sending <strong>4 starters to the 1936 Olympics</strong>, and serving as the historic epicenter of American soccer.</p>
       <p><span class="lead-in">The Permanent Record.</span> Today, the Lighthouse Boys Club remains permanently etched into the official city registries — a timeless testament to neighborhood pride, community investment, and local athletic brilliance.</p>
       <div class="sources">
         <p class="sources-label">Exhibition Sources</p>
-        <p>Official Enshrinement Registry — Philadelphia Sports Hall of Fame: <a href="https://www.phillyhall.org/" rel="noopener">phillyhall.org</a></p>
-        <p>The Philadelphia Soccer Page Archives: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+        <div class="src">
+          <p class="src-text">Philadelphia Sports Hall of Fame — Lighthouse Boys Club inductee profile (2010): <a href="http://www.phillyhall.org/inductee_profile.asp?ind=347" rel="noopener">phillyhall.org/inductee_profile.asp?ind=347</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.phillyhall.org%2Finductee_profile.asp%3Find%3D347">
+        </div>
+        <div class="src">
+          <p class="src-text">The Philadelphia Soccer Page — “Great Philly Soccer Teams: Lighthouse”: <a href="https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/" rel="noopener">phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F">
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 11 -->
+  <article class="poster">
+    <div class="poster-num">11</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 11 · The Dual-Sport Pioneer</p>
+      <h2>Dick Spalding: A Philadelphia Phillie from the Lighthouse of Kensington</h2>
+      <p class="sub">The Lighthouse-developed footballer who also patrolled the outfield for the Philadelphia Phillies.</p>
+    </header>
+    <figure class="poster-photo">
+      <div class="placeholder">Photo · Dick Spalding in Phillies uniform (1927) or USMNT pose</div>
+      <!-- TODO image: candidates — 1927 Phillies team photo (often PD); National Soccer Hall of Fame profile ( https://www.nationalsoccerhof.com/players/dick-spalding.html ) ; Baseball Hall of Fame photo archive. -->
+    </figure>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">A Kensington Original.</span> Born in Philadelphia on October 13, 1893, <strong>Charles Harry “Dick” Spalding</strong> was a lifelong Philadelphian. He attended Northeast Manual Training School and developed his game as a youth player at the <strong>Lighthouse Boys Club</strong> — one of the club's earliest internationally recognized athletes.</p>
+      <p><span class="lead-in">In the First USMNT Matches Ever Played.</span> In August 1916, the United States Football Association assembled the All-American Soccer Football Team to tour neutral Scandinavia during World War I. Spalding took the field in both of the United States Men's National Team's first two officially recognized international matches: vs. <strong>Sweden</strong> (August 21, 1916) and vs. <strong>Norway</strong> (September 3, 1916).</p>
+      <p><span class="lead-in">Nearly 15 Years a Pro.</span> Spalding played professional soccer almost exclusively with Pennsylvania clubs across a fifteen-year career, including stops at <strong>Bethlehem Steel F.C.</strong> (1916–17), Philadelphia Merchant Ship (1919–21), <strong>Harrison S.C.</strong> in the American Soccer League (1921–22), and Fleisher Yarn (1924–25).</p>
+      <p><span class="lead-in">Major League Baseball.</span> Trading boots for cleats, the left-handed-batting outfielder made his MLB debut on <strong>April 18, 1927 with the Philadelphia Phillies</strong>. He moved to the <strong>Washington Senators</strong> in 1928 — finishing his two-season big-league career with a <strong>.299 batting average</strong>. He also spent time in the International League with the Rochester Red Wings and Buffalo Bisons.</p>
+      <p><span class="lead-in">Back to the Big Leagues as a Coach.</span> Through his friendship with manager Jimmie Wilson, Spalding returned to MLB as a first base coach — for the <strong>Philadelphia Phillies in 1934</strong> and the <strong>Chicago Cubs in 1941</strong>.</p>
+      <p><span class="lead-in">National Soccer Hall of Fame, 1950.</span> Spalding was enshrined in the National Soccer Hall of Fame the same year he passed away in Philadelphia at age 56 — a true dual-sport pioneer whose story began in the Kensington streets around Lighthouse Field.</p>
+      <div class="note">⚙️ <strong>Staff Setup Note:</strong> Pair this easel with a Phillies cap and a vintage leather soccer ball on the cocktail table — one player, two great American games.</div>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <div class="src">
+          <p class="src-text">Wikipedia — Dick Spalding (youth career at Lighthouse Boys Club; Phillies 1927 / Senators 1928; .299 BA): <a href="https://en.wikipedia.org/wiki/Dick_Spalding" rel="noopener">en.wikipedia.org/wiki/Dick_Spalding</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FDick_Spalding">
+        </div>
+        <div class="src">
+          <p class="src-text">National Soccer Hall of Fame — Dick Spalding (1950 Inductee profile): <a href="https://www.nationalsoccerhof.com/players/dick-spalding.html" rel="noopener">nationalsoccerhof.com/players/dick-spalding.html</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.nationalsoccerhof.com%2Fplayers%2Fdick-spalding.html">
+        </div>
       </div>
     </div>
   </article>
