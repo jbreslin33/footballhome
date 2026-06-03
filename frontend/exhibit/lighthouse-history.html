@@ -105,17 +105,19 @@
   }
   .poster-photo {
     margin: 0;
-    background: #2b2b2b;
+    background: #4169E1;
     border-bottom: 1px solid var(--line);
     text-align: center;
   }
   .poster-photo img {
     display: block;
-    width: 100%;
-    max-height: 320px;
-    object-fit: cover;
+    width: auto;
+    max-width: 100%;
+    max-height: 460px;
+    height: auto;
+    object-fit: contain;
     margin: 0 auto;
-    background: #1a1a1a;
+    background: transparent;
   }
   .poster-photo figcaption {
     font-family: 'Open Sans', sans-serif;
@@ -141,7 +143,7 @@
     padding: 0 28px;
   }
   @media print {
-    .poster-photo img { max-height: 360px; }
+    .poster-photo img { max-height: 520px; }
   }
   .poster-body p,
   .poster-body li {
@@ -362,7 +364,7 @@
       <p class="sub">The unmatched global feat of the 1936 United States Olympic team.</p>
     </header>
     <figure class="poster-photo">
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;background:#0a0a0a;padding:36px 24px;gap:22px;">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;background:#4169E1;padding:36px 24px;gap:22px;">
         <div style="font-family:'Bebas Neue','Montserrat',sans-serif;font-weight:900;font-size:clamp(3rem,9vw,5.4rem);letter-spacing:10px;color:#ffffff;line-height:0.95;text-align:center;">OLYMPICS</div>
         <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_the_United_States.svg?width=600" alt="Flag of the United States (50 stars)" style="width:320px;max-width:80%;height:auto;border:2px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,0.5);display:block;background:#fff;">
       </div>
@@ -403,7 +405,9 @@
       <p class="sub">The legendary McGuire Cup dynasty and the 36-game “Invincibles.”</p>
     </header>
     <figure class="poster-photo">
-      <img src="images/mcguire-cup.jpg" alt="The James P. McGuire Cup — U.S. Youth Soccer Under-19 Boys National Championship trophy">
+      <div style="background:#4169E1;display:flex;align-items:center;justify-content:center;padding:16px;min-height:260px;">
+        <img src="images/mcguire-cup.jpg" alt="The James P. McGuire Cup — U.S. Youth Soccer Under-19 Boys National Championship trophy" style="width:auto;max-width:100%;max-height:520px;height:auto;object-fit:contain;background:transparent;display:block;">
+      </div>
       <figcaption>The <strong>James P. McGuire Cup</strong> — awarded annually since 1935 to the U.S. Youth Soccer Under-19 Boys National Champion; the oldest trophy in American youth sports. <strong>Lighthouse Boys Club</strong> hoisted it five times (1938, 1948, 1949, 1957, 1967) · Photo: US Youth Soccer (via the official @usyouthsoccer Pinterest account)</figcaption>
     </figure>
     <div class="poster-body">
@@ -508,8 +512,11 @@
       <p class="sub">The best-selling book and Hollywood film that immortalized Kensington soccer.</p>
     </header>
     <figure class="poster-photo">
-      <div class="placeholder">Photo · Book cover &amp; DVD case mocked together (or licensed still)</div>
-      <!-- TODO image: book cover & film poster are copyrighted — use under fair-use for exhibit display, or photograph the physical book/DVD on the cocktail prop table. -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:32px;min-height:260px;background:#4169E1;padding:28px 20px;flex-wrap:wrap;">
+        <img src="images/gotl-book-cover.jpg" alt="The Game of Their Lives by Geoffrey Douglas — 1996 Henry Holt book cover" style="height:340px;width:auto;max-width:46%;display:block;box-shadow:0 6px 18px rgba(0,0,0,0.45);">
+        <img src="images/gotl-movie-poster.jpg" alt="The Game of Their Lives (2005) — IFC Films theatrical poster" style="height:340px;width:auto;max-width:46%;display:block;box-shadow:0 6px 18px rgba(0,0,0,0.45);">
+      </div>
+      <figcaption><strong>The Game of Their Lives</strong> — Geoffrey Douglas's 1996 book (left, © Henry Holt &amp; Company) and the 2005 feature film directed by David Anspaugh (right, © IFC Films). Both depict the 1950 U.S. World Cup squad in which Lighthouse Boys Club alumnus Walter Bahr was a central figure. Cover and poster used for identification.</figcaption>
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
@@ -541,8 +548,15 @@
       <p class="sub">How Lighthouse built the National Hall of Fame and the modern SEPA connection.</p>
     </header>
     <figure class="poster-photo">
-      <div class="placeholder">Photo · Harry “Pup” Fleming or original NSHOF inaugural class</div>
-      <!-- TODO image: candidates — NSHOF official site (nationalsoccerhof.com) ; SEPA Soccer Hall of Fame archive ; Society for American Soccer History. -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:36px;min-height:260px;background:#4169E1;padding:36px 24px;flex-wrap:wrap;">
+        <div style="flex:0 1 320px;display:flex;align-items:center;justify-content:center;">
+          <img src="images/nshof-logo.svg" alt="National Soccer Hall of Fame logo" style="width:100%;max-width:320px;height:auto;display:block;background:transparent;">
+        </div>
+        <div style="flex:0 1 320px;display:flex;align-items:center;justify-content:center;">
+          <img src="images/sepa-logo.jpg" alt="SEPA Soccer Hall of Fame logo" style="width:100%;max-width:320px;height:auto;display:block;background:transparent;">
+        </div>
+      </div>
+      <figcaption><strong>National Soccer Hall of Fame</strong> (founded 1950 by the Philadelphia Oldtimers) &amp; the <strong>SEPA Soccer Hall of Fame</strong> — the two registries that together preserve the legacy Lighthouse Boys Club helped build. Logos © respective Halls of Fame, used for identification.</figcaption>
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
@@ -557,8 +571,8 @@
           <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FNational_Soccer_Hall_of_Fame">
         </div>
         <div class="src">
-          <p class="src-text">SEPA Soccer Hall of Fame Official Archive: <a href="https://www.sepasoccerhalloffame.com/" rel="noopener">sepasoccerhalloffame.com</a></p>
-          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.sepasoccerhalloffame.com%2F">
+          <p class="src-text">SEPA Soccer Hall of Fame Official Archive: <a href="https://sepasoccerhall.com/" rel="noopener">sepasoccerhall.com</a></p>
+          <img class="qr" alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fsepasoccerhall.com%2F">
         </div>
       </div>
     </div>
@@ -573,8 +587,10 @@
       <p class="sub">Enshrining an unrivaled community soccer legacy.</p>
     </header>
     <figure class="poster-photo">
-      <div class="placeholder">Photo · 2010 Philadelphia Sports HOF induction or Lighthouse Boys Club logo</div>
-      <!-- TODO image: candidates — Philadelphia Sports HOF inductee profile ( http://www.phillyhall.org/inductee_profile.asp?ind=347 ) ; club's modern crest. -->
+      <div style="display:flex;align-items:center;justify-content:center;background:#4169E1;padding:18px 20px;">
+        <img src="images/phillyhall-logo.gif" alt="Philadelphia Sports Hall of Fame logo" style="width:100%;max-width:100%;height:auto;display:block;background:transparent;">
+      </div>
+      <figcaption>The <strong>Philadelphia Sports Hall of Fame</strong> — which in 2010 inducted the entire historic Lighthouse Boys Club soccer program. Logo © Philadelphia Sports Hall of Fame, used for identification.</figcaption>
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
@@ -601,7 +617,7 @@
     <div class="poster-num">11</div>
     <header class="poster-band">
       <p class="kicker">Poster 11 · The Dual-Sport Pioneer</p>
-      <h2>Dick Spalding: A Philadelphia Phillie from the Lighthouse of Kensington</h2>
+      <h2>Dick Spalding: Played for Lighthouse Boys Club, Bethlehem Steel &amp; the <span style="color:#E81828;">Philadelphia Phillies</span> as a Soccer &amp; Baseball Professional</h2>
       <p class="sub">The Lighthouse-developed footballer who also patrolled the outfield for the Philadelphia Phillies.</p>
     </header>
     <figure class="poster-photo">
