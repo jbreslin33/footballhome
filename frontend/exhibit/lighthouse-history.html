@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Lighthouse Soccer Exhibition · 10-Poster History</title>
+<meta name="description" content="A historical exhibit of the Lighthouse Boys Club of Kensington — cradle of American soccer. Prepared for the June 19 World Cup &amp; Fundraiser Party at LH.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --navy: #0F2C59;
+    --gold: #C5A880;
+    --charcoal: #2B2B2B;
+    --line: rgba(15,44,89,0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ece9e2; }
+  body {
+    font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+    color: var(--charcoal);
+    line-height: 1.55;
+    font-size: 17px;
+    padding: 32px 16px 80px;
+  }
+  .intro {
+    max-width: 880px;
+    margin: 0 auto 32px;
+    text-align: center;
+    color: #555;
+  }
+  .intro h1 {
+    font-family: 'Bebas Neue', 'Montserrat', sans-serif;
+    color: var(--navy);
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    letter-spacing: 2px;
+    margin: 0 0 8px;
+  }
+  .intro p { margin: 4px 0; font-size: 1rem; }
+  .intro .gold-rule {
+    width: 80px; height: 4px; background: var(--gold);
+    margin: 18px auto; border-radius: 2px;
+  }
+  .poster-list {
+    max-width: 880px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+  /* 24"x36" portrait → keep the same 2:3 vibe but cap to readable width */
+  .poster {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow:
+      0 1px 0 rgba(0,0,0,0.04),
+      0 22px 40px -28px rgba(15,44,89,0.45);
+    overflow: hidden;
+    position: relative;
+  }
+  .poster-num {
+    position: absolute;
+    top: 20px; right: 24px;
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--gold);
+    font-size: 2.6rem;
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+  .poster-band {
+    background: var(--navy);
+    color: #fff;
+    padding: 28px 32px 22px;
+    border-bottom: 6px solid var(--gold);
+  }
+  .poster-band .kicker {
+    font-family: 'Montserrat', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: 0.78rem;
+    color: var(--gold);
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  .poster-band h2 {
+    font-family: 'Bebas Neue', 'Montserrat', sans-serif;
+    margin: 0;
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    letter-spacing: 1px;
+    line-height: 1.05;
+  }
+  .poster-band .sub {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #d8e1f0;
+    margin: 10px 0 0;
+    max-width: 720px;
+  }
+  .poster-body {
+    padding: 28px 32px 24px;
+  }
+  .poster-body p,
+  .poster-body li {
+    font-size: 1rem;
+    margin: 0 0 14px;
+  }
+  .poster-body strong {
+    color: var(--navy);
+    font-weight: 700;
+  }
+  .lead-in {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 0.82rem;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .gold-divider {
+    height: 2px;
+    background: var(--gold);
+    opacity: 0.55;
+    margin: 6px 0 18px;
+    width: 60px;
+  }
+  .badge-list {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 14px;
+    display: grid;
+    gap: 10px;
+  }
+  .badge-list li {
+    background: rgba(197,168,128,0.10);
+    border-left: 4px solid var(--gold);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 1rem;
+    margin: 0;
+  }
+  .sources {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line);
+    font-size: 0.82rem;
+    color: #6b6b6b;
+  }
+  .sources .sources-label {
+    font-family: 'Montserrat', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 0.72rem;
+    color: var(--navy);
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  .sources a { color: var(--navy); word-break: break-word; }
+  .note {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: #f5efe2;
+    border-left: 4px solid var(--gold);
+    font-size: 0.9rem;
+    color: var(--charcoal);
+    border-radius: 4px;
+  }
+  .footer {
+    max-width: 880px;
+    margin: 60px auto 0;
+    padding: 24px;
+    text-align: center;
+    color: #6b6b6b;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 600px) {
+    body { padding: 18px 8px 60px; }
+    .poster-band { padding: 22px 18px 18px; }
+    .poster-body { padding: 22px 18px 18px; }
+    .poster-num { top: 14px; right: 16px; font-size: 2rem; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .poster { page-break-after: always; box-shadow: none; border-radius: 0; }
+    .intro, .footer { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <h1>The Lighthouse Soccer Exhibition</h1>
+  <p><strong>Cradle of American Soccer · Kensington, Philadelphia</strong></p>
+  <p>Prepared for the June 19 World Cup &amp; Fundraiser Party at LH</p>
+  <div class="gold-rule"></div>
+  <p>A 10-poster historical walkthrough. Sources are listed below each card.</p>
+</section>
+
+<div class="poster-list">
+
+  <!-- POSTER 1 -->
+  <article class="poster">
+    <div class="poster-num">01</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 1 · An American Soccer Empire</p>
+      <h2>The Lighthouse Boys Club: Cradle of American Soccer</h2>
+      <p class="sub">How a Kensington neighborhood center built a global sports phenomenon.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">1893 — The Settlement House Vision.</span> Philadelphia socialite Esther W. Kelly Bradford established a neighborhood settlement house in Kensington. Its mission was to provide British, Irish, and European industrial textile mill immigrants a safe social community and essential local resources.</p>
+      <p><span class="lead-in">1897 — The $1.00 Uniform Dream.</span> Backed by the Church Club of Philadelphia, the formal Lighthouse Boys Club opened its doors on Lehigh Avenue. Membership was just <strong>$1.00 per year</strong> — a fee that incredibly included a full team uniform. Within its first month, <strong>350 neighborhood youth</strong> flooded the club.</p>
+      <p><span class="lead-in">1924 — The 19,000-Member Peak.</span> Rocketing population growth across North Philadelphia pushed active club membership to an unbelievable <strong>19,000 members</strong>. The Somerset Street complex expanded into a multi-sport behemoth featuring boxing, swimming, diving, gymnastics, weightlifting, and baseball alongside a celebrated youth orchestra.</p>
+      <p><span class="lead-in">1940 — “The Largest Soccer Organization in the World.”</span> By 1940, global sports audits and publications officially designated the Lighthouse youth system as the single largest soccer club organization on earth, managing roughly <strong>40 age-tiered squads</strong> simultaneously out of Kensington.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>The Philadelphia Soccer Page — History of the Lighthouse: <a href="https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/" rel="noopener">phillysoccerpage.net</a></p>
+        <p>Lighthouse Soccer Club Archive — Foundation Milestones: <a href="https://lighthousesoccerclub.org/about-us/our-history/" rel="noopener">lighthousesoccerclub.org</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 2 -->
+  <article class="poster">
+    <div class="poster-num">02</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 2 · Hallowed Ground — Lighthouse Field</p>
+      <h2>Front Street &amp; Erie Avenue</h2>
+      <p class="sub">The legendary events and neighborhood lore of Philadelphia’s soccer mecca.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">The Crucible of Champions.</span> Throughout the 20th century, the expansive multi-pitch playground of Lighthouse Field at Front Street and Erie Avenue served as the epicenter of Philadelphia athletics. It was the ultimate proving ground where the neighborhood's toughest, most skilled players honed their crafts.</p>
+      <p><span class="lead-in">1910 Aviation Landmark.</span> On June 13, 1910, aviation pioneer <strong>Charles Hamilton</strong> completed the first-ever scheduled, round-trip airplane flight between two major American cities (New York and Philadelphia). He famously navigated his aircraft directly onto the open grass clearing of Lighthouse Field as thousands of spectating Philadelphians watched in awe.</p>
+      <p><span class="lead-in">The Traveling Circus Grounds.</span> Before evolving into a strictly manicured soccer complex, the vast open footprint of Lighthouse Field served as the designated local staging grounds for the world-famous traveling <strong>Ringling Brothers and Barnum &amp; Bailey Circus</strong>.</p>
+      <p><span class="lead-in">The Concrete Grandstands.</span> To handle the immense, rowdy weekend crowds that gathered to watch high-stakes neighborhood and American Soccer League (ASL) matches, permanent concrete bleachers were erected right on the edge of the pitch.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>U.S. Congressional Record — Historic Tribute to Lighthouse Field: <a href="https://www.govinfo.gov/" rel="noopener">govinfo.gov</a></p>
+        <p>Hidden City Philadelphia — Settlement House Footprints: <a href="https://hiddencityphila.org/" rel="noopener">hiddencityphila.org</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 3 -->
+  <article class="poster">
+    <div class="poster-num">03</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 3 · Manchester United Comes to Kensington</p>
+      <h2>May 11, 1952 · English Kings vs. The Philly All-Stars</h2>
+      <p class="sub">The historic afternoon global powerhouses tested their might at Front &amp; Erie.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">The Showcase Tour.</span> Fresh off capturing the English First Division League championship, global soccer giants <strong>Manchester United</strong> embarked on an international showcase tour. Seeking the most respected hotbeds of American soccer, their tour led them straight to Lighthouse Field in Kensington.</p>
+      <p><span class="lead-in">3,000 Strong.</span> Over <strong>3,000 passionate, vocal local fans</strong> packed tight against the perimeter of Lighthouse Field to witness the ultimate exhibition match.</p>
+      <p><span class="lead-in">The Crossbar Rattler.</span> Though the elite English professionals ultimately claimed a 4–0 victory, local Kensington legend <strong>John Hughes</strong> famously unleashed a blistering strike that rocked the Manchester United crossbar, coming within inches of sending the home crowd into an absolute frenzy.</p>
+      <p><span class="lead-in">A Gift of Steel and Stone.</span> In anticipation of the massive crowd turnout and to pay homage to the local infrastructure, Manchester United famously financed the construction and installation of permanent concrete bleachers right at Lighthouse Field.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>Lighthouse Soccer Club History — The 1952 Manchester United Clash: <a href="https://lighthousesoccerclub.org/about-us/our-history/" rel="noopener">lighthousesoccerclub.org</a></p>
+        <p>Host City Soccer Playbook — Philadelphia’s Historic Match Lore: <a href="https://www.soccerpost.com/" rel="noopener">soccerpost.com</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 4 -->
+  <article class="poster">
+    <div class="poster-num">04</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 4 · The 1936 Berlin Summer Olympics</p>
+      <h2>Kensington on the World Stage</h2>
+      <p class="sub">The unmatched global feat of the 1936 United States Olympic team.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">A Global Phenomenon.</span> When the United States Men’s National Olympic Soccer Team traveled to Berlin, Germany for the 1936 Summer Olympic Games, the neighborhood of Kensington effectively represented the entire nation.</p>
+      <p><span class="lead-in">Four Men from One Club.</span> In a breathtaking developmental feat that has never been matched by any single American youth soccer club since, <strong>four former Lighthouse players started simultaneously</strong> on the pitch for the United States in Berlin.</p>
+      <p><span class="lead-in">The Olympic Star Lineup.</span> These four homegrown legends formed the absolute spine of the United States international roster:</p>
+      <ul class="badge-list">
+        <li>🇺🇸 <strong>Francis “Hun” Ryan</strong> — Forward</li>
+        <li>🇺🇸 <strong>Peter Pietras</strong> — Midfielder</li>
+        <li>🇺🇸 <strong>James Gallagher</strong> — Midfielder</li>
+        <li>🇺🇸 <strong>Robert Denton</strong> — Forward</li>
+      </ul>
+      <p><span class="lead-in">An Enduring Legacy.</span> This extraordinary achievement solidified the Lighthouse Boys Club's reputation across international soccer circles as a premier breeding ground for world-class soccer talent.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>Olympedia — 1936 United States Olympic Soccer Lineup: <a href="https://www.olympedia.org/teams/2723" rel="noopener">olympedia.org/teams/2723</a></p>
+        <p>The Philadelphia Soccer Page — Lighthouse’s Olympic Core: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 5 -->
+  <article class="poster">
+    <div class="poster-num">05</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 5 · National Youth Championships</p>
+      <h2>Five Times Kings of America</h2>
+      <p class="sub">The legendary McGuire Cup dynasty and the 36-game “Invincibles.”</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">The Oldest Trophy in Youth Sports.</span> The National Junior Challenge Cup (officially renamed the <strong>James P. McGuire Cup</strong> in 1975) is the oldest, most prestigious youth soccer national championship trophy in the United States.</p>
+      <p><span class="lead-in">The Five-Star Dynasty.</span> Lighthouse Boys Club captured absolute national dominance by winning this grueling coast-to-coast knockout tournament exactly five times:</p>
+      <ul class="badge-list">
+        <li>🏆 <strong>1938</strong> — The club's inaugural national breakthrough crown.</li>
+        <li>🏆 <strong>1948</strong> — Defeated the heavily favored Schumacher SC of St. Louis, Missouri, 1–0.</li>
+        <li>🏆 <strong>1949</strong> — Successfully defended the National Title by downing Windsor S.C. 2–1.</li>
+        <li>🏆 <strong>1957</strong> — Reclaimed absolute youth dominance over the American landscape.</li>
+        <li>🏆 <strong>1967</strong> — The fifth and final national crown of the historic Kensington era.</li>
+      </ul>
+      <p><span class="lead-in">The “Invincibles” (1948–1949).</span> Led by future Hall of Famer <strong>Len Oliver</strong>, the Lighthouse junior squad went on an unprecedented run, stringing together a legendary <strong>36-match consecutive winning streak</strong> against the top senior and academy teams across North America.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>US Youth Soccer — Official James P. McGuire Cup Champions Registry: <a href="https://www.usyouthsoccer.org/" rel="noopener">usyouthsoccer.org</a></p>
+        <p>Society for American Soccer History — 1940s Lighthouse Dynasties: <a href="https://www.ussoccerhistory.org/" rel="noopener">ussoccerhistory.org</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 6 -->
+  <article class="poster">
+    <div class="poster-num">06</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 6 · National Soccer Hall of Fame</p>
+      <h2>The Icons Enshrined</h2>
+      <p class="sub">The homegrown legends of Kensington who earned American soccer's highest honor.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <ul class="badge-list">
+        <li>🇺🇸 <strong>Walter Bahr</strong> (Inducted 1976) — Widely regarded as one of the greatest American players of the 20th century. Born and raised in Kensington, Bahr was the longtime anchor and frequent captain of the USMNT across three World Cup qualifying cycles.</li>
+        <li>🇺🇸 <strong>Francis “Hun” Ryan</strong> (Inducted 1958) — A star forward and pure product of the club's early lines who represented the United States at the 1928 and 1936 Summer Olympic Games, as well as the 1934 FIFA World Cup.</li>
+        <li>🇺🇸 <strong>Benny McLaughlin</strong> (Inducted 1977) — Star forward who dominated the American Soccer League (ASL), won four consecutive league titles with the Philadelphia Nationals, was named the 1952 ASL MVP, and competed as a 1948 U.S. Olympian.</li>
+        <li>🇺🇸 <strong>Len Oliver</strong> (Inducted 1996) — Joined Lighthouse at age 9, captained the back-to-back National Junior Champions, starred as a two-time All-American at Temple University, and spent his lifetime as a premier global soccer educator.</li>
+        <li>🇺🇸 <strong>Bob Gormley</strong> (Inducted 1989) — Prolific goalscorer who honed his instincts at Lighthouse Field before embarking on a stellar 17-year ASL career, serving as team captain for 12 seasons and capturing five league titles.</li>
+        <li>🇺🇸 <strong>Dick Spalding</strong> (Inducted 1950) — An early star halfback for Lighthouse's Kensington squad by 1912 who scored the first-ever goal in the official international history of the United States Men's National Team (1916 vs. Sweden). He also played Major League Baseball for the Philadelphia Phillies.</li>
+      </ul>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>National Soccer Hall of Fame — Official Player Registries: <a href="https://naslhf.org/member-directory/" rel="noopener">naslhf.org/member-directory</a></p>
+        <p>Society for American Soccer History — Biography Archives: <a href="https://www.ussoccerhistory.org/" rel="noopener">ussoccerhistory.org</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 7 -->
+  <article class="poster">
+    <div class="poster-num">07</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 7 · The Game of Their Lives (The History)</p>
+      <h2>The Miracle Match of 1950</h2>
+      <p class="sub">How a Lighthouse legend engineered the greatest upset in World Cup history.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">The David vs. Goliath Clash.</span> On June 29, 1950, a ragtag, heavily underestimated team of American underdogs took the pitch at the FIFA World Cup in Brazil to face the absolute kings of the sport: the heavily favored <strong>England national squad</strong>.</p>
+      <p><span class="lead-in">The Lighthouse Assist.</span> The architect of what remains the most stunning upset in international sports history was Kensington’s own <strong>Walter Bahr</strong>. Deep in the match, Bahr unleashed a blistering 25-yard shot-pass that was deflected into the net for the historic, game-winning <strong>1–0 goal</strong>.</p>
+      <p><span class="lead-in">The Armband Strategy.</span> Though Bahr was the undisputed leader and standard team captain during international cycles, a clever psychological trick was played for this specific match. U.S. coaches designated teammate <strong>Ed McIlvenny</strong> (a native of Scotland) as the match-day captain, knowing a Scotsman would be fiercely motivated to lead an army onto the pitch against England! Bahr returned to captain the final match against Chile.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>U.S. Soccer — Remembering the Leadership Legacy of Walter Bahr: <a href="https://www.ussoccer.com/" rel="noopener">ussoccer.com</a></p>
+        <p>The Philly Soccer Page — The 1950 World Cup Core: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 8 -->
+  <article class="poster">
+    <div class="poster-num">08</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 8 · The Game of Their Lives (The Book &amp; Movie)</p>
+      <h2>Lighthouse on the Silver Screen</h2>
+      <p class="sub">The best-selling book and Hollywood film that immortalized Kensington soccer.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">The Best-Selling Book.</span> In 1996, acclaimed author <strong>Geoffrey Douglas</strong> immortalized Walter Bahr and his underdog teammates in the definitive sports history book, <em>The Game of Their Lives</em>. The book deeply chronicles Bahr's early years playing soccer in the industrial, tight-knit neighborhood of Kensington.</p>
+      <p><span class="lead-in">The Hollywood Feature Film.</span> In 2005, the book was adapted into a major Hollywood feature film directed by <strong>David Anspaugh</strong> — the iconic director behind legendary sports films <em>Rudy</em> and <em>Hoosiers</em>. The movie was later widely released on home media under the title <em>The Miracle Match</em>.</p>
+      <p><span class="lead-in">From Kensington to Hollywood.</span> Hollywood star <strong>Wes Bentley</strong> (Yellowstone, American Beauty, The Hunger Games) was cast to play Lighthouse legend Walter Bahr.</p>
+      <p><span class="lead-in">Capturing the Grit.</span> Bentley spent extensive time interviewing Bahr in person to accurately capture the grit, leadership, and distinct spirit of a mid-century Philadelphia soccer icon, introducing Kensington’s athletic legacy to global film audiences.</p>
+      <div class="note">⚙️ <strong>Staff Setup Note:</strong> Place a small cocktail table right below this easel. Display a paperback copy of the book and the movie's DVD case side-by-side to act as an interactive prop station.</div>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>AFI Catalog of Feature Films — <em>The Game of Their Lives</em> (2005): <a href="https://catalog.afi.com/" rel="noopener">catalog.afi.com</a></p>
+        <p>The Philly Soccer Page — Walter Bahr's Hollywood Legacy: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 9 -->
+  <article class="poster">
+    <div class="poster-num">09</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 9 · Guarding the Legacy</p>
+      <h2>The Architects of Recognition</h2>
+      <p class="sub">How Lighthouse built the National Hall of Fame and the modern SEPA connection.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">Harry “Pup” Fleming (Inducted 1967 · Builder).</span> After playing for turn-of-the-century Lighthouse teams, Fleming became a key executive officer in the Philadelphia Oldtimers Soccer Association (P.O.S.A.). He spearheaded the campaign to establish a national hall of recognition.</p>
+      <p><span class="lead-in">The Birth of the National Hall of Fame (1950).</span> In 1950, these Lighthouse alumni and Philadelphia Oldtimers officially organized and co-founded the <strong>National Soccer Hall of Fame</strong>, inducting its inaugural class of legends. Strikingly, the initial historical blueprints dictated that the physical archive of the Hall of Fame be housed directly inside the Lighthouse Boys Club building in Kensington.</p>
+      <p><span class="lead-in">The SEPA Soccer Hall of Fame Connection.</span> The sacred legacy, regional archives, and annual enshrinement traditions of those original Philadelphia Oldtimers continue today under its modernized banner: <strong>The Southeastern Pennsylvania (SEPA) Soccer Hall of Fame</strong>.</p>
+      <p><span class="lead-in">An Eternal Roster.</span> Because Lighthouse was the absolute epicenter of regional development, scores of historic Lighthouse players, coaches, managers, and builders are permanently honored as foundational icons within the SEPA Hall of Fame's registry of over 400 inductees.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>Society for American Soccer History — Origin of the National Hall of Fame: <a href="https://www.ussoccerhistory.org/" rel="noopener">ussoccerhistory.org</a></p>
+        <p>SEPA Soccer Hall of Fame Official Archive: <a href="https://www.sepasoccerhalloffame.com/" rel="noopener">sepasoccerhalloffame.com</a></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- POSTER 10 -->
+  <article class="poster">
+    <div class="poster-num">10</div>
+    <header class="poster-band">
+      <p class="kicker">Poster 10 · Philadelphia Sports Hall of Fame</p>
+      <h2>The Philadelphia Sports Hall of Fame</h2>
+      <p class="sub">Enshrining an unrivaled community soccer legacy.</p>
+    </header>
+    <div class="poster-body">
+      <div class="gold-divider"></div>
+      <p><span class="lead-in">The 2010 Team Induction.</span> In 2010, the Philadelphia Sports Hall of Fame made a historic, unprecedented move. Rather than just honoring a single athlete, they permanently inducted the <strong>entire historic Lighthouse Boys Club soccer program</strong> to honor its century-long contribution to the city’s athletic identity.</p>
+      <p><span class="lead-in">In Elite City Company.</span> By entering the Hall, the boys from Kensington took their rightful place in Philadelphia sports lore. They stand shoulder-to-shoulder with iconic local legends like <strong>Wilt Chamberlain, Chuck Bednarik, Mike Schmidt, and Julius Erving</strong>.</p>
+      <p><span class="lead-in">A Century of Neighborhood Grit.</span> The induction celebrated a breathtaking neighborhood pipeline: developing thousands of local youth, securing <strong>5 national youth championships</strong>, sending <strong>4 starters to the 1936 Olympics</strong>, and serving as the historic epicenter of American soccer.</p>
+      <p><span class="lead-in">The Permanent Record.</span> Today, the Lighthouse Boys Club remains permanently etched into the official city registries — a timeless testament to neighborhood pride, community investment, and local athletic brilliance.</p>
+      <div class="sources">
+        <p class="sources-label">Exhibition Sources</p>
+        <p>Official Enshrinement Registry — Philadelphia Sports Hall of Fame: <a href="https://www.phillyhall.org/" rel="noopener">phillyhall.org</a></p>
+        <p>The Philadelphia Soccer Page Archives: <a href="https://phillysoccerpage.net/" rel="noopener">phillysoccerpage.net</a></p>
+      </div>
+    </div>
+  </article>
+
+</div>
+
+<div class="footer">
+  <p>Production: 24″ × 36″ portrait · heavyweight satin photo paper on 3/16″ foam-core or gatorboard.</p>
+  <p>Palette: <span style="display:inline-block;width:12px;height:12px;background:#FAFAFA;border:1px solid #ccc;vertical-align:middle;"></span> #FAFAFA &nbsp;·&nbsp; <span style="display:inline-block;width:12px;height:12px;background:#0F2C59;vertical-align:middle;"></span> #0F2C59 &nbsp;·&nbsp; <span style="display:inline-block;width:12px;height:12px;background:#C5A880;vertical-align:middle;"></span> #C5A880 &nbsp;·&nbsp; <span style="display:inline-block;width:12px;height:12px;background:#2B2B2B;vertical-align:middle;"></span> #2B2B2B</p>
+  <p>Headers: Montserrat / Bebas Neue. Body: Open Sans.</p>
+</div>
+
+</body>
+</html>

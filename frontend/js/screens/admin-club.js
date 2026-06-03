@@ -69,6 +69,7 @@ class AdminClubScreen extends Screen {
       { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
       { id: 'leads', icon: '📋', label: 'Leads', description: 'Ad interest form submissions' },
       { id: 'ad-preview', icon: '📱', label: 'Ad Preview', description: 'See exactly what your ads look like' },
+      { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits', description: 'Publicly shareable poster boards & history pages' },
       { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' }
     ];
     
@@ -145,6 +146,12 @@ class AdminClubScreen extends Screen {
         clubId: this.clubId,
         clubName: this.clubName
       });
+      return;
+    }
+
+    if (section === 'public-exhibits') {
+      // Public, no-login pages. Open in a new tab so coaches/staff can share the link.
+      window.open('/exhibit/lighthouse-history.html', '_blank', 'noopener');
       return;
     }
 
