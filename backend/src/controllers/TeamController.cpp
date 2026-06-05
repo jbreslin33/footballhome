@@ -5,6 +5,7 @@
 
 TeamController::TeamController() {
     team_model_ = std::make_unique<Team>();
+    db_ = Database::getInstance();
 }
 
 void TeamController::registerRoutes(Router& router, const std::string& prefix) {
@@ -41,6 +42,21 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
     // Get team accolades
     router.get(prefix + "/:teamId/accolades", [this](const Request& request) {
         return this->handleGetTeamAccolades(request);
+    });
+
+    // Set / clear the team's "live" match pointer (coach pin)
+    //   body: { "match_id": <int|null>, "pinned": <bool> }
+    //   pinned=true   -> sticky on match_id until unpinned
+    //   pinned=false  -> auto-resolve (server picks earliest non-completed match)
+    router.put(prefix + "/:teamId/live-match", [this](const Request& request) {
+        return this->handleSetLiveMatch(request);
+    });
+
+    // GET /api/teams/:teamId/share-info
+    //   optional query: ?matchId=<int> to also get visibility flags for that match
+    //   returns { slug, live_match_id, live_match_pinned, match: { gameday_hidden, lineup_hidden } }
+    router.get(prefix + "/:teamId/share-info", [this](const Request& request) {
+        return this->handleGetShareInfo(request);
     });
 }
 
@@ -314,6 +330,85 @@ std::string TeamController::createJSONResponse(bool success, const std::string& 
     return json.str();
 }
 
+bool TeamController::hasBearerToken(const Request& request) {
+    std::string h = request.getHeader("Authorization");
+    return !h.empty() && h.substr(0, 7) == "Bearer ";
+}
+
+std::string TeamController::extractTeamIdForLiveMatch(const std::string& path) {
+    std::regex re(R"(/api/teams/([^/]+)/live-match)");
+    std::smatch m;
+    if (std::regex_search(path, m, re)) return m[1].str();
+    return "";
+}
+
+// PUT /api/teams/:teamId/live-match
+// body: { match_id: <int|null>, pinned: <bool> }
+//   pinned=true  with match_id -> sticky override
+//   pinned=false                -> clear override, server auto-resolves
+Response TeamController::handleSetLiveMatch(const Request& request) {
+    try {
+        if (!hasBearerToken(request)) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                            createJSONResponse(false, "Authentication required"));
+        }
+
+        std::string team_id = extractTeamIdForLiveMatch(request.getPath());
+        if (team_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                            createJSONResponse(false, "Invalid team id"));
+        }
+
+        std::string body = request.getBody();
+
+        // pinned: true | false   (default false)
+        bool pinned = false;
+        {
+            std::regex re(R"("pinned"\s*:\s*(true|false))");
+            std::smatch m;
+            if (std::regex_search(body, m, re)) pinned = (m[1].str() == "true");
+        }
+
+        // match_id: integer or null   (only meaningful when pinned=true)
+        std::string match_id_sql_value = "NULL";
+        {
+            std::regex re(R"("match_id"\s*:\s*(\d+|null))");
+            std::smatch m;
+            if (std::regex_search(body, m, re) && m[1].str() != "null") {
+                match_id_sql_value = m[1].str();
+            }
+        }
+
+        // If unpinning, always clear the stored match_id so it doesn't linger
+        // and accidentally re-stick when someone toggles pinned back on later.
+        std::string update_sql;
+        if (pinned && match_id_sql_value != "NULL") {
+            update_sql =
+                "UPDATE teams SET live_match_id = $1::int, live_match_pinned = true "
+                "WHERE id = $2::int";
+            db_->query(update_sql, {match_id_sql_value, team_id});
+        } else {
+            update_sql =
+                "UPDATE teams SET live_match_id = NULL, live_match_pinned = false "
+                "WHERE id = $1::int";
+            db_->query(update_sql, {team_id});
+        }
+
+        std::ostringstream data;
+        data << "{\"team_id\":" << team_id
+             << ",\"pinned\":" << (pinned && match_id_sql_value != "NULL" ? "true" : "false")
+             << ",\"match_id\":" << (pinned && match_id_sql_value != "NULL" ? match_id_sql_value : "null")
+             << "}";
+        std::ostringstream out;
+        out << "{\"success\":true,\"message\":\"Live match updated\",\"data\":" << data.str() << "}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleSetLiveMatch: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Failed to update live match"));
+    }
+}
+
 Response TeamController::handleGetTeamAccolades(const Request& request) {
     try {
         // Extract team ID from path like "/api/teams/35/accolades"
@@ -342,5 +437,72 @@ Response TeamController::handleGetTeamAccolades(const Request& request) {
         std::cerr << "❌ TeamController::handleGetTeamAccolades error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve team accolades");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+// GET /api/teams/:teamId/share-info  [?matchId=<int>]
+// Returns:
+//   { team_id, slug, live_match_id|null, live_match_pinned,
+//     match: { id, gameday_hidden, lineup_hidden } | null }
+Response TeamController::handleGetShareInfo(const Request& request) {
+    try {
+        std::string team_id;
+        {
+            std::regex re(R"(/api/teams/([^/]+)/share-info)");
+            std::smatch m;
+            std::string path = request.getPath();
+            if (std::regex_search(path, m, re)) team_id = m[1].str();
+        }
+        if (team_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                            createJSONResponse(false, "Invalid team id"));
+        }
+
+        std::string match_id = request.getQueryParam("matchId");
+
+        pqxx::result tr = db_->query(
+            "SELECT COALESCE(slug,'') AS slug, "
+            "       COALESCE(live_match_id, 0) AS live_match_id, "
+            "       live_match_pinned "
+            "FROM teams WHERE id = $1::int", {team_id});
+        if (tr.empty()) {
+            return Response(HttpStatus::NOT_FOUND,
+                            createJSONResponse(false, "Team not found"));
+        }
+        std::string slug = tr[0]["slug"].as<std::string>();
+        int live_match_id = tr[0]["live_match_id"].as<int>();
+        bool pinned       = tr[0]["live_match_pinned"].as<bool>();
+
+        std::string match_json = "null";
+        if (!match_id.empty()) {
+            pqxx::result mr = db_->query(
+                "SELECT id, COALESCE(gameday_hidden,false) AS gh, "
+                "       COALESCE(lineup_hidden,true) AS lh "
+                "FROM matches WHERE id = $1::int", {match_id});
+            if (!mr.empty()) {
+                std::ostringstream m;
+                m << "{\"id\":" << mr[0]["id"].as<int>()
+                  << ",\"gameday_hidden\":" << (mr[0]["gh"].as<bool>() ? "true" : "false")
+                  << ",\"lineup_hidden\":"  << (mr[0]["lh"].as<bool>() ? "true" : "false")
+                  << "}";
+                match_json = m.str();
+            }
+        }
+
+        std::ostringstream data;
+        data << "{\"team_id\":" << team_id
+             << ",\"slug\":\"" << slug << "\""
+             << ",\"live_match_id\":" << (live_match_id > 0 ? std::to_string(live_match_id) : "null")
+             << ",\"live_match_pinned\":" << (pinned ? "true" : "false")
+             << ",\"match\":" << match_json
+             << "}";
+
+        std::ostringstream out;
+        out << "{\"success\":true,\"data\":" << data.str() << "}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetShareInfo: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Failed to load share info"));
     }
 }

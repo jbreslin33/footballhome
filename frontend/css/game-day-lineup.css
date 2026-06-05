@@ -887,14 +887,16 @@ body.pitch-fit-active {
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 .chip-name {
-  font-size: 0.55em;
+  font-size: 0.62em;
   color: white;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   margin-top: 1px;
-  white-space: nowrap;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  max-width: 110px;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.1;
+  word-break: break-word;
 }
 .chip-badge {
   font-size: 0.45em;
@@ -1489,4 +1491,58 @@ body.pitch-fit-active {
     border-radius: 3px 0 0 3px !important;
   }
 }
+
+/* Loading logs can grow very long (sync activity + progress). Constrain them
+   so they scroll INTERNALLY, keeping the "Continue to lineup" button in the
+   viewport instead of pushed below the fold. */
+.screen-game-day-lineup #loading-sync-activity,
+.screen-game-day-lineup #loading-progress-log {
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+/* ============================================================================
+   Page-level scrolling for the lineup screen (Firefox-compatible)
+   The global `.screen` rule sets `overflow-y: auto` which creates a nested
+   scroll container that Firefox sometimes refuses to scroll with the wheel
+   when sibling pitch / pool sections are tall. Force the screen to flow
+   naturally so the document body handles scrolling.
+   ============================================================================ */
+.screen-game-day-lineup:not(.lineup-fit-screen) {
+  overflow: visible !important;
+  overflow-y: visible !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* The loading state uses display:flex with vertical centering, which combined
+   with tall sync-activity logs can push the "Continue to lineup" button below
+   the viewport with no way to scroll. Lay it out top-down instead so the
+   button is always reachable as the page grows. */
+.screen-game-day-lineup:not(.lineup-fit-screen) #lineup-loading.loading-state {
+  display: block !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  padding: var(--space-4);
+}
+
+/* ============================================================================
+   Zone section bodies: scroll internally when player lists get long
+   (Not Responded / Not Going can be 100+ rows). Inline-styled bodies all
+   share id prefix `section-body-` from renderZoneSections().
+   ============================================================================ */
+.screen-game-day-lineup:not(.lineup-fit-screen) [id^="section-body-"] {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+/* Show full player names on the zone section cards (no ellipsis truncation) */
+.screen-game-day-lineup:not(.lineup-fit-screen) .lineup-player-card .lineup-player-name {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.25;
+}
+
 }

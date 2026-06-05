@@ -59,6 +59,8 @@ struct PlayerEligibility {
     bool is_starter;
     std::string lineup_zone;       // "starter", "bench", "alternate", or ""
     bool on_official_roster;       // true if on the specific team's league roster
+    bool is_lighthouse_registered; // manual registration checkbox override
+    bool is_paid_up_to_date;       // manual paid checkbox override
     int person_id;
     std::string date_of_birth;     // ISO date string "YYYY-MM-DD" or ""
     std::string payment_status;    // LeagueApps payment status string or ""

@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 lighthouse-groupme lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty
+.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 lighthouse-groupme lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty lighthouse-groupme-brazil lighthouse-groupme-puertorico
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -458,8 +458,16 @@ lighthouse-groupme-tricounty:
 	@echo "💬 Lighthouse → GroupMe: Tri County Women's Lighthouse..."
 	@node scripts/sync-groupme-events.js --group "Tri County Women's Lighthouse"
 
-lighthouse-groupme: lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty
-	@echo "✅ lighthouse-groupme done (all 7 chats)"
+lighthouse-groupme-brazil:
+	@echo "💬 Lighthouse → GroupMe: Brazil 🇧🇷 Trialists..."
+	@node scripts/sync-groupme-events.js --group "Brazil 🇧🇷 Trialists"
+
+lighthouse-groupme-puertorico:
+	@echo "💬 Lighthouse → GroupMe: Puerto Rico 🇵🇷 Trialists..."
+	@node scripts/sync-groupme-events.js --group "Puerto Rico 🇵🇷 Trialists"
+
+lighthouse-groupme: lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty lighthouse-groupme-brazil lighthouse-groupme-puertorico
+	@echo "✅ lighthouse-groupme done (all 9 chats)"
 
 # ── Root: full Lighthouse refresh ─────────────────────────────────────
 lighthouse: lighthouse-apsl lighthouse-casa lighthouse-groupme

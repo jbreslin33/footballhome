@@ -1,11 +1,13 @@
 #pragma once
 #include "../core/Controller.h"
 #include "../models/Team.h"
+#include "../database/Database.h"
 #include <memory>
 
 class TeamController : public Controller {
 private:
     std::unique_ptr<Team> team_model_;
+    Database* db_;  // direct DB access for new endpoints (live-match pin)
 
 public:
     TeamController();
@@ -19,10 +21,14 @@ private:
     Response handleUpdateRosterMember(const Request& request);
     Response handleRemoveRosterMember(const Request& request);
     Response handleGetTeamAccolades(const Request& request);
-    
+    Response handleSetLiveMatch(const Request& request);
+    Response handleGetShareInfo(const Request& request);
+
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractPlayerIdFromPath(const std::string& path);
     std::string extractTeamIdGeneric(const std::string& path);
+    std::string extractTeamIdForLiveMatch(const std::string& path);
     std::string createJSONResponse(bool success, const std::string& message);
+    bool hasBearerToken(const Request& request);
 };

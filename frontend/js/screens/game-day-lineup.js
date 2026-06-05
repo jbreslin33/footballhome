@@ -100,6 +100,24 @@ class GameDayLineupScreen extends Screen {
           <!-- Policy summary bar -->
           <div id="policy-bar" class="policy-bar"></div>
 
+          <!-- Coach: Share & Visibility panel -->
+          <div id="share-panel" style="display:none;margin:8px 0 12px;padding:10px 12px;background:rgba(2,6,23,0.6);border:1px solid rgba(148,163,184,0.3);border-radius:8px;font-size:0.85rem;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <strong>🔗 Share / Visibility</strong>
+              <button id="share-pin-btn" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">📌 Pin as live match</button>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="share-hide-gameday"> Hide game-day roster</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="share-hide-lineup" checked> Hide lineup (starters/bench)</label>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center;">
+              <span style="opacity:0.7;">Game day:</span>
+              <code id="share-url-gameday" style="padding:4px 6px;background:rgba(255,255,255,0.05);border-radius:4px;font-size:0.78rem;overflow-x:auto;white-space:nowrap;"></code>
+              <button class="btn btn-sm share-copy-btn" data-target="share-url-gameday" style="font-size:0.75rem;">Copy</button>
+              <span style="opacity:0.7;">Lineup:</span>
+              <code id="share-url-lineup" style="padding:4px 6px;background:rgba(255,255,255,0.05);border-radius:4px;font-size:0.78rem;overflow-x:auto;white-space:nowrap;"></code>
+              <button class="btn btn-sm share-copy-btn" data-target="share-url-lineup" style="font-size:0.75rem;">Copy</button>
+            </div>
+          </div>
+
           <!-- Zone sections -->
           <div id="zone-sections"></div>
 
@@ -113,6 +131,14 @@ class GameDayLineupScreen extends Screen {
   }
 
   onEnter(params) {
+    // Defensive: clear any leftover body scroll lock from a previous pitch
+    // view (the fullscreen pitch overlay adds `pitch-fit-active` to <body>
+    // which sets `overflow: hidden`). Without this, the loading panel and
+    // any async-loaded buttons can be stuck below the viewport.
+    document.body.classList.remove('pitch-fit-active');
+    if (this.element) this.element.classList.remove('lineup-fit-screen');
+    this.pitchFit = false;
+
     if (!this._listenersAttached) {
       this._listenersAttached = true;
       this.attachEventListeners();
@@ -121,6 +147,7 @@ class GameDayLineupScreen extends Screen {
     this.syncThenLoad();
     this.loadSavedMetadata();
     this.loadLeaguesSyncStatus();
+    this.loadShareInfo();
   }
 
   /**
@@ -221,6 +248,23 @@ class GameDayLineupScreen extends Screen {
       }
       if (e.target.id === 'auto-fill-btn' || e.target.closest('#auto-fill-btn')) {
         this.autoFillFromEligibility();
+        return;
+      }
+      if (e.target.id === 'share-pin-btn' || e.target.closest('#share-pin-btn')) {
+        this.toggleLiveMatchPin();
+        return;
+      }
+      const copyBtn = e.target.closest('.share-copy-btn');
+      if (copyBtn) {
+        const targetId = copyBtn.getAttribute('data-target');
+        const el = this.find('#' + targetId);
+        if (el) {
+          navigator.clipboard.writeText(el.textContent).then(() => {
+            const orig = copyBtn.textContent;
+            copyBtn.textContent = '✓ Copied';
+            setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+          }).catch(() => {});
+        }
         return;
       }
       if (e.target.id === 'groupme-refresh-btn' || e.target.closest('#groupme-refresh-btn')) {
@@ -733,6 +777,14 @@ class GameDayLineupScreen extends Screen {
     merged.paymentStatus = nonEmpty(primary.paymentStatus, secondary.paymentStatus, primary.payment_status, secondary.payment_status);
     merged.registrationStatus = nonEmpty(primary.registrationStatus, secondary.registrationStatus, primary.registration_status, secondary.registration_status);
     merged.onOfficialRoster = !!(a.onOfficialRoster || b.onOfficialRoster);
+    merged.isRegistered = (() => {
+      const val = nonEmpty(primary.isRegistered, secondary.isRegistered, primary.registered, secondary.registered);
+      return val == null ? null : this._boolish(val);
+    })();
+    merged.isPaid = (() => {
+      const val = nonEmpty(primary.isPaid, secondary.isPaid, primary.paid, secondary.paid);
+      return val == null ? null : this._boolish(val);
+    })();
 
     // Keep most informative name if one side is blank.
     merged.firstName = (primary.firstName && String(primary.firstName).trim())
@@ -1099,6 +1151,116 @@ class GameDayLineupScreen extends Screen {
     } catch (e) {
       console.warn('Could not load formations:', e);
     }
+  }
+
+  /**
+   * Load share info (slug + visibility flags) and populate the share panel.
+   */
+  async loadShareInfo() {
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id;
+    if (!teamId) return;
+    const matchId = this.navigation.context.match?.id;
+    const url = matchId
+      ? `/api/teams/${teamId}/share-info?matchId=${matchId}`
+      : `/api/teams/${teamId}/share-info`;
+    try {
+      const response = await this.auth.fetch(url);
+      const json = await response.json();
+      if (!json.success || !json.data) return;
+      this._shareInfo = json.data;
+      this.renderSharePanel();
+    } catch (e) {
+      console.warn('Failed to load share info:', e);
+    }
+  }
+
+  renderSharePanel() {
+    const panel = this.find('#share-panel');
+    if (!panel || !this._shareInfo) return;
+    const info = this._shareInfo;
+    const slug = info.slug || `team-${info.team_id}`;
+    const base = `${window.location.origin}/#t/${encodeURIComponent(slug)}`;
+    const gameDayUrl = this.find('#share-url-gameday');
+    const lineupUrl = this.find('#share-url-lineup');
+    if (gameDayUrl) gameDayUrl.textContent = `${base}/gameday`;
+    if (lineupUrl) lineupUrl.textContent = `${base}/lineup`;
+
+    const matchId = this.navigation.context.match?.id;
+    const pinBtn = this.find('#share-pin-btn');
+    if (pinBtn) {
+      const isPinnedHere = info.live_match_pinned && info.live_match_id == matchId;
+      pinBtn.textContent = isPinnedHere ? '📌 Unpin this match' : '📌 Pin as live match';
+    }
+
+    const m = info.match || {};
+    const ghBox = this.find('#share-hide-gameday');
+    const lhBox = this.find('#share-hide-lineup');
+    if (ghBox) {
+      ghBox.checked = !!m.gameday_hidden;
+      ghBox.onchange = () => this.setVisibility({ gameday_hidden: ghBox.checked });
+    }
+    if (lhBox) {
+      lhBox.checked = m.lineup_hidden !== false;
+      lhBox.onchange = () => this.setVisibility({ lineup_hidden: lhBox.checked });
+    }
+    panel.style.display = 'block';
+  }
+
+  async toggleLiveMatchPin() {
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id;
+    const matchId = this.navigation.context.match?.id;
+    if (!teamId || !matchId) return;
+    const info = this._shareInfo || {};
+    const currentlyPinnedHere = info.live_match_pinned && info.live_match_id == matchId;
+    const body = currentlyPinnedHere
+      ? { pinned: false }
+      : { match_id: Number(matchId), pinned: true };
+    try {
+      const r = await this.auth.fetch(`/api/teams/${teamId}/live-match`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (r.ok) {
+        this.showToast(currentlyPinnedHere ? 'Unpinned' : 'Pinned as live');
+        this.loadShareInfo();
+      } else {
+        this.showToast('Failed to update pin');
+      }
+    } catch (e) {
+      this.showToast('Failed to update pin');
+    }
+  }
+
+  async setVisibility(patch) {
+    const matchId = this.navigation.context.match?.id;
+    if (!matchId) return;
+    try {
+      const r = await this.auth.fetch(`/api/matches/${matchId}/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+      });
+      if (r.ok) {
+        this.showToast('Visibility updated');
+        if (this._shareInfo) {
+          this._shareInfo.match = { ...(this._shareInfo.match || {}), ...patch };
+        }
+      } else {
+        this.showToast('Failed to update visibility');
+      }
+    } catch (e) {
+      this.showToast('Failed to update visibility');
+    }
+  }
+
+  showToast(msg) {
+    const toast = this.find('#lineup-toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.style.display = 'block';
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 1800);
   }
 
   /**
@@ -1632,6 +1794,7 @@ class GameDayLineupScreen extends Screen {
       if (s === 'attempting') return 'Attempting';
       if (s === 'not_found_in_group') return 'Not Found';
       if (s === 'no_linked_event') return 'No Linked Event';
+      if (s === 'canceled') return 'Canceled';
       if (s === 'fetch_failed' || s === 'failed') return 'Failed';
       return s.replace(/_/g, ' ');
     };
@@ -1641,6 +1804,7 @@ class GameDayLineupScreen extends Screen {
       if (s === 'success') return '#22c55e';
       if (s === 'attempting') return '#60a5fa';
       if (s === 'not_found_in_group' || s === 'no_linked_event') return '#eab308';
+      if (s === 'canceled') return '#94a3b8';
       if (s === 'failed' || s === 'fetch_failed') return '#ef4444';
       return '#cbd5e1';
     };
@@ -1711,6 +1875,12 @@ class GameDayLineupScreen extends Screen {
     const spinner = this.find('#lineup-loading .spinner');
     if (spinner) spinner.style.display = 'none';
     this.setLoadingStatus('Review load output and choose how to proceed.');
+    // Bring the Continue button into view in case the sync logs pushed it
+    // below the viewport (especially on Firefox, where the parent screen's
+    // overflow rules can swallow wheel events).
+    requestAnimationFrame(() => {
+      try { panel.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    });
   }
 
   continueToLineupContent() {
@@ -2124,13 +2294,14 @@ class GameDayLineupScreen extends Screen {
     const pracStr = pracMax ? `${prac}/${pracMax}` : `${prac}`;
     const registeredStr = this._registeredLabel(player);
     const paidStr = this._paidLabel(player);
+    const onRosterStr = player.onOfficialRoster ? 'Yes' : 'No';
     const dobStr = this._formatDobForCard(player);
 
     card.innerHTML = `
       <span style="font-size:0.8rem;opacity:0.5;min-width:28px;text-align:right;">${jersey}</span>
       <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
-        <span style="font-size:0.9rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}${noAgeBadge}</span>
-        <span style="font-size:0.68rem;opacity:0.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Reg: ${registeredStr} • Paid: ${paidStr} • DOB: ${dobStr}</span>
+        <span class="lineup-player-name" style="font-size:0.95rem;font-weight:500;">${name}${noAgeBadge}</span>
+        <span style="font-size:0.68rem;opacity:0.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Roster: ${onRosterStr} • Reg: ${registeredStr} • Paid: ${paidStr} • DOB: ${dobStr}</span>
       </span>
       <span title="${player.eligibilityStatus || ''}" style="font-size:0.85rem;">${eligIcon}</span>
       <span style="font-size:0.75rem;opacity:0.6;">${pracStr}</span>
@@ -3309,7 +3480,18 @@ class GameDayLineupScreen extends Screen {
   switchView(mode) {
     this.viewMode = mode;
     this._dismissPitchPopover();
-    if (mode !== 'pitch') this._stopPitchLoop();
+    if (mode !== 'pitch') {
+      this._stopPitchLoop();
+      // Leaving the fullscreen pitch view — release the body scroll lock so
+      // the list view's zone sections (Starting XI, Bench, etc.) are
+      // scrollable in the document. Firefox in particular keeps the page
+      // locked otherwise and async-loaded buttons fall off the bottom.
+      this.pitchFit = false;
+      document.body.classList.remove('pitch-fit-active');
+      if (this.element) {
+        this.element.classList.remove('lineup-fit-screen');
+      }
+    }
     this.element.querySelectorAll('.btn-view-toggle').forEach(btn => {
       const active = btn.dataset.view === mode;
       btn.classList.toggle('active', active);
@@ -5142,6 +5324,17 @@ class GameDayLineupScreen extends Screen {
     const registeredStr = this._registeredLabel(player);
     const paidStr = this._paidLabel(player);
     const dobStr = this._formatDobForCard(player);
+    const onOfficialRosterChecked = !!player.onOfficialRoster;
+    const isRegisteredChecked = (() => {
+      const direct = this._boolish(player?.isRegistered ?? player?.registered ?? player?.registrationComplete);
+      if (direct != null) return direct;
+      return String(registeredStr).toLowerCase() === 'yes';
+    })();
+    const isPaidChecked = (() => {
+      const direct = this._boolish(player?.isPaid ?? player?.paid ?? player?.paymentComplete);
+      if (direct != null) return direct;
+      return String(paidStr).toLowerCase() === 'yes';
+    })();
 
     // Remove / move buttons depend on current zone
     const removeBtnHtml = (currentZone === 'starting') ? `
@@ -5230,10 +5423,34 @@ class GameDayLineupScreen extends Screen {
               <div style="font-size:0.84rem;font-weight:600;">${registeredStr}</div>
             </div>
 
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">📋 On Official Roster</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Manual override for all teams</div>
+              </div>
+              <input type="checkbox" id="ep-on-roster" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${onOfficialRosterChecked ? 'checked' : ''}>
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">🧾 Lighthouse Registration</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Manual registration status</div>
+              </div>
+              <input type="checkbox" id="ep-registered" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${isRegisteredChecked ? 'checked' : ''}>
+            </label>
+
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div style="font-size:0.88rem;">💳 Payment</div>
               <div style="font-size:0.84rem;font-weight:600;">${paidStr}</div>
             </div>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-size:0.88rem;">💵 Paid Up To Date</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Manual payment status</div>
+              </div>
+              <input type="checkbox" id="ep-paid-up" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent);" ${isPaidChecked ? 'checked' : ''}>
+            </label>
 
             <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div>
@@ -5427,6 +5644,9 @@ class GameDayLineupScreen extends Screen {
         const isInjured        = overlay.querySelector('#ep-injured').checked;
         const isSuspLeague     = overlay.querySelector('#ep-susp-league').checked;
         const isSuspInhouse    = overlay.querySelector('#ep-susp-inhouse').checked;
+        const onOfficialRoster = overlay.querySelector('#ep-on-roster').checked;
+        const isRegistered     = overlay.querySelector('#ep-registered').checked;
+        const isPaidUpToDate   = overlay.querySelector('#ep-paid-up').checked;
         const eligApslStarter  = overlay.querySelector('#elig-apsl-starter').checked;
         const eligApslBench    = overlay.querySelector('#elig-apsl-bench').checked;
         const eligLiga1Starter = overlay.querySelector('#elig-liga1-starter').checked;
@@ -5445,6 +5665,11 @@ class GameDayLineupScreen extends Screen {
         player.isInjured          = isInjured;
         player.isSuspendedLeague  = isSuspLeague;
         player.isSuspendedInhouse = isSuspInhouse;
+        player.onOfficialRoster   = onOfficialRoster;
+        player.isRegistered       = isRegistered;
+        player.registered         = isRegistered;
+        player.isPaid             = isPaidUpToDate;
+        player.paid               = isPaidUpToDate;
         player.eligApslStarter    = eligApslStarter;
         player.eligApslBench      = eligApslBench;
         player.eligLiga1Starter   = eligLiga1Starter;
@@ -5471,6 +5696,7 @@ class GameDayLineupScreen extends Screen {
             isDesignated: designated, numClubs, isKeeper, isChild,
             jerseyNumber: jersey, internalRole: player.internalRole || '',
             isInjured, isSuspendedLeague: isSuspLeague, isSuspendedInhouse: isSuspInhouse,
+            onOfficialRoster, isRegistered, isPaidUpToDate,
             eligApslStarter, eligApslBench, eligLiga1Starter, eligLiga1Bench,
             eligLiga2Starter, eligLiga2Bench,
             requiredSessionsOverride: reqOverride

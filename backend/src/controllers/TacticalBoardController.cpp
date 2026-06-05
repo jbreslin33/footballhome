@@ -45,7 +45,7 @@ static std::string base64UrlDecode(const std::string& input) {
 // Helper function to escape JSON strings
 static std::string escapeJson(std::string input) {
     std::string output;
-    for (char c : input) {
+    for (unsigned char c : input) {
         switch (c) {
             case '"':  output += "\\\""; break;
             case '\\': output += "\\\\"; break;

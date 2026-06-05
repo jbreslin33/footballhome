@@ -117,6 +117,12 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.put("/api/matches/:matchId/game-roster", [this](const Request& request) {
         return this->handleUpdateGameRoster(request);
     });
+
+    // PUT /api/matches/:matchId/visibility - Toggle public visibility flags
+    //   body: { gameday_hidden?: bool, lineup_hidden?: bool }
+    router.put("/api/matches/:matchId/visibility", [this](const Request& request) {
+        return this->handleSetMatchVisibility(request);
+    });
     
     // POST /api/matches/:matchId/lineup/:playerId - Add player to game day lineup
     router.post("/api/matches/:matchId/lineup/:playerId", [this](const Request& request) {
@@ -1215,6 +1221,77 @@ std::string EventController::extractMatchIdFromPath(const std::string& path) {
     return "";
 }
 
+// PUT /api/matches/:matchId/visibility
+// body: { "gameday_hidden": bool, "lineup_hidden": bool }  (either may be omitted)
+Response EventController::handleSetMatchVisibility(const Request& request) {
+    try {
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                            createJSONResponse(false, "Authentication required"));
+        }
+
+        std::string match_id = extractMatchIdFromPath(request.getPath());
+        if (match_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                            createJSONResponse(false, "Invalid match id"));
+        }
+
+        const std::string& body = request.getBody();
+
+        auto extract_bool = [&](const std::string& key, bool& out) -> bool {
+            std::regex re("\"" + key + "\"\\s*:\\s*(true|false)");
+            std::smatch m;
+            if (std::regex_search(body, m, re)) {
+                out = (m[1].str() == "true");
+                return true;
+            }
+            return false;
+        };
+
+        bool gameday_hidden = false, lineup_hidden = false;
+        bool has_gameday = extract_bool("gameday_hidden", gameday_hidden);
+        bool has_lineup  = extract_bool("lineup_hidden",  lineup_hidden);
+
+        if (!has_gameday && !has_lineup) {
+            return Response(HttpStatus::BAD_REQUEST,
+                            createJSONResponse(false, "No visibility fields provided"));
+        }
+
+        std::ostringstream sql;
+        sql << "UPDATE matches SET ";
+        std::vector<std::string> params;
+        bool first = true;
+        if (has_gameday) {
+            sql << "gameday_hidden = $" << (params.size() + 1) << "::boolean";
+            params.push_back(gameday_hidden ? "true" : "false");
+            first = false;
+        }
+        if (has_lineup) {
+            if (!first) sql << ", ";
+            sql << "lineup_hidden = $" << (params.size() + 1) << "::boolean";
+            params.push_back(lineup_hidden ? "true" : "false");
+        }
+        sql << " WHERE id = $" << (params.size() + 1) << "::int";
+        params.push_back(match_id);
+
+        db_->query(sql.str(), params);
+
+        std::ostringstream data;
+        data << "{\"match_id\":" << match_id;
+        if (has_gameday) data << ",\"gameday_hidden\":" << (gameday_hidden ? "true" : "false");
+        if (has_lineup)  data << ",\"lineup_hidden\":"  << (lineup_hidden  ? "true" : "false");
+        data << "}";
+
+        return Response(HttpStatus::OK,
+                        createJSONResponse(true, "Visibility updated", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleSetMatchVisibility: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Failed to update visibility"));
+    }
+}
+
 std::string EventController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
     std::ostringstream json;
     json << "{";
@@ -1274,9 +1351,14 @@ std::string EventController::escapeJSON(const std::string& str) {
             case '\r': escaped << "\\r"; break;
             case '\t': escaped << "\\t"; break;
             default:
-                if (c < 0x20) {
+                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
+                // 0x80-0xFF) are passed through unchanged. Using signed `char`
+                // would treat them as negative and incorrectly escape them as
+                // control characters, mangling emoji and other non-ASCII text.
+                if (static_cast<unsigned char>(c) < 0x20) {
                     // Escape other control characters
-                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                            << static_cast<int>(static_cast<unsigned char>(c));
                 } else {
                     escaped << c;
                 }
@@ -2001,17 +2083,50 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             matchDate = matchDateResult[0]["event_date"].c_str();
         }
 
-        // Last 5 training + pickup events before the match date (requires chat_events table)
+        // Universal training/pickup rule (applies to ALL teams and lineups):
+        //  • Look at the Training Lighthouse + Philadelphia Pickup chats.
+        //  • Only events whose title contains the word "training" or "pickup".
+        //  • Always include the last 5 NON-canceled events.
+        //  • Also include any canceled events that fall within the date window
+        //    of those 5 (they render as "extra" 6th/7th columns so RSVPs to a
+        //    canceled session still get credit).
         pqxx::result trainingEvents;
         std::vector<int> teIds;
         try {
             std::string trainingQuery = R"(
-                SELECT id, title, event_date
-                FROM chat_events
-                WHERE chat_id IN (4, 5) AND is_active = true
-                  AND event_date < $1
-                ORDER BY event_date DESC, event_time DESC
-                LIMIT 5
+                WITH excluded_dates AS (
+                    -- Any date that has a non-training/non-pickup event in the
+                    -- Training or Pickup chat (friendlies, tournaments, etc.)
+                    -- is treated as a special day and skipped entirely.
+                    SELECT DISTINCT ce.event_date
+                    FROM chat_events ce
+                    JOIN chats c ON c.id = ce.chat_id
+                    WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup')
+                      AND ce.is_active = true
+                      AND ce.event_date < $1::date
+                      AND NOT (ce.title ILIKE '%training%' OR ce.title ILIKE '%pickup%')
+                ),
+                eligible_dates AS (
+                    -- Last 5 distinct dates that had actual training/pickup
+                    -- (excluding friendly/tournament days entirely).
+                    SELECT DISTINCT ce.event_date
+                    FROM chat_events ce
+                    JOIN chats c ON c.id = ce.chat_id
+                    WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup')
+                      AND ce.is_active = true
+                      AND (ce.title ILIKE '%training%' OR ce.title ILIKE '%pickup%')
+                      AND ce.event_date < $1::date
+                      AND ce.event_date NOT IN (SELECT event_date FROM excluded_dates)
+                    ORDER BY ce.event_date DESC
+                    LIMIT 5
+                )
+                SELECT ce.id, ce.title, ce.event_date::text AS event_date, ce.is_active
+                FROM chat_events ce
+                JOIN chats c ON c.id = ce.chat_id
+                WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup')
+                  AND (ce.title ILIKE '%training%' OR ce.title ILIKE '%pickup%')
+                  AND ce.event_date IN (SELECT event_date FROM eligible_dates)
+                ORDER BY ce.event_date DESC, ce.event_time DESC NULLS LAST, ce.title
             )";
             trainingEvents = db_->query(trainingQuery, {matchDate});
             for (const auto& te : trainingEvents) {
@@ -2214,9 +2329,11 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
         json << "],\"trainingEvents\":[";
         for (size_t i = 0; i < trainingEvents.size(); i++) {
             if (i > 0) json << ",";
+            bool isCanceled = !trainingEvents[(int)i]["is_active"].as<bool>();
             json << "{\"id\":" << trainingEvents[(int)i]["id"].c_str();
             json << ",\"title\":\"" << escapeJSON(trainingEvents[(int)i]["title"].c_str()) << "\"";
-            json << ",\"date\":\"" << trainingEvents[(int)i]["event_date"].c_str() << "\"}";
+            json << ",\"date\":\"" << trainingEvents[(int)i]["event_date"].c_str() << "\"";
+            json << ",\"isCanceled\":" << (isCanceled ? "true" : "false") << "}";
         }
         json << "],\"count\":" << result.size() << "}";
         return Response(HttpStatus::OK, json.str());

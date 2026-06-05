@@ -265,6 +265,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                                 AND ple.status = 'eligible'
                                 AND (ple.eligible_until IS NULL OR ple.eligible_until >= CURRENT_DATE)) as elig_liga2_bench,
                        p.required_sessions_override,
+                       p.is_lighthouse_registered,
+                       p.is_paid_up_to_date,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        pe.birth_date,
                        pe.leagueapps_payment_status,
@@ -277,7 +279,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                              AND t2.club_id = req.club_id
                              AND t2.source_system_id = req.source_system_id
                              AND r2.left_at IS NULL
-                       ) as on_official_roster
+                      ) OR COALESCE(p.on_official_roster_override, false) as on_official_roster
                 FROM combined_pool cp
                 JOIN persons pe ON pe.id = cp.person_id
                 JOIN players p ON p.person_id = pe.id
@@ -399,6 +401,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                    rp.elig_liga1_starter, rp.elig_liga1_bench,
                    rp.elig_liga2_starter, rp.elig_liga2_bench,
                    rp.required_sessions_override,
+                   rp.is_lighthouse_registered,
+                   rp.is_paid_up_to_date,
                    rp.birth_date,
                    rp.leagueapps_payment_status,
                    COALESCE(aa.sessions_attended, 0) as sessions_attended,
@@ -629,6 +633,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.payment_status = row["leagueapps_payment_status"].is_null() ? "" : row["leagueapps_payment_status"].c_str();
             pe.required_sessions_override = row["required_sessions_override"].is_null() ? -1
                                              : row["required_sessions_override"].as<int>();
+            pe.is_lighthouse_registered = !row["is_lighthouse_registered"].is_null() && row["is_lighthouse_registered"].as<bool>();
+            pe.is_paid_up_to_date = !row["is_paid_up_to_date"].is_null() && row["is_paid_up_to_date"].as<bool>();
 
             // Derive required sessions from DOB (U19=3, U23=2, senior=1)
             // US Soccer cutoffs (birth year): U19 = 2007+, U23 = 2003-2006, senior = 2002 and older
@@ -706,6 +712,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"projectedStatus\":\"" << statusToString(pe.projected_status) << "\",";
             json << "\"matchRsvp\":" << (pe.match_rsvp.empty() ? "null" : "\"" + pe.match_rsvp + "\"") << ",";
             json << "\"onOfficialRoster\":" << (pe.on_official_roster ? "true" : "false") << ",";
+            json << "\"isRegistered\":" << (pe.is_lighthouse_registered ? "true" : "false") << ",";
+            json << "\"isPaid\":" << (pe.is_paid_up_to_date ? "true" : "false") << ",";
             json << "\"onLineup\":" << (pe.on_lineup ? "true" : "false") << ",";
             json << "\"isStarter\":" << (pe.is_starter ? "true" : "false") << ",";
             json << "\"lineupZone\":" << (pe.lineup_zone.empty() ? "null" : "\"" + pe.lineup_zone + "\"") << ",";
@@ -1760,8 +1768,12 @@ std::string EligibilityController::escapeJson(const std::string& str) {
             case '\r': escaped << "\\r"; break;
             case '\t': escaped << "\\t"; break;
             default:
-                if (c < 0x20) {
-                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
+                // 0x80-0xFF) are passed through unchanged instead of being
+                // mistakenly escaped as control characters.
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                            << static_cast<int>(static_cast<unsigned char>(c));
                 } else {
                     escaped << c;
                 }
@@ -1793,6 +1805,9 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
     bool isInjured           = parseJsonBool(body, "isInjured");
     bool isSuspLeague        = parseJsonBool(body, "isSuspendedLeague");
     bool isSuspInhouse       = parseJsonBool(body, "isSuspendedInhouse");
+    bool onOfficialRoster    = parseJsonBool(body, "onOfficialRoster");
+    bool isRegistered        = parseJsonBool(body, "isRegistered");
+    bool isPaidUpToDate      = parseJsonBool(body, "isPaidUpToDate");
     bool eligApslStarter     = parseJsonBool(body, "eligApslStarter");
     bool eligApslBench       = parseJsonBool(body, "eligApslBench");
     bool eligLiga1Starter    = parseJsonBool(body, "eligLiga1Starter");
@@ -1825,6 +1840,9 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
                    is_keeper            = $5::bool,
                    is_child             = $6::bool,
                    required_sessions_override = CASE WHEN $7::boolean THEN NULLIF($8::text,'')::smallint ELSE required_sessions_override END,
+                   on_official_roster_override = $9::bool,
+                   is_lighthouse_registered = $10::bool,
+                   is_paid_up_to_date = $11::bool,
                    updated_at           = CURRENT_TIMESTAMP
              WHERE id = $1::int
         )";
@@ -1836,7 +1854,10 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
             isKeeper       ? "true" : "false",
             isChild        ? "true" : "false",
             hasReqOverride ? "true" : "false",
-            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : ""
+            (hasReqOverride && reqSessionsOverride >= 0) ? std::to_string(reqSessionsOverride) : "",
+            onOfficialRoster ? "true" : "false",
+            isRegistered ? "true" : "false",
+            isPaidUpToDate ? "true" : "false"
         });
 
         // --- player_availability upserts ---
@@ -1903,6 +1924,9 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
              << ",\"isDesignated\":" << (isDesignated ? "true" : "false")
              << ",\"numClubs\":"     << numClubs
              << ",\"internalRole\":" << (internalRole.empty() ? "null" : "\"" + internalRole + "\"")
+             << ",\"onOfficialRoster\":" << (onOfficialRoster ? "true" : "false")
+             << ",\"isRegistered\":" << (isRegistered ? "true" : "false")
+             << ",\"isPaid\":" << (isPaidUpToDate ? "true" : "false")
              << ",\"isInjured\":" << (isInjured ? "true" : "false")
              << ",\"isSuspendedLeague\":" << (isSuspLeague ? "true" : "false")
              << ",\"isSuspendedInhouse\":" << (isSuspInhouse ? "true" : "false")

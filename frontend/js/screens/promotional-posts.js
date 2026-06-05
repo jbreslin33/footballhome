@@ -672,7 +672,15 @@ class PromotionalPostsScreen extends Screen {
   }
 
   renderList(container) {
-    const allPosts = this.posts;
+    const allPosts = [...(this.posts || [])].sort((a, b) => {
+      const ta = new Date(a?.updated_at || a?.created_at || 0).getTime();
+      const tb = new Date(b?.updated_at || b?.created_at || 0).getTime();
+      if (tb !== ta) return tb - ta;
+
+      const ida = Number(a?.id || 0);
+      const idb = Number(b?.id || 0);
+      return idb - ida;
+    });
     const tabDefs = [
       { key: 'all',       label: 'All',       filter: () => true },
       { key: 'draft',     label: 'Drafts',    filter: p => p.status === 'draft' },
@@ -743,10 +751,6 @@ class PromotionalPostsScreen extends Screen {
     }).join('');
 
     let html = `
-      <div class="card" style="padding:var(--space-3);margin-bottom:var(--space-3);background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);">
-        <h3 style="margin-bottom:12px;color:#a5b4fc;">⚡ Grassroots Cup Ads — Quick Post</h3>
-        ${quickAdsHtml}
-      </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
         <div style="display:flex;overflow-x:auto;border-bottom:1px solid var(--border-color);flex:1;min-width:0;">${tabsHtml}</div>
         <button class="btn btn-primary create-btn" style="padding:10px 20px;flex-shrink:0;">➕ New Promo</button>
@@ -826,6 +830,13 @@ class PromotionalPostsScreen extends Screen {
         </div>
       `;
     }).join('');
+
+    html += `
+      <div class="card" style="padding:var(--space-3);margin-top:var(--space-3);background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);">
+        <h3 style="margin-bottom:12px;color:#a5b4fc;">⚡ Grassroots Cup Ads — Quick Post</h3>
+        ${quickAdsHtml}
+      </div>
+    `;
 
     container.innerHTML = html;
   }

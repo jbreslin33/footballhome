@@ -521,9 +521,13 @@ std::string Team::escapeJSON(const std::string& str) {
             case '\r': escaped << "\\r"; break;
             case '\t': escaped << "\\t"; break;
             default:
-                if (c < 0x20) {
+                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
+                // 0x80-0xFF) are passed through unchanged instead of being
+                // mistakenly escaped as control characters.
+                if (static_cast<unsigned char>(c) < 0x20) {
                     // Escape other control characters
-                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                            << static_cast<int>(static_cast<unsigned char>(c));
                 } else {
                     escaped << c;
                 }

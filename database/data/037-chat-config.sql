@@ -48,6 +48,24 @@ ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     chat_type_id = EXCLUDED.chat_type_id;
 
+-- Brazil trialists (team chat)
+INSERT INTO chats (id, team_id, name, chat_type_id, is_active)
+SELECT 8, t.id, 'Brazil 🇧🇷 Trialists', 1, true
+FROM teams t WHERE t.name = 'Brazil' AND t.source_system_id = 5
+ON CONFLICT (id) DO UPDATE SET
+    team_id = EXCLUDED.team_id,
+    name = EXCLUDED.name,
+    chat_type_id = EXCLUDED.chat_type_id;
+
+-- Puerto Rico trialists (team chat)
+INSERT INTO chats (id, team_id, name, chat_type_id, is_active)
+SELECT 9, t.id, 'Puerto Rico 🇵🇷 Trialists', 1, true
+FROM teams t WHERE t.name = 'Puerto Rico' AND t.source_system_id = 5
+ON CONFLICT (id) DO UPDATE SET
+    team_id = EXCLUDED.team_id,
+    name = EXCLUDED.name,
+    chat_type_id = EXCLUDED.chat_type_id;
+
 -- ============================================================================
 -- 2. Chat Integrations (GroupMe API links)
 -- ============================================================================
@@ -70,6 +88,14 @@ ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.pr
 
 INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
 SELECT 7, 7, 1, '109786278', 'Lighthouse Boys Club U23',        true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=7)
+ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
+
+INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
+SELECT 8, 8, 1, '114866775', 'Brazil 🇧🇷 Trialists',             true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=8)
+ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
+
+INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
+SELECT 9, 9, 1, '114866725', 'Puerto Rico 🇵🇷 Trialists',        true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=9)
 ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
 
 -- Advance sequences past explicit IDs so future autoincrement INSERTs don't collide
@@ -118,4 +144,14 @@ ON CONFLICT (chat_id, club_id) DO NOTHING;
 -- Philadelphia Pickup → Lighthouse Boys Club U23
 INSERT INTO chat_clubs (chat_id, club_id)
 SELECT 5, c.id FROM clubs c WHERE c.name = 'Lighthouse Boys Club U23'
+ON CONFLICT (chat_id, club_id) DO NOTHING;
+
+-- Brazil trialists → Lighthouse 1893 SC (club)
+INSERT INTO chat_clubs (chat_id, club_id)
+SELECT 8, c.id FROM clubs c WHERE c.name = 'Lighthouse 1893 SC'
+ON CONFLICT (chat_id, club_id) DO NOTHING;
+
+-- Puerto Rico trialists → Lighthouse 1893 SC (club)
+INSERT INTO chat_clubs (chat_id, club_id)
+SELECT 9, c.id FROM clubs c WHERE c.name = 'Lighthouse 1893 SC'
 ON CONFLICT (chat_id, club_id) DO NOTHING;

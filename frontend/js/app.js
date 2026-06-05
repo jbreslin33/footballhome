@@ -55,7 +55,10 @@ class App {
       flyers: new FlyersScreen(this.navigation, this.auth),
       internalRoster: new InternalRosterScreen(this.navigation, this.auth),
       leads: new LeadsScreen(this.navigation, this.auth),
-      adPreview: new AdPreviewScreen(this.navigation, this.auth)
+      adPreview: new AdPreviewScreen(this.navigation, this.auth),
+      publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
+      publicLineup: new PublicLineupScreen(this.navigation, this.auth),
+      publicSchedule: new PublicScheduleScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
@@ -110,13 +113,39 @@ class App {
     this.screenManager.register('internal-roster', this.screens.internalRoster);
     this.screenManager.register('leads', this.screens.leads);
     this.screenManager.register('ad-preview', this.screens.adPreview);
+    this.screenManager.register('public-gameday', this.screens.publicGameday);
+    this.screenManager.register('public-lineup', this.screens.publicLineup);
+    this.screenManager.register('public-schedule', this.screens.publicSchedule);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }
   
   start() {
     console.log('Starting app...');
-    
+
+    // Public team views: #t/<slug>/(gameday|lineup|schedule)
+    // Anyone can hit these without logging in. We bypass the login redirect
+    // and re-route on hashchange so navigating between the 3 sub-views
+    // does NOT require a full reload.
+    const routePublic = () => {
+      const m = (window.location.hash || '').match(/^#t\/([^\/]+)\/(gameday|lineup|schedule)$/);
+      if (!m) return false;
+      const slug = decodeURIComponent(m[1]);
+      const view = m[2];
+      const screenName = 'public-' + view;
+      // Show directly via screenManager so we don't overwrite the pretty hash
+      // that the user pinned/shared.
+      this.screenManager.show(screenName, { slug });
+      return true;
+    };
+
+    window.addEventListener('hashchange', () => { routePublic(); });
+
+    if (routePublic()) {
+      console.log('Routed to public team view');
+      return;
+    }
+
     // Check if this is an OAuth callback redirect (has token in query string)
     const urlParams = new URLSearchParams(window.location.search);
     const hasOAuthToken = urlParams.has('token');

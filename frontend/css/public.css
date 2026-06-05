@@ -1,0 +1,140 @@
+/* Public team views — shared styles for #t/<slug>/(gameday|lineup|schedule) */
+
+.public-screen {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0d1b2a 0%, #1b263b 100%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.public-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 16px;
+}
+.public-header .logo {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  overflow: hidden;
+}
+.public-header .logo img { width: 100%; height: 100%; object-fit: contain; }
+.public-header .team-name { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.public-header .team-meta { font-size: 13px; opacity: 0.75; }
+.public-header .nav-links {
+  margin-left: auto;
+  display: flex; gap: 10px;
+}
+.public-header .nav-links a {
+  color: #cfe3ff; text-decoration: none; font-size: 13px;
+  padding: 6px 10px; border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+}
+.public-header .nav-links a.active { background: rgba(255,255,255,0.18); color: #fff; }
+
+.public-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.public-empty {
+  text-align: center;
+  padding: 40px 16px;
+  opacity: 0.7;
+  font-style: italic;
+}
+.public-loading { text-align: center; padding: 40px 16px; opacity: 0.5; }
+.public-error { text-align: center; padding: 40px 16px; color: #ff8585; }
+
+/* ----- Gameday roster card (Instagram-style 18/20 list) ----- */
+.gameday-card { padding: 20px; }
+.gameday-card h2 { margin: 0 0 6px; font-size: 24px; }
+.gameday-card .subtitle { opacity: 0.8; margin-bottom: 16px; font-size: 14px; }
+.gameday-roster-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 18px;
+}
+.gameday-roster-list .player {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px dotted rgba(255,255,255,0.1);
+}
+.gameday-roster-list .player .num {
+  display: inline-block;
+  min-width: 28px;
+  font-weight: 700;
+  color: #ffd166;
+  text-align: right;
+}
+.gameday-roster-list .player .name { flex: 1; }
+
+/* ----- Lineup (starters/bench) ----- */
+.lineup-section h3 {
+  margin: 16px 0 8px;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+.lineup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.lineup-slot {
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.lineup-slot .pos { font-size: 11px; opacity: 0.7; text-transform: uppercase; }
+.lineup-slot .name { font-weight: 600; }
+.lineup-slot .num { font-size: 12px; opacity: 0.7; }
+.lineup-slot.empty { opacity: 0.4; font-style: italic; }
+
+/* ----- Schedule ----- */
+.schedule-month-header {
+  font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+  opacity: 0.7; margin: 20px 0 6px;
+}
+.schedule-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  align-items: center;
+}
+.schedule-row.is-live {
+  background: rgba(255,209,102,0.12);
+  border-left: 3px solid #ffd166;
+}
+.schedule-row .date {
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+}
+.schedule-row .date .d { font-size: 22px; }
+.schedule-row .date .m { font-size: 11px; opacity: 0.7; text-transform: uppercase; }
+.schedule-row .opp .opp-name { font-weight: 600; }
+.schedule-row .opp .opp-meta { font-size: 12px; opacity: 0.7; }
+.schedule-row .score { text-align: right; font-variant-numeric: tabular-nums; }
+.schedule-row .live-badge {
+  display: inline-block;
+  background: #ffd166; color: #0d1b2a;
+  font-size: 10px; font-weight: 800;
+  padding: 2px 6px; border-radius: 4px;
+  margin-right: 6px;
+  letter-spacing: 0.5px;
+}

@@ -42,7 +42,8 @@ set(SOURCES
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp
-    src/controllers/InternalRosterController.cpp)
+    src/controllers/InternalRosterController.cpp
+    src/controllers/PublicController.cpp)
 
 # Create executable
 add_executable(server ${SOURCES})

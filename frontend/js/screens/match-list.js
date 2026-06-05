@@ -91,7 +91,16 @@ class MatchListScreen extends Screen {
     
     const listContainer = this.find('#match-list');
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading matches...</p></div>';
-    
+
+    // Resolve which match the team's public views currently point at.
+    this.auth.fetch(`/api/teams/${teamId}/share-info`)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        this._liveMatchId = (j && j.data && j.data.live_match_id) ? j.data.live_match_id : null;
+        this._livePinned  = !!(j && j.data && j.data.live_match_pinned);
+      })
+      .catch(() => { this._liveMatchId = null; });
+
     this.safeFetch(`/api/matches/team/${teamId}`, response => {
       // Extract matches from standardized response format
       const matches = response.data || [];
@@ -200,7 +209,7 @@ class MatchListScreen extends Screen {
               ${awayLogo}
             </div>
             <div class="match-card-header" style="text-align: center; justify-content: center; flex-direction: column; gap: var(--space-2);">
-              <h3>${m.title}</h3>
+              <h3>${this._liveMatchId && m.id == this._liveMatchId ? `<span style="display:inline-block;background:#ffd166;color:#0d1b2a;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;margin-right:6px;letter-spacing:0.5px;vertical-align:middle;">${this._livePinned ? '📌 ' : ''}📍 LIVE</span>` : ''}${m.title}</h3>
               ${m.rsvpCount ? `<span class="badge">${m.rsvpCount} responses</span>` : ''}
             </div>
             

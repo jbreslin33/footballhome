@@ -90,6 +90,18 @@ const GROUPS = [
     chatTypeId: 1,  // team
     teamLookup: null,
   },
+  {
+    name: 'Brazil 🇧🇷 Trialists',
+    groupmeId: '114866775',
+    chatTypeId: 1,  // team
+    teamLookup: { sourceSystemId: 5, teamName: 'Brazil' },
+  },
+  {
+    name: 'Puerto Rico 🇵🇷 Trialists',
+    groupmeId: '114866725',
+    chatTypeId: 1,  // team
+    teamLookup: { sourceSystemId: 5, teamName: 'Puerto Rico' },
+  },
 ];
 
 // Event classification patterns
@@ -180,11 +192,17 @@ function parseTeamNames(title) {
     .replace(/knockout round/i, '')
     .replace(/pigtail/i, '')
     .trim();
-  
+
   // Split on "Vs", "vs", "VS", " v "
   const parts = cleaned.split(/\s+(?:vs\.?|v)\s+/i);
   if (parts.length === 2) {
-    return { home: parts[0].trim(), away: parts[1].trim() };
+    // Strip trailing match-context suffixes from the away side
+    // e.g. "Brazil 🇧🇷 Group Stage Game 1" → "Brazil 🇧🇷"
+    const stripSuffix = s => s
+      .replace(/\s+(group stage|knockout|semi|quarter|final|round)\b.*$/i, '')
+      .replace(/\s+(game|match|matchday|week)\s+\d+.*$/i, '')
+      .trim();
+    return { home: stripSuffix(parts[0].trim()), away: stripSuffix(parts[1].trim()) };
   }
   return null;
 }
@@ -308,13 +326,32 @@ class GroupMeSync {
     // Look up team_id if applicable
     let teamId = null;
     if (groupConfig.teamLookup) {
-      const teamRes = await this.client.query(
-        `SELECT id FROM teams 
-         WHERE source_system_id = $1 AND external_id = $2`,
-        [groupConfig.teamLookup.sourceSystemId, groupConfig.teamLookup.externalId]
-      );
-      if (teamRes.rows.length > 0) {
-        teamId = teamRes.rows[0].id;
+      if (groupConfig.teamLookup.teamId) {
+        teamId = groupConfig.teamLookup.teamId;
+      } else if (groupConfig.teamLookup.externalId) {
+        const teamRes = await this.client.query(
+          `SELECT id FROM teams
+           WHERE source_system_id = $1 AND external_id = $2`,
+          [groupConfig.teamLookup.sourceSystemId, groupConfig.teamLookup.externalId]
+        );
+        if (teamRes.rows.length > 0) teamId = teamRes.rows[0].id;
+      } else if (groupConfig.teamLookup.teamName && groupConfig.teamLookup.sourceSystemId) {
+        const teamRes = await this.client.query(
+          `SELECT id FROM teams
+           WHERE source_system_id = $1 AND lower(name) = lower($2)
+           LIMIT 1`,
+          [groupConfig.teamLookup.sourceSystemId, groupConfig.teamLookup.teamName]
+        );
+        if (teamRes.rows.length > 0) teamId = teamRes.rows[0].id;
+      } else if (groupConfig.teamLookup.teamName) {
+        const teamRes = await this.client.query(
+          `SELECT id FROM teams
+           WHERE lower(name) = lower($1)
+           ORDER BY id
+           LIMIT 1`,
+          [groupConfig.teamLookup.teamName]
+        );
+        if (teamRes.rows.length > 0) teamId = teamRes.rows[0].id;
       }
     }
 
@@ -509,8 +546,8 @@ class GroupMeSync {
   }
 
   /**
-   * Link a league_game chat_event to an existing match record.
-   * Matches by team_id + date from the chat's team schedule.
+   * Link a league_game chat_event to an existing match record,
+   * creating one if the chat is tied to a team and no match exists yet.
    */
   async linkLeagueMatch(chatEventId, gmEvent, groupConfig) {
     if (DRY_RUN) return null;
@@ -522,18 +559,22 @@ class GroupMeSync {
     );
     if (existing.rows.length > 0 && existing.rows[0].match_id) return existing.rows[0].match_id;
 
-    // Find team_id from chat
+    // Find team_id + division_id from chat
     const chatRes = await this.client.query(
-      `SELECT c.team_id FROM chats c
-       JOIN chat_events ce ON ce.chat_id = c.id
-       WHERE ce.id = $1`, [chatEventId]
+      `SELECT c.team_id, t.division_id, t.name AS team_name
+         FROM chats c
+         JOIN chat_events ce ON ce.chat_id = c.id
+         LEFT JOIN teams t ON t.id = c.team_id
+        WHERE ce.id = $1`, [chatEventId]
     );
     const teamId = chatRes.rows[0]?.team_id;
+    const divisionId = chatRes.rows[0]?.division_id;
+    const teamName = chatRes.rows[0]?.team_name;
     if (!teamId) return null;
 
     const eventDate = new Date(gmEvent.start_at).toISOString().split('T')[0];
 
-    // Find match where this team plays on this date
+    // Find existing match where this team plays on this date
     const matchRes = await this.client.query(
       `SELECT m.id, ht.name as home_name, at.name as away_name
        FROM matches m
@@ -545,16 +586,155 @@ class GroupMeSync {
       [teamId, eventDate]
     );
 
-    if (matchRes.rows.length === 0) return null;
+    if (matchRes.rows.length > 0) {
+      const matchId = matchRes.rows[0].id;
+      await this.client.query(
+        `UPDATE chat_events SET match_id = $1 WHERE id = $2`,
+        [matchId, chatEventId]
+      );
+      console.log(`    🔗 Linked to match #${matchId}: ${matchRes.rows[0].home_name} vs ${matchRes.rows[0].away_name}`);
+      this.stats.matchesLinked = (this.stats.matchesLinked || 0) + 1;
+      return matchId;
+    }
 
-    const matchId = matchRes.rows[0].id;
+    // No match exists yet — create one from the GroupMe event so the team's
+    // game shows up like any other league fixture.
+    return await this.createTeamMatchFromEvent(chatEventId, gmEvent, teamId, divisionId, teamName);
+  }
+
+  /**
+   * Create a `matches` row for a team chat's GroupMe game event when no
+   * scraped league schedule exists (e.g. Grassroots Cup squads).
+   * Returns match_id or null on failure.
+   */
+  async createTeamMatchFromEvent(chatEventId, gmEvent, teamId, divisionId, teamName) {
+    const teamNames = parseTeamNames(gmEvent.name);
+    if (!teamNames) {
+      console.log(`    ⚠️  Could not parse teams from: "${gmEvent.name}"`);
+      return null;
+    }
+
+    // Decide which parsed side is "us" (the chat's team) vs opponent.
+    const ourMatch = side => fuzzyTeamMatch(side, teamName);
+    let usName, oppName, weAreHome;
+    if (ourMatch(teamNames.home)) {
+      usName = teamNames.home; oppName = teamNames.away; weAreHome = true;
+    } else if (ourMatch(teamNames.away)) {
+      usName = teamNames.away; oppName = teamNames.home; weAreHome = false;
+    } else {
+      // Couldn't identify our side; default to chat team as home.
+      usName = teamName; oppName = teamNames.away; weAreHome = true;
+    }
+
+    // Find or create opponent team in same division (so it's a peer of `teamId`).
+    const opponentId = await this.findOrCreateTeamInDivision(oppName, divisionId);
+    if (!opponentId) {
+      console.log(`    ⚠️  Could not resolve opponent "${oppName}" for chat event ${chatEventId}`);
+      return null;
+    }
+
+    const homeTeamId = weAreHome ? teamId : opponentId;
+    const awayTeamId = weAreHome ? opponentId : teamId;
+
+    const matchDate = new Date(gmEvent.start_at).toISOString().split('T')[0];
+    const matchTime = new Date(gmEvent.start_at).toLocaleTimeString('en-US', {
+      hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit',
+      timeZone: gmEvent.timezone || 'America/New_York'
+    });
+
+    // Venue lookup/create (mirrors createCupMatch)
+    let venueId = null;
+    if (gmEvent.location?.name) {
+      const venueRes = await this.client.query(
+        `SELECT id FROM venues WHERE name = $1`,
+        [gmEvent.location.name.trim()]
+      );
+      if (venueRes.rows.length > 0) {
+        venueId = venueRes.rows[0].id;
+      } else {
+        const newVenue = await this.client.query(
+          `INSERT INTO venues (name, address) VALUES ($1, $2)
+           ON CONFLICT (name) DO UPDATE SET address = COALESCE(EXCLUDED.address, venues.address)
+           RETURNING id`,
+          [gmEvent.location.name.trim(), gmEvent.location.address || null]
+        );
+        venueId = newVenue.rows[0].id;
+      }
+    }
+
+    const now = new Date();
+    const matchDateObj = new Date(gmEvent.start_at);
+    const statusId = matchDateObj < now ? 3 : 1;
+
+    const insertRes = await this.client.query(
+      `INSERT INTO matches
+         (match_type_id, home_team_id, away_team_id, match_date, match_time,
+          venue_id, title, match_status_id, source_system_id, external_id)
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (source_system_id, external_id) DO UPDATE SET title = EXCLUDED.title
+       RETURNING id`,
+      [homeTeamId, awayTeamId, matchDate, matchTime, venueId,
+       gmEvent.name, statusId, GROUPME_SOURCE_SYSTEM_ID, gmEvent.event_id]
+    );
+    const matchId = insertRes.rows[0].id;
+    this.stats.matchesCreated++;
+
+    if (divisionId) {
+      await this.client.query(
+        `INSERT INTO match_divisions (match_id, division_id, counts_for_standings)
+         VALUES ($1, $2, false)
+         ON CONFLICT DO NOTHING`,
+        [matchId, divisionId]
+      );
+    }
+
     await this.client.query(
       `UPDATE chat_events SET match_id = $1 WHERE id = $2`,
       [matchId, chatEventId]
     );
-    console.log(`    🔗 Linked to match #${matchId}: ${matchRes.rows[0].home_name} vs ${matchRes.rows[0].away_name}`);
-    this.stats.matchesLinked = (this.stats.matchesLinked || 0) + 1;
+
+    console.log(`  🆕 Created team match #${matchId}: ${weAreHome ? usName : oppName} vs ${weAreHome ? oppName : usName}`);
     return matchId;
+  }
+
+  /**
+   * Find an existing team by (division_id, name) — fuzzy — or create one.
+   */
+  async findOrCreateTeamInDivision(teamName, divisionId) {
+    if (!teamName) return null;
+    const normalized = teamName.trim();
+
+    if (divisionId) {
+      const exact = await this.client.query(
+        `SELECT id FROM teams WHERE division_id = $1 AND name = $2`,
+        [divisionId, normalized]
+      );
+      if (exact.rows.length > 0) return exact.rows[0].id;
+
+      // Normalized fuzzy match against all teams in the division (handles
+      // emoji / punctuation differences like "Brazil 🇧🇷" vs "Brazil").
+      const all = await this.client.query(
+        `SELECT id, name FROM teams WHERE division_id = $1`,
+        [divisionId]
+      );
+      const matches = all.rows.filter(r => fuzzyTeamMatch(r.name, normalized));
+      if (matches.length === 1) return matches[0].id;
+    }
+
+    if (DRY_RUN) {
+      console.log(`  [DRY RUN] Would create team: "${normalized}" (division_id=${divisionId})`);
+      return null;
+    }
+
+    const inserted = await this.client.query(
+      `INSERT INTO teams (division_id, name, source_system_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (division_id, name) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [divisionId, normalized, GROUPME_SOURCE_SYSTEM_ID]
+    );
+    console.log(`  🆕 Created team: "${normalized}" (id=${inserted.rows[0].id}, division_id=${divisionId})`);
+    return inserted.rows[0].id;
   }
 
   /**

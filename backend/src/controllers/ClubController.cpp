@@ -33,8 +33,12 @@ std::string ClubController::escapeJson(const std::string& input) {
             case '\r': output << "\\r"; break;
             case '\t': output << "\\t"; break;
             default:
-                if (c < 0x20) {
-                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
+                // 0x80-0xFF) are passed through unchanged instead of being
+                // mistakenly escaped as control characters.
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                           << static_cast<int>(static_cast<unsigned char>(c));
                 } else {
                     output << c;
                 }

@@ -43,6 +43,9 @@ private:
     Response handleAddToLineup(const Request& request);
     Response handleRemoveFromLineup(const Request& request);
     Response handleGetEligiblePlayers(const Request& request);
+
+    // Visibility flags (gameday_hidden / lineup_hidden) for public views
+    Response handleSetMatchVisibility(const Request& request);
     
     // SMS Reminder endpoint
     Response handleSendReminder(const Request& request);
