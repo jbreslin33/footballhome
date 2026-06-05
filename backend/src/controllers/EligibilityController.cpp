@@ -171,7 +171,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             teamId, clubId, matchDate, policy.lookback_count,
             policy.game_counts_as_session, policy.pickup_counts_as_session
         );
-        
+
         // Step 4: Get all roster players with attendance and RSVP data
         // All sessions go in one array — the SQL query handles
         // past vs future split using CURRENT_TIMESTAMP
@@ -181,6 +181,12 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             sessionArray += std::to_string(sessionIds[i]);
         }
         sessionArray += "}";
+
+        std::cout << "📊 Eligibility window for match " << matchId
+                  << " (team=" << teamId << ", matchDate=" << matchDate
+                  << ", lookback=" << policy.lookback_count
+                  << "): " << sessionIds.size() << " session IDs = "
+                  << sessionArray << std::endl;
         
         std::string playerQuery = R"(
             WITH has_chat AS (
@@ -1572,74 +1578,72 @@ std::vector<int> EligibilityController::getRecentSessionIds(
     const std::string& teamId, const std::string& clubId,
     const std::string& matchDate, int lookbackCount,
     bool gameCountsAsSession, bool pickupCountsAsSession) {
-    
+
+    (void)teamId; (void)clubId;
+    (void)gameCountsAsSession; (void)pickupCountsAsSession;
+
     std::vector<int> sessionIds;
-    std::string safeClubId = clubId.empty() ? "0" : clubId;
 
-    // Build chat_type filter: always include training (5)
-    // Optionally include team games (1) and pickup (3)
-    std::string chatTypeFilter = "c.chat_type_id = 5";
-    if (gameCountsAsSession && pickupCountsAsSession) {
-        chatTypeFilter = "c.chat_type_id IN (1, 3, 5)";
-    } else if (gameCountsAsSession) {
-        chatTypeFilter = "c.chat_type_id IN (1, 5)";
-    } else if (pickupCountsAsSession) {
-        chatTypeFilter = "c.chat_type_id IN (3, 5)";
-    }
-
-    // Get the N most recent sessions before the match date.
-    // Dedup by (local date, chat_type_id) so:
-    //   - Two practices on the same day      = 1 session
-    //   - A weekday game + practice same day = 2 sessions ("double" day)
-    //   - A pickup + practice same day       = 2 sessions
-    // Exclude Sunday games (chat_type_id=1) — league games, not training.
-    // Only include sessions that have at least one RSVP or attendance record,
-    // so empty placeholder sessions don't displace sessions with real data.
+    // Universal rule (matches GroupMeController + EventController lineup query):
+    //   • Sessions come from the two global chats: Training Lighthouse and
+    //     Philadelphia Pickup (no team/club scoping — these are the cross-team
+    //     practice/pickup groups).
+    //   • Title must contain "training" or "pickup" (excludes friendlies,
+    //     tournaments, scrimmages, etc.).
+    //   • Skip any date that has a non-training/non-pickup event in either
+    //     chat (e.g., "Wednesday Friendly Lighthouse Vs PSC" cancels out
+    //     that day's recurring "Wednesday Training" — the team was at the
+    //     friendly, not training).
+    //   • Take the last $2 distinct dates strictly BEFORE the match date.
+    //   • Return ALL training/pickup events on those dates (including
+    //     canceled ones) so RSVPs to canceled sessions still get credit.
+    //
+    // This ensures eligibility ranking, lineup display, and sync all agree
+    // on which sessions count.
     std::string query = R"(
-        SELECT session_id FROM (
-            SELECT DISTINCT ON (
-                (COALESCE(ce.start_at, ce.event_date::timestamptz)
-                   AT TIME ZONE 'America/New_York')::date,
-                c.chat_type_id
-            )
-            ce.id as session_id,
-            COALESCE(ce.start_at, ce.event_date::timestamptz) as effective_ts
+        WITH excluded_dates AS (
+            SELECT DISTINCT ce.event_date
             FROM chat_events ce
-            JOIN chats c ON ce.chat_id = c.id
-            LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
-            LEFT JOIN teams t ON t.id = c.team_id
-            WHERE (
-                cc.club_id = $1::int
-                OR t.club_id = $1::int
-            )
-              AND )" + chatTypeFilter + R"(
-              AND NOT (c.chat_type_id = 1 AND
-                  (COALESCE(ce.start_at, ce.event_date::timestamptz)
-                     AT TIME ZONE 'America/New_York')::date = $2::date)
-              AND (COALESCE(ce.start_at, ce.event_date::timestamptz)
-                     AT TIME ZONE 'America/New_York')::date <= $2::date
-              AND ce.external_id IS NOT NULL
-              AND (ce.is_active = true OR ce.count_when_canceled = true)
-            ORDER BY (COALESCE(ce.start_at, ce.event_date::timestamptz)
-                        AT TIME ZONE 'America/New_York')::date DESC,
-                     c.chat_type_id,
-                     ce.id DESC
-        ) deduped
-        LIMIT $3
+            JOIN chats c ON c.id = ce.chat_id
+            WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup')
+              AND ce.is_active = true
+              AND ce.event_date < $1::date
+              AND NOT (ce.title ILIKE '%training%' OR ce.title ILIKE '%pickup%')
+        ),
+        eligible_dates AS (
+            SELECT DISTINCT ce.event_date
+            FROM chat_events ce
+            JOIN chats c ON c.id = ce.chat_id
+            WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup')
+              AND ce.is_active = true
+              AND (ce.title ILIKE '%training%' OR ce.title ILIKE '%pickup%')
+              AND ce.event_date < $1::date
+              AND ce.event_date NOT IN (SELECT event_date FROM excluded_dates)
+            ORDER BY ce.event_date DESC
+            LIMIT $2
+        )
+        SELECT ce.id AS session_id
+        FROM chat_events ce
+        JOIN chats c ON c.id = ce.chat_id
+        WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup')
+          AND (ce.title ILIKE '%training%' OR ce.title ILIKE '%pickup%')
+          AND ce.event_date IN (SELECT event_date FROM eligible_dates)
+          AND ce.external_id IS NOT NULL
+        ORDER BY ce.event_date DESC, ce.title
     )";
 
     try {
         pqxx::result result = db_->query(query, {
-            safeClubId, matchDate, std::to_string(lookbackCount)
+            matchDate, std::to_string(lookbackCount)
         });
-        
+
         for (const auto& row : result) {
             sessionIds.push_back(row["session_id"].as<int>());
         }
     } catch (const std::exception& e) {
         std::cerr << "⚠️ Error getting sessions: " << e.what() << std::endl;
     }
-    
+
     return sessionIds;
 }
 

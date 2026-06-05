@@ -1530,10 +1530,22 @@ body.pitch-fit-active {
    Zone section bodies: scroll internally when player lists get long
    (Not Responded / Not Going can be 100+ rows). Inline-styled bodies all
    share id prefix `section-body-` from renderZoneSections().
+
+   Also allow horizontal scroll inside the section in case a row's content
+   (name + badges + buttons) exceeds the section width — keeps everything
+   reachable instead of being clipped on narrow viewports.
    ============================================================================ */
 .screen-game-day-lineup:not(.lineup-fit-screen) [id^="section-body-"] {
   max-height: 55vh;
   overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Each row keeps its natural width so horizontal scroll has something to
+   scroll to (otherwise flexbox would just shrink the content and clip it). */
+.screen-game-day-lineup:not(.lineup-fit-screen) [id^="section-body-"] .lineup-player-card {
+  min-width: max-content;
 }
 
 /* Show full player names on the zone section cards (no ellipsis truncation) */
