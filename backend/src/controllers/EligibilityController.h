@@ -37,6 +37,7 @@ struct PlayerEligibility {
     bool is_child;
     bool is_designated;
     int  num_clubs;
+    bool is_coach;               // True if person has an active team_coaches row for this team
     std::string internal_role;   // coach_assessments.status for this team (empty if none)
     bool is_injured;             // player_availability: 'injured' active record exists
     bool is_suspended_league;    // player_availability: 'suspended_league' active record

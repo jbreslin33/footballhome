@@ -2277,6 +2277,7 @@ class GameDayLineupScreen extends Screen {
   createLineupCard(player, zone, moveBtnsHtml) {
     const card = document.createElement('div');
     card.className = 'lineup-player-card';
+    if (player.isCoach) card.classList.add('lineup-player-card--coach');
     card.dataset.playerId = player.playerId;
     card.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);';
 
@@ -2287,6 +2288,9 @@ class GameDayLineupScreen extends Screen {
     const noAgeBadge = this._hasKnownAge(player)
       ? ''
       : '<span style="font-size:0.62rem;color:#fca5a5;border:1px solid rgba(252,165,165,0.35);border-radius:3px;padding:1px 3px;margin-left:6px;">NO AGE</span>';
+    const coachBadge = player.isCoach
+      ? '<span style="font-size:0.62rem;color:#fce7f3;background:#db2777;border-radius:3px;padding:1px 5px;margin-left:6px;font-weight:600;letter-spacing:0.04em;">COACH</span>'
+      : '';
     const eligIcon = this.getStatusIcon(player.eligibilityStatus);
     const rsvpDot = player.matchRsvp === 'yes' ? '🟢' : player.matchRsvp === 'no' ? '🔴' : '🟡';
     const prac = player.sessionsAttended || 0;
@@ -2300,7 +2304,7 @@ class GameDayLineupScreen extends Screen {
     card.innerHTML = `
       <span style="font-size:0.8rem;opacity:0.5;min-width:28px;text-align:right;">${jersey}</span>
       <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
-        <span class="lineup-player-name" style="font-size:0.95rem;font-weight:500;">${name}${noAgeBadge}</span>
+        <span class="lineup-player-name" style="font-size:0.95rem;font-weight:500;">${name}${coachBadge}${noAgeBadge}</span>
         <span style="font-size:0.68rem;opacity:0.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Roster: ${onRosterStr} • Reg: ${registeredStr} • Paid: ${paidStr} • DOB: ${dobStr}</span>
       </span>
       <span title="${player.eligibilityStatus || ''}" style="font-size:0.85rem;">${eligIcon}</span>
@@ -3575,13 +3579,18 @@ class GameDayLineupScreen extends Screen {
 
     const goingPracticeStrip = this._buildGoingPracticeStrip();
     goingPracticeStrip.dataset.pitchDropzone = 'pool';
-    goingPracticeStrip.style.flex = '1 1 50%';
+    // Take all leftover horizontal space. While the bench is empty (or only
+    // has a few chips), this strip encroaches into the bench area. As bench
+    // fills, this naturally shrinks and its inner row scrolls horizontally
+    // if it still has more chips than fit.
+    goingPracticeStrip.style.flex = '1 1 0';
     goingPracticeStrip.style.minWidth = '0';
     goingPracticeStrip.style.borderRight = '1px solid rgba(255,255,255,0.12)';
 
     const benchStrip = this._buildBenchStrip();
     benchStrip.dataset.pitchDropzone = 'bench';
-    benchStrip.style.flex = '1 1 50%';
+    // Only as wide as its current chips need. Won't grow into going-practice.
+    benchStrip.style.flex = '0 1 auto';
     benchStrip.style.minWidth = '0';
 
     lanesRow.appendChild(goingPracticeStrip);
@@ -4135,10 +4144,13 @@ class GameDayLineupScreen extends Screen {
       : '<div style="font-size:0.5rem;color:#fca5a5;font-weight:700;line-height:1;">NO AGE</div>';
     const chip = document.createElement('div');
     chip.className = 'shelf-chip';
+    if (player.isCoach) chip.classList.add('shelf-chip--coach');
     chip.dataset.playerId = player.playerId;
     chip.dataset.zone = zone;
     chip.draggable = true;
-    chip.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 2px;border-radius:6px;gap:1px;background:rgba(255,255,255,0.04);min-width:52px;touch-action:manipulation;user-select:none;';
+    const chipBg = player.isCoach ? 'rgba(219,39,119,0.28)' : 'rgba(255,255,255,0.04)';
+    const chipBorder = player.isCoach ? '1px solid rgba(244,114,182,0.7)' : '';
+    chip.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 2px;border-radius:6px;gap:1px;background:${chipBg};${chipBorder ? 'border:' + chipBorder + ';' : ''}min-width:52px;touch-action:manipulation;user-select:none;`;
     chip.innerHTML = `
       <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
       <div style="position:relative;width:28px;height:28px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.65);">${initials}${starBadge}</div>
@@ -4289,7 +4301,8 @@ class GameDayLineupScreen extends Screen {
     wrapper.appendChild(title);
 
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:56px;scrollbar-width:none;';
+    row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:56px;width:100%;min-width:0;box-sizing:border-box;';
+    row.classList.add('pitch-bottom-strip-row');
 
     if (qualified.length === 0) {
       const empty = document.createElement('span');
@@ -4334,7 +4347,8 @@ class GameDayLineupScreen extends Screen {
 
     // ── single row: bench chips + sync cards ─────────────────────────────────
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;scrollbar-width:none;';
+    row.style.cssText = 'display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:4px;min-height:62px;width:100%;min-width:0;box-sizing:border-box;';
+    row.classList.add('pitch-bottom-strip-row');
     if (bench.length === 0) {
       const empty = document.createElement('span');
       empty.style.cssText = 'color:rgba(255,255,255,0.15);font-size:0.7rem;padding:0 4px;';

@@ -1548,13 +1548,62 @@ body.pitch-fit-active {
   min-width: max-content;
 }
 
-/* Show full player names on the zone section cards (no ellipsis truncation) */
+/* Show full player names on the zone section cards.
+   No wrapping, no ellipsis — names stay on one line at natural width and
+   the section body scrolls horizontally if needed (see overflow-x rule above).
+   The inner flex column container has inline `min-width:0` from JS, which
+   lets it shrink below its content. Override that here so the card
+   actually expands to its natural width (combined with `min-width:max-content`
+   on the card itself). Same for the subtitle line: stop the inline
+   overflow:hidden / text-overflow:ellipsis from clipping it. */
 .screen-game-day-lineup:not(.lineup-fit-screen) .lineup-player-card .lineup-player-name {
   overflow: visible !important;
   text-overflow: clip !important;
-  white-space: normal !important;
-  word-break: break-word;
+  white-space: nowrap !important;
   line-height: 1.25;
 }
+.screen-game-day-lineup:not(.lineup-fit-screen) .lineup-player-card > span[style*="flex:1"] {
+  min-width: auto !important;
+}
+.screen-game-day-lineup:not(.lineup-fit-screen) .lineup-player-card > span[style*="flex:1"] > span {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
 
+/* ============================================================================
+   Pitch-fit bottom strips (going-practice + bench): horizontal scrolling
+   with a visible thin scrollbar so the user has an affordance when the
+   chip row overflows. Inline JS sets width:100%; min-width:0; overflow-x:auto.
+   ============================================================================ */
+.pitch-bottom-strip-row {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.35) transparent;
+}
+.pitch-bottom-strip-row::-webkit-scrollbar {
+  height: 6px;
+}
+.pitch-bottom-strip-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pitch-bottom-strip-row::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.35);
+  border-radius: 3px;
+}
+.pitch-bottom-strip-row::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.55);
+}
+
+/* ============================================================================
+   Coaches: visually distinct from players (pink). Applied in both the regular
+   lineup zone cards and the pitch-fit chip shelves.
+   ============================================================================ */
+.lineup-player-card--coach {
+  background: linear-gradient(to right, rgba(219,39,119,0.22), rgba(219,39,119,0.08)) !important;
+  border-color: rgba(244,114,182,0.55) !important;
+  border-left: 3px solid #db2777 !important;
+}
+.shelf-chip--coach {
+  background: rgba(219,39,119,0.28) !important;
+  border: 1px solid rgba(244,114,182,0.7) !important;
 }

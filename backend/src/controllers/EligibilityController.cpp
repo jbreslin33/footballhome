@@ -230,6 +230,11 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        p.id as player_id, r.jersey_number,
                        p.is_keeper, p.is_child, p.photo_url,
                        p.is_designated, COALESCE(p.num_clubs, 1) as num_clubs,
+                       EXISTS(SELECT 1 FROM coaches co
+                              JOIN team_coaches tc ON tc.coach_id = co.id
+                              WHERE co.person_id = pe.id
+                                AND tc.team_id = $1::int
+                                AND tc.ended_at IS NULL) as is_coach,
                        COALESCE(ca.status, '') as internal_role,
                        EXISTS(SELECT 1 FROM player_availability pa
                               WHERE pa.player_id = p.id AND pa.status = 'injured'
@@ -402,6 +407,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.is_keeper, rp.is_child, rp.photo_url, rp.person_id,
                    rp.on_official_roster, rp.is_designated, rp.num_clubs,
+                   rp.is_coach,
                    rp.internal_role, rp.is_injured, rp.is_suspended_league, rp.is_suspended_inhouse,
                    rp.elig_apsl_starter, rp.elig_apsl_bench,
                    rp.elig_liga1_starter, rp.elig_liga1_bench,
@@ -622,6 +628,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.is_keeper = !row["is_keeper"].is_null() && row["is_keeper"].as<bool>();
             pe.is_designated = !row["is_designated"].is_null() && row["is_designated"].as<bool>();
             pe.num_clubs = row["num_clubs"].is_null() ? 1 : row["num_clubs"].as<int>();
+            pe.is_coach = !row["is_coach"].is_null() && row["is_coach"].as<bool>();
             pe.internal_role = row["internal_role"].is_null() ? "" : row["internal_role"].c_str();
             pe.is_injured = !row["is_injured"].is_null() && row["is_injured"].as<bool>();
             pe.is_suspended_league = !row["is_suspended_league"].is_null() && row["is_suspended_league"].as<bool>();
@@ -710,6 +717,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"isChild\":" << (pe.is_child ? "true" : "false") << ",";
             json << "\"isDesignated\":" << (pe.is_designated ? "true" : "false") << ",";
             json << "\"numClubs\":" << pe.num_clubs << ",";
+            json << "\"isCoach\":" << (pe.is_coach ? "true" : "false") << ",";
             json << "\"sessionsInWindow\":" << pe.sessions_in_window << ",";
             json << "\"sessionsAttended\":" << pe.sessions_attended << ",";
             json << "\"projectedSessions\":" << pe.projected_sessions << ",";
