@@ -958,21 +958,13 @@ class GameDayLineupScreen extends Screen {
     const attended = Math.min(lookback, player.sessionsAttended || 0);
     if (attended >= required) return true;
 
-    const matchTs = this._matchTimeMs();
-    if (!matchTs) return false;
-
-    const now = Date.now();
-    let upcoming = 0;
-    for (const evt of this.trainingEvents || []) {
-      const ts = new Date(evt.startAt || evt.eventDate || evt.date || '').getTime();
-      if (!Number.isFinite(ts)) continue;
-      if (ts > now && ts <= matchTs) upcoming += 1;
-    }
-
-    const remainingSlots = Math.max(0, lookback - attended);
-    upcoming = Math.min(upcoming, remainingSlots);
-
-    return (attended + upcoming) >= required;
+    // Only count UPCOMING practices the player has actually RSVP'd "yes" to.
+    // The backend gives us projectedSessions = sessionsAttended + future_rsvp_yes
+    // (where future_rsvp_yes counts the player's "yes" RSVPs on training/pickup
+    //  chat_events between now and the match). Future calendar slots they
+    // haven't responded to do not count.
+    const projected = Math.min(lookback, player.projectedSessions || 0);
+    return projected >= required;
   }
 
   /**
@@ -4150,11 +4142,11 @@ class GameDayLineupScreen extends Screen {
     chip.draggable = true;
     const chipBg = player.isCoach ? 'rgba(219,39,119,0.28)' : 'rgba(255,255,255,0.04)';
     const chipBorder = player.isCoach ? '1px solid rgba(244,114,182,0.7)' : '';
-    chip.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 2px;border-radius:6px;gap:1px;background:${chipBg};${chipBorder ? 'border:' + chipBorder + ';' : ''}min-width:52px;touch-action:manipulation;user-select:none;`;
+    chip.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;cursor:grab;padding:3px 4px;border-radius:6px;gap:1px;background:${chipBg};${chipBorder ? 'border:' + chipBorder + ';' : ''}min-width:62px;max-width:140px;touch-action:manipulation;user-select:none;`;
     chip.innerHTML = `
-      <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
+      <div style="font-size:0.6rem;color:rgba(255,255,255,0.92);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${firstName}</div>
       <div style="position:relative;width:28px;height:28px;border-radius:50%;background:${eligColor};display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,0.65);">${initials}${starBadge}</div>
-      <div style="font-size:0.58rem;color:rgba(255,255,255,0.9);white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${lastName}</div>
+      <div style="font-size:0.6rem;color:rgba(255,255,255,0.92);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;text-align:center;">${lastName}</div>
       ${noAgeBadge}
     `;
     chip.addEventListener('dragstart', (e) => {
@@ -4175,24 +4167,47 @@ class GameDayLineupScreen extends Screen {
 
   // ── Build a vertical side panel (bench or alternates) ────────────────────
   _buildSidePlayerPanel(playerIds, color, zone, label) {
+    const uniqueIds = Array.from(new Set(playerIds));
+    const players = uniqueIds.map(id => this.getPlayerById(id)).filter(Boolean);
+    const nonCoachCount = players.filter(p => !p.isCoach).length;
+
+    // Compute how many vertical columns we need so chips don't go off-screen.
+    // CHIP_H is the approx height of a chip incl. gap. reservedH accounts for
+    // top strip, bottom bar, header, and panel label.
+    const CHIP_H = 58;
+    const CHIP_W_SLOT = 72; // chip slot width incl. gap
+    const reservedH = 260;
+    const availH = Math.max(220, window.innerHeight - reservedH);
+    const rowsPerCol = Math.max(3, Math.floor(availH / CHIP_H));
+    // Cap at 3 columns so the pitch canvas still has room. Anything beyond
+    // 3 columns of chips will scroll within the column wrap.
+    const colsNeeded = Math.max(1, Math.min(3, Math.ceil(Math.max(1, players.length) / rowsPerCol)));
+    const panelW = Math.max(150, colsNeeded * CHIP_W_SLOT + 16);
+
     const panel = document.createElement('div');
-    panel.style.cssText = `width:90px;flex-shrink:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;min-height:0;max-height:100%;background:rgba(0,0,0,0.25);`;
+    // Header on top, chip grid below. Panel auto-widens (up to 3 cols) so
+    // chips wrap into multiple columns rather than disappearing off-screen.
+    panel.style.cssText = `width:${panelW}px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;min-height:0;max-height:100%;background:rgba(0,0,0,0.25);`;
+
     const lbl = document.createElement('div');
-    lbl.style.cssText = `font-size:0.52rem;color:${color};text-align:center;padding:4px 1px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);border-right:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.18);`;
-    lbl.textContent = label;
+    lbl.style.cssText = `font-size:0.55rem;color:${color};text-align:center;padding:4px 3px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;line-height:1.15;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.25);word-break:break-word;`;
+    lbl.textContent = `${label} ${nonCoachCount}`;
     panel.appendChild(lbl);
 
     const chipsCol = document.createElement('div');
-    chipsCol.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;min-height:0;max-height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px 14px 4px 4px;gap:3px;scrollbar-width:thin;scrollbar-gutter:stable both-edges;';
+    // flex-direction:column + flex-wrap:wrap makes chips fill column 1 top-to-
+    // bottom, then wrap into column 2, etc. max-height bounds each column
+    // height so wrapping triggers. align-content:flex-start packs columns to
+    // the left. overflow-y:auto is a safety fallback if chips still don't fit.
+    chipsCol.style.cssText = `flex:1 1 0;min-height:0;height:${availH}px;max-height:${availH}px;display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;justify-content:flex-start;overflow-y:auto;overflow-x:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px;gap:3px;`;
+    chipsCol.classList.add('pitch-side-panel-col');
 
-    const uniqueIds = Array.from(new Set(playerIds));
-    const players = uniqueIds.map(id => this.getPlayerById(id)).filter(Boolean);
     for (const p of players) {
       chipsCol.appendChild(this._buildPanelChipEl(p, zone));
     }
     if (players.length === 0) {
       const empty = document.createElement('div');
-      empty.style.cssText = 'font-size:0.42rem;color:rgba(255,255,255,0.18);text-align:center;padding:6px 2px;';
+      empty.style.cssText = 'font-size:0.55rem;color:rgba(255,255,255,0.18);text-align:center;padding:6px 2px;';
       empty.textContent = '—';
       chipsCol.appendChild(empty);
     }
@@ -4247,7 +4262,7 @@ class GameDayLineupScreen extends Screen {
 
     const lbl = document.createElement('span');
     lbl.style.cssText = 'font-size:0.55rem;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px;opacity:0.8;';
-    lbl.textContent = 'NO RSVP YET';
+    lbl.textContent = `NO RSVP YET ${topPlayers.filter(p => !p.isCoach).length}`;
     group.appendChild(lbl);
 
     for (const p of topPlayers) {
@@ -4297,7 +4312,7 @@ class GameDayLineupScreen extends Screen {
 
     const title = document.createElement('div');
     title.style.cssText = 'font-size:0.62rem;color:rgba(34,197,94,0.9);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;padding:3px 6px 1px;border-bottom:1px solid rgba(255,255,255,0.07);';
-    title.textContent = `Set going & practice threshold met or projected to be met ${qualified.length}`;
+    title.textContent = `Set going & practice threshold met or projected to be met ${qualified.filter(p => !p.isCoach).length}`;
     wrapper.appendChild(title);
 
     const row = document.createElement('div');
@@ -4342,7 +4357,7 @@ class GameDayLineupScreen extends Screen {
 
     const title = document.createElement('div');
     title.style.cssText = 'font-size:0.62rem;color:rgba(59,130,246,0.88);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;padding:3px 6px 1px;border-bottom:1px solid rgba(255,255,255,0.07);';
-    title.textContent = `Bench ${bench.length}/${maxBench}`;
+    title.textContent = `Bench ${bench.filter(p => !p.isCoach).length}/${maxBench}`;
     wrapper.appendChild(title);
 
     // ── single row: bench chips + sync cards ─────────────────────────────────
