@@ -35,7 +35,7 @@ const ADS = {
     targeting: {
       geo_locations: {
         // Philadelphia city + 30mi radius covers Bucks, Montgomery, Delaware, Chester (PA) and Camden/Burlington (NJ)
-        cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }],
+        cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }],
       },
       age_min: 18,
       age_max: 25,
@@ -52,7 +52,7 @@ const ADS = {
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'SIGN_UP',
     targeting: {
-      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
       age_min: 18,
       age_max: 25,
       genders: [2], // 2 = female
@@ -67,7 +67,7 @@ const ADS = {
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'LEARN_MORE',
     targeting: {
-      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
       age_min: 18,
       age_max: 32,
       genders: [1], // 1 = male
@@ -82,11 +82,82 @@ const ADS = {
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'LEARN_MORE',
     targeting: {
-      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
       age_min: 18,
       age_max: 32,
       genders: [1], // 1 = male
       publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'youth-signup': {
+    name:    'Lighthouse Youth Soccer — Now Enrolling (Grades 1–6)',
+    imageUrl: 'https://footballhome.org/images/posts/youth-signup-ad.png',
+    caption: `⚽ LIGHTHOUSE YOUTH SOCCER — NOW ENROLLING\n\nBoys & girls, grades 1–6.\nTravel & In-House Leagues.\n\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer`,
+    ctaUrl:  'https://linktr.ee/Lighthouse1893Soccer',
+    ctaType: 'LEARN_MORE',  // softer than SIGN_UP — typically lower CPL on youth/community
+    defaultBudget: 8,    // ~$112 for a 14-day learning test
+    defaultDays:   14,   // 2-week smoke test; renew with optimizations
+    // Parent-only lead form — Meta Lead Ads policy prohibits collecting
+    // information about minors / third parties. Coach captures kid details
+    // on the follow-up call.
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse Youth Soccer — Travel & In-House',
+        content: [
+          'Local community-based club — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'A coach will follow up with season dates, fees, and next steps.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    // 14-day learning test (defaultDays:14 above)
+    targeting: {
+      // 5-mile radius around 199 East Erie Avenue, Philadelphia
+      geo_locations: {
+        custom_locations: [{
+          latitude:  39.9994,
+          longitude: -75.1379,
+          radius:    5,
+          distance_unit: 'mile',
+          address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
+        }],
+      },
+      age_min: 25,    // young parents through stepparents/older parents
+      age_max: 55,
+      // No gender filter — both parents
+      // English-language speakers (US + UK English) — creative is English-only
+      locales: [6, 24],
+      // No detailed targeting (interests/behaviors) — let Meta's algorithm
+      // find engaged parents from the geo+age pool. Meta has been retiring
+      // parent-of-X-year-olds behavior IDs frequently in 2026.
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
       instagram_positions: ['stream', 'explore'],
     },
   },
@@ -97,7 +168,7 @@ const ADS = {
     ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
     ctaType:  'SIGN_UP',
     targeting: {
-      geo_locations: { cities: [{ key: '2421836', radius: 30, distance_unit: 'mile' }] },
+      geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
       age_min: 18,
       age_max: 32,
       genders: [1], // 1 = male
@@ -147,7 +218,7 @@ const ageMax = parseInt(getArg('--age-max', '40'), 10);
 // ── Targeting: use per-ad targeting if defined, else Philadelphia metro default ──
 const targeting = ad.targeting ?? {
   geo_locations: {
-    cities: [{ key: '2421836', radius: 25, distance_unit: 'mile' }],
+    cities: [{ key: '2511940', radius: 25, distance_unit: 'mile' }],
   },
   age_min: ageMin,
   age_max: ageMax,
@@ -166,7 +237,17 @@ async function run() {
   console.log(`\n📣 Creating Instagram Ad: ${ad.name}`);
   console.log(`   Budget: $${dailyBudgetUSD}/day${days ? ` for ${days} days ($${dailyBudgetUSD * days} total)` : ' (runs until cancelled)'}`);
   const genderLabel = targeting.genders ? (targeting.genders.includes(1) ? 'Male' : 'Female') : 'All';
-  console.log(`   Audience: Philadelphia +30mi, ages ${targeting.age_min}–${targeting.age_max}, ${genderLabel}, Soccer interests`);
+  let geoLabel = 'Philadelphia +30mi';
+  if (targeting.geo_locations) {
+    if (targeting.geo_locations.custom_locations && targeting.geo_locations.custom_locations[0]) {
+      const cl = targeting.geo_locations.custom_locations[0];
+      geoLabel = `${cl.address_string || (cl.latitude + ',' + cl.longitude)} +${cl.radius}${cl.distance_unit === 'mile' ? 'mi' : 'km'}`;
+    } else if (targeting.geo_locations.cities && targeting.geo_locations.cities[0]) {
+      const c = targeting.geo_locations.cities[0];
+      geoLabel = `City ${c.key} +${c.radius}${c.distance_unit === 'mile' ? 'mi' : 'km'}`;
+    }
+  }
+  console.log(`   Audience: ${geoLabel}, ages ${targeting.age_min}–${targeting.age_max}, ${genderLabel}`);
   console.log(`   CTA: ${ad.ctaType} → ${ad.ctaUrl}`);
   console.log(`   Image: ${ad.imageUrl}`);
 
@@ -213,32 +294,39 @@ async function run() {
     leadForm = { id: formIdArg };
   } else {
     console.log('3️⃣  Creating lead form...');
+    // Per-ad lead form definition (questions, context, thank you) — falls back
+    // to the player-focused default if the ad doesn't define its own.
+    const lf = ad.leadForm || {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        { type: 'DOB' },
+        { type: 'GENDER' },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Join Lighthouse 1893 Soccer Club',
+        content: ['Express your interest in joining. We will be in touch with next steps.'],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks for your interest!',
+        body: 'A Lighthouse 1893 coach will reach out to you soon. Follow us on Instagram for updates.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    };
   leadForm = await apiPost(`${PAGE_ID}/leadgen_forms`, {
     name: `${ad.name} — Lead Form — ${new Date().toISOString().replace(/[:.]/g, '-')}`,
-    questions: JSON.stringify([
-      { type: 'FULL_NAME' },
-      { type: 'EMAIL' },
-      { type: 'PHONE' },
-      { type: 'DOB' },
-      { type: 'GENDER' },
-    ]),
+    questions: JSON.stringify(lf.questions),
     privacy_policy: JSON.stringify({
       url: 'https://footballhome.org/privacy',
       link_text: 'Privacy Policy',
     }),
-    context_card: JSON.stringify({
-      style: 'LIST_STYLE',
-      title: 'Join Lighthouse 1893 Soccer Club',
-      content: ['Express your interest in joining. We will be in touch with next steps.'],
-      button_text: 'Continue',
-    }),
-    thank_you_page: JSON.stringify({
-      title: 'Thanks for your interest!',
-      body: 'A Lighthouse 1893 coach will reach out to you soon. Follow us on Instagram for updates.',
-      button_type: 'VIEW_WEBSITE',
-      button_text: 'Follow @lighthouse1893soccerclub',
-      website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
-    }),
+    context_card: JSON.stringify(lf.context_card),
+    thank_you_page: JSON.stringify(lf.thank_you_page),
     locale: 'EN_US',
     follow_up_action_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
   });

@@ -415,8 +415,10 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     // Generate JWT token
     std::string jwt = generateJWT(userId, userInfo["email"]);
     
-    // Redirect to frontend with token
-    std::string frontendUrl = "http://localhost:3000/oauth-success?token=" + urlEncode(jwt);
+    // Redirect to frontend with token (FRONTEND_URL env overrides for prod)
+    const char* feEnv = std::getenv("FRONTEND_URL");
+    std::string frontendBase = (feEnv && *feEnv) ? feEnv : "http://localhost:3000";
+    std::string frontendUrl = frontendBase + "/oauth-success?token=" + urlEncode(jwt);
     
     Response response = Response::ok();
     response.setStatus(HttpStatus::FOUND);

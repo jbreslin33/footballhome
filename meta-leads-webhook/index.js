@@ -60,7 +60,21 @@ function extractLeadFields(fieldData) {
   return fields;
 }
 
+// Blocklist of leadgen_ids that should never be re-ingested.
+// Currently: 5 California leads from the APSL ad that ran against San Francisco
+// instead of Philadelphia (city-key bug, fixed 2026-06-08).
+const EXCLUDED_LEADGEN_IDS = new Set([
+  '1216620387131716', // Ann (707 CA)
+  '2389328841559768', // Alberto Castillon (209 CA)
+  '1018387347196312', // Yovg Tribal (510 CA)
+  '2211610912932327', // Brayan Guerra (510 CA)
+  '987234783709164',  // فياض زقزوق (510 CA)
+]);
+
 async function upsertLead(lead) {
+  if (EXCLUDED_LEADGEN_IDS.has(String(lead.id))) {
+    return {};
+  }
   const fieldData = lead.field_data || [];
   const fields = extractLeadFields(fieldData);
 
@@ -350,6 +364,174 @@ app.get('/api/leads', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Error fetching leads from DB:', err.message);
     res.status(500).json({ error: 'Failed to fetch leads' });
+  }
+});
+
+// ── POST /api/leads/:id/contact — log a text/email/call send ──────────
+app.post('/api/leads/:id/contact', requireAuth, async (req, res) => {
+  const leadId = parseInt(req.params.id, 10);
+  const { channel, message_body, status } = req.body || {};
+  if (!leadId || !['text', 'email', 'call'].includes(channel)) {
+    return res.status(400).json({ error: 'leadId + channel(text|email|call) required' });
+  }
+  try {
+    const userId = parseInt(req.userId, 10);
+    const result = await pool.query(
+      `INSERT INTO lead_contacts (lead_id, channel, contacted_by, message_body, status)
+       VALUES ($1, $2, $3, $4, COALESCE($5, 'sent'))
+       RETURNING id, lead_id, channel, sent_at, status`,
+      [leadId, channel, Number.isFinite(userId) ? userId : null, message_body || null, status || null]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error logging contact:', err.message);
+    res.status(500).json({ error: 'Failed to log contact' });
+  }
+});
+
+// ── GET /api/leads/contact-stats — aggregates + per-lead touch summary ──
+app.get('/api/leads/contact-stats', requireAuth, async (req, res) => {
+  try {
+    // Per-lead summary
+    const perLead = await pool.query(
+      `SELECT lead_id,
+              COUNT(*) FILTER (WHERE channel='text')   AS text_count,
+              COUNT(*) FILTER (WHERE channel='email')  AS email_count,
+              MAX(sent_at) FILTER (WHERE channel='text')  AS last_text_at,
+              MAX(sent_at) FILTER (WHERE channel='email') AS last_email_at
+       FROM lead_contacts
+       GROUP BY lead_id`
+    );
+
+    // Aggregate windows (text-focused since SMS = bot-risk channel)
+    const agg = await pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '5 minutes')  AS texts_5min,
+         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '1 hour')    AS texts_hour,
+         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '24 hours')  AS texts_day,
+         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '7 days')    AS texts_week,
+         COUNT(*) FILTER (WHERE channel='email' AND sent_at >= NOW() - INTERVAL '24 hours') AS emails_day,
+         COUNT(*) FILTER (WHERE channel='email' AND sent_at >= NOW() - INTERVAL '7 days')   AS emails_week
+       FROM lead_contacts`
+    );
+
+    const perLeadMap = {};
+    for (const r of perLead.rows) {
+      perLeadMap[r.lead_id] = {
+        text_count:    Number(r.text_count),
+        email_count:   Number(r.email_count),
+        last_text_at:  r.last_text_at,
+        last_email_at: r.last_email_at,
+      };
+    }
+    res.json({
+      per_lead: perLeadMap,
+      aggregates: {
+        texts_5min:  Number(agg.rows[0].texts_5min),
+        texts_hour:  Number(agg.rows[0].texts_hour),
+        texts_day:   Number(agg.rows[0].texts_day),
+        texts_week:  Number(agg.rows[0].texts_week),
+        emails_day:  Number(agg.rows[0].emails_day),
+        emails_week: Number(agg.rows[0].emails_week),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching contact stats:', err.message);
+    res.status(500).json({ error: 'Failed to fetch contact stats' });
+  }
+});
+
+// ── GET /api/leads/:id/vcard — download lead as vCard(s) ──────────────
+// Query: ?kind=self|parent|player|youth-pair
+//   self        — single contact (adult funnels): "FullName Lighthouse "
+//   parent      — single parent contact:           "FullName Lighthouse Parent "
+//   player      — single player placeholder:        "LastName Player Lighthouse "
+//   youth-pair  — BOTH parent + player placeholder in one .vcf (default for youth)
+app.get('/api/leads/:id/vcard', requireAuth, async (req, res) => {
+  const leadId = parseInt(req.params.id, 10);
+  const kind   = (req.query.kind || 'self').toString();
+  if (!leadId) return res.status(400).json({ error: 'leadId required' });
+
+  try {
+    const q = await pool.query(
+      `SELECT id, name, email, phone, raw_fields, created_at, form_id
+         FROM leads WHERE id=$1`, [leadId]);
+    if (!q.rows.length) return res.status(404).json({ error: 'Lead not found' });
+    const lead = q.rows[0];
+
+    const fullName = (lead.name || '').trim();
+    const parts = fullName.split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName  = parts.slice(1).join(' ') || '';
+
+    // vCard escape: backslash, comma, semicolon, newline
+    const esc = (s='') => String(s).replace(/\\/g, '\\\\').replace(/,/g, '\\,')
+                                   .replace(/;/g, '\\;').replace(/\r?\n/g, '\\n');
+    const dateStr = new Date(lead.created_at).toISOString().slice(0, 10);
+
+    const buildVCard = (displayName, fn, ln, opts = {}) => {
+      const lines = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        `FN:${esc(displayName)}`,
+        `N:${esc(ln)};${esc(fn)};;;`,
+      ];
+      if (opts.phone)  lines.push(`TEL;TYPE=CELL:${esc(opts.phone)}`);
+      if (opts.email)  lines.push(`EMAIL;TYPE=INTERNET:${esc(opts.email)}`);
+      lines.push(`ORG:${esc('Lighthouse 1893 SC')}`);
+      if (opts.note)   lines.push(`NOTE:${esc(opts.note)}`);
+      lines.push('END:VCARD');
+      return lines.join('\r\n');
+    };
+
+    const cards = [];
+    let downloadName;
+
+    if (kind === 'parent') {
+      cards.push(buildVCard(
+        `${fullName} Lighthouse Parent `,
+        firstName, lastName,
+        { phone: lead.phone, email: lead.email,
+          note: `Youth lead signup ${dateStr}. Edit name + add birth year after contact.` }
+      ));
+      downloadName = `${fullName.replace(/\s+/g, '_')}_Parent.vcf`;
+    } else if (kind === 'player') {
+      cards.push(buildVCard(
+        `${lastName || fullName} Player Lighthouse `,
+        '', lastName || fullName,
+        { note: `Youth player placeholder. Parent: ${fullName} (${lead.phone || ''}). Fill in first name + birth year after first contact.` }
+      ));
+      downloadName = `${(lastName || fullName).replace(/\s+/g, '_')}_PlayerPlaceholder.vcf`;
+    } else if (kind === 'youth-pair') {
+      cards.push(buildVCard(
+        `${fullName} Lighthouse Parent `,
+        firstName, lastName,
+        { phone: lead.phone, email: lead.email,
+          note: `Youth lead signup ${dateStr}. Edit name + add birth year after contact.` }
+      ));
+      cards.push(buildVCard(
+        `${lastName || fullName} Player Lighthouse `,
+        '', lastName || fullName,
+        { note: `Youth player placeholder. Parent: ${fullName} (${lead.phone || ''}). Fill in first name + birth year after first contact.` }
+      ));
+      downloadName = `${fullName.replace(/\s+/g, '_')}_Youth.vcf`;
+    } else {
+      // self — adult funnels (Brazil/PR/U23/APSL/etc)
+      cards.push(buildVCard(
+        `${fullName} Lighthouse `,
+        firstName, lastName,
+        { phone: lead.phone, email: lead.email,
+          note: `Lead signup ${dateStr}. Add birth year after confirming.` }
+      ));
+      downloadName = `${fullName.replace(/\s+/g, '_')}_Lighthouse.vcf`;
+    }
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    res.send(cards.join('\r\n') + '\r\n');
+  } catch (err) {
+    console.error('Error building vCard:', err.message);
+    res.status(500).json({ error: 'Failed to build vCard' });
   }
 });
 
