@@ -307,45 +307,79 @@ class LeadsScreen extends Screen {
     `;
   }
 
-  // ── Message templates (edit these to taste) ──────────────────────────
-  // Tokens: {first} {full} {phone}
+  // ── Message templates ────────────────────────────────────────────────
+  // Tokens: {first} {full} {phone} {coach}
+  //
+  // Funnel goal: get a $1 registration (captures card on file, then
+  // recurring billing runs automatically). Practice attendance becomes
+  // the *reward* for registering — not a separate ask.
+  //
+  // Pricing:
+  //   • $1 to register (card capture)
+  //   • Youth   → $35/mo
+  //   • Adults  → $9/wk or $35/mo (their pick at registration)
+  //
+  // Per-program LeagueApps registration URLs. Swap in program-specific
+  // links here as they're created. Defaults to the club site root.
   messageTemplate(funnelLabel) {
-    const T = {
-      'Youth (Grades 1–6)': {
-        sms:     `Hi, this is {coach} with Lighthouse 1893 Soccer Club — thanks for signing up for info on our youth program (grades 1–6). Quick Q: what grade is your player going into this fall?`,
-        subject: `Lighthouse 1893 Youth Soccer — quick question`,
-        email:   `Hi,\n\nThanks for signing up for info on Lighthouse 1893's youth soccer program (grades 1–6). I'd love to learn more about your player so we can get you connected to the right group.\n\nA couple quick questions:\n  • What grade is your player going into this fall?\n  • Boy or girl?\n  • Any prior soccer experience?\n\nFeel free to text me back at this number or reply to this email — whichever is easier.\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      },
-      'Brazil Men': {
-        sms:     `Hi, this is {coach} with Lighthouse 1893 Brazilian Men — thanks for your interest. We're holding open trainings this week. When works best for you?`,
-        subject: `Lighthouse 1893 SC — Brazilian Men's Team`,
-        email:   `Hi,\n\nThanks for your interest in Lighthouse 1893's Brazilian Men's team. We'd love to get you out to a training.\n\nWhen are you available to come out? Reply here or text me at your convenience.\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      },
-      'PR Men': {
-        sms:     `Hi, this is {coach} with Lighthouse 1893 Puerto Rican Men — thanks for your interest. We're holding open trainings this week. When works best for you?`,
-        subject: `Lighthouse 1893 SC — Puerto Rican Men's Team`,
-        email:   `Hi,\n\nThanks for your interest in Lighthouse 1893's Puerto Rican Men's team. We'd love to get you out to a training.\n\nWhen are you available to come out? Reply here or text me at your convenience.\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      },
-      'U23 Men': {
-        sms:     `Hi, this is {coach} with Lighthouse 1893 U23 Men — thanks for your interest. We're holding open trainings this week. When works best for you?`,
-        subject: `Lighthouse 1893 SC — U23 Men's Team`,
-        email:   `Hi,\n\nThanks for your interest in Lighthouse 1893's U23 Men's team. We'd love to get you out to a training.\n\nWhen are you available to come out? Reply here or text me at your convenience.\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      },
-      'U23 Women': {
-        sms:     `Hi, this is {coach} with Lighthouse 1893 U23 Women — thanks for your interest. We're holding open trainings this week. When works best for you?`,
-        subject: `Lighthouse 1893 SC — U23 Women's Team`,
-        email:   `Hi,\n\nThanks for your interest in Lighthouse 1893's U23 Women's team. We'd love to get you out to a training.\n\nWhen are you available to come out? Reply here or text me at your convenience.\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      },
-      'APSL Trials': {
-        sms:     `Hi, this is {coach} with Lighthouse 1893 — thanks for signing up for the APSL trial. Quick Q: what's your primary position?`,
-        subject: `Lighthouse 1893 SC — APSL Trial`,
-        email:   `Hi,\n\nThanks for signing up for the Lighthouse 1893 APSL trial. We're excited to see you on the field.\n\nA few quick details so we can place you on the right group:\n  • Primary position?\n  • Years of competitive experience?\n  • Are you available for the upcoming trial date?\n\nReply here or text me at your convenience.\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      },
+    // LeagueApps registration URLs ($1 to register; card on file → recurring).
+    const URL_MEN   = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership';
+    const URL_WOMEN = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership';
+    const URL_BOYS  = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership';
+    const URL_GIRLS = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-1893-girls-club-soccer-membership';
+
+    const LINKS = {
+      // Adults → club Men's Membership program ($1 register, then $9/wk or $35/mo)
+      'Brazil Men':                URL_MEN,
+      'PR Men':                    URL_MEN,
+      'U23 Men':                   URL_MEN,
+      'APSL Trials':               URL_MEN,
+      // Adult women → club Women's Membership program (same pricing)
+      'U23 Women':                 URL_WOMEN,
+      // Youth — separate Boys / Girls Meta lead forms once they exist.
+      // Wire their form IDs into formLabel() to route to these labels.
+      'Boys Club (Grades 1–6)':    URL_BOYS,
+      'Girls Club (Grades 1–6)':   URL_GIRLS,
+      // Legacy combined-Youth form (gender unknown). Default to Boys URL;
+      // coach can manually paste the Girls URL for known-girl leads.
+      'Youth (Grades 1–6)':        URL_BOYS,
     };
-    return T[funnelLabel] || {
-      sms:     `Hi, this is {coach} with Lighthouse 1893 SC — thanks for your interest. When are you available to chat?`,
-      subject: `Lighthouse 1893 SC`,
-      email:   `Hi,\n\nThanks for your interest in Lighthouse 1893 SC. When are you available to chat?\n\nThanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+    // Human-readable program name used inline in the message body.
+    const PROGRAM_NAMES = {
+      'Youth (Grades 1–6)':        'youth soccer program (grades 1–6)',
+      'Boys Club (Grades 1–6)':    'Boys Club soccer program (grades 1–6)',
+      'Girls Club (Grades 1–6)':   'Girls Club soccer program (grades 1–6)',
+      'Brazil Men':                "Brazilian Men's team",
+      'PR Men':                    "Puerto Rican Men's team",
+      'U23 Men':                   "U23 Men's team",
+      'U23 Women':                 "U23 Women's team",
+      'APSL Trials':               'APSL trial',
+    };
+
+    const isYouth = /youth/i.test(funnelLabel || '');
+    const program = PROGRAM_NAMES[funnelLabel] || 'program';
+    const link    = LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com';
+    const whose   = isYouth ? "your player's" : 'your';
+    const pricing = isYouth ? '$35/mo' : '$9/wk or $35/mo';
+
+    // SMS keeps it tight: $1 hook + link, nothing else. Pricing/plan
+    // selection is handled on the LeagueApps registration page where it
+    // belongs (proper UI, ROSCA-compliant pre-checkout disclosure).
+    // Email gets the full pricing breakdown — email is the "tell me more"
+    // channel; SMS is the "tap now" channel.
+    return {
+      sms:
+        `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${program}. ` +
+        `$1 locks ${whose} spot: ${link}\n\nReply STOP to opt out.`,
+      subject: `Lighthouse 1893 — ${program} (next step)`,
+      email:
+        `Hi {first},\n\n` +
+        `Thanks for reaching out about Lighthouse 1893's ${program}.\n\n` +
+        `The easiest way to get started is our $1 registration. It locks in ${whose} spot ` +
+        `and starts the payment plan (${pricing}, cancel anytime).\n\n` +
+        `Register here: ${link}\n\n` +
+        `Reply to this email or text me at this number with any questions.\n\n` +
+        `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
     };
   }
 
