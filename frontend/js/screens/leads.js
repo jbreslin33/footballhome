@@ -232,6 +232,146 @@ class LeadsScreen extends Screen {
     return map[formId] || null;
   }
 
+  // ── Ads rundown ─────────────────────────────────────────────────────
+  // Renders a per-ad summary at the top of the leads screen so the coach
+  // can spot targeting/perf problems (geo leaks, dead ads, CPL spikes)
+  // without leaving the page. Data comes from /api/ads/targeting which
+  // proxies Meta Marketing API and is polled on every screen load.
+  renderAdsRundown(ads) {
+    const root = this.find('#ads-rundown');
+    if (!root) return;
+    if (!ads || ads.length === 0) { root.innerHTML = ''; return; }
+
+    // Group ads by funnel label; show ACTIVE first, then others
+    const decorated = ads.map(a => ({ ...a, funnel: this.formLabel(a.form_id) || '(no form)' }));
+    const statusRank = { ACTIVE: 0, PENDING_REVIEW: 1, IN_PROCESS: 2, PAUSED: 3, ARCHIVED: 4, DELETED: 5 };
+    decorated.sort((x, y) => (statusRank[x.status] ?? 9) - (statusRank[y.status] ?? 9));
+
+    // Identify problems for the warning banner at the top
+    const warnings = [];
+    for (const a of decorated) {
+      if (a.status !== 'ACTIVE') continue;
+      // Geo leak: top region by impressions is NOT Pennsylvania/New Jersey/Delaware
+      const top = a.regions?.[0];
+      if (top && top.impressions > 50) {
+        const triState = ['Pennsylvania','New Jersey','Delaware'];
+        if (!triState.includes(top.region)) {
+          warnings.push({ kind:'geo-leak', ad: a, detail: `Top region is ${top.region} (${top.impressions} imp)` });
+        }
+      }
+      // CPL > $20 on adult ads (warn) / > $30 (danger)
+      const cpl = a.leads > 0 ? a.spend / a.leads : null;
+      if (cpl !== null && cpl > 30) warnings.push({ kind:'cpl-danger', ad: a, detail: `$${cpl.toFixed(2)}/lead` });
+      else if (cpl !== null && cpl > 20) warnings.push({ kind:'cpl-warn', ad: a, detail: `$${cpl.toFixed(2)}/lead` });
+      // Geo not the Erie Ave pin
+      if (a.geo?.kind !== 'pin' || !/Erie/i.test(a.geo?.address || '')) {
+        warnings.push({ kind:'geo-not-pin', ad: a, detail: a.geo?.label || 'unknown' });
+      }
+      // Includes "recent" visitors (people just passing through Philly)
+      if (a.geo?.location_types?.includes('recent')) {
+        warnings.push({ kind:'location-recent', ad: a, detail: 'location_types includes "recent"' });
+      }
+      // Spending budget but no leads in 7+ days running
+      const days = a.start_time ? Math.floor((Date.now() - new Date(a.start_time).getTime()) / 86400000) : 0;
+      if (a.spend > 50 && a.leads === 0) warnings.push({ kind:'no-leads', ad: a, detail: `$${a.spend.toFixed(2)} spent, 0 leads (${days}d)` });
+    }
+
+    const fmt$ = (n) => `$${(n || 0).toFixed(2)}`;
+    const statusPill = (s) => {
+      const colors = { ACTIVE:'#10b981', PAUSED:'#6b7280', PENDING_REVIEW:'#f59e0b', IN_PROCESS:'#f59e0b', ARCHIVED:'#374151', DELETED:'#991b1b' };
+      const c = colors[s] || '#6b7280';
+      return `<span style="background:${c}; color:#fff; padding:1px 6px; border-radius:8px; font-size:0.65rem; font-weight:700; letter-spacing:0.04em;">${s}</span>`;
+    };
+    const geoBadge = (g) => {
+      if (!g) return '<span style="opacity:0.6;">no geo</span>';
+      const ok = g.kind === 'pin' && /Erie/i.test(g.address || '');
+      const color = ok ? '#10b981' : '#f59e0b';
+      const lt = (g.location_types || []).join('+') || '?';
+      return `<span style="color:${color};">${g.label || '?'}</span> <span style="opacity:0.5; font-size:0.7rem;">(${lt})</span>`;
+    };
+    const audBadge = (a) => {
+      const ages = (a.age_min && a.age_max) ? `${a.age_min}–${a.age_max}` : '?';
+      const g = a.genders ? (a.genders.includes(1) && a.genders.includes(2) ? 'All' : a.genders.includes(1) ? 'M' : 'F') : 'All';
+      return `ages ${ages} · ${g}`;
+    };
+    const regionRow = (rs) => {
+      if (!rs || rs.length === 0) return '<span style="opacity:0.5;">no region data yet</span>';
+      return rs.slice(0, 3).map(r => {
+        const triState = ['Pennsylvania','New Jersey','Delaware'].includes(r.region);
+        const color = triState ? '#10b981' : '#ef4444';
+        return `<span style="color:${color};">${r.region} ${r.impressions}🖼/${r.clicks}🖱/${r.leads}📥</span>`;
+      }).join(' · ');
+    };
+
+    const warnBanner = warnings.length > 0 ? `
+      <div style="background:#3d2a0a; border-left:4px solid #f59e0b; padding:var(--space-2) var(--space-3); border-radius:var(--radius-md); margin-bottom:var(--space-2);">
+        <div style="font-weight:700; font-size:0.85rem; color:#f59e0b;">⚠ ${warnings.length} issue${warnings.length>1?'s':''} detected</div>
+        <ul style="margin:4px 0 0 0; padding-left:18px; font-size:0.75rem; opacity:0.9;">
+          ${warnings.slice(0, 8).map(w => `<li><strong>${w.ad.funnel}</strong> [${w.kind}]: ${w.detail}</li>`).join('')}
+          ${warnings.length > 8 ? `<li>… and ${warnings.length - 8} more</li>` : ''}
+        </ul>
+      </div>` : '';
+
+    const collapsedKey = 'leads.rundownCollapsed';
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(collapsedKey) === '1'; } catch {}
+
+    root.innerHTML = `
+      ${warnBanner}
+      <details ${collapsed ? '' : 'open'} style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3);">
+        <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; user-select:none; outline:none;">
+          📡 Ad Targeting Rundown <span style="opacity:0.5; font-weight:400; font-size:0.75rem;">(${decorated.length} ads · live from Meta)</span>
+        </summary>
+        <div style="overflow-x:auto; margin-top:var(--space-2);">
+          <table style="width:100%; font-size:0.75rem; border-collapse:collapse;">
+            <thead style="opacity:0.7; text-align:left;">
+              <tr>
+                <th style="padding:4px 8px;">Ad</th>
+                <th style="padding:4px 8px;">Status</th>
+                <th style="padding:4px 8px;">Geo</th>
+                <th style="padding:4px 8px;">Audience</th>
+                <th style="padding:4px 8px; text-align:right;">$/day</th>
+                <th style="padding:4px 8px; text-align:right;">Spend</th>
+                <th style="padding:4px 8px; text-align:right;">Imp</th>
+                <th style="padding:4px 8px; text-align:right;">Clicks</th>
+                <th style="padding:4px 8px; text-align:right;">Leads</th>
+                <th style="padding:4px 8px; text-align:right;">CPL</th>
+                <th style="padding:4px 8px;">Top regions (30d)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${decorated.map(a => {
+                const cpl = a.leads > 0 ? `$${(a.spend / a.leads).toFixed(2)}` : '—';
+                const dim = a.status !== 'ACTIVE' ? 'opacity:0.55;' : '';
+                return `
+                  <tr style="border-top:1px solid var(--bg-tertiary, #1f2937); ${dim}">
+                    <td style="padding:6px 8px;"><strong>${a.funnel}</strong><br><span style="opacity:0.5; font-size:0.7rem;">${a.ad_name}</span></td>
+                    <td style="padding:6px 8px;">${statusPill(a.status)}</td>
+                    <td style="padding:6px 8px;">${geoBadge(a.geo)}</td>
+                    <td style="padding:6px 8px;">${audBadge(a)}</td>
+                    <td style="padding:6px 8px; text-align:right;">${fmt$(a.daily_budget_usd)}</td>
+                    <td style="padding:6px 8px; text-align:right;">${fmt$(a.spend)}</td>
+                    <td style="padding:6px 8px; text-align:right;">${a.impressions.toLocaleString()}</td>
+                    <td style="padding:6px 8px; text-align:right;">${a.clicks.toLocaleString()}</td>
+                    <td style="padding:6px 8px; text-align:right;">${a.leads}</td>
+                    <td style="padding:6px 8px; text-align:right;">${cpl}</td>
+                    <td style="padding:6px 8px; font-size:0.7rem;">${regionRow(a.regions)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    `;
+
+    // Persist collapsed/open state
+    const det = root.querySelector('details');
+    if (det) det.addEventListener('toggle', () => {
+      try { localStorage.setItem(collapsedKey, det.open ? '0' : '1'); } catch {}
+    });
+  }
+
   renderLead(lead, columnLabel = null, perLeadStats = {}) {
     const date = new Date(lead.created_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'

@@ -36,15 +36,10 @@ const PIN = {
   address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
 };
 
-// Ad-ID → desired radius (mi)
-// (5mi for youth-style ads; 10mi for adult/men's ads)
-const RADIUS_BY_AD = {
-  '120245748851660390': 5,   // Youth (Grades 1–6)
-  '120245251868650390': 10,  // APSL Trials
-  '120244607213610390': 10,  // PR Men
-  '120244607211660390': 10,  // U23 Men
-  '120244607212540390': 10,  // Brazil Men
-};
+// Radius rule: 5mi for youth-style adsets (name match), 10mi for everything else.
+function radiusFor(adsetName) {
+  return /Youth|Boys Club|Girls Club|Grades/i.test(adsetName) ? 5 : 10;
+}
 
 async function gj(url) {
   const r = await fetch(url);
@@ -60,60 +55,46 @@ async function postForm(path, params) {
 }
 
 (async () => {
-  console.log(`\n${DRY_RUN ? '🔎 DRY RUN' : '⚙️  APPLYING'} — Fix ad-set targeting\n`);
+  console.log(`\n${DRY_RUN ? '🔎 DRY RUN' : '⚙️  APPLYING'} — Fix ad-set targeting on every ACTIVE adset\n`);
 
-  // Pull current targeting + adset ids for each ad we care about
-  const adIds = Object.keys(RADIUS_BY_AD).join(',');
-  const fields = 'id,name,effective_status,adset{id,name,targeting}';
-  const ads = (await gj(`${API}/?ids=${adIds}&fields=${encodeURIComponent(fields)}&access_token=${ACCESS_TOKEN}`));
+  // Discover ALL active adsets in the account (avoids stale hardcoded IDs).
+  const adsetList = await gj(
+    `${API}/${AD_ACCOUNT_ID}/adsets` +
+    `?fields=id,name,effective_status,targeting` +
+    `&limit=200&access_token=${ACCESS_TOKEN}`
+  );
+  const activeAdsets = (adsetList.data || []).filter(s => s.effective_status === 'ACTIVE');
+  console.log(`Found ${activeAdsets.length} ACTIVE ad set(s)\n`);
 
-  const adsetUpdates = new Map(); // adset_id -> { name, current, next, radius, adName }
-
-  for (const adId of Object.keys(RADIUS_BY_AD)) {
-    const ad = ads[adId];
-    if (!ad) { console.log(`⚠️  ad ${adId} not found, skipping`); continue; }
-    const adset  = ad.adset;
-    const radius = RADIUS_BY_AD[adId];
+  for (const adset of activeAdsets) {
+    const radius  = radiusFor(adset.name);
     const current = adset.targeting || {};
 
     // Build the NEW targeting: keep everything (ages, genders, placements, etc.),
-    // but overwrite geo_locations. targeting_automation goes at the adset
-    // level (separate param), NOT inside targeting.
+    // but overwrite geo_locations AND force Advantage+ Audience expansion OFF.
     const next = {
       ...current,
       geo_locations: {
         custom_locations: [{ ...PIN, radius }],
         location_types: ['home'],
       },
+      // The API stores Advantage+ Audience setting *inside* targeting under
+      // targeting_automation.advantage_audience (0 = OFF). Sending it as a
+      // sibling param to `targeting` is silently ignored.
+      targeting_automation: { advantage_audience: 0 },
     };
     // Strip any read-only / computed fields Meta won't accept on write
-    delete next.targeting_automation;
     delete next.targeting_optimization;
 
-    // De-dup by adset id (ads can share an adset)
-    adsetUpdates.set(adset.id, {
-      adset_id: adset.id,
-      adset_name: adset.name,
-      ad_name: ad.name,
-      radius,
-      current_geo: current.geo_locations,
-      next_geo: next.geo_locations,
-      next_targeting: next,
-    });
-  }
-
-  for (const u of adsetUpdates.values()) {
-    console.log(`▸ Ad set: ${u.adset_name}  (${u.adset_id})`);
-    console.log(`  Ad:        ${u.ad_name}`);
-    console.log(`  BEFORE:    ${JSON.stringify(u.current_geo)}`);
-    console.log(`  AFTER:     pin Erie Ave +${u.radius}mi, location_types=[home]`);
-    console.log(`  Advantage+ Audience: OFF (targeting_automation.individual_setting=0)`);
+    console.log(`▸ Ad set: ${adset.name}  (${adset.id})`);
+    console.log(`  BEFORE:    ${JSON.stringify(current.geo_locations)}`);
+    console.log(`  BEFORE aud: ${current.targeting_automation?.advantage_audience ?? 'unset'}`);
+    console.log(`  AFTER:     pin Erie Ave +${radius}mi, location_types=[home], advantage_audience=0`);
 
     if (DRY_RUN) { console.log(''); continue; }
 
-    const res = await postForm(u.adset_id, {
-      targeting: JSON.stringify(u.next_targeting),
-      targeting_automation: JSON.stringify({ individual_setting: 0 }),
+    const res = await postForm(adset.id, {
+      targeting: JSON.stringify(next),
     });
     if (res.error) {
       console.log(`  ❌ ERROR: ${res.error.message}`);
@@ -122,7 +103,11 @@ async function postForm(path, params) {
       if (res.error.error_user_title) console.log(`     user_title: ${res.error.error_user_title}`);
       console.log('');
     } else {
-      console.log(`  ✅ Updated\n`);
+      // Read back to confirm the field stuck
+      const check = await gj(`${API}/${adset.id}?fields=targeting&access_token=${ACCESS_TOKEN}`);
+      const audAfter = check.targeting?.targeting_automation?.advantage_audience;
+      const ok = audAfter === 0;
+      console.log(`  ${ok ? '✅' : '⚠️ '} Updated  (verified advantage_audience=${audAfter})\n`);
     }
   }
 
