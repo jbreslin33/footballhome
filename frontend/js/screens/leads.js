@@ -11,6 +11,7 @@ class LeadsScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
+        <div id="ads-rundown" style="margin-bottom:var(--space-3);"></div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="leads-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No leads yet.</div>
@@ -39,17 +40,22 @@ class LeadsScreen extends Screen {
     this.find('#leads-empty').style.display   = 'none';
 
     try {
-      const [leadsRes, spendRes, statsRes] = await Promise.all([
+      const [leadsRes, spendRes, statsRes, targetingRes] = await Promise.all([
         this.auth.fetch('/api/leads'),
         this.auth.fetch('/api/ads/spend').catch(() => null),
         this.auth.fetch('/api/leads/contact-stats').catch(() => null),
+        this.auth.fetch('/api/ads/targeting').catch(() => null),
       ]);
       if (!leadsRes.ok) throw new Error(`HTTP ${leadsRes.status}`);
       const leads = await leadsRes.json();
       const spend = spendRes && spendRes.ok ? await spendRes.json() : [];
       const stats = statsRes && statsRes.ok ? await statsRes.json() : { per_lead: {}, aggregates: {} };
+      const targeting = targetingRes && targetingRes.ok ? await targetingRes.json() : [];
 
       this.find('#leads-loading').style.display = 'none';
+
+      // Render targeting rundown at top — always, even if there are no leads yet
+      this.renderAdsRundown(targeting);
 
       if (!leads.length) {
         this.find('#leads-empty').style.display = 'block';
@@ -95,14 +101,16 @@ class LeadsScreen extends Screen {
     };
     const r = riskColors[risk];
 
-    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials', 'Youth (Grades 1–6)'];
+    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials', 'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)'];
     const COLORS  = {
-      'Brazil Men':         '#15803d',
-      'U23 Men':            '#1d4ed8',
-      'PR Men':             '#7c3aed',
-      'U23 Women':          '#be185d',
-      'APSL Trials':        '#f59e0b',
-      'Youth (Grades 1–6)': '#c9a14a',
+      'Brazil Men':              '#15803d',
+      'U23 Men':                 '#1d4ed8',
+      'PR Men':                  '#7c3aed',
+      'U23 Women':               '#be185d',
+      'APSL Trials':             '#f59e0b',
+      'Youth (Grades 1–6)':      '#c9a14a',
+      'Boys Club (Grades 1–6)':  '#0e7490',
+      'Girls Club (Grades 1–6)': '#db2777',
     };
 
     // Load hidden-column preferences (persisted in localStorage)
@@ -218,6 +226,8 @@ class LeadsScreen extends Screen {
       '1052472267432735': 'U23 Men',
       '1773598717166962': 'APSL Trials',
       '3249608418562710': 'Youth (Grades 1–6)',
+      '1704106777282059': 'Boys Club (Grades 1–6)',
+      '1571742281184926': 'Girls Club (Grades 1–6)',
     };
     return map[formId] || null;
   }

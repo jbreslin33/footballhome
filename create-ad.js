@@ -139,10 +139,11 @@ const ADS = {
     // 14-day learning test (defaultDays:14 above)
     targeting: {
       // 5-mile radius around 199 East Erie Avenue, Philadelphia
+      // Coordinates verified via Nominatim geocode of the full address (June 2026)
       geo_locations: {
         custom_locations: [{
-          latitude:  39.9994,
-          longitude: -75.1379,
+          latitude:  40.0071,
+          longitude: -75.1306,
           radius:    5,
           distance_unit: 'mile',
           address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
@@ -173,6 +174,133 @@ const ADS = {
       age_max: 32,
       genders: [1], // 1 = male
       publisher_platforms: ['instagram'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'boys-club': {
+    name:    'Lighthouse Boys Club — Now Enrolling (Grades 1–6)',
+    imageUrl: 'https://footballhome.org/images/posts/boys-club-ad.png',
+    caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership',
+    ctaType: 'LEARN_MORE',
+    defaultBudget: 8,
+    defaultDays:   14,
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse Boys Club — Travel & In-House',
+        content: [
+          'Local community-based club — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'A coach will follow up with season dates, fees, and next steps.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      // 5-mile pin at the complex (verified lat/lng)
+      geo_locations: {
+        custom_locations: [{
+          latitude:  40.0071,
+          longitude: -75.1306,
+          radius:    5,
+          distance_unit: 'mile',
+          address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
+        }],
+        location_types: ['home'],
+      },
+      age_min: 25,
+      age_max: 55,
+      // No gender filter — both parents
+      locales: [6, 24],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'girls-club': {
+    name:    'Lighthouse Girls Club — Now Enrolling (Grades 1–6)',
+    imageUrl: 'https://footballhome.org/images/posts/girls-club-ad.png',
+    caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership',
+    ctaType: 'LEARN_MORE',
+    defaultBudget: 8,
+    defaultDays:   14,
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse Girls Club — Travel & In-House',
+        content: [
+          'Local community-based club — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'A coach will follow up with season dates, fees, and next steps.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      // 5-mile pin at the complex (verified lat/lng)
+      geo_locations: {
+        custom_locations: [{
+          latitude:  40.0071,
+          longitude: -75.1306,
+          radius:    5,
+          distance_unit: 'mile',
+          address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
+        }],
+        location_types: ['home'],
+      },
+      age_min: 25,
+      age_max: 55,
+      locales: [6, 24],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
       instagram_positions: ['stream', 'explore'],
     },
   },

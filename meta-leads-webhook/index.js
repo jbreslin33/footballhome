@@ -26,6 +26,9 @@ const FORM_IDS          = parseFormIds(
     '1552835789741946',
     '1668570657681917',
     '1773598717166962',
+    '3249608418562710', // Youth (Grades 1–6)
+    '1704106777282059', // Boys Club (Grades 1–6)
+    '1571742281184926', // Girls Club (Grades 1–6)
   ]
 );
 const API               = 'https://graph.facebook.com/v21.0';
@@ -270,6 +273,118 @@ app.get('/api/ads/preview', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Error fetching ad preview:', err.message);
     res.status(500).json({ error: 'Failed to fetch ads' });
+  }
+});
+
+// ── GET /api/ads/spend — aggregate spend stats per lead form ──────────
+async function fetchAdsTargetingRundown() {
+  if (!ADS_TOKEN) throw new Error('Missing META_ADS_TOKEN');
+
+  const fields = [
+    'id', 'name', 'effective_status', 'configured_status',
+    'adset{id,name,daily_budget,start_time,effective_status,targeting}',
+    'creative{object_story_spec{link_data{call_to_action}}}',
+    'insights.date_preset(maximum){spend,impressions,clicks,actions}',
+  ].join(',');
+  const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=200&access_token=${ADS_TOKEN}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message);
+
+  // Parse + summarize each ad
+  const ads = [];
+  for (const ad of (j.data || [])) {
+    const cta    = ad.creative?.object_story_spec?.link_data?.call_to_action;
+    const formId = cta?.value?.lead_gen_form_id || null;
+    const adset  = ad.adset || {};
+    const t      = adset.targeting || {};
+    const ins    = ad.insights?.data?.[0] || {};
+    const leadAction = (ins.actions || []).find(a =>
+      a.action_type === 'lead' || a.action_type === 'onsite_conversion.lead_grouped'
+    );
+
+    ads.push({
+      ad_id:        ad.id,
+      ad_name:      ad.name,
+      form_id:      formId,
+      status:       ad.effective_status,
+      adset_id:     adset.id,
+      adset_status: adset.effective_status,
+      daily_budget_usd: adset.daily_budget ? parseInt(adset.daily_budget, 10) / 100 : 0,
+      start_time:   adset.start_time || null,
+      geo:          summarizeGeo(t.geo_locations),
+      age_min:      t.age_min || null,
+      age_max:      t.age_max || null,
+      genders:      t.genders || null,
+      spend:        parseFloat(ins.spend || '0'),
+      impressions:  parseInt(ins.impressions || '0', 10),
+      clicks:       parseInt(ins.clicks || '0', 10),
+      leads:        leadAction ? parseInt(leadAction.value, 10) : 0,
+      regions:      [], // filled in below for active ads
+    });
+  }
+
+  // Region breakdown for ACTIVE ads (last 30d) — fetch in parallel
+  const activeAds = ads.filter(a => a.status === 'ACTIVE');
+  await Promise.all(activeAds.map(async (a) => {
+    try {
+      const ru = `${API}/${a.ad_id}/insights?breakdowns=region&fields=impressions,clicks,actions&date_preset=last_30d&limit=50&access_token=${ADS_TOKEN}`;
+      const rr = await fetch(ru);
+      const rj = await rr.json();
+      if (rj.error || !rj.data) return;
+      a.regions = rj.data.map(row => {
+        const la = (row.actions || []).find(x =>
+          x.action_type === 'lead' || x.action_type === 'onsite_conversion.lead_grouped'
+        );
+        return {
+          region:      row.region || 'Unknown',
+          impressions: parseInt(row.impressions || '0', 10),
+          clicks:      parseInt(row.clicks || '0', 10),
+          leads:       la ? parseInt(la.value, 10) : 0,
+        };
+      }).sort((x, y) => y.impressions - x.impressions);
+    } catch (_) { /* swallow per-ad region errors — keep rest of payload */ }
+  }));
+
+  return ads;
+}
+
+function summarizeGeo(g) {
+  if (!g) return { kind: 'none', label: '(no geo)' };
+  if (g.custom_locations && g.custom_locations[0]) {
+    const cl = g.custom_locations[0];
+    return {
+      kind:       'pin',
+      label:      `${cl.address_string || (cl.latitude + ',' + cl.longitude)} +${cl.radius}${cl.distance_unit === 'mile' ? 'mi' : 'km'}`,
+      address:    cl.address_string,
+      latitude:   cl.latitude,
+      longitude:  cl.longitude,
+      radius:     cl.radius,
+      unit:       cl.distance_unit,
+      location_types: g.location_types || [],
+    };
+  }
+  if (g.cities && g.cities[0]) {
+    const c = g.cities[0];
+    return {
+      kind:           'city',
+      label:          `City ${c.name || c.key} +${c.radius}${c.distance_unit === 'mile' ? 'mi' : 'km'}`,
+      city:           c.name || c.key,
+      radius:         c.radius,
+      unit:           c.distance_unit,
+      location_types: g.location_types || [],
+    };
+  }
+  return { kind: 'other', label: '(geo set but unparsed)', location_types: g.location_types || [] };
+}
+
+app.get('/api/ads/targeting', requireAuth, async (req, res) => {
+  try {
+    const ads = await fetchAdsTargetingRundown();
+    res.json(ads);
+  } catch (err) {
+    console.error('Error fetching ad targeting:', err.message);
+    res.status(502).json({ error: err.message });
   }
 });
 
