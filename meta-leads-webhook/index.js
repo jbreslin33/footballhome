@@ -364,6 +364,17 @@ function summarizeGeo(g) {
       location_types: g.location_types || [],
     };
   }
+  if (g.zips && g.zips[0]) {
+    // Explicit ZIP allowlist — stricter than radius. Show count + sample.
+    const keys   = g.zips.map(z => (z.key || '').replace(/^US:/, '')).filter(Boolean);
+    const states = new Set(keys.map(k => (k[0] === '0' ? 'NJ' : k[0] === '1' ? 'PA' : '?')));
+    return {
+      kind:           'zips',
+      label:          `${keys.length} ZIP allowlist (${[...states].sort().join('+')})`,
+      zips:           keys,
+      location_types: g.location_types || [],
+    };
+  }
   if (g.cities && g.cities[0]) {
     const c = g.cities[0];
     return {

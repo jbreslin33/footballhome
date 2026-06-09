@@ -263,9 +263,11 @@ class LeadsScreen extends Screen {
       const cpl = a.leads > 0 ? a.spend / a.leads : null;
       if (cpl !== null && cpl > 30) warnings.push({ kind:'cpl-danger', ad: a, detail: `$${cpl.toFixed(2)}/lead` });
       else if (cpl !== null && cpl > 20) warnings.push({ kind:'cpl-warn', ad: a, detail: `$${cpl.toFixed(2)}/lead` });
-      // Geo not the Erie Ave pin
-      if (a.geo?.kind !== 'pin' || !/Erie/i.test(a.geo?.address || '')) {
-        warnings.push({ kind:'geo-not-pin', ad: a, detail: a.geo?.label || 'unknown' });
+      // Geo not locked down (must be 'zips' allowlist OR pin at Erie Ave)
+      const goodGeo = a.geo?.kind === 'zips'
+                   || (a.geo?.kind === 'pin' && /Erie/i.test(a.geo?.address || ''));
+      if (!goodGeo) {
+        warnings.push({ kind:'geo-loose', ad: a, detail: a.geo?.label || 'unknown' });
       }
       // Includes "recent" visitors (people just passing through Philly)
       if (a.geo?.location_types?.includes('recent')) {
@@ -284,7 +286,8 @@ class LeadsScreen extends Screen {
     };
     const geoBadge = (g) => {
       if (!g) return '<span style="opacity:0.6;">no geo</span>';
-      const ok = g.kind === 'pin' && /Erie/i.test(g.address || '');
+      const ok = g.kind === 'zips'
+              || (g.kind === 'pin' && /Erie/i.test(g.address || ''));
       const color = ok ? '#10b981' : '#f59e0b';
       const lt = (g.location_types || []).join('+') || '?';
       return `<span style="color:${color};">${g.label || '?'}</span> <span style="opacity:0.5; font-size:0.7rem;">(${lt})</span>`;
