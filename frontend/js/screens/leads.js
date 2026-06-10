@@ -434,9 +434,29 @@ class LeadsScreen extends Screen {
       const email    = this.fillTemplate(t.email,   previewLead);
       const snippets = this.messageSnippets(label);
 
-      const snippetHtml = snippets.map(s => {
-        const body = this.fillTemplate(s.body, previewLead);
-        return blurbBlock(s.label, body, !!s.todo);
+      // Render in same tier order as the on-card chips:
+      //   qualify → close → soft → info
+      // so the coach reads the templates in the order they'd send them.
+      const TIER_ORDER = ['qualify', 'close', 'soft', 'info'];
+      const TIER_LABEL = { qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
+      const byTier = {};
+      for (const s of snippets) {
+        const t = s.tier || 'info';
+        (byTier[t] = byTier[t] || []).push(s);
+      }
+      const snippetHtml = TIER_ORDER.flatMap(tier => {
+        const items = byTier[tier];
+        if (!items || !items.length) return [];
+        const header = `
+          <div style="font-size:0.65rem; opacity:0.5; text-transform:uppercase;
+                      letter-spacing:1.5px; margin:var(--space-2) 0 4px;">
+            ${esc(TIER_LABEL[tier] || tier)}
+          </div>`;
+        const blocks = items.map(s => {
+          const body = this.fillTemplate(s.body, previewLead);
+          return blurbBlock(s.label, body, !!s.todo);
+        });
+        return [header, ...blocks];
       }).join('');
 
       return `
@@ -592,30 +612,66 @@ class LeadsScreen extends Screen {
     // Snippet chips — quick-reply pills shown under the main buttons.
     // Each chip opens the SMS app with that snippet's body pre-filled.
     // TODO-marked snippets are dimmed + flagged so the coach remembers to fill in.
+    //
+    // Chips are grouped by tier so the close always leads and the soft
+    // fallback (pickup) reads as clearly secondary:
+    //   1. Qualify  — mid-conversation digging Qs ("what level?")
+    //   2. Close    — the ASK ($1 register) — gold-bordered, the hero chip
+    //   3. Soft     — fallback for hesitant leads (pickup), muted
+    //   4. Info     — neutral info replies (schedule/requirements)
     const snippets = hasPhone ? this.messageSnippets(label) : [];
-    const chipStyle =
+    const baseChip =
       'display:inline-flex; align-items:center; gap:4px; ' +
       'padding:3px 8px; font-size:0.7rem; font-weight:600; ' +
       'border-radius:999px; border:1px solid var(--border-color, #374151); ' +
       'background:var(--bg-tertiary, #1f2937); color:#e5e7eb; ' +
       'text-decoration:none; cursor:pointer; line-height:1.4;';
-    const snippetChips = snippets.map(s => {
+    const tierStyle = {
+      qualify: '',
+      // Close = gold border + slight glow so the eye lands here first.
+      close:   'border-color:#f5d442; color:#f5d442; font-weight:800; box-shadow:0 0 0 1px rgba(245,212,66,0.25);',
+      // Soft fallback = muted so it doesn't compete with the close.
+      soft:    'opacity:0.7; font-weight:500;',
+      info:    'opacity:0.8;',
+    };
+    const chipFor = (s) => {
       const body = this.fillTemplate(s.body, lead);
       const phoneDigits = (lead.phone || '').replace(/[^\d+]/g, '');
       const href = `sms:${phoneDigits}?&body=${encodeURIComponent(body)}`;
       const dim  = s.todo ? 'opacity:0.55;' : '';
       const mark = s.todo ? ' ⚠' : '';
+      const extra = tierStyle[s.tier] || '';
       const titleAttr = body.replace(/"/g, '&quot;').slice(0, 200);
       return `
         <a href="${href}" class="contact-btn snippet-btn"
            data-lead-id="${lead.id}" data-channel="text" data-snippet="${s.id}"
            title="${titleAttr}"
-           style="${chipStyle} ${dim}">${s.label}${mark}</a>`;
-    }).join('');
+           style="${baseChip} ${extra} ${dim}">${s.label}${mark}</a>`;
+    };
+
+    // Group chips by tier, render in order: qualify → close → soft → info.
+    // Each group gets a tiny prefix label so the coach reads the hierarchy.
+    const groupLabel = (txt) =>
+      `<span style="font-size:0.6rem; opacity:0.45; align-self:center; ` +
+      `text-transform:uppercase; letter-spacing:1px; margin-right:2px;">${txt}</span>`;
+    const tierOrder = [
+      ['qualify', 'Qualify'],
+      ['close',   'Ask'],
+      ['soft',    'Fallback'],
+      ['info',    'Info'],
+    ];
+    const tierBlocks = tierOrder.map(([tier, label]) => {
+      const items = snippets.filter(s => (s.tier || 'info') === tier);
+      if (!items.length) return '';
+      return `
+        <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+          ${groupLabel(label)}
+          ${items.map(chipFor).join('')}
+        </div>`;
+    }).filter(Boolean).join('');
     const snippetRow = snippets.length ? `
-      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
-        <span style="font-size:0.65rem; opacity:0.55; align-self:center; margin-right:2px;">Quick replies:</span>
-        ${snippetChips}
+      <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+        ${tierBlocks}
       </div>` : '';
 
     return `
@@ -701,12 +757,61 @@ class LeadsScreen extends Screen {
       'Youth (Grades 1–6)':        'what grade is your player in, and have they played soccer before?',
     };
 
+    // Per-funnel public schedule URLs.  Used by the Schedule snippet to give
+    // leads a concrete answer ("Sundays, full schedule here") instead of a
+    // vague "we'll let you know."  Funnels without an entry fall back to the
+    // TODO placeholder so the coach knows to fill it in.
+    //   day      — short day-of-week phrase ("Sundays", "Sat/Sun")
+    //   url      — public schedule page (optional; omit if no public URL)
+    //   sourceOf — label used inline so the lead knows what they're clicking
+    //              ("CASA league page", "season Google Sheet", etc.)
+    //   practice — short practice cadence note ("practice 2×/week"), optional
+    const SCHEDULES = {
+      'Brazil Men': {
+        day:      'Sundays',
+        url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf: 'CASA Philly Grassroots Cup',
+      },
+      'PR Men': {
+        day:      'Sundays',
+        url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf: 'CASA Philly Grassroots Cup',
+      },
+      'U23 Men': {
+        day:      'Sundays',
+        url:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
+        sourceOf: 'season Google Sheet',
+      },
+      // Youth / Boys / Girls — no public schedule page yet; verbal summary
+      // only.  Games Saturdays (occasionally Sunday) + practice 2×/week.
+      // Specific times/fields confirm after rosters close.
+      'Boys Club (Grades 1–6)': {
+        day:      'Saturdays (sometimes Sundays)',
+        practice: 'practice 2×/week',
+      },
+      'Girls Club (Grades 1–6)': {
+        day:      'Saturdays (sometimes Sundays)',
+        practice: 'practice 2×/week',
+      },
+      'Youth (Grades 1–6)': {
+        day:      'Saturdays (sometimes Sundays)',
+        practice: 'practice 2×/week',
+      },
+      // U23 Women + APSL Trials — funnels not live yet (no ads running).
+      // When launched they'll mirror the Men's template:
+      //   U23 Women  → copy of U23 Men   (Sundays + CASA-equivalent women's league)
+      //   APSL Trials → copy of Brazil/PR Men (Sundays + CASA Philly Grassroots Cup)
+      // Until then, Schedule chip stays as TODO so the ⚠ reminds the coach to
+      // wire it before the first real lead lands.
+    };
+
     const isYouth = /youth|grades?\s*1[–-]6/i.test(funnelLabel || '');
     return {
       program:    PROGRAM_NAMES[funnelLabel] || 'program',
       link:       LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com',
       pickupLink: PICKUP_LINK,
       question:   QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
+      schedule:   SCHEDULES[funnelLabel] || null,
       whose:      isYouth ? "your player's" : 'your',
       whoseCap:   isYouth ? "Your player's" : 'Your',
       pricing:    isYouth ? '$35/mo' : '$9/wk or $35/mo',
@@ -733,10 +838,17 @@ class LeadsScreen extends Screen {
   // Per-funnel reply snippets shown as quick-tap chips on each lead card.
   // Each chip opens the user's SMS app with the body pre-filled.
   //
-  //   { id, label, body, todo? }
+  //   { id, label, body, tier, todo? }
   //     id    — stable identifier (used in logging)
   //     label — chip text shown in UI
   //     body  — message text; supports {first} {coach} tokens
+  //     tier  — one of:
+  //               'qualify' — mid-conversation digging Qs (no link)
+  //               'close'   — the ASK ($1 register) — always lead with this
+  //               'soft'    — fallback for hesitant leads (pickup)
+  //               'info'    — neutral info replies (schedule, requirements)
+  //             Chips are grouped by tier in the UI so the close always
+  //             leads and 'soft' reads as a clearly-secondary fallback.
   //     todo  — if true, chip is dimmed + ⚠ marked so you remember to fill in
   //
   // Add more snippets here as you collect common Q&As.  No code changes
@@ -747,6 +859,7 @@ class LeadsScreen extends Screen {
       {
         id: 'register',
         label: '💳 Register ($1)',
+        tier: 'close',
         body:
           `You're set — ${c.whose} spot is $1 to lock in: ${c.link}\n` +
           `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
@@ -759,11 +872,13 @@ class LeadsScreen extends Screen {
       snippets.push({
         id: 'followup-level',
         label: '🎯 Follow-up',
+        tier: 'qualify',
         body: 'Perfect — what level have you played at most recently?',
       });
       snippets.push({
         id: 'followup-club',
         label: '🏟️ Which club?',
+        tier: 'qualify',
         body: "Got it — any clubs/teams I'd know? (HS, college, adult, anywhere overseas)",
       });
       // Soft fallback for hesitant leads: practice is gated behind the $1
@@ -800,22 +915,55 @@ class LeadsScreen extends Screen {
       snippets.push({
         id: 'pickup',
         label: '⚽ Pickup',
+        tier: 'soft',
         body: pickupBody,
       });
     }
 
     snippets.push(
-      {
-        id: 'schedule',
-        label: '📅 Schedule',
-        todo: true,
-        body:
-          `Practice schedule for our ${c.program}:\n` +
-          `(TODO — fill this in once confirmed for the season.)`,
-      },
+      // Schedule — concrete answer when funnelContext has schedule info.
+      // Doubles as a soft-close: answers the logistics question AND
+      // immediately gives the register CTA, since leads asking
+      // "what's the schedule?" are in a "does this fit my life?" frame
+      // and want the next action right there.
+      //
+      // Three shapes supported:
+      //   1. day + url    → "Games <day> — full schedule (<src>): <url>"
+      //   2. day only     → "Games <day>, <practice>"  (verbal summary)
+      //   3. nothing      → TODO placeholder (dimmed)
+      c.schedule
+        ? (() => {
+            const lines = [];
+            if (c.schedule.url) {
+              lines.push(`Games ${c.schedule.day} — full schedule (${c.schedule.sourceOf}):`);
+              lines.push(c.schedule.url);
+            } else {
+              const practice = c.schedule.practice ? `, ${c.schedule.practice}` : '';
+              lines.push(`Games ${c.schedule.day}${practice}.`);
+              lines.push(`Specific times/fields confirm after rosters close.`);
+            }
+            lines.push('');
+            lines.push(`If it works, $1 locks ${c.whose} spot: ${c.link}`);
+            return {
+              id: 'schedule',
+              label: '📅 Schedule',
+              tier: 'info',
+              body: lines.join('\n'),
+            };
+          })()
+        : {
+            id: 'schedule',
+            label: '📅 Schedule',
+            tier: 'info',
+            todo: true,
+            body:
+              `Practice schedule for our ${c.program}:\n` +
+              `(TODO — fill this in once confirmed for the season.)`,
+          },
       {
         id: 'requirements',
         label: '✓ Requirements',
+        tier: 'info',
         todo: true,
         body:
           `What to bring / requirements:\n` +
