@@ -12,6 +12,7 @@ class LeadsScreen extends Screen {
 
       <div style="padding: var(--space-4);">
         <div id="ads-rundown" style="margin-bottom:var(--space-3);"></div>
+        <div id="templates-panel" style="margin-bottom:var(--space-3);"></div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="leads-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No leads yet.</div>
@@ -40,22 +41,26 @@ class LeadsScreen extends Screen {
     this.find('#leads-empty').style.display   = 'none';
 
     try {
-      const [leadsRes, spendRes, statsRes, targetingRes] = await Promise.all([
+      const [leadsRes, spendRes, statsRes, targetingRes, pickupRes] = await Promise.all([
         this.auth.fetch('/api/leads'),
         this.auth.fetch('/api/ads/spend').catch(() => null),
         this.auth.fetch('/api/leads/contact-stats').catch(() => null),
         this.auth.fetch('/api/ads/targeting').catch(() => null),
+        this.auth.fetch('/api/leads/next-pickup').catch(() => null),
       ]);
       if (!leadsRes.ok) throw new Error(`HTTP ${leadsRes.status}`);
       const leads = await leadsRes.json();
       const spend = spendRes && spendRes.ok ? await spendRes.json() : [];
       const stats = statsRes && statsRes.ok ? await statsRes.json() : { per_lead: {}, aggregates: {} };
       const targeting = targetingRes && targetingRes.ok ? await targetingRes.json() : [];
+      const pickup    = pickupRes && pickupRes.ok ? await pickupRes.json() : { event: null };
+      this._nextPickup = pickup.event || null;
 
       this.find('#leads-loading').style.display = 'none';
 
       // Render targeting rundown at top — always, even if there are no leads yet
       this.renderAdsRundown(targeting);
+      this.renderTemplatesPanel();
 
       if (!leads.length) {
         this.find('#leads-empty').style.display = 'block';
@@ -375,6 +380,146 @@ class LeadsScreen extends Screen {
     });
   }
 
+  // ── Message Templates panel ─────────────────────────────────────────
+  // Renders every initial outreach blurb (SMS + email) and every reply
+  // snippet for every funnel, with a Copy-to-clipboard button on each.
+  // Lets the coach read & critique exactly what gets sent without needing
+  // a real lead in front of them.  Tokens like {first} render as a
+  // bracketed placeholder ([Name]) since there's no specific lead.
+  renderTemplatesPanel() {
+    const root = this.find('#templates-panel');
+    if (!root) return;
+
+    // Canonical funnel labels — one of each funnel (formLabel() has dupes
+    // because the same funnel often has multiple Meta form IDs).
+    const FUNNELS = [
+      'Brazil Men',
+      'PR Men',
+      'U23 Men',
+      'APSL Trials',
+      'U23 Women',
+      'Boys Club (Grades 1–6)',
+      'Girls Club (Grades 1–6)',
+      'Youth (Grades 1–6)',
+    ];
+
+    // Synthetic "preview" lead — fillTemplate() will sub {first} → [Name].
+    const previewLead = { name: '[Name]', phone: '[Phone]' };
+
+    const collapsedKey = 'leads.templatesPanelCollapsed';
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(collapsedKey) === '1'; } catch {}
+
+    const esc = (s) => String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const blurbBlock = (title, body, todo = false) => {
+      const dim = todo ? 'opacity:0.55;' : '';
+      const warn = todo ? ' <span style="color:#f59e0b;" title="Placeholder — fill this in">⚠</span>' : '';
+      return `
+        <div style="background:var(--bg-primary, #0f172a); border-radius:var(--radius-sm); padding:var(--space-2); margin-bottom:var(--space-2); ${dim}">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-bottom:4px;">
+            <strong style="font-size:0.8rem;">${esc(title)}${warn}</strong>
+            <button class="copy-btn btn btn-secondary" data-copy="${esc(body)}" style="font-size:0.7rem; padding:2px 8px;">📋 Copy</button>
+          </div>
+          <pre style="white-space:pre-wrap; word-break:break-word; margin:0; font-family:inherit; font-size:0.78rem; line-height:1.45; opacity:0.92;">${esc(body)}</pre>
+        </div>
+      `;
+    };
+
+    const funnelBlock = (label) => {
+      const t        = this.messageTemplate(label);
+      const sms      = this.fillTemplate(t.sms,     previewLead);
+      const subject  = this.fillTemplate(t.subject, previewLead);
+      const email    = this.fillTemplate(t.email,   previewLead);
+      const snippets = this.messageSnippets(label);
+
+      const snippetHtml = snippets.map(s => {
+        const body = this.fillTemplate(s.body, previewLead);
+        return blurbBlock(s.label, body, !!s.todo);
+      }).join('');
+
+      return `
+        <details style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3); margin-bottom:var(--space-2);">
+          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; user-select:none; outline:none;">
+            ${esc(label)} <span style="opacity:0.5; font-weight:400; font-size:0.72rem;">(${snippets.length + 2} blurbs)</span>
+          </summary>
+          <div style="margin-top:var(--space-2);">
+            ${blurbBlock('Intro — SMS', sms)}
+            ${blurbBlock(`Intro — Email · Subject: ${subject}`, email)}
+            ${snippetHtml}
+          </div>
+        </details>
+      `;
+    };
+
+    root.innerHTML = `
+      <details ${collapsed ? '' : 'open'} style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3);">
+        <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; user-select:none; outline:none;">
+          📝 Message Templates <span style="opacity:0.5; font-weight:400; font-size:0.75rem;">(${FUNNELS.length} funnels · preview / copy)</span>
+        </summary>
+        <div style="margin-top:var(--space-2); font-size:0.75rem; opacity:0.7;">
+          Preview of every initial text/email and reply snippet across all funnels. <code>[Name]</code> is a placeholder — edit after pasting.
+        </div>
+        <div style="margin-top:var(--space-2);">
+          ${FUNNELS.map(funnelBlock).join('')}
+        </div>
+      </details>
+    `;
+
+    // Persist collapsed/open state of the outer panel
+    const outer = root.querySelector(':scope > details');
+    if (outer) outer.addEventListener('toggle', () => {
+      try { localStorage.setItem(collapsedKey, outer.open ? '0' : '1'); } catch {}
+    });
+
+    // Wire copy buttons (event delegation on the panel root)
+    root.addEventListener('click', (e) => {
+      const btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const text = btn.getAttribute('data-copy') || '';
+      this.copyToClipboard(text, btn);
+    });
+  }
+
+  copyToClipboard(text, btn) {
+    const done = () => {
+      if (!btn) return;
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied';
+      btn.disabled = true;
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1200);
+    };
+    const fail = () => {
+      if (!btn) return;
+      const orig = btn.innerHTML;
+      btn.innerHTML = '⚠ Failed';
+      setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fail);
+        return;
+      }
+    } catch {}
+    // Legacy fallback for non-secure contexts
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      done();
+    } catch {
+      fail();
+    }
+  }
+
   renderLead(lead, columnLabel = null, perLeadStats = {}) {
     const date = new Date(lead.created_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -444,6 +589,35 @@ class LeadsScreen extends Screen {
          data-lead-id="${lead.id}" data-channel="vcard" data-kind="${saveKind}"
          style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">${saveLabel}</a>`;
 
+    // Snippet chips — quick-reply pills shown under the main buttons.
+    // Each chip opens the SMS app with that snippet's body pre-filled.
+    // TODO-marked snippets are dimmed + flagged so the coach remembers to fill in.
+    const snippets = hasPhone ? this.messageSnippets(label) : [];
+    const chipStyle =
+      'display:inline-flex; align-items:center; gap:4px; ' +
+      'padding:3px 8px; font-size:0.7rem; font-weight:600; ' +
+      'border-radius:999px; border:1px solid var(--border-color, #374151); ' +
+      'background:var(--bg-tertiary, #1f2937); color:#e5e7eb; ' +
+      'text-decoration:none; cursor:pointer; line-height:1.4;';
+    const snippetChips = snippets.map(s => {
+      const body = this.fillTemplate(s.body, lead);
+      const phoneDigits = (lead.phone || '').replace(/[^\d+]/g, '');
+      const href = `sms:${phoneDigits}?&body=${encodeURIComponent(body)}`;
+      const dim  = s.todo ? 'opacity:0.55;' : '';
+      const mark = s.todo ? ' ⚠' : '';
+      const titleAttr = body.replace(/"/g, '&quot;').slice(0, 200);
+      return `
+        <a href="${href}" class="contact-btn snippet-btn"
+           data-lead-id="${lead.id}" data-channel="text" data-snippet="${s.id}"
+           title="${titleAttr}"
+           style="${chipStyle} ${dim}">${s.label}${mark}</a>`;
+    }).join('');
+    const snippetRow = snippets.length ? `
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+        <span style="font-size:0.65rem; opacity:0.55; align-self:center; margin-right:2px;">Quick replies:</span>
+        ${snippetChips}
+      </div>` : '';
+
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-1);">
@@ -456,6 +630,7 @@ class LeadsScreen extends Screen {
         ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
         ${(textBadge || emailBadge) ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${textBadge}${emailBadge}</div>` : ''}
         <div style="display:flex; gap:6px; margin-top:8px;">${textBtn}${emailBtn}${saveBtn}</div>
+        ${snippetRow}
       </div>
     `;
   }
@@ -463,41 +638,46 @@ class LeadsScreen extends Screen {
   // ── Message templates ────────────────────────────────────────────────
   // Tokens: {first} {full} {phone} {coach}
   //
-  // Funnel goal: get a $1 registration (captures card on file, then
-  // recurring billing runs automatically). Practice attendance becomes
-  // the *reward* for registering — not a separate ask.
+  // Funnel goal (revised 2026-06-09):
+  //   Two-step conversational funnel — first text is a warm intro + ONE
+  //   qualifying question, no link.  Once the lead replies, the coach
+  //   sends a snippet from messageSnippets() (Register / Schedule /
+  //   Requirements / etc.) tailored to what they asked.
   //
-  // Pricing:
+  //   Why: cold "tap-to-pay" first messages convert at 1-5%.  Conversation-
+  //   first converts at 10-20% based on most documented youth-sports SMS data.
+  //
+  // Pricing (used in the Register snippet, not the first text):
   //   • $1 to register (card capture)
   //   • Youth   → $35/mo
-  //   • Adults  → $9/wk or $35/mo (their pick at registration)
+  //   • Adults  → $9/wk or $35/mo
   //
-  // Per-program LeagueApps registration URLs. Swap in program-specific
-  // links here as they're created. Defaults to the club site root.
-  messageTemplate(funnelLabel) {
+  // Per-program LeagueApps registration URLs and qualifying questions live in
+  // funnelContext() below — single source of truth used by both the initial
+  // template and the snippets.
+
+  funnelContext(funnelLabel) {
     // LeagueApps registration URLs ($1 to register; card on file → recurring).
     const URL_MEN   = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership';
     const URL_WOMEN = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership';
     const URL_BOYS  = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership';
     const URL_GIRLS = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-1893-girls-club-soccer-membership';
+    // Philadelphia Pickup ⚽️ GroupMe chat (id 65284700). Open chat; soft
+    // fallback for hesitant leads.  Share link below; the snippet body will
+    // ALSO prepend the next scheduled pickup (if any) pulled live from the
+    // chat's calendar via /api/leads/next-pickup.
+    const PICKUP_LINK = 'https://groupme.com/join_group/65284700/VRuVK50q';
 
     const LINKS = {
-      // Adults → club Men's Membership program ($1 register, then $9/wk or $35/mo)
       'Brazil Men':                URL_MEN,
       'PR Men':                    URL_MEN,
       'U23 Men':                   URL_MEN,
       'APSL Trials':               URL_MEN,
-      // Adult women → club Women's Membership program (same pricing)
       'U23 Women':                 URL_WOMEN,
-      // Youth — separate Boys / Girls Meta lead forms once they exist.
-      // Wire their form IDs into formLabel() to route to these labels.
       'Boys Club (Grades 1–6)':    URL_BOYS,
       'Girls Club (Grades 1–6)':   URL_GIRLS,
-      // Legacy combined-Youth form (gender unknown). Default to Boys URL;
-      // coach can manually paste the Girls URL for known-girl leads.
-      'Youth (Grades 1–6)':        URL_BOYS,
+      'Youth (Grades 1–6)':        URL_BOYS,   // legacy combined form
     };
-    // Human-readable program name used inline in the message body.
     const PROGRAM_NAMES = {
       'Youth (Grades 1–6)':        'youth soccer program (grades 1–6)',
       'Boys Club (Grades 1–6)':    'Boys Club soccer program (grades 1–6)',
@@ -508,32 +688,161 @@ class LeadsScreen extends Screen {
       'U23 Women':                 "U23 Women's team",
       'APSL Trials':               'APSL trial',
     };
+    // Qualifying question asked in the FIRST message.  Goal: one short answer
+    // that lets the coach pick the right follow-up snippet.
+    const QUESTIONS = {
+      'Brazil Men':                'have you played 11v11 before, and what position?',
+      'PR Men':                    'have you played 11v11 before, and what position?',
+      'U23 Men':                   'what year were you born, and how long have you been playing?',
+      'U23 Women':                 'what year were you born, and how long have you been playing?',
+      'APSL Trials':               'what level have you played at — college, semi-pro, top flight overseas?',
+      'Boys Club (Grades 1–6)':    'what grade is your player in, and have they played soccer before?',
+      'Girls Club (Grades 1–6)':   'what grade is your player in, and have they played soccer before?',
+      'Youth (Grades 1–6)':        'what grade is your player in, and have they played soccer before?',
+    };
 
-    const isYouth = /youth/i.test(funnelLabel || '');
-    const program = PROGRAM_NAMES[funnelLabel] || 'program';
-    const link    = LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com';
-    const whose   = isYouth ? "your player's" : 'your';
-    const pricing = isYouth ? '$35/mo' : '$9/wk or $35/mo';
+    const isYouth = /youth|grades?\s*1[–-]6/i.test(funnelLabel || '');
+    return {
+      program:    PROGRAM_NAMES[funnelLabel] || 'program',
+      link:       LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com',
+      pickupLink: PICKUP_LINK,
+      question:   QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
+      whose:      isYouth ? "your player's" : 'your',
+      whoseCap:   isYouth ? "Your player's" : 'Your',
+      pricing:    isYouth ? '$35/mo' : '$9/wk or $35/mo',
+      isYouth,
+    };
+  }
 
-    // SMS keeps it tight: $1 hook + link, nothing else. Pricing/plan
-    // selection is handled on the LeagueApps registration page where it
-    // belongs (proper UI, ROSCA-compliant pre-checkout disclosure).
-    // Email gets the full pricing breakdown — email is the "tell me more"
-    // channel; SMS is the "tap now" channel.
+  messageTemplate(funnelLabel) {
+    const c = this.funnelContext(funnelLabel);
     return {
       sms:
-        `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${program}. ` +
-        `$1 locks ${whose} spot: ${link}\n\nReply STOP to opt out.`,
-      subject: `Lighthouse 1893 — ${program} (next step)`,
+        `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
+        `Quick Q: ${c.question}`,
+      subject: `Lighthouse 1893 — thanks for reaching out!`,
       email:
         `Hi {first},\n\n` +
-        `Thanks for reaching out about Lighthouse 1893's ${program}.\n\n` +
-        `The easiest way to get started is our $1 registration. It locks in ${whose} spot ` +
-        `and starts the payment plan (${pricing}, cancel anytime).\n\n` +
-        `Register here: ${link}\n\n` +
-        `Reply to this email or text me at this number with any questions.\n\n` +
+        `{coach} here with Lighthouse 1893 — thanks for your interest in our ${c.program}!\n\n` +
+        `Quick question to get started: ${c.question}\n\n` +
+        `Looking forward to hearing from you.\n\n` +
         `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
     };
+  }
+
+  // Per-funnel reply snippets shown as quick-tap chips on each lead card.
+  // Each chip opens the user's SMS app with the body pre-filled.
+  //
+  //   { id, label, body, todo? }
+  //     id    — stable identifier (used in logging)
+  //     label — chip text shown in UI
+  //     body  — message text; supports {first} {coach} tokens
+  //     todo  — if true, chip is dimmed + ⚠ marked so you remember to fill in
+  //
+  // Add more snippets here as you collect common Q&As.  No code changes
+  // required beyond appending to the array.
+  messageSnippets(funnelLabel) {
+    const c = this.funnelContext(funnelLabel);
+    const snippets = [
+      {
+        id: 'register',
+        label: '💳 Register ($1)',
+        body:
+          `You're set — ${c.whose} spot is $1 to lock in: ${c.link}\n` +
+          `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
+      },
+    ];
+
+    // Adult funnels: after they answer the qualifying Q (position / year-born /
+    // level), dig one layer deeper to gauge experience before pitching.
+    if (!c.isYouth) {
+      snippets.push({
+        id: 'followup-level',
+        label: '🎯 Follow-up',
+        body: 'Perfect — what level have you played at most recently?',
+      });
+      snippets.push({
+        id: 'followup-club',
+        label: '🏟️ Which club?',
+        body: "Got it — any clubs/teams I'd know? (HS, college, adult, anywhere overseas)",
+      });
+      // Soft fallback for hesitant leads: practice is gated behind the $1
+      // register, but pickup is open — they can come play, see the level,
+      // meet the squad, then decide. Doesn't compete with the close.
+      // Dynamic body: lead with the NEXT scheduled pickup (date/time/field)
+      // if the calendar has one, otherwise fall back to a generic invite to
+      // the chat. this._nextPickup is loaded by loadLeads().
+      const next = this._nextPickup;
+      let pickupBody;
+      if (next && next.start_at) {
+        const when  = this.formatPickupDate(next.start_at);
+        const loc   = (next.location || next.location_address || '').trim();
+        const title = (next.title || '').trim();
+        const where = loc ? ` @ ${loc}` : '';
+        // Derive the per-event GroupMe share URL from the chat join link:
+        //   chat:  https://groupme.com/join_group/{conv}/{token}
+        //   event: https://groupme.com/join_event/{conv}/{event_id}/{token}
+        // Share token is per-chat (same one), so no extra data needed.
+        const eventUrl = (next.external_id && /\/join_group\//.test(c.pickupLink))
+          ? c.pickupLink.replace('/join_group/', '/join_event/')
+                        .replace(/\/([^\/]+)$/, `/${next.external_id}/$1`)
+          : c.pickupLink;
+        const titleClause = title ? `"${title}" — ` : '';
+        pickupBody =
+          `Our next pickup: ${titleClause}${when}${where}.\n` +
+          `RSVP "Going" here so we know to expect you: ${eventUrl}\n` +
+          `Come play, see the level, meet the squad. If it's a fit, $1 to lock in your team spot.`;
+      } else {
+        pickupBody =
+          `No pressure to commit yet — jump in our Philadelphia Pickup chat for the next session and RSVP "Going" on whichever pickup works for you: ${c.pickupLink}\n` +
+          `Come play, see the level, meet the squad. If it's a fit, $1 to lock in your team spot.`;
+      }
+      snippets.push({
+        id: 'pickup',
+        label: '⚽ Pickup',
+        body: pickupBody,
+      });
+    }
+
+    snippets.push(
+      {
+        id: 'schedule',
+        label: '📅 Schedule',
+        todo: true,
+        body:
+          `Practice schedule for our ${c.program}:\n` +
+          `(TODO — fill this in once confirmed for the season.)`,
+      },
+      {
+        id: 'requirements',
+        label: '✓ Requirements',
+        todo: true,
+        body:
+          `What to bring / requirements:\n` +
+          `(TODO — fill this in: gear, age range, experience expected, etc.)`,
+      },
+      // Add more snippets here as common questions come up:
+      //
+      //   { id: 'location',  label: '📍 Field',       body: '...' },
+      //   { id: 'gear',      label: '👕 What to wear', body: '...' },
+      //
+      // Use {first} or {coach} tokens in body if you want personalization.
+    );
+    return snippets;
+  }
+
+  // Friendly format for an ISO timestamp from chat_events.start_at.
+  //   2026-06-11T23:00:00Z → "Wed Jun 11, 7pm" (in user's local tz)
+  formatPickupDate(iso) {
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      const dow = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const md  = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      let tm = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      tm = tm.toLowerCase().replace(/\s+/g, '').replace(/:00(am|pm)/, '$1'); // 7:00pm → 7pm
+      return `${dow} ${md}, ${tm}`;
+    } catch { return ''; }
   }
 
   fillTemplate(tmpl, lead) {
@@ -595,12 +904,21 @@ class LeadsScreen extends Screen {
     // text/email: let the sms: / mailto: navigation proceed,
     // and log the touch in parallel. Don't preventDefault.
     try {
-      const lead  = (this._leads || []).find(l => String(l.id) === String(leadId));
-      const label = lead ? this.formLabel(lead.form_id) : '';
-      const tmpl  = this.messageTemplate(label);
-      const body  = channel === 'text'
-        ? this.fillTemplate(tmpl.sms,   lead || {})
-        : this.fillTemplate(tmpl.email, lead || {});
+      const lead       = (this._leads || []).find(l => String(l.id) === String(leadId));
+      const label      = lead ? this.formLabel(lead.form_id) : '';
+      const snippetId  = btn.getAttribute('data-snippet');
+      let   body;
+      if (snippetId) {
+        // Snippet chip click — look up the snippet's body, fall back to '' if missing.
+        const snippets = this.messageSnippets(label);
+        const snip     = snippets.find(s => s.id === snippetId);
+        body = snip ? this.fillTemplate(snip.body, lead || {}) : '';
+      } else {
+        const tmpl = this.messageTemplate(label);
+        body = channel === 'text'
+          ? this.fillTemplate(tmpl.sms,   lead || {})
+          : this.fillTemplate(tmpl.email, lead || {});
+      }
       await this.auth.fetch(`/api/leads/${leadId}/contact`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },

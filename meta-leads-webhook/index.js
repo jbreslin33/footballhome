@@ -567,6 +567,37 @@ app.get('/api/leads/contact-stats', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/leads/next-pickup — next upcoming Philadelphia Pickup ────
+// Returns the next future event on the Philadelphia Pickup GroupMe chat
+// (chat_id = 5) so the leads page can pre-fill the "Pickup" reply snippet
+// with a concrete date/time/field.  Returns { event: null } if nothing's
+// scheduled — the snippet falls back to a generic chat invite.
+app.get('/api/leads/next-pickup', requireAuth, async (req, res) => {
+  const PICKUP_CHAT_ID = 5; // Philadelphia Pickup ⚽️
+  try {
+    const q = await pool.query(
+      `SELECT id, title, location, location_address, external_id,
+              COALESCE(start_at,
+                       (event_date + COALESCE(event_time, '00:00'::time)) AT TIME ZONE 'America/New_York'
+              ) AS start_at,
+              end_at
+         FROM chat_events
+        WHERE chat_id = $1
+          AND COALESCE(is_active, true) = true
+          AND COALESCE(start_at,
+                       (event_date + COALESCE(event_time, '00:00'::time)) AT TIME ZONE 'America/New_York'
+              ) > NOW()
+        ORDER BY 6 ASC
+        LIMIT 1`,
+      [PICKUP_CHAT_ID]
+    );
+    res.json({ event: q.rows[0] || null });
+  } catch (err) {
+    console.error('Error fetching next pickup:', err.message);
+    res.status(500).json({ error: 'Failed to fetch next pickup' });
+  }
+});
+
 // ── GET /api/leads/:id/vcard — download lead as vCard(s) ──────────────
 // Query: ?kind=self|parent|player|youth-pair
 //   self        — single contact (adult funnels): "FullName Lighthouse "
