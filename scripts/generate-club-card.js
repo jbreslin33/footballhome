@@ -59,9 +59,20 @@ const html = `<!DOCTYPE html>
   .crest {
     display:flex; flex-direction:column; align-items:center; gap:14px;
   }
+  .crest .row {
+    display:flex; align-items:center; gap:36px;
+  }
   .crest img {
     height:170px; width:auto;
     filter: drop-shadow(0 6px 16px rgba(0,0,0,0.5));
+  }
+  .crest .ball {
+    width:130px; height:130px; border-radius:50%;
+    background:#0d2247;
+    border:5px solid #f5d442;
+    display:flex; align-items:center; justify-content:center;
+    font-size:78px; line-height:1;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
   }
   .crest .since {
     font-size:18px; letter-spacing:8px; color:#f5d442;
@@ -70,31 +81,32 @@ const html = `<!DOCTYPE html>
 
   /* Hero block: LIGHTHOUSE / BOYS CLUB / SOCCER */
   .hero {
-    flex:1;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center;
-    margin-top:30px;
+    margin-top:10px;
   }
   .hero .lighthouse {
-    font-size:64px; font-weight:900; letter-spacing:6px;
+    font-size:56px; font-weight:900; letter-spacing:6px;
     color:#ffffff; opacity:0.92;
     text-shadow: 0 4px 14px rgba(0,0,0,0.5);
   }
   .hero h1 {
-    font-size:172px; font-weight:900; letter-spacing:3px;
-    line-height:0.95; margin-top:6px;
+    font-size:160px; font-weight:900; letter-spacing:3px;
+    line-height:0.95; margin-top:4px;
     color:#ffffff;
     text-shadow: 0 6px 22px rgba(0,0,0,0.6);
   }
   .hero .soccer {
-    font-size:138px; font-weight:900; letter-spacing:14px;
-    color:#f5d442; line-height:1; margin-top:8px;
+    font-size:120px; font-weight:900; letter-spacing:14px;
+    color:#f5d442; line-height:1; margin-top:4px;
     text-shadow: 0 4px 16px rgba(0,0,0,0.55);
   }
 
   .grades {
-    display:flex; justify-content:center; margin-top:30px;
+    display:flex; justify-content:center;
   }
+  .spacer-top { flex:1; }
+  .spacer-bot { flex:2; }
   .grades .pill {
     background: rgba(245,212,66,0.18);
     border:2px solid rgba(245,212,66,0.65);
@@ -106,11 +118,10 @@ const html = `<!DOCTYPE html>
   }
 
   .footer {
-    margin-top:auto;
     text-align:center;
   }
-  .footer .name { font-size:20px; font-weight:800; letter-spacing:1px; }
-  .footer .addr { font-size:15px; opacity:0.78; margin-top:4px; letter-spacing:0.5px; }
+  .footer .name { font-size:26px; font-weight:800; letter-spacing:1px; }
+  .footer .addr { font-size:22px; opacity:0.85; margin-top:6px; letter-spacing:0.5px; }
 </style>
 </head>
 <body>
@@ -118,7 +129,10 @@ const html = `<!DOCTYPE html>
     <div class="gold-bar"></div>
 
     <div class="crest">
-      <img src="${lh1893}" alt="Lighthouse 1893">
+      <div class="row">
+        <img src="${lh1893}" alt="Lighthouse 1893">
+        <div class="ball">⚽</div>
+      </div>
       <div class="since">EST. 1893 · PHILADELPHIA</div>
     </div>
 
@@ -128,9 +142,13 @@ const html = `<!DOCTYPE html>
       <div class="soccer">SOCCER</div>
     </div>
 
+    <div class="spacer-top"></div>
+
     <div class="grades">
       <div class="pill">Grades 1–6</div>
     </div>
+
+    <div class="spacer-bot"></div>
 
     <div class="footer">
       <div class="name">📍 Lighthouse Sports &amp; Entertainment Complex</div>

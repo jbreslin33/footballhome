@@ -233,6 +233,10 @@ class LeadsScreen extends Screen {
       '3249608418562710': 'Youth (Grades 1–6)',
       '1704106777282059': 'Boys Club (Grades 1–6)',
       '1571742281184926': 'Girls Club (Grades 1–6)',
+      // Slim forms (name/email/phone only) created 2026-06-10 via
+      // scripts/recreate-lead-forms.js — old IDs above stay mapped so
+      // historical leads keep their column.
+      '2471488896628970': 'Boys Club (Grades 1–6)',
     };
     return map[formId] || null;
   }
@@ -247,10 +251,24 @@ class LeadsScreen extends Screen {
     if (!root) return;
     if (!ads || ads.length === 0) { root.innerHTML = ''; return; }
 
-    // Group ads by funnel label; show ACTIVE first, then others
+    // Group ads by funnel label; show ACTIVE first, then others.
+    // Within each status, sort by canonical funnel order (same order as
+    // the kanban columns) so the rundown is stable + scannable.
+    const FUNNEL_ORDER = [
+      'Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials',
+      'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)',
+    ];
+    const funnelRank = (label) => {
+      const i = FUNNEL_ORDER.indexOf(label);
+      return i === -1 ? 999 : i;
+    };
     const decorated = ads.map(a => ({ ...a, funnel: this.formLabel(a.form_id) || '(no form)' }));
     const statusRank = { ACTIVE: 0, PENDING_REVIEW: 1, IN_PROCESS: 2, PAUSED: 3, ARCHIVED: 4, DELETED: 5 };
-    decorated.sort((x, y) => (statusRank[x.status] ?? 9) - (statusRank[y.status] ?? 9));
+    decorated.sort((x, y) => {
+      const ds = (statusRank[x.status] ?? 9) - (statusRank[y.status] ?? 9);
+      if (ds !== 0) return ds;
+      return funnelRank(x.funnel) - funnelRank(y.funnel);
+    });
 
     // Identify problems for the warning banner at the top
     const warnings = [];
@@ -311,6 +329,26 @@ class LeadsScreen extends Screen {
       }).join(' · ');
     };
 
+    // Pop-out preview buttons — open Meta-hosted iframe preview in a new
+    // tab.  Backend (/api/ads/:adId/preview) proxies to Meta and 302s to
+    // the iframe URL so the access token stays server-side.
+    const previewBtns = (adId) => {
+      const btn = (fmt, label, title) =>
+        `<a href="/api/ads/${encodeURIComponent(adId)}/preview?format=${fmt}"
+            target="_blank" rel="noopener"
+            title="${title}"
+            style="display:inline-block; padding:1px 6px; margin:0 2px 2px 0;
+                   font-size:0.7rem; border-radius:6px;
+                   background:var(--bg-tertiary, #374151); color:#e5e7eb;
+                   text-decoration:none; border:1px solid var(--border-color, #4b5563);"
+         >${label}</a>`;
+      return [
+        btn('feed',     '📘 FB',    'Facebook mobile feed preview'),
+        btn('ig',       '📷 IG',    'Instagram feed preview'),
+        btn('ig_story', '📱 Story', 'Instagram story preview'),
+      ].join('');
+    };
+
     const warnBanner = warnings.length > 0 ? `
       <div style="background:#3d2a0a; border-left:4px solid #f59e0b; padding:var(--space-2) var(--space-3); border-radius:var(--radius-md); margin-bottom:var(--space-2);">
         <div style="font-weight:700; font-size:0.85rem; color:#f59e0b;">⚠ ${warnings.length} issue${warnings.length>1?'s':''} detected</div>
@@ -336,6 +374,7 @@ class LeadsScreen extends Screen {
               <tr>
                 <th style="padding:4px 8px;">Ad</th>
                 <th style="padding:4px 8px;">Status</th>
+                <th style="padding:4px 8px;">Preview</th>
                 <th style="padding:4px 8px;">Geo</th>
                 <th style="padding:4px 8px;">Audience</th>
                 <th style="padding:4px 8px; text-align:right;">$/day</th>
@@ -355,6 +394,7 @@ class LeadsScreen extends Screen {
                   <tr style="border-top:1px solid var(--bg-tertiary, #1f2937); ${dim}">
                     <td style="padding:6px 8px;"><strong>${a.funnel}</strong><br><span style="opacity:0.5; font-size:0.7rem;">${a.ad_name}</span></td>
                     <td style="padding:6px 8px;">${statusPill(a.status)}</td>
+                    <td style="padding:6px 8px; white-space:nowrap;">${previewBtns(a.ad_id)}</td>
                     <td style="padding:6px 8px;">${geoBadge(a.geo)}</td>
                     <td style="padding:6px 8px;">${audBadge(a)}</td>
                     <td style="padding:6px 8px; text-align:right;">${fmt$(a.daily_budget_usd)}</td>

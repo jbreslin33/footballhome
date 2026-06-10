@@ -399,6 +399,64 @@ app.get('/api/ads/targeting', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/ads/:adId/preview — pop-out preview redirect ─────────────
+// Calls Meta's /{ad_id}/previews to get the iframe URL for the requested
+// placement, then 302-redirects the browser straight to it.  This keeps
+// the access token server-side (never leaks into page source) and gives
+// the leads page a clean target_blank link per ad.
+//
+// Format aliases (short → Meta's ad_format value):
+//   fb       → FACEBOOK_STORY_MOBILE
+//   feed     → MOBILE_FEED_STANDARD     (default — Facebook mobile feed)
+//   ig       → INSTAGRAM_STANDARD
+//   ig_story → INSTAGRAM_STORY
+//   ig_reels → INSTAGRAM_REELS
+//
+// Errors render as a small HTML page (not JSON) since this opens in a
+// new tab — JSON would be unhelpful to the coach.
+app.get('/api/ads/:adId/preview', requireAuth, async (req, res) => {
+  const FORMATS = {
+    feed:     'MOBILE_FEED_STANDARD',
+    fb:       'FACEBOOK_STORY_MOBILE',
+    ig:       'INSTAGRAM_STANDARD',
+    ig_story: 'INSTAGRAM_STORY',
+    ig_reels: 'INSTAGRAM_REELS',
+  };
+  const adId   = req.params.adId;
+  const fmtKey = (req.query.format || 'feed').toLowerCase();
+  const adFmt  = FORMATS[fmtKey] || fmtKey.toUpperCase(); // allow raw Meta key too
+
+  const errPage = (msg) => `<!DOCTYPE html><html><head><title>Preview error</title>
+    <style>body{font-family:system-ui;background:#0f172a;color:#e5e7eb;padding:40px;}
+    h1{color:#f59e0b;}code{background:#1f2937;padding:2px 6px;border-radius:3px;}</style></head>
+    <body><h1>⚠ Ad preview failed</h1><p>${msg}</p>
+    <p style="opacity:0.7;font-size:0.85rem;">ad_id: <code>${adId}</code> · format: <code>${adFmt}</code></p>
+    </body></html>`;
+
+  try {
+    if (!ADS_TOKEN) return res.status(500).type('html').send(errPage('Missing META_ADS_TOKEN on server.'));
+
+    const url = `${API}/${adId}/previews?ad_format=${encodeURIComponent(adFmt)}&access_token=${ADS_TOKEN}`;
+    const r   = await fetch(url);
+    const d   = await r.json();
+    if (d.error) return res.status(502).type('html').send(errPage(`Meta API: ${d.error.message}`));
+
+    const body = d?.data?.[0]?.body;
+    if (!body) return res.status(404).type('html').send(errPage('Meta returned no preview body (placement may not apply to this ad).'));
+
+    const m = body.match(/src="([^"]+)"/);
+    if (!m) return res.status(500).type('html').send(errPage('Could not extract iframe src from Meta response.'));
+    const iframeSrc = m[1].replace(/&amp;/g, '&');
+
+    // The iframe URL is what Meta would normally embed — opening it directly
+    // shows the same preview standalone.  Token is part of the URL but
+    // bounded to this preview only.
+    return res.redirect(302, iframeSrc);
+  } catch (err) {
+    return res.status(500).type('html').send(errPage(err.message));
+  }
+});
+
 // ── GET /api/ads/spend — aggregate spend stats per lead form ──────────
 app.get('/api/ads/spend', requireAuth, async (req, res) => {
   try {

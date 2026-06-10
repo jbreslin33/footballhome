@@ -72,6 +72,15 @@ const html = `<!DOCTYPE html>
   .header .text { display:flex; flex-direction:column; line-height:1.05; }
   .header .text .club { font-size:30px; font-weight:900; letter-spacing:2px; }
   .header .text .since { font-size:18px; color:#f5d442; font-weight:700; letter-spacing:4px; }
+  .header .ball {
+    margin-left:auto;
+    width:110px; height:110px; border-radius:50%;
+    background:#0d2247;
+    border:4px solid #f5d442;
+    display:flex; align-items:center; justify-content:center;
+    font-size:64px; line-height:1;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
 
   .hero {
     margin-top:60px;
@@ -154,7 +163,7 @@ const html = `<!DOCTYPE html>
   .cta-banner .bottom { font-size:28px; font-weight:900; margin-top:4px; }
 
   .footer {
-    position:absolute; bottom:30px; left:60px; right:60px;
+    position:absolute; bottom:150px; left:60px; right:60px;
     display:flex; flex-direction:column; align-items:center; gap:10px;
   }
   .footer .venue { text-align:center; }
@@ -186,6 +195,7 @@ const html = `<!DOCTYPE html>
         <div class="club">LIGHTHOUSE 1893 SC</div>
         <div class="since">EST. 1893 · PHILADELPHIA</div>
       </div>
+      <div class="ball">⚽</div>
     </div>
 
     <div class="hero">
