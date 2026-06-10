@@ -106,13 +106,14 @@ class LeadsScreen extends Screen {
     };
     const r = riskColors[risk];
 
-    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials', 'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)'];
+    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'Tri County Women', 'APSL / Liga 1', 'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)'];
     const COLORS  = {
       'Brazil Men':              '#15803d',
       'U23 Men':                 '#1d4ed8',
       'PR Men':                  '#7c3aed',
       'U23 Women':               '#be185d',
-      'APSL Trials':             '#f59e0b',
+      'Tri County Women':        '#9d174d',
+      'APSL / Liga 1':           '#f59e0b',
       'Youth (Grades 1–6)':      '#c9a14a',
       'Boys Club (Grades 1–6)':  '#0e7490',
       'Girls Club (Grades 1–6)': '#db2777',
@@ -229,7 +230,7 @@ class LeadsScreen extends Screen {
       '1552835789741946': 'Brazil Men',
       '1333581472007910': 'Brazil Men',
       '1052472267432735': 'U23 Men',
-      '1773598717166962': 'APSL Trials',
+      '1773598717166962': 'APSL / Liga 1',
       '3249608418562710': 'Youth (Grades 1–6)',
       '1704106777282059': 'Boys Club (Grades 1–6)',
       '1571742281184926': 'Girls Club (Grades 1–6)',
@@ -237,6 +238,9 @@ class LeadsScreen extends Screen {
       // scripts/recreate-lead-forms.js — old IDs above stay mapped so
       // historical leads keep their column.
       '2471488896628970': 'Boys Club (Grades 1–6)',
+      '1277787647463515': 'Youth (Grades 1–6)',
+      '1008195014960429': 'Girls Club (Grades 1–6)',
+      // Tri County Women — form id TBD (no live ad yet).
     };
     return map[formId] || null;
   }
@@ -255,7 +259,7 @@ class LeadsScreen extends Screen {
     // Within each status, sort by canonical funnel order (same order as
     // the kanban columns) so the rundown is stable + scannable.
     const FUNNEL_ORDER = [
-      'Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'APSL Trials',
+      'Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'Tri County Women', 'APSL / Liga 1',
       'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)',
     ];
     const funnelRank = (label) => {
@@ -436,8 +440,9 @@ class LeadsScreen extends Screen {
       'Brazil Men',
       'PR Men',
       'U23 Men',
-      'APSL Trials',
+      'APSL / Liga 1',
       'U23 Women',
+      'Tri County Women',
       'Boys Club (Grades 1–6)',
       'Girls Club (Grades 1–6)',
       'Youth (Grades 1–6)',
@@ -768,8 +773,9 @@ class LeadsScreen extends Screen {
       'Brazil Men':                URL_MEN,
       'PR Men':                    URL_MEN,
       'U23 Men':                   URL_MEN,
-      'APSL Trials':               URL_MEN,
+      'APSL / Liga 1':             URL_MEN,
       'U23 Women':                 URL_WOMEN,
+      'Tri County Women':          URL_WOMEN,
       'Boys Club (Grades 1–6)':    URL_BOYS,
       'Girls Club (Grades 1–6)':   URL_GIRLS,
       'Youth (Grades 1–6)':        URL_BOYS,   // legacy combined form
@@ -782,7 +788,8 @@ class LeadsScreen extends Screen {
       'PR Men':                    "Puerto Rican Men's team",
       'U23 Men':                   "U23 Men's team",
       'U23 Women':                 "U23 Women's team",
-      'APSL Trials':               'APSL trial',
+      'Tri County Women':          "Tri County Women's team",
+      'APSL / Liga 1':             'APSL / Liga 1 trial',
     };
     // Qualifying question asked in the FIRST message.  Goal: one short answer
     // that lets the coach pick the right follow-up snippet.
@@ -791,10 +798,11 @@ class LeadsScreen extends Screen {
       'PR Men':                    'have you played 11v11 before, and what position?',
       'U23 Men':                   'what year were you born, and how long have you been playing?',
       'U23 Women':                 'what year were you born, and how long have you been playing?',
-      'APSL Trials':               'what level have you played at — college, semi-pro, top flight overseas?',
-      'Boys Club (Grades 1–6)':    'what grade is your player in, and have they played soccer before?',
-      'Girls Club (Grades 1–6)':   'what grade is your player in, and have they played soccer before?',
-      'Youth (Grades 1–6)':        'what grade is your player in, and have they played soccer before?',
+      'Tri County Women':          'what year were you born, and how long have you been playing?',
+      'APSL / Liga 1':             'what level have you played at — college, semi-pro, top flight overseas?',
+      'Boys Club (Grades 1–6)':    'what grade is your player in? (all experience levels welcome!)',
+      'Girls Club (Grades 1–6)':   'what grade is your player in? (all experience levels welcome!)',
+      'Youth (Grades 1–6)':        'what grade is your player in? (all experience levels welcome!)',
     };
 
     // Per-funnel public schedule URLs.  Used by the Schedule snippet to give
@@ -837,10 +845,13 @@ class LeadsScreen extends Screen {
         day:      'Saturdays (sometimes Sundays)',
         practice: 'practice 2×/week',
       },
-      // U23 Women + APSL Trials — funnels not live yet (no ads running).
+      'Tri County Women': {
+        day:      'Sundays',
+      },
+      // U23 Women + APSL / Liga 1 — funnels not live yet (no ads running).
       // When launched they'll mirror the Men's template:
-      //   U23 Women  → copy of U23 Men   (Sundays + CASA-equivalent women's league)
-      //   APSL Trials → copy of Brazil/PR Men (Sundays + CASA Philly Grassroots Cup)
+      //   U23 Women     → copy of U23 Men   (Sundays + CASA-equivalent women's league)
+      //   APSL / Liga 1 → copy of Brazil/PR Men (Sundays + CASA Philly Grassroots Cup)
       // Until then, Schedule chip stays as TODO so the ⚠ reminds the coach to
       // wire it before the first real lead lands.
     };

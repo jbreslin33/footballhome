@@ -49,9 +49,9 @@ const DRY  = args.includes('--dry-run');
 
 // label values must match formLabel() in frontend/js/screens/leads.js
 const FUNNELS = {
-  youth: { label: 'Youth (Grades 1–6)',      oldFormId: '3249608418562710' },
-  boys:  { label: 'Boys Club (Grades 1–6)',  oldFormId: '1704106777282059' },
-  girls: { label: 'Girls Club (Grades 1–6)', oldFormId: '1571742281184926' },
+  youth: { label: 'Youth (Grades 1–6)',      oldFormId: '1277787647463515' },
+  boys:  { label: 'Boys Club (Grades 1–6)',  oldFormId: '2471488896628970' },
+  girls: { label: 'Girls Club (Grades 1–6)', oldFormId: '1008195014960429' },
 };
 const positional = args.filter(a => !a.startsWith('--'));
 const targets = positional.length

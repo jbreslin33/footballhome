@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // scripts/swap-club-creative.js
-// Replaces the image on the live Boys Club + Girls Club ads.
+// Replaces the image on live Boys Club, Girls Club + Youth signup ads.
 // Meta creatives are immutable — so we:
 //   1. Upload the local PNG → image_hash
 //   2. Create a NEW adcreative with the same caption / CTA / lead form
 //   3. Update the live ad to point at the new creative_id
 //
 // Usage:
-//   node scripts/swap-club-creative.js          # swap both
+//   node scripts/swap-club-creative.js          # swap all three
 //   node scripts/swap-club-creative.js boys     # only boys
 //   node scripts/swap-club-creative.js girls    # only girls
+//   node scripts/swap-club-creative.js youth    # only youth
 //   node scripts/swap-club-creative.js --dry-run
 
 require('dotenv').config({ path: __dirname + '/../env' });
@@ -24,8 +25,8 @@ const API           = 'https://graph.facebook.com/v21.0';
 
 const args = process.argv.slice(2);
 const DRY  = args.includes('--dry-run');
-const which = args.find(a => ['boys', 'girls'].includes(a.toLowerCase()));
-const variants = which ? [which.toLowerCase()] : ['boys', 'girls'];
+const which = args.find(a => ['boys', 'girls', 'youth'].includes(a.toLowerCase()));
+const variants = which ? [which.toLowerCase()] : ['boys', 'girls', 'youth'];
 
 if (!AD_ACCOUNT_ID || !PAGE_ID || !ACCESS_TOKEN) {
   console.error('Missing META_AD_ACCOUNT_ID, META_PAGE_ID or META_ADS_TOKEN in env');
@@ -45,11 +46,19 @@ const SPECS = {
   },
   girls: {
     adId:    '120245826836390390',
-    formId:  '1571742281184926',
+    formId:  '1008195014960429',
     png:     path.join(ROOT, 'frontend', 'images', 'posts', 'girls-club-ad.png'),
     name:    'Lighthouse Girls Club — Creative (typography)',
     ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership',
     caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
+  },
+  youth: {
+    adId:    '120245748851660390',
+    formId:  '1277787647463515',
+    png:     path.join(ROOT, 'frontend', 'images', 'posts', 'youth-signup-ad.png'),
+    name:    'Lighthouse Youth Soccer — Creative (typography)',
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership',
+    caption: `⚽ LIGHTHOUSE YOUTH SOCCER — NOW ENROLLING\n\nBoys & Girls · Grades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer`,
   },
 };
 
