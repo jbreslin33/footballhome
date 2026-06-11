@@ -819,16 +819,25 @@ class LeadsScreen extends Screen {
         day:      'Sundays',
         url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf: 'CASA Philly Grassroots Cup',
+        practice: 'Wed & Fri',
       },
       'PR Men': {
         day:      'Sundays',
         url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf: 'CASA Philly Grassroots Cup',
+        practice: 'Wed & Fri',
       },
       'U23 Men': {
         day:      'Sundays',
         url:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
         sourceOf: 'season Google Sheet',
+        practice: 'Wed & Fri',
+      },
+      'APSL / Liga 1': {
+        day:      'Sundays',
+        url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf: 'CASA Philly Grassroots Cup',
+        practice: 'Wed & Fri',
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
       // only.  Games Saturdays (occasionally Sunday) + practice 2×/week.
@@ -848,10 +857,8 @@ class LeadsScreen extends Screen {
       'Tri County Women': {
         day:      'Sundays',
       },
-      // U23 Women + APSL / Liga 1 — funnels not live yet (no ads running).
-      // When launched they'll mirror the Men's template:
-      //   U23 Women     → copy of U23 Men   (Sundays + CASA-equivalent women's league)
-      //   APSL / Liga 1 → copy of Brazil/PR Men (Sundays + CASA Philly Grassroots Cup)
+      // U23 Women — funnel not live yet (no ads running). When launched
+      // it'll mirror U23 Men (Sundays + CASA-equivalent women's league).
       // Until then, Schedule chip stays as TODO so the ⚠ reminds the coach to
       // wire it before the first real lead lands.
     };
@@ -972,6 +979,22 @@ class LeadsScreen extends Screen {
     }
 
     snippets.push(
+      // Field — answers "where do you play?" with both Lighthouse venues +
+      // the $1 close. Same two addresses for every Lighthouse team, so this
+      // chip lives in the shared snippet code (no per-funnel branch).
+      // No flex copy — the "Lighthouse" in both venue names is the flex.
+      {
+        id: 'field',
+        label: '📍 Field',
+        tier: 'info',
+        body:
+          `📍 Lighthouse Sports Complex — 199 E Erie Ave (outdoor)\n` +
+          `   https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19134\n` +
+          `📍 Lighthouse Community Center — 141 W Somerset St (indoor)\n` +
+          `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19134\n` +
+          `\n` +
+          `$1 locks ${c.whose} spot: ${c.link}`,
+      },
       // Schedule — concrete answer when funnelContext has schedule info.
       // Doubles as a soft-close: answers the logistics question AND
       // immediately gives the register CTA, since leads asking
@@ -985,12 +1008,18 @@ class LeadsScreen extends Screen {
       c.schedule
         ? (() => {
             const lines = [];
+            // Practice always leads when defined — implies the
+            // attendance expectation without ever stating a criterion.
+            // Pickup sessions (Tue/Thu/Sat) are intentionally NOT mentioned
+            // pre-signup; the coach explains those after the lead registers.
+            if (c.schedule.practice) {
+              lines.push(`Practice: ${c.schedule.practice}`);
+            }
             if (c.schedule.url) {
               lines.push(`Games ${c.schedule.day} — full schedule (${c.schedule.sourceOf}):`);
               lines.push(c.schedule.url);
             } else {
-              const practice = c.schedule.practice ? `, ${c.schedule.practice}` : '';
-              lines.push(`Games ${c.schedule.day}${practice}.`);
+              lines.push(`Games ${c.schedule.day}.`);
               lines.push(`Specific times/fields confirm after rosters close.`);
             }
             lines.push('');
@@ -1012,13 +1041,13 @@ class LeadsScreen extends Screen {
               `(TODO — fill this in once confirmed for the season.)`,
           },
       {
-        id: 'requirements',
-        label: '✓ Requirements',
+        id: 'cost',
+        label: '💵 Cost',
         tier: 'info',
-        todo: true,
         body:
-          `What to bring / requirements:\n` +
-          `(TODO — fill this in: gear, age range, experience expected, etc.)`,
+          `$1 today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
+          `\n` +
+          `Register here: ${c.link}`,
       },
       // Add more snippets here as common questions come up:
       //
