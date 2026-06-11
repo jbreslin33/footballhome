@@ -802,7 +802,7 @@ class LeadsScreen extends Screen {
       'APSL / Liga 1':             'what level have you played at — college, semi-pro, top flight overseas?',
       'Boys Club (Grades 1–6)':    'what grade is your player in? (all experience levels welcome!)',
       'Girls Club (Grades 1–6)':   'what grade is your player in? (all experience levels welcome!)',
-      'Youth (Grades 1–6)':        'what grade is your player in? (all experience levels welcome!)',
+      'Youth (Grades 1–6)':        'what grade is your player in, and is it a boy or girl? (all experience levels welcome!)',
     };
 
     // Per-funnel public schedule URLs.  Used by the Schedule snippet to give
@@ -840,19 +840,19 @@ class LeadsScreen extends Screen {
         practice: 'Wed & Fri',
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
-      // only.  Games Saturdays (occasionally Sunday) + practice 2×/week.
-      // Specific times/fields confirm after rosters close.
+      // only.  Games Saturdays (occasionally Sunday) + practice 2×/week
+      // (days TBD — likely Mon/Wed but not committed).
       'Boys Club (Grades 1–6)': {
         day:      'Saturdays (sometimes Sundays)',
-        practice: 'practice 2×/week',
+        practice: '2×/week',
       },
       'Girls Club (Grades 1–6)': {
         day:      'Saturdays (sometimes Sundays)',
-        practice: 'practice 2×/week',
+        practice: '2×/week',
       },
       'Youth (Grades 1–6)': {
         day:      'Saturdays (sometimes Sundays)',
-        practice: 'practice 2×/week',
+        practice: '2×/week',
       },
       'Tri County Women': {
         day:      'Sundays',
@@ -864,9 +864,15 @@ class LeadsScreen extends Screen {
     };
 
     const isYouth = /youth|grades?\s*1[–-]6/i.test(funnelLabel || '');
+    // Legacy combined youth funnel — the only funnel where the form
+    // doesn't pre-identify gender, so the close branches on the lead's
+    // boy/girl answer (see Register chip split in messageSnippets).
+    const isLegacyYouth = funnelLabel === 'Youth (Grades 1–6)';
     return {
       program:    PROGRAM_NAMES[funnelLabel] || 'program',
       link:       LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com',
+      linkBoys:   URL_BOYS,
+      linkGirls:  URL_GIRLS,
       pickupLink: PICKUP_LINK,
       question:   QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
       schedule:   SCHEDULES[funnelLabel] || null,
@@ -874,6 +880,7 @@ class LeadsScreen extends Screen {
       whoseCap:   isYouth ? "Your player's" : 'Your',
       pricing:    isYouth ? '$35/mo' : '$9/wk or $35/mo',
       isYouth,
+      isLegacyYouth,
     };
   }
 
@@ -913,23 +920,58 @@ class LeadsScreen extends Screen {
   // required beyond appending to the array.
   messageSnippets(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
-    const snippets = [
-      {
+
+    // closeLink — trailing CTA appended to info chips (Cost / Schedule /
+    // Field).  For known-gender funnels this is one link; for the legacy
+    // combined Youth funnel we list BOTH Boys and Girls URLs since the
+    // coach can't safely pick one until the lead answers the boy/girl
+    // question (asked in the initial template).
+    const closeLink = (prefix) => {
+      if (c.isLegacyYouth) {
+        return `${prefix}\n• Boys: ${c.linkBoys}\n• Girls: ${c.linkGirls}`;
+      }
+      return `${prefix} ${c.link}`;
+    };
+
+    // Register — primary close.  For the legacy Youth funnel (where
+    // gender wasn't pre-selected by the form), split into TWO dedicated
+    // chips so the coach taps the right one after the lead answers the
+    // grade + boy/girl question.  All other funnels get one Register chip.
+    const snippets = [];
+    if (c.isLegacyYouth) {
+      snippets.push({
+        id: 'register-boys',
+        label: '💳 Register Boys ($1)',
+        tier: 'close',
+        body:
+          `You're set — your player's spot is $1 to lock in: ${c.linkBoys}\n` +
+          `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
+      });
+      snippets.push({
+        id: 'register-girls',
+        label: '💳 Register Girls ($1)',
+        tier: 'close',
+        body:
+          `You're set — your player's spot is $1 to lock in: ${c.linkGirls}\n` +
+          `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
+      });
+    } else {
+      snippets.push({
         id: 'register',
         label: '💳 Register ($1)',
         tier: 'close',
         body:
           `You're set — ${c.whose} spot is $1 to lock in: ${c.link}\n` +
           `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
-      },
-    ];
+      });
+    }
 
     // Adult funnels: after they answer the qualifying Q (position / year-born /
     // level), dig one layer deeper to gauge experience before pitching.
     if (!c.isYouth) {
       snippets.push({
         id: 'followup-level',
-        label: '🎯 Follow-up',
+        label: '🎯 What level?',
         tier: 'qualify',
         body: 'Perfect — what level have you played at most recently?',
       });
@@ -993,7 +1035,7 @@ class LeadsScreen extends Screen {
           `📍 Lighthouse Community Center — 141 W Somerset St (indoor)\n` +
           `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19134\n` +
           `\n` +
-          `$1 locks ${c.whose} spot: ${c.link}`,
+          closeLink(`$1 locks ${c.whose} spot:`),
       },
       // Schedule — concrete answer when funnelContext has schedule info.
       // Doubles as a soft-close: answers the logistics question AND
@@ -1023,7 +1065,7 @@ class LeadsScreen extends Screen {
               lines.push(`Specific times/fields confirm after rosters close.`);
             }
             lines.push('');
-            lines.push(`If it works, $1 locks ${c.whose} spot: ${c.link}`);
+            lines.push(closeLink(`If it works, $1 locks ${c.whose} spot:`));
             return {
               id: 'schedule',
               label: '📅 Schedule',
@@ -1047,7 +1089,7 @@ class LeadsScreen extends Screen {
         body:
           `$1 today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
           `\n` +
-          `Register here: ${c.link}`,
+          closeLink('Register here:'),
       },
       // Add more snippets here as common questions come up:
       //
