@@ -474,7 +474,6 @@ class LeadsScreen extends Screen {
 
     const funnelBlock = (label) => {
       const t        = this.messageTemplate(label);
-      const sms      = this.fillTemplate(t.sms,     previewLead);
       const subject  = this.fillTemplate(t.subject, previewLead);
       const email    = this.fillTemplate(t.email,   previewLead);
       const snippets = this.messageSnippets(label);
@@ -507,11 +506,10 @@ class LeadsScreen extends Screen {
       return `
         <details style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3); margin-bottom:var(--space-2);">
           <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; user-select:none; outline:none;">
-            ${esc(label)} <span style="opacity:0.5; font-weight:400; font-size:0.72rem;">(${snippets.length + 2} blurbs)</span>
+            ${esc(label)} <span style="opacity:0.5; font-weight:400; font-size:0.72rem;">(${snippets.length + 1} blurbs)</span>
           </summary>
           <div style="margin-top:var(--space-2);">
-            ${blurbBlock('Intro — SMS', sms)}
-            ${blurbBlock(`Intro — Email · Subject: ${subject}`, email)}
+            ${blurbBlock(`First-touch Email · Subject: ${subject}`, email)}
             ${snippetHtml}
           </div>
         </details>
@@ -521,10 +519,10 @@ class LeadsScreen extends Screen {
     root.innerHTML = `
       <details ${collapsed ? '' : 'open'} style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3);">
         <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; user-select:none; outline:none;">
-          📝 Message Templates <span style="opacity:0.5; font-weight:400; font-size:0.75rem;">(${FUNNELS.length} funnels · preview / copy)</span>
+          📝 Message Templates <span style="opacity:0.5; font-weight:400; font-size:0.75rem;">(${FUNNELS.length} funnels · copy & paste)</span>
         </summary>
         <div style="margin-top:var(--space-2); font-size:0.75rem; opacity:0.7;">
-          Preview of every initial text/email and reply snippet across all funnels. <code>[Name]</code> is a placeholder — edit after pasting.
+          First-touch email + reply snippets per funnel.  Click 📋 Copy, paste into your Gmail reply, edit the <code>[Name]</code> placeholder.
         </div>
         <div style="margin-top:var(--space-2);">
           ${FUNNELS.map(funnelBlock).join('')}
@@ -615,9 +613,7 @@ class LeadsScreen extends Screen {
     const label = columnLabel || this.formLabel(lead.form_id) || '';
     const isYouth = /youth/i.test(label);
     const contact = perLeadStats[lead.id] || {};
-    const hasPhone = !!lead.phone;
     const hasEmail = !!lead.email;
-    const smsHref  = hasPhone ? this.buildSmsHref(lead, label)   : null;
     const mailHref = hasEmail ? this.buildMailHref(lead, label)  : null;
 
     const ago = (iso) => {
@@ -631,20 +627,32 @@ class LeadsScreen extends Screen {
       return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
     };
 
-    const textBadge  = contact.text_count
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#0a3d2a; color:#10b981;">✓ Texted ${ago(contact.last_text_at)}${contact.text_count > 1 ? ` ×${contact.text_count}` : ''}</span>`
-      : '';
+    // Leads workflow is EMAIL-ONLY on the cards as of 2026-06-13 —
+    // soccer-club leads (esp. parents) convert better via email and
+    // single-channel focus eliminates the SMS-vs-email decision the
+    // coach used to have to make per lead.  The SMS / WhatsApp helpers
+    // (buildSmsHref, buildWhatsAppHref, messageTemplate.sms,
+    // messageSnippets) are intentionally kept for OTHER use cases:
+    //   • player attendance / RSVP nudges from elsewhere in the app
+    //   • chat-bot or scheduled-reminder workflows
+    //   • future re-introduction of multi-channel here if the data
+    //     ever justifies it
+    // The backend /api/leads/:id/contact endpoint also still accepts
+    // 'text' / 'whatsapp' channels for the same reason.
+    //
+    // Tracked-touch badge for prior emails (no longer showing the
+    // text badge since we don't text from here anymore — if you ever
+    // want it back, the contact-stats endpoint still returns text_count
+    // and last_text_at).
     const emailBadge = contact.email_count
       ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e2e4a; color:#60a5fa;">✉ Emailed ${ago(contact.last_email_at)}${contact.email_count > 1 ? ` ×${contact.email_count}` : ''}</span>`
       : '';
 
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
-    const textBtn = hasPhone ? `
-      <a href="${smsHref}" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="text"
-         style="${btnStyle} background:#10b981; color:#fff;">📱 Text</a>` : '';
+
     const emailBtn = hasEmail ? `
       <a href="${mailHref}" class="contact-btn"
+         target="_blank" rel="noopener noreferrer"
          data-lead-id="${lead.id}" data-channel="email"
          style="${btnStyle} background:#3b82f6; color:#fff;">✉ Email</a>` : '';
     const saveKind = isYouth ? 'youth-pair' : 'self';
@@ -654,70 +662,13 @@ class LeadsScreen extends Screen {
          data-lead-id="${lead.id}" data-channel="vcard" data-kind="${saveKind}"
          style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">${saveLabel}</a>`;
 
-    // Snippet chips — quick-reply pills shown under the main buttons.
-    // Each chip opens the SMS app with that snippet's body pre-filled.
-    // TODO-marked snippets are dimmed + flagged so the coach remembers to fill in.
-    //
-    // Chips are grouped by tier so the close always leads and the soft
-    // fallback (pickup) reads as clearly secondary:
-    //   1. Qualify  — mid-conversation digging Qs ("what level?")
-    //   2. Close    — the ASK ($1 register) — gold-bordered, the hero chip
-    //   3. Soft     — fallback for hesitant leads (pickup), muted
-    //   4. Info     — neutral info replies (schedule/requirements)
-    const snippets = hasPhone ? this.messageSnippets(label) : [];
-    const baseChip =
-      'display:inline-flex; align-items:center; gap:4px; ' +
-      'padding:3px 8px; font-size:0.7rem; font-weight:600; ' +
-      'border-radius:999px; border:1px solid var(--border-color, #374151); ' +
-      'background:var(--bg-tertiary, #1f2937); color:#e5e7eb; ' +
-      'text-decoration:none; cursor:pointer; line-height:1.4;';
-    const tierStyle = {
-      qualify: '',
-      // Close = gold border + slight glow so the eye lands here first.
-      close:   'border-color:#f5d442; color:#f5d442; font-weight:800; box-shadow:0 0 0 1px rgba(245,212,66,0.25);',
-      // Soft fallback = muted so it doesn't compete with the close.
-      soft:    'opacity:0.7; font-weight:500;',
-      info:    'opacity:0.8;',
-    };
-    const chipFor = (s) => {
-      const body = this.fillTemplate(s.body, lead);
-      const phoneDigits = (lead.phone || '').replace(/[^\d+]/g, '');
-      const href = `sms:${phoneDigits}?&body=${encodeURIComponent(body)}`;
-      const dim  = s.todo ? 'opacity:0.55;' : '';
-      const mark = s.todo ? ' ⚠' : '';
-      const extra = tierStyle[s.tier] || '';
-      const titleAttr = body.replace(/"/g, '&quot;').slice(0, 200);
-      return `
-        <a href="${href}" class="contact-btn snippet-btn"
-           data-lead-id="${lead.id}" data-channel="text" data-snippet="${s.id}"
-           title="${titleAttr}"
-           style="${baseChip} ${extra} ${dim}">${s.label}${mark}</a>`;
-    };
+    // Snippet chips were previously rendered here for SMS quick-replies
+    // (Register/Pickup/Schedule/etc).  Removed from the card UI on
+    // 2026-06-13 to keep leads workflow email-only.  messageSnippets()
+    // itself is still defined below — left in place for potential reuse
+    // (templates panel, future re-enable, or as a source for email
+    // quick-reply templates).
 
-    // Group chips by tier, render in order: qualify → close → soft → info.
-    // Each group gets a tiny prefix label so the coach reads the hierarchy.
-    const groupLabel = (txt) =>
-      `<span style="font-size:0.6rem; opacity:0.45; align-self:center; ` +
-      `text-transform:uppercase; letter-spacing:1px; margin-right:2px;">${txt}</span>`;
-    const tierOrder = [
-      ['qualify', 'Qualify'],
-      ['close',   'Ask'],
-      ['soft',    'Fallback'],
-      ['info',    'Info'],
-    ];
-    const tierBlocks = tierOrder.map(([tier, label]) => {
-      const items = snippets.filter(s => (s.tier || 'info') === tier);
-      if (!items.length) return '';
-      return `
-        <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-          ${groupLabel(label)}
-          ${items.map(chipFor).join('')}
-        </div>`;
-    }).filter(Boolean).join('');
-    const snippetRow = snippets.length ? `
-      <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
-        ${tierBlocks}
-      </div>` : '';
 
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3);">
@@ -729,9 +680,8 @@ class LeadsScreen extends Screen {
         ${lead.phone ? `<div style="font-size:1rem; font-weight:600; opacity:0.95; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${location ? `<div style="font-size:0.85rem; opacity:0.85;">📍 ${location}</div>` : ''}
         ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
-        ${(textBadge || emailBadge) ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${textBadge}${emailBadge}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px;">${textBtn}${emailBtn}${saveBtn}</div>
-        ${snippetRow}
+        ${emailBadge ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${emailBadge}</div>` : ''}
+        <div style="display:flex; gap:6px; margin-top:8px;">${emailBtn}${saveBtn}</div>
       </div>
     `;
   }
@@ -789,20 +739,17 @@ class LeadsScreen extends Screen {
       'U23 Men':                   "U23 Men's team",
       'U23 Women':                 "U23 Women's team",
       'Tri County Women':          "Tri County Women's team",
-      'APSL / Liga 1':             'APSL / Liga 1 trial',
+      'APSL / Liga 1':             'APSL / Liga 1 team',
     };
     // Qualifying question asked in the FIRST message.  Goal: one short answer
     // that lets the coach pick the right follow-up snippet.
+    // Per-funnel qualifying question used in the YOUTH initial template.
+    // Adult templates don't reference c.question (they ask a single fixed
+    // "want to play for our X this season?" — see messageTemplate).
     const QUESTIONS = {
-      'Brazil Men':                'have you played 11v11 before, and what position?',
-      'PR Men':                    'have you played 11v11 before, and what position?',
-      'U23 Men':                   'what year were you born, and how long have you been playing?',
-      'U23 Women':                 'what year were you born, and how long have you been playing?',
-      'Tri County Women':          'what year were you born, and how long have you been playing?',
-      'APSL / Liga 1':             'what level have you played at — college, semi-pro, top flight overseas?',
-      'Boys Club (Grades 1–6)':    'what grade is your player in? (all experience levels welcome!)',
-      'Girls Club (Grades 1–6)':   'what grade is your player in? (all experience levels welcome!)',
-      'Youth (Grades 1–6)':        'what grade is your player in, and is it a boy or girl? (all experience levels welcome!)',
+      'Boys Club (Grades 1–6)':    "what's your son's name?",
+      'Girls Club (Grades 1–6)':   "what's your daughter's name?",
+      'Youth (Grades 1–6)':        'is it for a boy or girl?',
     };
 
     // Per-funnel public schedule URLs.  Used by the Schedule snippet to give
@@ -886,16 +833,36 @@ class LeadsScreen extends Screen {
 
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
+    if (c.isYouth) {
+      // Youth funnels — keep the warm "thanks for your interest" framing
+      // + qualifying Q (son's name / daughter's name / boy or girl) since
+      // the question itself is genuinely needed (esp. gender for the
+      // generic Youth form, which doesn't pre-segment).
+      return {
+        sms:
+          `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
+          `Quick Q: ${c.question}`,
+        subject: `Lighthouse 1893 — thanks for reaching out!`,
+        email:
+          `Hi {first},\n\n` +
+          `{coach} here with Lighthouse 1893 — thanks for your interest in our ${c.program}!\n\n` +
+          `Quick question to get started: ${c.question}\n\n` +
+          `Looking forward to hearing from you.\n\n` +
+          `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+      };
+    }
+    // Adult funnels — tight, direct, SMS-native single sentence.
+    // "Hi Mike, John w/ Lighthouse 1893 — want to play for our X this season?"
+    // Drops "this is" (people don't type that in real texts) and the
+    // "thanks for your interest / Quick Q" filler.  The question IS the text.
     return {
       sms:
-        `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
-        `Quick Q: ${c.question}`,
-      subject: `Lighthouse 1893 — thanks for reaching out!`,
+        `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?`,
+      subject: `Lighthouse 1893 — want to play for our ${c.program}?`,
       email:
         `Hi {first},\n\n` +
-        `{coach} here with Lighthouse 1893 — thanks for your interest in our ${c.program}!\n\n` +
-        `Quick question to get started: ${c.question}\n\n` +
-        `Looking forward to hearing from you.\n\n` +
+        `{coach} here with Lighthouse 1893 — want to play for our ${c.program} this season?\n\n` +
+        `Reply and I'll send over the registration link.\n\n` +
         `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
     };
   }
@@ -943,17 +910,23 @@ class LeadsScreen extends Screen {
         id: 'register-boys',
         label: '💳 Register Boys ($1)',
         tier: 'close',
-        body:
-          `You're set — your player's spot is $1 to lock in: ${c.linkBoys}\n` +
-          `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
+        body: `Great. To register your son as a member of the soccer club, register here: ${c.linkBoys}`,
       });
       snippets.push({
         id: 'register-girls',
         label: '💳 Register Girls ($1)',
         tier: 'close',
-        body:
-          `You're set — your player's spot is $1 to lock in: ${c.linkGirls}\n` +
-          `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
+        body: `Great. To register your daughter as a member of the soccer club, register here: ${c.linkGirls}`,
+      });
+    } else if (c.isYouth) {
+      // Gender-specific youth funnel (Boys Club / Girls Club) — gender
+      // known from the form, so we can say son/daughter directly.
+      const child = /girls/i.test(funnelLabel) ? 'daughter' : 'son';
+      snippets.push({
+        id: 'register',
+        label: '💳 Register ($1)',
+        tier: 'close',
+        body: `Great. To register your ${child} as a member of the soccer club, register here: ${c.link}`,
       });
     } else {
       snippets.push({
@@ -961,29 +934,18 @@ class LeadsScreen extends Screen {
         label: '💳 Register ($1)',
         tier: 'close',
         body:
-          `You're set — ${c.whose} spot is $1 to lock in: ${c.link}\n` +
-          `Then ${c.pricing} (cancel anytime). Once you're registered I'll text you the practice details.`,
+          `Great. To become a member of the club it's $1 registration on this link: ${c.link}\n` +
+          `Once you're in you can start coming to trainings and games.`,
       });
     }
 
-    // Adult funnels: after they answer the qualifying Q (position / year-born /
-    // level), dig one layer deeper to gauge experience before pitching.
+    // Adult funnels: soft fallback chip for hesitant leads (pickup invite).
+    // No qualifying chips — one icebreaker Q in the initial template is enough;
+    // anything more creates friction before the close.
     if (!c.isYouth) {
-      snippets.push({
-        id: 'followup-level',
-        label: '🎯 What level?',
-        tier: 'qualify',
-        body: 'Perfect — what level have you played at most recently?',
-      });
-      snippets.push({
-        id: 'followup-club',
-        label: '🏟️ Which club?',
-        tier: 'qualify',
-        body: "Got it — any clubs/teams I'd know? (HS, college, adult, anywhere overseas)",
-      });
       // Soft fallback for hesitant leads: practice is gated behind the $1
-      // register, but pickup is open — they can come play, see the level,
-      // meet the squad, then decide. Doesn't compete with the close.
+      // register, but pickup is open — they can come play, meet the squad,
+      // see if it's a fit, then decide. Doesn't compete with the close.
       // Dynamic body: lead with the NEXT scheduled pickup (date/time/field)
       // if the calendar has one, otherwise fall back to a generic invite to
       // the chat. this._nextPickup is loaded by loadLeads().
@@ -1006,11 +968,11 @@ class LeadsScreen extends Screen {
         pickupBody =
           `Our next pickup: ${titleClause}${when}${where}.\n` +
           `RSVP "Going" here so we know to expect you: ${eventUrl}\n` +
-          `Come play, see the level, meet the squad. If it's a fit, $1 to lock in your team spot.`;
+          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
       } else {
         pickupBody =
           `No pressure to commit yet — jump in our Philadelphia Pickup chat for the next session and RSVP "Going" on whichever pickup works for you: ${c.pickupLink}\n` +
-          `Come play, see the level, meet the squad. If it's a fit, $1 to lock in your team spot.`;
+          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
       }
       snippets.push({
         id: 'pickup',
@@ -1135,13 +1097,42 @@ class LeadsScreen extends Screen {
     return `sms:${phone}?&body=${encodeURIComponent(body)}`;
   }
 
+  // wa.me URL — opens WhatsApp web/app with the chat pre-filled.
+  // Phone must be international, digits only (no +, no dashes).  If the
+  // captured number has no country code (US 10-digit), default to +1
+  // since that's our biggest segment; lead-captured Brazil/PR numbers
+  // typically already carry the country code from Meta.
+  buildWhatsAppHref(lead, label) {
+    const t    = this.messageTemplate(label);
+    const body = this.fillTemplate(t.sms, lead);  // SMS template reads fine in WA too
+    let digits = (lead.phone || '').replace(/\D/g, '');
+    if (digits.length === 10) digits = '1' + digits;  // assume US if bare
+    return `https://wa.me/${digits}?text=${encodeURIComponent(body)}`;
+  }
+
   buildMailHref(lead, label) {
     const t = this.messageTemplate(label);
     const subject = this.fillTemplate(t.subject, lead);
     const body    = this.fillTemplate(t.email,   lead);
-    // Note: mailto can't force the From address. User's default mail client picks it.
-    // The signature in the body identifies the club so replies route correctly.
-    return `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // Open Gmail's web compose directly in the soccer@lighthouse1893.org
+    // account (not the user's personal Gmail / default mail client).  The
+    // `authuser` query param tells Gmail which signed-in Google account to
+    // use, so as long as soccer@lighthouse1893.org is one of the accounts
+    // signed into this browser, compose opens in that mailbox with To /
+    // Subject / Body all pre-filled.  Coach just hits Send.
+    //   Wins: no mailto handler weirdness, no Outlook/Mail.app surprises,
+    //   no OAuth/SMTP infra, real From: address is the club mailbox so
+    //   replies route to soccer@lighthouse1893.org naturally.
+    const FROM_ACCOUNT = 'soccer@lighthouse1893.org';
+    const params = new URLSearchParams({
+      view:     'cm',
+      fs:       '1',
+      authuser: FROM_ACCOUNT,
+      to:       lead.email,
+      su:       subject,
+      body:     body,
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
   }
 
   async onContactClick(e) {

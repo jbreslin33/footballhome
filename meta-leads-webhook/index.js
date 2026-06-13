@@ -74,6 +74,19 @@ const EXCLUDED_LEADGEN_IDS = new Set([
   '987234783709164',  // فياض زقزوق (510 CA)
 ]);
 
+// Map any of Meta's preferred-channel response variants to our stable
+// canonical value ('text' | 'email' | 'whatsapp').  Meta normalizes the
+// option key we set in the form, but be defensive in case a future form
+// edit ships a label instead of the key.  Returns null for unknown.
+function normalizePreferredChannel(raw) {
+  if (!raw) return null;
+  const v = String(raw).trim().toLowerCase();
+  if (v === 'text'     || v === 'sms'      || v === 'phone text') return 'text';
+  if (v === 'email')                                               return 'email';
+  if (v === 'whatsapp' || v === 'whats app' || v === 'wa')         return 'whatsapp';
+  return null;
+}
+
 async function upsertLead(lead) {
   if (EXCLUDED_LEADGEN_IDS.has(String(lead.id))) {
     return {};
@@ -81,9 +94,14 @@ async function upsertLead(lead) {
   const fieldData = lead.field_data || [];
   const fields = extractLeadFields(fieldData);
 
+  // preferred_channel comes from the radio question we added to the slim
+  // forms (key: 'preferred_channel').  Legacy leads from pre-question
+  // forms have no such field and remain NULL — frontend handles that.
+  const preferredChannel = normalizePreferredChannel(fields.preferred_channel);
+
   await pool.query(
-    `INSERT INTO leads (leadgen_id, form_id, page_id, ad_id, name, email, phone, raw_fields, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    `INSERT INTO leads (leadgen_id, form_id, page_id, ad_id, name, email, phone, raw_fields, preferred_channel, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
      ON CONFLICT (leadgen_id) DO UPDATE
      SET form_id = EXCLUDED.form_id,
          page_id = EXCLUDED.page_id,
@@ -92,6 +110,7 @@ async function upsertLead(lead) {
          email = EXCLUDED.email,
          phone = EXCLUDED.phone,
          raw_fields = EXCLUDED.raw_fields,
+         preferred_channel = COALESCE(EXCLUDED.preferred_channel, leads.preferred_channel),
          created_at = COALESCE(leads.created_at, EXCLUDED.created_at)`,
     [
       lead.id,
@@ -102,6 +121,7 @@ async function upsertLead(lead) {
       fields.email || fields.email_address || null,
       fields.phone_number || fields.phone || null,
       JSON.stringify(fieldData),
+      preferredChannel,
       lead.created_time || new Date().toISOString(),
     ]
   );
@@ -529,7 +549,7 @@ app.get('/api/leads', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, leadgen_id, form_id, page_id, ad_id,
-              name, email, phone, raw_fields, created_at
+              name, email, phone, raw_fields, preferred_channel, created_at
        FROM leads
        ORDER BY created_at DESC`
     );
@@ -551,12 +571,12 @@ app.get('/api/leads', requireAuth, async (req, res) => {
   }
 });
 
-// ── POST /api/leads/:id/contact — log a text/email/call send ──────────
+// ── POST /api/leads/:id/contact — log a text/email/whatsapp/call send ─
 app.post('/api/leads/:id/contact', requireAuth, async (req, res) => {
   const leadId = parseInt(req.params.id, 10);
   const { channel, message_body, status } = req.body || {};
-  if (!leadId || !['text', 'email', 'call'].includes(channel)) {
-    return res.status(400).json({ error: 'leadId + channel(text|email|call) required' });
+  if (!leadId || !['text', 'email', 'whatsapp', 'call'].includes(channel)) {
+    return res.status(400).json({ error: 'leadId + channel(text|email|whatsapp|call) required' });
   }
   try {
     const userId = parseInt(req.userId, 10);

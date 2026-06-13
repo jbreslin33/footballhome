@@ -48,6 +48,25 @@ const args = process.argv.slice(2);
 const DRY  = args.includes('--dry-run');
 
 // label values must match formLabel() in frontend/js/screens/leads.js
+//
+// IMPORTANT — oldFormId must be the CURRENTLY LIVE form id for the funnel.
+// Meta forms are immutable, so each recreation creates a brand-new form id
+// and the script re-points the ads.  When recreating again later, set
+// oldFormId to whatever the LATEST live form is.  Verify with `--dry-run`
+// before any live run; the dry-run prints the source form's questions so
+// you can confirm you're targeting the right one.
+//
+// LEARNING-PHASE COST: every funnel recreation re-points the live ad's
+// creative, which Meta treats as a significant edit — the ad re-enters
+// Learning Phase (~50 conversions / 7 days to exit, elevated CPL).  So
+// only add adult funnels here when you're ready to absorb that reset.
+// Reference candidates from formLabel() in leads.js for when you do:
+//   Brazil Men   : 1552835789741946 | 1333581472007910
+//   PR Men       : 1668570657681917 | 2062202517690808
+//   U23 Men      : 1052472267432735
+//   U23 Women    : 875990184755538  | 1696381158350766
+//   APSL/Liga 1  : 1773598717166962
+//   Tri County W : (no live ad yet — skip)
 const FUNNELS = {
   youth: { label: 'Youth (Grades 1–6)',      oldFormId: '1277787647463515' },
   boys:  { label: 'Boys Club (Grades 1–6)',  oldFormId: '2471488896628970' },
@@ -123,7 +142,20 @@ async function fetchForm(formId) {
 }
 
 // Create the slimmer form on the page.  Three autofilled standard fields
-// only — name, email, phone.  Anything else was friction with no payoff.
+// + one tiny radio question for preferred contact channel.  Anything else
+// was friction with no payoff.
+//
+// The radio question:
+//   - key 'preferred_channel' is what shows up in field_data (Meta uses
+//     the question key when set, otherwise auto-generates one).  The
+//     webhook reads fields.preferred_channel directly.
+//   - Single-select (multiple_choice with allow_multiple_select=false)
+//     so the coach gets ONE definitive answer.
+//   - Options use lowercase keys ('text'/'email'/'whatsapp') so the
+//     stored value is stable; the visible labels are friendlier.
+//   - Required so we always have a signal.  Adds < 1s of fill time and
+//     is a trust signal ("we respect your time") rather than friction —
+//     this is a soccer club, not a payday loan.
 async function createSlimForm(srcForm, labelHint) {
   // Strip read-only `id` keys that Meta returns on GET but rejects on POST.
   // Walks the object tree and removes any 'id' property recursively.
@@ -141,12 +173,22 @@ async function createSlimForm(srcForm, labelHint) {
   };
 
   const body = {
-    name:    `${srcForm.name || labelHint} (slim — name/email/phone)`,
+    name:    `${srcForm.name || labelHint} (slim — name/email/phone/+channel)`,
     locale:  srcForm.locale || 'en_US',
     questions: JSON.stringify([
       { type: 'FULL_NAME' },
       { type: 'EMAIL' },
       { type: 'PHONE' },
+      {
+        type:  'CUSTOM',
+        key:   'preferred_channel',
+        label: "What's the easiest way to reach you?",
+        options: [
+          { value: 'Text',     key: 'text'     },
+          { value: 'Email',    key: 'email'    },
+          { value: 'WhatsApp', key: 'whatsapp' },
+        ],
+      },
     ]),
   };
   if (srcForm.privacy_policy_url) {
