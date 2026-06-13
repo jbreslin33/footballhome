@@ -9,7 +9,7 @@
 //   node scripts/generate-club-card.js girls      → girls-club-ad.png       (legacy, Grades 1–6)
 //   node scripts/generate-club-card.js boys-k12   → boys-club-k12-ad.png    (NEW, K–12)
 //   node scripts/generate-club-card.js girls-k12  → girls-club-k12-ad.png   (NEW, K–12)
-//   node scripts/generate-club-card.js mens       → mens-club-ad.png        (NEW, APSL / Liga 1)
+//   node scripts/generate-club-card.js mens       → mens-club-ad.png        (NEW, APSL & CASA Liga 1 & 2)
 //   node scripts/generate-club-card.js womens     → womens-club-ad.png      (NEW, Tri County)
 //
 //   node scripts/generate-club-card.js <variant> <promoId>   # also writes promo_<id>.jpg + DB update
@@ -27,7 +27,7 @@ const VARIANTS = {
   'girls':     { word: 'GIRLS CLUB',   badge: 'Grades 1–6',   file: 'girls-club-ad.png'       },
   'boys-k12':  { word: 'BOYS CLUB',    badge: 'K – 12',         file: 'boys-club-k12-ad.png'    },
   'girls-k12': { word: 'GIRLS CLUB',   badge: 'K – 12',         file: 'girls-club-k12-ad.png'   },
-  'mens':      { word: 'MENS CLUB',    badge: 'APSL · LIGA 1',  file: 'mens-club-ad.png'        },
+  'mens':      { word: 'MENS CLUB',    badge: '16+ · APSL & CASA · LIGA 1 & 2',  file: 'mens-club-ad.png'        },
   'womens':    { word: 'WOMENS CLUB',  badge: 'TRI COUNTY',     file: 'womens-club-ad.png'      },
 };
 
