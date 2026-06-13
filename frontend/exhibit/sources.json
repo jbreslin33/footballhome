@@ -1,459 +1,122 @@
 [
   {
     "num": "01",
-    "kicker": "Poster 1 \u00b7 The Founder &amp; The Founding",
+    "kicker": "Poster 1 &middot; The Founder",
     "title": "LIGHTHOUSE IS FOUNDED BY ESTHER KELLY",
-    "sources": [
-      {
-        "html": "PhilaPlace (Historical Society of Pennsylvania) \u2014 \u201cThe Lighthouse, Philadelphia,\u201d by Randi Kamine: <a href=\"https://www.phila.place/story/948/\" rel=\"noopener\">phila.place/story/948</a>",
-        "text": "PhilaPlace (Historical Society of Pennsylvania) \u2014 \u201cThe Lighthouse, Philadelphia,\u201d by Randi Kamine: phila.place/story/948",
-        "url": "https://www.phila.place/story/948/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.phila.place%2Fstory%2F948%2F"
-      },
-      {
-        "html": "Historical Society of Pennsylvania \u2014 The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004: <a href=\"http://www.hsp.org/files/findingaid1970lighthouse.pdf\" rel=\"noopener\">Historical Society of Pennsylvania \u00b7 Lighthouse Records</a>",
-        "text": "Historical Society of Pennsylvania \u2014 The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004: Historical Society of Pennsylvania \u00b7 Lighthouse Records",
-        "url": "http://www.hsp.org/files/findingaid1970lighthouse.pdf",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.hsp.org%2Ffiles%2Ffindingaid1970lighthouse.pdf"
-      },
-      {
-        "html": "Society for American Soccer History \u2014 Lighthouse Boys Club youth soccer (Ed Farnsworth / Len Oliver, 1897 Church Club of Philadelphia founding, $1 uniform, early membership figures): <a href=\"https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/\" rel=\"noopener\">ussoccerhistory.org \u00b7 Lighthouse Boys Club</a>",
-        "text": "Society for American Soccer History \u2014 Lighthouse Boys Club youth soccer (Ed Farnsworth / Len Oliver, 1897 Church Club of Philadelphia founding, $1 uniform, early membership figures): ussoccerhistory.org \u00b7 Lighthouse Boys Club",
-        "url": "https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Fphiladelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club%2F"
-      },
-      {
-        "html": "The Philly Soccer Page \u2014 \u201cGreat Philly Soccer Teams: Lighthouse,\u201d by Ed Farnsworth, Jan. 7, 2010 (350 first-month members, 19,000 members by 1924, \u201clargest single soccer organization in the world\u201d by 1940, McGuire Cup history): <a href=\"https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/\" rel=\"noopener\">phillysoccerpage.net \u00b7 Great Philly Soccer Teams: Lighthouse</a>",
-        "text": "The Philly Soccer Page \u2014 \u201cGreat Philly Soccer Teams: Lighthouse,\u201d by Ed Farnsworth, Jan. 7, 2010 (350 first-month members, 19,000 members by 1924, \u201clargest single soccer organization in the world\u201d by 1940, McGuire Cup history): phillysoccerpage.net \u00b7 Great Philly Soccer Teams: Lighthouse",
-        "url": "https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F"
-      }
-    ]
+    "sources": []
   },
   {
     "num": "02",
-    "kicker": "Poster 2 \u00b7 The First Purpose-Built Clubhouse",
+    "kicker": "Poster 2 &middot; The First Purpose-Built Clubhouse",
     "title": "LIGHTHOUSE BUILDS MULTI-SPORT ATHLETIC FACILITY IN KENSINGTON",
-    "sources": [
-      {
-        "html": "<em>The North American</em>, Philadelphia, October 15, 1900 &mdash; &ldquo;CORNER-STONE IS LAID BY BISHOP O. W. WHITAKER &mdash; New Building Will be a Boys&rsquo; Clubhouse and Will be Handsomest Structure of Its Kind in the City.&rdquo; Original clipping, Lighthouse Boys Club archive, on display at this exhibit."
-      },
-      {
-        "html": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Somerset Street clubhouse construction and program records): <a href=\"http://www.hsp.org/files/findingaid1970lighthouse.pdf\" rel=\"noopener\">Historical Society of Pennsylvania &middot; Lighthouse Records</a>"
-      }
-    ]
+    "sources": []
   },
   {
     "num": "03",
-    "kicker": "Poster 3 \u00b7 Home of the Pros",
-    "title": "LIGHTHOUSE FIELD: HOME OF THE PROS",
-    "sources": [
-      {
-        "html": "Society for American Soccer History \u2014 \u201cLen Oliver Q&amp;A: Playing in the pros in 1950s Philadelphia and beyond\u201d (2015): <a href=\"https://www.ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond/\" rel=\"noopener\">ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond</a>",
-        "text": "Society for American Soccer History \u2014 \u201cLen Oliver Q&amp;A: Playing in the pros in 1950s Philadelphia and beyond\u201d (2015): ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond",
-        "url": "https://www.ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Flen-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond%2F"
-      },
-      {
-        "html": "Society for American Soccer History \u2014 \u201cPhiladelphia Soccer in the 1940s and 1950s, part 5: The pro game in 1950s Philadelphia\u201d: <a href=\"https://www.ussoccerhistory.org/len-oliver-the-pro-game-in-1950s-philadelphia/\" rel=\"noopener\">ussoccerhistory.org/len-oliver-the-pro-game-in-1950s-philadelphia</a>",
-        "text": "Society for American Soccer History \u2014 \u201cPhiladelphia Soccer in the 1940s and 1950s, part 5: The pro game in 1950s Philadelphia\u201d: ussoccerhistory.org/len-oliver-the-pro-game-in-1950s-philadelphia",
-        "url": "https://www.ussoccerhistory.org/len-oliver-the-pro-game-in-1950s-philadelphia/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Flen-oliver-the-pro-game-in-1950s-philadelphia%2F"
-      },
-      {
-        "html": "Wikipedia \u2014 Uhrik Truckers (franchise history as Philadelphia German-Americans \u2192 Philadelphia Americans \u2192 Uhrik Truckers; year-by-year ASL standings and cup honors): <a href=\"https://en.wikipedia.org/wiki/Uhrik_Truckers\" rel=\"noopener\">en.wikipedia.org/wiki/Uhrik_Truckers</a>",
-        "text": "Wikipedia \u2014 Uhrik Truckers (franchise history as Philadelphia German-Americans \u2192 Philadelphia Americans \u2192 Uhrik Truckers; year-by-year ASL standings and cup honors): en.wikipedia.org/wiki/Uhrik_Truckers",
-        "url": "https://en.wikipedia.org/wiki/Uhrik_Truckers",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FUhrik_Truckers"
-      }
-    ]
+    "kicker": "Poster 3 &middot; The Hub of Soccer in Kensington",
+    "title": "LIGHTHOUSE FIELD",
+    "sources": []
   },
   {
     "num": "04",
-    "kicker": "Poster 4 \u00b7 The Club That Started It All",
-    "title": "THE LIGHTHOUSE MEN\u2019S CLUB",
-    "sources": [
-      {
-        "html": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Men's Club Council 1934&ndash;1959, Beneficial Society 1917&ndash;1946, Philadelphia Orchestra Committee 1909&ndash;1911, Old Timers' Assoc. founded April 8, 1932, <em>The Beam</em> newsletter, Fred Woerner diaries, men's camp at Chester Springs &amp; Pine Grove, 1,100+ Men's Club membership entries 1895&ndash;1905): <a href=\"http://www.hsp.org/files/findingaid1970lighthouse.pdf\" rel=\"noopener\">Historical Society of Pennsylvania &middot; Lighthouse Records</a>",
-        "text": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Men's Club Council 1934&ndash;1959, Beneficial Society 1917&ndash;1946, Philadelphia Orchestra Committee 1909&ndash;1911, Old Timers' Assoc. founded April 8, 1932, The Beam newsletter, Fred Woerner diaries, men's camp at Chester Springs &amp; Pine Grove, 1,100+ Men's Club membership entries 1895&ndash;1905): Historical Society of Pennsylvania &middot; Lighthouse Records",
-        "url": "http://www.hsp.org/files/findingaid1970lighthouse.pdf",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.hsp.org%2Ffiles%2Ffindingaid1970lighthouse.pdf"
-      },
-      {
-        "html": "PhilaPlace (Historical Society of Pennsylvania) &mdash; The Lighthouse, Philadelphia (Bradford's 1893 men's Bible classes at Episcopal Hospital): <a href=\"https://www.phila.place/story/948/\" rel=\"noopener\">phila.place/story/948</a>",
-        "text": "PhilaPlace (Historical Society of Pennsylvania) &mdash; The Lighthouse, Philadelphia (Bradford's 1893 men's Bible classes at Episcopal Hospital): phila.place/story/948",
-        "url": "https://www.phila.place/story/948/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.phila.place%2Fstory%2F948%2F"
-      }
-    ]
+    "kicker": "Poster 4 &middot; The Pro Franchise",
+    "title": "GERMAN-AMERICANS &rarr; AMERICANS &rarr; UHRIK TRUCKERS",
+    "sources": []
   },
   {
     "num": "05",
-    "kicker": "Poster 5 \u00b7 Lighthouse Keepers",
-    "title": "LIGHTHOUSE WOMEN&rsquo;S CLUB",
-    "sources": [
-      {
-        "html": "PhilaPlace (Historical Society of Pennsylvania) \u2014 The Lighthouse, Philadelphia (women's leadership, multicultural mission): <a href=\"https://www.phila.place/story/948/\" rel=\"noopener\">phila.place/story/948</a>",
-        "text": "PhilaPlace (Historical Society of Pennsylvania) \u2014 The Lighthouse, Philadelphia (women's leadership, multicultural mission): phila.place/story/948",
-        "url": "https://www.phila.place/story/948/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.phila.place%2Fstory%2F948%2F"
-      },
-      {
-        "html": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Baldwin Day Nursery 1896&ndash;1935, Women's Club 1907&ndash;1980s, camps, phone-log helpline): <a href=\"http://www.hsp.org/files/findingaid1970lighthouse.pdf\" rel=\"noopener\">Historical Society of Pennsylvania &middot; Lighthouse Records</a>",
-        "text": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Baldwin Day Nursery 1896&ndash;1935, Women's Club 1907&ndash;1980s, camps, phone-log helpline): Historical Society of Pennsylvania &middot; Lighthouse Records",
-        "url": "http://www.hsp.org/files/findingaid1970lighthouse.pdf",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.hsp.org%2Ffiles%2Ffindingaid1970lighthouse.pdf"
-      },
-      {
-        "html": "Encyclopedia of Greater Philadelphia \u2014 Settlement Houses (women-led movement): <a href=\"https://philadelphiaencyclopedia.org/essays/settlement-houses/\" rel=\"noopener\">philadelphiaencyclopedia.org/essays/settlement-houses</a>",
-        "text": "Encyclopedia of Greater Philadelphia \u2014 Settlement Houses (women-led movement): philadelphiaencyclopedia.org/essays/settlement-houses",
-        "url": "https://philadelphiaencyclopedia.org/essays/settlement-houses/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphiladelphiaencyclopedia.org%2Fessays%2Fsettlement-houses%2F"
-      }
-    ]
+    "kicker": "Poster 5 &middot; The Club That Started It All",
+    "title": "THE LIGHTHOUSE MEN&rsquo;S CLUB",
+    "sources": []
   },
   {
     "num": "06",
-    "kicker": "Poster 6 \u00b7 Girls at the Lighthouse from Day One",
-    "title": "THE LIGHTHOUSE GIRLS\u2019 CLUB",
-    "sources": [
-      {
-        "html": "PhilaPlace (Historical Society of Pennsylvania) \u2014 The Lighthouse: Girls' Club, meals-on-wheels, kindergarten, suffrage-speaker photo: <a href=\"https://www.phila.place/story/948/\" rel=\"noopener\">phila.place/story/948</a>",
-        "text": "PhilaPlace (Historical Society of Pennsylvania) \u2014 The Lighthouse: Girls' Club, meals-on-wheels, kindergarten, suffrage-speaker photo: phila.place/story/948",
-        "url": "https://www.phila.place/story/948/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.phila.place%2Fstory%2F948%2F"
-      },
-      {
-        "html": "Historical Society of Pennsylvania \u2014 The Lighthouse Records (Collection 1970): <a href=\"http://www.hsp.org/files/findingaid1970lighthouse.pdf\" rel=\"noopener\">Historical Society of Pennsylvania \u00b7 Lighthouse Records</a>",
-        "text": "Historical Society of Pennsylvania \u2014 The Lighthouse Records (Collection 1970): Historical Society of Pennsylvania \u00b7 Lighthouse Records",
-        "url": "http://www.hsp.org/files/findingaid1970lighthouse.pdf",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.hsp.org%2Ffiles%2Ffindingaid1970lighthouse.pdf"
-      }
-    ]
+    "kicker": "Poster 6 &middot; Lighthouse Keepers",
+    "title": "LIGHTHOUSE WOMEN&rsquo;S CLUB",
+    "sources": []
   },
   {
     "num": "07",
-    "kicker": "Poster 7 \u00b7 A Multi-Sport Powerhouse",
-    "title": "THE LIGHTHOUSE BOYS\u2019 CLUB",
-    "sources": [
-      {
-        "html": "PhilaPlace (Historical Society of Pennsylvania) \u2014 The Lighthouse photo collection (boxing, halfball, Abstinence Pledge): <a href=\"https://www.phila.place/story/948/\" rel=\"noopener\">phila.place/story/948</a>",
-        "text": "PhilaPlace (Historical Society of Pennsylvania) \u2014 The Lighthouse photo collection (boxing, halfball, Abstinence Pledge): phila.place/story/948",
-        "url": "https://www.phila.place/story/948/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.phila.place%2Fstory%2F948%2F"
-      },
-      {
-        "html": "Society for American Soccer History \u2014 Lighthouse Boys Club youth programs (multi-sport context, orchestra, chess, indoor leagues): <a href=\"https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/\" rel=\"noopener\">ussoccerhistory.org \u00b7 Lighthouse Boys Club</a>",
-        "text": "Society for American Soccer History \u2014 Lighthouse Boys Club youth programs (multi-sport context, orchestra, chess, indoor leagues): ussoccerhistory.org \u00b7 Lighthouse Boys Club",
-        "url": "https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Fphiladelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club%2F"
-      }
-    ]
+    "kicker": "Poster 7 &middot; Girls at the Lighthouse from Day One",
+    "title": "THE LIGHTHOUSE GIRLS&rsquo; CLUB",
+    "sources": []
   },
   {
     "num": "08",
-    "kicker": "Poster 8 \u00b7 An American Soccer Empire",
-    "title": "LIGHTHOUSE: CRADLE OF AMERICAN SOCCER",
-    "sources": [
-      {
-        "html": "Encyclopedia of Greater Philadelphia \u2014 Ed Farnsworth, \u201cSoccer\u201d (Rutgers University, 2018) \u2014 peer-reviewed scholarly entry; source of the \u201cmodel for developing youth players\u201d quote and the \u201cfive U-19 titles over a thirty-year period\u201d framing: <a href=\"https://philadelphiaencyclopedia.org/essays/soccer/\" rel=\"noopener\">philadelphiaencyclopedia.org/essays/soccer</a>",
-        "text": "Encyclopedia of Greater Philadelphia \u2014 Ed Farnsworth, \u201cSoccer\u201d (Rutgers University, 2018) \u2014 peer-reviewed scholarly entry; source of the \u201cmodel for developing youth players\u201d quote and the \u201cfive U-19 titles over a thirty-year period\u201d framing: philadelphiaencyclopedia.org/essays/soccer",
-        "url": "https://philadelphiaencyclopedia.org/essays/soccer/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphiladelphiaencyclopedia.org%2Fessays%2Fsoccer%2F"
-      },
-      {
-        "html": "The Philadelphia Soccer Page \u2014 Ed Farnsworth, \u201cGreat Philly Soccer Teams: Lighthouse\u201d (2010): <a href=\"https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/\" rel=\"noopener\">phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse</a>",
-        "text": "The Philadelphia Soccer Page \u2014 Ed Farnsworth, \u201cGreat Philly Soccer Teams: Lighthouse\u201d (2010): phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse",
-        "url": "https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F"
-      }
-    ]
+    "kicker": "Poster 8 &middot; A Multi-Sport Powerhouse",
+    "title": "THE LIGHTHOUSE BOYS&rsquo; CLUB",
+    "sources": []
   },
   {
     "num": "09",
-    "kicker": "Poster 9 \u00b7 National Youth Champions",
-    "title": "LIGHTHOUSE WINS THE McGUIRE CUP",
-    "sources": [
-      {
-        "html": "Encyclopedia of Greater Philadelphia \u2014 Ed Farnsworth, \u201cSoccer\u201d (Rutgers University, 2018) \u2014 peer-reviewed scholarly entry confirming Lighthouse Boys Club as McGuire Cup champions in 1938, 1948, 1949, 1957, and 1967, and characterizing the run as \u201cfive times over a thirty-year period\u201d: <a href=\"https://philadelphiaencyclopedia.org/essays/soccer/\" rel=\"noopener\">philadelphiaencyclopedia.org/essays/soccer</a>",
-        "text": "Encyclopedia of Greater Philadelphia \u2014 Ed Farnsworth, \u201cSoccer\u201d (Rutgers University, 2018) \u2014 peer-reviewed scholarly entry confirming Lighthouse Boys Club as McGuire Cup champions in 1938, 1948, 1949, 1957, and 1967, and characterizing the run as \u201cfive times over a thirty-year period\u201d: philadelphiaencyclopedia.org/essays/soccer",
-        "url": "https://philadelphiaencyclopedia.org/essays/soccer/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphiladelphiaencyclopedia.org%2Fessays%2Fsoccer%2F"
-      },
-      {
-        "html": "The Philadelphia Soccer Page \u2014 Ed Farnsworth, \u201cGreat Philly Soccer Teams: Lighthouse\u201d (McGuire Cup years 1938, 1948, 1949, 1957, 1967): <a href=\"https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/\" rel=\"noopener\">phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse</a>",
-        "text": "The Philadelphia Soccer Page \u2014 Ed Farnsworth, \u201cGreat Philly Soccer Teams: Lighthouse\u201d (McGuire Cup years 1938, 1948, 1949, 1957, 1967): phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse",
-        "url": "https://phillysoccerpage.net/2010/01/07/great-philly-soccer-teams-lighthouse/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphillysoccerpage.net%2F2010%2F01%2F07%2Fgreat-philly-soccer-teams-lighthouse%2F"
-      },
-      {
-        "html": "Society for American Soccer History &mdash; Len Oliver, &ldquo;Philadelphia Soccer in the 1940s and 1950s, Part 2: Youth &amp; Junior League Soccer with the Lighthouse Boys Club&rdquo; (May 18, 2015) &mdash; Oliver&rsquo;s first-person account of the back-to-back-champion Invincibles, the 36-game streak, and the Windsor S.C. comeback final, republished from his original 1992 <em>Journal of Ethno-Development</em> article: <a href=\"https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/\" rel=\"noopener\">ussoccerhistory.org &middot; Lighthouse / Len Oliver</a>",
-        "text": "Society for American Soccer History &mdash; Len Oliver, &ldquo;Philadelphia Soccer in the 1940s and 1950s, Part 2: Youth &amp; Junior League Soccer with the Lighthouse Boys Club&rdquo; (May 18, 2015) &mdash; Oliver&rsquo;s first-person account of the back-to-back-champion Invincibles, the 36-game streak, and the Windsor S.C. comeback final, republished from his original 1992 Journal of Ethno-Development article: ussoccerhistory.org &middot; Lighthouse / Len Oliver",
-        "url": "https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Fphiladelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club%2F"
-      },
-      {
-        "html": "Society for American Soccer History &mdash; &ldquo;Q&amp;A with Len Oliver: Youth and Junior Soccer with Lighthouse Boys Club&rdquo; (May 19, 2015) &mdash; source for the Lighthouse Juniors&rsquo; rival clubs (Nicetown, Thomas Celtic, Erzgebirge, plus Italian, Hungarian, Ukrainian, Polish, Latvian, and Armenian ethnic-club youth teams) and Tom Oliver as the Invincibles&rsquo; coach: <a href=\"https://www.ussoccerhistory.org/qa-with-len-oliver-youth-and-junior-soccer-with-lighthouse-boys-club/\" rel=\"noopener\">ussoccerhistory.org &middot; Len Oliver Q&amp;A</a>",
-        "text": "Society for American Soccer History &mdash; &ldquo;Q&amp;A with Len Oliver: Youth and Junior Soccer with Lighthouse Boys Club&rdquo; (May 19, 2015) &mdash; source for the Lighthouse Juniors&rsquo; rival clubs (Nicetown, Thomas Celtic, Erzgebirge, plus Italian, Hungarian, Ukrainian, Polish, Latvian, and Armenian ethnic-club youth teams) and Tom Oliver as the Invincibles&rsquo; coach: ussoccerhistory.org &middot; Len Oliver Q&amp;A",
-        "url": "https://www.ussoccerhistory.org/qa-with-len-oliver-youth-and-junior-soccer-with-lighthouse-boys-club/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Fqa-with-len-oliver-youth-and-junior-soccer-with-lighthouse-boys-club%2F"
-      },
-      {
-        "html": "Wikipedia \u2014 Lighthouse Boys Club (national youth championships): <a href=\"https://en.wikipedia.org/wiki/Lighthouse_Boys_Club\" rel=\"noopener\">en.wikipedia.org/wiki/Lighthouse_Boys_Club</a>",
-        "text": "Wikipedia \u2014 Lighthouse Boys Club (national youth championships): en.wikipedia.org/wiki/Lighthouse_Boys_Club",
-        "url": "https://en.wikipedia.org/wiki/Lighthouse_Boys_Club",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FLighthouse_Boys_Club"
-      }
-    ]
+    "kicker": "Poster 9 &middot; An American Soccer Empire",
+    "title": "LIGHTHOUSE: CRADLE OF AMERICAN SOCCER",
+    "sources": []
   },
   {
     "num": "10",
-    "kicker": "Poster 10 \u00b7 Scholastic & College",
-    "title": "LIGHTHOUSE IN DIVISION 1 COLLEGE SOCCER",
-    "sources": [
-      {
-        "html": "Society for American Soccer History &mdash; Len Oliver, &ldquo;Philadelphia Soccer in the 1940s and 1950s, Part 2: Youth &amp; Junior League Soccer with the Lighthouse Boys Club&rdquo; (May 18, 2015) &mdash; Oliver&rsquo;s first-person account of the five Northeast High boys recruited on full scholarship by Pete Leaness at Temple, the 1951 national title vs. University of San Francisco at Kezar Stadium, the 1953 repeat, and the NSCAA All-American honors: <a href=\"https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/\" rel=\"noopener\">ussoccerhistory.org &middot; Lighthouse / Len Oliver</a>",
-        "text": "Society for American Soccer History \u2014 Len Oliver, \u201cPhiladelphia Soccer in the 1940s and 1950s, Part 2\u201d (May 18, 2015): ussoccerhistory.org \u00b7 Lighthouse / Len Oliver",
-        "url": "https://www.ussoccerhistory.org/philadelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Fphiladelphia-soccer-in-the-1940s-and-1950s-part-2-youth-junior-league-soccer-with-the-lighthouse-boys-club%2F"
-      },
-      {
-        "html": "Wikipedia &mdash; Jack Dunn (soccer) &mdash; biography explicitly states he &ldquo;grew up in Philadelphia, where he played for the Lighthouse Boys Club,&rdquo; four-time All-American at Temple, head coach at Saint Joseph\u2019s University for seventeen seasons (1958&ndash;1975): <a href=\"https://en.wikipedia.org/wiki/Jack_Dunn_(soccer)\" rel=\"noopener\">en.wikipedia.org/wiki/Jack_Dunn_(soccer)</a>",
-        "text": "Wikipedia \u2014 Jack Dunn (soccer): en.wikipedia.org/wiki/Jack_Dunn_(soccer)",
-        "url": "https://en.wikipedia.org/wiki/Jack_Dunn_(soccer)",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FJack_Dunn_%28soccer%29"
-      },
-      {
-        "html": "Wikipedia &mdash; Walter Bahr &mdash; coaching career at Frankford High School, Temple University, and Penn State (14 seasons leading the Nittany Lions): <a href=\"https://en.wikipedia.org/wiki/Walter_Bahr\" rel=\"noopener\">en.wikipedia.org/wiki/Walter_Bahr</a>",
-        "text": "Wikipedia \u2014 Walter Bahr (coaching career at Frankford HS, Temple, Penn State): en.wikipedia.org/wiki/Walter_Bahr",
-        "url": "https://en.wikipedia.org/wiki/Walter_Bahr",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FWalter_Bahr"
-      },
-      {
-        "html": "Wikipedia &mdash; Len Oliver (soccer) &mdash; Lighthouse Boys Club youth; Temple University NSCAA All-American (two-time); two-time pre-NCAA national intercollegiate champion (1951, 1953); National Soccer Hall of Fame 1996: <a href=\"https://en.wikipedia.org/wiki/Len_Oliver_(soccer)\" rel=\"noopener\">en.wikipedia.org/wiki/Len_Oliver_(soccer)</a>",
-        "text": "Wikipedia \u2014 Len Oliver (soccer): en.wikipedia.org/wiki/Len_Oliver_(soccer)",
-        "url": "https://en.wikipedia.org/wiki/Len_Oliver_(soccer)",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FLen_Oliver_%28soccer%29"
-      }
-    ]
+    "kicker": "Poster 10 &middot; National Youth Championships",
+    "title": "🇺🇸 U.S. Soccer National Champions ⚽",
+    "sources": []
   },
   {
     "num": "11",
-    "kicker": "Poster 11 \u00b7 The Dual-Sport Pioneer",
-    "title": "LIGHTHOUSE IN MAJOR LEAGUE BASEBALL",
-    "sources": [
-      {
-        "html": "Wikipedia \u2014 Dick Spalding (youth career at Lighthouse Boys Club; Phillies 1927 / Senators 1928; .299 BA): <a href=\"https://en.wikipedia.org/wiki/Dick_Spalding\" rel=\"noopener\">en.wikipedia.org/wiki/Dick_Spalding</a>",
-        "text": "Wikipedia \u2014 Dick Spalding (youth career at Lighthouse Boys Club; Phillies 1927 / Senators 1928; .299 BA): en.wikipedia.org/wiki/Dick_Spalding",
-        "url": "https://en.wikipedia.org/wiki/Dick_Spalding",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FDick_Spalding"
-      },
-      {
-        "html": "National Soccer Hall of Fame \u2014 Dick Spalding (1950 Inductee profile): <a href=\"https://www.nationalsoccerhof.com/players/dick-spalding.html\" rel=\"noopener\">nationalsoccerhof.com/players/dick-spalding.html</a>",
-        "text": "National Soccer Hall of Fame \u2014 Dick Spalding (1950 Inductee profile): nationalsoccerhof.com/players/dick-spalding.html",
-        "url": "https://www.nationalsoccerhof.com/players/dick-spalding.html",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.nationalsoccerhof.com%2Fplayers%2Fdick-spalding.html"
-      }
-    ]
+    "kicker": "Poster 11 &middot; Scholastic &amp; College",
+    "title": "LIGHTHOUSE IN DIVISION 1 COLLEGE SOCCER",
+    "sources": []
   },
   {
     "num": "12",
-    "kicker": "Poster 12 \u00b7 Lighthouse Players in the Pros",
-    "title": "LIGHTHOUSE IN THE PROS",
-    "sources": [
-      {
-        "html": "Wikipedia &mdash; Philadelphia Nationals (Fairhill F.C. era, 1942-1954): <a href=\"https://en.wikipedia.org/wiki/Philadelphia_Nationals\" rel=\"noopener\">en.wikipedia.org/wiki/Philadelphia_Nationals</a>",
-        "text": "Wikipedia &mdash; Philadelphia Nationals (Fairhill F.C. era, 1942-1954): en.wikipedia.org/wiki/Philadelphia_Nationals",
-        "url": "https://en.wikipedia.org/wiki/Philadelphia_Nationals",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FPhiladelphia_Nationals"
-      },
-      {
-        "html": "Wikipedia &mdash; Philadelphia Ukrainians / Ukrainian Nationals (6 ASL titles, 4 U.S. Open Cups, 1978 Horsham move): <a href=\"https://en.wikipedia.org/wiki/Philadelphia_Ukrainians\" rel=\"noopener\">en.wikipedia.org/wiki/Philadelphia_Ukrainians</a>",
-        "text": "Wikipedia &mdash; Philadelphia Ukrainians / Ukrainian Nationals (6 ASL titles, 4 U.S. Open Cups, 1978 Horsham move): en.wikipedia.org/wiki/Philadelphia_Ukrainians",
-        "url": "https://en.wikipedia.org/wiki/Philadelphia_Ukrainians",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FPhiladelphia_Ukrainians"
-      },
-      {
-        "html": "Wikipedia &mdash; Benny McLaughlin (Lighthouse to Philadelphia Nationals 1945-1954, four ASL titles): <a href=\"https://en.wikipedia.org/wiki/Benny_McLaughlin\" rel=\"noopener\">en.wikipedia.org/wiki/Benny_McLaughlin</a>",
-        "text": "Wikipedia &mdash; Benny McLaughlin (Lighthouse to Philadelphia Nationals 1945-1954, four ASL titles): en.wikipedia.org/wiki/Benny_McLaughlin",
-        "url": "https://en.wikipedia.org/wiki/Benny_McLaughlin",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FBenny_McLaughlin"
-      },
-      {
-        "html": "Wikipedia &mdash; Francis Ryan (Lighthouse Boys Club youth; post-WWII return to Philadelphia Nationals; &ldquo;leading the team to the ASL Lewis Cup in 1948-49 and 1951-52&rdquo;; National Soccer Hall of Fame 1958 inductee): <a href=\"https://en.wikipedia.org/wiki/Francis_Ryan\" rel=\"noopener\">en.wikipedia.org/wiki/Francis_Ryan</a>",
-        "text": "Wikipedia &mdash; Francis Ryan (Lighthouse Boys Club youth; post-WWII return to Philadelphia Nationals; &ldquo;leading the team to the ASL Lewis Cup in 1948-49 and 1951-52&rdquo;; National Soccer Hall of Fame 1958 inductee): en.wikipedia.org/wiki/Francis_Ryan",
-        "url": "https://en.wikipedia.org/wiki/Francis_Ryan",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FFrancis_Ryan"
-      },
-      {
-        "html": "Wikipedia &mdash; Len Oliver (soccer) &mdash; Lighthouse Boys Club youth (1948 &amp; 1949 U-19 National Champion); Uhrik Truckers 1955&ndash;57; U.S. national team at 1963 Pan American Games; National Soccer Hall of Fame 1996 inductee: <a href=\"https://en.wikipedia.org/wiki/Len_Oliver_(soccer)\" rel=\"noopener\">en.wikipedia.org/wiki/Len_Oliver_(soccer)</a>",
-        "text": "Wikipedia &mdash; Len Oliver (soccer) &mdash; Lighthouse Boys Club youth (1948 &amp; 1949 U-19 National Champion); Uhrik Truckers 1955&ndash;57; U.S. national team at 1963 Pan American Games; National Soccer Hall of Fame 1996 inductee: en.wikipedia.org/wiki/Len_Oliver_(soccer)",
-        "url": "https://en.wikipedia.org/wiki/Len_Oliver_(soccer)",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FLen_Oliver_%28soccer%29"
-      },
-      {
-        "html": "Society for American Soccer History &mdash; Ed Farnsworth, &ldquo;Len Oliver Q&amp;A: Playing in the pros in 1950s Philadelphia and beyond&rdquo; (June 25, 2015) &mdash; primary-source interview confirming the Philadelphia Nationals folded before Oliver could play pro for them, his signing with Jimmy Mills at the Uhrik Truckers for &ldquo;$35 a game in a brown envelope,&rdquo; and the archive&rsquo;s description of the 1954-55 Uhrik Truckers championship side as &ldquo;a group of relative unknowns, many of whom were products of the legendary Lighthouse Boys Club&rdquo;: <a href=\"https://www.ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond/\" rel=\"noopener\">ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond</a>",
-        "text": "Society for American Soccer History &mdash; Ed Farnsworth, &ldquo;Len Oliver Q&amp;A: Playing in the pros in 1950s Philadelphia and beyond&rdquo; (June 25, 2015) &mdash; primary-source interview confirming the Philadelphia Nationals folded before Oliver could play pro for them, his signing with Jimmy Mills at the Uhrik Truckers for &ldquo;$35 a game in a brown envelope,&rdquo; and the archive&rsquo;s description of the 1954-55 Uhrik Truckers championship side as &ldquo;a group of relative unknowns, many of whom were products of the legendary Lighthouse Boys Club&rdquo;: ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond",
-        "url": "https://www.ussoccerhistory.org/len-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fwww.ussoccerhistory.org%2Flen-oliver-qa-playing-in-the-pros-in-1950s-philadelphia-and-beyond%2F"
-      },
-      {
-        "html": "Wikipedia &mdash; Ed McIlvenny (1949 ASL outstanding player, 1950 U.S. WC captain): <a href=\"https://en.wikipedia.org/wiki/Ed_McIlvenny\" rel=\"noopener\">en.wikipedia.org/wiki/Ed_McIlvenny</a>",
-        "text": "Wikipedia &mdash; Ed McIlvenny (1949 ASL outstanding player, 1950 U.S. WC captain): en.wikipedia.org/wiki/Ed_McIlvenny",
-        "url": "https://en.wikipedia.org/wiki/Ed_McIlvenny",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FEd_McIlvenny"
-      }
-    ]
+    "kicker": "Poster 12 &middot; The Dual-Sport Pioneer",
+    "title": "LIGHTHOUSE IN MAJOR LEAGUE BASEBALL",
+    "sources": []
   },
   {
     "num": "13",
-    "kicker": "Poster 13 \u00b7 At the Olympics",
-    "title": "LIGHTHOUSE AT THE OLYMPICS",
-    "sources": [
-      {
-        "html": "Encyclopedia of Greater Philadelphia \u2014 Ed Farnsworth, \u201cSoccer\u201d (Rutgers University, 2018) \u2014 peer-reviewed scholarly entry: \u201cEight of the seventeen players on the first U.S. Olympic soccer team at the 1924 Games in Paris were also from Philadelphia teams,\u201d and \u201calumni of the club played on the U.S. Men's National Team at the Olympics and World Cup\u201d: <a href=\"https://philadelphiaencyclopedia.org/essays/soccer/\" rel=\"noopener\">philadelphiaencyclopedia.org/essays/soccer</a>",
-        "text": "Encyclopedia of Greater Philadelphia \u2014 Ed Farnsworth, \u201cSoccer\u201d (Rutgers University, 2018) \u2014 peer-reviewed scholarly entry: \u201cEight of the seventeen players on the first U.S. Olympic soccer team at the 1924 Games in Paris were also from Philadelphia teams,\u201d and \u201calumni of the club played on the U.S. Men's National Team at the Olympics and World Cup\u201d: philadelphiaencyclopedia.org/essays/soccer",
-        "url": "https://philadelphiaencyclopedia.org/essays/soccer/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fphiladelphiaencyclopedia.org%2Fessays%2Fsoccer%2F"
-      },
-      {
-        "html": "Wikipedia \u2014 Football at the 1928 Summer Olympics, Men's team squads (lists Francis Ryan and Harry Smith with club: Lighthouse Boys Club): <a href=\"https://en.wikipedia.org/wiki/Football_at_the_1928_Summer_Olympics_%E2%80%93_Men%27s_team_squads\" rel=\"noopener\">en.wikipedia.org/wiki/Football_at_the_1928_Summer_Olympics_\u2013_Men's_team_squads</a>",
-        "text": "Wikipedia \u2014 Football at the 1928 Summer Olympics, Men's team squads (lists Francis Ryan and Harry Smith with club: Lighthouse Boys Club): en.wikipedia.org/wiki/Football_at_the_1928_Summer_Olympics_\u2013_Men's_team_squads",
-        "url": "https://en.wikipedia.org/wiki/Football_at_the_1928_Summer_Olympics_%E2%80%93_Men%27s_team_squads",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FFootball_at_the_1928_Summer_Olympics_%25E2%2580%2593_Men%2527s_team_squads"
-      },
-      {
-        "html": "Wikipedia \u2014 Football at the 1936 Summer Olympics, Men's team squads (U.S. roster incl. Ryan, Pietras, Denton): <a href=\"https://en.wikipedia.org/wiki/Football_at_the_1936_Summer_Olympics_%E2%80%93_Men%27s_team_squads\" rel=\"noopener\">en.wikipedia.org/wiki/Football_at_the_1936_Summer_Olympics_\u2013_Men's_team_squads</a>",
-        "text": "Wikipedia \u2014 Football at the 1936 Summer Olympics, Men's team squads (U.S. roster incl. Ryan, Pietras, Denton): en.wikipedia.org/wiki/Football_at_the_1936_Summer_Olympics_\u2013_Men's_team_squads",
-        "url": "https://en.wikipedia.org/wiki/Football_at_the_1936_Summer_Olympics_%E2%80%93_Men%27s_team_squads",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FFootball_at_the_1936_Summer_Olympics_%25E2%2580%2593_Men%2527s_team_squads"
-      },
-      {
-        "html": "Wikipedia \u2014 Football at the 1948 Summer Olympics, Men's team squads (U.S. roster incl. Bahr and McLaughlin): <a href=\"https://en.wikipedia.org/wiki/Football_at_the_1948_Summer_Olympics_%E2%80%93_Men%27s_team_squads\" rel=\"noopener\">en.wikipedia.org/wiki/Football_at_the_1948_Summer_Olympics_\u2013_Men's_team_squads</a>",
-        "text": "Wikipedia \u2014 Football at the 1948 Summer Olympics, Men's team squads (U.S. roster incl. Bahr and McLaughlin): en.wikipedia.org/wiki/Football_at_the_1948_Summer_Olympics_\u2013_Men's_team_squads",
-        "url": "https://en.wikipedia.org/wiki/Football_at_the_1948_Summer_Olympics_%E2%80%93_Men%27s_team_squads",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FFootball_at_the_1948_Summer_Olympics_%25E2%2580%2593_Men%2527s_team_squads"
-      },
-      {
-        "html": "Wikipedia \u2014 Jack Dunn (soccer) \u2014 biography explicitly states he \"grew up in Philadelphia, where he played for the Lighthouse Boys Club\" and was a member of the U.S. soccer team at the 1952 Summer Olympics: <a href=\"https://en.wikipedia.org/wiki/Jack_Dunn_(soccer)\" rel=\"noopener\">en.wikipedia.org/wiki/Jack_Dunn_(soccer)</a>",
-        "text": "Wikipedia \u2014 Jack Dunn (soccer) \u2014 biography explicitly states he \"grew up in Philadelphia, where he played for the Lighthouse Boys Club\" and was a member of the U.S. soccer team at the 1952 Summer Olympics: en.wikipedia.org/wiki/Jack_Dunn_(soccer)",
-        "url": "https://en.wikipedia.org/wiki/Jack_Dunn_(soccer)",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FJack_Dunn_%28soccer%29"
-      },
-      {
-        "html": "Wikipedia \u2014 Category: Lighthouse Boys Club players (8 Wikipedia-confirmed alumni, including Ryan, Smith, Bahr, McLaughlin, Dunn, Gormley, Oliver, and Spalding): <a href=\"https://en.wikipedia.org/wiki/Category:Lighthouse_Boys_Club_players\" rel=\"noopener\">en.wikipedia.org/wiki/Category:Lighthouse_Boys_Club_players</a>",
-        "text": "Wikipedia \u2014 Category: Lighthouse Boys Club players (8 Wikipedia-confirmed alumni, including Ryan, Smith, Bahr, McLaughlin, Dunn, Gormley, Oliver, and Spalding): en.wikipedia.org/wiki/Category:Lighthouse_Boys_Club_players",
-        "url": "https://en.wikipedia.org/wiki/Category:Lighthouse_Boys_Club_players",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FCategory%3ALighthouse_Boys_Club_players"
-      }
-    ]
+    "kicker": "Poster 13 &middot; Lighthouse Players in the Pros",
+    "title": "LIGHTHOUSE IN THE PROS",
+    "sources": []
   },
   {
     "num": "14",
-    "kicker": "Poster 14 \u00b7 At the World Cup",
-    "title": "LIGHTHOUSE AT THE WORLD CUP",
-    "sources": [
-      {
-        "html": "Wikipedia &mdash; 1934 FIFA World Cup squads (United States roster: Ryan, Pietras, Fiedler, Harker, Rapp at Philadelphia German-Americans): <a href=\"https://en.wikipedia.org/wiki/1934_FIFA_World_Cup_squads\" rel=\"noopener\">en.wikipedia.org/wiki/1934_FIFA_World_Cup_squads</a>",
-        "text": "Wikipedia &mdash; 1934 FIFA World Cup squads (United States roster: Ryan, Pietras, Fiedler, Harker, Rapp at Philadelphia German-Americans): en.wikipedia.org/wiki/1934_FIFA_World_Cup_squads",
-        "url": "https://en.wikipedia.org/wiki/1934_FIFA_World_Cup_squads",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2F1934_FIFA_World_Cup_squads"
-      },
-      {
-        "html": "Wikipedia &mdash; 1950 FIFA World Cup squads (United States roster: Bahr and McLaughlin at Philadelphia Nationals): <a href=\"https://en.wikipedia.org/wiki/1950_FIFA_World_Cup_squads\" rel=\"noopener\">en.wikipedia.org/wiki/1950_FIFA_World_Cup_squads</a>",
-        "text": "Wikipedia &mdash; 1950 FIFA World Cup squads (United States roster: Bahr and McLaughlin at Philadelphia Nationals): en.wikipedia.org/wiki/1950_FIFA_World_Cup_squads",
-        "url": "https://en.wikipedia.org/wiki/1950_FIFA_World_Cup_squads",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2F1950_FIFA_World_Cup_squads"
-      }
-    ]
+    "kicker": "Poster 14 &middot; At the Olympics",
+    "title": "LIGHTHOUSE AT THE OLYMPICS",
+    "sources": []
   },
   {
     "num": "15",
-    "kicker": "Poster 15 \u00b7 The Miracle Match",
-    "title": "LIGHTHOUSE WITH THE GAME WINNING ASSIST IN THE GREATEST WORLD CUP UPSET OF ALL TIME",
-    "sources": [
-      {
-        "html": "Wikipedia \u2014 United States v England (1950 FIFA World Cup): <a href=\"https://en.wikipedia.org/wiki/United_States_v_England_(1950_FIFA_World_Cup)\" rel=\"noopener\">en.wikipedia.org/wiki/United_States_v_England_(1950_FIFA_World_Cup)</a>",
-        "text": "Wikipedia \u2014 United States v England (1950 FIFA World Cup): en.wikipedia.org/wiki/United_States_v_England_(1950_FIFA_World_Cup)",
-        "url": "https://en.wikipedia.org/wiki/United_States_v_England_(1950_FIFA_World_Cup)",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FUnited_States_v_England_%281950_FIFA_World_Cup%29"
-      },
-      {
-        "html": "Geoffrey Douglas, <em>The Game of Their Lives</em> (Henry Holt, 1996) \u2014 definitive book on the 1950 squad; source for the 500-to-1 odds, Jeffrey's \"sheep\" quote, the players' day jobs, and McSkimming's unpaid trip.",
-        "text": "Geoffrey Douglas, The Game of Their Lives (Henry Holt, 1996) \u2014 definitive book on the 1950 squad; source for the 500-to-1 odds, Jeffrey's \"sheep\" quote, the players' day jobs, and McSkimming's unpaid trip.",
-        "url": "",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Farchive.org%2Fdetails%2Fgameoftheirlives00geof"
-      }
-    ]
+    "kicker": "Poster 15 &middot; At the World Cup",
+    "title": "LIGHTHOUSE AT THE WORLD CUP",
+    "sources": []
   },
   {
     "num": "16",
-    "kicker": "Poster 16 \u00b7 Hosting Manchester United",
-    "title": "LIGHTHOUSE HOSTS MANCHESTER UNITED",
-    "sources": [
-      {
-        "html": "<strong>Primary source:</strong> Original 1952 match program \u2014 <em>Manchester United vs. Philadelphia, Lighthouse Field, Sunday, May 11th, 1952, kick-off 2:30 PM, admission 25\u00a2</em> (private Lighthouse Boys Club archive, on display at this exhibit).",
-        "text": "Primary source: Original 1952 match program \u2014 Manchester United vs. Philadelphia, Lighthouse Field, Sunday, May 11th, 1952, kick-off 2:30 PM, admission 25\u00a2 (private Lighthouse Boys Club archive, on display at this exhibit).",
-        "url": "",
-        "qr_url": ""
-      }
-    ]
+    "kicker": "Poster 16 &middot; The Miracle Match",
+    "title": "LIGHTHOUSE WITH THE GAME WINNING ASSIST IN THE GREATEST WORLD CUP UPSET OF ALL TIME",
+    "sources": []
   },
   {
     "num": "17",
-    "kicker": "Poster 17 \u00b7 On the Silver Screen",
-    "title": "LIGHTHOUSE ON THE SILVER SCREEN",
-    "sources": [
-      {
-        "html": "Wikipedia \u2014 <em>The Game of Their Lives</em> (2005 film): <a href=\"https://en.wikipedia.org/wiki/The_Game_of_Their_Lives_(2005_film)\" rel=\"noopener\">en.wikipedia.org/wiki/The_Game_of_Their_Lives_(2005_film)</a>",
-        "text": "Wikipedia \u2014 The Game of Their Lives (2005 film): en.wikipedia.org/wiki/The_Game_of_Their_Lives_(2005_film)",
-        "url": "https://en.wikipedia.org/wiki/The_Game_of_Their_Lives_(2005_film)",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FThe_Game_of_Their_Lives_%282005_film%29"
-      }
-    ]
+    "kicker": "Poster 17 &middot; Hosting Manchester United",
+    "title": "LIGHTHOUSE HOSTS MANCHESTER UNITED",
+    "sources": []
   },
   {
     "num": "18",
-    "kicker": "Poster 18 \u00b7 The Boys\u2019 Club Alumni",
-    "title": "THE LIGHTHOUSE OLD TIMERS\u2019 ASSOCIATION",
-    "sources": [
-      {
-        "html": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Old Timers' Association founded April 8, 1932; Boxes 141&ndash;142 minutes &amp; funds; Vols. 224&ndash;227 photographs &amp; scrapbooks; Series 7 plaque): <a href=\"http://www.hsp.org/files/findingaid1970lighthouse.pdf\" rel=\"noopener\">Historical Society of Pennsylvania &middot; Lighthouse Records</a>",
-        "text": "Historical Society of Pennsylvania &mdash; The Lighthouse Records (Collection 1970), processed by Steven Smith, January 2004 (Old Timers' Association founded April 8, 1932; Boxes 141&ndash;142 minutes &amp; funds; Vols. 224&ndash;227 photographs &amp; scrapbooks; Series 7 plaque): Historical Society of Pennsylvania &middot; Lighthouse Records",
-        "url": "http://www.hsp.org/files/findingaid1970lighthouse.pdf",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.hsp.org%2Ffiles%2Ffindingaid1970lighthouse.pdf"
-      },
-      {
-        "html": "Wikipedia &mdash; National Soccer Hall of Fame (founded 1950 by the Philadelphia &lsquo;Old-timers&rsquo; Association): <a href=\"https://en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame\" rel=\"noopener\">en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame</a>",
-        "text": "Wikipedia &mdash; National Soccer Hall of Fame (founded 1950 by the Philadelphia &lsquo;Old-timers&rsquo; Association): en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame",
-        "url": "https://en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FNational_Soccer_Hall_of_Fame"
-      }
-    ]
+    "kicker": "Poster 18 &middot; On the Silver Screen",
+    "title": "LIGHTHOUSE ON THE SILVER SCREEN",
+    "sources": []
   },
   {
     "num": "19",
-    "kicker": "Poster 19 \u00b7 Hall of Fames",
+    "kicker": "Poster 19 &middot; The Boys' Club Alumni",
+    "title": "THE LIGHTHOUSE OLD TIMERS&rsquo; ASSOCIATION",
+    "sources": []
+  },
+  {
+    "num": "20",
+    "kicker": "Poster 20 &middot; Hall of Fames",
     "title": "LIGHTHOUSE IN THE HALL OF FAMES",
-    "sources": [
-      {
-        "html": "Wikipedia &mdash; National Soccer Hall of Fame (\u201cfounded in 1950 by the Philadelphia \u2018Old-timers\u2019 Association\u201d; 1979 Oneonta museum; Harry G. Fleming \u2014 1967 Builder): <a href=\"https://en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame\" rel=\"noopener\">en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame</a>",
-        "text": "Wikipedia &mdash; National Soccer Hall of Fame (\u201cfounded in 1950 by the Philadelphia \u2018Old-timers\u2019 Association\u201d; 1979 Oneonta museum; Harry G. Fleming \u2014 1967 Builder): en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame",
-        "url": "https://en.wikipedia.org/wiki/National_Soccer_Hall_of_Fame",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FNational_Soccer_Hall_of_Fame"
-      },
-      {
-        "html": "Philadelphia Sports Hall of Fame \u2014 Lighthouse Boys Club inductee profile (2010): <a href=\"http://www.phillyhall.org/inductee_profile.asp?ind=347\" rel=\"noopener\">phillyhall.org/inductee_profile.asp?ind=347</a>",
-        "text": "Philadelphia Sports Hall of Fame \u2014 Lighthouse Boys Club inductee profile (2010): phillyhall.org/inductee_profile.asp?ind=347",
-        "url": "http://www.phillyhall.org/inductee_profile.asp?ind=347",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=http%3A%2F%2Fwww.phillyhall.org%2Finductee_profile.asp%3Find%3D347"
-      },
-      {
-        "html": "SEPA Soccer Hall of Fame Official Archive: <a href=\"https://sepasoccerhall.com/\" rel=\"noopener\">sepasoccerhall.com</a>",
-        "text": "SEPA Soccer Hall of Fame Official Archive: sepasoccerhall.com",
-        "url": "https://sepasoccerhall.com/",
-        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=2&data=https%3A%2F%2Fsepasoccerhall.com%2F"
-      }
-    ]
+    "sources": []
   }
 ]
