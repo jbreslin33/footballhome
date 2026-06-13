@@ -243,7 +243,7 @@ app.get('/api/ads/preview', requireAuth, async (req, res) => {
     }
 
     const fields = [
-      'name', 'status',
+      'name', 'status', 'created_time',
       'creative{name,body,title,image_url,object_story_spec}'
     ].join(',');
     const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${ADS_TOKEN}`;
@@ -278,15 +278,29 @@ app.get('/api/ads/preview', requireAuth, async (req, res) => {
       const spec = c.object_story_spec?.link_data || {};
       const fullResUrl = spec.image_hash ? hashToUrl[spec.image_hash] : null;
       return {
-        id:        ad.id,
-        name:      ad.name,
-        status:    ad.status,
-        headline:  c.title  || spec.name  || null,
-        body:      c.body   || spec.message || null,
-        image_url: fullResUrl || c.image_url || null,
-        cta:       spec.call_to_action?.type || null,
-        link:      spec.link || null,
+        id:           ad.id,
+        name:         ad.name,
+        status:       ad.status,
+        created_time: ad.created_time || null,
+        headline:     c.title  || spec.name  || null,
+        body:         c.body   || spec.message || null,
+        image_url:    fullResUrl || c.image_url || null,
+        cta:          spec.call_to_action?.type || null,
+        link:         spec.link || null,
       };
+    });
+
+    // Sort: PAUSED ads (awaiting review) first, then ACTIVE, then others.
+    // Within each group, newest created_time first so freshly created ads
+    // surface at the top of the review queue.
+    const STATUS_PRIORITY = { PAUSED: 0, ACTIVE: 1 };
+    ads.sort((a, b) => {
+      const pa = STATUS_PRIORITY[a.status] ?? 2;
+      const pb = STATUS_PRIORITY[b.status] ?? 2;
+      if (pa !== pb) return pa - pb;
+      const ta = a.created_time ? Date.parse(a.created_time) : 0;
+      const tb = b.created_time ? Date.parse(b.created_time) : 0;
+      return tb - ta;
     });
 
     res.json(ads);
