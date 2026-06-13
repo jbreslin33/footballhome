@@ -177,14 +177,127 @@ const ADS = {
       instagram_positions: ['stream', 'explore'],
     },
   },
+  'mens-club': {
+    name:    'Lighthouse Mens Club — APSL / Liga 1',
+    mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
+    imageUrl: 'https://footballhome.org/images/posts/mens-club-ad.png',
+    caption: `⚽ JOIN LIGHTHOUSE MENS CLUB — APSL / LIGA 1\n\nOpen-tryout adult men's team competing in APSL / Liga 1.\nAll skill levels welcome. Train with the squad, compete on weekends.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #APSL #Liga1 #PhillySoccer #MensSoccer`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=mens-club',
+    ctaType: 'SIGN_UP',
+    defaultBudget: 5,
+    // no defaultDays — runs until manually cancelled
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse Mens Club — APSL / Liga 1',
+        content: [
+          'Adult open-tryout team — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'A coach will follow up with tryout dates, fees, and next steps.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with tryout details and next steps.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      geo_locations: {
+        cities: [{ key: '2511940', radius: 10, distance_unit: 'mile' }],  // Philadelphia, explicit
+      },
+      age_min: 18,
+      age_max: 40,
+      genders: [1],  // male
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'womens-club': {
+    name:    'Lighthouse Womens Club — Tri County',
+    mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
+    imageUrl: 'https://footballhome.org/images/posts/womens-club-ad.png',
+    caption: `⚽ JOIN LIGHTHOUSE WOMENS CLUB — TRI COUNTY\n\nOpen-tryout adult women's team — Tri County League. Games on Sundays.\nAll skill levels welcome. Train with the squad, compete this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #TriCounty #PhillySoccer #WomensSoccer`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=womens-club',
+    ctaType: 'SIGN_UP',
+    defaultBudget: 3,
+    // no defaultDays — runs until manually cancelled
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse Womens Club — Tri County',
+        content: [
+          'Adult open-tryout team — Tri County League',
+          '199 East Erie Avenue · since 1893',
+          'A coach will follow up with tryout dates, fees, and next steps.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with tryout details and next steps.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      geo_locations: {
+        cities: [{ key: '2511940', radius: 10, distance_unit: 'mile' }],  // Philadelphia, explicit
+      },
+      age_min: 18,
+      age_max: 50,
+      genders: [2],  // female
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
   'boys-club': {
-    name:    'Lighthouse Boys Club — Now Enrolling (Grades 1–6)',
-    imageUrl: 'https://footballhome.org/images/posts/boys-club-ad.png',
-    caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership',
+    name:    'Lighthouse Boys Club — Now Enrolling (K-12)',
+    mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
+    imageUrl: 'https://footballhome.org/images/posts/boys-club-k12-ad.png',
+    caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-club',
     ctaType: 'LEARN_MORE',
-    defaultBudget: 8,
-    defaultDays:   14,
+    defaultBudget: 5,
+    // no defaultDays — runs until manually cancelled
     leadForm: {
       questions: [
         { type: 'FULL_NAME' },
@@ -242,13 +355,14 @@ const ADS = {
     },
   },
   'girls-club': {
-    name:    'Lighthouse Girls Club — Now Enrolling (Grades 1–6)',
-    imageUrl: 'https://footballhome.org/images/posts/girls-club-ad.png',
-    caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership',
+    name:    'Lighthouse Girls Club — Now Enrolling (K-12)',
+    mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
+    imageUrl: 'https://footballhome.org/images/posts/girls-club-k12-ad.png',
+    caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-club',
     ctaType: 'LEARN_MORE',
-    defaultBudget: 8,
-    defaultDays:   14,
+    defaultBudget: 5,
+    // no defaultDays — runs until manually cancelled
     leadForm: {
       questions: [
         { type: 'FULL_NAME' },
@@ -376,6 +490,7 @@ async function run() {
     }
   }
   console.log(`   Audience: ${geoLabel}, ages ${targeting.age_min}–${targeting.age_max}, ${genderLabel}`);
+  console.log(`   Mode: ${ad.mode === 'direct' ? 'DIRECT (→ landing page)' : 'LEAD FORM (→ IG form → thank-you)'}`);
   console.log(`   CTA: ${ad.ctaType} → ${ad.ctaUrl}`);
   console.log(`   Image: ${ad.imageUrl}`);
 
@@ -388,7 +503,7 @@ async function run() {
   console.log('\n1️⃣  Creating campaign...');
   const campaign = await apiPost(`${AD_ACCOUNT_ID}/campaigns`, {
     name: `${ad.name} — ${new Date().toLocaleDateString()}`,
-    objective: 'OUTCOME_LEADS',
+    objective: ad.mode === 'direct' ? 'OUTCOME_TRAFFIC' : 'OUTCOME_LEADS',
     status: 'PAUSED',
     special_ad_categories: JSON.stringify([]),
     is_adset_budget_sharing_enabled: false,
@@ -403,10 +518,10 @@ async function run() {
     campaign_id: campaign.id,
     daily_budget: dailyBudgetCents,
     billing_event: 'IMPRESSIONS',
-    optimization_goal: 'LEAD_GENERATION',
+    optimization_goal: ad.mode === 'direct' ? 'LANDING_PAGE_VIEWS' : 'LEAD_GENERATION',
     bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
     promoted_object: JSON.stringify({ page_id: PAGE_ID }),
-    destination_type: 'ON_AD',
+    destination_type: ad.mode === 'direct' ? 'WEBSITE' : 'ON_AD',
     targeting: JSON.stringify({ ...targeting, targeting_automation: { advantage_audience: 0 } }),
     status: 'PAUSED',
   };
@@ -415,9 +530,11 @@ async function run() {
   if (adSet.error) { console.error('Ad set error:', JSON.stringify(adSet.error, null, 2)); process.exit(1); }
   console.log(`   Ad Set ID: ${adSet.id}`);
 
-  // Step 3a: Create Lead Form (or reuse existing one via --form-id)
+  // Step 3a: Create Lead Form (skipped for direct-mode ads)
   let leadForm;
-  if (formIdArg) {
+  if (ad.mode === 'direct') {
+    console.log('3️⃣  Skipping lead form (direct-to-landing-page mode)');
+  } else if (formIdArg) {
     console.log('3️⃣  Using existing lead form ID:', formIdArg);
     leadForm = { id: formIdArg };
   } else {
@@ -476,7 +593,7 @@ async function run() {
   const imageHash = Object.values(imgUpload.images)[0].hash;
   console.log(`   Image hash: ${imageHash}`);
 
-  // Step 3c: Create Ad Creative with native lead form
+  // Step 3c: Create Ad Creative (direct-to-landing or native lead form)
   console.log('   Creating ad creative...');
   const creative = await apiPost(`${AD_ACCOUNT_ID}/adcreatives`, {
     name: `${ad.name} — Creative`,
@@ -486,7 +603,9 @@ async function run() {
         image_hash: imageHash,
         link: ad.ctaUrl,
         message: ad.caption,
-        call_to_action: { type: 'SIGN_UP', value: { lead_gen_form_id: leadForm.id } },
+        call_to_action: ad.mode === 'direct'
+          ? { type: ad.ctaType || 'SIGN_UP', value: { link: ad.ctaUrl } }
+          : { type: 'SIGN_UP', value: { lead_gen_form_id: leadForm.id } },
       },
     }),
   });

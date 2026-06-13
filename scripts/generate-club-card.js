@@ -1,13 +1,18 @@
 // scripts/generate-club-card.js
-// Generates 1080x1080 promo cards for Lighthouse Boys Club / Girls Club
-// soccer ads. Layout: bold typography only — no figures or silhouettes.
-// Brand palette: navy + gold. The only difference between boys/girls is
-// the "BOYS CLUB" vs "GIRLS CLUB" word and a subtle accent tint.
+// Generates 1080x1080 promo cards for Lighthouse Boys / Girls / Mens / Womens
+// Club soccer ads. Layout: bold typography only — no figures or silhouettes.
+// Brand palette: navy + gold. Same template across all variants; only the
+// wordmark + badge change.
 //
 // Usage:
-//   node scripts/generate-club-card.js boys
-//   node scripts/generate-club-card.js girls
-//   node scripts/generate-club-card.js boys  <promoId>   # also writes promo_<id>.jpg + DB update
+//   node scripts/generate-club-card.js boys       → boys-club-ad.png        (legacy, Grades 1–6)
+//   node scripts/generate-club-card.js girls      → girls-club-ad.png       (legacy, Grades 1–6)
+//   node scripts/generate-club-card.js boys-k12   → boys-club-k12-ad.png    (NEW, K–12)
+//   node scripts/generate-club-card.js girls-k12  → girls-club-k12-ad.png   (NEW, K–12)
+//   node scripts/generate-club-card.js mens       → mens-club-ad.png        (NEW, APSL / Liga 1)
+//   node scripts/generate-club-card.js womens     → womens-club-ad.png      (NEW, Tri County)
+//
+//   node scripts/generate-club-card.js <variant> <promoId>   # also writes promo_<id>.jpg + DB update
 
 const puppeteer  = require('puppeteer');
 const path       = require('path');
@@ -17,15 +22,27 @@ const { Client } = require('pg');
 const variant = (process.argv[2] || '').toLowerCase();
 const promoId = process.argv[3] || null;
 
-if (!['boys', 'girls'].includes(variant)) {
-  console.error('Usage: node scripts/generate-club-card.js <boys|girls> [promoId]');
+const VARIANTS = {
+  'boys':      { word: 'BOYS CLUB',    badge: 'Grades 1–6',   file: 'boys-club-ad.png'        },
+  'girls':     { word: 'GIRLS CLUB',   badge: 'Grades 1–6',   file: 'girls-club-ad.png'       },
+  'boys-k12':  { word: 'BOYS CLUB',    badge: 'K – 12',         file: 'boys-club-k12-ad.png'    },
+  'girls-k12': { word: 'GIRLS CLUB',   badge: 'K – 12',         file: 'girls-club-k12-ad.png'   },
+  'mens':      { word: 'MENS CLUB',    badge: 'APSL · LIGA 1',  file: 'mens-club-ad.png'        },
+  'womens':    { word: 'WOMENS CLUB',  badge: 'TRI COUNTY',     file: 'womens-club-ad.png'      },
+};
+
+if (!VARIANTS[variant]) {
+  console.error('Usage: node scripts/generate-club-card.js <variant> [promoId]');
+  console.error('Variants: ' + Object.keys(VARIANTS).join(', '));
   process.exit(1);
 }
 
+const V = VARIANTS[variant];
+
 const ROOT      = path.resolve(__dirname, '..');
 const POSTS_DIR = path.join(ROOT, 'frontend', 'images', 'posts');
-const OUT_FILE  = path.join(POSTS_DIR, `${variant}-club-ad.png`);
-const OUT_URL   = `https://footballhome.org/images/posts/${variant}-club-ad.png`;
+const OUT_FILE  = path.join(POSTS_DIR, V.file);
+const OUT_URL   = `https://footballhome.org/images/posts/${V.file}`;
 
 const LH_1893   = path.join(ROOT, 'frontend', 'images', 'teams', 'logos', 'lighthouse-1893.png');
 
@@ -38,7 +55,8 @@ function dataUri(p) {
 
 const lh1893 = dataUri(LH_1893);
 
-const WORD = variant === 'boys' ? 'BOYS CLUB' : 'GIRLS CLUB';
+const WORD  = V.word;
+const BADGE = V.badge;
 
 const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -145,7 +163,7 @@ const html = `<!DOCTYPE html>
     <div class="spacer-top"></div>
 
     <div class="grades">
-      <div class="pill">Grades 1–6</div>
+      <div class="pill">${BADGE}</div>
     </div>
 
     <div class="spacer-bot"></div>
