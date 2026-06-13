@@ -833,37 +833,94 @@ class LeadsScreen extends Screen {
 
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
-    if (c.isYouth) {
-      // Youth funnels — keep the warm "thanks for your interest" framing
-      // + qualifying Q (son's name / daughter's name / boy or girl) since
-      // the question itself is genuinely needed (esp. gender for the
-      // generic Youth form, which doesn't pre-segment).
+
+    // DESIGN — single-CTA, lean copy:
+    //   • Schedule / practice cadence omitted from all 9 first-touch emails.
+    //     Generates "doesn't fit my schedule" objections before the lead
+    //     even sees the $1 hook.  Schedule lives in the snippet chip for
+    //     follow-up after they reply or register.
+    //   • Pickup invite omitted — that's the soft-fallback chip for
+    //     hesitant adult leads, not part of the cold open.
+    //   • Only special line: Tri County Women gets "Games on Sundays."
+    //     For women's-league leads, day-of-week is a positive filter
+    //     ("yep, Sundays work") not a friction generator.
+
+    // Auto-renewal disclosure — appears as a parenthetical under every
+    // first-touch email's CTA link.  Honest upfront disclosure beats
+    // post-checkout surprise: lower chargeback rate, fewer "I felt
+    // tricked" reviews, builds the word-of-mouth trust that compounds
+    // in a small-club market.  LeagueApps re-discloses on the checkout
+    // page (Program Description + Cancellation Policy checkbox); this
+    // is the belt to LeagueApps' suspenders.
+    //   Women's Club (Tri County + U23 Women) → $5/month
+    //   All others (Men's + Youth)             → $35/month
+    const isWomensClub = /women/i.test(funnelLabel);
+    const monthly = isWomensClub ? '$5' : '$35';
+    const disclosure = `(Membership renews at ${monthly}/month — cancel anytime, no questions asked.)`;
+
+    // ── Legacy Youth (combined Boys+Girls form, gender unknown) ────────
+    // Email closes with BOTH links — parent picks the right one.  Avoids
+    // a round-trip ("which one?") and gets the lead to register in one
+    // touch.  SMS stays in the "ask boy or girl first" pattern since
+    // surfacing both URLs in 160 chars reads spammy.
+    if (c.isLegacyYouth) {
       return {
         sms:
           `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
           `Quick Q: ${c.question}`,
-        subject: `Lighthouse 1893 — thanks for reaching out!`,
+        subject: `Lighthouse 1893 — sign up your player for our youth soccer program`,
         email:
           `Hi {first},\n\n` +
-          `{coach} here with Lighthouse 1893 — thanks for your interest in our ${c.program}!\n\n` +
-          `Quick question to get started: ${c.question}\n\n` +
-          `Looking forward to hearing from you.\n\n` +
-          `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+          `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
+          `Ready to sign your player up? It's $1 to join — pick the program that matches:\n` +
+          `• Boys (Grades 1–6): ${c.linkBoys}\n` +
+          `• Girls (Grades 1–6): ${c.linkGirls}\n` +
+          `${disclosure}\n\n` +
+          `Or just hit reply with any questions — happy to help.\n\n` +
+          `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
       };
     }
-    // Adult funnels — tight, direct, SMS-native single sentence.
-    // "Hi Mike, John w/ Lighthouse 1893 — want to play for our X this season?"
-    // Drops "this is" (people don't type that in real texts) and the
-    // "thanks for your interest / Quick Q" filler.  The question IS the text.
+
+    // ── Gender-specific Youth (Boys Club / Girls Club) ─────────────────
+    // Gender is known from which form they filled → we can say
+    // "son" or "daughter" directly and link straight to the right program.
+    if (c.isYouth) {
+      const child = /girls/i.test(funnelLabel) ? 'daughter' : 'son';
+      return {
+        sms:
+          `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
+          `Quick Q: ${c.question}`,
+        subject: `Lighthouse 1893 — sign your ${child} up for our ${c.program}`,
+        email:
+          `Hi {first},\n\n` +
+          `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
+          `Ready to sign your ${child} up? It's $1 to join — takes about 60 seconds:\n` +
+          `${c.link}\n` +
+          `${disclosure}\n\n` +
+          `Or just hit reply with any questions — happy to help.\n\n` +
+          `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+      };
+    }
+
+    // ── Adult funnels (Brazil / PR / U23 M / U23 W / Tri County W / APSL)
+    // SMS stays SMS-native (tight single-sentence ask).  Email is the
+    // closing channel: warm intro, the $1 ask, register link, soft reply
+    // out.  Reads like a club welcome, not a sales pitch.
+    const isTriCountyWomen = funnelLabel === 'Tri County Women';
+    const gameLine = isTriCountyWomen ? `Games on Sundays.\n\n` : '';
     return {
       sms:
         `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?`,
-      subject: `Lighthouse 1893 — want to play for our ${c.program}?`,
+      subject: `Lighthouse 1893 — join our ${c.program} this season`,
       email:
         `Hi {first},\n\n` +
-        `{coach} here with Lighthouse 1893 — want to play for our ${c.program} this season?\n\n` +
-        `Reply and I'll send over the registration link.\n\n` +
-        `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+        `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
+        gameLine +
+        `Ready to play? It's $1 to join — takes about 60 seconds:\n` +
+        `${c.link}\n` +
+        `${disclosure}\n\n` +
+        `Or just hit reply with any questions — happy to chat.\n\n` +
+        `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
     };
   }
 
