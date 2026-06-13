@@ -181,7 +181,7 @@ const ADS = {
     name:    'Lighthouse Mens Club — APSL / Liga 1',
     mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
     imageUrl: 'https://footballhome.org/images/posts/mens-club-ad.png',
-    caption: `⚽ JOIN LIGHTHOUSE MENS CLUB — APSL / LIGA 1\n\nOpen-tryout adult men's team competing in APSL / Liga 1.\nAll skill levels welcome. Train with the squad, compete on weekends.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #APSL #Liga1 #PhillySoccer #MensSoccer`,
+    caption: `⚽ JOIN LIGHTHOUSE MENS CLUB — APSL / LIGA 1\n\nOpen-tryout adult men's team competing in APSL / Liga 1.\nAll skill levels welcome. Train with the squad, compete on weekends.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Liga1 #PhillySoccer #MensSoccer`,
     ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=mens-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -237,7 +237,7 @@ const ADS = {
     name:    'Lighthouse Womens Club — Tri County',
     mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
     imageUrl: 'https://footballhome.org/images/posts/womens-club-ad.png',
-    caption: `⚽ JOIN LIGHTHOUSE WOMENS CLUB — TRI COUNTY\n\nOpen-tryout adult women's team — Tri County League. Games on Sundays.\nAll skill levels welcome. Train with the squad, compete this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #TriCounty #PhillySoccer #WomensSoccer`,
+    caption: `⚽ JOIN LIGHTHOUSE WOMENS CLUB — TRI COUNTY\n\nOpen-tryout adult women's team — Tri County League. Games on Sundays.\nAll skill levels welcome. Train with the squad, compete this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #TriCounty #PhillySoccer #WomensSoccer`,
     ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=womens-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 3,
@@ -293,7 +293,7 @@ const ADS = {
     name:    'Lighthouse Boys Club — Now Enrolling (K-12)',
     mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
     imageUrl: 'https://footballhome.org/images/posts/boys-club-k12-ad.png',
-    caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
+    caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
     ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -358,7 +358,7 @@ const ADS = {
     name:    'Lighthouse Girls Club — Now Enrolling (K-12)',
     mode:    'direct',  // → LeagueApps (A/B test vs lead-form live ads)
     imageUrl: 'https://footballhome.org/images/posts/girls-club-k12-ad.png',
-    caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
+    caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
     ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
