@@ -27,7 +27,7 @@ const VARIANTS = {
   'girls':     { word: 'GIRLS CLUB',   badge: 'Grades 1–6',   file: 'girls-club-ad.png'       },
   'boys-k12':  { word: 'BOYS CLUB',    badge: 'K – 12',         file: 'boys-club-k12-ad.png'    },
   'girls-k12': { word: 'GIRLS CLUB',   badge: 'K – 12',         file: 'girls-club-k12-ad.png'   },
-  'mens':      { word: 'MENS CLUB',    badge: '16+ · APSL & CASA · LIGA 1 & 2',  file: 'mens-club-ad.png'        },
+  'mens':      { word: 'MENS CLUB',    badge: '16+',          sub: 'APSL & CASA · LIGA 1 & 2',  file: 'mens-club-ad.png'        },
   'womens':    { word: 'WOMENS CLUB',  badge: 'TRI COUNTY',     file: 'womens-club-ad.png'      },
 };
 
@@ -57,6 +57,7 @@ const lh1893 = dataUri(LH_1893);
 
 const WORD  = V.word;
 const BADGE = V.badge;
+const SUB   = V.sub || '';
 
 const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -134,6 +135,16 @@ const html = `<!DOCTYPE html>
     font-size:28px; font-weight:900; letter-spacing:5px;
     text-transform:uppercase;
   }
+  .grades .sub {
+    margin-top:18px;
+    color:#f5d442; opacity:0.95;
+    font-size:24px; font-weight:800; letter-spacing:4px;
+    text-transform:uppercase;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .grades .stack {
+    display:flex; flex-direction:column; align-items:center;
+  }
 
   .footer {
     text-align:center;
@@ -163,7 +174,10 @@ const html = `<!DOCTYPE html>
     <div class="spacer-top"></div>
 
     <div class="grades">
-      <div class="pill">${BADGE}</div>
+      <div class="stack">
+        <div class="pill">${BADGE}</div>
+        ${SUB ? `<div class="sub">${SUB}</div>` : ''}
+      </div>
     </div>
 
     <div class="spacer-bot"></div>
