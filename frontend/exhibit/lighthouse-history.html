@@ -257,6 +257,13 @@
     margin: 0;
   }
   .sources {
+    /* Per-poster <div class="sources"> blocks are hidden on the main exhibit
+       page by design: all citations are surfaced through the global "Full
+       Sources" QR callout on Poster 1, which links to /exhibit/sources.html.
+       The blocks remain in the HTML so scripts/extract-sources.py can pick
+       them up and feed sources.json / sources.html. To re-enable per-poster
+       footers on the main page, remove the `display: none` line below. */
+    display: none;
     margin-top: 18px;
     padding-top: 14px;
     border-top: 1px dashed var(--line);
