@@ -3,7 +3,20 @@
     "num": "01",
     "kicker": "The Founder",
     "title": "LIGHTHOUSE IS FOUNDED BY ESTHER KELLY",
-    "sources": []
+    "sources": [
+      {
+        "html": "&ldquo;The team was the dominant U.S. youth soccer club of the early twentieth century.&rdquo; Wikipedia, <em>Lighthouse Boys Club</em>. <a href=\"https://en.wikipedia.org/wiki/Lighthouse_Boys_Club\" rel=\"noopener\" target=\"_blank\">en.wikipedia.org/wiki/Lighthouse_Boys_Club</a>",
+        "text": "&ldquo;The team was the dominant U.S. youth soccer club of the early twentieth century.&rdquo; Wikipedia, Lighthouse Boys Club. en.wikipedia.org/wiki/Lighthouse_Boys_Club",
+        "url": "https://en.wikipedia.org/wiki/Lighthouse_Boys_Club",
+        "qr_url": ""
+      },
+      {
+        "html": "&ldquo;A strong performance by a group of relative unknowns, many of whom were products of the legendary Lighthouse Boys Club.&rdquo; American Soccer History Archives, on the 1954-55 Uhrik Truckers. <a href=\"https://homepages.sover.net/~spectrum/year/1954-55.html\" rel=\"noopener\" target=\"_blank\">homepages.sover.net/&hellip;/1954-55.html</a>",
+        "text": "&ldquo;A strong performance by a group of relative unknowns, many of whom were products of the legendary Lighthouse Boys Club.&rdquo; American Soccer History Archives, on the 1954-55 Uhrik Truckers. homepages.sover.net/&hellip;/1954-55.html",
+        "url": "https://homepages.sover.net/~spectrum/year/1954-55.html",
+        "qr_url": ""
+      }
+    ]
   },
   {
     "num": "02",
@@ -131,6 +144,13 @@
     "num": "20",
     "kicker": "Hall of Fames",
     "title": "LIGHTHOUSE IN THE HALL OF FAMES",
-    "sources": []
+    "sources": [
+      {
+        "html": "&ldquo;The team was the dominant U.S. youth soccer club of the early twentieth century.&rdquo; Wikipedia, <em>Lighthouse Boys Club</em>. <a href=\"https://en.wikipedia.org/wiki/Lighthouse_Boys_Club\" rel=\"noopener\" target=\"_blank\">en.wikipedia.org/wiki/Lighthouse_Boys_Club</a>",
+        "text": "&ldquo;The team was the dominant U.S. youth soccer club of the early twentieth century.&rdquo; Wikipedia, Lighthouse Boys Club. en.wikipedia.org/wiki/Lighthouse_Boys_Club",
+        "url": "https://en.wikipedia.org/wiki/Lighthouse_Boys_Club",
+        "qr_url": ""
+      }
+    ]
   }
 ]
