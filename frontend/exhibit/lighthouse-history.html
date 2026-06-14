@@ -140,15 +140,16 @@
   .poster-body.two-col blockquote,
   .poster-body.two-col ul,
   .poster-body.two-col ol,
-  .poster-body.two-col .global-sources {
+  .poster-body.two-col .poster-sources-qr {
     break-inside: avoid;
     -webkit-column-break-inside: avoid;
   }
   .poster-body.two-col .gold-divider { column-span: all; }
-  /* The QR callout breaks out of the columns and renders below all the
-     text, spanning the full body width. Since it's the LAST DOM child
-     of .poster-body, column-span: all places it visually at the bottom. */
-  .poster-body.two-col > .global-sources {
+  /* The Sources QR widget breaks out of the columns and renders below all
+     the text, right-aligned at the bottom. Since it's the LAST DOM child
+     of .poster-body (injected by JS step 1d), column-span: all places it
+     visually at the bottom of the column flow. */
+  .poster-body.two-col > .poster-sources-qr {
     column-span: all;
     -webkit-column-span: all;
     margin-top: 18px;
@@ -300,60 +301,41 @@
   @media print {
     .sources .qr { width: 80px; height: 80px; }
   }
-  /* Global "Full Sources" callout — only on Poster 1 (Bradford).
-     One QR code points to footballhome.org/exhibit/sources.html
-     where every citation for the whole exhibit lives. */
-  .global-sources {
-    margin: 22px 0 4px;
-    padding: 20px 22px;
-    background: var(--navy);
-    color: #fff;
-    border-left: 6px solid var(--gold);
+  /* Uniform per-poster Sources QR widget.
+     Injected by JS (step 1d) as the LAST child of every .poster-body.
+     Small fixed-size badge: 80px QR + 'SOURCES' label, right-aligned.
+     One QR scans to footballhome.org/exhibit/sources.html which holds
+     every citation for every poster. */
+  .poster-sources-qr {
+    margin: 22px 0 0 auto;
+    padding: 8px 10px 6px;
+    width: 96px;
+    background: #fff;
+    border: 1px solid var(--line);
     border-radius: 4px;
     display: flex;
-    gap: 20px;
+    flex-direction: column;
     align-items: center;
+    gap: 6px;
+    box-sizing: border-box;
   }
-  .global-sources .gs-qr {
-    width: 120px;
-    height: 120px;
-    flex-shrink: 0;
-    background: #fff;
-    padding: 6px;
-    border-radius: 4px;
+  .poster-sources-qr .psq-qr {
+    width: 80px;
+    height: 80px;
     display: block;
   }
-  .global-sources .gs-text { flex: 1; }
-  .global-sources .gs-kicker {
+  .poster-sources-qr .psq-label {
     font-family: 'Montserrat', sans-serif;
     text-transform: uppercase;
-    letter-spacing: 2.5px;
-    font-size: 0.7rem;
-    color: var(--gold);
-    margin: 0 0 6px;
-    font-weight: 700;
-  }
-  .global-sources .gs-headline {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.4rem;
-    letter-spacing: 1px;
-    margin: 0 0 6px;
-    color: #fff;
-    line-height: 1.1;
-  }
-  .global-sources .gs-body {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 0.88rem;
-    color: #d8e1f0;
-    margin: 0 0 6px;
-    line-height: 1.45;
-  }
-  .global-sources .gs-url {
-    font-family: 'Open Sans', monospace;
-    font-size: 0.82rem;
-    color: var(--gold);
+    letter-spacing: 1.8px;
+    font-size: 0.62rem;
+    color: var(--navy);
     margin: 0;
-    letter-spacing: 0.5px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  @media print {
+    .poster-sources-qr .psq-qr { width: 90px; height: 90px; }
   }
   .note {
     margin-top: 16px;
@@ -737,7 +719,7 @@
   <p><strong>Cradle of American Soccer · Kensington, Philadelphia</strong></p>
   <p>Prepared for the June 19 World Cup &amp; Fundraiser Party at LH</p>
   <div class="gold-rule"></div>
-  <p>A <span data-poster-count>19</span>-poster historical walkthrough. Sources are listed below each card.</p>
+  <p>A <span data-poster-count>19</span>-poster historical walkthrough. Scan the small QR code at the bottom of each card to open the full sources page.</p>
 </section>
 
 <div class="poster-list">
@@ -763,15 +745,6 @@
       <p><span class="lead-in">1897 — The Boys Club.</span> In 1897, the <strong>Church Club of Philadelphia</strong> &mdash; a lay Episcopal men's society &mdash; partnered with Bradford to formally launch the <strong>Lighthouse Boys Club</strong> as a structured athletic and educational arm of her settlement work. The boys' club enrolled approximately <strong>350 members in its first month</strong>, at <strong>$1.00 a year</strong> &mdash; <em>about $40 in today's money</em> &mdash; uniform included. To keep costs down, uniforms were reused and handed down season after season so every boy who showed up had a kit.</p>
       <p><span class="lead-in">A Woman in Charge, Before Women Could Vote.</span> Bradford led The Lighthouse a full generation before American women won the right to vote in 1920. She stood alongside <strong>Jane Addams</strong> (Hull House, Chicago, 1889) and <strong>Stanton Coit</strong> (Neighborhood Guild, New York, 1886) as one of the foremost settlement-house founders of the Progressive Era &mdash; and the only one to seed what would become <strong>the greatest youth soccer club in American history</strong>: 5 U-19 national championships, 7 National Soccer Hall of Famers, 2 FIFA World Cup players, and 4 U.S. Olympians, all from a single Kensington club.</p>
       <blockquote style="margin:18px 0 4px 0;padding:14px 18px;border-left:4px solid #C5A880;background:rgba(15,44,89,0.04);font-style:italic;color:#0F2C59;line-height:1.5;">"The struggling community inspired Lighthouse founder Esther Kelly Bradford to organize a social center where neighbors could mingle, train for employment, take advantage of educational opportunities and locate necessary resources for day-to-day living."<br><span style="font-style:normal;font-weight:600;font-size:0.85em;color:#4a5a7b;">— Randi Kamine, Historical Society of Pennsylvania, on PhilaPlace</span></blockquote>
-      <aside class="global-sources" aria-label="Sources and further reading">
-        <img class="gs-qr" alt="QR code: scan for sources and further reading" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&data=https%3A%2F%2Ffootballhome.org%2Fexhibit%2Fsources.html">
-        <div class="gs-text">
-          <p class="gs-kicker">Sources &amp; Further Reading</p>
-          <p class="gs-headline">The full archive behind this exhibit.</p>
-          <p class="gs-body">Scan for every newspaper clipping, archival record, oral history, and scholarly work cited across the <span data-poster-count>19</span> posters.</p>
-          <p class="gs-url"><strong>footballhome.org/exhibit/sources.html</strong></p>
-        </div>
-      </aside>
     </div>
   </article>
 
@@ -1391,15 +1364,35 @@
   posters.forEach(function(p) {
     var bodyEl = p.querySelector(':scope > .poster-inner > .poster-body');
     if (!bodyEl) return;
-    // Use textContent of the body MINUS the global-sources callout text,
-    // since that block is decorative and shouldn't drive column choice.
-    var clone = bodyEl.cloneNode(true);
-    var gs = clone.querySelector('.global-sources');
-    if (gs) gs.remove();
-    var textLen = (clone.textContent || '').trim().length;
+    // Text-length check runs BEFORE step 1d injects the Sources QR widget,
+    // so the widget never pollutes the count.
+    var textLen = (bodyEl.textContent || '').trim().length;
     if (textLen >= TWO_COL_THRESHOLD) {
       bodyEl.classList.add('two-col');
     }
+  });
+
+  // ---------- 1d. Inject uniform Sources QR widget on every poster ----------
+  // One small 80px QR code + 'SOURCES' label, appended as the LAST child of
+  // every .poster-body. Scans to footballhome.org/exhibit/sources.html where
+  // every citation for every poster lives. Done in JS so the markup stays in
+  // a single source of truth (no 20x HTML duplication).
+  var SOURCES_URL = 'https://footballhome.org/exhibit/sources.html';
+  var SOURCES_QR_SRC = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&data=' +
+    encodeURIComponent(SOURCES_URL);
+  posters.forEach(function(p) {
+    var bodyEl = p.querySelector(':scope > .poster-inner > .poster-body');
+    if (!bodyEl) return;
+    if (bodyEl.querySelector(':scope > .poster-sources-qr')) return; // idempotent
+    var widget = document.createElement('aside');
+    widget.className = 'poster-sources-qr';
+    widget.setAttribute('aria-label', 'Scan QR code for full sources for this exhibit');
+    widget.title = SOURCES_URL;
+    widget.innerHTML =
+      '<img class="psq-qr" alt="QR code linking to footballhome.org/exhibit/sources.html" src="' +
+      SOURCES_QR_SRC + '">' +
+      '<p class="psq-label">Sources</p>';
+    bodyEl.appendChild(widget);
   });
 
   // ---------- 2. Inject per-poster toggle bar ----------
