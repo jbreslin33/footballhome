@@ -38,7 +38,7 @@ ARTICLE_RE = re.compile(
 NUM_RE       = re.compile(r'<div class="poster-num">([^<]+)</div>')
 KICKER_RE    = re.compile(r'<p class="kicker">([^<]+)</p>')
 TITLE_RE     = re.compile(r'<h2[^>]*>(.*?)</h2>', re.DOTALL)
-SOURCES_RE   = re.compile(r'<div class="sources">(.*?)</div>\s*</div>\s*</article>', re.DOTALL)
+SOURCES_RE   = re.compile(r'<div class="sources">(.*?)</div>\s*</div>\s*\Z', re.DOTALL)
 # Looser sources extractor: any <div class="sources">...</div> at body end
 SOURCES_LOOSE_RE = re.compile(
     r'<div class="sources">(.*?)</div>\s*(?=</div>|</article>)',
@@ -71,7 +71,14 @@ def main() -> int:
             continue
 
         # Find the LAST <div class="sources"> ... </div> inside the article.
-        sources_blocks = SOURCES_LOOSE_RE.findall(article_body)
+        # NOTE: use SOURCES_RE (strict end-of-article match) rather than
+        # SOURCES_LOOSE_RE, because the loose pattern's non-greedy `.*?</div>`
+        # terminates at the FIRST `</div>` inside the sources block (i.e.
+        # the inner `<div class="src">`'s closer), capturing an incomplete
+        # block that contains an unclosed `<div class="src">` and yields
+        # zero SRC matches.  SOURCES_RE anchors on `</div></div></article>`
+        # which correctly identifies the outer boundary.
+        sources_blocks = SOURCES_RE.findall(article_body)
         srcs = []
         if sources_blocks:
             sources_html = sources_blocks[-1]
