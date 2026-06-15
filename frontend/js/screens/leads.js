@@ -152,8 +152,16 @@ class LeadsScreen extends Screen {
           color:   FUNNEL_COLORS[funnel] || DEFAULT_COLOR,
           form_id: a.form_id,
           link_url: a.link_url || null,
+          // Direct-CTA ads (no Meta lead form) bounce the click straight
+          // to LeagueApps. We can never see registrations from Meta for
+          // these ads, so the leads column will always be empty even when
+          // the ad is performing.  Track them separately on the column
+          // header so the coach sees clicks/CPC instead of leads/CPL.
+          directCta: !a.form_id && !!a.link_url,
           daily:   Number(a.daily_budget_usd || 0),
           spend:   Number(a.spend || 0),
+          impressions: Number(a.impressions || 0),
+          clicks:  Number(a.clicks || 0),
           metaLeads: Number(a.leads || 0), // Meta-reported leads (CPL source)
           start:   a.start_time || null,
           days:    a.start_time ? Math.max(0, Math.floor((Date.now() - new Date(a.start_time).getTime()) / 86400000)) : 0,
@@ -242,20 +250,47 @@ class LeadsScreen extends Screen {
         ${visible.map(adId => {
           const a = adById[adId];
           const cpl = a.metaLeads > 0 && a.spend > 0 ? (a.spend / a.metaLeads) : null;
+          const cpc = a.clicks > 0 && a.spend > 0 ? (a.spend / a.clicks) : null;
+
+          // Direct-CTA ads (no Meta lead form) ship the click straight
+          // to LeagueApps — we cannot see registrations on this side,
+          // so render the column with a clear "no leads tracked here"
+          // banner and surface clicks/CPC instead of leads/CPL. If
+          // spend is climbing on a no-click ad it'll be obvious.
+          const headerStats = a.directCta
+            ? `
+              <span style="color:#f59e0b;">●</span> ${fmt(a.daily)}/day · ${a.days}d running<br>
+              Spent ${fmt(a.spend)} · ${a.clicks.toLocaleString()} click${a.clicks === 1 ? '' : 's'}${cpc !== null ? ` · ${fmt(cpc)}/click` : ''}<br>
+              <span style="display:inline-block; margin-top:4px; font-size:0.62rem; opacity:0.85; padding:1px 6px; border-radius:8px; background:#3d2a0a; color:#fbbf24; font-weight:600;">DIRECT → LeagueApps</span>
+              <div style="font-size:0.62rem; opacity:0.7; margin-top:3px;">No lead form. Registrations only visible in LeagueApps.</div>`
+            : `
+              <span style="color:#10b981;">●</span> ${fmt(a.daily)}/day · ${a.days}d running<br>
+              Spent ${fmt(a.spend)}${cpl !== null ? ` · ${fmt(cpl)}/lead` : ''}`;
+
+          // Inner column body: a regular form ad shows leads, a direct
+          // CTA ad shows a "No leads expected" placeholder + a button
+          // to open the LeagueApps registration page so the coach can
+          // hop straight there to check actual sign-ups.
+          const inner = a.directCta
+            ? `<div style="opacity:0.6; font-size:0.78rem; text-align:center; padding:var(--space-3); border:1px dashed var(--border-color, #4b5563); border-radius:var(--radius-md); line-height:1.5;">
+                 No leads tracked &mdash; this ad sends users straight to LeagueApps.<br>
+                 ${a.link_url ? `<a href="${a.link_url}" target="_blank" rel="noopener" style="display:inline-block; margin-top:6px; padding:4px 10px; font-size:0.72rem; border-radius:6px; background:#0e7490; color:#fff; text-decoration:none;">Open LeagueApps page →</a>` : ''}
+               </div>`
+            : (grouped[adId].map(l => this.renderLead(l, a.funnel, stats.per_lead || {})).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>');
+
           return `
           <div>
             <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${a.color}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-1); text-align:center;" title="${a.ad_name}">
-              ${a.funnel} <span style="opacity:0.8;">(${grouped[adId].length})</span>
+              ${a.funnel} <span style="opacity:0.8;">(${a.directCta ? '↗' : grouped[adId].length})</span>
             </div>
             <div style="font-size:0.65rem; opacity:0.65; text-align:center; margin-bottom:4px; line-height:1.3; word-break:break-word;" title="ad_id ${adId}">
               ${a.ad_name}
             </div>
             <div style="font-size:0.7rem; opacity:0.85; text-align:center; margin-bottom:var(--space-2); line-height:1.4;">
-              <span style="color:#10b981;">●</span> ${fmt(a.daily)}/day · ${a.days}d running<br>
-              Spent ${fmt(a.spend)}${cpl !== null ? ` · ${fmt(cpl)}/lead` : ''}
+              ${headerStats}
             </div>
             <div style="display:flex; flex-direction:column; gap:var(--space-2);">
-              ${grouped[adId].map(l => this.renderLead(l, a.funnel, stats.per_lead || {})).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>'}
+              ${inner}
             </div>
           </div>
         `;}).join('')}
