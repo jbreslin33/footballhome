@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Lighthouse Exhibit — Operator Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --navy:   #0f2c59;
+      --gold:   #d6a93d;
+      --bg:     #fafaf6;
+      --card:   #ffffff;
+      --line:   #e2e0d6;
+      --ink:    #1f2a3a;
+      --muted:  #6b6f78;
+      --ok:     #2e7d32;
+      --busy:   #ef6c00;
+      --err:    #c62828;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 18px 24px 16px;
+      border-bottom: 4px solid var(--gold);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: 0.4px;
+    }
+    header .sub {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+    .toolbar {
+      display: flex; gap: 10px; align-items: center;
+      padding: 12px 24px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .toolbar .summary {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .toolbar .summary strong { color: var(--ink); }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      background: #f5f3eb;
+      color: var(--ink);
+      padding: 6px 12px;
+      transition: background 80ms;
+    }
+    button:hover:not(:disabled) { background: #ebe7d8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.primary {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+    button.primary:hover:not(:disabled) { background: #1a3d72; }
+    button.ghost { background: transparent; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) minmax(360px, 480px);
+      gap: 14px;
+      padding: 14px 24px 32px;
+      align-items: start;
+    }
+    @media (max-width: 1000px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+    }
+    .card.posted { border-color: rgba(46,125,50,0.5); }
+    .card .row1 {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 8px;
+    }
+    .card .num {
+      font-family: 'Bebas Neue', 'Montserrat', sans-serif;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+    .card .status {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .card .status.ok  { color: var(--ok); }
+    .card .status.no  { color: var(--muted); }
+    .card .kicker {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .card .title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      line-height: 1.25;
+    }
+    .card .sub {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.3;
+    }
+    .card .actions {
+      display: flex; gap: 6px;
+      margin-top: 8px;
+    }
+    .card .actions button { font-size: 0.85rem; padding: 5px 10px; }
+    .card .last {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .card .last a {
+      color: var(--navy);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--navy);
+    }
+    .log-panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 160px);
+      min-height: 420px;
+      position: sticky;
+      top: 14px;
+    }
+    .log-panel h2 {
+      margin: 0;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .log-panel .badge {
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+      background: var(--line); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 1.2px;
+    }
+    .log-panel .badge.running { background: var(--busy); color: #fff; }
+    .log-panel .badge.success { background: var(--ok); color: #fff; }
+    .log-panel .badge.error   { background: var(--err); color: #fff; }
+    .log {
+      flex: 1;
+      overflow: auto;
+      padding: 10px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      color: var(--ink);
+      background: #0f1117;
+      color: #d5d9e2;
+    }
+    .log .stderr { color: #ffb4ab; }
+    .log .meta   { color: #6b7280; font-style: italic; }
+    .log:empty::before {
+      content: 'Click "Post P#" or "Preview P#" — output streams here.';
+      color: #6b7280;
+      font-style: italic;
+    }
+    .footer-note {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 8px 24px 18px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lighthouse Exhibit — Operator Dashboard</h1>
+    <div class="sub" id="server-info">Loading status…</div>
+  </header>
+
+  <div class="toolbar">
+    <button id="btn-refresh" class="ghost">↻ Refresh status</button>
+    <button id="btn-next" class="primary">▶ Post next unposted</button>
+    <span class="summary" id="summary"></span>
+  </div>
+
+  <main>
+    <section>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <aside class="log-panel">
+      <h2>
+        <span>Live job output</span>
+        <span id="job-badge" class="badge">idle</span>
+        <span id="job-label" style="font-size:0.78rem;color:var(--muted);"></span>
+      </h2>
+      <div id="log" class="log"></div>
+    </aside>
+  </main>
+
+  <div class="footer-note">
+    Operator-only. Bound to 127.0.0.1 by default; no auth. Re-posting a P# adds
+    a new IG post (Graph API has no delete endpoint — delete in the IG app).
+  </div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const grid       = $('#grid');
+    const summary    = $('#summary');
+    const serverInfo = $('#server-info');
+    const log        = $('#log');
+    const jobBadge   = $('#job-badge');
+    const jobLabel   = $('#job-label');
+    const btnNext    = $('#btn-next');
+    const btnRefresh = $('#btn-refresh');
+    let activeStream = null;
+    let activeJobId  = null;
+
+    // ── Status / grid render ────────────────────────────────────────────
+    async function fetchStatus() {
+      const r = await fetch('/api/status');
+      if (!r.ok) throw new Error('status failed');
+      return r.json();
+    }
+    function renderGrid(state) {
+      const posted = state.rows.filter(r => r.posted).length;
+      summary.innerHTML = `<strong>${posted}</strong> of <strong>${state.totalPosters}</strong> posted` +
+        (state.nextUnposted ? ` · next: <strong>P${state.nextUnposted}</strong>` : ' · <strong>all done ✓</strong>');
+      serverInfo.textContent =
+        `http://${state.host}:${state.port}/  ·  ` +
+        `${state.serverTime.replace('T',' ').slice(0,16)}Z  ·  ` +
+        `${state.activeJobId ? 'job running' : 'idle'}`;
+      btnNext.disabled = !state.nextUnposted || !!state.activeJobId;
+
+      grid.innerHTML = '';
+      for (const row of state.rows) {
+        const m = row.meta || {};
+        const card = document.createElement('div');
+        card.className = 'card' + (row.posted ? ' posted' : '');
+        const lastLine = row.posted
+          ? `<div class="last">Posted ${row.lastPosted.replace('T',' ').slice(0,16)}Z` +
+            (row.postCount > 1 ? ` · ${row.postCount} attempts` : '') +
+            ` · <a href="https://www.instagram.com/p/${row.mediaId}/" target="_blank" rel="noopener">view</a></div>`
+          : '<div class="last">Not yet posted</div>';
+        card.innerHTML = `
+          <div class="row1">
+            <span class="num">P${String(row.posterNum).padStart(2,'0')}</span>
+            <span class="status ${row.posted ? 'ok' : 'no'}">${row.posted ? '✓ posted' : '· pending'}</span>
+          </div>
+          ${m.kicker ? `<div class="kicker">${escapeHtml(m.kicker)}</div>` : ''}
+          ${m.title  ? `<div class="title">${escapeHtml(m.title)}</div>`   : ''}
+          ${m.sub    ? `<div class="sub">${escapeHtml(m.sub)}</div>`       : ''}
+          ${lastLine}
+          <div class="actions">
+            <button data-action="preview" data-n="${row.posterNum}" title="Render only, no post">Preview</button>
+            <button data-action="post" data-n="${row.posterNum}" class="primary"
+                    ${state.activeJobId ? 'disabled' : ''}>
+              ${row.posted ? `Re-post P${row.posterNum}` : `Post P${row.posterNum}`}
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      })[c]);
+    }
+
+    async function refresh() {
+      try {
+        const state = await fetchStatus();
+        renderGrid(state);
+      } catch (e) {
+        summary.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // ── Job streaming ──────────────────────────────────────────────────
+    function setBadge(text, cls) {
+      jobBadge.className = 'badge ' + (cls || '');
+      jobBadge.textContent = text;
+    }
+    function appendLog(chunk) {
+      const span = document.createElement('span');
+      span.className = chunk.stream === 'stderr' ? 'stderr' : '';
+      span.textContent = chunk.text;
+      log.appendChild(span);
+      log.scrollTop = log.scrollHeight;
+    }
+    function logMeta(text) {
+      const span = document.createElement('span');
+      span.className = 'meta';
+      span.textContent = text + '\n';
+      log.appendChild(span);
+      log.scrollTop = log.scrollHeight;
+    }
+    function attachStream(jobId, label) {
+      if (activeStream) try { activeStream.close(); } catch {}
+      activeJobId = jobId;
+      jobLabel.textContent = label;
+      setBadge('running', 'running');
+      log.textContent = '';
+      logMeta(`▶ ${label} (job ${jobId.slice(0,8)})`);
+      const es = new EventSource(`/api/job/${jobId}/stream`);
+      activeStream = es;
+      es.onmessage = (ev) => {
+        try { appendLog(JSON.parse(ev.data)); } catch {}
+      };
+      es.addEventListener('end', (ev) => {
+        let payload = {};
+        try { payload = JSON.parse(ev.data); } catch {}
+        setBadge(payload.status || 'done', payload.status === 'success' ? 'success' : 'error');
+        logMeta(`■ exit ${payload.exitCode ?? '?'} (${payload.status})`);
+        es.close();
+        activeStream = null;
+        activeJobId  = null;
+        refresh();
+      });
+      es.onerror = () => {
+        logMeta('(stream error — closing)');
+        try { es.close(); } catch {}
+        activeStream = null;
+      };
+    }
+
+    async function startJob(kind, n) {
+      const path = kind === 'preview' ? `/api/preview/${n}` : `/api/post/${n}`;
+      const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert(body.error || `HTTP ${r.status}`);
+        return;
+      }
+      attachStream(body.jobId, `${kind} P${n}`);
+      refresh();
+    }
+
+    // ── Wire up ────────────────────────────────────────────────────────
+    grid.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const n = parseInt(btn.dataset.n, 10);
+      if (action === 'post') {
+        if (!confirm(`Post P${n} to Instagram now?\n\nThis will spend ~1-2 minutes rendering and create a new IG post.`)) return;
+        startJob('post', n);
+      } else if (action === 'preview') {
+        startJob('preview', n);
+      }
+    });
+    btnRefresh.addEventListener('click', refresh);
+    btnNext.addEventListener('click', async () => {
+      const r = await fetch('/api/status'); const s = await r.json();
+      if (!s.nextUnposted) return alert('All posters posted.');
+      if (!confirm(`Post next unposted = P${s.nextUnposted}?`)) return;
+      startJob('post', s.nextUnposted);
+    });
+
+    refresh();
+    // Periodic light refresh while idle so the dashboard stays current
+    // even if posts get added from other shells.
+    setInterval(() => { if (!activeJobId) refresh(); }, 30_000);
+  </script>
+</body>
+</html>

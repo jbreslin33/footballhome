@@ -4,6 +4,7 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { generateCard, findLogo } = require('./generate-match-card');
+const postLog = require('./scripts/exhibit-post-log');
 
 const INSTAGRAM_USER_ID = '26233831926285183';
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
@@ -459,24 +460,56 @@ if (command === 'photo') {
     }
   })();
 
-} else if (command === 'exhibit') {
+} else if (command === 'exhibit' || command === 'exhibit-next') {
   // node post-to-instagram.js exhibit 1                    # render + post P1 carousel
   // node post-to-instagram.js exhibit 1 single             # render + post P1 as ONE 4:5 tile (no slides)
   // node post-to-instagram.js exhibit 1 preview            # carousel preview, no post
   // node post-to-instagram.js exhibit 1 single preview     # single preview, no post
+  // node post-to-instagram.js exhibit 1 --yes              # skip the y/n confirm (for buttons/cron)
+  // node post-to-instagram.js exhibit-next [--yes]         # post the lowest-numbered un-posted P# (1..20)
   //
   // Renders directly from frontend/exhibit/lighthouse-history.html (the
   // printed museum poster IS the source). No intermediate JSON.
+  //
+  // After a successful publish, the poster + media ID are appended to
+  // scripts/exhibit-post-log.json so the operator dashboard and the
+  // exhibit-next subcommand know which P# to do next.
   (async () => {
-    const posterNum = parseInt(args[1], 10);
-    if (!posterNum) {
-      console.log('Usage: node post-to-instagram.js exhibit <posterNum> [single] [preview]');
-      process.exit(1);
+    // Flag parsing: --yes / -y short-circuits the interactive confirm,
+    // which the operator-dashboard buttons and the 9am cron rely on.
+    const flagSet = new Set(args.slice(1).map(a => (a || '').toLowerCase()));
+    const skipConfirm = flagSet.has('--yes') || flagSet.has('-y');
+    // Strip flags from the positional list before parsing mode args.
+    const positionals = args.slice(1).filter(a => !String(a).startsWith('-'));
+
+    // Resolve poster number.
+    //   `exhibit <N> ...`  -> use N.
+    //   `exhibit-next ...` -> use postLog.nextUnposted().
+    let posterNum;
+    if (command === 'exhibit-next') {
+      posterNum = postLog.nextUnposted();
+      if (!posterNum) {
+        console.log(`\n✅ All ${postLog.TOTAL_POSTERS} exhibit posters have been posted. Nothing to do.`);
+        return;
+      }
+      console.log(`\n📅 exhibit-next resolved to P${posterNum} (lowest unposted of 1..${postLog.TOTAL_POSTERS}).`);
+    } else {
+      posterNum = parseInt(positionals[0], 10);
+      if (!posterNum) {
+        console.log('Usage: node post-to-instagram.js exhibit <posterNum> [single] [preview] [--yes]');
+        console.log('       node post-to-instagram.js exhibit-next [--yes]');
+        process.exit(1);
+      }
     }
+
     // Mode parsing: 'single' = 1-tile 4:5 post; 'preview' alone = carousel preview.
-    const rest = args.slice(2).map(a => (a || '').toLowerCase());
-    const mode = rest.includes('single') ? 'single' : 'carousel';
-    const previewOnly = rest.includes('preview');
+    // (For `exhibit-next`, positionals[0] is the first non-flag arg, which is
+    // a mode keyword, not a number — start at index 0. For `exhibit <N>`, the
+    // mode keywords come after the number — start at index 1.)
+    const modeArgs = (command === 'exhibit-next' ? positionals : positionals.slice(1))
+      .map(a => (a || '').toLowerCase());
+    const mode = modeArgs.includes('single') ? 'single' : 'carousel';
+    const previewOnly = modeArgs.includes('preview');
 
     const pad = String(posterNum).padStart(2, '0');
 
@@ -545,13 +578,29 @@ if (command === 'photo') {
     }
 
     const promptLabel = mode === 'single' ? 'single tile' : 'carousel';
-    const answer = await askConfirm(`\n🚀 Post this ${promptLabel} to Instagram? (yes/no): `);
+    let answer;
+    if (skipConfirm) {
+      console.log(`\n🚀 --yes flag set; posting ${promptLabel} without prompt.`);
+      answer = 'yes';
+    } else {
+      answer = await askConfirm(`\n🚀 Post this ${promptLabel} to Instagram? (yes/no): `);
+    }
     if (answer === 'yes' || answer === 'y') {
       console.log(`\n📤 Posting ${promptLabel} to Instagram...`);
       const mediaId = mode === 'single'
         ? await postPhoto(singleUrl, caption)
         : await postCarousel(slideUrls, caption);
       if (mediaId) {
+        // Append the result to scripts/exhibit-post-log.json so the
+        // operator dashboard and `exhibit-next` see this poster as
+        // posted from now on. Failures here are non-fatal — the post
+        // already succeeded on IG, and the log can be edited by hand.
+        try {
+          postLog.record({ posterNum, mediaId, mode });
+          console.log(`📒 Logged to ${path.relative(__dirname, postLog.LOG_PATH)}`);
+        } catch (e) {
+          console.warn(`⚠️  Could not write post log: ${e.message}`);
+        }
         console.log('\n✅ Successfully posted to Instagram!');
         console.log(`\n   Media ID: ${mediaId}`);
         console.log(`   To delete: open the post in the IG app → ⋯ menu → Delete`);
@@ -561,6 +610,27 @@ if (command === 'photo') {
       console.log('\n❌ Post cancelled.');
     }
   })();
+
+} else if (command === 'exhibit-status') {
+  // node post-to-instagram.js exhibit-status
+  //
+  // Prints a 1-line-per-poster summary of what's been posted, what's
+  // next, and how many times each poster has been re-posted. Read-only;
+  // safe to call from cron, the operator dashboard, or by hand.
+  const s = postLog.status();
+  console.log(`\nExhibit posting status — ${s.totalPosters} posters total`);
+  console.log('─'.repeat(70));
+  for (const r of s.rows) {
+    const flag = r.posted ? '✓' : '·';
+    const when = r.lastPosted ? r.lastPosted.replace('T', ' ').slice(0, 16) + 'Z' : '—';
+    const rep  = r.postCount > 1 ? ` (x${r.postCount})` : '';
+    const id   = r.mediaId ? `  media=${r.mediaId}` : '';
+    console.log(`  ${flag} P${String(r.posterNum).padStart(2, '0')}  ${when}${rep}${id}`);
+  }
+  console.log('─'.repeat(70));
+  console.log(s.nextUnposted
+    ? `Next unposted: P${s.nextUnposted}`
+    : `✅ All ${s.totalPosters} posters have been posted.`);
 
 } else {
   console.log(`Lighthouse 1893 SC - Instagram Posting Tool
@@ -586,6 +656,9 @@ Usage (Lighthouse history exhibit — 20-poster carousel campaign):
   node post-to-instagram.js exhibit <posterNum> single           Generate + post P# as one 4:5 tile
   node post-to-instagram.js exhibit <posterNum> preview          Carousel preview only
   node post-to-instagram.js exhibit <posterNum> single preview   Single-tile preview only
+  node post-to-instagram.js exhibit <posterNum> --yes            Skip y/n confirm (button / cron use)
+  node post-to-instagram.js exhibit-next [--yes]                 Post the lowest-numbered unposted P#
+  node post-to-instagram.js exhibit-status                       List which P# have been posted
 
 Usage (preview only - no posting):
   node post-to-instagram.js preview-only match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>

@@ -1,0 +1,16 @@
+# Lighthouse exhibit — daily 9am auto-poster
+#
+# Install:   crontab -l > /tmp/cron.cur && cat scripts/exhibit-cron.sample >> /tmp/cron.cur && crontab /tmp/cron.cur
+# Verify:    crontab -l | grep post-to-instagram
+# Remove:    crontab -e   (delete the lines below)
+#
+# Runs the next-unposted exhibit poster every day at 09:00 local time.
+# stdout/stderr appends to scripts/exhibit-cron.log so failures are visible.
+# PATH is set explicitly because cron's default PATH does not include
+# /usr/local/bin (where `node` often lives).
+#
+# Tweak REPO_PATH below if the checkout is not at ~/sandbox/github/footballhome.
+
+PATH=/usr/local/bin:/usr/bin:/bin
+REPO_PATH=/home/jbreslin/sandbox/github/footballhome
+0 9 * * * cd $REPO_PATH && /usr/bin/env node post-to-instagram.js exhibit-next --yes >> $REPO_PATH/scripts/exhibit-cron.log 2>&1

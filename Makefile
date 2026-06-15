@@ -608,3 +608,93 @@ scrape-vpn-rebuild:
 vpn-up:    scrape-vpn-up
 vpn-down:  scrape-vpn-down
 vpn-status: scrape-vpn-status
+
+# ─────────────────────────────────────────────────────────────────────────
+# Lighthouse history exhibit — Instagram poster campaign (20 posters).
+# Generated 1-button-per-poster targets so the operator can fire any
+# individual P# from the shell (mirrors the operator dashboard buttons).
+# Each target skips the y/n confirm by passing --yes to the post script.
+# ─────────────────────────────────────────────────────────────────────────
+
+.PHONY: post-status post-next post-preview operator-server $(addprefix post-,1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20) $(addprefix preview-,1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)
+
+# Status — read-only summary of which P# have been posted.
+post-status:
+	@node post-to-instagram.js exhibit-status
+
+# Next — post the lowest-numbered unposted poster (cron uses this).
+post-next:
+	@node post-to-instagram.js exhibit-next --yes
+
+# Per-poster post targets (post-1 .. post-20). Skips the y/n confirm.
+post-1:  ; @node post-to-instagram.js exhibit 1  --yes
+post-2:  ; @node post-to-instagram.js exhibit 2  --yes
+post-3:  ; @node post-to-instagram.js exhibit 3  --yes
+post-4:  ; @node post-to-instagram.js exhibit 4  --yes
+post-5:  ; @node post-to-instagram.js exhibit 5  --yes
+post-6:  ; @node post-to-instagram.js exhibit 6  --yes
+post-7:  ; @node post-to-instagram.js exhibit 7  --yes
+post-8:  ; @node post-to-instagram.js exhibit 8  --yes
+post-9:  ; @node post-to-instagram.js exhibit 9  --yes
+post-10: ; @node post-to-instagram.js exhibit 10 --yes
+post-11: ; @node post-to-instagram.js exhibit 11 --yes
+post-12: ; @node post-to-instagram.js exhibit 12 --yes
+post-13: ; @node post-to-instagram.js exhibit 13 --yes
+post-14: ; @node post-to-instagram.js exhibit 14 --yes
+post-15: ; @node post-to-instagram.js exhibit 15 --yes
+post-16: ; @node post-to-instagram.js exhibit 16 --yes
+post-17: ; @node post-to-instagram.js exhibit 17 --yes
+post-18: ; @node post-to-instagram.js exhibit 18 --yes
+post-19: ; @node post-to-instagram.js exhibit 19 --yes
+post-20: ; @node post-to-instagram.js exhibit 20 --yes
+
+# Per-poster preview targets (preview-1 .. preview-20). Render + show only;
+# never posts. Useful for "look at slide N before clicking post-N".
+preview-1:  ; @node post-to-instagram.js exhibit 1  preview
+preview-2:  ; @node post-to-instagram.js exhibit 2  preview
+preview-3:  ; @node post-to-instagram.js exhibit 3  preview
+preview-4:  ; @node post-to-instagram.js exhibit 4  preview
+preview-5:  ; @node post-to-instagram.js exhibit 5  preview
+preview-6:  ; @node post-to-instagram.js exhibit 6  preview
+preview-7:  ; @node post-to-instagram.js exhibit 7  preview
+preview-8:  ; @node post-to-instagram.js exhibit 8  preview
+preview-9:  ; @node post-to-instagram.js exhibit 9  preview
+preview-10: ; @node post-to-instagram.js exhibit 10 preview
+preview-11: ; @node post-to-instagram.js exhibit 11 preview
+preview-12: ; @node post-to-instagram.js exhibit 12 preview
+preview-13: ; @node post-to-instagram.js exhibit 13 preview
+preview-14: ; @node post-to-instagram.js exhibit 14 preview
+preview-15: ; @node post-to-instagram.js exhibit 15 preview
+preview-16: ; @node post-to-instagram.js exhibit 16 preview
+preview-17: ; @node post-to-instagram.js exhibit 17 preview
+preview-18: ; @node post-to-instagram.js exhibit 18 preview
+preview-19: ; @node post-to-instagram.js exhibit 19 preview
+preview-20: ; @node post-to-instagram.js exhibit 20 preview
+
+# Operator dashboard — starts a local-only HTTP server on 127.0.0.1:3010
+# that serves the 20-button dashboard at http://localhost:3010/.
+operator-server:
+	@node scripts/operator-server.js
+
+# ─────────────────────────────────────────────────────────────────────────
+# Exhibit print export — generate Fireball-ready PDF + hi-res PNG per
+# poster, plus a download page (frontend/exhibit/print.html) the print
+# shop can use to grab whatever format they need.
+# ─────────────────────────────────────────────────────────────────────────
+.PHONY: print-export print-export-pdf print-export-png print-clean
+
+# Full export — all kinds (PDF + hi-res PNG + preview PNG) for every poster.
+print-export:
+	@node scripts/export-exhibit-print.js
+
+# PDF only (fast — for quick re-export after a copy change).
+print-export-pdf:
+	@node scripts/export-exhibit-print.js --kinds=pdf
+
+# PNG only (hi-res + preview).
+print-export-png:
+	@node scripts/export-exhibit-print.js --kinds=hires,preview
+
+# Wipe generated print files.
+print-clean:
+	@rm -rf frontend/exhibit/print && echo "Removed frontend/exhibit/print/"
