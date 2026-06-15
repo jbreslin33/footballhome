@@ -90,13 +90,150 @@ async function openSourcePage(browser) {
   // resurrect it). The QR has no value on a phone screen — sources live in
   // the IG bio link tree instead — and removing it gives recalcFit() more
   // vertical room so body text + photos scale larger.
+  //
+  // ALSO inject card-slide overrides that activate when an .poster element
+  // gets data-slide-mode set. The default flow of the source layout top-
+  // anchors content with no vertical centering and uses CSS columns —
+  // when a card slide shows only one paragraph or one blockquote, the
+  // result is a top-loaded slide with a huge empty bottom. The CSS below
+  // centers the visible content vertically, kills the 2-column layout,
+  // and bumps font sizes so single-element slides fill the 1080x1350 frame.
   await page.evaluate(() => {
     const style = document.createElement('style');
     style.id = 'social-renderer-overrides';
-    style.textContent = '.poster-sources-qr { display: none !important; }';
+    style.textContent = `
+      .poster-sources-qr { display: none !important; }
+
+      /* Slide 2: band only — hide the body wrapper entirely (otherwise its
+         padding + the gold-divider keep occupying vertical space) and
+         expand the navy band to fill the entire frame as a title card
+         with the kicker / title / sub vertically centered. */
+      .poster[data-slide-mode="band"] .poster-body {
+        display: none !important;
+      }
+      .poster[data-slide-mode="band"] .poster-inner {
+        height: 100%;
+      }
+      .poster[data-slide-mode="band"] .poster-band {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 90px 70px !important;
+        border-bottom: none !important;
+        box-sizing: border-box;
+      }
+      .poster[data-slide-mode="band"] .poster-band .kicker {
+        font-size: 1.6rem !important;
+        letter-spacing: 7px !important;
+        margin: 0 !important;
+      }
+      .poster[data-slide-mode="band"] .poster-band h2 {
+        font-size: 5.4rem !important;
+        line-height: 1.02 !important;
+        margin: 0 !important;
+      }
+      .poster[data-slide-mode="band"] .poster-band .sub {
+        font-size: 1.85rem !important;
+        line-height: 1.45 !important;
+        max-width: none !important;
+        margin: 0 !important;
+      }
+      /* Gold rule pinned just below the title block as a divider between
+         title and subtitle — a touch of brand color on the otherwise
+         all-navy slide. */
+      .poster[data-slide-mode="band"] .poster-band h2::after {
+        content: '';
+        display: block;
+        width: 120px;
+        height: 6px;
+        background: var(--gold);
+        margin: 24px 0 0;
+      }
+
+      /* Slides that show a single piece of body content (one para, one
+         para + photo, or one blockquote): vertically center the visible
+         content, force a single column, give the type more breathing
+         room with bigger font sizes. */
+      .poster[data-slide-mode="para"] .poster-body,
+      .poster[data-slide-mode="para-photo"] .poster-body,
+      .poster[data-slide-mode="quote"] .poster-body {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        column-count: 1 !important;
+        column-rule: 0 !important;
+        padding: 60px 70px;
+      }
+
+      /* Paragraph-only slides — biggest possible body text. */
+      .poster[data-slide-mode="para"] .poster-body p {
+        font-size: 1.55rem !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+      }
+      .poster[data-slide-mode="para"] .poster-body .lead-in {
+        font-size: 1.4rem !important;
+        display: block;
+        margin-bottom: 10px;
+      }
+
+      /* Para + photo (slide 3) — keep both visible, vertically centered,
+         photo enlarged. Photo de-floated so flex layout works. */
+      .poster[data-slide-mode="para-photo"] .poster-body > .poster-photo {
+        float: none !important;
+        margin: 0 auto 22px !important;
+        width: 100% !important;
+        max-width: 720px !important;
+        order: -1;  /* photo always on top of the stack */
+      }
+      .poster[data-slide-mode="para-photo"] .poster-body > .poster-photo img {
+        max-height: 560px !important;
+        max-width: 100% !important;
+        width: auto !important;
+        margin: 0 auto !important;
+      }
+      .poster[data-slide-mode="para-photo"] .poster-body p {
+        font-size: 1.25rem !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+      }
+      .poster[data-slide-mode="para-photo"] .poster-body .lead-in {
+        font-size: 1.15rem !important;
+        display: block;
+        margin-bottom: 8px;
+      }
+      /* Strip any inline images out of the first paragraph during
+         para-photo mode — the floating right-rail image they're meant
+         to wrap around is gone, so they'd otherwise jam awkwardly into
+         the centered text. The hero photo above is the visual anchor. */
+      .poster[data-slide-mode="para-photo"] .poster-body p img {
+        display: none !important;
+      }
+
+      /* Quote slides — large italic display, centered. */
+      .poster[data-slide-mode="quote"] .poster-body blockquote {
+        font-size: 1.55rem !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+        padding: 24px 28px !important;
+        max-width: 100% !important;
+      }
+
+      /* Hide the gold divider on body-only card slides — it's a
+         band-to-body separator that looks orphaned without the band. */
+      .poster[data-slide-mode="para"] .poster-body .gold-divider,
+      .poster[data-slide-mode="para-photo"] .poster-body .gold-divider,
+      .poster[data-slide-mode="quote"] .poster-body .gold-divider {
+        display: none !important;
+      }
+    `;
     document.head.appendChild(style);
     window.dispatchEvent(new Event('resize'));
   });
+
 
   // Settle for the source's 100ms resize-debounce + RAF chain.
   await sleep(600);
@@ -196,12 +333,21 @@ async function renderCarouselSlides(page, posterNum, pad) {
   }
 
   // Helper: apply a per-slide visibility pass and trigger the source's recalc.
+  // `opts.mode` (optional) sets data-slide-mode on the poster element, which
+  // activates the card-slide CSS overrides in social-renderer-overrides:
+  //   'full'       — slide 1 (no overrides; same as native fit)
+  //   'band'       — slide 2 (vertically center the band)
+  //   'para-photo' — slide 3 (single para + photo, vertically centered)
+  //   'para'       — slides 4..K+2 (single para, no photo)
+  //   'quote'      — slides K+3..end (single blockquote)
   async function compose(opts) {
     await page.evaluate(({ n, h, opts }) => {
       const p = document.getElementById('poster-' + n);
       const body = p.querySelector('.poster-body');
 
       p.style.height = h;
+      if (opts.mode) p.dataset.slideMode = opts.mode;
+      else delete p.dataset.slideMode;
 
       // Band on/off.
       p.querySelectorAll('.poster-band').forEach(el => {
@@ -241,22 +387,28 @@ async function renderCarouselSlides(page, posterNum, pad) {
   }
 
   // SLIDE 1: full poster, everything visible — same view as the 4:5 single.
-  await compose({ band: true, photo: true, paras: 'all', quotes: 'all' });
+  await compose({ band: true, photo: true, paras: 'all', quotes: 'all', mode: 'full' });
   await snap('full poster');
 
   // SLIDE 2: band only — the hero header.
-  await compose({ band: true, photo: false, paras: 'none', quotes: 'none' });
+  await compose({ band: true, photo: false, paras: 'none', quotes: 'none', mode: 'band' });
   await snap('band');
 
   // SLIDES 3..K+2: each paragraph in order. Photo rides with paragraph 1.
   for (let i = 0; i < counts.paras; i++) {
-    await compose({ band: false, photo: i === 0, paras: i, quotes: 'none' });
+    await compose({
+      band: false,
+      photo: i === 0,
+      paras: i,
+      quotes: 'none',
+      mode: i === 0 ? 'para-photo' : 'para',
+    });
     await snap(i === 0 ? 'para 1 + photo' : `para ${i + 1}`);
   }
 
   // SLIDES K+3..end: each blockquote in order.
   for (let i = 0; i < counts.bqs; i++) {
-    await compose({ band: false, photo: false, paras: 'none', quotes: i });
+    await compose({ band: false, photo: false, paras: 'none', quotes: i, mode: 'quote' });
     await snap(`quote ${i + 1}`);
   }
 
@@ -265,6 +417,7 @@ async function renderCarouselSlides(page, posterNum, pad) {
     const p = document.getElementById('poster-' + n);
     if (!p) return;
     p.style.height = '';
+    delete p.dataset.slideMode;
     p.querySelectorAll('.poster-band').forEach(el => { el.style.display = ''; });
     p.querySelectorAll('.poster-photo').forEach(el => { el.style.display = ''; });
     p.querySelectorAll('.poster-body > *').forEach(el => { el.style.display = ''; });
