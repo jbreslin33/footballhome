@@ -456,36 +456,31 @@ if (command === 'photo') {
   })();
 
 } else if (command === 'exhibit') {
-  // node post-to-instagram.js exhibit 1            # render + post P1 carousel
-  // node post-to-instagram.js exhibit 1 preview    # render + show URLs/caption, no post
+  // node post-to-instagram.js exhibit 1                    # render + post P1 carousel
+  // node post-to-instagram.js exhibit 1 single             # render + post P1 as ONE 4:5 tile (no slides)
+  // node post-to-instagram.js exhibit 1 preview            # carousel preview, no post
+  // node post-to-instagram.js exhibit 1 single preview     # single preview, no post
   //
   // Renders directly from frontend/exhibit/lighthouse-history.html (the
   // printed museum poster IS the source). No intermediate JSON.
   (async () => {
     const posterNum = parseInt(args[1], 10);
-    const previewOnly = (args[2] || '').toLowerCase() === 'preview';
     if (!posterNum) {
-      console.log('Usage: node post-to-instagram.js exhibit <posterNum> [preview]');
+      console.log('Usage: node post-to-instagram.js exhibit <posterNum> [single] [preview]');
       process.exit(1);
     }
+    // Mode parsing: 'single' = 1-tile 4:5 post; 'preview' alone = carousel preview.
+    const rest = args.slice(2).map(a => (a || '').toLowerCase());
+    const mode = rest.includes('single') ? 'single' : 'carousel';
+    const previewOnly = rest.includes('preview');
 
     const pad = String(posterNum).padStart(2, '0');
 
-    // Step 1 — render long-poster + 4:5 single + carousel slides from source.
+    // Step 1 — render the kinds we need (always render all three so the local
+    // slideshow preview can flip between them).
     console.log(`\n🎨 Rendering exhibit poster ${posterNum} from source...`);
     const { renderPoster } = require('./scripts/render-poster-from-source.js');
     const { meta, slideCount } = await renderPoster(posterNum, new Set(['long', 'single', 'slides']));
-
-    if (!slideCount) {
-      console.error(`Poster ${posterNum} produced no carousel slides.`);
-      process.exit(1);
-    }
-    if (slideCount > 10) {
-      console.warn(`⚠️  Poster has ${slideCount} slides; IG carousel max is 10. Only first 10 will be posted.`);
-    }
-    const carouselCount = Math.min(slideCount, 10);
-    const slideFiles = Array.from({ length: carouselCount }, (_, i) => `exhibit-p${pad}-${i + 1}.png`);
-    const slideUrls = slideFiles.map(f => `${PUBLIC_BASE}/${f}`);
 
     // Caption is built straight from the source band — kicker, title, sub —
     // nothing invented. Edit the printed poster's HTML to change the caption.
@@ -499,9 +494,29 @@ if (command === 'photo') {
     console.log('\n' + '='.repeat(60));
     console.log(`📚 EXHIBIT POSTER ${pad}: ${meta.title || ''}`);
     console.log('='.repeat(60));
-    console.log(`IG CAROUSEL (${carouselCount} slides):`);
-    slideUrls.forEach((u, i) => console.log(`  ${i + 1}. ${u}`));
-    console.log(`\n👀 Local preview:  file://${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}`);
+
+    let singleUrl = null;
+    let slideUrls = [];
+    if (mode === 'single') {
+      singleUrl = `${PUBLIC_BASE}/exhibit-p${pad}-poster.png`;
+      console.log(`IG SINGLE (1 tile, 1080x1350):\n  ${singleUrl}`);
+    } else {
+      if (!slideCount) {
+        console.error(`Poster ${posterNum} produced no carousel slides.`);
+        process.exit(1);
+      }
+      if (slideCount > 10) {
+        console.warn(`⚠️  Poster has ${slideCount} slides; IG carousel max is 10. Only first 10 will be posted.`);
+      }
+      const carouselCount = Math.min(slideCount, 10);
+      const slideFiles = Array.from({ length: carouselCount }, (_, i) => `exhibit-p${pad}-${i + 1}.png`);
+      slideUrls = slideFiles.map(f => `${PUBLIC_BASE}/${f}`);
+      console.log(`IG CAROUSEL (${carouselCount} slides):`);
+      slideUrls.forEach((u, i) => console.log(`  ${i + 1}. ${u}`));
+    }
+
+    const previewView = mode === 'single' ? 'poster' : 'carousel';
+    console.log(`\n👀 Local preview:  file://${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}&view=${previewView}`);
     console.log('\n' + '='.repeat(60));
     console.log('📝 CAPTION (derived from source band — edit lighthouse-history.html to change)');
     console.log('='.repeat(60));
@@ -509,19 +524,25 @@ if (command === 'photo') {
     console.log('='.repeat(60));
     console.log(`Caption length: ${caption.length}/2200`);
     // Open the local slideshow viewer in the default browser
-    openImage(`${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}`);
+    openImage(`${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}&view=${previewView}`);
 
     if (previewOnly) {
       console.log('\n👀 Preview only. Not posting.');
       return;
     }
 
-    const answer = await askConfirm('\n🚀 Post this carousel to Instagram? (yes/no): ');
+    const promptLabel = mode === 'single' ? 'single tile' : 'carousel';
+    const answer = await askConfirm(`\n🚀 Post this ${promptLabel} to Instagram? (yes/no): `);
     if (answer === 'yes' || answer === 'y') {
-      console.log('\n📤 Posting carousel to Instagram...');
-      const mediaId = await postCarousel(slideUrls, caption);
+      console.log(`\n📤 Posting ${promptLabel} to Instagram...`);
+      const mediaId = mode === 'single'
+        ? await postPhoto(singleUrl, caption)
+        : await postCarousel(slideUrls, caption);
       if (mediaId) {
         console.log('\n✅ Successfully posted to Instagram!');
+        console.log(`\n   Media ID: ${mediaId}`);
+        console.log(`   To delete: open the post in the IG app → ⋯ menu → Delete`);
+        console.log(`   (Graph API does not expose post deletion; deleted posts sit in Recently Deleted for 30 days.)`);
       }
     } else {
       console.log('\n❌ Post cancelled.');
@@ -548,8 +569,10 @@ Usage (recruiting / organic campaign posts):
   node post-to-instagram.js recruit u23-womens
 
 Usage (Lighthouse history exhibit — 20-poster carousel campaign):
-  node post-to-instagram.js exhibit <posterNum>           Generate + post P# carousel
-  node post-to-instagram.js exhibit <posterNum> preview   Generate + preview only
+  node post-to-instagram.js exhibit <posterNum>                  Generate + post P# carousel
+  node post-to-instagram.js exhibit <posterNum> single           Generate + post P# as one 4:5 tile
+  node post-to-instagram.js exhibit <posterNum> preview          Carousel preview only
+  node post-to-instagram.js exhibit <posterNum> single preview   Single-tile preview only
 
 Usage (preview only - no posting):
   node post-to-instagram.js preview-only match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>

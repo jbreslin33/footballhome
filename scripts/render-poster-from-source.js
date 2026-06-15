@@ -145,10 +145,16 @@ async function renderSingleTile(page, posterNum, outPath) {
 }
 
 // ---------------------------------------------------------------------------
-// Output 3: IG carousel — one 1080 x 1080 slide per source paragraph,
-// plus one per blockquote. Slide 1 is the "hero": band + photo + para 1.
-// Slides 2..K hide the band and show one paragraph at a time so the
-// reader gets bare paragraph cards with nothing repeated.
+// Output 3: IG carousel — 1080 x 1350 (4:5) slides. IG requires every slide
+// in a carousel to share an aspect ratio, so we use 4:5 across the board so
+// slide 1 can be the full poster (same image as the single-tile output).
+//
+// Slide order:
+//   1.        Full poster, nothing hidden    (= same view as the 4:5 single)
+//   2.        Band only (header / kicker / title / sub)
+//   3..K+2.   Each paragraph in turn. The photo rides with paragraph 1
+//             (the source moves it next to the first <p> during init).
+//   K+3..end. Each blockquote in turn.
 // ---------------------------------------------------------------------------
 
 async function renderCarouselSlides(page, posterNum, pad) {
@@ -161,80 +167,84 @@ async function renderCarouselSlides(page, posterNum, pad) {
     return { paras: paras.length, bqs: bqs.length };
   }, posterNum);
 
+  // 4:5 frame: 30 print-inches tall = 1080 x 1350 at scale 45.
+  const FRAME_HEIGHT = 'calc(30 * var(--print-scale))';
   const slides = [];
   let slideIdx = 0;
 
-  // Helper: write current state of #poster-N to disk as slide N.
+  // Helper: write current state of #poster-N to disk as the next slide.
   async function snap(label) {
     slideIdx += 1;
     const outPath = path.join(POSTS_DIR, `exhibit-p${pad}-${slideIdx}.png`);
     const el = await page.$(`#poster-${posterNum}`);
     await el.screenshot({ path: outPath, type: 'png' });
     slides.push(outPath);
-    console.log(`  ✓ slide ${slideIdx} (${label}) -> ${path.basename(outPath)} (1080x1080)`);
+    console.log(`  ✓ slide ${slideIdx} (${label}) -> ${path.basename(outPath)} (1080x1350)`);
   }
 
-  // Each paragraph slide.
+  // Helper: apply a per-slide visibility pass and trigger the source's recalc.
+  async function compose(opts) {
+    await page.evaluate(({ n, h, opts }) => {
+      const p = document.getElementById('poster-' + n);
+      const body = p.querySelector('.poster-body');
+
+      p.style.height = h;
+
+      // Band on/off.
+      p.querySelectorAll('.poster-band').forEach(el => {
+        el.style.display = opts.band ? '' : 'none';
+      });
+
+      // Photo on/off.
+      p.querySelectorAll('.poster-photo').forEach(el => {
+        el.style.display = opts.photo ? '' : 'none';
+      });
+
+      // Paragraph visibility: 'all' | 'none' | <0-based index>.
+      const paras = Array.from(body.querySelectorAll(':scope > p'));
+      paras.forEach((para, i) => {
+        if (opts.paras === 'all') para.style.display = '';
+        else if (opts.paras === 'none') para.style.display = 'none';
+        else para.style.display = (i === opts.paras) ? '' : 'none';
+      });
+
+      // Blockquote visibility: 'all' | 'none' | <0-based index>.
+      const bqs = Array.from(body.querySelectorAll(':scope > blockquote'));
+      bqs.forEach((bq, i) => {
+        if (opts.quotes === 'all') bq.style.display = '';
+        else if (opts.quotes === 'none') bq.style.display = 'none';
+        else bq.style.display = (i === opts.quotes) ? '' : 'none';
+      });
+
+      // Hide sources block + injected QR on every carousel slide (they look
+      // out of place at IG sizes; users tap through to the museum URL instead).
+      const sources = body.querySelector(':scope > .sources');
+      if (sources) sources.style.display = 'none';
+      const qr = body.querySelector(':scope > .poster-sources-qr');
+      if (qr) qr.style.display = opts.qr ? '' : 'none';
+
+      window.dispatchEvent(new Event('resize'));
+    }, { n: posterNum, h: FRAME_HEIGHT, opts });
+    await sleep(400);
+  }
+
+  // SLIDE 1: full poster, everything visible — same view as the 4:5 single.
+  await compose({ band: true, photo: true, paras: 'all', quotes: 'all', qr: true });
+  await snap('full poster');
+
+  // SLIDE 2: band only — the hero header.
+  await compose({ band: true, photo: false, paras: 'none', quotes: 'none', qr: false });
+  await snap('band');
+
+  // SLIDES 3..K+2: each paragraph in order. Photo rides with paragraph 1.
   for (let i = 0; i < counts.paras; i++) {
-    await page.evaluate(({ n, idx }) => {
-      const p = document.getElementById('poster-' + n);
-      const body = p.querySelector('.poster-body');
-
-      // 1:1 frame.
-      p.style.height = 'calc(24 * var(--print-scale))';
-
-      // Hide band on slides 2..K (slide 1 keeps it as the hero header).
-      const band = p.querySelector('.poster-inner > .poster-band, :scope > .poster-band');
-      if (band) band.style.display = idx === 0 ? '' : 'none';
-
-      // Hide photo on slides 2..K (slide 1 keeps it floated next to para 1).
-      const photos = p.querySelectorAll('.poster-photo');
-      photos.forEach(ph => { ph.style.display = idx === 0 ? '' : 'none'; });
-
-      // Show only this paragraph; hide all others, hide blockquotes,
-      // hide sources block, hide injected QR.
-      Array.from(body.querySelectorAll(':scope > p')).forEach((para, i2) => {
-        para.style.display = i2 === idx ? '' : 'none';
-      });
-      Array.from(body.querySelectorAll(':scope > blockquote')).forEach(bq => {
-        bq.style.display = 'none';
-      });
-      const sources = body.querySelector(':scope > .sources');
-      if (sources) sources.style.display = 'none';
-      const qr = body.querySelector(':scope > .poster-sources-qr');
-      if (qr) qr.style.display = 'none';
-
-      window.dispatchEvent(new Event('resize'));
-    }, { n: posterNum, idx: i });
-    await sleep(400);
-    await snap(i === 0 ? `hero: band + para 1 + photo` : `para ${i + 1}`);
+    await compose({ band: false, photo: i === 0, paras: i, quotes: 'none', qr: false });
+    await snap(i === 0 ? 'para 1 + photo' : `para ${i + 1}`);
   }
 
-  // Each blockquote slide.
+  // SLIDES K+3..end: each blockquote in order.
   for (let i = 0; i < counts.bqs; i++) {
-    await page.evaluate(({ n, idx }) => {
-      const p = document.getElementById('poster-' + n);
-      const body = p.querySelector('.poster-body');
-      p.style.height = 'calc(24 * var(--print-scale))';
-
-      const band = p.querySelector('.poster-inner > .poster-band, :scope > .poster-band');
-      if (band) band.style.display = 'none';
-      const photos = p.querySelectorAll('.poster-photo');
-      photos.forEach(ph => { ph.style.display = 'none'; });
-      Array.from(body.querySelectorAll(':scope > p')).forEach(para => {
-        para.style.display = 'none';
-      });
-      Array.from(body.querySelectorAll(':scope > blockquote')).forEach((bq, i2) => {
-        bq.style.display = i2 === idx ? '' : 'none';
-      });
-      const sources = body.querySelector(':scope > .sources');
-      if (sources) sources.style.display = 'none';
-      const qr = body.querySelector(':scope > .poster-sources-qr');
-      if (qr) qr.style.display = 'none';
-
-      window.dispatchEvent(new Event('resize'));
-    }, { n: posterNum, idx: i });
-    await sleep(400);
+    await compose({ band: false, photo: false, paras: 'none', quotes: i, qr: false });
     await snap(`quote ${i + 1}`);
   }
 
@@ -246,9 +256,6 @@ async function renderCarouselSlides(page, posterNum, pad) {
     p.querySelectorAll('.poster-band').forEach(el => { el.style.display = ''; });
     p.querySelectorAll('.poster-photo').forEach(el => { el.style.display = ''; });
     p.querySelectorAll('.poster-body > *').forEach(el => { el.style.display = ''; });
-    // Re-hide the .sources block per the source's own CSS rule.
-    const sources = p.querySelector('.poster-body > .sources');
-    if (sources) sources.style.display = '';  // CSS-side display:none takes over.
     window.dispatchEvent(new Event('resize'));
   }, posterNum);
   await sleep(300);
