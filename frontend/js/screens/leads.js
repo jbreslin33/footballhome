@@ -62,16 +62,14 @@ class LeadsScreen extends Screen {
       this.renderAdsRundown(targeting);
       this.renderTemplatesPanel();
 
-      if (!leads.length) {
-        this.find('#leads-empty').style.display = 'block';
-        return;
-      }
-
+      // Always render the live-ad columns — even with zero leads — so
+      // the coach sees an empty board for each currently-active ad.
       this.find('#leads-list').style.display = 'block';
       this._leads = leads;
       this._spend = spend;
       this._stats = stats;
-      this.renderLeads(leads, spend, stats);
+      this._targeting = targeting;
+      this.renderLeads(leads, spend, stats, targeting);
     } catch (err) {
       this.find('#leads-loading').style.display = 'none';
       this.find('#leads-error').style.display   = 'block';
@@ -84,11 +82,11 @@ class LeadsScreen extends Screen {
       const res = await this.auth.fetch('/api/leads/contact-stats');
       if (!res.ok) return;
       this._stats = await res.json();
-      this.renderLeads(this._leads, this._spend, this._stats);
+      this.renderLeads(this._leads, this._spend, this._stats, this._targeting);
     } catch {}
   }
 
-  renderLeads(leads, spend = [], stats = { per_lead: {}, aggregates: {} }) {
+  renderLeads(leads, spend = [], stats = { per_lead: {}, aggregates: {} }, targeting = []) {
     const container = this.find('#leads-list');
     const agg = stats.aggregates || {};
     // Bot-risk thresholds for a personal long-code number
@@ -106,51 +104,98 @@ class LeadsScreen extends Screen {
     };
     const r = riskColors[risk];
 
-    const COLUMNS = ['Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'Tri County Women', 'APSL / Liga 1', 'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)'];
-    const COLORS  = {
+    // ── Columns = ACTIVE Meta ads (live from /api/ads/targeting) ─────
+    // We report only on what's currently live. Each ACTIVE ad becomes
+    // its own column, keyed by ad_id.  Funnel label (e.g. "PR Men",
+    // "Boys Club (Grades 1–6)") is used purely for color-coding the
+    // column header so the same family of ads stays visually grouped.
+    const FUNNEL_COLORS = {
       'Brazil Men':              '#15803d',
       'U23 Men':                 '#1d4ed8',
       'PR Men':                  '#7c3aed',
       'U23 Women':               '#be185d',
       'Tri County Women':        '#9d174d',
+      "Men's Club":              '#1d4ed8',
+      "Women's Club":            '#be185d',
       'APSL / Liga 1':           '#f59e0b',
       'Youth (Grades 1–6)':      '#c9a14a',
       'Boys Club (Grades 1–6)':  '#0e7490',
+      'Boys Club (K-12)':        '#0e7490',
       'Girls Club (Grades 1–6)': '#db2777',
+      'Girls Club (K-12)':       '#db2777',
+    };
+    const DEFAULT_COLOR = '#475569';
+
+    // Sort active ads by funnel label (canonical kanban order) so the
+    // columns stay stable across reloads.
+    const FUNNEL_ORDER = [
+      'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
+      'U23 Women', 'Tri County Women', "Women's Club",
+      'APSL / Liga 1',
+      'Youth (Grades 1–6)',
+      'Boys Club (Grades 1–6)', 'Boys Club (K-12)',
+      'Girls Club (Grades 1–6)', 'Girls Club (K-12)',
+    ];
+    const funnelRank = (label) => {
+      const i = FUNNEL_ORDER.indexOf(label);
+      return i === -1 ? 999 : i;
     };
 
-    // Load hidden-column preferences (persisted in localStorage)
+    const activeAds = (targeting || [])
+      .filter(a => a.status === 'ACTIVE')
+      .map(a => {
+        const funnel = this.adFunnelLabel(a) || '(no form)';
+        return {
+          ad_id:   a.ad_id,
+          ad_name: a.ad_name || a.ad_id,
+          funnel,
+          color:   FUNNEL_COLORS[funnel] || DEFAULT_COLOR,
+          form_id: a.form_id,
+          link_url: a.link_url || null,
+          daily:   Number(a.daily_budget_usd || 0),
+          spend:   Number(a.spend || 0),
+          metaLeads: Number(a.leads || 0), // Meta-reported leads (CPL source)
+          start:   a.start_time || null,
+          days:    a.start_time ? Math.max(0, Math.floor((Date.now() - new Date(a.start_time).getTime()) / 86400000)) : 0,
+        };
+      })
+      .sort((x, y) => {
+        const dr = funnelRank(x.funnel) - funnelRank(y.funnel);
+        if (dr !== 0) return dr;
+        return x.ad_name.localeCompare(y.ad_name);
+      });
+
+    const COLUMNS = activeAds.map(a => a.ad_id);
+    const adById  = {};
+    for (const a of activeAds) adById[a.ad_id] = a;
+
+    // Load hidden-column preferences (persisted in localStorage, keyed
+    // by ad_id).  Stale ad_ids (paused/archived since last visit) are
+    // dropped on read so the toggle list stays clean.
     const HIDDEN_KEY = 'leads.hiddenColumns';
     let hidden;
     try {
       hidden = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
     } catch { hidden = new Set(); }
-    // Sanitize against stale entries
     for (const c of [...hidden]) if (!COLUMNS.includes(c)) hidden.delete(c);
     const visible = COLUMNS.filter(c => !hidden.has(c));
 
-    // Aggregate spend by column (sum across all forms mapping to same column)
-    const spendByCol = {};
-    for (const col of COLUMNS) spendByCol[col] = { daily: 0, total: 0, days: 0, active: false };
-    for (const s of spend) {
-      const col = this.formLabel(s.form_id);
-      if (!col || !spendByCol[col]) continue;
-      spendByCol[col].daily += Number(s.daily_budget_usd || 0);
-      spendByCol[col].total += Number(s.total_spend_usd || 0);
-      if (s.days_running > spendByCol[col].days) spendByCol[col].days = s.days_running;
-      if (s.ad_active) spendByCol[col].active = true;
-    }
-    const fmt = (n) => `$${n.toFixed(2)}`;
+    const fmt = (n) => `$${(n || 0).toFixed(2)}`;
 
-    // Group + sort each column by date descending
+    // Bucket leads by ad_id.  Leads whose ad_id doesn't match any
+    // currently-ACTIVE ad are intentionally hidden — per product rule
+    // "no dead ads. only live but all of them. that is what we will
+    // report on." Use _orphanLeadCount only to surface the count to
+    // the coach so they know how many leads are not on the board.
     const grouped = {};
-    for (const col of COLUMNS) grouped[col] = [];
+    for (const adId of COLUMNS) grouped[adId] = [];
+    let orphanCount = 0;
     for (const l of leads) {
-      const label = this.formLabel(l.form_id) || 'Other';
-      if (grouped[label]) grouped[label].push(l);
+      if (l.ad_id && grouped[l.ad_id]) grouped[l.ad_id].push(l);
+      else orphanCount++;
     }
-    for (const col of COLUMNS) {
-      grouped[col].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    for (const adId of COLUMNS) {
+      grouped[adId].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
 
     // Visible lead count (only counts leads in shown columns)
@@ -172,33 +217,45 @@ class LeadsScreen extends Screen {
       </div>
       <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Show:</span>
-        ${COLUMNS.map(col => `
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${COLORS[col]};">
-            <input type="checkbox" class="col-toggle" data-col="${col}" ${hidden.has(col) ? '' : 'checked'} style="cursor:pointer;">
-            ${col} <span style="opacity:0.55;">(${grouped[col].length})</span>
-          </label>
-        `).join('')}
+        ${COLUMNS.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No live ads on Meta right now.</span>` : ''}
+        ${COLUMNS.map(adId => {
+          const a = adById[adId];
+          return `
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${a.color};" title="${a.ad_name}">
+            <input type="checkbox" class="col-toggle" data-col="${adId}" ${hidden.has(adId) ? '' : 'checked'} style="cursor:pointer;">
+            ${a.funnel} <span style="opacity:0.55;">(${grouped[adId].length})</span>
+          </label>`;
+        }).join('')}
       </div>
-      <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">${visibleLeadCount} of ${leads.length} lead${leads.length !== 1 ? 's' : ''} shown</p>
-      ${visible.length === 0 ? `
+      <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">
+        ${visibleLeadCount} of ${leads.length} lead${leads.length !== 1 ? 's' : ''} shown
+        ${orphanCount > 0 ? ` &middot; <span style="opacity:0.7;">${orphanCount} hidden (from paused / archived ads)</span>` : ''}
+      </p>
+      ${COLUMNS.length === 0 ? `
+        <div style="text-align:center; padding:var(--space-6); opacity:0.6;">
+          No live ads on Meta. Activate an ad to see its leads here.
+        </div>
+      ` : visible.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All columns hidden — check a box above to show leads.</div>
       ` : `
-      <div style="display:grid; grid-template-columns:repeat(${visible.length},1fr); gap:var(--space-3); align-items:start;">
-        ${visible.map(col => {
-          const s = spendByCol[col];
-          const cpl = grouped[col].length > 0 && s.total > 0 ? (s.total / grouped[col].length) : null;
-          const statusDot = s.active ? '<span style="color:#10b981;">●</span>' : '<span style="opacity:0.4;">○</span>';
+      <div style="display:grid; grid-template-columns:repeat(${visible.length},minmax(220px,1fr)); gap:var(--space-3); align-items:start; overflow-x:auto;">
+        ${visible.map(adId => {
+          const a = adById[adId];
+          const cpl = a.metaLeads > 0 && a.spend > 0 ? (a.spend / a.metaLeads) : null;
           return `
           <div>
-            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${COLORS[col]}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-1); text-align:center;">
-              ${col} <span style="opacity:0.8;">(${grouped[col].length})</span>
+            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${a.color}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-1); text-align:center;" title="${a.ad_name}">
+              ${a.funnel} <span style="opacity:0.8;">(${grouped[adId].length})</span>
+            </div>
+            <div style="font-size:0.65rem; opacity:0.65; text-align:center; margin-bottom:4px; line-height:1.3; word-break:break-word;" title="ad_id ${adId}">
+              ${a.ad_name}
             </div>
             <div style="font-size:0.7rem; opacity:0.85; text-align:center; margin-bottom:var(--space-2); line-height:1.4;">
-              ${statusDot} ${fmt(s.daily)}/day · ${s.days}d running<br>
-              Spent ${fmt(s.total)}${cpl !== null ? ` · ${fmt(cpl)}/lead` : ''}
+              <span style="color:#10b981;">●</span> ${fmt(a.daily)}/day · ${a.days}d running<br>
+              Spent ${fmt(a.spend)}${cpl !== null ? ` · ${fmt(cpl)}/lead` : ''}
             </div>
             <div style="display:flex; flex-direction:column; gap:var(--space-2);">
-              ${grouped[col].map(l => this.renderLead(l, col, stats.per_lead || {})).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>'}
+              ${grouped[adId].map(l => this.renderLead(l, a.funnel, stats.per_lead || {})).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>'}
             </div>
           </div>
         `;}).join('')}
@@ -211,7 +268,7 @@ class LeadsScreen extends Screen {
         const col = cb.getAttribute('data-col');
         if (cb.checked) hidden.delete(col); else hidden.add(col);
         try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden])); } catch {}
-        this.renderLeads(this._leads || leads, this._spend || spend, this._stats || stats);
+        this.renderLeads(this._leads || leads, this._spend || spend, this._stats || stats, this._targeting || targeting);
       });
     });
 
@@ -245,6 +302,41 @@ class LeadsScreen extends Screen {
     return map[formId] || null;
   }
 
+  // Funnel label for an ad object. Resolution order:
+  //   1. Ad name carries an explicit grade band like "(K-12)" or
+  //      "(Grades 1–6)" — use that to disambiguate Boys/Girls Club
+  //      ads that share a LeagueApps URL across grade bands.
+  //   2. form_id — lead-form ads resolve via formLabel().
+  //   3. link_url — direct-CTA ads (no form) fall back to URL pattern
+  //      matching on link_url so they don't all bucket as "(no form)".
+  adFunnelLabel(ad) {
+    const name = (ad.ad_name || '').toLowerCase();
+    const url  = (ad.link_url || '').toLowerCase();
+    const isK12     = /\(k-?12\)/.test(name);
+    const isGrade16 = /\(grades?\s*1[\u2013\-]\s*6\)/.test(name);
+
+    // Boys/Girls Club have parallel K-12 and Grades 1–6 ads sharing the
+    // same LeagueApps URL — ad name is the only way to tell them apart.
+    if (/boys club/.test(name) || /\bboys-club\b/.test(url)) {
+      if (isK12)     return 'Boys Club (K-12)';
+      if (isGrade16) return 'Boys Club (Grades 1–6)';
+    }
+    if (/girls club/.test(name) || /\bgirls-club\b/.test(url)) {
+      if (isK12)     return 'Girls Club (K-12)';
+      if (isGrade16) return 'Girls Club (Grades 1–6)';
+    }
+
+    // Fall back to form_id map, then URL pattern.
+    const byForm = this.formLabel(ad.form_id);
+    if (byForm) return byForm;
+    if (!url) return null;
+    if (/\bmens-club\b/.test(url))   return "Men's Club";
+    if (/\bwomens-club\b/.test(url)) return "Women's Club";
+    if (/\bboys-club\b/.test(url))   return 'Boys Club (Grades 1–6)';
+    if (/\bgirls-club\b/.test(url)) return 'Girls Club (Grades 1–6)';
+    return null;
+  }
+
   // ── Ads rundown ─────────────────────────────────────────────────────
   // Renders a per-ad summary at the top of the leads screen so the coach
   // can spot targeting/perf problems (geo leaks, dead ads, CPL spikes)
@@ -259,14 +351,18 @@ class LeadsScreen extends Screen {
     // Within each status, sort by canonical funnel order (same order as
     // the kanban columns) so the rundown is stable + scannable.
     const FUNNEL_ORDER = [
-      'Brazil Men', 'U23 Men', 'PR Men', 'U23 Women', 'Tri County Women', 'APSL / Liga 1',
-      'Youth (Grades 1–6)', 'Boys Club (Grades 1–6)', 'Girls Club (Grades 1–6)',
+      'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
+      'U23 Women', 'Tri County Women', "Women's Club",
+      'APSL / Liga 1',
+      'Youth (Grades 1–6)',
+      'Boys Club (Grades 1–6)', 'Boys Club (K-12)',
+      'Girls Club (Grades 1–6)', 'Girls Club (K-12)',
     ];
     const funnelRank = (label) => {
       const i = FUNNEL_ORDER.indexOf(label);
       return i === -1 ? 999 : i;
     };
-    const decorated = ads.map(a => ({ ...a, funnel: this.formLabel(a.form_id) || '(no form)' }));
+    const decorated = ads.map(a => ({ ...a, funnel: this.adFunnelLabel(a) || '(no form)' }));
     const statusRank = { ACTIVE: 0, PENDING_REVIEW: 1, IN_PROCESS: 2, PAUSED: 3, ARCHIVED: 4, DELETED: 5 };
     decorated.sort((x, y) => {
       const ds = (statusRank[x.status] ?? 9) - (statusRank[y.status] ?? 9);
