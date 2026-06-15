@@ -78,12 +78,16 @@ async function postCarousel(imageUrls, caption) {
   }
 
   // Step 2: Create carousel container
+  // IG Graph API requires the children list as a single comma-separated
+  // value (children=ID1,ID2,ID3,...). Sending repeated `children=ID` params
+  // (URLSearchParams append) gets rejected with
+  //   "too little or too many attachments to qualify as a carousel".
   const carouselParams = new URLSearchParams({
     media_type: 'CAROUSEL',
     caption: caption,
+    children: childIds.join(','),
     access_token: ACCESS_TOKEN,
   });
-  childIds.forEach(id => carouselParams.append('children', id));
 
   const carouselRes = await fetch(`${API_BASE}/${INSTAGRAM_USER_ID}/media`, {
     method: 'POST',
@@ -482,13 +486,22 @@ if (command === 'photo') {
     const { renderPoster } = require('./scripts/render-poster-from-source.js');
     const { meta, slideCount } = await renderPoster(posterNum, new Set(['long', 'single', 'slides']));
 
-    // Caption is built straight from the source band — kicker, title, sub —
-    // nothing invented. Edit the printed poster's HTML to change the caption.
-    const captionParts = [];
-    if (meta.kicker) captionParts.push(meta.kicker.toUpperCase());
-    if (meta.title)  captionParts.push(meta.title);
-    if (meta.sub)    captionParts.push('', meta.sub);
-    const caption = captionParts.join('\n').slice(0, 2200);
+    // Caption: one recurring series header. We deliberately do NOT echo the
+    // poster's title/sub here — the slides already say all that. The first
+    // line is the heart (a humility note acknowledging that Lighthouse's real
+    // story is bigger than any series). The second line is the practical
+    // hook (cadence + window) so viewers know to come back tomorrow. The
+    // third line points readers at the IG bio link tree where the per-poster
+    // source citations live (the QR code is intentionally NOT printed on the
+    // slides — link tree is the canonical place).
+    // To change the framing, edit this string.
+    const caption = [
+      'We are in awe of the countless members of Lighthouse whose story is not told in this series — but on the streets and fields of Philadelphia and beyond.',
+      '',
+      'Some highlights, daily through the World Cup.',
+      '',
+      'Sources in link tree.',
+    ].join('\n');
 
     // Step 2 — preview
     console.log('\n' + '='.repeat(60));

@@ -85,6 +85,19 @@ async function openSourcePage(browser) {
     console.warn('⚠️  Some poster images did not finish loading; proceeding anyway.');
   }
 
+  // Hide the JS-injected sources QR globally via a stylesheet (so per-render
+  // reset code that does `el.style.display = ''` on `.poster-body > *` can't
+  // resurrect it). The QR has no value on a phone screen — sources live in
+  // the IG bio link tree instead — and removing it gives recalcFit() more
+  // vertical room so body text + photos scale larger.
+  await page.evaluate(() => {
+    const style = document.createElement('style');
+    style.id = 'social-renderer-overrides';
+    style.textContent = '.poster-sources-qr { display: none !important; }';
+    document.head.appendChild(style);
+    window.dispatchEvent(new Event('resize'));
+  });
+
   // Settle for the source's 100ms resize-debounce + RAF chain.
   await sleep(600);
   return page;
@@ -216,12 +229,11 @@ async function renderCarouselSlides(page, posterNum, pad) {
         else bq.style.display = (i === opts.quotes) ? '' : 'none';
       });
 
-      // Hide sources block + injected QR on every carousel slide (they look
-      // out of place at IG sizes; users tap through to the museum URL instead).
+      // Hide the sources block on every carousel slide (the QR is already
+      // hidden globally in openSourcePage; the .sources <ul> is hidden by
+      // the source's own CSS but defensively re-hide here too).
       const sources = body.querySelector(':scope > .sources');
       if (sources) sources.style.display = 'none';
-      const qr = body.querySelector(':scope > .poster-sources-qr');
-      if (qr) qr.style.display = opts.qr ? '' : 'none';
 
       window.dispatchEvent(new Event('resize'));
     }, { n: posterNum, h: FRAME_HEIGHT, opts });
@@ -229,22 +241,22 @@ async function renderCarouselSlides(page, posterNum, pad) {
   }
 
   // SLIDE 1: full poster, everything visible — same view as the 4:5 single.
-  await compose({ band: true, photo: true, paras: 'all', quotes: 'all', qr: true });
+  await compose({ band: true, photo: true, paras: 'all', quotes: 'all' });
   await snap('full poster');
 
   // SLIDE 2: band only — the hero header.
-  await compose({ band: true, photo: false, paras: 'none', quotes: 'none', qr: false });
+  await compose({ band: true, photo: false, paras: 'none', quotes: 'none' });
   await snap('band');
 
   // SLIDES 3..K+2: each paragraph in order. Photo rides with paragraph 1.
   for (let i = 0; i < counts.paras; i++) {
-    await compose({ band: false, photo: i === 0, paras: i, quotes: 'none', qr: false });
+    await compose({ band: false, photo: i === 0, paras: i, quotes: 'none' });
     await snap(i === 0 ? 'para 1 + photo' : `para ${i + 1}`);
   }
 
   // SLIDES K+3..end: each blockquote in order.
   for (let i = 0; i < counts.bqs; i++) {
-    await compose({ band: false, photo: false, paras: 'none', quotes: i, qr: false });
+    await compose({ band: false, photo: false, paras: 'none', quotes: i });
     await snap(`quote ${i + 1}`);
   }
 
