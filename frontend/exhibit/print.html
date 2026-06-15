@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lighthouse Exhibit — Print Files for Fireball Printing</title>
+  <meta name="description" content="Print-ready PDF and PNG downloads for the 19-poster Lighthouse 1893 exhibit. Generated direct from the master HTML source at footballhome.org.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0F2C59;
+      --gold: #C5A880;
+      --ink:  #1a1a1a;
+      --muted: #5a5a5a;
+      --line: #d9d3c4;
+      --page: #f6f3ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Montserrat', sans-serif;
+      color: var(--ink);
+      background: var(--page);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    header.page-hero {
+      background: var(--navy);
+      color: #fff;
+      padding: 48px 28px 36px;
+      text-align: center;
+    }
+    header.page-hero .kicker {
+      font-family: 'Montserrat', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 6px;
+      color: var(--gold);
+      font-size: 0.78rem;
+      margin: 0 0 12px;
+    }
+    header.page-hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700;
+      font-size: clamp(2rem, 5vw, 3rem);
+      margin: 0 0 14px;
+      line-height: 1.1;
+    }
+    header.page-hero .gold-rule {
+      width: 90px; height: 4px;
+      background: var(--gold);
+      margin: 18px auto;
+    }
+    header.page-hero p {
+      max-width: 720px;
+      margin: 8px auto;
+      font-size: 1rem;
+      color: rgba(255,255,255,0.88);
+    }
+    .meta {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.93rem;
+      color: var(--muted);
+    }
+    .meta dl {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 8px 16px;
+      margin: 0;
+    }
+    .meta dt { font-weight: 600; color: var(--navy); }
+    .meta dd { margin: 0; }
+    .legend {
+      max-width: 1200px;
+      margin: 28px auto 0;
+      padding: 0 28px;
+    }
+    .legend h2 {
+      font-family: 'Cormorant Garamond', serif;
+      color: var(--navy);
+      font-size: 1.6rem;
+      margin: 0 0 10px;
+    }
+    .legend p {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+    .legend .badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 12px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+    .badge.pdf      { background: #c0392b; color: #fff; }
+    .badge.hires    { background: var(--navy); color: #fff; }
+    .badge.preview  { background: var(--gold); color: #2a2010; }
+
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 28px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card-thumb {
+      background: #eeeae0;
+      aspect-ratio: 1 / 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-thumb.landscape { aspect-ratio: 2 / 1; }
+    .card-thumb.half      { aspect-ratio: 1 / 1; }
+    .card-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .card-thumb .missing {
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 16px;
+      text-align: center;
+    }
+    .card-num {
+      position: absolute;
+      top: 8px; left: 10px;
+      background: var(--navy);
+      color: #fff;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      padding: 2px 12px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+    }
+    .card-body {
+      padding: 14px 16px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-kicker {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      margin: 0 0 4px;
+      font-weight: 700;
+    }
+    .card-title {
+      font-family: 'Cormorant Garamond', serif;
+      color: var(--navy);
+      font-size: 1.15rem;
+      margin: 0 0 6px;
+      line-height: 1.2;
+    }
+    .card-dims {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .downloads {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: auto;
+    }
+    .dl-btn {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.84rem;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #fafaf6;
+      transition: background 0.15s;
+    }
+    .dl-btn:hover { background: #f0ece0; border-color: var(--gold); }
+    .dl-btn.pdf      { border-left: 4px solid #c0392b; }
+    .dl-btn.hires    { border-left: 4px solid var(--navy); }
+    .dl-btn.preview  { border-left: 4px solid var(--gold); }
+    .dl-btn .label { display: flex; align-items: center; gap: 8px; }
+    .dl-btn .ext   { font-family: monospace; font-size: 0.75rem; color: var(--muted); }
+    .dl-btn .missing { font-style: italic; color: #bbb; font-size: 0.78rem; }
+    .dl-btn[aria-disabled="true"] {
+      opacity: 0.45;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    footer.page-footer {
+      max-width: 920px;
+      margin: 24px auto 48px;
+      padding: 24px 28px;
+      border-top: 1px solid var(--line);
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    footer.page-footer a { color: var(--navy); }
+    .empty {
+      padding: 60px 28px;
+      text-align: center;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="page-hero">
+    <p class="kicker">Print Shop Drop</p>
+    <h1>Lighthouse Exhibit — Print Files</h1>
+    <div class="gold-rule"></div>
+    <p>19 posters ready for Fireball Printing. Each poster is available as a print-ready PDF (vector text, exact physical size) and a high-resolution PNG. Click any file to download.</p>
+  </header>
+
+  <section class="meta">
+    <dl>
+      <dt>Client</dt><dd>Lighthouse 1893 SC · Kensington, Philadelphia</dd>
+      <dt>Event</dt><dd>The Lighthouse Soccer Exhibition (opens June 19, 2026)</dd>
+      <dt>Print partner</dt><dd>Fireball Printing, Philadelphia</dd>
+      <dt>Master source</dt><dd><a href="lighthouse-history.html">lighthouse-history.html</a> (regenerate any time via <code>make print-export</code>)</dd>
+      <dt>Contact</dt><dd><a href="mailto:james@lighthouse1893.org">james@lighthouse1893.org</a></dd>
+    </dl>
+  </section>
+
+  <section class="legend">
+    <h2>File formats</h2>
+    <div class="badges">
+      <span class="badge pdf">PDF</span>
+      <span class="badge hires">Hi-res PNG</span>
+      <span class="badge preview">Preview PNG</span>
+    </div>
+    <p><strong>PDF</strong> — recommended for print. Vector text, embedded fonts, exact physical page size (e.g. 24″ × 48″). Smaller file, infinite zoom for type.<br>
+       <strong>Hi-res PNG</strong> — ~150 DPI raster. Use if your workflow prefers raster files. Large.<br>
+       <strong>Preview PNG</strong> — small thumbnail for on-screen review only, not for printing.</p>
+  </section>
+
+  <div id="grid" class="grid">
+    <div class="empty">Loading print manifest…</div>
+  </div>
+
+  <footer class="page-footer">
+    Generated direct from the source HTML — no Photoshop, no InDesign, no manual layout. Any change to <a href="lighthouse-history.html">lighthouse-history.html</a> can be re-exported with <code>make print-export</code> and the buttons above refresh automatically.
+  </footer>
+
+  <script>
+    (async function init() {
+      const grid = document.getElementById('grid');
+      let manifest;
+      try {
+        // Cache-bust so Fireball always sees the latest after a re-export.
+        const res = await fetch('print/print-manifest.json?_=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        manifest = await res.json();
+      } catch (e) {
+        grid.innerHTML =
+          '<div class="empty">' +
+          '<p><strong>No print files found.</strong></p>' +
+          '<p>Run <code>make print-export</code> (or <code>node scripts/export-exhibit-print.js</code>) from the repository root to generate them.</p>' +
+          '<p style="font-size:0.75rem;color:#aaa;">Fetch error: ' + e.message + '</p>' +
+          '</div>';
+        return;
+      }
+
+      const posters = manifest.posters || [];
+      if (!posters.length) {
+        grid.innerHTML = '<div class="empty">Manifest contains no posters.</div>';
+        return;
+      }
+
+      grid.innerHTML = '';
+      posters.forEach(p => {
+        const card = document.createElement('article');
+        card.className = 'card';
+
+        const thumbSrc = p.files.preview ? 'print/' + p.files.preview
+                       : p.files.hires ? 'print/' + p.files.hires
+                       : null;
+
+        const dlBtn = (kind, label, file, badgeCls) => {
+          if (!file) {
+            return `
+              <span class="dl-btn ${badgeCls}" aria-disabled="true">
+                <span class="label"><span class="badge ${badgeCls}">${label}</span></span>
+                <span class="missing">not generated</span>
+              </span>`;
+          }
+          const sizeNote = kind === 'pdf' ? 'PDF' : kind === 'hires' ? 'PNG ≈150 DPI' : 'PNG preview';
+          return `
+            <a class="dl-btn ${badgeCls}" href="print/${file}" download>
+              <span class="label"><span class="badge ${badgeCls}">${label}</span> ${sizeNote}</span>
+              <span class="ext">${file.split('.').pop().toUpperCase()}</span>
+            </a>`;
+        };
+
+        card.innerHTML = `
+          <div class="card-thumb ${p.orientation}">
+            <span class="card-num">${p.pad}</span>
+            ${thumbSrc
+              ? `<img src="print/${p.files.preview || p.files.hires}" alt="Poster ${p.num} preview" loading="lazy">`
+              : `<div class="missing">No preview generated</div>`
+            }
+          </div>
+          <div class="card-body">
+            ${p.kicker ? `<p class="card-kicker">${p.kicker}</p>` : ''}
+            <h3 class="card-title">${p.title}</h3>
+            <p class="card-dims">${p.dimensions} · ${p.orientation}</p>
+            <div class="downloads">
+              ${dlBtn('pdf',     'PDF',     p.files.pdf,     'pdf')}
+              ${dlBtn('hires',   'Hi-res',  p.files.hires,   'hires')}
+              ${dlBtn('preview', 'Preview', p.files.preview, 'preview')}
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    })();
+  </script>
+</body>
+</html>

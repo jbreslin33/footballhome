@@ -32,6 +32,9 @@ lighthouse_*.txt
 # Post media (images/videos are disposable after posting to Instagram)
 frontend/images/posts/
 
+# Exhibit print export artifacts (PDFs + hi-res/preview PNGs; reproducible via `make print-export`)
+frontend/exhibit/print/
+
 # Database backups (pg_dump snapshots)
 backups/
 # WireGuard provider config — plaintext is gitignored;
