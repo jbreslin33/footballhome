@@ -101,21 +101,30 @@ async function postCarousel(imageUrls, caption) {
     return null;
   }
 
-  // Step 3: Publish carousel
+  // Step 3: Wait for carousel container to be ready, then publish.
+  // Retry on the transient "Media ID is not available" (code 9007 / subcode 2207027)
+  // which can happen when IG hasn't finished assembling the carousel children yet.
   const publishParams = new URLSearchParams({
     creation_id: carouselData.id,
     access_token: ACCESS_TOKEN,
   });
 
-  const publishRes = await fetch(`${API_BASE}/${INSTAGRAM_USER_ID}/media_publish`, {
-    method: 'POST',
-    body: publishParams,
-  });
-  const publishData = await publishRes.json();
-
-  if (publishData.error) {
-    console.error('Error publishing carousel:', publishData.error);
-    return null;
+  const delays = [5000, 5000, 10000, 15000]; // initial + 3 retries
+  let publishData = null;
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+    const publishRes = await fetch(`${API_BASE}/${INSTAGRAM_USER_ID}/media_publish`, {
+      method: 'POST',
+      body: publishParams,
+    });
+    publishData = await publishRes.json();
+    if (!publishData.error) break;
+    const transient = publishData.error.code === 9007 || publishData.error.is_transient;
+    if (!transient || attempt === delays.length - 1) {
+      console.error('Error publishing carousel:', publishData.error);
+      return null;
+    }
+    console.log(`  ⏳ carousel not ready yet (attempt ${attempt + 1}); waiting and retrying…`);
   }
 
   console.log('Carousel published! Media ID:', publishData.id);
