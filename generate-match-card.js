@@ -4,7 +4,23 @@ const path = require('path');
 const fs = require('fs');
 
 const LOGOS_DIR = path.join(__dirname, 'frontend', 'images', 'teams', 'logos');
+const FLAGS_DIR = path.join(__dirname, 'frontend', 'images', 'flags');
 const POSTS_DIR = path.join(__dirname, 'frontend', 'images', 'posts');
+
+// Country name -> ISO 3166-1 alpha-2 (used to look up flag files in FLAGS_DIR).
+// Add entries here when posting cards for additional national teams.
+const COUNTRY_ISO = {
+  'brazil': 'br',
+  'puerto rico': 'pr',
+  'puertorico': 'pr',
+  'trinidad and tobago': 'tt',
+  'trinidad & tobago': 'tt',
+  'trinidad tobago': 'tt',
+  'israel': 'il',
+  'germany': 'de',
+  'usa': 'us',
+  'united states': 'us',
+};
 
 // Ensure posts dir exists
 if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR, { recursive: true });
@@ -35,6 +51,15 @@ function matchResultHTML({ homeTeam, awayTeam, homeScore, awayScore, homeLogo, a
 
   const homeLogoTag = logoImgTag(homeLogo, '🏠');
   const awayLogoTag = logoImgTag(awayLogo, '✈️');
+
+  // Only render detail rows that have a value so empty fields don't leave
+  // orphan icons on the card.
+  const detailRows = [
+    league && `<div class="detail-row"><span>🏆</span><span>${league}</span></div>`,
+    date   && `<div class="detail-row"><span>📅</span><span>${date}</span></div>`,
+    time   && `<div class="detail-row"><span>🕐</span><span>${time}</span></div>`,
+    venue  && `<div class="detail-row"><span>📍</span><span>${venue}</span></div>`,
+  ].filter(Boolean).join('\n      ');
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -112,10 +137,7 @@ function matchResultHTML({ homeTeam, awayTeam, homeScore, awayScore, homeLogo, a
       </div>
     </div>
     <div class="details-box">
-      <div class="detail-row"><span>🏆</span><span>${league}</span></div>
-      <div class="detail-row"><span>📅</span><span>${date}</span></div>
-      <div class="detail-row"><span>🕐</span><span>${time}</span></div>
-      <div class="detail-row"><span>📍</span><span>${venue}</span></div>
+      ${detailRows}
     </div>
     <div class="footer">FOOTBALLHOME.ORG</div>
   </div>
@@ -920,6 +942,30 @@ function findLogo(teamName) {
       if (base.includes(firstWord)) return path.join(LOGOS_DIR, f);
     }
   }
+  // Fall back to a national flag when the team name is (or contains) a country.
+  return findFlag(teamName);
+}
+
+// Look up a national flag PNG in FLAGS_DIR using a country-name -> ISO map.
+// Returns absolute path or null.
+function findFlag(teamName) {
+  if (!teamName) return null;
+  if (!fs.existsSync(FLAGS_DIR)) return null;
+  const norm = teamName.toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')   // drop emoji, punctuation
+    .replace(/\s+/g, ' ').trim();
+  // Direct hit
+  if (COUNTRY_ISO[norm]) {
+    const p = path.join(FLAGS_DIR, COUNTRY_ISO[norm] + '.png');
+    if (fs.existsSync(p)) return p;
+  }
+  // Substring hit (e.g. "Brazil National Team")
+  for (const [name, iso] of Object.entries(COUNTRY_ISO)) {
+    if (norm.includes(name)) {
+      const p = path.join(FLAGS_DIR, iso + '.png');
+      if (fs.existsSync(p)) return p;
+    }
+  }
   return null;
 }
 
@@ -1129,5 +1175,5 @@ Example:
   }
 }
 
-module.exports = { generateCard, findLogo, matchResultHTML, matchAnnouncementHTML, gameDayHTML, lineupHTML, grassrootsCupAdHTML, u23AdHTML, u23FlyerHTML, POSTS_DIR };
+module.exports = { generateCard, findLogo, findFlag, matchResultHTML, matchAnnouncementHTML, gameDayHTML, lineupHTML, grassrootsCupAdHTML, u23AdHTML, u23FlyerHTML, POSTS_DIR };
 main();

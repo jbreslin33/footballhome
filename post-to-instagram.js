@@ -1,6 +1,8 @@
 require('dotenv').config();
 const readline = require('readline');
 const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 const { generateCard, findLogo } = require('./generate-match-card');
 
 const INSTAGRAM_USER_ID = '26233831926285183';
@@ -285,6 +287,67 @@ if (command === 'photo') {
     }
   })();
 
+} else if (command === 'grassroots-result') {
+  // Match-result post tailored for the Philly Grassroots Cup: country-flag
+  // graphics, country emojis in the caption, cup-correct hashtags.
+  // Usage:
+  //   node post-to-instagram.js grassroots-result \
+  //     "Puerto Rico" 🇵🇷 "Israel" 🇮🇱 3 1 "Group Stage Game 2" "June 14, 2026" "Lighthouse Field" \
+  //     ["optional extra blurb"]
+  (async () => {
+    const [, homeTeam, homeFlag, awayTeam, awayFlag, homeScore, awayScore, stage, date, venue, blurb] = args;
+    if (!homeTeam || !awayTeam || homeScore === undefined || awayScore === undefined) {
+      console.log('Usage: node post-to-instagram.js grassroots-result <home> <homeFlag> <away> <awayFlag> <home_score> <away_score> <stage> <date> <venue> [blurb]');
+      process.exit(1);
+    }
+
+    console.log('\n🎨 Generating Grassroots Cup result card...');
+    const homeLogo = findLogo(homeTeam);
+    const awayLogo = findLogo(awayTeam);
+    const league = `Philly Grassroots Cup — ${stage}`;
+    const { filepath, filename } = await generateCard('match-result', {
+      homeTeam, awayTeam, homeScore, awayScore, homeLogo, awayLogo,
+      date, time: '', venue, league,
+    });
+    const publicUrl = `${PUBLIC_BASE}/${filename}`;
+
+    // Caption — cup-appropriate hashtags + country tag inferred from home team
+    const result = Number(homeScore) > Number(awayScore) ? 'WIN'
+                 : Number(homeScore) < Number(awayScore) ? 'LOSS' : 'DRAW';
+    const countryHashtag = '#' + homeTeam.replace(/[^A-Za-z0-9]/g, '');
+    const caption =
+      `⚽ MATCH RESULT: ${result}\n\n` +
+      `${homeTeam} ${homeFlag} ${homeScore} – ${awayScore} ${awayTeam} ${awayFlag}\n` +
+      `🏆 ${league}\n` +
+      `📅 ${date}\n` +
+      `📍 ${venue}\n` +
+      (blurb ? `\n${blurb}\n` : '') +
+      `\n#PhillyGrassrootsCup ${countryHashtag} #Lighthouse1893 #PhillySoccer #CASASoccer #Lighthouse1893SC`;
+
+    console.log('\n' + '='.repeat(60));
+    console.log('📸 IMAGE PREVIEW');
+    console.log('='.repeat(60));
+    console.log(`Local file: ${filepath}`);
+    console.log(`Public URL: ${publicUrl}`);
+    openImage(filepath);
+    console.log('\n' + '='.repeat(60));
+    console.log('📝 CAPTION PREVIEW');
+    console.log('='.repeat(60));
+    console.log(caption);
+    console.log('='.repeat(60));
+
+    const answer = await askConfirm('\n🚀 Post this to Instagram? (yes/no): ');
+    if (answer === 'yes' || answer === 'y') {
+      console.log('\n📤 Posting to Instagram...');
+      const mediaId = await postPhoto(publicUrl, caption);
+      if (mediaId) {
+        console.log('\n✅ Successfully posted to Instagram!');
+      }
+    } else {
+      console.log('\n❌ Post cancelled. Image saved at:', filepath);
+    }
+  })();
+
 } else if (command === 'auto-announcement') {
   // node post-to-instagram.js auto-announcement "Lighthouse 1893 SC" "Sewell Old Boys FC" "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
   (async () => {
@@ -392,6 +455,77 @@ if (command === 'photo') {
     }
   })();
 
+} else if (command === 'exhibit') {
+  // node post-to-instagram.js exhibit 1            # render + post P1 carousel
+  // node post-to-instagram.js exhibit 1 preview    # render + show URLs/caption, no post
+  (async () => {
+    const posterNum = parseInt(args[1], 10);
+    const previewOnly = (args[2] || '').toLowerCase() === 'preview';
+    if (!posterNum) {
+      console.log('Usage: node post-to-instagram.js exhibit <posterNum> [preview]');
+      process.exit(1);
+    }
+
+    const dataFile = path.join(__dirname, 'frontend', 'exhibit', 'posters-social.json');
+    const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    const poster = (data.posters || []).find(p => p.n === posterNum);
+    if (!poster) {
+      console.error(`Poster ${posterNum} not found in posters-social.json`);
+      process.exit(1);
+    }
+
+    // Step 1 — render all 6 cards via the exhibit generator
+    console.log(`\n🎨 Rendering exhibit poster ${posterNum}...`);
+    await new Promise((resolve, reject) => {
+      exec(`node scripts/generate-exhibit-card.js ${posterNum}`, { cwd: __dirname }, (err, stdout, stderr) => {
+        if (stdout) process.stdout.write(stdout);
+        if (stderr) process.stderr.write(stderr);
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+
+    const pad = String(posterNum).padStart(2, '0');
+    const slideFiles = ['1-hero', '2-story', '3-alongside', '4-numbers', '5-quote']
+      .map(k => `exhibit-p${pad}-${k}.png`);
+    const slideUrls = slideFiles.map(f => `${PUBLIC_BASE}/${f}`);
+    const fbFile = `exhibit-p${pad}-fb.png`;
+    const fbUrl  = `${PUBLIC_BASE}/${fbFile}`;
+    const caption = (poster.fb_caption || '').slice(0, 2200); // IG cap
+
+    // Step 2 — preview
+    console.log('\n' + '='.repeat(60));
+    console.log(`📚 EXHIBIT POSTER ${pad}: ${poster.title}`);
+    console.log('='.repeat(60));
+    console.log('IG CAROUSEL (5 slides):');
+    slideUrls.forEach((u, i) => console.log(`  ${i + 1}. ${u}`));
+    console.log(`\nFB LANDSCAPE (manual upload):\n  ${fbUrl}`);
+    console.log('\n' + '='.repeat(60));
+    console.log('📝 CAPTION');
+    console.log('='.repeat(60));
+    console.log(caption);
+    console.log('='.repeat(60));
+    console.log(`Caption length: ${caption.length}/2200`);
+    openImage(path.join(__dirname, 'frontend', 'images', 'posts', slideFiles[0]));
+
+    if (previewOnly) {
+      console.log('\n👀 Preview only. Not posting.');
+      return;
+    }
+
+    const answer = await askConfirm('\n🚀 Post this carousel to Instagram? (yes/no): ');
+    if (answer === 'yes' || answer === 'y') {
+      console.log('\n📤 Posting carousel to Instagram...');
+      const mediaId = await postCarousel(slideUrls, caption);
+      if (mediaId) {
+        console.log('\n✅ Successfully posted to Instagram!');
+        console.log(`\n📘 For Facebook: upload ${fbUrl} with the same caption above.`);
+      }
+    } else {
+      console.log('\n❌ Post cancelled.');
+    }
+  })();
+
 } else {
   console.log(`Lighthouse 1893 SC - Instagram Posting Tool
 
@@ -403,12 +537,17 @@ Usage (manual - requires pre-hosted image URL):
 Usage (auto-generate image + preview + confirm):
   node post-to-instagram.js auto-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
   node post-to-instagram.js auto-announcement <home> <away> <league> <date> <time> <venue>
+  node post-to-instagram.js grassroots-result <home> <homeFlag> <away> <awayFlag> <score_h> <score_a> <stage> <date> <venue> [blurb]
 
 Usage (recruiting / organic campaign posts):
   node post-to-instagram.js recruit grassroots-brazil
   node post-to-instagram.js recruit grassroots-puertorico
   node post-to-instagram.js recruit u23-mens
   node post-to-instagram.js recruit u23-womens
+
+Usage (Lighthouse history exhibit — 20-poster carousel campaign):
+  node post-to-instagram.js exhibit <posterNum>           Generate + post P# carousel
+  node post-to-instagram.js exhibit <posterNum> preview   Generate + preview only
 
 Usage (preview only - no posting):
   node post-to-instagram.js preview-only match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
