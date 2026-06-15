@@ -152,20 +152,28 @@ async function openSourcePage(browser) {
       }
 
       /* Slides that show a single piece of body content (one para, one
-         para + photo, or one blockquote): vertically center the visible
-         content, force a single column, give the type more breathing
-         room with bigger font sizes. */
+         para + photo, or one blockquote): force single column, minimal
+         padding (we want the renderer's post-pass scale to make the
+         actual content fill the frame edge-to-edge — the body's normal
+         padding would scale up into visible whitespace borders).
+         Note we do NOT set height: 100% / flex-center on the body
+         here — that would fake the body to always equal frame height
+         and prevent the renderer's fill-frame post-pass from measuring
+         the natural content height. */
       .poster[data-slide-mode="para"] .poster-body,
       .poster[data-slide-mode="para-photo"] .poster-body,
       .poster[data-slide-mode="quote"] .poster-body {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: stretch;
         column-count: 1 !important;
         column-rule: 0 !important;
-        padding: 60px 70px;
+        padding: 8px 14px !important;
+      }
+      /* Hide the gold-divider on card slides — it's a band-to-body
+         separator that adds vertical bulk above the lone visible
+         element (and reads as orphaned without the band above it). */
+      .poster[data-slide-mode="para"] .poster-body > .gold-divider,
+      .poster[data-slide-mode="para-photo"] .poster-body > .gold-divider,
+      .poster[data-slide-mode="quote"] .poster-body > .gold-divider {
+        display: none !important;
       }
 
       /* Paragraph-only slides — biggest possible body text. */
@@ -384,6 +392,89 @@ async function renderCarouselSlides(page, posterNum, pad) {
       window.dispatchEvent(new Event('resize'));
     }, { n: posterNum, h: FRAME_HEIGHT, opts });
     await sleep(400);
+
+    // POST-PASS: for card slides (anything other than 'full'), recalcFit's
+    // MAX_DISTORT cap (1.18) and MIN_W floor (0.45) leave huge white space
+    // when only one paragraph (or one quote / the band) is visible inside a
+    // 1080x1350 frame. We replace its result with a more aggressive fit:
+    //   1. Narrow the inner's layout width until the wrapped content's
+    //      natural aspect ratio (h/w) is >= the frame's (h/w). At that
+    //      point a uniform scale fills both axes.
+    //   2. If even at the narrowest tested width (0.10 of frame) the
+    //      content is still too "wide-and-short" (very little text — e.g.
+    //      a single-sentence pull-quote), fall back to anisotropic scale
+    //      with no distortion cap so the output still fills the frame.
+    if (opts.mode && opts.mode !== 'full') {
+      const debug = await page.evaluate((n) => {
+        const p = document.getElementById('poster-' + n);
+        if (!p) return null;
+        const inner = p.querySelector(':scope > .poster-inner');
+        if (!inner) return null;
+        // Reset prior scale state.
+        p.style.removeProperty('--fit-scale');
+        p.style.removeProperty('--fit-scale-x');
+        p.style.removeProperty('--fit-scale-y');
+        const frameH = p.clientHeight;
+        const frameW = p.clientWidth;
+        if (!frameH || !frameW) return;
+        const targetRatio = frameH / frameW;
+
+        // Step 1: binary search for the layout width whose natural content
+        // aspect ratio just exceeds the frame's. Search range w in
+        // [0.10, 1.30] — 0.10 is narrower than recalcFit's 0.45 floor so
+        // sparse cards can pack tall; 1.30 is wider for the rare case
+        // where one paragraph's natural width already overflows the frame.
+        function measure(w) {
+          inner.style.width = (w * 100).toFixed(3) + '%';
+          // Force synchronous layout.
+          void inner.offsetHeight;
+          return { ch: inner.scrollHeight, cw: inner.scrollWidth };
+        }
+        const MIN_W = 0.10, MAX_W = 1.30;
+        let lo = MIN_W, hi = MAX_W;
+        let bestW = MAX_W;
+        // 14 iters: width precision ~ (MAX_W-MIN_W)/2^14 = 0.000073
+        for (let i = 0; i < 14; i++) {
+          const mid = (lo + hi) / 2;
+          const m = measure(mid);
+          const ratio = m.ch / m.cw;
+          if (ratio >= targetRatio) {
+            // Tall enough — could narrow further but this fits; remember and
+            // try wider (less narrow) to find the LARGEST w that still fits.
+            bestW = mid;
+            lo = mid;
+          } else {
+            // Too wide-and-short — narrow more.
+            hi = mid;
+          }
+        }
+        // Step 2: apply the chosen width and compute scale to fill the frame.
+        const finalM = measure(bestW);
+        const sx = frameW / finalM.cw;
+        const sy = frameH / finalM.ch;
+        // If natural ratio matched target, sx ~ sy — uniform fill, no
+        // distortion. If we hit the MIN_W floor (content still wider than
+        // target), sy > sx — accept anisotropic stretch (no cap) so the
+        // output still fills the frame edge-to-edge.
+        p.style.setProperty('--fit-scale-x', sx.toFixed(4));
+        p.style.setProperty('--fit-scale-y', sy.toFixed(4));
+        p.style.setProperty('--fit-scale', Math.min(sx, sy).toFixed(4));
+        return { frameW, frameH, bestW: bestW.toFixed(3), finalCw: finalM.cw, finalCh: finalM.ch, sx: sx.toFixed(3), sy: sy.toFixed(3) };
+      }, posterNum);
+      await sleep(250);
+      // Re-read what the source DOM actually has after our writes.
+      const verify = await page.evaluate((n) => {
+        const p = document.getElementById('poster-' + n);
+        return {
+          fitX: p.style.getPropertyValue('--fit-scale-x'),
+          fitY: p.style.getPropertyValue('--fit-scale-y'),
+          innerWidth: p.querySelector(':scope > .poster-inner').style.width,
+        };
+      }, posterNum);
+      if (process.env.DEBUG_FILL) {
+        console.log(`    [fill ${opts.mode}] ${JSON.stringify(debug)} verify=${JSON.stringify(verify)}`);
+      }
+    }
   }
 
   // SLIDE 1: full poster, everything visible — same view as the 4:5 single.
