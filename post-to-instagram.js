@@ -486,8 +486,16 @@ if (command === 'photo') {
     });
 
     const pad = String(posterNum).padStart(2, '0');
-    const slideFiles = ['1-hero', '2-story', '3-alongside', '4-numbers', '5-quote']
-      .map(k => `exhibit-p${pad}-${k}.png`);
+    const slideCount = (poster.slides || []).length;
+    if (!slideCount) {
+      console.error(`Poster ${posterNum} has no slides[] entries in posters-social.json`);
+      process.exit(1);
+    }
+    if (slideCount > 10) {
+      console.warn(`⚠️  Poster has ${slideCount} slides; IG carousel max is 10. Only first 10 will be posted.`);
+    }
+    const carouselCount = Math.min(slideCount, 10);
+    const slideFiles = Array.from({ length: carouselCount }, (_, i) => `exhibit-p${pad}-${i + 1}.png`);
     const slideUrls = slideFiles.map(f => `${PUBLIC_BASE}/${f}`);
     const fbFile = `exhibit-p${pad}-fb.png`;
     const fbUrl  = `${PUBLIC_BASE}/${fbFile}`;
@@ -497,16 +505,18 @@ if (command === 'photo') {
     console.log('\n' + '='.repeat(60));
     console.log(`📚 EXHIBIT POSTER ${pad}: ${poster.title}`);
     console.log('='.repeat(60));
-    console.log('IG CAROUSEL (5 slides):');
+    console.log(`IG CAROUSEL (${carouselCount} slides):`);
     slideUrls.forEach((u, i) => console.log(`  ${i + 1}. ${u}`));
     console.log(`\nFB LANDSCAPE (manual upload):\n  ${fbUrl}`);
+    console.log(`\n👀 Local preview:  file://${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}`);
     console.log('\n' + '='.repeat(60));
     console.log('📝 CAPTION');
     console.log('='.repeat(60));
     console.log(caption);
     console.log('='.repeat(60));
     console.log(`Caption length: ${caption.length}/2200`);
-    openImage(path.join(__dirname, 'frontend', 'images', 'posts', slideFiles[0]));
+    // Open the local slideshow viewer in the default browser
+    openImage(`${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}`);
 
     if (previewOnly) {
       console.log('\n👀 Preview only. Not posting.');

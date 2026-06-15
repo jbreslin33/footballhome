@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lighthouse Exhibit — Slideshow Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #14181d;
+      --ink: #f5f1e8;
+      --muted: #8a8f97;
+      --gold: #C5A880;
+      --shadow: 0 14px 50px rgba(0,0,0,0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { display: flex; flex-direction: column; align-items: center; padding: 16px; user-select: none; }
+
+    header { width: 100%; max-width: 1080px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px 14px; flex-wrap: wrap; gap: 8px; }
+    .brand { font-weight: 700; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; font-size: 13px; }
+    .posters { display: flex; gap: 4px; flex-wrap: wrap; }
+    .posters a { display: inline-block; min-width: 28px; text-align: center; padding: 4px 8px; font-size: 12px; color: var(--muted); border: 1px solid #2a3038; border-radius: 4px; text-decoration: none; }
+    .posters a.active { background: var(--gold); color: #14181d; border-color: var(--gold); font-weight: 700; }
+    .posters a:hover { color: var(--ink); border-color: var(--gold); }
+
+    main {
+      position: relative;
+      width: min(96vmin, 1080px);
+      aspect-ratio: 1 / 1;
+      max-height: calc(100vh - 180px);
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    /* View modes — each sets the natural aspect ratio of the rendered PNG. */
+    main.mode-carousel   { aspect-ratio: 1 / 1; }
+    main.mode-poster     { aspect-ratio: 1080 / 1350; }   /* IG 4:5 smashed-into-one */
+    main.mode-longposter { aspect-ratio: 1080 / 2160; max-height: calc(100vh - 180px); }  /* 1:2 print aspect, very tall */
+    main.mode-fb         { aspect-ratio: 1200 / 630; }    /* FB landscape */
+    main img { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+    .hit { position: absolute; top: 0; bottom: 0; width: 35%; cursor: pointer; z-index: 2; }
+    .hit.left  { left: 0; }
+    .hit.right { right: 0; }
+
+    .arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; background: rgba(0,0,0,0.45); color: #fff; border: none; font-size: 24px; cursor: pointer; z-index: 3; opacity: 0; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; }
+    main:hover .arrow { opacity: 1; }
+    .arrow.left  { left: 14px; }
+    .arrow.right { right: 14px; }
+
+    .dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; z-index: 3; }
+    .dots .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.35); }
+    .dots .dot.active { background: #fff; width: 18px; border-radius: 3px; }
+
+    footer { width: 100%; max-width: 1080px; display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 0; font-size: 13px; color: var(--muted); flex-wrap: wrap; gap: 12px; }
+    .counter { font-variant-numeric: tabular-nums; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .controls button, .controls label { background: var(--panel); color: var(--ink); border: 1px solid #2a3038; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .controls input[type=checkbox] { vertical-align: middle; margin-right: 4px; }
+    .view-switch { display: inline-flex; gap: 0; background: var(--panel); border: 1px solid #2a3038; border-radius: 6px; overflow: hidden; }
+    .view-switch button { background: transparent; color: var(--muted); border: 0; border-right: 1px solid #2a3038; padding: 6px 11px; font-size: 12px; cursor: pointer; }
+    .view-switch button:last-child { border-right: 0; }
+    .view-switch button.active { background: var(--gold); color: #14181d; font-weight: 700; }
+    .view-switch button:hover:not(.active) { color: var(--ink); }
+    .hint { font-size: 11px; color: var(--muted); }
+    .err { color: #e57373; padding: 40px; text-align: center; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Lighthouse 1893 SC — Exhibit Slideshow Preview</div>
+    <div class="posters" id="poster-nav"></div>
+  </header>
+
+  <main id="frame">
+    <img id="slide" alt="">
+    <button class="arrow left"  id="btn-prev" aria-label="Previous">‹</button>
+    <button class="arrow right" id="btn-next" aria-label="Next">›</button>
+    <div class="hit left"  id="hit-prev"></div>
+    <div class="hit right" id="hit-next"></div>
+    <div class="dots" id="dots"></div>
+  </main>
+
+  <footer>
+    <div>
+      <span id="poster-title" style="color:var(--ink); font-weight:600;">Poster —</span>
+      &nbsp;·&nbsp;
+      <span class="counter" id="counter">0 / 0</span>
+    </div>
+    <div class="controls">
+      <div class="view-switch" id="view-switch">
+        <button data-view="carousel"   title="8-slide IG carousel">Carousel</button>
+        <button data-view="poster"     title="Whole poster smashed into 1 IG portrait (1080×1350)">Smashed</button>
+        <button data-view="longposter" title="Native 1:2 print aspect (1080×2160) — Stories / X / web">Long</button>
+        <button data-view="fb"         title="Facebook landscape (1200×630)">FB</button>
+      </div>
+      <button id="btn-reload">Reload</button>
+      <span class="hint">← / →&nbsp;or click ¼ edges</span>
+    </div>
+  </footer>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const posterNum = parseInt(params.get('p') || '1', 10);
+    // Back-compat: old ?fb=1 maps to view=fb
+    const view = params.get('view') || (params.get('fb') === '1' ? 'fb' : 'carousel');
+    const VIEWS = ['carousel', 'poster', 'longposter', 'fb'];
+    const pad = String(posterNum).padStart(2, '0');
+
+    const img        = document.getElementById('slide');
+    const counter    = document.getElementById('counter');
+    const dotsEl     = document.getElementById('dots');
+    const frame      = document.getElementById('frame');
+    const viewSwitch = document.getElementById('view-switch');
+    const nav        = document.getElementById('poster-nav');
+    const titleEl    = document.getElementById('poster-title');
+
+    // Apply view-mode CSS class so aspect-ratio matches the rendered PNG.
+    VIEWS.forEach(v => frame.classList.remove('mode-' + v));
+    frame.classList.add('mode-' + (VIEWS.includes(view) ? view : 'carousel'));
+
+    // Highlight active view button + wire navigation
+    viewSwitch.querySelectorAll('button').forEach(b => {
+      if (b.dataset.view === view) b.classList.add('active');
+      b.addEventListener('click', () => {
+        const p = new URLSearchParams(location.search);
+        p.delete('fb'); // strip legacy param
+        if (b.dataset.view === 'carousel') p.delete('view');
+        else p.set('view', b.dataset.view);
+        location.search = p.toString();
+      });
+    });
+
+    let slides = [];   // array of image URLs
+    let idx = 0;
+
+    function bust(url) { return url + '?t=' + Date.now(); }
+
+    async function head(url) {
+      try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; }
+      catch { return false; }
+    }
+
+    async function discover() {
+      // Single-image views resolve to one PNG; only the carousel paginates.
+      if (view === 'fb')         return await singleton(`../images/posts/exhibit-p${pad}-fb.png`);
+      if (view === 'poster')     return await singleton(`../images/posts/exhibit-p${pad}-poster.png`);
+      if (view === 'longposter') return await singleton(`../images/posts/exhibit-p${pad}-longposter.png`);
+      const out = [];
+      for (let i = 1; i <= 12; i++) {
+        const url = `../images/posts/exhibit-p${pad}-${i}.png`;
+        if (await head(url)) out.push(url); else break;
+      }
+      return out;
+    }
+
+    async function singleton(url) { return (await head(url)) ? [url] : []; }
+
+    function renderDots() {
+      dotsEl.innerHTML = '';
+      slides.forEach((_, i) => {
+        const d = document.createElement('span');
+        d.className = 'dot' + (i === idx ? ' active' : '');
+        dotsEl.appendChild(d);
+      });
+    }
+
+    function show(i) {
+      if (!slides.length) return;
+      idx = ((i % slides.length) + slides.length) % slides.length;
+      img.src = bust(slides[idx]);
+      counter.textContent = `${idx + 1} / ${slides.length}`;
+      renderDots();
+    }
+
+    function buildPosterNav() {
+      // Show 1..20 quick-jump; carry the current view selection across posters.
+      const viewSuffix = (view && view !== 'carousel') ? `&view=${view}` : '';
+      const frag = document.createDocumentFragment();
+      for (let n = 1; n <= 20; n++) {
+        const a = document.createElement('a');
+        a.href = `?p=${n}${viewSuffix}`;
+        a.textContent = String(n).padStart(2, '0');
+        if (n === posterNum) a.className = 'active';
+        frag.appendChild(a);
+      }
+      nav.appendChild(frag);
+    }
+
+    async function loadPosterMeta() {
+      try {
+        const data = await fetch('posters-social.json', { cache: 'no-store' }).then(r => r.json());
+        const p = (data.posters || []).find(x => x.n === posterNum);
+        if (p) titleEl.textContent = `Poster ${posterNum} — ${p.title}`;
+      } catch { /* ignore */ }
+    }
+
+    async function init() {
+      buildPosterNav();
+      loadPosterMeta();
+      slides = await discover();
+      if (!slides.length) {
+        const hint = view === 'carousel' ? `${posterNum}` : `${posterNum} ${view}`;
+        frame.innerHTML = `<div class="err">No <strong>${view}</strong> render found for poster ${posterNum}.<br><br>Render it with:<br><code style="color:var(--gold)">node scripts/generate-exhibit-card.js ${hint}</code></div>`;
+        counter.textContent = '0 / 0';
+        return;
+      }
+      show(0);
+    }
+
+    document.getElementById('btn-prev').onclick = () => show(idx - 1);
+    document.getElementById('btn-next').onclick = () => show(idx + 1);
+    document.getElementById('hit-prev').onclick = () => show(idx - 1);
+    document.getElementById('hit-next').onclick = () => show(idx + 1);
+    document.getElementById('btn-reload').onclick = async () => {
+      slides = await discover();
+      if (slides.length) show(Math.min(idx, slides.length - 1));
+    };
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft')  show(idx - 1);
+      if (e.key === 'ArrowRight') show(idx + 1);
+      if (e.key === 'Home')       show(0);
+      if (e.key === 'End')        show(slides.length - 1);
+      if (/^[1-9]$/.test(e.key)) {
+        const n = parseInt(e.key, 10) - 1;
+        if (n < slides.length) show(n);
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
