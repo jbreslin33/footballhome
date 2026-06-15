@@ -458,6 +458,9 @@ if (command === 'photo') {
 } else if (command === 'exhibit') {
   // node post-to-instagram.js exhibit 1            # render + post P1 carousel
   // node post-to-instagram.js exhibit 1 preview    # render + show URLs/caption, no post
+  //
+  // Renders directly from frontend/exhibit/lighthouse-history.html (the
+  // printed museum poster IS the source). No intermediate JSON.
   (async () => {
     const posterNum = parseInt(args[1], 10);
     const previewOnly = (args[2] || '').toLowerCase() === 'preview';
@@ -466,29 +469,15 @@ if (command === 'photo') {
       process.exit(1);
     }
 
-    const dataFile = path.join(__dirname, 'frontend', 'exhibit', 'posters-social.json');
-    const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-    const poster = (data.posters || []).find(p => p.n === posterNum);
-    if (!poster) {
-      console.error(`Poster ${posterNum} not found in posters-social.json`);
-      process.exit(1);
-    }
-
-    // Step 1 — render all 6 cards via the exhibit generator
-    console.log(`\n🎨 Rendering exhibit poster ${posterNum}...`);
-    await new Promise((resolve, reject) => {
-      exec(`node scripts/generate-exhibit-card.js ${posterNum}`, { cwd: __dirname }, (err, stdout, stderr) => {
-        if (stdout) process.stdout.write(stdout);
-        if (stderr) process.stderr.write(stderr);
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-
     const pad = String(posterNum).padStart(2, '0');
-    const slideCount = (poster.slides || []).length;
+
+    // Step 1 — render long-poster + 4:5 single + carousel slides from source.
+    console.log(`\n🎨 Rendering exhibit poster ${posterNum} from source...`);
+    const { renderPoster } = require('./scripts/render-poster-from-source.js');
+    const { meta, slideCount } = await renderPoster(posterNum, new Set(['long', 'single', 'slides']));
+
     if (!slideCount) {
-      console.error(`Poster ${posterNum} has no slides[] entries in posters-social.json`);
+      console.error(`Poster ${posterNum} produced no carousel slides.`);
       process.exit(1);
     }
     if (slideCount > 10) {
@@ -497,20 +486,24 @@ if (command === 'photo') {
     const carouselCount = Math.min(slideCount, 10);
     const slideFiles = Array.from({ length: carouselCount }, (_, i) => `exhibit-p${pad}-${i + 1}.png`);
     const slideUrls = slideFiles.map(f => `${PUBLIC_BASE}/${f}`);
-    const fbFile = `exhibit-p${pad}-fb.png`;
-    const fbUrl  = `${PUBLIC_BASE}/${fbFile}`;
-    const caption = (poster.fb_caption || '').slice(0, 2200); // IG cap
+
+    // Caption is built straight from the source band — kicker, title, sub —
+    // nothing invented. Edit the printed poster's HTML to change the caption.
+    const captionParts = [];
+    if (meta.kicker) captionParts.push(meta.kicker.toUpperCase());
+    if (meta.title)  captionParts.push(meta.title);
+    if (meta.sub)    captionParts.push('', meta.sub);
+    const caption = captionParts.join('\n').slice(0, 2200);
 
     // Step 2 — preview
     console.log('\n' + '='.repeat(60));
-    console.log(`📚 EXHIBIT POSTER ${pad}: ${poster.title}`);
+    console.log(`📚 EXHIBIT POSTER ${pad}: ${meta.title || ''}`);
     console.log('='.repeat(60));
     console.log(`IG CAROUSEL (${carouselCount} slides):`);
     slideUrls.forEach((u, i) => console.log(`  ${i + 1}. ${u}`));
-    console.log(`\nFB LANDSCAPE (manual upload):\n  ${fbUrl}`);
     console.log(`\n👀 Local preview:  file://${path.join(__dirname, 'frontend/exhibit/slideshow.html')}?p=${posterNum}`);
     console.log('\n' + '='.repeat(60));
-    console.log('📝 CAPTION');
+    console.log('📝 CAPTION (derived from source band — edit lighthouse-history.html to change)');
     console.log('='.repeat(60));
     console.log(caption);
     console.log('='.repeat(60));
@@ -529,7 +522,6 @@ if (command === 'photo') {
       const mediaId = await postCarousel(slideUrls, caption);
       if (mediaId) {
         console.log('\n✅ Successfully posted to Instagram!');
-        console.log(`\n📘 For Facebook: upload ${fbUrl} with the same caption above.`);
       }
     } else {
       console.log('\n❌ Post cancelled.');

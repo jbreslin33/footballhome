@@ -36,9 +36,8 @@
     }
     /* View modes — each sets the natural aspect ratio of the rendered PNG. */
     main.mode-carousel   { aspect-ratio: 1 / 1; }
-    main.mode-poster     { aspect-ratio: 1080 / 1350; }   /* IG 4:5 smashed-into-one */
+    main.mode-poster     { aspect-ratio: 1080 / 1350; }   /* IG 4:5 single tile */
     main.mode-longposter { aspect-ratio: 1080 / 2160; max-height: calc(100vh - 180px); }  /* 1:2 print aspect, very tall */
-    main.mode-fb         { aspect-ratio: 1200 / 630; }    /* FB landscape */
     main img { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 
     .hit { position: absolute; top: 0; bottom: 0; width: 35%; cursor: pointer; z-index: 2; }
@@ -91,10 +90,9 @@
     </div>
     <div class="controls">
       <div class="view-switch" id="view-switch">
-        <button data-view="carousel"   title="8-slide IG carousel">Carousel</button>
-        <button data-view="poster"     title="Whole poster smashed into 1 IG portrait (1080×1350)">Smashed</button>
+        <button data-view="carousel"   title="Multi-slide IG carousel (1 per source paragraph)">Carousel</button>
+        <button data-view="poster"     title="Whole poster fit to 1 IG portrait (1080×1350)">Single</button>
         <button data-view="longposter" title="Native 1:2 print aspect (1080×2160) — Stories / X / web">Long</button>
-        <button data-view="fb"         title="Facebook landscape (1200×630)">FB</button>
       </div>
       <button id="btn-reload">Reload</button>
       <span class="hint">← / →&nbsp;or click ¼ edges</span>
@@ -104,9 +102,8 @@
   <script>
     const params = new URLSearchParams(location.search);
     const posterNum = parseInt(params.get('p') || '1', 10);
-    // Back-compat: old ?fb=1 maps to view=fb
-    const view = params.get('view') || (params.get('fb') === '1' ? 'fb' : 'carousel');
-    const VIEWS = ['carousel', 'poster', 'longposter', 'fb'];
+    const view = params.get('view') || 'carousel';
+    const VIEWS = ['carousel', 'poster', 'longposter'];
     const pad = String(posterNum).padStart(2, '0');
 
     const img        = document.getElementById('slide');
@@ -126,7 +123,6 @@
       if (b.dataset.view === view) b.classList.add('active');
       b.addEventListener('click', () => {
         const p = new URLSearchParams(location.search);
-        p.delete('fb'); // strip legacy param
         if (b.dataset.view === 'carousel') p.delete('view');
         else p.set('view', b.dataset.view);
         location.search = p.toString();
@@ -145,7 +141,6 @@
 
     async function discover() {
       // Single-image views resolve to one PNG; only the carousel paginates.
-      if (view === 'fb')         return await singleton(`../images/posts/exhibit-p${pad}-fb.png`);
       if (view === 'poster')     return await singleton(`../images/posts/exhibit-p${pad}-poster.png`);
       if (view === 'longposter') return await singleton(`../images/posts/exhibit-p${pad}-longposter.png`);
       const out = [];
@@ -190,10 +185,13 @@
     }
 
     async function loadPosterMeta() {
+      // Pull title straight from the source HTML — the printed poster is the source.
       try {
-        const data = await fetch('posters-social.json', { cache: 'no-store' }).then(r => r.json());
-        const p = (data.posters || []).find(x => x.n === posterNum);
-        if (p) titleEl.textContent = `Poster ${posterNum} — ${p.title}`;
+        const html = await fetch('lighthouse-history.html', { cache: 'no-store' }).then(r => r.text());
+        const doc  = new DOMParser().parseFromString(html, 'text/html');
+        const p    = doc.getElementById('poster-' + posterNum);
+        const title = p && p.querySelector('.poster-band h2');
+        if (title) titleEl.textContent = `Poster ${posterNum} — ${title.textContent.trim()}`;
       } catch { /* ignore */ }
     }
 
@@ -202,8 +200,8 @@
       loadPosterMeta();
       slides = await discover();
       if (!slides.length) {
-        const hint = view === 'carousel' ? `${posterNum}` : `${posterNum} ${view}`;
-        frame.innerHTML = `<div class="err">No <strong>${view}</strong> render found for poster ${posterNum}.<br><br>Render it with:<br><code style="color:var(--gold)">node scripts/generate-exhibit-card.js ${hint}</code></div>`;
+        const modeArg = view === 'carousel' ? 'slides' : (view === 'poster' ? 'single' : 'long');
+        frame.innerHTML = `<div class="err">No <strong>${view}</strong> render found for poster ${posterNum}.<br><br>Render it with:<br><code style="color:var(--gold)">node scripts/render-poster-from-source.js ${posterNum} ${modeArg}</code></div>`;
         counter.textContent = '0 / 0';
         return;
       }
