@@ -155,14 +155,30 @@
     margin-top: 18px;
   }
   .poster-body.two-col > .poster-photo {
-    /* In a 2-column layout the hero photo also stays small + floated so
-       it sits cleanly inside a single column. */
+    /* In a 2-column layout, span the hero photo across BOTH columns at
+       full body width (instead of letting it sit inside a single narrow
+       column with dead space on each side). The figure takes the full
+       column-flow width via column-span:all; text in 2 columns flows
+       above and below it — reclaiming the side dead-space for words. */
+    column-span: all;
+    -webkit-column-span: all;
     width: 100%;
     max-width: 100%;
-    margin: 0 0 10px;
+    margin: 6px 0 12px;
+    text-align: center;
   }
   .poster-body.two-col > .poster-photo img {
-    max-height: 200px;
+    /* Render at natural aspect ratio, capped at a sensible banner height.
+       NO object-fit: cover — we never crop the photo; if it's narrower
+       than the body, it sits centered and the auto-fit JS will scale
+       the whole poster up to fill any leftover whitespace below. */
+    max-width: 100%;
+    width: auto;
+    max-height: 260px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
   }
   /* Global cap on ANY inline photo in the body — keeps even hard-coded
      inline-styled <img width="300"> sitting next to body text at the
@@ -184,17 +200,41 @@
   .poster-body.two-col figure:not(.poster-photo) {
     max-width: min(200px, 100%);
   }
-  /* In 2-column flow, neutralize inline `float:right` on body <figure>
-     elements and let them sit INLINE within text flow. Floats and block
-     figures inside multicol columns both disrupt column balance and
-     leave blank space — inline-block lets the figure flow with text
-     and pack tightly against surrounding paragraphs. */
+  /* In 2-column flow, drop the inline `float:right` and let the figure
+     span the FULL WIDTH of whichever column it lands in. Text flows
+     above the figure and below it within the same column — no side
+     wrap, no leftover blank columns. */
   .poster-body.two-col figure:not(.poster-photo)[style*="float"] {
     float: none !important;
-    display: inline-block !important;
-    vertical-align: top;
-    margin: 4px 6px 6px 0 !important;
-    width: auto !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 10px 0 12px !important;
+  }
+  .poster-body.two-col figure:not(.poster-photo)[style*="float"] img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+  }
+  .poster-body.two-col figure:not(.poster-photo)[style*="float"] figcaption {
+    font-size: 0.78em;
+    line-height: 1.3;
+    margin-top: 4px;
+  }
+  /* Same treatment for BARE <img> elements floated inline inside a <p>
+     (no <figure> wrapper) — e.g. P15's 1950 USMNT squad photo. Without
+     this override, the global `.poster-body.two-col img { max-width:
+     200px }` cap shrinks the image to 200px and the float leaves a
+     dead band beside it. Promote to full-column block so it uses all
+     available whitespace, same pattern as the figure rule above. */
+  .poster-body.two-col p > img[style*="float"] {
+    float: none !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 10px auto 12px !important;
   }
   .poster-photo {
     margin: 0;
@@ -1037,7 +1077,7 @@
     <header class="poster-band">
       <p class="kicker">Lighthouse Players in the Pros</p>
       <h2>LIGHTHOUSE IN THE PROS</h2>
-      <p class="sub">Lighthouse Boys&rsquo; Club sent players into the American professional game for decades &mdash; far more than the Hall of Fame ever documented. This poster focuses on the franchise that drew the largest single concentration of them: the <strong>Philadelphia Nationals</strong> &mdash; four ASL titles, two U.S. Open Cup Finals, and the lineage that would carry the &ldquo;Nationals&rdquo; name into a 4-time U.S. Open Cup dynasty.</p>
+      <p class="sub">For decades, Lighthouse Boys&rsquo; Club graduates were on the rosters of the best professional soccer clubs in America &mdash; <strong>Bethlehem Steel</strong>, the <strong>Philadelphia German-Americans / Uhrik Truckers</strong>, the <strong>Philadelphia Nationals</strong>, and the <strong>Philadelphia Ukrainian Nationals</strong>. Together those four clubs collected <strong>24 league titles and 11 U.S. Open Cups</strong> across the top division of American soccer.</p>
     </header>
     <figure class="poster-photo">
       <img src="images/benny-mclaughlin-1949.jpg" alt="Lighthouse Boys Club legend Benny McLaughlin in match action for the American Soccer League All-Stars vs. Hapoel Tel Aviv at Ebbets Field, 1947 — McLaughlin played the entirety of his pro career (1945–1954) for the Philadelphia Nationals" style="background:#000;">
@@ -1045,22 +1085,24 @@
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
-      <p><span class="lead-in">The Pro Pipeline.</span> Lighthouse Boys&rsquo; Club produced professional soccer players continuously from the 1910s through the 1960s &mdash; from Bethlehem Steel and the original American Soccer League in the 1920s, through the postwar ASL, and onward into the Ukrainian Nationals era. The named players on this poster are only the small handful whose careers were preserved in Hall of Fame records and surviving newspaper archives; many more were forgotten by everyone except the teammates and neighbors who watched them play. This poster focuses on the franchise that drew the largest single documented concentration of Lighthouse alumni in the postwar period: the <strong>Philadelphia Nationals</strong>, originally an amateur Kensington-area side called <strong>Fairhill F.C.</strong>, admitted to the professional <strong>American Soccer League</strong> in 1942 to replace a previous &ldquo;Philadelphia Nationals&rdquo; franchise that had withdrawn from the league.</p>
-      <p><span class="lead-in">Four ASL Titles in Five Seasons.</span> The Nationals went on one of the great runs in American professional soccer history: <strong>1948-49 (co-champion), 1949-50, 1950-51, and 1952-53 ASL champions</strong> &mdash; four titles in five seasons. They also took the <strong>Lewis Cup</strong> (the ASL's league cup) in 1949, 1951, and 1952.</p>
-      <p><span class="lead-in">Twice U.S. Open Cup Finalists.</span> The Nationals reached the <strong>U.S. Open Cup Final</strong> twice while based in Philadelphia &mdash; falling to Simpkins-Ford of St. Louis in <strong>1950</strong> and to Harmarville Hurricanes (4-3, 1-4) in <strong>1952</strong>. They were the first Philadelphia club of the postwar era to play for the U.S. Open Cup on a national stage. For the Lighthouse boys on the roster, it was a homecoming of sorts: the Open Cup (then still officially the <strong>National Challenge Cup</strong>) was the senior twin of the trophy they had grown up chasing at Lighthouse &mdash; the <strong>National Junior Challenge Cup</strong> (today's McGuire Cup), which the club had hoisted in 1938, 1948, and 1949.</p>
-      <p><span class="lead-in">The Lighthouse Boys at the Heart of It All.</span> The Nationals&rsquo; golden run was anchored by Lighthouse Boys Club graduates. A representative few, drawn from the names that survived in Hall of Fame records and newspaper archives:</p>
-      <ul class="badge-list">
-        <li>🔵 <strong>Walter Bahr</strong> &mdash; Kensington-born Lighthouse boy who became the franchise's captain and 1950 U.S. World Cup captain.</li>
-        <li>🔵 <strong>Benny McLaughlin</strong> &mdash; Lighthouse-trained forward who joined the Nationals in 1945, stayed through 1954, and won four league titles in the red and black.</li>
-        <li>🔵 <strong>Francis &ldquo;Hun&rdquo; Ryan</strong> &mdash; the Lighthouse-trained two-time U.S. Olympian (1928 Amsterdam, 1936 Berlin) and 1934 World Cup player, who returned from U.S. Army service in WWII to play out the back half of his career with the Philadelphia Nationals &mdash; <strong>leading the team to the ASL Lewis Cup in 1948-49 and 1951-52</strong>. National Soccer Hall of Fame, 1958.</li>
-      </ul>
-      <p style="margin:14px 0 14px 0;padding:14px 18px;background:rgba(15,44,89,0.06);border-left:4px solid #C5A880;color:#0F2C59;line-height:1.5;"><strong>The iceberg under the names above.</strong> The named players on this poster are simply those whose Lighthouse-to-pro careers are documented in Hall of Fame records and surviving newspaper archives. The full Lighthouse-to-pro roster across the 1910s, &rsquo;20s, &rsquo;30s, &rsquo;40s, &rsquo;50s, and &rsquo;60s ran into the dozens, fanning out across Bethlehem Steel, the original ASL, the postwar ASL, the Philadelphia German-Americans / Uhrik Truckers, the Ukrainian Nationals, and the era&rsquo;s many regional and semi-pro circuits. As Ed Farnsworth wrote of the Lighthouse pipeline in 2010: <em>&ldquo;&hellip;no doubt, scores of notable players who entertained and inspired generations of Philadelphia soccer fans have not been recognized by the Hall of Fame. Their accomplishments are recorded in the fading memories of old timers and in dusty newspapers and document boxes in archives, waiting to be rediscovered.&rdquo;</em> Other Lighthouse-affiliated National Soccer Hall of Famers Farnsworth names in the same essay &mdash; <strong>Harry Flemming</strong>, <strong>Bob Gormley</strong>, and <strong>Dick Spalding</strong> &mdash; played their pro careers chiefly elsewhere (the Philadelphia German-Americans / Uhrik Truckers, or Bethlehem Steel), but the same pattern holds: <strong>the Lighthouse pipeline supplied Philadelphia&rsquo;s pro game across decades, well beyond the few names we can still name today.</strong></p>
+      <div style="margin:0 0 16px;padding:18px 20px;background:#0F2C59;color:#ffffff;border-radius:4px;">
+        <p style="margin:0 0 12px;font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:2px;font-size:0.95rem;color:#F4D078;font-weight:800;">Top-Flight American Soccer the Lighthouse Pipeline Fed</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:10px;font-size:1.05rem;line-height:1.5;color:#ffffff;">
+          <div>&#9670; <strong style="color:#ffffff;">Bethlehem Steel F.C.</strong> (1907&ndash;1930) &mdash; the dominant American club of its era: <strong style="color:#F4D078;">5 ASL titles, 5 U.S. Open Cups</strong></div>
+          <div>&#9670; <strong style="color:#ffffff;">Philadelphia German-Americans / Americans / Uhrik Truckers</strong> (1933&ndash;1956) &mdash; <strong style="color:#F4D078;">9 ASL titles, 1936 U.S. Open Cup</strong></div>
+          <div>&#9670; <strong style="color:#ffffff;">Philadelphia Nationals</strong> (1942&ndash;1953) &mdash; <strong style="color:#F4D078;">4 ASL titles in 5 seasons, two U.S. Open Cup Finals</strong></div>
+          <div>&#9670; <strong style="color:#ffffff;">Philadelphia Ukrainian Nationals</strong> (1957&ndash;1990s) &mdash; <strong style="color:#F4D078;">6 ASL Championships, 4 U.S. Open Cups</strong></div>
+        </div>
+        <p style="margin:14px 0 0;font-size:1rem;font-style:italic;color:#ffffff;line-height:1.5;">Four clubs. <strong style="color:#F4D078;">24 league titles and 11 U.S. Open Cup victories</strong> across nearly a century at the top of the American professional game. Lighthouse Boys&rsquo; Club graduates played at all four clubs.</p>
+      </div>
+      <p><span class="lead-in">A Half-Century Pipeline.</span> For half a century, a Kensington kid with talent could walk out of Lighthouse Boys&rsquo; Club and into the best clubs in the American professional game. <strong>Dick Spalding</strong> was on Bethlehem Steel&rsquo;s roster by 1916 &mdash; the same year he played in the first U.S. Men&rsquo;s National Team match. <strong>Harry Flemming</strong> and <strong>Bob Gormley</strong> anchored the Philadelphia German-Americans through the 1930s and &rsquo;40s. By the postwar years, the city&rsquo;s flagship pro club &mdash; the <strong>Philadelphia Nationals</strong> &mdash; was effectively a Lighthouse old-boys&rsquo; reunion in red and black.</p>
+      <p><span class="lead-in">Champions in Red and Black.</span> <strong>Walter Bahr</strong> captained them. <strong>Benny McLaughlin</strong> came up through the youth ranks and stayed for the entire decade, 1945 to 1954. <strong>Hun Ryan</strong> &mdash; back from the U.S. Army, two Olympic Games and a World Cup already behind him &mdash; slotted in for the back half of his career. With those names and the rest of the Lighthouse-fed roster, the Nationals won four American Soccer League titles in five seasons, took the Lewis Cup three times, and twice played for the U.S. Open Cup &mdash; the senior cousin of the National Junior Challenge Cup these same boys had grown up chasing at Lighthouse.</p>
       <figure style="float:right;margin:4px 0 10px 18px;width:300px;">
         <img src="images/phila-allstars-nuremberg-1955.png" alt="Len Oliver (back row, sixth from the left) with the Philadelphia All-Star team that played Nuremberg in 1955. Next to him are Benny McLaughlin (fourth from the left) and Walter Bahr (fifth from the left). Photo courtesy of Len Oliver." style="width:100%;height:auto;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.35);border-radius:4px;background:#000;">
         <figcaption style="margin-top:6px;font-size:0.78rem;line-height:1.35;color:#444;font-style:italic;"><strong>Len Oliver</strong> (back row, 6th from left) with the <strong>Philadelphia All-Star</strong> team that played <strong>Nuremberg</strong> in 1955. Next to him are <strong>Benny McLaughlin</strong> (4th from left) and <strong>Walter Bahr</strong> (5th from left) &mdash; three of the many Lighthouse Boys Club alumni in mid-century professional soccer, here captured together in a single frame. Photo courtesy of Len Oliver.</figcaption>
       </figure>
-      <p><span class="lead-in">The Next Generation: Lighthouse → Uhrik Truckers, 1954.</span> When the Nationals folded four games into the 1953-54 season, the next wave of Lighthouse boys coming up had nowhere left to go in the city &mdash; until ex-Lighthouse manager Jimmy Mills took over the new <strong>Uhrik Truckers</strong>. The American Soccer History Archives recorded what happened next: <em>&ldquo;Uhrik Truckers took off like a rocket, snagging the regular season championship, on the strength of a strong performance by a group of relative unknowns, <strong>many of whom were products of the legendary Lighthouse Boys Club</strong>.&rdquo;</em> One of those Lighthouse boys was <strong>Len Oliver</strong> &mdash; Kensington-born twin son of a Scottish immigrant, two-time U-19 National Champion with Lighthouse (1948 &amp; 1949), four-time All-American at Temple. Oliver later told Ed Farnsworth he&rsquo;d had &ldquo;personal and family connections&rdquo; to the Philadelphia Nationals but the franchise folded just as he came up; he signed instead with Mills&rsquo; Uhrik Truckers in 1955 for &ldquo;$35 a game in a brown envelope,&rdquo; alongside Walter Bahr and Benny McLaughlin. <strong>The photograph at right captures three of the Lighthouse alumni who reached the Hall of Fame in the same frame:</strong> the May 15, 1955 international friendly at La Salle Stadium between a Philadelphia All-Stars XI &mdash; Bahr, Oliver, and McLaughlin all on the roster &mdash; and a touring side from Nuremberg, Germany. National Soccer Hall of Fame, 1996.</p>
-      <p><span class="lead-in">A Scottish-Born Captain They Played Alongside.</span> Not a Lighthouse product, but worth naming on this team: <strong>Ed McIlvenny</strong> &mdash; Scottish-born forward who came to Philadelphia in 1949, signed for the Nationals, was named ASL outstanding player in 1949, and captained the U.S. national team during the legendary 1-0 upset of England at the 1950 World Cup. On the day Walter Bahr crossed the ball that Joe Gaetjens headed past Bert Williams in Belo Horizonte, <strong>two Philadelphia Nationals teammates &mdash; Bahr and McIlvenny &mdash; were on the U.S. starting XI.</strong></p>
+      <p><span class="lead-in">Same Pipeline, New Logo.</span> Then the Nationals folded four games into the 1953-54 season. Ex-Lighthouse manager <strong>Jimmy Mills</strong> took over the new <strong>Uhrik Truckers</strong> and absorbed the wave coming up. The American Soccer History Archives recorded what happened next: <em>&ldquo;Uhrik Truckers took off like a rocket, snagging the regular season championship on the strength of a strong performance by a group of relative unknowns, <strong>many of whom were products of the legendary Lighthouse Boys Club</strong>.&rdquo;</em> One of those unknowns was <strong>Len Oliver</strong> &mdash; Kensington-born twin son of a Scottish immigrant, two-time U-19 National Champion with Lighthouse (1948 and 1949), four-time All-American at Temple. Oliver signed for the Truckers in 1955 for &ldquo;$35 a game in a brown envelope,&rdquo; alongside Bahr and McLaughlin. The photograph caught the three of them together that spring at La Salle Stadium &mdash; a Philadelphia All-Star XI hosting a touring side from Nuremberg, three future Hall of Famers in a single frame.</p>
+      <p><span class="lead-in">The Iceberg.</span> And those are only the names that survived. Bahr, McLaughlin, Ryan, Oliver, Flemming, Gormley, Spalding &mdash; these are the Lighthouse boys whose careers got preserved in Hall of Fame records and old newspaper clippings. As historian Ed Farnsworth put it in 2010: <em>&ldquo;&hellip;no doubt, scores of notable players who entertained and inspired generations of Philadelphia soccer fans have not been recognized by the Hall of Fame. Their accomplishments are recorded in the fading memories of old timers and in dusty newspapers and document boxes in archives, waiting to be rediscovered.&rdquo;</em> The Lighthouse pipeline supplied Philadelphia&rsquo;s pro game across decades, well beyond the few names we can still name today.</p>
       <div class="sources">
         <p class="sources-label">Sources</p>
         <div class="src">
@@ -1076,43 +1118,32 @@
     <header class="poster-band">
       <p class="kicker">The Pro Team</p>
       <h2>LIGHTHOUSE FIELD: HOME OF A 9-TIME CHAMPION OF AMERICA&rsquo;S TOP PROFESSIONAL SOCCER LEAGUE</h2>
-      <p class="sub">From 1953 to 1956, the <strong>Philadelphia Uhrik Truckers</strong> &mdash; back-to-back American Soccer League champions and the third and final identity of a Philadelphia professional soccer franchise with <strong>9 ASL titles since 1935</strong> and a <strong>1936 U.S. Open Cup</strong> &mdash; played their home matches at Lighthouse Field with a roster built almost entirely from Lighthouse boys.</p>
+      <p class="sub">A bona-fide paid professional team in the top division of American soccer &mdash; captained by a Lighthouse boy, stocked with Lighthouse boys, and playing its home matches at the Lighthouse Boys Club field.</p>
     </header>
     <figure class="poster-photo">
       <img src="images/uhrik-truckers.jpg" alt="Original Philadelphia Uhrik Truckers ticket stub for a home match at Lighthouse Field, mid-1950s" style="background:#000;">
-      <figcaption>An original <strong>Philadelphia Uhrik Truckers</strong> ticket stub &mdash; price of admission to a back-to-back American Soccer League champion&rsquo;s home match, mid-1950s. The roster was built almost entirely from Lighthouse boys, the captain was a Lighthouse boy, the manager was a Lighthouse manager, and the home pitch was the Lighthouse Boys Club field at Front Street &amp; Erie Avenue.</figcaption>
+      <figcaption>An original <strong>Philadelphia Uhrik Truckers</strong> ticket stub &mdash; price of admission to an American Soccer League champion&rsquo;s home match on the Lighthouse Boys Club field at Front Street &amp; Erie Avenue, mid-1950s.</figcaption>
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
-      <p><span class="lead-in">The Crucible of Champions.</span> Throughout the mid-20th century, one Philadelphia pro-soccer franchise lived inside the top flight of the American game &mdash; and the pipeline that fed it ran straight out of the Lighthouse Boys Club. Three names, nine national titles, and one Lighthouse-built captain who stayed for seventeen seasons.</p>
       <div style="margin:0 0 18px 0;padding:14px 18px;background:#4169E1;color:#ffffff;text-align:center;border-radius:4px;display:flex;flex-direction:column;gap:8px;align-items:center;">
         <div style="font-size:clamp(1.4rem,4vw,2.1rem);line-height:1;letter-spacing:3px;" aria-label="Nine championship trophies">🏆🏆🏆🏆🏆🏆🏆🏆🏆</div>
         <div style="font-family:'Bebas Neue','Montserrat',sans-serif;font-weight:900;font-size:clamp(1.2rem,3.6vw,1.9rem);letter-spacing:3px;line-height:1.05;">9 TIME CHAMPIONS OF<br>THE 1<sup>ST</sup> DIVISION OF 🇺🇸 ⚽</div>
         <div style="font-family:'Bebas Neue','Montserrat',sans-serif;font-weight:700;font-size:clamp(0.72rem,1.7vw,0.92rem);letter-spacing:2px;opacity:0.95;">THE 🇺🇸 ⚽ VERSION OF THE MLS OR ENGLISH PREMIER LEAGUE OF ITS DAY</div>
       </div>
-      <p><span class="lead-in">One Franchise, Three Names, Nine Titles.</span> Throughout the mid-20th century, the <strong>American Soccer League</strong> was the top professional soccer league in the United States &mdash; the <strong>U.S. Soccer version of the MLS or English Premier League of its day</strong>, with no rival league in the country to compare. Its Philadelphia franchise traced directly back to the Lighthouse Boys Club. Founded in 1933 as an inaugural ASL member by the city&rsquo;s German immigrant community, the club was first known as the <strong>Philadelphia German-Americans</strong>. With anti-German sentiment surging during World War II, it rebranded as the <strong>Philadelphia Americans</strong> before the 1941-42 season. In 1953-54, trucking magnate <strong>Anthony M. &ldquo;Tony&rdquo; Uhrik</strong> bought the franchise and renamed it the <strong>Philadelphia Uhrik Truckers</strong>, with U.S. Soccer Hall of Fame coach <strong>Jimmy Mills</strong> taking the bench. Across all three identities, the franchise piled up an extraordinary trophy haul: <strong>9 championships in the 1<sup>st</sup> division of U.S. professional soccer</strong> (1935, 1938, 1942, 1944, 1947, 1948, 1952, 1955, 1956), the <strong>1936 U.S. Open Cup</strong>, two <strong>National Amateur Cups</strong> (1933, 1934), and four <strong>Lewis Cups</strong> (1941, 1943, 1955, 1958) &mdash; one of the most decorated pro soccer r&eacute;sum&eacute;s in American history.</p>
-      <p><span class="lead-in">An Ethnic-Club City &mdash; and the Network That Fed the Pros.</span> The German-Americans were not alone. Mid-century Philadelphia was a dense network of ethnic neighborhood soccer clubs &mdash; <strong>Nicetown</strong>, <strong>Thomas Celtic</strong>, the German <strong>Erzgebirge</strong>, and the Italian, Hungarian, Ukrainian, Polish, Latvian, and Armenian clubs scattered across the city &mdash; each fielding sides up and down the USSF-affiliated Philadelphia Soccer League. Their juniors were Lighthouse&rsquo;s weekly Junior-Division rivals; their adult sides made up the First and Second Divisions; and at the top, the same network ultimately fed the <strong>Philadelphia German-Americans</strong> and the <strong>Philadelphia Ukrainian Nationals</strong> &mdash; the city&rsquo;s two apex pro clubs. The Lighthouse-to-Truckers pipeline didn&rsquo;t bypass that ecosystem &mdash; it ran straight through it.</p>
-      <p><span class="lead-in">The Apex Torch in Kensington, 1957&ndash;1970s.</span> When the Uhrik Truckers folded, the apex of Philadelphia&rsquo;s pro game passed to the <strong>Philadelphia Ukrainian Nationals</strong> &mdash; a Kensington-area ethnic club admitted to the ASL in 1957, taking part of its name from the now-defunct Philadelphia Nationals. The Ukrainian Nationals went on one of the great runs in American club soccer: <strong>6 ASL Championships</strong> (1961, 1962, 1963, 1964, 1968, 1970), <strong>4 U.S. Open Cups</strong> (1960, 1961, 1963, 1966), and the <strong>first-ever televised American club soccer games</strong> &mdash; played in Philadelphia, including international friendlies against <strong>Manchester United</strong>, <strong>VfB Stuttgart</strong>, and <strong>Dundee</strong>. Across two franchises, Lighthouse-fed apex pro soccer lived in this city from 1933 to the 1970s.</p>
-      <figure style="float:left;margin:4px 18px 10px 0;width:300px;">
-        <img src="images/phila-allstars-nuremberg-1955.png" alt="Len Oliver (back row, sixth from the left) with the Philadelphia All-Star team that played Nuremberg in 1955. Next to him are Benny McLaughlin (fourth from the left) and Walter Bahr (fifth from the left). Photo courtesy of Len Oliver." style="width:100%;height:auto;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.35);border-radius:4px;background:#000;">
-        <figcaption style="margin-top:6px;font-size:0.78rem;line-height:1.35;color:#444;font-style:italic;"><strong>Len Oliver</strong> (back row, 6th from left) with the <strong>Philadelphia All-Star</strong> team that played <strong>Nuremberg</strong> in 1955. Next to him are <strong>Benny McLaughlin</strong> (4th from left) and <strong>Walter Bahr</strong> (5th from left) &mdash; three of the many Lighthouse-built players on the Truckers&rsquo; mid-1950s rosters, here in the same frame. Photo courtesy of Len Oliver.</figcaption>
-      </figure>
-      <p><span class="lead-in">Back-to-Back ASL Champions on Kensington Soil.</span> The Truckers won the <strong>1954-55 and 1955-56 American Soccer League titles</strong> on the strength of, in the words of the American Soccer History Archives, &ldquo;a strong performance by a group of relative unknowns, many of whom were products of the legendary Lighthouse Boys Club.&rdquo; Both championship seasons were played out, in significant part, on the Lighthouse Boys Club field at Front Street &amp; Erie Avenue.</p>
-      <p><span class="lead-in">The Captain Was a Lighthouse Boy: Bob Gormley.</span> The throughline of the franchise across both world wars and three name changes was <strong>Bob Gormley</strong> (1918&ndash;2003) &mdash; a Philadelphia-born forward who, in his own Wikipedia biography, <em>&ldquo;began playing youth soccer with the Lighthouse Boys Club.&rdquo;</em> Gormley signed with the German-Americans in 1937 and stayed for <strong>seventeen seasons</strong>, twelve of them <strong>as team captain</strong>. He scored ten goals in 1937, sixteen in nineteen games in 1944, and double-digit seasons in both 1947 and 1948. He ended his career in 1954 with the franchise&rsquo;s first season under the Uhrik Truckers name, earned one cap with the U.S. national team in a 1954 World Cup qualifier against Haiti, and in <strong>1989 was inducted into the National Soccer Hall of Fame</strong> &mdash; the Lighthouse-to-Truckers pipeline&rsquo;s most decorated long-haul professional.</p>
+      <p><span class="lead-in">A Bona-Fide Pro Team in the Top Division.</span> Throughout the mid-20th century, the <strong>American Soccer League</strong> was the top professional soccer league in the United States &mdash; the U.S. equivalent of MLS or the English Premier League of its day. Philadelphia&rsquo;s franchise played in the ASL from 1933 to 1956 under three successive names (<strong>Philadelphia German-Americans</strong> &rarr; <strong>Americans</strong> &rarr; <strong>Uhrik Truckers</strong>), with paid rosters and a full home schedule.</p>
+      <p><span class="lead-in">Nine National Titles.</span> Across that 23-year span the franchise won <strong>9 American Soccer League championships</strong> (1935, 1938, 1942, 1944, 1947, 1948, 1952, 1955, 1956), the <strong>1936 U.S. Open Cup</strong>, and four Lewis Cups &mdash; one of the most decorated professional r&eacute;sum&eacute;s in American soccer history.</p>
       <figure style="float:right;margin:4px 0 10px 18px;width:260px;">
         <img src="images/oliver-uhrik-1955.png" alt="Len Oliver in action with the Philadelphia Uhrik Truckers against the Bermuda National Team in 1955. Photo courtesy of Len Oliver." style="width:100%;height:auto;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.35);border-radius:4px;background:#000;">
-        <figcaption style="margin-top:6px;font-size:0.78rem;line-height:1.35;color:#444;font-style:italic;"><strong>Len Oliver</strong> in action with the <strong>Uhrik Truckers</strong> against the <strong>Bermuda National Team</strong> in 1955. Photo courtesy of Len Oliver.</figcaption>
+        <figcaption style="margin-top:6px;font-size:0.78rem;line-height:1.35;color:#444;font-style:italic;"><strong>Len Oliver</strong> &mdash; Lighthouse alumnus and U.S. National Soccer Hall of Famer &mdash; in match action for the <strong>Uhrik Truckers</strong> against the <strong>Bermuda National Team</strong>, 1955. Photo courtesy of Len Oliver.</figcaption>
       </figure>
-      <p><span class="lead-in">A Lighthouse-Made Roster.</span> Around Gormley, the Truckers&rsquo; core were Lighthouse alumni: <strong>Walter Bahr</strong> (1950 U.S. World Cup team), <strong>Benny McLaughlin</strong>, <strong>Len Oliver</strong> (at right), his cousin <strong>Johnny Oliver</strong>, and <strong>Al &ldquo;Lefty&rdquo; Didricksen</strong>. Pay was $35 a game, handed over in a brown envelope. Practices ran once a week &mdash; often indoors at Frankford High School, where Bahr taught.</p>
-      <blockquote style="margin:18px 0 18px 0;padding:14px 18px;border-left:4px solid #C5A880;background:rgba(15,44,89,0.04);font-style:italic;color:#0F2C59;line-height:1.5;">
-        &ldquo;We usually played home games at the Lighthouse Boys Club field at B Street and Erie Avenue. I believe we also used the Northeast High School Field, with stands, at 29th Street and Lehigh Avenue. I believe team colors were white and black.&rdquo;
-        <span style="display:block;margin-top:8px;font-style:normal;font-size:0.85em;color:#555;">&mdash; Len Oliver, U.S. National Soccer Hall of Fame, on the Uhrik Truckers&rsquo; home pitch (Society for American Soccer History Q&amp;A, 2015)</span>
-      </blockquote>
-      <p style="margin:0 0 16px 0;padding:14px 18px;background:rgba(15,44,89,0.06);border-left:4px solid #C5A880;color:#0F2C59;font-weight:600;line-height:1.5;">Nine national pro titles across three identities, a Lighthouse-built captain across seventeen seasons, and a back-to-back ASL championship roster of Kensington boys playing in front of the Kensington neighborhood that raised them &mdash; on the Lighthouse Boys Club field at Front Street &amp; Erie Avenue.</p>
+      <p><span class="lead-in">The Captain Was a Lighthouse Boy.</span> <strong>Bob Gormley</strong> (1918&ndash;2003) &mdash; Philadelphia-born, &ldquo;began playing youth soccer with the Lighthouse Boys Club&rdquo; per his Hall of Fame biography &mdash; signed with the German-Americans in 1937 and stayed for <strong>seventeen seasons, twelve of them as team captain</strong>. He earned one cap with the U.S. national team in a 1954 World Cup qualifier against Haiti, and was inducted into the <strong>National Soccer Hall of Fame in 1989</strong>.</p>
+      <p><span class="lead-in">A Lighthouse-Made Roster.</span> Around Gormley, the Truckers&rsquo; core were Lighthouse alumni: <strong>Walter Bahr</strong> (1950 U.S. World Cup team), <strong>Benny McLaughlin</strong>, <strong>Len Oliver</strong> (at right), his cousin <strong>Johnny Oliver</strong>, and <strong>Al &ldquo;Lefty&rdquo; Didricksen</strong>. Pay was <strong>$35 a game, handed over in a brown envelope</strong> &mdash; a paid professional team, not amateurs.</p>
+      <p><span class="lead-in">Home Pitch: The Lighthouse Boys Club Field.</span> Len Oliver recalled it in 2015: <em>&ldquo;We usually played home games at the Lighthouse Boys Club field at B Street and Erie Avenue.&rdquo;</em> For both of the Truckers&rsquo; back-to-back ASL championship seasons (1954-55, 1955-56), the top division of American soccer lived on Kensington soil.</p>
       <div class="sources">
         <p class="sources-label">Sources</p>
         <div class="src">
-          <p class="src-text">Philadelphia All-Star team that played Nuremberg in 1955 (Walter Bahr, Len Oliver, Benny McLaughlin on the squad). Photo courtesy of Len Oliver via Society for American Soccer History. <a href="https://www.ussoccerhistory.org/wp-content/uploads/2015/06/1955-Philly-All-Stars-v-Nuremberg.png" rel="noopener" target="_blank">ussoccerhistory.org/&hellip;/1955-Philly-All-Stars-v-Nuremberg.png</a></p>
+          <p class="src-text">Len Oliver Q&amp;A on Uhrik Truckers home pitch, Society for American Soccer History, 2015.</p>
         </div>
       </div>
     </div>
@@ -1142,18 +1173,8 @@
       <p><span class="lead-in">1936 Berlin — A Lighthouse Anchor.</span> By Berlin, Lighthouse alumni were anchoring the U.S. squad. Three are firmly documented on the surviving roster &mdash; <strong>Ryan, Pietras, and Denton</strong> &mdash; and Lighthouse Hall of Famer Len Oliver later recorded that <strong>four former Lighthouse players in all</strong> wore U.S. kit at the Berlin Games. The fourth name is not individually broken out in the public squad sheet, but Oliver&rsquo;s count stands as the club&rsquo;s own historical record &mdash; a concentration matched by no other American youth program of the era.</p>
       <p><span class="lead-in">1948 London — Walter Bahr Joins the Line.</span> At the London Games, <strong>Walter Bahr</strong> made his first Olympic appearance for the United States as a midfielder, alongside fellow Lighthouse-trained Philadelphia Nationals forward <strong>Benny McLaughlin</strong>. Two years later, both men would be on the field in Belo Horizonte for the 1950 World Cup upset of England.</p>
       <p><span class="lead-in">1952 Helsinki — A New Generation Carries the Badge.</span> Four years after Bahr and McLaughlin in London, a new Lighthouse boy reached the Olympic stage: <strong>Jack Dunn</strong>, born in Philadelphia in 1931 and — in his own Wikipedia biography — explicitly recorded as having <em>"grew up in Philadelphia, where he played for the Lighthouse Boys Club."</em> A four-time All-American at Temple University and an inside right (forward), Dunn made the U.S. soccer team at the <strong>1952 Summer Olympics in Helsinki</strong>. He later coached at Saint Joseph's University for seventeen seasons (1958–1975). With Dunn, the Lighthouse Olympic line stretches across <strong>four consecutive U.S. Olympic squads spanning twenty-four years</strong>, from Amsterdam in 1928 to Helsinki in 1952.</p>
-      <p><span class="lead-in">The Olympic Roll.</span> Confirmed Lighthouse Boys' Club alumni on U.S. Olympic football squads:</p>
-      <ul class="badge-list">
-        <li>🇺🇸 <strong>Francis "Hun" Ryan</strong> — Forward · <strong>1928 Amsterdam &amp; 1936 Berlin</strong> (two-time U.S. Olympian; also 1934 FIFA World Cup)</li>
-        <li>🇺🇸 <strong>Harry Smith</strong> — Defender · 1928 Amsterdam</li>
-        <li>🇺🇸 <strong>Peter Pietras</strong> — Midfielder · 1936 Berlin</li>
-        <li>🇺🇸 <strong>Robert Denton</strong> — Goalkeeper · 1936 Berlin</li>
-        <li>🇺🇸 <em>+ a fourth 1936 Berlin Lighthouse alumnus in Len Oliver&rsquo;s club-history count, not individually named in the surviving public roster.</em></li>
-        <li>🇺🇸 <strong>Walter Bahr</strong> — Midfielder · 1948 London</li>
-        <li>🇺🇸 <strong>Benny McLaughlin</strong> — Forward · 1948 London</li>
-        <li>🇺🇸 <strong>Jack Dunn</strong> — Inside Right (Forward) · 1952 Helsinki</li>
-      </ul>
-      <p><span class="lead-in">An Enduring Legacy.</span> Four Olympic cycles. Twenty-four years. <strong>At least seven named Lighthouse alumni in U.S. kit</strong> — Ryan, Smith, Pietras, Denton, Bahr, McLaughlin, and Dunn — plus the unnamed fourth from Berlin in Len Oliver&rsquo;s count. One of them, Francis Ryan, wore the U.S. badge at two different Olympics <em>and</em> a World Cup. This is what is meant when American soccer historians call Lighthouse "a national developmental institution" — not a metaphor, a roster line.</p>
+      <p><span class="lead-in">An Enduring Legacy.</span> Four Olympic cycles. Twenty-four years. The Lighthouse alumni whose Olympic appearances were preserved in surviving roster sheets include <strong>Ryan, Smith, Pietras, Denton, Bahr, McLaughlin, and Dunn</strong> &mdash; and Len Oliver&rsquo;s club history records a fourth Berlin Lighthouse alumnus whose name didn&rsquo;t make it into the public squad sheet, a reminder that the documented count is almost certainly a floor, not a ceiling. One man, Francis Ryan, wore the U.S. badge at two different Olympics <em>and</em> a World Cup. This is what is meant when American soccer historians call Lighthouse &ldquo;a national developmental institution&rdquo; &mdash; not a metaphor, a roster line.</p>
+      <blockquote style="margin:18px 0 4px 0;padding:14px 18px;border-left:4px solid #C5A880;background:rgba(15,44,89,0.04);font-style:italic;color:#0F2C59;line-height:1.5;">&ldquo;The 1936 Olympic Soccer Team had four former Lighthouse players in its ranks &mdash; a tradition that went back to the 1912 Olympics.&rdquo; <span style="display:block;margin-top:8px;font-style:normal;font-size:0.85em;color:#555;">&mdash; Len Oliver, National Soccer Hall of Fame, on Lighthouse&rsquo;s national-team pipeline.</span></blockquote>
     </div>
   </article>
 
@@ -1175,7 +1196,7 @@
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
-      <p style="margin:0 0 16px 0;padding:14px 18px;background:rgba(15,44,89,0.06);border-left:4px solid #C5A880;color:#0F2C59;font-weight:600;line-height:1.5;">In the entire pre-1990 history of U.S. World Cup qualification &mdash; only <strong>three tournaments</strong> (<strong>1930, 1934, 1950</strong>) &mdash; a single Kensington club, the <strong>Lighthouse Boys&rsquo; Club of Philadelphia</strong>, placed at least <strong>four</strong> alumni on official USMNT World Cup squads. No other neighborhood youth club in America comes close.</p>
+      <p style="margin:0 0 16px 0;padding:14px 18px;background:rgba(15,44,89,0.06);border-left:4px solid #C5A880;color:#0F2C59;font-weight:600;line-height:1.5;">In the entire pre-1990 history of U.S. World Cup qualification &mdash; only <strong>three tournaments</strong> (<strong>1930, 1934, 1950</strong>) &mdash; a single Kensington club, the <strong>Lighthouse Boys&rsquo; Club of Philadelphia</strong>, placed at least <strong>four</strong> alumni on official USMNT World Cup squads. No other youth club in America &mdash; neighborhood, ethnic, parochial, or otherwise &mdash; comes close.</p>
       <p><span class="lead-in">🇺🇸 1934 FIFA World Cup &middot; Italy.</span></p>
       <ul class="badge-list">
         <li>⚽ <strong>Francis &ldquo;Hun&rdquo; Ryan</strong> &mdash; Forward, Philadelphia German-Americans. Lighthouse alumnus. National Soccer Hall of Fame (1958). Also a 1928 &amp; 1936 U.S. Olympian.</li>
@@ -1187,7 +1208,6 @@
         <li>⚽ <strong>Benny McLaughlin</strong> &mdash; Forward, Philadelphia Nationals. Lighthouse alumnus. National Soccer Hall of Fame (1977). Named to the official 22-man squad as a standby/alternate.</li>
       </ul>
       <p><span class="lead-in">Plus a Lighthouse-orbit cluster &mdash; research ongoing.</span> The 1934 USMNT squad carried <strong>three additional Philadelphia German-Americans</strong> &mdash; <strong>Bill Fiedler</strong>, <strong>Al Harker</strong>, and <strong>Herman Rapp</strong>. The Philadelphia German-Americans &mdash; later renamed the Philadelphia Americans and then the Philadelphia Uhrik Truckers &mdash; were the pro destination for Lighthouse-developed talent, and per Hall of Famer Len Oliver&rsquo;s oral history, the franchise&rsquo;s American core was largely Lighthouse alumni. A direct Lighthouse-alumnus designation for these three has not yet been documented in print, but probability is high. If all three are confirmed, the count climbs to <strong>seven</strong>. The 1950 squad also included Philadelphia Nationals captain <strong>Ed McIlvenny</strong>, who wore the armband against England &mdash; Glasgow-born and not Lighthouse-developed, but a key part of the Lighthouse-fed Philadelphia pro pipeline that dominated the American game in those years.</p>
-      <blockquote style="margin:18px 0 4px 0;padding:14px 18px;border-left:4px solid #C5A880;background:rgba(15,44,89,0.04);font-style:italic;color:#0F2C59;line-height:1.5;">&ldquo;The 1936 Olympic Soccer Team had four former Lighthouse players in its ranks &mdash; a tradition that went back to the 1912 Olympics.&rdquo; &mdash; Len Oliver, National Soccer Hall of Fame, on Lighthouse&rsquo;s national-team pipeline.</blockquote>
     </div>
   </article>
 
@@ -1233,10 +1253,10 @@
     </figure>
     <div class="poster-body">
       <div class="gold-divider"></div>
-      <p><span class="lead-in">Two Years After Belo Horizonte.</span> Less than two years after Lighthouse alumnus Walter Bahr crossed the ball that beat England&rsquo;s national team at the 1950 World Cup, the reigning English League champions came calling. Fresh off capturing the <strong>English First Division championship</strong>, global soccer giants <strong>Manchester United</strong> embarked on an international showcase tour &mdash; and Kensington was a tour stop.</p>
+      <p><span class="lead-in">Two Years After Beating England.</span> Less than two years after Lighthouse alumnus Walter Bahr crossed the ball that beat England&rsquo;s national team at the 1950 World Cup, the reigning English League champions came calling. Fresh off capturing the <strong>English First Division championship</strong>, global soccer giants <strong>Manchester United</strong> embarked on an international showcase tour &mdash; and Kensington was a tour stop.</p>
       <p><span class="lead-in">3,000 Strong.</span> Over <strong>3,000 passionate, vocal local fans</strong> packed tight against the perimeter of Lighthouse Field to witness the ultimate exhibition match.</p>
       <p><span class="lead-in">The Crossbar Rattler.</span> Though the elite English professionals ultimately claimed a 4–0 victory, local Kensington legend <strong>John Hughes</strong> famously unleashed a blistering strike that rocked the Manchester United crossbar, coming within inches of sending the home crowd into an absolute frenzy.</p>
-      <p><span class="lead-in">A Gift of Steel and Stone — Still Standing Today.</span> The crowd that day packed against the perimeter of the pitch and crammed onto the same permanent concrete bleachers that hosted Philadelphia's professional soccer matches. Those bleachers still stand at Lighthouse Field today — the very seats from which Kensington watched Manchester United in 1952.</p>
+      <p><span class="lead-in">The Same Concrete Bleachers &mdash; Still Standing Today.</span> The crowd that day packed against the perimeter of the pitch and crammed onto the permanent concrete bleachers that had been built earlier for Lighthouse Field&rsquo;s years as the home pitch of Philadelphia&rsquo;s professional soccer teams &mdash; the Truckers, the Nationals, and the visiting top-flight sides of the American Soccer League era. Those same bleachers still stand at Lighthouse Field today &mdash; the very seats from which Kensington watched Manchester United in 1952.</p>
     </div>
   </article>
   <!-- POSTER 18 — Game of Their Lives (Book & Movie) -->
@@ -1248,9 +1268,9 @@
       <p class="sub">The best-selling book and Hollywood film that immortalized Kensington soccer.</p>
     </header>
     <figure class="poster-photo">
-      <div style="display:flex;align-items:center;justify-content:center;gap:32px;min-height:260px;background:#4169E1;padding:28px 20px;flex-wrap:wrap;">
-        <img src="images/gotl-book-cover.jpg" alt="The Game of Their Lives by Geoffrey Douglas — 1996 Henry Holt book cover" style="height:340px;width:auto;max-width:46%;display:block;box-shadow:0 6px 18px rgba(0,0,0,0.45);">
-        <img src="images/gotl-movie-poster.jpg" alt="The Game of Their Lives (2005) — IFC Films theatrical poster" style="height:340px;width:auto;max-width:46%;display:block;box-shadow:0 6px 18px rgba(0,0,0,0.45);">
+      <div style="display:flex;align-items:stretch;justify-content:center;gap:18px;flex-wrap:nowrap;">
+        <img src="images/gotl-book-cover.jpg" alt="The Game of Their Lives by Geoffrey Douglas — 1996 Henry Holt book cover" style="width:50%;height:auto;display:block;box-shadow:0 6px 18px rgba(0,0,0,0.45);">
+        <img src="images/gotl-movie-poster.jpg" alt="The Game of Their Lives (2005) — IFC Films theatrical poster" style="width:50%;height:auto;display:block;box-shadow:0 6px 18px rgba(0,0,0,0.45);">
       </div>
       <figcaption><strong>The Game of Their Lives</strong> — Geoffrey Douglas's 1996 book (left, © Henry Holt &amp; Company) and the 2005 feature film directed by David Anspaugh (right, © IFC Films). Both depict the 1950 U.S. World Cup squad in which Lighthouse Boys Club alumnus Walter Bahr was a central figure. Cover and poster used for identification.</figcaption>
     </figure>

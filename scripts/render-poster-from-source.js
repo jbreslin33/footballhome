@@ -389,6 +389,28 @@ async function renderCarouselSlides(page, posterNum, pad) {
       const sources = body.querySelector(':scope > .sources');
       if (sources) sources.style.display = 'none';
 
+      // For card slides (single-paragraph / single-quote modes), also hide
+      // every other direct body child that isn't a <p>, <blockquote>, or
+      // <figure class="poster-photo"> — i.e. side-rail decorations like
+      // .note (staff-only display instructions), .badge-list, stray <ul>,
+      // <div class="note">, etc. Without this they'd pile onto every card
+      // and break the "one paragraph per slide" rhythm. Full / band slides
+      // keep them visible so the long poster still reads as the printed
+      // exhibit panel does.
+      const isCard = opts.mode === 'para' || opts.mode === 'para-photo' || opts.mode === 'quote';
+      if (isCard) {
+        Array.from(body.children).forEach(child => {
+          const tag = child.tagName.toLowerCase();
+          // Keep the chosen para / quote and (for para-photo) the figure.
+          if (tag === 'p' || tag === 'blockquote') return; // visibility set above
+          if (tag === 'figure') return;                    // visibility set above
+          // gold-divider is already hidden by social-renderer-overrides CSS
+          // for card slides; hiding it inline too is harmless and avoids
+          // any specificity surprises.
+          child.style.display = 'none';
+        });
+      }
+
       window.dispatchEvent(new Event('resize'));
     }, { n: posterNum, h: FRAME_HEIGHT, opts });
     await sleep(400);
