@@ -21,6 +21,7 @@ class TeamDashboardScreen extends Screen {
           <div id="schedule-coach-actions" style="display:none; padding: var(--space-3) var(--space-3) 0; gap:var(--space-2); flex-wrap:wrap;">
             <button data-action="sync-calendar" class="btn btn-secondary btn-sm">🔄 Sync from GroupMe</button>
             <button data-action="sync-league" class="btn btn-secondary btn-sm">🌐 Sync from League</button>
+            <button data-action="open-next-lineup" class="btn btn-primary btn-sm">⚽ Open Lineup</button>
           </div>
           <div id="schedule-list" class="match-cards"></div>
         </div>
@@ -169,6 +170,17 @@ class TeamDashboardScreen extends Screen {
       const syncLeagueBtn = e.target.closest('[data-action="sync-league"]');
       if (syncLeagueBtn) {
         this.syncFromLeague(syncLeagueBtn);
+        return;
+      }
+
+      // Open Lineup without pre-selecting a match — the lineup screen
+      // will auto-resolve to the team's next/live match and let the coach
+      // override via the in-header match picker.
+      const openLineupBtn = e.target.closest('[data-action="open-next-lineup"]');
+      if (openLineupBtn) {
+        this.navigation.context.match = null;
+        this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
+        this.navigation.goTo('game-day-lineup');
         return;
       }
     });

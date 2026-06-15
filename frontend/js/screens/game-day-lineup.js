@@ -38,6 +38,8 @@ class GameDayLineupScreen extends Screen {
     this._saveMetaTimer = null;  // debounce handle for auto-save
     this._saveLineupTimer = null; // debounce handle for lineup auto-save
     this._stopPitchLoop = this._stopPitchLoop || (() => {}); // forward-declare for early calls
+    this.teamMatches = [];        // cached list for the match picker
+    this._matchResolveInFlight = null;
   }
 
   render() {
@@ -51,6 +53,10 @@ class GameDayLineupScreen extends Screen {
         <div style="flex:1;min-width:0;">
           <h1 style="margin:0;font-size:1.1rem;">⚽ Game Day Lineup</h1>
           <p id="lineup-subtitle" class="subtitle" style="margin:0;font-size:0.8rem;opacity:0.7;">Loading...</p>
+          <div id="lineup-match-picker-wrap" style="display:none;margin-top:4px;">
+            <label for="lineup-match-picker" style="font-size:0.72rem;opacity:0.7;margin-right:4px;">Match:</label>
+            <select id="lineup-match-picker" style="font-size:0.78rem;padding:2px 6px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary,#0b1220);color:inherit;max-width:100%;"></select>
+          </div>
         </div>
         <button id="save-lineup-btn" class="btn btn-primary">💾 Save</button>
       </div>
@@ -144,9 +150,178 @@ class GameDayLineupScreen extends Screen {
       this.attachEventListeners();
       this.loadFormations();
     }
+    this._bootstrap();
+  }
+
+  /**
+   * Bootstrap order: make sure a match is selected (auto-resolve to the
+   * team's next/live match if the caller did not pre-select one), populate
+   * the match-picker dropdown, then run the normal sync + load flow.
+   */
+  async _bootstrap() {
+    try {
+      await this.ensureMatchSelected();
+    } catch (err) {
+      console.warn('[lineup] match auto-resolve failed:', err);
+    }
+    this.renderMatchPicker();
     this.syncThenLoad();
     this.loadSavedMetadata();
     this.loadLeaguesSyncStatus();
+    this.loadShareInfo();
+  }
+
+  /**
+   * If navigation context has no match.id, look up the team's matches and
+   * pick a sensible default:
+   *   1. The earliest upcoming (or currently-live) match that has not ended.
+   *   2. Failing that, the most recent past match.
+   * GroupMe sync feeds the matches table today; this resolver is source-agnostic
+   * (works the same whether matches come from GroupMe, LeagueApps, or native).
+   */
+  async ensureMatchSelected() {
+    const ctx = this.navigation.context;
+    const teamId = ctx.lineupTeamId || ctx.team?.id;
+    if (!teamId) return;
+
+    // Always refresh the cache so the picker reflects current schedule.
+    if (!this._matchResolveInFlight) {
+      // Hit GroupMe first so any brand-new calendar events (e.g. a game
+      // just posted in the team chat) land in `matches` BEFORE we read
+      // the team's match list. Otherwise the picker would only see the
+      // stale cached schedule. Best-effort: sync failures don't block.
+      this._matchResolveInFlight = this._syncTeamCalendar(teamId)
+        .then(() => this._fetchTeamMatches(teamId))
+        .finally(() => { this._matchResolveInFlight = null; });
+    }
+    const matches = await this._matchResolveInFlight;
+    this.teamMatches = Array.isArray(matches) ? matches : [];
+
+    if (ctx.match?.id) return; // caller already chose one — respect override
+
+    const def = this._pickDefaultMatch(this.teamMatches);
+    if (def) {
+      ctx.match = { id: def.id, title: def.title, event_date: def.event_date };
+    }
+  }
+
+  /**
+   * Ask the backend to pull the team chat's GroupMe /events/list and upsert
+   * any new calendar entries into `matches` + `chat_events`. We always want
+   * fresh GroupMe data on load; if the fetch fails we record it on
+   * `this.calendarSyncFailure` so `syncThenLoad` can surface it as a visible
+   * error in the loading panel (not a silent fallback to stale cache).
+   * Override-preserving upsert logic on the backend still protects any
+   * human-edited values.
+   */
+  async _syncTeamCalendar(teamId) {
+    this.calendarSyncFailure = null;
+    try {
+      const ts = Date.now(); // bust any caches; we want fresh GroupMe data
+      const res = await this.auth.fetch(`/api/groupme/sync-calendar/${teamId}?_=${ts}`, { method: 'POST' });
+      let data = null;
+      try { data = await res.json(); } catch (_) { /* non-JSON body */ }
+      if (!res.ok || (data && data.success === false)) {
+        const reason = (data && (data.message || data.data?.reason)) || `HTTP ${res.status}`;
+        this.calendarSyncFailure = reason;
+        console.warn('[lineup] sync-calendar reported failure:', reason);
+      }
+    } catch (err) {
+      this.calendarSyncFailure = err?.message || String(err);
+      console.warn('[lineup] sync-calendar threw:', err);
+    }
+  }
+
+  async _fetchTeamMatches(teamId) {
+    try {
+      const res = await this.auth.fetch(`/api/matches/team/${teamId}`);
+      const data = await res.json();
+      return data?.data || [];
+    } catch (err) {
+      console.warn('[lineup] fetch team matches failed:', err);
+      return [];
+    }
+  }
+
+  _pickDefaultMatch(matches) {
+    if (!matches?.length) return null;
+    // Matches arrive DESC; clone + sort ASC by event_date for "next" logic.
+    const asc = [...matches].sort((a, b) => {
+      const ta = new Date(a.event_date).getTime();
+      const tb = new Date(b.event_date).getTime();
+      return ta - tb;
+    });
+    const now = Date.now();
+    // Live-window cutoff: a match started within the last 3h still counts as
+    // "current" so coaches landing on the page mid-game don't skip to next week.
+    const liveCutoff = now - 3 * 60 * 60 * 1000;
+    const upcoming = asc.find(m => !m.has_ended && new Date(m.event_date).getTime() >= liveCutoff);
+    if (upcoming) return upcoming;
+    // Otherwise fall back to most recent past match.
+    return asc[asc.length - 1] || null;
+  }
+
+  renderMatchPicker() {
+    const wrap = this.find('#lineup-match-picker-wrap');
+    const select = this.find('#lineup-match-picker');
+    if (!wrap || !select) return;
+    if (!this.teamMatches?.length) {
+      wrap.style.display = 'none';
+      return;
+    }
+    const currentId = String(this.navigation.context.match?.id || '');
+    // Show upcoming/live first, then recent past (limit to a reasonable window).
+    const asc = [...this.teamMatches].sort(
+      (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+    );
+    const now = Date.now();
+    const upcoming = asc.filter(m => new Date(m.event_date).getTime() >= now - 3 * 60 * 60 * 1000);
+    const past = asc.filter(m => new Date(m.event_date).getTime() < now - 3 * 60 * 60 * 1000).slice(-5).reverse();
+    const fmt = (m) => {
+      const d = new Date(m.event_date);
+      const dateStr = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return `${dateStr} — ${m.title || 'Match'}`;
+    };
+    const opts = [];
+    if (upcoming.length) {
+      opts.push('<optgroup label="Upcoming / live">');
+      upcoming.forEach(m => opts.push(
+        `<option value="${m.id}"${String(m.id) === currentId ? ' selected' : ''}>${this.escapeHTML(fmt(m))}</option>`
+      ));
+      opts.push('</optgroup>');
+    }
+    if (past.length) {
+      opts.push('<optgroup label="Recent past">');
+      past.forEach(m => opts.push(
+        `<option value="${m.id}"${String(m.id) === currentId ? ' selected' : ''}>${this.escapeHTML(fmt(m))}</option>`
+      ));
+      opts.push('</optgroup>');
+    }
+    select.innerHTML = opts.join('');
+    wrap.style.display = '';
+  }
+
+  escapeHTML(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  _onMatchPickerChange(newId) {
+    if (!newId) return;
+    const picked = this.teamMatches.find(m => String(m.id) === String(newId));
+    if (!picked) return;
+    this.navigation.context.match = {
+      id: picked.id,
+      title: picked.title,
+      event_date: picked.event_date,
+    };
+    // Reset per-match transient state and reload.
+    this.zones = { starting: [], bench: [], alternates: [] };
+    this.playerPositions = {};
+    this.customPositions = null;
+    this.syncThenLoad();
+    this.loadSavedMetadata();
     this.loadShareInfo();
   }
 
@@ -164,6 +339,14 @@ class GameDayLineupScreen extends Screen {
     this.hideLoadingContinuePanel();
     this.clearLoadingProgressLog();
     this.setLoadingStatus('Computing eligibility...');
+
+    // Surface any calendar-discovery failure from _bootstrap so users see
+    // 'we did NOT pull fresh data' instead of silently using stale rows.
+    if (this.calendarSyncFailure) {
+      const msg = `GroupMe calendar sync failed: ${this.calendarSyncFailure}. Schedule may be stale — retry to pull fresh data.`;
+      failures.push(msg);
+      this.appendLoadingProgress(msg);
+    }
     
     if (matchId && teamId) {
       this.appendLoadingProgress('Starting GroupMe sync for game + training/pickup window...');
@@ -404,12 +587,17 @@ class GameDayLineupScreen extends Screen {
       }
     });
 
-    // Training attendance checkbox toggle
+    // Training attendance checkbox toggle + match picker
     this.element.addEventListener('change', (e) => {
       const cb = e.target.closest('.train-cb');
       if (cb) {
         e.stopPropagation();
         this.toggleTrainingAttendance(cb);
+        return;
+      }
+      if (e.target && e.target.id === 'lineup-match-picker') {
+        this._onMatchPickerChange(e.target.value);
+        return;
       }
     });
   }
@@ -420,7 +608,11 @@ class GameDayLineupScreen extends Screen {
   async loadEligibilityData() {
     const matchId = this.navigation.context.match?.id;
     if (!matchId) {
-      this.find('#lineup-loading').innerHTML = '<p style="color:var(--color-danger);">No match selected</p>';
+      const hint = this.teamMatches?.length
+        ? 'Pick a match from the dropdown above.'
+        : 'No upcoming match found for this team.';
+      this.find('#lineup-loading').innerHTML =
+        `<p style="color:var(--color-danger);">No match selected.</p><p class="text-muted" style="font-size:0.85rem;">${hint}</p>`;
       return false;
     }
 

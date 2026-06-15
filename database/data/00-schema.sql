@@ -1771,6 +1771,50 @@ CREATE INDEX idx_tactical_scenario_results_score ON tactical_scenario_results(sc
 COMMENT ON TABLE tactical_scenario_results IS 'Player performance on tactical scenarios. Tracks scores, grades, and replay data for review.';
 
 -- ============================================================================
+-- AUTO-ROSTER TEAM-CHAT MEMBERS (mirrors migration 047)
+-- ============================================================================
+-- When a person is a linked member of a chat that is bound to a team
+-- (chats.team_id IS NOT NULL AND chats.chat_type_id = 1 'team'), auto-insert
+-- a roster row on that team. Preserves manual removals (left_at).
+CREATE OR REPLACE FUNCTION fn_auto_roster_team_chat_member()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_team_id      INT;
+    v_chat_type_id INT;
+    v_player_id    INT;
+BEGIN
+    IF NEW.person_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+    SELECT c.team_id, c.chat_type_id
+    INTO v_team_id, v_chat_type_id
+    FROM chats c WHERE c.id = NEW.chat_id;
+    IF v_team_id IS NULL OR v_chat_type_id <> 1 THEN
+        RETURN NEW;
+    END IF;
+    SELECT p.id INTO v_player_id FROM players p WHERE p.person_id = NEW.person_id;
+    IF v_player_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+    INSERT INTO rosters (team_id, player_id, joined_at, left_at)
+    SELECT v_team_id, v_player_id, CURRENT_TIMESTAMP, NULL
+    WHERE NOT EXISTS (
+        SELECT 1 FROM rosters r
+        WHERE r.team_id = v_team_id AND r.player_id = v_player_id
+    );
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_auto_roster_team_chat_member ON chat_external_members;
+CREATE TRIGGER trg_auto_roster_team_chat_member
+AFTER INSERT OR UPDATE OF person_id ON chat_external_members
+FOR EACH ROW
+EXECUTE FUNCTION fn_auto_roster_team_chat_member();
+
+-- ============================================================================
 -- SCHEMA MIGRATIONS (tracks applied forward-only migrations)
 -- ============================================================================
 
