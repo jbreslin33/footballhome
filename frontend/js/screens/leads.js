@@ -363,6 +363,13 @@ class LeadsScreen extends Screen {
       // capture parent name/email/phone before the LeagueApps handoff.
       '27218140947855660': 'Boys Club (K-12)',
       '3904012603227821':  'Girls Club (K-12)',
+      // Men's / Women's Club lead forms created 2026-06-15 via
+      // scripts/convert-club-to-form.js — same conversion treatment as
+      // K-12 but with one extra question (DOB) so the coach knows the
+      // player's age before reaching out.  GENDER dropped — graphic
+      // already says MENS CLUB / WOMENS CLUB.
+      '821845431008120':  "Men's Club",
+      '3929429224026650': "Women's Club",
       // Tri County Women — form id TBD (no live ad yet).
     };
     return map[formId] || null;
