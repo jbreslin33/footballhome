@@ -52,8 +52,17 @@ class LeadsScreen extends Screen {
       const leads = await leadsRes.json();
       const spend = spendRes && spendRes.ok ? await spendRes.json() : [];
       const stats = statsRes && statsRes.ok ? await statsRes.json() : { per_lead: {}, aggregates: {} };
-      const targeting = targetingRes && targetingRes.ok ? await targetingRes.json() : [];
-      const pickup    = pickupRes && pickupRes.ok ? await pickupRes.json() : { event: null };
+
+      // Distinguish "endpoint failed" from "endpoint returned no ads".
+      // The webhook proxies Meta Graph and occasionally fails with
+      // `fetch failed` (transient DNS / outbound networking on the
+      // container).  Without this flag we'd silently render the
+      // "No live ads on Meta" empty state and the coach would think
+      // every campaign is paused — which is what triggered the
+      // "leads screen has no categories lol" bug report.
+      const targetingOk = !!(targetingRes && targetingRes.ok);
+      const targeting   = targetingOk ? await targetingRes.json() : [];
+      const pickup      = pickupRes && pickupRes.ok ? await pickupRes.json() : { event: null };
       this._nextPickup = pickup.event || null;
 
       this.find('#leads-loading').style.display = 'none';
@@ -69,7 +78,20 @@ class LeadsScreen extends Screen {
       this._spend = spend;
       this._stats = stats;
       this._targeting = targeting;
+      this._targetingOk = targetingOk;
       this.renderLeads(leads, spend, stats, targeting);
+
+      // If targeting failed, auto-retry once after 20s.  Most outages
+      // are sub-minute container DNS hiccups so a single quiet retry
+      // is enough to recover without making the coach reload.
+      if (!targetingOk && !this._targetingRetryScheduled) {
+        this._targetingRetryScheduled = true;
+        setTimeout(() => {
+          this._targetingRetryScheduled = false;
+          // Don't reload if the screen has been left in the meantime.
+          if (this.element && this.element.isConnected) this.loadLeads();
+        }, 20000);
+      }
     } catch (err) {
       this.find('#leads-loading').style.display = 'none';
       this.find('#leads-error').style.display   = 'block';
@@ -240,8 +262,11 @@ class LeadsScreen extends Screen {
         ${orphanCount > 0 ? ` &middot; <span style="opacity:0.7;">${orphanCount} hidden (from paused / archived ads)</span>` : ''}
       </p>
       ${COLUMNS.length === 0 ? `
-        <div style="text-align:center; padding:var(--space-6); opacity:0.6;">
-          No live ads on Meta. Activate an ad to see its leads here.
+        <div style="text-align:center; padding:var(--space-6); ${this._targetingOk === false ? 'color:#fbbf24; background:#3d2a0a; border-radius:var(--radius-md);' : 'opacity:0.6;'}">
+          ${this._targetingOk === false
+            ? `⚠ Couldn't reach Meta to load live ad categories.<br>
+               <span style="font-size:0.8rem; opacity:0.85;">Retrying automatically in 20s — usually a transient DNS hiccup on the webhook container.</span>`
+            : `No live ads on Meta. Activate an ad to see its leads here.`}
         </div>
       ` : visible.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All columns hidden — check a box above to show leads.</div>
