@@ -925,50 +925,56 @@ class LeadsScreen extends Screen {
     // leads a concrete answer ("Sundays, full schedule here") instead of a
     // vague "we'll let you know."  Funnels without an entry fall back to the
     // TODO placeholder so the coach knows to fill it in.
-    //   day      — short day-of-week phrase ("Sundays", "Sat/Sun")
-    //   url      — public schedule page (optional; omit if no public URL)
-    //   sourceOf — label used inline so the lead knows what they're clicking
-    //              ("CASA league page", "season Google Sheet", etc.)
-    //   practice — short practice cadence note ("practice 2×/week"), optional
+    //   day          — short day-of-week phrase ("Sundays", "Sat/Sun")
+    //   url          — public schedule page (optional; omit if no public URL)
+    //   sourceOf     — label used inline so the lead knows what they're clicking
+    //                  ("CASA league page", "season Google Sheet", etc.)
+    //   practice     — concrete practice day/time ("Wednesday & Friday 7–8:45pm"), optional
+    //   practiceNote — extra free-form line printed under Practice: (used for
+    //                  Men funnels so the lead knows pickups count as a
+    //                  practice if Wed/Fri don't fit), optional
     const SCHEDULES = {
       'Brazil Men': {
-        day:      'Sundays',
-        url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf: 'CASA Philly Grassroots Cup',
-        practice: 'Wed & Fri',
+        day:          'Sundays',
+        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf:     'CASA Philly Grassroots Cup',
+        practice:     'Wednesday & Friday 7–8:45pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice. We do this so it's as easy as possible to make a practice during the week.",
       },
       'PR Men': {
-        day:      'Sundays',
-        url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf: 'CASA Philly Grassroots Cup',
-        practice: 'Wed & Fri',
+        day:          'Sundays',
+        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf:     'CASA Philly Grassroots Cup',
+        practice:     'Wednesday & Friday 7–8:45pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       'U23 Men': {
-        day:      'Sundays',
-        url:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
-        sourceOf: 'season Google Sheet',
-        practice: 'Wed & Fri',
+        day:          'Sundays',
+        url:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
+        sourceOf:     'season Google Sheet',
+        practice:     'Wednesday & Friday 7–8:45pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       'APSL / Liga 1': {
-        day:      'Sundays',
-        url:      'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf: 'CASA Philly Grassroots Cup',
-        practice: 'Wed & Fri',
+        day:          'Sundays',
+        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf:     'CASA Philly Grassroots Cup',
+        practice:     'Wednesday & Friday 7–8:45pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
-      // only.  Games Saturdays (occasionally Sunday) + practice 2×/week
-      // (days TBD — likely Mon/Wed but not committed).
+      // only.  Games Saturdays (occasionally Sunday) + practice Mon/Wed.
       'Boys Club (Grades 1–6)': {
         day:      'Saturdays (sometimes Sundays)',
-        practice: '2×/week',
+        practice: 'Monday & Wednesday 6–7:30pm',
       },
       'Girls Club (Grades 1–6)': {
         day:      'Saturdays (sometimes Sundays)',
-        practice: '2×/week',
+        practice: 'Monday & Wednesday 6–7:30pm',
       },
       'Youth (Grades 1–6)': {
         day:      'Saturdays (sometimes Sundays)',
-        practice: '2×/week',
+        practice: 'Monday & Wednesday 6–7:30pm',
       },
       'Tri County Women': {
         day:      'Sundays',
@@ -1240,10 +1246,15 @@ class LeadsScreen extends Screen {
             const lines = [];
             // Practice always leads when defined — implies the
             // attendance expectation without ever stating a criterion.
-            // Pickup sessions (Tue/Thu/Sat) are intentionally NOT mentioned
-            // pre-signup; the coach explains those after the lead registers.
+            // For Men funnels, follow with practiceNote so the lead
+            // knows our pickups also count as a practice if Wed/Fri
+            // don't fit — lowers the friction of "I can't make those
+            // exact days" objections.
             if (c.schedule.practice) {
               lines.push(`Practice: ${c.schedule.practice}`);
+            }
+            if (c.schedule.practiceNote) {
+              lines.push(c.schedule.practiceNote);
             }
             if (c.schedule.url) {
               lines.push(`Games ${c.schedule.day} — full schedule (${c.schedule.sourceOf}):`);
