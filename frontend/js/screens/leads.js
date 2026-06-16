@@ -994,6 +994,26 @@ class LeadsScreen extends Screen {
       // wire it before the first real lead lands.
     };
 
+    // Per-funnel GroupMe chat share URLs — used by the Welcome snippet
+    // (post-register onboarding).  Each funnel has up to two team-specific
+    // chats; pickup is shared across all adult funnels (PICKUP_LINK).
+    //
+    // Share URLs come from the GroupMe "Share Group" button — format is
+    //   https://groupme.com/join_group/{group_id}/{share_token}
+    // We can't auto-mint these from the DB (we only store {group_id}, not
+    // the share token), so they're hand-pasted here.  Funnels without an
+    // entry skip the Welcome chip entirely.
+    //
+    // TODO: real share URLs needed for U23 Men (game + practice).
+    //       Until then the chip renders dimmed with a ⚠ placeholder so
+    //       the coach doesn't accidentally send broken links.
+    const CHATS = {
+      'U23 Men': {
+        game:     'TODO_U23_GAME_CHAT_SHARE_URL',
+        practice: 'TODO_U23_PRACTICE_CHAT_SHARE_URL',
+      },
+    };
+
     const isYouth = /youth|grades?\s*1[–-]6/i.test(funnelLabel || '');
     // Legacy combined youth funnel — the only funnel where the form
     // doesn't pre-identify gender, so the close branches on the lead's
@@ -1007,6 +1027,7 @@ class LeadsScreen extends Screen {
       pickupLink: PICKUP_LINK,
       question:   QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
       schedule:   SCHEDULES[funnelLabel] || null,
+      chats:      CHATS[funnelLabel] || null,
       whose:      isYouth ? "your player's" : 'your',
       whoseCap:   isYouth ? "Your player's" : 'Your',
       pricing:    isYouth ? '$35/mo' : '$9/wk or $35/mo',
@@ -1177,6 +1198,48 @@ class LeadsScreen extends Screen {
         body:
           `Great. To become a member of the club it's $1 registration on this link: ${c.link}\n` +
           `Once you're in you can start coming to trainings and games.`,
+      });
+    }
+
+    // Welcome — sent AFTER the lead registers.  Welcomes them to the club
+    // and walks them through the three GroupMe chats they need to join in
+    // one numbered list.  Only renders for funnels with CHATS entries in
+    // funnelContext; otherwise the chip is hidden (don't ship broken
+    // onboarding for funnels we haven't wired yet).
+    //
+    // Chats are intentionally listed in the order the new member will USE
+    // them: game chat (RSVP for the next match) → practice chat (mid-week
+    // training heads-up) → pickup chat (open-run option if they miss
+    // practice).  Pickup last because it's the "extra" not the "core."
+    if (c.chats && (c.chats.game || c.chats.practice)) {
+      const todo =
+        /^TODO_/.test(c.chats.game || '') ||
+        /^TODO_/.test(c.chats.practice || '');
+      const lines = [
+        `Welcome to the club! 🎉 You're officially in.`,
+        ``,
+        `Three quick chats to join so you're in the loop — takes 30 seconds:`,
+        ``,
+      ];
+      let n = 1;
+      if (c.chats.game) {
+        lines.push(`${n++}. 🗓 Game chat — RSVP for matches here:`);
+        lines.push(`   ${c.chats.game}`);
+      }
+      if (c.chats.practice) {
+        lines.push(`${n++}. 🏃 Practice chat — Wed/Fri training heads-up:`);
+        lines.push(`   ${c.chats.practice}`);
+      }
+      lines.push(`${n++}. ⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice:`);
+      lines.push(`   ${c.pickupLink}`);
+      lines.push(``);
+      lines.push(`Once you're in all three, you're set. See you on the field. 🤝`);
+      snippets.push({
+        id: 'welcome',
+        label: '🎉 Welcome / Join chats',
+        tier: 'close',
+        todo,
+        body: lines.join('\n'),
       });
     }
 
