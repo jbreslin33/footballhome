@@ -138,9 +138,21 @@
      (and column 2 doesn't always start with a prominent .lead-in that
      would visually read as a section header). */
   .poster-body.two-col blockquote,
-  .poster-body.two-col ul,
-  .poster-body.two-col ol,
   .poster-body.two-col .poster-sources-qr {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+  }
+  /* Lists themselves are allowed to split across columns (so a long
+     7-item .badge-list doesn't lock into column 1 and leave column 2
+     half-empty) — but each individual <li> stays unbroken so a single
+     bullet never splits mid-content across the column gap. */
+  .poster-body.two-col ul,
+  .poster-body.two-col ol {
+    break-inside: auto;
+    -webkit-column-break-inside: auto;
+  }
+  .poster-body.two-col ul > li,
+  .poster-body.two-col ol > li {
     break-inside: avoid;
     -webkit-column-break-inside: avoid;
   }
@@ -235,6 +247,30 @@
     max-width: 100% !important;
     height: auto !important;
     margin: 10px auto 12px !important;
+  }
+
+  /* Compact-frame override (used by the social-media renderer when it
+     squashes a 24x48 poster into a 24x30 / 4:5 frame for an IG single
+     tile or carousel slide 1). A very tall body image — e.g. P3's
+     Manchester United match program — can monopolise one column and
+     leave a 200–300px dead zone at the bottom of the other when CSS
+     columns try to balance. We cap the image height and let it keep
+     its natural aspect so the columns balance. The cap is gated on
+     [data-slide-mode] so the native 24x48 museum print is unaffected;
+     the renderer sets data-slide-mode="full" on the article for slide
+     1 of the carousel AND for the single-tile output. */
+  .poster[data-slide-mode="full"] .poster-body.two-col p > img[style*="float"],
+  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float"] img {
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: calc(11 * var(--print-scale)) !important;
+    margin: 10px auto 12px !important;
+    display: block;
+  }
+  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float"] {
+    width: auto !important;
+    max-width: 100% !important;
   }
   .poster-photo {
     margin: 0;
@@ -1217,7 +1253,7 @@
     <header class="poster-band">
       <p class="kicker">The Miracle Match</p>
       <h2>LIGHTHOUSE WITH THE GAME WINNING ASSIST IN THE GREATEST WORLD CUP UPSET OF ALL TIME</h2>
-      <p class="sub">USA 1, England 0 &mdash; Belo Horizonte, June 29, 1950. How a Lighthouse boy engineered the biggest upset in World Cup history.</p>
+      <p class="sub">USA 1, England 0 &mdash; 1950 FIFA World Cup, Belo Horizonte, Brazil, June 29, 1950. How a Lighthouse boy engineered the biggest upset in World Cup history.</p>
     </header>
     <figure class="poster-photo">
       <img src="images/usmnt-1950-england.webp" alt="The 1950 World Cup goal moment: Joe Gaetjens heads in Walter Bahr's 25-yard shot for the United States' historic 1–0 upset over England" style="background:#000;">
@@ -1231,11 +1267,11 @@
       <p><span class="lead-in">The Lighthouse Assist.</span> In the <strong>38th minute</strong>, Bahr unleashed a 25-yard shot from outside the box. As English goalkeeper <strong>Bert Williams</strong> moved right to intercept, Haitian-born U.S. center forward <strong>Joe Gaetjens</strong> dove headlong near the penalty spot and grazed the ball with the top of his head — redirecting it past Williams, whose momentum prevented him from changing direction. <strong>USA 1, England 0.</strong> The only goal of the most stunning upset in World Cup history — scored off a pass from a Lighthouse boy.</p>
       <figure style="float:right; width:min(38%,300px); margin:0 0 12px 18px; text-align:center;">
         <img src="images/walter-bahr-ussoccer.jpg" alt="Walter Bahr in his U.S. national team kit" style="width:100%; height:auto; display:block; border:1px solid #c9a14a;">
-        <figcaption style="font-size:0.78em; margin-top:6px; line-height:1.35; color:#555;"><strong>Walter Bahr</strong> in his U.S. national team kit — the Lighthouse boy who assisted the Belo Horizonte goal and went on to captain the United States.</figcaption>
+        <figcaption style="font-size:0.78em; margin-top:6px; line-height:1.35; color:#555;"><strong>Walter Bahr</strong> in his U.S. national team kit &mdash; the Lighthouse boy who assisted the winning goal at the 1950 World Cup in Belo Horizonte, Brazil and went on to captain the United States.</figcaption>
       </figure>
       <p><span class="lead-in">The Armband Trick.</span> Bahr was the team's standard captain, but for this match U.S. coaches handed the armband to <strong>Ed McIlvenny</strong> — a Scotsman — figuring a Scot leading the Americans out against England would walk taller than anyone in the tunnel. It worked. Bahr was back wearing the captain's band for the next match against Chile.</p>
       <p><span class="lead-in">A Crowd That Adopted the Underdogs.</span> The official attendance was 10,151, but the Brazilian crowd <strong>swelled as locals heard the radio broadcast</strong> and some even <strong>jumped a short wall to enter the stadium through the playing field</strong>. The Brazilians cheered for the United States the entire ninety minutes — not out of love for the Americans, but because they didn't want Brazil to have to face England in the final round. Bahr later said: <em>"The overwhelming majority was Brazilians, but they rooted for us the entire time."</em></p>
-      <p><span class="lead-in">The Blue Kit That Was Never Worn Again.</span> England debuted a brand-new <strong>blue uniform</strong> for the match in Belo Horizonte. After losing in it, they effectively shelved it for the next half-century.</p>
+      <p><span class="lead-in">The Blue Kit That Was Never Worn Again.</span> England debuted a brand-new <strong>blue uniform</strong> for the 1950 World Cup match in Belo Horizonte, Brazil. After losing in it, they effectively shelved it for the next half-century.</p>
       <p style="text-align:center; font-style:italic; font-size:1.15em; margin-top:1.2em; padding-top:0.8em; border-top:1px solid #c9a14a;"><strong>It is poetic.</strong> Walter Bahr — a Lighthouse boy — assisted the winning goal in the biggest upset in World Cup history. His childhood club has been assisting the American game ever since 1897.</p>
     </div>
   </article>
@@ -1278,7 +1314,7 @@
         </figure>
         <p><span class="lead-in">A Definitive Sports History.</span> In 1996, acclaimed author <strong>Geoffrey Douglas</strong> immortalized Walter Bahr and his underdog 1950 World Cup teammates in <em>The Game of Their Lives</em> &mdash; the definitive book on the greatest upset in American soccer history: the U.S. shocking England 1&ndash;0 at the 1950 World Cup in <strong>Belo Horizonte, Brazil</strong>.</p>
         <p><span class="lead-in">A Kensington Boyhood &mdash; on the Page.</span> Douglas devotes the heart of his portrait of <strong>Walter Bahr</strong> to the Kensington streets and the Lighthouse Boys&rsquo; Club where the future U.S. captain learned the game. The reader meets a working-class Philadelphia kid born in 1927, taken as a boy to watch the professional <strong>Philadelphia Nationals</strong> play, and climbing the rungs of the <strong>Lighthouse ladder of teams</strong> from the youngest age groups up through the McGuire Cup&ndash;winning Lighthouse juniors that would mint a generation of American internationals.</p>
-        <p><span class="lead-in">From the Lighthouse Field to Belo Horizonte.</span> Douglas traces the same pipeline this exhibit traces: Lighthouse junior &rarr; Northeast Philly schoolboy &rarr; Temple-era college player &rarr; Philadelphia high-school teacher by day &rarr; paid professional with the Nationals at <strong>Lighthouse Field</strong> on Front &amp; Erie by night &mdash; and, in the summer of 1950, the midfielder who crossed the ball that beat England. The book&rsquo;s power is in how plainly it shows that the most famous goal in U.S. soccer history was assisted by a Kensington boy who learned to play on a Lighthouse field a few blocks from his row house.</p>
+        <p><span class="lead-in">From the Lighthouse Field to the 1950 World Cup in Brazil.</span> Douglas traces the same pipeline this exhibit traces: Lighthouse junior &rarr; Northeast Philly schoolboy &rarr; Temple-era college player &rarr; Philadelphia high-school teacher by day &rarr; paid professional with the Nationals at <strong>Lighthouse Field</strong> on Front &amp; Erie by night &mdash; and, in the summer of 1950, the midfielder who crossed the ball that beat England at the World Cup in <strong>Belo Horizonte, Brazil</strong>. The book&rsquo;s power is in how plainly it shows that the most famous goal in U.S. soccer history was assisted by a Kensington boy who learned to play on a Lighthouse field a few blocks from his row house.</p>
       </section>
 
       <section style="margin:0;">
@@ -1327,13 +1363,13 @@
     <div class="poster-num">20</div>
     <header class="poster-band">
       <p class="kicker">Hall of Fames</p>
-      <h2>LIGHTHOUSE IN THE HALL OF FAMES</h2>
-      <p class="sub">Three institutions. Seven enshrined icons. And Lighthouse helped found the most important one.</p>
+      <h2>LIGHTHOUSE &amp; THE HALL OF FAMES</h2>
+      <p class="sub">Lighthouse founds the State and National Soccer Hall of Fames.</p>
     </header>
     <figure class="poster-photo">
-      <div style="display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:nowrap;padding:18px 12px;">
-        <img src="images/nshof-logo.svg" alt="National Soccer Hall of Fame official logo" style="flex:1 1 0;min-width:0;max-height:300px;width:auto;height:auto;object-fit:contain;display:block;">
-        <img src="images/ussoccer-logo.png" alt="U.S. Soccer Federation official crest" style="flex:0 0 auto;max-height:300px;width:auto;height:300px;object-fit:contain;display:block;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:nowrap;padding:0;">
+        <img src="images/nshof-logo.svg" alt="National Soccer Hall of Fame official logo" style="flex:1 1 0;min-width:0;max-height:360px;width:auto;height:auto;object-fit:contain;display:block;">
+        <img src="images/ussoccer-logo.png" alt="U.S. Soccer Federation official crest" style="flex:0 0 auto;max-height:360px;width:auto;height:360px;object-fit:contain;display:block;">
       </div>
       <figcaption>The <strong>National Soccer Hall of Fame</strong> &mdash; founded in 1950 by the Lighthouse-rooted Philadelphia Old-Timers Soccer Association &mdash; today operates as the official Hall of Fame of <strong>U.S. Soccer</strong>. Seven Lighthouse Boys Club alumni are enshrined. Logos: NSHOF and U.S. Soccer Federation (educational use).</figcaption>
     </figure>

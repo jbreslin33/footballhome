@@ -287,6 +287,10 @@ async function renderSingleTile(page, posterNum, outPath) {
     // Show all body content (in case it was hidden by a previous carousel pass).
     p.querySelectorAll('.poster-body > *').forEach(el => { el.style.display = ''; });
     p.style.height = 'calc(30 * var(--print-scale))';
+    // Mark as a compact 4:5 "full" view so the source's
+    // [data-slide-mode="full"] CSS hooks (height caps on body images,
+    // etc.) apply — same flag the carousel slide 1 uses.
+    p.dataset.slideMode = 'full';
     window.dispatchEvent(new Event('resize'));
   }, posterNum);
   await sleep(500);
@@ -295,7 +299,10 @@ async function renderSingleTile(page, posterNum, outPath) {
   // Restore.
   await page.evaluate((n) => {
     const p = document.getElementById('poster-' + n);
-    if (p) p.style.height = '';
+    if (p) {
+      p.style.height = '';
+      delete p.dataset.slideMode;
+    }
     window.dispatchEvent(new Event('resize'));
   }, posterNum);
   await sleep(300);
