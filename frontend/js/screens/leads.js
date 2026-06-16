@@ -627,16 +627,25 @@ class LeadsScreen extends Screen {
     const esc = (s) => String(s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+    // NOTE: blurbBlock intentionally renders the body with NO background
+    // color, NO foreground color, and NO opacity tweaks on the <pre>.
+    // Reason: coaches often manually select + Cmd-C the text instead of
+    // hitting the 📋 button, and any inline background/color from this
+    // panel gets carried into Gmail/SMS as rich-text styling — which
+    // shows up as a dark band + colored text on the recipient side.
+    // Keeping the body styling neutral so a manual select-copy pastes
+    // as plain text. Only the wrapper has a faint border to separate
+    // blurbs visually.
     const blurbBlock = (title, body, todo = false) => {
       const dim = todo ? 'opacity:0.55;' : '';
       const warn = todo ? ' <span style="color:#f59e0b;" title="Placeholder — fill this in">⚠</span>' : '';
       return `
-        <div style="background:var(--bg-primary, #0f172a); border-radius:var(--radius-sm); padding:var(--space-2); margin-bottom:var(--space-2); ${dim}">
+        <div style="border:1px solid var(--border-color, #334155); border-radius:var(--radius-sm); padding:var(--space-2); margin-bottom:var(--space-2); ${dim}">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-bottom:4px;">
             <strong style="font-size:0.8rem;">${esc(title)}${warn}</strong>
             <button class="copy-btn btn btn-secondary" data-copy="${esc(body)}" style="font-size:0.7rem; padding:2px 8px;">📋 Copy</button>
           </div>
-          <pre style="white-space:pre-wrap; word-break:break-word; margin:0; font-family:inherit; font-size:0.78rem; line-height:1.45; opacity:0.92;">${esc(body)}</pre>
+          <pre style="white-space:pre-wrap; word-break:break-word; margin:0; font-family:inherit; font-size:0.78rem; line-height:1.45;">${esc(body)}</pre>
         </div>
       `;
     };
