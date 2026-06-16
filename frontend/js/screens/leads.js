@@ -332,6 +332,12 @@ class LeadsScreen extends Screen {
       '2471488896628970': 'Boys Club (Grades 1–6)',
       '1277787647463515': 'Youth (Grades 1–6)',
       '1008195014960429': 'Girls Club (Grades 1–6)',
+      // K-12 lead forms created 2026-06-15 via
+      // scripts/convert-k12-to-form.js — converted the previously
+      // direct-CTA → LeagueApps ads into proper lead-form ads so we
+      // capture parent name/email/phone before the LeagueApps handoff.
+      '27218140947855660': 'Boys Club (K-12)',
+      '3904012603227821':  'Girls Club (K-12)',
       // Tri County Women — form id TBD (no live ad yet).
     };
     return map[formId] || null;

@@ -52,6 +52,19 @@ GRADES_1_6_FORMS = {
     },
 }
 
+# Known-source overrides — registrants we already know came in via
+# word of mouth / organic / referral, NOT through any paid Meta ad.
+# Keyed by lowercased email so re-runs stay stable as new emails come
+# in.  Anything in this set is moved out of the "unmatched (K-12 / 
+# organic)" bucket into a third "known organic" bucket so the K-12
+# upper-bound estimate keeps tightening as the coach annotates.
+KNOWN_ORGANIC_EMAILS = {
+    # Erick inestroza (Boys Club, 2026-06-15) — confirmed by coach as
+    # not a K-12 ad lead.
+    'erickdelcid09@gmail.com',
+    'erickinestroza57@gmail.com',
+}
+
 
 def require_env(name):
     value = os.getenv(name, '').strip()
@@ -166,7 +179,7 @@ def main():
     print('LeagueApps registrants ↔ Meta leads (Grades 1-6) attribution check')
     print('=' * 78)
 
-    grand = {'attributed': 0, 'unmatched': 0, 'total': 0}
+    grand = {'attributed': 0, 'organic': 0, 'unmatched': 0, 'total': 0}
 
     for club, program_id in PROGRAMS.items():
         regs = fetch_program_registrations(site_id, program_id, token)
@@ -178,6 +191,7 @@ def main():
 
         attributed = []
         unmatched  = []
+        organic    = []  # confirmed organic / referral, NOT a K-12 candidate
         for r in active:
             # Registrants for kids store the parent email in a "guardian"
             # field set; the registration itself has the kid's name. Try
@@ -193,24 +207,32 @@ def main():
             label = f"{r.get('firstName','').strip()} {r.get('lastName','').strip()}".strip() or f"reg#{r.get('id')}"
             if matched_email:
                 attributed.append((label, matched_email))
+            elif any(c in KNOWN_ORGANIC_EMAILS for c in cand):
+                organic.append((label, ', '.join(cand)))
             else:
                 unmatched.append((label, ', '.join(cand) or '(no email on registration)'))
 
         print(f'\n=== {club} (LA program {program_id}) ===')
-        print(f'  Active registrants:         {len(active)}')
-        print(f'  Grades 1-6 lead emails:     {len(grades_1_6_emails)} unique')
-        print(f'  Attributed to Grades 1-6:   {len(attributed)}')
-        print(f'  Unmatched (K-12/organic):   {len(unmatched)}')
+        print(f'  Active registrants:           {len(active)}')
+        print(f'  Grades 1-6 lead emails:       {len(grades_1_6_emails)} unique')
+        print(f'  Attributed to Grades 1-6:     {len(attributed)}')
+        print(f'  Known organic / referral:     {len(organic)}')
+        print(f'  Unmatched (K-12 upper bound): {len(unmatched)}')
         if attributed:
             print('  → Attributed registrants:')
             for name, em in attributed:
                 print(f'      ✓ {name:<32}  {em}')
+        if organic:
+            print('  → Known organic / referral (excluded from K-12 estimate):')
+            for name, em in organic:
+                print(f'      ◦ {name:<32}  {em}')
         if unmatched:
-            print('  → Unmatched registrants (K-12 ad / organic / referral):')
+            print('  → Unmatched registrants (K-12 ad / unknown organic):')
             for name, em in unmatched:
                 print(f'      ✗ {name:<32}  {em}')
 
         grand['attributed'] += len(attributed)
+        grand['organic']    += len(organic)
         grand['unmatched']  += len(unmatched)
         grand['total']      += len(active)
 
@@ -219,7 +241,8 @@ def main():
     print('=' * 78)
     print(f'  Active registrants (Boys + Girls): {grand["total"]}')
     print(f'  Attributed to Grades 1-6 lead ads: {grand["attributed"]}')
-    print(f'  Unmatched (K-12 ad / organic):     {grand["unmatched"]}')
+    print(f'  Known organic / referral:          {grand["organic"]}')
+    print(f'  Unmatched (K-12 upper bound):      {grand["unmatched"]}')
     if grand['total']:
         pct_attr = 100.0 * grand['attributed'] / grand['total']
         pct_un   = 100.0 * grand['unmatched']  / grand['total']
