@@ -1009,7 +1009,7 @@ class LeadsScreen extends Screen {
     //       the coach doesn't accidentally send broken links.
     const CHATS = {
       'U23 Men': {
-        game:     'TODO_U23_GAME_CHAT_SHARE_URL',
+        game:     'https://groupme.com/join_group/114664832/yYQrXaFS',
         practice: 'TODO_U23_PRACTICE_CHAT_SHARE_URL',
       },
     };
