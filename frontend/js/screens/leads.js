@@ -963,17 +963,17 @@ class LeadsScreen extends Screen {
         practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
-      // only.  Games Saturdays (occasionally Sunday) + practice Mon/Wed.
+      // only.  Games mostly Saturdays (occasionally Sunday) + practice Mon/Wed.
       'Boys Club (Grades 1–6)': {
-        day:      'Saturdays (sometimes Sundays)',
+        day:      'Saturdays',
         practice: 'Monday & Wednesday 6–7:30pm',
       },
       'Girls Club (Grades 1–6)': {
-        day:      'Saturdays (sometimes Sundays)',
+        day:      'Saturdays',
         practice: 'Monday & Wednesday 6–7:30pm',
       },
       'Youth (Grades 1–6)': {
-        day:      'Saturdays (sometimes Sundays)',
+        day:      'Saturdays',
         practice: 'Monday & Wednesday 6–7:30pm',
       },
       'Tri County Women': {
@@ -1231,48 +1231,66 @@ class LeadsScreen extends Screen {
           `\n` +
           closeLink(`$1 locks ${c.whose} spot:`),
       },
-      // Schedule — concrete answer when funnelContext has schedule info.
-      // Doubles as a soft-close: answers the logistics question AND
-      // immediately gives the register CTA, since leads asking
-      // "what's the schedule?" are in a "does this fit my life?" frame
-      // and want the next action right there.
-      //
-      // Three shapes supported:
-      //   1. day + url    → "Games <day> — full schedule (<src>): <url>"
-      //   2. day only     → "Games <day>, <practice>"  (verbal summary)
-      //   3. nothing      → TODO placeholder (dimmed)
-      c.schedule
+      // Schedule chips — three chips off the same data:
+      //   📅 Practice  — just practice line(s) (+ pickup-counts-as-practice note)
+      //   📅 Games     — just games line(s) + public URL when available
+      //   📅 Schedule  — both combined, for the generic "what's the schedule?" Q
+      // Each doubles as a soft-close — leads asking logistics are in a
+      // "does this fit my life?" frame, so every chip ends with the $1
+      // register CTA right there.
+      ...(c.schedule
         ? (() => {
-            const lines = [];
-            // Practice always leads when defined — implies the
-            // attendance expectation without ever stating a criterion.
-            // For Men funnels, follow with practiceNote so the lead
-            // knows our pickups also count as a practice if Wed/Fri
-            // don't fit — lowers the friction of "I can't make those
-            // exact days" objections.
+            // Shared line builders so all three chips stay in sync.
+            const practiceLines = () => {
+              const out = [];
+              if (c.schedule.practice) out.push(`Practice: ${c.schedule.practice}`);
+              // For Men funnels practiceNote tells the lead our pickups also
+              // count as a practice if Wed/Fri don't fit — lowers the
+              // friction of "I can't make those exact days" objections.
+              if (c.schedule.practiceNote) out.push(c.schedule.practiceNote);
+              return out;
+            };
+            const gamesLines = () => {
+              const out = [];
+              if (c.schedule.url) {
+                out.push(`Games are mostly on ${c.schedule.day} — full schedule (${c.schedule.sourceOf}):`);
+                out.push(c.schedule.url);
+              } else {
+                out.push(`Games are mostly on ${c.schedule.day}.`);
+                out.push(`Specific times/fields confirm after rosters close.`);
+              }
+              return out;
+            };
+            const close = closeLink(`If it works, $1 locks ${c.whose} spot:`);
+
+            const chips = [];
+            // Practice chip — only shown when the funnel actually has
+            // a practice schedule defined (Tri County Women has none).
             if (c.schedule.practice) {
-              lines.push(`Practice: ${c.schedule.practice}`);
+              chips.push({
+                id: 'practice',
+                label: '📅 Practice',
+                tier: 'info',
+                body: [...practiceLines(), '', close].join('\n'),
+              });
             }
-            if (c.schedule.practiceNote) {
-              lines.push(c.schedule.practiceNote);
-            }
-            if (c.schedule.url) {
-              lines.push(`Games ${c.schedule.day} — full schedule (${c.schedule.sourceOf}):`);
-              lines.push(c.schedule.url);
-            } else {
-              lines.push(`Games ${c.schedule.day}.`);
-              lines.push(`Specific times/fields confirm after rosters close.`);
-            }
-            lines.push('');
-            lines.push(closeLink(`If it works, $1 locks ${c.whose} spot:`));
-            return {
+            chips.push({
+              id: 'games',
+              label: '📅 Games',
+              tier: 'info',
+              body: [...gamesLines(), '', close].join('\n'),
+            });
+            // Combined Schedule chip — catches the generic "what's the
+            // schedule?" question that doesn't specify practice vs games.
+            chips.push({
               id: 'schedule',
               label: '📅 Schedule',
               tier: 'info',
-              body: lines.join('\n'),
-            };
+              body: [...practiceLines(), ...gamesLines(), '', close].join('\n'),
+            });
+            return chips;
           })()
-        : {
+        : [{
             id: 'schedule',
             label: '📅 Schedule',
             tier: 'info',
@@ -1280,7 +1298,7 @@ class LeadsScreen extends Screen {
             body:
               `Practice schedule for our ${c.program}:\n` +
               `(TODO — fill this in once confirmed for the season.)`,
-          },
+          }]),
       {
         id: 'cost',
         label: '💵 Cost',
