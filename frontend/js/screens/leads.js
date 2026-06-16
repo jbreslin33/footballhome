@@ -896,6 +896,11 @@ class LeadsScreen extends Screen {
     // ALSO prepend the next scheduled pickup (if any) pulled live from the
     // chat's calendar via /api/leads/next-pickup.
     const PICKUP_LINK = 'https://groupme.com/join_group/65284700/VRuVK50q';
+    // Shared Practice GroupMe chat — ONE chat that every adult team uses
+    // for mid-week practice heads-up.  Game chats are per-team (see CHATS
+    // below) but practice + pickup are club-wide singletons.
+    // TODO: paste real share URL.
+    const PRACTICE_LINK = 'TODO_PRACTICE_CHAT_SHARE_URL';
 
     const LINKS = {
       'Brazil Men':                URL_MEN,
@@ -994,24 +999,18 @@ class LeadsScreen extends Screen {
       // wire it before the first real lead lands.
     };
 
-    // Per-funnel GroupMe chat share URLs — used by the Welcome snippet
-    // (post-register onboarding).  Each funnel has up to two team-specific
-    // chats; pickup is shared across all adult funnels (PICKUP_LINK).
+    // Per-funnel GroupMe GAME chat share URLs — each team has its own
+    // game chat for matchday RSVPs.  Practice + pickup are NOT here —
+    // those are club-wide singletons (PRACTICE_LINK / PICKUP_LINK above).
     //
-    // Share URLs come from the GroupMe "Share Group" button — format is
+    // Share URL format:
     //   https://groupme.com/join_group/{group_id}/{share_token}
+    // Copy from the GroupMe app: tap group name → Share Group.
     // We can't auto-mint these from the DB (we only store {group_id}, not
-    // the share token), so they're hand-pasted here.  Funnels without an
-    // entry skip the Welcome chip entirely.
-    //
-    // TODO: real share URLs needed for U23 Men (game + practice).
-    //       Until then the chip renders dimmed with a ⚠ placeholder so
-    //       the coach doesn't accidentally send broken links.
-    const CHATS = {
-      'U23 Men': {
-        game:     'https://groupme.com/join_group/114664832/yYQrXaFS',
-        practice: 'TODO_U23_PRACTICE_CHAT_SHARE_URL',
-      },
+    // the share token).  Funnels without an entry skip the Welcome chip.
+    const GAME_CHATS = {
+      'U23 Men':          'https://groupme.com/join_group/114664832/yYQrXaFS',
+      // Brazil Men, PR Men, APSL/Liga 1, U23 Women, Tri County Women — TODO.
     };
 
     const isYouth = /youth|grades?\s*1[–-]6/i.test(funnelLabel || '');
@@ -1020,17 +1019,18 @@ class LeadsScreen extends Screen {
     // boy/girl answer (see Register chip split in messageSnippets).
     const isLegacyYouth = funnelLabel === 'Youth (Grades 1–6)';
     return {
-      program:    PROGRAM_NAMES[funnelLabel] || 'program',
-      link:       LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com',
-      linkBoys:   URL_BOYS,
-      linkGirls:  URL_GIRLS,
-      pickupLink: PICKUP_LINK,
-      question:   QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
-      schedule:   SCHEDULES[funnelLabel] || null,
-      chats:      CHATS[funnelLabel] || null,
-      whose:      isYouth ? "your player's" : 'your',
-      whoseCap:   isYouth ? "Your player's" : 'Your',
-      pricing:    isYouth ? '$35/mo' : '$9/wk or $35/mo',
+      program:       PROGRAM_NAMES[funnelLabel] || 'program',
+      link:          LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com',
+      linkBoys:      URL_BOYS,
+      linkGirls:     URL_GIRLS,
+      pickupLink:    PICKUP_LINK,
+      practiceLink:  PRACTICE_LINK,
+      gameChat:      GAME_CHATS[funnelLabel] || null,
+      question:      QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
+      schedule:      SCHEDULES[funnelLabel] || null,
+      whose:         isYouth ? "your player's" : 'your',
+      whoseCap:      isYouth ? "Your player's" : 'Your',
+      pricing:       isYouth ? '$35/mo' : '$9/wk or $35/mo',
       isYouth,
       isLegacyYouth,
     };
@@ -1203,37 +1203,35 @@ class LeadsScreen extends Screen {
 
     // Welcome — sent AFTER the lead registers.  Welcomes them to the club
     // and walks them through the three GroupMe chats they need to join in
-    // one numbered list.  Only renders for funnels with CHATS entries in
-    // funnelContext; otherwise the chip is hidden (don't ship broken
-    // onboarding for funnels we haven't wired yet).
+    // one numbered list.  Only renders for funnels with a gameChat in
+    // funnelContext (no game chat = team isn't fully onboarded yet, skip).
     //
     // Chats are intentionally listed in the order the new member will USE
     // them: game chat (RSVP for the next match) → practice chat (mid-week
     // training heads-up) → pickup chat (open-run option if they miss
     // practice).  Pickup last because it's the "extra" not the "core."
-    if (c.chats && (c.chats.game || c.chats.practice)) {
+    //
+    // Practice + pickup are club-wide singletons (same chat for every
+    // team).  Only the game chat is team-specific.
+    if (c.gameChat) {
       const todo =
-        /^TODO_/.test(c.chats.game || '') ||
-        /^TODO_/.test(c.chats.practice || '');
+        /^TODO_/.test(c.gameChat) ||
+        /^TODO_/.test(c.practiceLink) ||
+        /^TODO_/.test(c.pickupLink);
       const lines = [
         `Welcome to the club! 🎉 You're officially in.`,
         ``,
         `Three quick chats to join so you're in the loop — takes 30 seconds:`,
         ``,
+        `1. 🗓 Game chat — RSVP for matches here:`,
+        `   ${c.gameChat}`,
+        `2. 🏃 Practice chat — Wed/Fri training heads-up:`,
+        `   ${c.practiceLink}`,
+        `3. ⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice:`,
+        `   ${c.pickupLink}`,
+        ``,
+        `Once you're in all three, you're set. See you on the field. 🤝`,
       ];
-      let n = 1;
-      if (c.chats.game) {
-        lines.push(`${n++}. 🗓 Game chat — RSVP for matches here:`);
-        lines.push(`   ${c.chats.game}`);
-      }
-      if (c.chats.practice) {
-        lines.push(`${n++}. 🏃 Practice chat — Wed/Fri training heads-up:`);
-        lines.push(`   ${c.chats.practice}`);
-      }
-      lines.push(`${n++}. ⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice:`);
-      lines.push(`   ${c.pickupLink}`);
-      lines.push(``);
-      lines.push(`Once you're in all three, you're set. See you on the field. 🤝`);
       snippets.push({
         id: 'welcome',
         label: '🎉 Welcome / Join chats',
