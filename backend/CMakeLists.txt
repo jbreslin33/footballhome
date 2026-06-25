@@ -28,6 +28,7 @@ set(SOURCES
     src/models/User.cpp
     src/models/Team.cpp
     src/models/TeamCoach.cpp
+    src/models/TeamRoster.cpp
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
     src/services/UserService.cpp
@@ -36,6 +37,7 @@ set(SOURCES
     src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp
     src/controllers/TeamCoachController.cpp
+    src/controllers/TeamRosterController.cpp
     src/controllers/PersonOverrideController.cpp
     src/controllers/PersonMergeController.cpp
     src/controllers/EventController.cpp
