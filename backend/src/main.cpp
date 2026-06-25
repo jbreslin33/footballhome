@@ -17,6 +17,7 @@
 #include "controllers/AuthController.h"
 #include "controllers/OAuthController.h"
 #include "controllers/TeamController.h"
+#include "controllers/TeamCoachController.h"
 #include "controllers/EventController.h"
 #include "controllers/DivisionController.h"
 #include "controllers/AvailabilityController.h"
@@ -41,6 +42,7 @@ private:
     std::shared_ptr<AuthController> auth_controller_;
     std::shared_ptr<OAuthController> oauth_controller_;
     std::shared_ptr<TeamController> team_controller_;
+    std::shared_ptr<TeamCoachController> team_coach_controller_;
     std::shared_ptr<EventController> event_controller_;
     std::shared_ptr<DivisionController> division_controller_;
     std::shared_ptr<AvailabilityController> availability_controller_;
@@ -60,6 +62,7 @@ public:
         auth_controller_ = std::make_shared<AuthController>();
         oauth_controller_ = std::make_shared<OAuthController>();
         team_controller_ = std::make_shared<TeamController>();
+        team_coach_controller_ = std::make_shared<TeamCoachController>();
         event_controller_ = std::make_shared<EventController>();
         division_controller_ = std::make_shared<DivisionController>();
         availability_controller_ = std::make_shared<AvailabilityController>();
@@ -142,6 +145,7 @@ private:
         router_.useController("/api/auth", auth_controller_);
         router_.useController("/api/auth/google", oauth_controller_);
         router_.useController("/api/teams", team_controller_);
+        router_.useController("/api/teams", team_coach_controller_);
         router_.useController("/api/events", event_controller_);
         router_.useController("/api", division_controller_);
         router_.useController("/api", availability_controller_);
