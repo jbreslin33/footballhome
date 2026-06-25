@@ -19,6 +19,7 @@
 #include "controllers/TeamController.h"
 #include "controllers/TeamCoachController.h"
 #include "controllers/PersonOverrideController.h"
+#include "controllers/PersonMergeController.h"
 #include "controllers/EventController.h"
 #include "controllers/DivisionController.h"
 #include "controllers/AvailabilityController.h"
@@ -45,6 +46,7 @@ private:
     std::shared_ptr<TeamController> team_controller_;
     std::shared_ptr<TeamCoachController> team_coach_controller_;
     std::shared_ptr<PersonOverrideController> person_override_controller_;
+    std::shared_ptr<PersonMergeController> person_merge_controller_;
     std::shared_ptr<EventController> event_controller_;
     std::shared_ptr<DivisionController> division_controller_;
     std::shared_ptr<AvailabilityController> availability_controller_;
@@ -66,6 +68,7 @@ public:
         team_controller_ = std::make_shared<TeamController>();
         team_coach_controller_ = std::make_shared<TeamCoachController>();
         person_override_controller_ = std::make_shared<PersonOverrideController>();
+        person_merge_controller_ = std::make_shared<PersonMergeController>();
         event_controller_ = std::make_shared<EventController>();
         division_controller_ = std::make_shared<DivisionController>();
         availability_controller_ = std::make_shared<AvailabilityController>();
@@ -150,6 +153,7 @@ private:
         router_.useController("/api/teams", team_controller_);
         router_.useController("/api/teams", team_coach_controller_);
         router_.useController("/api/persons", person_override_controller_);
+        router_.useController("/api/persons", person_merge_controller_);
         router_.useController("/api/events", event_controller_);
         router_.useController("/api", division_controller_);
         router_.useController("/api", availability_controller_);
