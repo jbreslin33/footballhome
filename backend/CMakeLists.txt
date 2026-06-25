@@ -28,12 +28,14 @@ set(SOURCES
     src/models/User.cpp
     src/models/Team.cpp
     src/models/TeamCoach.cpp
+    src/models/PersonOverride.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/controllers/AuthController.cpp
     src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp
     src/controllers/TeamCoachController.cpp
+    src/controllers/PersonOverrideController.cpp
     src/controllers/EventController.cpp
     src/controllers/DivisionController.cpp
     src/controllers/AvailabilityController.cpp
