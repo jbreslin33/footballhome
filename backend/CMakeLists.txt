@@ -70,6 +70,7 @@ set(SOURCES
     src/controllers/ClubLaPoolController.cpp
     src/controllers/YouthRosterController.cpp
     src/controllers/MensRosterController.cpp
+    src/controllers/PersonBillingController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp

@@ -42,6 +42,23 @@ public:
     // map.get(uid) ?? { defaults, isDefault:true }
     static Row resolve(const Map& map, const std::string& leagueAppsUserId);
 
+    // ── Write side (Phase 9 — POST /api/person-billing*) ────────────
+    //
+    // upsert(): replace next_bill_date + next_bill_amount with the values
+    //   the admin typed in.  Always returns isDefault=false.
+    //
+    // markBilled(): bump next_bill_date forward one month.  If no row
+    //   exists yet, seed from DEFAULT_DATE + DEFAULT_AMOUNT and then
+    //   bump — so the first call yields (default + 1 month).
+    //
+    // Both write `updated_by_user_id = NULL` because the C++ bearer-only
+    // auth layer does not decode the JWT payload (matches Phase 8).
+    Row upsert    (long long leagueAppsUserId,
+                   const std::string& nextBillDateIso,
+                   double             nextBillAmount);
+
+    Row markBilled(long long leagueAppsUserId);
+
 private:
     Database* db_;
 };

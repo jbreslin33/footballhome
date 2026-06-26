@@ -34,6 +34,7 @@
 #include "controllers/ClubLaPoolController.h"
 #include "controllers/YouthRosterController.h"
 #include "controllers/MensRosterController.h"
+#include "controllers/PersonBillingController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
@@ -68,6 +69,7 @@ private:
     std::shared_ptr<ClubLaPoolController> club_la_pool_controller_;
     std::shared_ptr<YouthRosterController> youth_roster_controller_;
     std::shared_ptr<MensRosterController> mens_roster_controller_;
+    std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
@@ -97,6 +99,7 @@ public:
         club_la_pool_controller_ = std::make_shared<ClubLaPoolController>();
         youth_roster_controller_ = std::make_shared<YouthRosterController>();
         mens_roster_controller_ = std::make_shared<MensRosterController>();
+        person_billing_controller_ = std::make_shared<PersonBillingController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
@@ -206,6 +209,8 @@ private:
         router_.useController("/api/youth-roster", youth_roster_controller_);
         // Phase 8 — mens-roster (GET + /assign + /roster-status) ported to C++.
         router_.useController("/api/mens-roster", mens_roster_controller_);
+        // Phase 9 — person-billing (POST upsert + /mark-billed) ported to C++.
+        router_.useController("/api/person-billing", person_billing_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
         router_.useController("/api/social", social_controller_);
