@@ -1,0 +1,64 @@
+#pragma once
+#include <map>
+#include <optional>
+#include <string>
+
+class Database;
+
+// ────────────────────────────────────────────────────────────────────────────
+// LeadContact — model for the `lead_contacts` table (one row per outbound
+// touch the operator logged from the Leads page: text/email/whatsapp/call).
+//
+// The Leads page wants two things from this table:
+//   1) Per-lead "last contacted" badge counts (text + email).
+//   2) Aggregate windowed counts for the rate-limit warnings on the SMS
+//      composer (texts in the last 5min / hour / day / week, etc.).
+//
+// `LeadContact::insert` is the write side used by POST /api/leads/:id/contact;
+// `LeadContact::fetchStats` returns everything GET /api/leads/contact-stats
+// needs in two round-trips.
+// ────────────────────────────────────────────────────────────────────────────
+class LeadContact {
+public:
+    // The single inserted row, returned to the caller verbatim.
+    struct Row {
+        int id = 0;
+        int leadId = 0;
+        std::string channel;
+        std::string sentAtIso;       // YYYY-MM-DDTHH:MM:SS.sssZ
+        std::optional<std::string> status;
+    };
+
+    // Per-lead aggregate (text + email counts + last-touched timestamps).
+    struct PerLead {
+        int textCount = 0;
+        int emailCount = 0;
+        std::optional<std::string> lastTextAtIso;
+        std::optional<std::string> lastEmailAtIso;
+    };
+
+    // Rolling-window aggregates over the entire lead_contacts table.
+    struct Aggregates {
+        int texts5min   = 0;
+        int textsHour   = 0;
+        int textsDay    = 0;
+        int textsWeek   = 0;
+        int emailsDay   = 0;
+        int emailsWeek  = 0;
+    };
+
+    struct Stats {
+        std::map<int, PerLead> perLead;   // keyed by lead_id
+        Aggregates             aggregates;
+    };
+
+    // INSERT a contact row.  `contactedBy` is allowed to be null when the
+    // caller couldn't decode the JWT bearer (matches Node behavior).
+    static Row insert(int leadId,
+                      const std::string& channel,
+                      std::optional<int>          contactedBy,
+                      std::optional<std::string>  messageBody,
+                      std::optional<std::string>  status);
+
+    static Stats fetchStats();
+};

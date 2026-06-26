@@ -45,12 +45,15 @@ set(SOURCES
     src/models/MensTeamAssignments.cpp
     src/models/MensRoster.cpp
     src/models/ChatExternalMemberLinker.cpp
+    src/models/Lead.cpp
+    src/models/LeadContact.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/services/GroupMeService.cpp
     src/services/LeagueAppsService.cpp
     src/services/LaProgramSync.cpp
     src/services/SessionService.cpp
+    src/services/MetaLeadsService.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp
     src/controllers/EventRsvpController.cpp
@@ -74,6 +77,7 @@ set(SOURCES
     src/controllers/PersonBillingController.cpp
     src/controllers/ChatExternalMemberController.cpp
     src/controllers/AdminLaBackfillController.cpp
+    src/controllers/LeadsController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp

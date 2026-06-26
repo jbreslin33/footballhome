@@ -37,11 +37,13 @@
 #include "controllers/PersonBillingController.h"
 #include "controllers/ChatExternalMemberController.h"
 #include "controllers/AdminLaBackfillController.h"
+#include "controllers/LeadsController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
 #include "controllers/InternalRosterController.h"
 #include "controllers/PublicController.h"
+#include "services/MetaLeadsService.h"
 
 class HttpServer {
 private:
@@ -74,6 +76,7 @@ private:
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<ChatExternalMemberController> chat_external_member_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
+    std::shared_ptr<LeadsController> leads_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
@@ -106,6 +109,7 @@ public:
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         chat_external_member_controller_ = std::make_shared<ChatExternalMemberController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
+        leads_controller_ = std::make_shared<LeadsController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
@@ -145,6 +149,17 @@ public:
         
         // Start background schedulers
         social_controller_->startScheduler();
+
+        // Validate Meta Lead-Ads token in the background.  Failure leaves
+        // /api/leads/sync in degraded mode (the controller still returns
+        // 502 with per-form errors) but the rest of the server runs.
+        std::thread([]() {
+            try { MetaLeadsService::getInstance().validateToken(); }
+            catch (const std::exception& e) {
+                std::cerr << "MetaLeadsService::validateToken threw: "
+                          << e.what() << std::endl;
+            }
+        }).detach();
         
         // Create socket
         if (!createSocket()) {
@@ -222,6 +237,8 @@ private:
         // /api/admin/leagueapps-link/backfill (operator-driven persons sweep).
         router_.useController("/api/chat-external-members", chat_external_member_controller_);
         router_.useController("/api/admin", admin_la_backfill_controller_);
+        // Phase 11 — /api/leads* (Meta Lead-Ads triage surface).
+        router_.useController("/api/leads", leads_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
         router_.useController("/api/social", social_controller_);
