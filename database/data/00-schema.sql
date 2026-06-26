@@ -361,9 +361,9 @@ CREATE TABLE leagues (
     age_cutoff_month_day VARCHAR(5),  -- '09-01', '08-01' for school year cutoffs
     age_display_label VARCHAR(50),  -- 'Over 40', 'U19', 'Open', etc.
     
-    -- Sex restriction (leagues define gender groupings)
-    sex_restriction VARCHAR(20) CHECK (sex_restriction IN ('men', 'women', 'coed', 'mixed', 'open')),
-    
+    -- Sex restriction (FK to sex_restrictions lookup; seed in 067 migration)
+    sex_restriction_id INTEGER REFERENCES sex_restrictions(id),
+
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
     is_active BOOLEAN DEFAULT true,
@@ -380,13 +380,28 @@ COMMENT ON TABLE leagues IS 'Competitions run by organizations (APSL org runs AP
 COMMENT ON COLUMN leagues.organization_id IS 'Organization that runs this league (e.g., APSL, CASA)';
 COMMENT ON COLUMN leagues.sanctioned_by_governing_body_id IS 'Governing body that sanctions this league (e.g., USASA, NorCal)';
 
+-- sex_restrictions lookup (seeded so league inserts below resolve to FK ids)
+CREATE TABLE IF NOT EXISTS sex_restrictions (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(20) UNIQUE NOT NULL,
+    description TEXT,
+    sort_order  INTEGER NOT NULL DEFAULT 0
+);
+INSERT INTO sex_restrictions (name, description, sort_order) VALUES
+    ('men',   'Men only',                              10),
+    ('women', 'Women only',                            20),
+    ('coed',  'Coed (both sexes on same team)',        30),
+    ('mixed', 'Mixed (separate teams, same league)',   40),
+    ('open',  'Open / no sex restriction',             50)
+ON CONFLICT (name) DO NOTHING;
+
 -- Insert static leagues
-INSERT INTO leagues (id, organization_id, name, website_url, sex_restriction, source_system_id, is_active) VALUES
-    (1, 1, 'American Premier Soccer League', 'https://www.apslsoccer.com', 'open', 1, true),
-    (2, 2, 'CASA Select', 'https://www.casasoccerleagues.com', 'open', 2, true),
-    (3, 2, 'CASA Traditional', 'https://www.casasoccerleagues.com', 'open', 2, true),
-    (4, 3, 'Cosmopolitan Soccer League', 'https://www.cosmosoccerleague.com', 'open', 3, true),
-    (5, 4, 'EPSA Open State Cup', 'https://www.epsasoccer.org', 'men', NULL, true)
+INSERT INTO leagues (id, organization_id, name, website_url, sex_restriction_id, source_system_id, is_active) VALUES
+    (1, 1, 'American Premier Soccer League', 'https://www.apslsoccer.com', (SELECT id FROM sex_restrictions WHERE name='open'), 1, true),
+    (2, 2, 'CASA Select', 'https://www.casasoccerleagues.com', (SELECT id FROM sex_restrictions WHERE name='open'), 2, true),
+    (3, 2, 'CASA Traditional', 'https://www.casasoccerleagues.com', (SELECT id FROM sex_restrictions WHERE name='open'), 2, true),
+    (4, 3, 'Cosmopolitan Soccer League', 'https://www.cosmosoccerleague.com', (SELECT id FROM sex_restrictions WHERE name='open'), 3, true),
+    (5, 4, 'EPSA Open State Cup', 'https://www.epsasoccer.org', (SELECT id FROM sex_restrictions WHERE name='men'), NULL, true)
 ON CONFLICT (organization_id, name) DO NOTHING;
 
 SELECT setval('leagues_id_seq', (SELECT MAX(id) FROM leagues));
@@ -713,6 +728,7 @@ CREATE TABLE teams (
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(division_id, name),  -- Team name must be unique within division
     UNIQUE(source_system_id, external_id)  -- External IDs unique within source system
 );
@@ -1069,6 +1085,21 @@ CREATE INDEX idx_match_divisions_division ON match_divisions(division_id);
 -- 5d. SCHEDULING SYSTEM (Fully Normalized)
 -- ============================================================================
 
+-- schedule_statuses lookup (seeded so schedule_generations FK resolves)
+CREATE TABLE IF NOT EXISTS schedule_statuses (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(20) UNIQUE NOT NULL,
+    description TEXT,
+    is_terminal BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order  INTEGER NOT NULL DEFAULT 0
+);
+INSERT INTO schedule_statuses (name, description, is_terminal, sort_order) VALUES
+    ('pending',     'Queued, not yet started',  FALSE, 10),
+    ('in_progress', 'Currently generating',     FALSE, 20),
+    ('completed',   'Finished successfully',    TRUE,  30),
+    ('failed',      'Finished with an error',   TRUE,  40)
+ON CONFLICT (name) DO NOTHING;
+
 -- Parent table for a schedule generation job
 CREATE TABLE schedule_generations (
     id SERIAL PRIMARY KEY,
@@ -1076,7 +1107,7 @@ CREATE TABLE schedule_generations (
     season_start_date DATE NOT NULL,
     season_end_date DATE NOT NULL,
     algorithm_used VARCHAR(50),  -- 'round_robin', 'balanced_unbalanced', 'tournament_seeded'
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')),
+    status_id INTEGER REFERENCES schedule_statuses(id) DEFAULT (SELECT id FROM schedule_statuses WHERE name='pending'),
     generated_match_count INTEGER DEFAULT 0,
     error_message TEXT,
     created_by_user_id INTEGER REFERENCES users(id),
@@ -1085,7 +1116,7 @@ CREATE TABLE schedule_generations (
 );
 
 CREATE INDEX idx_schedule_generations_division ON schedule_generations(division_id);
-CREATE INDEX idx_schedule_generations_status ON schedule_generations(status);
+CREATE INDEX idx_schedule_generations_status ON schedule_generations(status_id);
 
 -- Key-value configuration options for schedule generation
 CREATE TABLE schedule_generation_options (
@@ -1792,3 +1823,30 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     filename VARCHAR(255) NOT NULL UNIQUE,
     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ============================================================================
+-- AUDIT TRIGGERS (auto-maintain updated_at on row UPDATE)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_persons_set_updated_at ON persons;
+CREATE TRIGGER trg_persons_set_updated_at
+    BEFORE UPDATE ON persons
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_teams_set_updated_at ON teams;
+CREATE TRIGGER trg_teams_set_updated_at
+    BEFORE UPDATE ON teams
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_users_set_updated_at ON users;
+CREATE TRIGGER trg_users_set_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
