@@ -39,12 +39,14 @@
 #include "controllers/AdminLaBackfillController.h"
 #include "controllers/LeadsController.h"
 #include "controllers/AdsController.h"
+#include "controllers/StreamController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
 #include "controllers/InternalRosterController.h"
 #include "controllers/PublicController.h"
 #include "services/MetaLeadsService.h"
+#include "services/LineupNotificationHub.h"
 
 class HttpServer {
 private:
@@ -79,6 +81,7 @@ private:
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<LeadsController> leads_controller_;
     std::shared_ptr<AdsController> ads_controller_;
+    std::shared_ptr<StreamController> stream_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
@@ -113,6 +116,7 @@ public:
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         leads_controller_ = std::make_shared<LeadsController>();
         ads_controller_ = std::make_shared<AdsController>();
+        stream_controller_ = std::make_shared<StreamController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
@@ -152,6 +156,13 @@ public:
         
         // Start background schedulers
         social_controller_->startScheduler();
+
+        // Phase 13 — start the LISTEN fh_lineups pump.  Spawns one thread
+        // that owns a dedicated pqxx::connection and fans NOTIFY payloads
+        // out to every /api/stream subscriber.  Reconnects with backoff on
+        // any pqxx error.
+        LineupNotificationHub::getInstance().start(
+            LineupNotificationHub::defaultConnString());
 
         // Validate Meta Lead-Ads token in the background.  Failure leaves
         // /api/leads/sync in degraded mode (the controller still returns
@@ -244,6 +255,10 @@ private:
         router_.useController("/api/leads", leads_controller_);
         // Phase 12 — /api/ads* (Meta Ads Marketing API surface).
         router_.useController("/api/ads", ads_controller_);
+        // Phase 13 — /api/stream (long-lived SSE channel for /dashboard#lineups).
+        // The LineupNotificationHub background thread (started in initialize())
+        // owns the LISTEN fh_lineups socket and fans NOTIFY payloads out.
+        router_.useController("/api", stream_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
         router_.useController("/api/social", social_controller_);
@@ -373,10 +388,20 @@ private:
             std::cout << "📨 " << request.toString() << std::endl;
             
             Response response = router_.handle(request);
-            
+
+            // Streaming responses (SSE) take ownership of the socket: the
+            // handler writes the HTTP preamble itself, registers with the
+            // long-lived publisher, and is responsible for the eventual
+            // close().  Skip the normal write + close path entirely.
+            if (response.isStream()) {
+                std::cout << "📤 stream takeover (fd " << client_fd << ")" << std::endl;
+                response.streamHandler()(client_fd);
+                return;
+            }
+
             // Send response
             std::string http_response = response.toHttpString();
-            send(client_fd, http_response.c_str(), http_response.length(), 0);
+            send(client_fd, http_response.c_str(), http_response.length(), MSG_NOSIGNAL);
             
             std::cout << "📤 " << response.toString() << std::endl;
             
@@ -386,7 +411,7 @@ private:
             // Send error response
             Response error_response = Response::internalError("Internal server error");
             std::string http_response = error_response.toHttpString();
-            send(client_fd, http_response.c_str(), http_response.length(), 0);
+            send(client_fd, http_response.c_str(), http_response.length(), MSG_NOSIGNAL);
         }
         
         close(client_fd);

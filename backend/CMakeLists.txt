@@ -55,6 +55,7 @@ set(SOURCES
     src/services/SessionService.cpp
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp
+    src/services/LineupNotificationHub.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp
     src/controllers/EventRsvpController.cpp
@@ -80,6 +81,7 @@ set(SOURCES
     src/controllers/AdminLaBackfillController.cpp
     src/controllers/LeadsController.cpp
     src/controllers/AdsController.cpp
+    src/controllers/StreamController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp

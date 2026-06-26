@@ -2,6 +2,7 @@
 #include <string>
 #include <unordered_map>
 #include <sstream>
+#include <functional>
 
 enum class HttpStatus {
     OK = 200,
@@ -21,11 +22,19 @@ enum class HttpStatus {
 };
 
 class Response {
+public:
+    // Long-lived streaming handler (used for SSE).  When set, the server
+    // hands the raw client socket to this callback INSTEAD of writing the
+    // normal response, and does NOT close the fd afterwards — ownership
+    // (including the eventual close()) transfers to the handler.
+    using StreamHandler = std::function<void(int client_fd)>;
+
 private:
     HttpStatus status_;
     std::unordered_map<std::string, std::string> headers_;
     std::string body_;
-    
+    StreamHandler stream_handler_;
+
     std::string getStatusText(HttpStatus status) const;
 
 public:
@@ -72,7 +81,12 @@ public:
     // HTTP response generation
     std::string toHttpString() const;
     size_t getContentLength() const { return body_.size(); }
-    
+
+    // Streaming hook — see StreamHandler above.
+    void setStreamHandler(StreamHandler handler) { stream_handler_ = std::move(handler); }
+    const StreamHandler& streamHandler() const { return stream_handler_; }
+    bool isStream() const { return static_cast<bool>(stream_handler_); }
+
     // Debug
     std::string toString() const;
 };
