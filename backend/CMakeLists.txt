@@ -24,6 +24,7 @@ set(SOURCES
     src/core/HttpClient.cpp
     src/core/JwtRS256.cpp
     src/core/Crypto.cpp
+    src/core/TeamLabel.cpp
     src/database/Database.cpp
     src/database/Model.cpp
     src/database/SqlFileLogger.cpp
@@ -36,10 +37,12 @@ set(SOURCES
     src/models/TeamReconciliation.cpp
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
+    src/models/LaPool.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/services/GroupMeService.cpp
     src/services/LeagueAppsService.cpp
+    src/services/LaProgramSync.cpp
     src/services/SessionService.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp
@@ -58,6 +61,7 @@ set(SOURCES
     src/controllers/TacticalBoardController.cpp
     src/controllers/StatsController.cpp
     src/controllers/ClubController.cpp
+    src/controllers/ClubLaPoolController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp

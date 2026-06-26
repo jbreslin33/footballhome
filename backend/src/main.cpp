@@ -31,6 +31,7 @@
 #include "controllers/TacticalBoardController.h"
 #include "controllers/StatsController.h"
 #include "controllers/ClubController.h"
+#include "controllers/ClubLaPoolController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
@@ -62,6 +63,7 @@ private:
     std::shared_ptr<TacticalBoardController> tactical_board_controller_;
     std::shared_ptr<StatsController> stats_controller_;
     std::shared_ptr<ClubController> club_controller_;
+    std::shared_ptr<ClubLaPoolController> club_la_pool_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
@@ -88,6 +90,7 @@ public:
         tactical_board_controller_ = std::make_shared<TacticalBoardController>();
         stats_controller_ = std::make_shared<StatsController>();
         club_controller_ = std::make_shared<ClubController>();
+        club_la_pool_controller_ = std::make_shared<ClubLaPoolController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
@@ -187,6 +190,10 @@ private:
         router_.useController("/api/system-admin", system_admin_controller_);
         router_.useController("/api/tactical-boards", tactical_board_controller_);
         router_.useController("/api/stats", stats_controller_);
+        // FH-native LA-pool list registered BEFORE the generic ClubController
+        // so /api/clubs/:clubId/la-pool resolves here (Phase 6) instead of
+        // the more generic club-detail handler.
+        router_.useController("/api/clubs", club_la_pool_controller_);
         router_.useController("/api/clubs", club_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
