@@ -38,6 +38,7 @@
 #include "controllers/ChatExternalMemberController.h"
 #include "controllers/AdminLaBackfillController.h"
 #include "controllers/LeadsController.h"
+#include "controllers/AdsController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
@@ -77,6 +78,7 @@ private:
     std::shared_ptr<ChatExternalMemberController> chat_external_member_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<LeadsController> leads_controller_;
+    std::shared_ptr<AdsController> ads_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
@@ -110,6 +112,7 @@ public:
         chat_external_member_controller_ = std::make_shared<ChatExternalMemberController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         leads_controller_ = std::make_shared<LeadsController>();
+        ads_controller_ = std::make_shared<AdsController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
@@ -239,6 +242,8 @@ private:
         router_.useController("/api/admin", admin_la_backfill_controller_);
         // Phase 11 — /api/leads* (Meta Lead-Ads triage surface).
         router_.useController("/api/leads", leads_controller_);
+        // Phase 12 — /api/ads* (Meta Ads Marketing API surface).
+        router_.useController("/api/ads", ads_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
         router_.useController("/api/social", social_controller_);
