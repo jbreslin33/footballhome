@@ -38,6 +38,9 @@ set(SOURCES
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
     src/models/LaPool.cpp
+    src/models/PersonBilling.cpp
+    src/models/YouthAgeGroups.cpp
+    src/models/YouthRoster.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/services/GroupMeService.cpp
@@ -62,6 +65,7 @@ set(SOURCES
     src/controllers/StatsController.cpp
     src/controllers/ClubController.cpp
     src/controllers/ClubLaPoolController.cpp
+    src/controllers/YouthRosterController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp

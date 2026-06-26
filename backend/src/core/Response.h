@@ -16,6 +16,7 @@ enum class HttpStatus {
     CONFLICT = 409,
     INTERNAL_SERVER_ERROR = 500,
     NOT_IMPLEMENTED = 501,
+    BAD_GATEWAY = 502,
     SERVICE_UNAVAILABLE = 503
 };
 

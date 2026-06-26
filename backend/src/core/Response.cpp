@@ -34,6 +34,7 @@ std::string Response::getStatusText(HttpStatus status) const {
         case HttpStatus::CONFLICT: return "Conflict";
         case HttpStatus::INTERNAL_SERVER_ERROR: return "Internal Server Error";
         case HttpStatus::NOT_IMPLEMENTED: return "Not Implemented";
+        case HttpStatus::BAD_GATEWAY: return "Bad Gateway";
         case HttpStatus::SERVICE_UNAVAILABLE: return "Service Unavailable";
         default: return "Unknown";
     }
