@@ -1,43 +1,44 @@
 'use strict';
+// =============================================================================
+// meta-leads-webhook
+// =============================================================================
+//
+// As of Phase 14 of the Node → C++ port, this service is reduced to ONE job:
+// receive Meta's lead-gen webhook callbacks and write the corresponding row
+// into the `leads` table.  Everything else (the /api/leads/* triage surface,
+// /api/ads/*, /api/stream SSE, /api/persons/*, reconciliation, magic-link
+// auth, RSVPs, etc.) is served by the C++ backend on :3001 — see the
+// per-phase commits in backend/ for details.
+//
+// Why this service still exists: Meta requires a *publicly reachable* HTTPS
+// endpoint that responds to its verify GET with the hub.challenge token and
+// accepts the POST callback payload.  Keeping the receiver in a separate
+// tiny Node service keeps the C++ build free of an Express-compatible HTTP
+// surface for the Meta-specific webhook semantics and means the Marketing
+// API webhook config (page subscriptions) never has to be re-pointed.
+//
+// Endpoints:
+//   GET  /webhook/meta-leads   Meta subscription verification handshake
+//   POST /webhook/meta-leads   leadgen notification → upsert into `leads`
+//
+// =============================================================================
+const express = require('express');
+const { Pool } = require('pg');
 
-const express      = require('express');
-const { Pool }     = require('pg');
-
-const app  = express();
+const app = express();
 app.use(express.json());
 
-// ── Config ────────────────────────────────────────────────────────────
-const PORT              = process.env.META_LEADS_PORT || 3003;
-const VERIFY_TOKEN      = process.env.META_LEADS_VERIFY_TOKEN;
-const LEADS_PAGE_ID     = process.env.META_PAGE_ID;
-// Prefer a stable Page token for lead fetches. Keep META_LEADS_TOKEN as fallback.
-const LEADS_TOKEN       = process.env.META_ADS_TOKEN || process.env.META_LEADS_TOKEN;
-const ADS_TOKEN         = process.env.META_ADS_TOKEN || process.env.META_LEADS_TOKEN;
-const AD_ACCOUNT_ID     = process.env.META_AD_ACCOUNT_ID || 'act_1792823854148245';
-const SYNC_TTL_MS       = parseInt(process.env.META_LEADS_SYNC_TTL_MS || '30000', 10);
-const FORM_IDS          = parseFormIds(
-  process.env.META_LEAD_FORM_IDS,
-  [
-    '1696381158350766',
-    '1052472267432735',
-    '1333581472007910',
-    '2062202517690808',
-    '875990184755538',
-    '1552835789741946',
-    '1668570657681917',
-    '1773598717166962',
-    '3249608418562710', // Youth (Grades 1–6)
-    '1704106777282059', // Boys Club (Grades 1–6)
-    '1571742281184926', // Girls Club (Grades 1–6)
-  ]
-);
-const API               = 'https://graph.facebook.com/v21.0';
-let lastSyncAtMs        = 0;
-let leadsTokenValidated = false;
+// ── Config ────────────────────────────────────────────────────────────────
+const PORT          = process.env.META_LEADS_PORT || 3003;
+const VERIFY_TOKEN  = process.env.META_LEADS_VERIFY_TOKEN;
+const LEADS_PAGE_ID = process.env.META_PAGE_ID;
+// Page-token preferred; LEADS_TOKEN is the historical fallback name.
+const LEADS_TOKEN   = process.env.META_ADS_TOKEN || process.env.META_LEADS_TOKEN;
+const API           = 'https://graph.facebook.com/v21.0';
 
-if (!VERIFY_TOKEN)   { console.error('Missing META_LEADS_VERIFY_TOKEN'); process.exit(1); }
-if (!LEADS_TOKEN)    { console.error('Missing META_ADS_TOKEN (or META_LEADS_TOKEN fallback)'); process.exit(1); }
-if (!LEADS_PAGE_ID)  { console.error('Missing META_PAGE_ID'); process.exit(1); }
+if (!VERIFY_TOKEN)  { console.error('Missing META_LEADS_VERIFY_TOKEN'); process.exit(1); }
+if (!LEADS_TOKEN)   { console.error('Missing META_ADS_TOKEN (or META_LEADS_TOKEN fallback)'); process.exit(1); }
+if (!LEADS_PAGE_ID) { console.error('Missing META_PAGE_ID'); process.exit(1); }
 
 const pool = new Pool({
   host:     process.env.POSTGRES_HOST     || 'db',
@@ -47,14 +48,9 @@ const pool = new Pool({
   password: process.env.POSTGRES_PASSWORD || 'footballhome_pass',
 });
 
-function parseFormIds(rawValue, fallback) {
-  if (!rawValue) return fallback;
-  return rawValue
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
+// ── Lead-row helpers ──────────────────────────────────────────────────────
+// `field_data` is Meta's response shape: [{name, values:[<single string>]}].
+// Flatten it to a plain {name: value} object before pulling fields out.
 function extractLeadFields(fieldData) {
   const fields = {};
   for (const field of (fieldData || [])) {
@@ -64,8 +60,8 @@ function extractLeadFields(fieldData) {
 }
 
 // Blocklist of leadgen_ids that should never be re-ingested.
-// Currently: 5 California leads from the APSL ad that ran against San Francisco
-// instead of Philadelphia (city-key bug, fixed 2026-06-08).
+// Currently: 5 California leads from the APSL ad that ran against San
+// Francisco instead of Philadelphia (city-key bug, fixed 2026-06-08).
 const EXCLUDED_LEADGEN_IDS = new Set([
   '1216620387131716', // Ann (707 CA)
   '2389328841559768', // Alberto Castillon (209 CA)
@@ -81,9 +77,9 @@ const EXCLUDED_LEADGEN_IDS = new Set([
 function normalizePreferredChannel(raw) {
   if (!raw) return null;
   const v = String(raw).trim().toLowerCase();
-  if (v === 'text'     || v === 'sms'      || v === 'phone text') return 'text';
-  if (v === 'email')                                               return 'email';
-  if (v === 'whatsapp' || v === 'whats app' || v === 'wa')         return 'whatsapp';
+  if (v === 'text'     || v === 'sms'       || v === 'phone text') return 'text';
+  if (v === 'email')                                                return 'email';
+  if (v === 'whatsapp' || v === 'whats app' || v === 'wa')          return 'whatsapp';
   return null;
 }
 
@@ -129,59 +125,9 @@ async function upsertLead(lead) {
   return fields;
 }
 
-async function fetchMetaJson(url) {
-  const metaRes = await fetch(url);
-  return metaRes.json();
-}
-
-async function syncFormLeads(formId) {
-  if (!leadsTokenValidated) {
-    throw new Error('META_LEADS_TOKEN not validated; sync disabled until token is fixed');
-  }
-
-  let url = `${API}/${formId}/leads?access_token=${encodeURIComponent(LEADS_TOKEN)}&limit=100&fields=id,created_time,field_data,ad_id,form_id,page_id`;
-  let insertedOrUpdated = 0;
-
-  while (url) {
-    const data = await fetchMetaJson(url);
-    if (data?.error) {
-      throw new Error(`Form ${formId}: ${data.error.message}`);
-    }
-
-    for (const lead of (data.data || [])) {
-      await upsertLead(lead);
-      insertedOrUpdated += 1;
-    }
-
-    url = data.paging?.next || null;
-  }
-
-  return insertedOrUpdated;
-}
-
-async function syncAllFormLeads() {
-  const nowMs = Date.now();
-  if (nowMs - lastSyncAtMs < SYNC_TTL_MS) {
-    return { syncedRows: 0, skippedByTtl: true, failedForms: [] };
-  }
-
-  let total = 0;
-  const failedForms = [];
-
-  for (const formId of FORM_IDS) {
-    try {
-      total += await syncFormLeads(formId);
-    } catch (err) {
-      failedForms.push({ formId, error: err.message });
-      console.error(`Meta leads sync error for form ${formId}: ${err.message}`);
-    }
-  }
-
-  lastSyncAtMs = nowMs;
-  return { syncedRows: total, skippedByTtl: false, failedForms };
-}
-
-// ── Meta webhook verification ─────────────────────────────────────────
+// ── Meta webhook verification ─────────────────────────────────────────────
+// Meta calls this once when the subscription is created and echoes back
+// the challenge string to confirm the receiver is reachable.
 app.get('/webhook/meta-leads', (req, res) => {
   const mode      = req.query['hub.mode'];
   const token     = req.query['hub.verify_token'];
@@ -194,9 +140,13 @@ app.get('/webhook/meta-leads', (req, res) => {
   res.sendStatus(403);
 });
 
-// ── Meta webhook receiver ─────────────────────────────────────────────
+// ── Meta webhook receiver ─────────────────────────────────────────────────
+// Meta retries aggressively on non-2xx, so we ACK first and do the DB work
+// in the background.  Every change with field === 'leadgen' triggers a
+// second Graph-API fetch for the full field_data (Meta's callback only
+// carries the leadgen_id), then a single UPSERT into `leads`.
 app.post('/webhook/meta-leads', async (req, res) => {
-  // Acknowledge immediately — Meta requires fast 200
+  // Acknowledge immediately — Meta requires fast 200.
   res.sendStatus(200);
 
   if (req.body?.object !== 'page') return;
@@ -209,7 +159,6 @@ app.post('/webhook/meta-leads', async (req, res) => {
       if (!leadgen_id) continue;
 
       try {
-        // Fetch full lead data from Meta
         const url = `${API}/${leadgen_id}?fields=field_data&access_token=${LEADS_TOKEN}`;
         const metaRes  = await fetch(url);
         const metaData = await metaRes.json();
@@ -235,595 +184,27 @@ app.post('/webhook/meta-leads', async (req, res) => {
   }
 });
 
-// ── GET /api/ads/preview — return active ads with creative details ────
-app.get('/api/ads/preview', requireAuth, async (req, res) => {
+// ── Startup: sanity-check the Meta token, then bind the listener ─────────
+// A bad token here only matters for the second Graph-API call in POST
+// /webhook/meta-leads.  We don't exit on failure — the receiver is still
+// useful for verifying the subscription via GET, and a bad token simply
+// means real-time leads land in the DB as raw_fields-only rows.
+async function validateLeadsToken() {
   try {
-    if (!ADS_TOKEN) {
-      return res.status(500).json({ error: 'Missing META_ADS_TOKEN configuration' });
+    const url = `${API}/${LEADS_PAGE_ID}?fields=id&access_token=${LEADS_TOKEN}`;
+    const metaRes = await fetch(url);
+    const data = await metaRes.json();
+    if (data?.error) {
+      console.error('Invalid Meta token (META_ADS_TOKEN/META_LEADS_TOKEN):', data.error.message);
+      console.error('Webhook will still verify, but POST callbacks may write rows with no field_data.');
+      return;
     }
-
-    const fields = [
-      'name', 'status', 'created_time',
-      'creative{name,body,title,image_url,object_story_spec}'
-    ].join(',');
-    const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${ADS_TOKEN}`;
-    const metaRes  = await fetch(url);
-    const metaData = await metaRes.json();
-
-    if (metaData.error) {
-      return res.status(502).json({ error: metaData.error.message });
-    }
-
-    // Collect unique image hashes for full-res lookup
-    const hashes = new Set();
-    for (const ad of metaData.data || []) {
-      const h = ad.creative?.object_story_spec?.link_data?.image_hash;
-      if (h) hashes.add(h);
-    }
-
-    // Fetch full-res image URLs by hash
-    const hashToUrl = {};
-    if (hashes.size > 0) {
-      const hashList = JSON.stringify([...hashes]);
-      const imgUrl = `${API}/${AD_ACCOUNT_ID}/adimages?hashes=${encodeURIComponent(hashList)}&fields=hash,url&access_token=${ADS_TOKEN}`;
-      const imgRes = await fetch(imgUrl);
-      const imgData = await imgRes.json();
-      for (const img of imgData.data || []) {
-        if (img.hash && img.url) hashToUrl[img.hash] = img.url;
-      }
-    }
-
-    const ads = (metaData.data || []).map(ad => {
-      const c    = ad.creative || {};
-      const spec = c.object_story_spec?.link_data || {};
-      const fullResUrl = spec.image_hash ? hashToUrl[spec.image_hash] : null;
-      return {
-        id:           ad.id,
-        name:         ad.name,
-        status:       ad.status,
-        created_time: ad.created_time || null,
-        headline:     c.title  || spec.name  || null,
-        body:         c.body   || spec.message || null,
-        image_url:    fullResUrl || c.image_url || null,
-        cta:          spec.call_to_action?.type || null,
-        link:         spec.link || null,
-      };
-    });
-
-    // Sort: PAUSED ads (awaiting review) first, then ACTIVE, then others.
-    // Within each group, newest created_time first so freshly created ads
-    // surface at the top of the review queue.
-    const STATUS_PRIORITY = { PAUSED: 0, ACTIVE: 1 };
-    ads.sort((a, b) => {
-      const pa = STATUS_PRIORITY[a.status] ?? 2;
-      const pb = STATUS_PRIORITY[b.status] ?? 2;
-      if (pa !== pb) return pa - pb;
-      const ta = a.created_time ? Date.parse(a.created_time) : 0;
-      const tb = b.created_time ? Date.parse(b.created_time) : 0;
-      return tb - ta;
-    });
-
-    res.json(ads);
+    console.log(`Meta leads token validated for page ${data.id}`);
   } catch (err) {
-    console.error('Error fetching ad preview:', err.message);
-    res.status(500).json({ error: 'Failed to fetch ads' });
-  }
-});
-
-// ── GET /api/ads/spend — aggregate spend stats per lead form ──────────
-async function fetchAdsTargetingRundown() {
-  if (!ADS_TOKEN) throw new Error('Missing META_ADS_TOKEN');
-
-  const fields = [
-    'id', 'name', 'effective_status', 'configured_status',
-    'adset{id,name,daily_budget,start_time,effective_status,targeting}',
-    'creative{object_story_spec{link_data{call_to_action}}}',
-    'insights.date_preset(maximum){spend,impressions,clicks,actions}',
-  ].join(',');
-  const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=200&access_token=${ADS_TOKEN}`;
-  const r = await fetch(url);
-  const j = await r.json();
-  if (j.error) throw new Error(j.error.message);
-
-  // Parse + summarize each ad
-  const ads = [];
-  for (const ad of (j.data || [])) {
-    const cta    = ad.creative?.object_story_spec?.link_data?.call_to_action;
-    const formId = cta?.value?.lead_gen_form_id || null;
-    const adset  = ad.adset || {};
-    const t      = adset.targeting || {};
-    const ins    = ad.insights?.data?.[0] || {};
-    const leadAction = (ins.actions || []).find(a =>
-      a.action_type === 'lead' || a.action_type === 'onsite_conversion.lead_grouped'
-    );
-
-    ads.push({
-      ad_id:        ad.id,
-      ad_name:      ad.name,
-      form_id:      formId,
-      status:       ad.effective_status,
-      adset_id:     adset.id,
-      adset_status: adset.effective_status,
-      daily_budget_usd: adset.daily_budget ? parseInt(adset.daily_budget, 10) / 100 : 0,
-      start_time:   adset.start_time || null,
-      geo:          summarizeGeo(t.geo_locations),
-      age_min:      t.age_min || null,
-      age_max:      t.age_max || null,
-      genders:      t.genders || null,
-      spend:        parseFloat(ins.spend || '0'),
-      impressions:  parseInt(ins.impressions || '0', 10),
-      clicks:       parseInt(ins.clicks || '0', 10),
-      leads:        leadAction ? parseInt(leadAction.value, 10) : 0,
-      regions:      [], // filled in below for active ads
-    });
-  }
-
-  // Region breakdown for ACTIVE ads (last 30d) — fetch in parallel
-  const activeAds = ads.filter(a => a.status === 'ACTIVE');
-  await Promise.all(activeAds.map(async (a) => {
-    try {
-      const ru = `${API}/${a.ad_id}/insights?breakdowns=region&fields=impressions,clicks,actions&date_preset=last_30d&limit=50&access_token=${ADS_TOKEN}`;
-      const rr = await fetch(ru);
-      const rj = await rr.json();
-      if (rj.error || !rj.data) return;
-      a.regions = rj.data.map(row => {
-        const la = (row.actions || []).find(x =>
-          x.action_type === 'lead' || x.action_type === 'onsite_conversion.lead_grouped'
-        );
-        return {
-          region:      row.region || 'Unknown',
-          impressions: parseInt(row.impressions || '0', 10),
-          clicks:      parseInt(row.clicks || '0', 10),
-          leads:       la ? parseInt(la.value, 10) : 0,
-        };
-      }).sort((x, y) => y.impressions - x.impressions);
-    } catch (_) { /* swallow per-ad region errors — keep rest of payload */ }
-  }));
-
-  return ads;
-}
-
-function summarizeGeo(g) {
-  if (!g) return { kind: 'none', label: '(no geo)' };
-  if (g.custom_locations && g.custom_locations[0]) {
-    const cl = g.custom_locations[0];
-    return {
-      kind:       'pin',
-      label:      `${cl.address_string || (cl.latitude + ',' + cl.longitude)} +${cl.radius}${cl.distance_unit === 'mile' ? 'mi' : 'km'}`,
-      address:    cl.address_string,
-      latitude:   cl.latitude,
-      longitude:  cl.longitude,
-      radius:     cl.radius,
-      unit:       cl.distance_unit,
-      location_types: g.location_types || [],
-    };
-  }
-  if (g.zips && g.zips[0]) {
-    // Explicit ZIP allowlist — stricter than radius. Show count + sample.
-    const keys   = g.zips.map(z => (z.key || '').replace(/^US:/, '')).filter(Boolean);
-    const states = new Set(keys.map(k => (k[0] === '0' ? 'NJ' : k[0] === '1' ? 'PA' : '?')));
-    return {
-      kind:           'zips',
-      label:          `${keys.length} ZIP allowlist (${[...states].sort().join('+')})`,
-      zips:           keys,
-      location_types: g.location_types || [],
-    };
-  }
-  if (g.cities && g.cities[0]) {
-    const c = g.cities[0];
-    return {
-      kind:           'city',
-      label:          `City ${c.name || c.key} +${c.radius}${c.distance_unit === 'mile' ? 'mi' : 'km'}`,
-      city:           c.name || c.key,
-      radius:         c.radius,
-      unit:           c.distance_unit,
-      location_types: g.location_types || [],
-    };
-  }
-  return { kind: 'other', label: '(geo set but unparsed)', location_types: g.location_types || [] };
-}
-
-app.get('/api/ads/targeting', requireAuth, async (req, res) => {
-  try {
-    const ads = await fetchAdsTargetingRundown();
-    res.json(ads);
-  } catch (err) {
-    console.error('Error fetching ad targeting:', err.message);
-    res.status(502).json({ error: err.message });
-  }
-});
-
-// ── GET /api/ads/:adId/preview — pop-out preview redirect ─────────────
-// Calls Meta's /{ad_id}/previews to get the iframe URL for the requested
-// placement, then 302-redirects the browser straight to it.  This keeps
-// the access token server-side (never leaks into page source) and gives
-// the leads page a clean target_blank link per ad.
-//
-// Format aliases (short → Meta's ad_format value):
-//   fb       → FACEBOOK_STORY_MOBILE
-//   feed     → MOBILE_FEED_STANDARD     (default — Facebook mobile feed)
-//   ig       → INSTAGRAM_STANDARD
-//   ig_story → INSTAGRAM_STORY
-//   ig_reels → INSTAGRAM_REELS
-//
-// Errors render as a small HTML page (not JSON) since this opens in a
-// new tab — JSON would be unhelpful to the coach.
-app.get('/api/ads/:adId/preview', requireAuth, async (req, res) => {
-  const FORMATS = {
-    feed:     'MOBILE_FEED_STANDARD',
-    fb:       'FACEBOOK_STORY_MOBILE',
-    ig:       'INSTAGRAM_STANDARD',
-    ig_story: 'INSTAGRAM_STORY',
-    ig_reels: 'INSTAGRAM_REELS',
-  };
-  const adId   = req.params.adId;
-  const fmtKey = (req.query.format || 'feed').toLowerCase();
-  const adFmt  = FORMATS[fmtKey] || fmtKey.toUpperCase(); // allow raw Meta key too
-
-  const errPage = (msg) => `<!DOCTYPE html><html><head><title>Preview error</title>
-    <style>body{font-family:system-ui;background:#0f172a;color:#e5e7eb;padding:40px;}
-    h1{color:#f59e0b;}code{background:#1f2937;padding:2px 6px;border-radius:3px;}</style></head>
-    <body><h1>⚠ Ad preview failed</h1><p>${msg}</p>
-    <p style="opacity:0.7;font-size:0.85rem;">ad_id: <code>${adId}</code> · format: <code>${adFmt}</code></p>
-    </body></html>`;
-
-  try {
-    if (!ADS_TOKEN) return res.status(500).type('html').send(errPage('Missing META_ADS_TOKEN on server.'));
-
-    const url = `${API}/${adId}/previews?ad_format=${encodeURIComponent(adFmt)}&access_token=${ADS_TOKEN}`;
-    const r   = await fetch(url);
-    const d   = await r.json();
-    if (d.error) return res.status(502).type('html').send(errPage(`Meta API: ${d.error.message}`));
-
-    const body = d?.data?.[0]?.body;
-    if (!body) return res.status(404).type('html').send(errPage('Meta returned no preview body (placement may not apply to this ad).'));
-
-    const m = body.match(/src="([^"]+)"/);
-    if (!m) return res.status(500).type('html').send(errPage('Could not extract iframe src from Meta response.'));
-    const iframeSrc = m[1].replace(/&amp;/g, '&');
-
-    // The iframe URL is what Meta would normally embed — opening it directly
-    // shows the same preview standalone.  Token is part of the URL but
-    // bounded to this preview only.
-    return res.redirect(302, iframeSrc);
-  } catch (err) {
-    return res.status(500).type('html').send(errPage(err.message));
-  }
-});
-
-// ── GET /api/ads/spend — aggregate spend stats per lead form ──────────
-app.get('/api/ads/spend', requireAuth, async (req, res) => {
-  try {
-    if (!ADS_TOKEN) {
-      return res.status(500).json({ error: 'Missing META_ADS_TOKEN configuration' });
-    }
-
-    const fields = [
-      'id', 'name', 'effective_status', 'configured_status',
-      'adset{id,daily_budget,start_time,end_time,effective_status,configured_status}',
-      'creative{object_story_spec{link_data{call_to_action}}}',
-      'insights.date_preset(maximum){spend,date_start,date_stop}',
-    ].join(',');
-    const url = `${API}/${AD_ACCOUNT_ID}/ads?fields=${encodeURIComponent(fields)}&limit=200&access_token=${ADS_TOKEN}`;
-    const metaRes  = await fetch(url);
-    const metaData = await metaRes.json();
-    if (metaData.error) return res.status(502).json({ error: metaData.error.message });
-
-    const byForm = {};
-    const now = Date.now();
-
-    for (const ad of (metaData.data || [])) {
-      const cta = ad.creative?.object_story_spec?.link_data?.call_to_action;
-      const formId = cta?.value?.lead_gen_form_id;
-      if (!formId) continue;
-
-      const adset = ad.adset || {};
-      const dailyBudgetUSD = adset.daily_budget ? parseInt(adset.daily_budget, 10) / 100 : 0;
-      const startMs = adset.start_time ? new Date(adset.start_time).getTime() : null;
-      const insightSpend = parseFloat(ad.insights?.data?.[0]?.spend || '0');
-
-      if (!byForm[formId]) {
-        byForm[formId] = {
-          form_id: formId,
-          daily_budget_usd: 0,
-          total_spend_usd: 0,
-          days_running: 0,
-          ad_active: false,
-        };
-      }
-      const slot = byForm[formId];
-      slot.daily_budget_usd += dailyBudgetUSD;
-      slot.total_spend_usd  += insightSpend;
-      if (startMs) {
-        const days = Math.max(0, Math.floor((now - startMs) / 86400000));
-        if (days > slot.days_running) slot.days_running = days;
-      }
-      const adActive = ad.effective_status === 'ACTIVE' && (adset.effective_status === 'ACTIVE');
-      if (adActive) slot.ad_active = true;
-    }
-
-    res.json(Object.values(byForm));
-  } catch (err) {
-    console.error('Error fetching ad spend:', err.message);
-    res.status(500).json({ error: 'Failed to fetch spend' });
-  }
-});
-
-// ── GET /api/leads — serve leads to frontend ──────────────────────────
-app.get('/api/leads', requireAuth, async (req, res) => {
-  let syncResult = { skippedByTtl: false, syncedRows: 0, failedForms: [] };
-
-  try {
-    syncResult = await syncAllFormLeads();
-  } catch (err) {
-    // Defensive fallback — leads endpoint should remain available using DB cache.
-    console.error('Unexpected Meta leads sync failure:', err.message);
-  }
-
-  try {
-    const result = await pool.query(
-      `SELECT id, leadgen_id, form_id, page_id, ad_id,
-              name, email, phone, raw_fields, preferred_channel, created_at
-       FROM leads
-       ORDER BY created_at DESC`
-    );
-
-    if (syncResult.skippedByTtl) {
-      console.log(`Meta leads sync skipped by TTL (${SYNC_TTL_MS}ms)`);
-    } else if (syncResult.failedForms.length) {
-      console.log(
-        `Meta leads partial sync before /api/leads: ${syncResult.syncedRows} rows refreshed, ${syncResult.failedForms.length} forms failed`
-      );
-    } else {
-      console.log(`Meta leads sync completed before /api/leads: ${syncResult.syncedRows} rows refreshed from ${FORM_IDS.length} forms`);
-    }
-
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching leads from DB:', err.message);
-    res.status(500).json({ error: 'Failed to fetch leads' });
-  }
-});
-
-// ── POST /api/leads/:id/contact — log a text/email/whatsapp/call send ─
-app.post('/api/leads/:id/contact', requireAuth, async (req, res) => {
-  const leadId = parseInt(req.params.id, 10);
-  const { channel, message_body, status } = req.body || {};
-  if (!leadId || !['text', 'email', 'whatsapp', 'call'].includes(channel)) {
-    return res.status(400).json({ error: 'leadId + channel(text|email|whatsapp|call) required' });
-  }
-  try {
-    const userId = parseInt(req.userId, 10);
-    const result = await pool.query(
-      `INSERT INTO lead_contacts (lead_id, channel, contacted_by, message_body, status)
-       VALUES ($1, $2, $3, $4, COALESCE($5, 'sent'))
-       RETURNING id, lead_id, channel, sent_at, status`,
-      [leadId, channel, Number.isFinite(userId) ? userId : null, message_body || null, status || null]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error logging contact:', err.message);
-    res.status(500).json({ error: 'Failed to log contact' });
-  }
-});
-
-// ── GET /api/leads/contact-stats — aggregates + per-lead touch summary ──
-app.get('/api/leads/contact-stats', requireAuth, async (req, res) => {
-  try {
-    // Per-lead summary
-    const perLead = await pool.query(
-      `SELECT lead_id,
-              COUNT(*) FILTER (WHERE channel='text')   AS text_count,
-              COUNT(*) FILTER (WHERE channel='email')  AS email_count,
-              MAX(sent_at) FILTER (WHERE channel='text')  AS last_text_at,
-              MAX(sent_at) FILTER (WHERE channel='email') AS last_email_at
-       FROM lead_contacts
-       GROUP BY lead_id`
-    );
-
-    // Aggregate windows (text-focused since SMS = bot-risk channel)
-    const agg = await pool.query(
-      `SELECT
-         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '5 minutes')  AS texts_5min,
-         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '1 hour')    AS texts_hour,
-         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '24 hours')  AS texts_day,
-         COUNT(*) FILTER (WHERE channel='text' AND sent_at >= NOW() - INTERVAL '7 days')    AS texts_week,
-         COUNT(*) FILTER (WHERE channel='email' AND sent_at >= NOW() - INTERVAL '24 hours') AS emails_day,
-         COUNT(*) FILTER (WHERE channel='email' AND sent_at >= NOW() - INTERVAL '7 days')   AS emails_week
-       FROM lead_contacts`
-    );
-
-    const perLeadMap = {};
-    for (const r of perLead.rows) {
-      perLeadMap[r.lead_id] = {
-        text_count:    Number(r.text_count),
-        email_count:   Number(r.email_count),
-        last_text_at:  r.last_text_at,
-        last_email_at: r.last_email_at,
-      };
-    }
-    res.json({
-      per_lead: perLeadMap,
-      aggregates: {
-        texts_5min:  Number(agg.rows[0].texts_5min),
-        texts_hour:  Number(agg.rows[0].texts_hour),
-        texts_day:   Number(agg.rows[0].texts_day),
-        texts_week:  Number(agg.rows[0].texts_week),
-        emails_day:  Number(agg.rows[0].emails_day),
-        emails_week: Number(agg.rows[0].emails_week),
-      },
-    });
-  } catch (err) {
-    console.error('Error fetching contact stats:', err.message);
-    res.status(500).json({ error: 'Failed to fetch contact stats' });
-  }
-});
-
-// ── GET /api/leads/next-pickup — next upcoming Philadelphia Pickup ────
-// Returns the next future event on the Philadelphia Pickup GroupMe chat
-// (chat_id = 5) so the leads page can pre-fill the "Pickup" reply snippet
-// with a concrete date/time/field.  Returns { event: null } if nothing's
-// scheduled — the snippet falls back to a generic chat invite.
-app.get('/api/leads/next-pickup', requireAuth, async (req, res) => {
-  const PICKUP_CHAT_ID = 5; // Philadelphia Pickup ⚽️
-  try {
-    const q = await pool.query(
-      `SELECT id, title, location, location_address, external_id,
-              COALESCE(start_at,
-                       (event_date + COALESCE(event_time, '00:00'::time)) AT TIME ZONE 'America/New_York'
-              ) AS start_at,
-              end_at
-         FROM chat_events
-        WHERE chat_id = $1
-          AND COALESCE(is_active, true) = true
-          AND COALESCE(start_at,
-                       (event_date + COALESCE(event_time, '00:00'::time)) AT TIME ZONE 'America/New_York'
-              ) > NOW()
-        ORDER BY 6 ASC
-        LIMIT 1`,
-      [PICKUP_CHAT_ID]
-    );
-    res.json({ event: q.rows[0] || null });
-  } catch (err) {
-    console.error('Error fetching next pickup:', err.message);
-    res.status(500).json({ error: 'Failed to fetch next pickup' });
-  }
-});
-
-// ── GET /api/leads/:id/vcard — download lead as vCard(s) ──────────────
-// Query: ?kind=self|parent|player|youth-pair
-//   self        — single contact (adult funnels): "FullName Lighthouse "
-//   parent      — single parent contact:           "FullName Lighthouse Parent "
-//   player      — single player placeholder:        "LastName Player Lighthouse "
-//   youth-pair  — BOTH parent + player placeholder in one .vcf (default for youth)
-app.get('/api/leads/:id/vcard', requireAuth, async (req, res) => {
-  const leadId = parseInt(req.params.id, 10);
-  const kind   = (req.query.kind || 'self').toString();
-  if (!leadId) return res.status(400).json({ error: 'leadId required' });
-
-  try {
-    const q = await pool.query(
-      `SELECT id, name, email, phone, raw_fields, created_at, form_id
-         FROM leads WHERE id=$1`, [leadId]);
-    if (!q.rows.length) return res.status(404).json({ error: 'Lead not found' });
-    const lead = q.rows[0];
-
-    const fullName = (lead.name || '').trim();
-    const parts = fullName.split(/\s+/);
-    const firstName = parts[0] || '';
-    const lastName  = parts.slice(1).join(' ') || '';
-
-    // vCard escape: backslash, comma, semicolon, newline
-    const esc = (s='') => String(s).replace(/\\/g, '\\\\').replace(/,/g, '\\,')
-                                   .replace(/;/g, '\\;').replace(/\r?\n/g, '\\n');
-    const dateStr = new Date(lead.created_at).toISOString().slice(0, 10);
-
-    const buildVCard = (displayName, fn, ln, opts = {}) => {
-      const lines = [
-        'BEGIN:VCARD',
-        'VERSION:3.0',
-        `FN:${esc(displayName)}`,
-        `N:${esc(ln)};${esc(fn)};;;`,
-      ];
-      if (opts.phone)  lines.push(`TEL;TYPE=CELL:${esc(opts.phone)}`);
-      if (opts.email)  lines.push(`EMAIL;TYPE=INTERNET:${esc(opts.email)}`);
-      lines.push(`ORG:${esc('Lighthouse 1893 SC')}`);
-      if (opts.note)   lines.push(`NOTE:${esc(opts.note)}`);
-      lines.push('END:VCARD');
-      return lines.join('\r\n');
-    };
-
-    const cards = [];
-    let downloadName;
-
-    if (kind === 'parent') {
-      cards.push(buildVCard(
-        `${fullName} Lighthouse Parent `,
-        firstName, lastName,
-        { phone: lead.phone, email: lead.email,
-          note: `Youth lead signup ${dateStr}. Edit name + add birth year after contact.` }
-      ));
-      downloadName = `${fullName.replace(/\s+/g, '_')}_Parent.vcf`;
-    } else if (kind === 'player') {
-      cards.push(buildVCard(
-        `${lastName || fullName} Player Lighthouse `,
-        '', lastName || fullName,
-        { note: `Youth player placeholder. Parent: ${fullName} (${lead.phone || ''}). Fill in first name + birth year after first contact.` }
-      ));
-      downloadName = `${(lastName || fullName).replace(/\s+/g, '_')}_PlayerPlaceholder.vcf`;
-    } else if (kind === 'youth-pair') {
-      cards.push(buildVCard(
-        `${fullName} Lighthouse Parent `,
-        firstName, lastName,
-        { phone: lead.phone, email: lead.email,
-          note: `Youth lead signup ${dateStr}. Edit name + add birth year after contact.` }
-      ));
-      cards.push(buildVCard(
-        `${lastName || fullName} Player Lighthouse `,
-        '', lastName || fullName,
-        { note: `Youth player placeholder. Parent: ${fullName} (${lead.phone || ''}). Fill in first name + birth year after first contact.` }
-      ));
-      downloadName = `${fullName.replace(/\s+/g, '_')}_Youth.vcf`;
-    } else {
-      // self — adult funnels (Brazil/PR/U23/APSL/etc)
-      cards.push(buildVCard(
-        `${fullName} Lighthouse `,
-        firstName, lastName,
-        { phone: lead.phone, email: lead.email,
-          note: `Lead signup ${dateStr}. Add birth year after confirming.` }
-      ));
-      downloadName = `${fullName.replace(/\s+/g, '_')}_Lighthouse.vcf`;
-    }
-
-    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
-    res.send(cards.join('\r\n') + '\r\n');
-  } catch (err) {
-    console.error('Error building vCard:', err.message);
-    res.status(500).json({ error: 'Failed to build vCard' });
-  }
-});
-
-// ── Auth middleware (JWT alg:none — matches C++ backend) ──────────────
-function requireAuth(req, res, next) {
-  const header = req.headers['authorization'] || '';
-  const token  = header.replace(/^Bearer\s+/i, '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-  // Decode payload (alg:none — no signature to verify)
-  try {
-    const parts   = token.split('.');
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-    if (!payload.userId) return res.status(401).json({ error: 'Unauthorized' });
-    req.userId = payload.userId;
-    next();
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' });
+    console.error('Token validation failed:', err.message);
   }
 }
 
-async function validateLeadsTokenOrExit() {
-  const url = `${API}/${LEADS_PAGE_ID}?fields=id&access_token=${LEADS_TOKEN}`;
-  const metaRes = await fetch(url);
-  const data = await metaRes.json();
-
-  if (data?.error) {
-    console.error('Invalid Meta token for webhook lead fetch (META_ADS_TOKEN or META_LEADS_TOKEN):', data.error.message);
-    console.error('Token must include page permissions and be valid for the configured page. Running in degraded mode (DB-only leads).');
-    leadsTokenValidated = false;
-    return;
-  }
-
-  leadsTokenValidated = true;
-  console.log(`Meta leads token validated for page ${data.id}`);
-}
-
-validateLeadsTokenOrExit()
-  .then(() => {
-    app.listen(PORT, () => console.log(`Meta leads webhook listening on :${PORT}`));
-  })
-  .catch((err) => {
-    console.error('Failed to validate META_LEADS_TOKEN:', err.message);
-    console.error('Running in degraded mode (DB-only leads).');
-    app.listen(PORT, () => console.log(`Meta leads webhook listening on :${PORT}`));
-  });
+validateLeadsToken().finally(() => {
+  app.listen(PORT, () => console.log(`Meta leads webhook listening on :${PORT}`));
+});

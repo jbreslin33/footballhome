@@ -113,11 +113,9 @@ services:
     env_file: ./env
     environment:
       POSTGRES_PASSWORD: footballhome_pass
-    volumes:
-      # Read-only mount of the LeagueApps API key dir so /api/youth-roster
-      # can sign JWTs to call the LeagueApps Public Data API.  We never
-      # write here — same files used by scripts/sync-leagueapps-*.py.
-      - ./config:/app/config:ro
+    # Phase 14: this service is now just the Meta leadgen webhook receiver.
+    # No /app/config mount needed — the LeagueApps PEM-signing flow lives in
+    # the C++ backend (LeagueAppsService) as of earlier phases.
     ports:
       - "3003:3003"
     networks:
