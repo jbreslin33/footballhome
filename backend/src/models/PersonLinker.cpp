@@ -59,7 +59,7 @@ std::string PersonLinker::birthDateIso(const json& rec) {
     return {};
 }
 
-PersonLinker::Result PersonLinker::linkLa(const json& rec) {
+PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
     Result out;
 
     // Extract the three identifying fields.
@@ -102,6 +102,7 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec) {
             {normalizeName(firstName), normalizeName(lastName)});
 
         int personId = 0;
+        bool needPersonInsert = false;
         if (!pHit.empty()) {
             const auto& row = pHit[0];
             const std::string rowIso = row["dob_iso"].is_null() ? std::string{} : row["dob_iso"].as<std::string>();
@@ -113,6 +114,22 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec) {
             }
             personId = row["id"].as<int>();
         } else {
+            needPersonInsert = true;
+        }
+
+        if (dryRun) {
+            // In dry-run mode never write.  Report what we WOULD do so the
+            // operator can audit before committing.
+            if (needPersonInsert) {
+                out.wouldCreatePerson = true;
+            } else {
+                out.wouldCreateAlias  = true;
+                out.personId          = personId;
+            }
+            return out;
+        }
+
+        if (needPersonInsert) {
             // 3. Insert new persons row.  birth_date is nullable in this schema.
             auto ins = db_->query(
                 "INSERT INTO persons (first_name, last_name, birth_date) "

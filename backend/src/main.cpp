@@ -35,6 +35,8 @@
 #include "controllers/YouthRosterController.h"
 #include "controllers/MensRosterController.h"
 #include "controllers/PersonBillingController.h"
+#include "controllers/ChatExternalMemberController.h"
+#include "controllers/AdminLaBackfillController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
@@ -70,6 +72,8 @@ private:
     std::shared_ptr<YouthRosterController> youth_roster_controller_;
     std::shared_ptr<MensRosterController> mens_roster_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
+    std::shared_ptr<ChatExternalMemberController> chat_external_member_controller_;
+    std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
@@ -100,6 +104,8 @@ public:
         youth_roster_controller_ = std::make_shared<YouthRosterController>();
         mens_roster_controller_ = std::make_shared<MensRosterController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
+        chat_external_member_controller_ = std::make_shared<ChatExternalMemberController>();
+        admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
@@ -211,6 +217,11 @@ private:
         router_.useController("/api/mens-roster", mens_roster_controller_);
         // Phase 9 — person-billing (POST upsert + /mark-billed) ported to C++.
         router_.useController("/api/person-billing", person_billing_controller_);
+        // Phase 10 — admin glue.  POST /api/chat-external-members/link
+        // (drag-link gesture on Lineups screen) and POST
+        // /api/admin/leagueapps-link/backfill (operator-driven persons sweep).
+        router_.useController("/api/chat-external-members", chat_external_member_controller_);
+        router_.useController("/api/admin", admin_la_backfill_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/groupme", groupme_controller_);
         router_.useController("/api/social", social_controller_);

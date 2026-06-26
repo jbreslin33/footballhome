@@ -44,6 +44,7 @@ set(SOURCES
     src/models/MensTeamColumns.cpp
     src/models/MensTeamAssignments.cpp
     src/models/MensRoster.cpp
+    src/models/ChatExternalMemberLinker.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/services/GroupMeService.cpp
@@ -71,6 +72,8 @@ set(SOURCES
     src/controllers/YouthRosterController.cpp
     src/controllers/MensRosterController.cpp
     src/controllers/PersonBillingController.cpp
+    src/controllers/ChatExternalMemberController.cpp
+    src/controllers/AdminLaBackfillController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp

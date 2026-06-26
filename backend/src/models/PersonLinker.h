@@ -24,6 +24,10 @@ public:
         int  personId       = 0;      // 0 if not linked (skip)
         bool created        = false;  // a new persons row was inserted
         bool aliasCreated   = false;
+        // Set instead of `created`/`aliasCreated` when `dryRun = true`.
+        // Mirrors Node's personLinker.linkLa(rec, {dryRun:true}) result.
+        bool wouldCreatePerson = false;
+        bool wouldCreateAlias  = false;
         std::string skipReason;       // e.g. "missing-la-userId", "dob-mismatch (...)"
         int  conflictPersonId = 0;    // only set for dob-mismatch
     };
@@ -32,7 +36,9 @@ public:
 
     // Find-or-create persons + alias from a LeagueApps registration record.
     // Always returns; never throws on schema-conformant input.
-    Result linkLa(const nlohmann::json& rec);
+    // `dryRun` mirrors Node's option: probe what would happen (set the
+    // `wouldCreate*` flags) without writing.
+    Result linkLa(const nlohmann::json& rec, bool dryRun = false);
 
 private:
     Database* db_;
