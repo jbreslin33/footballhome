@@ -79,15 +79,6 @@ private:
     Response handleGetApslPlayers(const Request& request);
     Response handleGetApslMatches(const Request& request);
     
-    Response handleGetGroupMeDashboard(const Request& request);
-    Response handleGetGroupMeGroups(const Request& request);
-    Response handleGetGroupMeLiveGroups(const Request& request);
-    Response handleGetGroupMeLiveGroupDetails(const Request& request);
-    Response handleGetGroupMeLiveMessages(const Request& request);
-    Response handleGetGroupMeLiveMembers(const Request& request);
-    Response handleGetGroupMeLiveEvents(const Request& request);
-    Response handleGetGroupMeCalendarEvents(const Request& request);
-    
     // Audit Logs
     Response handleGetAuditLogs(const Request& request);
     Response handleGetApiUsageLogs(const Request& request);

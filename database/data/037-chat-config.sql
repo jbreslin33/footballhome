@@ -4,7 +4,7 @@
 -- ============================================================================
 
 -- ============================================================================
--- 1. Chats (GroupMe groups linked to teams)
+-- 1. Chats (team chats kept for messaging integrations)
 -- ============================================================================
 
 -- APSL Lighthouse (team chat)
@@ -67,40 +67,11 @@ ON CONFLICT (id) DO UPDATE SET
     chat_type_id = EXCLUDED.chat_type_id;
 
 -- ============================================================================
--- 2. Chat Integrations (GroupMe API links)
+-- 2. Chat ID sequence advance (no provider integrations seeded)
 -- ============================================================================
 
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 1, 1, 1, '109785985', 'APSL Lighthouse',                 true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=1)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 4, 4, 1, '108640377', 'Training Lighthouse',             true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=4)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 5, 5, 1, '65284700',  'Philadelphia Pickup',             true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=5)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 6, 6, 1, '109786182', 'Lighthouse Boys Club Liga 1 & 2', true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=6)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 7, 7, 1, '109786278', 'Lighthouse Boys Club U23',        true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=7)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 8, 8, 1, '114866775', 'Brazil 🇧🇷 Trialists',             true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=8)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
-INSERT INTO chat_integrations (id, chat_id, provider_id, external_id, external_name, is_primary, sync_messages, sync_members, sync_events)
-SELECT 9, 9, 1, '114866725', 'Puerto Rico 🇵🇷 Trialists',        true, false, false, true WHERE EXISTS (SELECT 1 FROM chats WHERE id=9)
-ON CONFLICT (id) DO UPDATE SET chat_id=EXCLUDED.chat_id, provider_id=EXCLUDED.provider_id, external_id=EXCLUDED.external_id, external_name=EXCLUDED.external_name;
-
 -- Advance sequences past explicit IDs so future autoincrement INSERTs don't collide
-SELECT setval('chats_id_seq',              GREATEST((SELECT COALESCE(MAX(id), 1) FROM chats),              1));
-SELECT setval('chat_integrations_id_seq',  GREATEST((SELECT COALESCE(MAX(id), 1) FROM chat_integrations),  1));
+SELECT setval('chats_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM chats), 1));
 
 -- ============================================================================
 -- 3. Chat-Club Mappings (which clubs share which chats)

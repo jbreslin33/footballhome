@@ -35,7 +35,7 @@ make sync-apsl
 make sync-csl
 make sync-casa
 
-# Lighthouse-only refresh (APSL + CASA + GroupMe)
+# Lighthouse-only refresh (APSL + CASA)
 make sync-lighthouse
 ```
 
@@ -55,7 +55,7 @@ make sync-lighthouse
 
 ```bash
 make backup              # safety net (pg_dump → backups/)
-make sync-lighthouse     # Lighthouse 1893 SC + Boys Club + U23 + GroupMe
+make sync-lighthouse     # Lighthouse 1893 SC + Boys Club + U23
 make sync-apsl           # scrape → parse → curate → UPSERT
 make sync-csl            # scrape → parse → curate → UPSERT
 make sync-casa           # scrape → parse → curate → UPSERT
@@ -99,14 +99,6 @@ To install (already done on the dev machine):
 crontab -e
 # Add: 0 3 * * * /path/to/footballhome/scripts/backup-db.sh >> /path/to/footballhome/backups/cron.log 2>&1
 ```
-
-### GroupMe Sync
-
-```bash
-make sync-groupme        # sync RSVPs + events from all connected GroupMe groups
-```
-
-GroupMe chat integrations are configured in `database/data/037-chat-config.sql` (idempotent, auto-loaded on DB init).
 
 ### VPN for Scraping
 
@@ -273,9 +265,8 @@ When you find a duplicate or mismatch, add a `clubFamilies` entry and re-sync. T
 | APSL website | clubs, teams, matches, standings, rosters | `make sync-apsl` |
 | CSL website | clubs, teams, matches, standings, rosters | `make sync-csl` |
 | CASA website | clubs, teams, matches, standings, rosters | `make sync-casa` |
-| GroupMe API | group members, calendar events, RSVPs | `make sync-groupme` |
 
-For normal Lighthouse operations, use `make sync-lighthouse`. It runs APSL, CASA, and GroupMe in the expected order.
+For normal Lighthouse operations, use `make sync-lighthouse`. It runs APSL and CASA in the expected order.
 
 All sources follow the same pattern: fetch → parse → curate → UPSERT.
 
@@ -349,8 +340,7 @@ Run `make help` for the full list. Key targets:
 | `make sync-apsl` | Full sync: scrape → parse → curate → UPSERT |
 | `make sync-csl` | Full sync for CSL |
 | `make sync-casa` | Full sync for CASA |
-| `make sync-groupme` | Sync GroupMe RSVPs + events |
-| `make sync-lighthouse` | Lighthouse refresh: APSL + CASA + GroupMe |
+| `make sync-lighthouse` | Lighthouse refresh: APSL + CASA |
 | `make build` | Build images + start containers |
 | `make rebuild` | Destroy everything + fresh build (wipes DB) |
 | `make migrate` | Apply pending schema migrations (preserves data) |

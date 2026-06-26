@@ -19,7 +19,7 @@ Single-page application built with vanilla JavaScript, no frameworks. Runs in ng
 | Roster | roster-dashboard, roster-management, roster-category |
 | Match | match-list, match-detail, match-form, match-management, match-options, match-rsvp-management, MatchShareScreen |
 | Game Day | game-day-roster (player selection + Instagram card), game-day-lineup (formation builder) |
-| Practice | practice-list, practice-form, practice-management, practice-options, practice-rsvp-management, practice-attendance, training-attendance |
+| Practice | practice-list, practice-form, practice-management, practice-options, practice-rsvp-management, practice-attendance |
 | Division | DivisionSelectionScreen, DivisionMenuScreen, DivisionManagementScreen, DivisionRosterScreen |
 | Admin | admin-system, admin-club, admin-team, admin-entity-list, admin-level-selection, admin-sport-division |
 

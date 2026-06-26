@@ -16,7 +16,7 @@
 // `value` is stored as TEXT and may be NULL (= "blank out" the field).  The
 // resolver layer (Node `OverrideSource` today, future C++ `PersonResolver`
 // tomorrow) always reads this table FIRST and short-circuits the upstream
-// LeagueApps / GroupMe lookups when a row exists.
+// LeagueApps lookups when a row exists.
 //
 // Each operation runs as a single parameterised statement via the Database
 // connection pool — atomic without an explicit transaction.

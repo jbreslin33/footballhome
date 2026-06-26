@@ -46,7 +46,7 @@ class App {
       clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
       clubDetail: new ClubDetailScreen(this.navigation, this.auth),
       gameDayLineup: new GameDayLineupScreen(this.navigation, this.auth),
-      trainingAttendance: new TrainingAttendanceScreen(this.navigation, this.auth),
+      teamHub: new TeamHubScreen(this.navigation, this.auth),
       matchSocial: new MatchSocialScreen(this.navigation, this.auth),
       socialSchedule: new SocialScheduleScreen(this.navigation, this.auth),
       holidayPosts: new HolidayPostsScreen(this.navigation, this.auth),
@@ -55,13 +55,16 @@ class App {
       flyers: new FlyersScreen(this.navigation, this.auth),
       internalRoster: new InternalRosterScreen(this.navigation, this.auth),
       leads: new LeadsScreen(this.navigation, this.auth),
+      youthRoster: new YouthRosterScreen(this.navigation, this.auth),
+      messages: new MessagesScreen(this.navigation, this.auth),
+      lineups: new LineupsScreen(this.navigation, this.auth),
+      rsvp: new RsvpScreen(this.navigation, this.auth),
       adPreview: new AdPreviewScreen(this.navigation, this.auth),
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
       publicSchedule: new PublicScheduleScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
-    // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
     window.adminSystemScreen = this.screens.adminSystem;
     
     // Register all screens with the manager
@@ -103,7 +106,7 @@ class App {
     this.screenManager.register('club-directory', this.screens.clubDirectory);
     this.screenManager.register('club-detail', this.screens.clubDetail);
     this.screenManager.register('game-day-lineup', this.screens.gameDayLineup);
-    this.screenManager.register('training-attendance', this.screens.trainingAttendance);
+    this.screenManager.register('team-hub', this.screens.teamHub);
     this.screenManager.register('match-social', this.screens.matchSocial);
     this.screenManager.register('social-schedule', this.screens.socialSchedule);
     this.screenManager.register('holiday-posts', this.screens.holidayPosts);
@@ -112,6 +115,10 @@ class App {
     this.screenManager.register('flyers', this.screens.flyers);
     this.screenManager.register('internal-roster', this.screens.internalRoster);
     this.screenManager.register('leads', this.screens.leads);
+    this.screenManager.register('youth-roster', this.screens.youthRoster);
+    this.screenManager.register('messages', this.screens.messages);
+    this.screenManager.register('lineups', this.screens.lineups);
+    this.screenManager.register('rsvp', this.screens.rsvp);
     this.screenManager.register('ad-preview', this.screens.adPreview);
     this.screenManager.register('public-gameday', this.screens.publicGameday);
     this.screenManager.register('public-lineup', this.screens.publicLineup);
@@ -139,10 +146,27 @@ class App {
       return true;
     };
 
-    window.addEventListener('hashchange', () => { routePublic(); });
+    // FH-native magic-link landing — #rsvp/<chatEventId>.  Cookie session
+    // was set by /api/auth/magic-link/verify before this redirect, so the
+    // screen self-bootstraps with credentials-included fetches.
+    const routeRsvp = () => {
+      const m = (window.location.hash || '').match(/^#rsvp\/(\d+)$/);
+      if (!m) return false;
+      this.screenManager.show('rsvp', { chatEventId: m[1] });
+      return true;
+    };
+
+    window.addEventListener('hashchange', () => {
+      if (routePublic()) return;
+      if (routeRsvp())   return;
+    });
 
     if (routePublic()) {
       console.log('Routed to public team view');
+      return;
+    }
+    if (routeRsvp()) {
+      console.log('Routed to RSVP screen');
       return;
     }
 

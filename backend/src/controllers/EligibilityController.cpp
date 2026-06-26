@@ -189,39 +189,15 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                   << sessionArray << std::endl;
         
         std::string playerQuery = R"(
-            WITH has_chat AS (
-                -- Check if this team has any GroupMe chat member data
-                SELECT EXISTS(
-                    SELECT 1 FROM chats c
-                    JOIN chat_external_members cem ON cem.chat_id = c.id
-                    WHERE c.team_id = $1::int AND cem.person_id IS NOT NULL
-                ) as has_data
-            ),
-            chat_pool AS (
-                -- Player pool from GroupMe chat members (when chat data exists)
-                SELECT DISTINCT cem.person_id
-                FROM chat_external_members cem
-                JOIN chats c ON c.id = cem.chat_id
-                LEFT JOIN chat_non_players cnp
-                    ON cnp.person_id = cem.person_id
-                    OR cnp.external_username = cem.external_username
-                WHERE c.team_id = $1::int
-                  AND cem.person_id IS NOT NULL
-                  AND cnp.id IS NULL
-                  AND (SELECT has_data FROM has_chat)
-            ),
-            roster_pool AS (
-                -- Fallback: player pool from team roster (when no chat data)
+            WITH roster_pool AS (
+                -- Player pool from team roster
                 SELECT DISTINCT p.person_id
                 FROM rosters r
                 JOIN players p ON p.id = r.player_id
                 WHERE r.team_id = $1::int
                   AND r.left_at IS NULL
-                  AND NOT (SELECT has_data FROM has_chat)
             ),
             combined_pool AS (
-                SELECT person_id FROM chat_pool
-                UNION
                 SELECT person_id FROM roster_pool
             ),
             roster_players AS (
@@ -308,38 +284,14 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 FROM chat_events ce
                 WHERE ce.id = ANY($2::int[])
             ),
-            -- Map external GroupMe user IDs to person IDs (for training/pickup
-            -- RSVPs that have NULL person_id but valid external_user_id).
-            -- Reads both chat_external_members and external_identities so that
-            -- newly-linked users are picked up immediately.
-            user_person_map AS (
-                SELECT DISTINCT ON (external_user_id)
-                       external_user_id, person_id
-                FROM (
-                    SELECT cem.external_user_id,
-                           cem.person_id,
-                           cem.synced_at as ts
-                    FROM chat_external_members cem
-                    WHERE cem.person_id IS NOT NULL
-                    UNION ALL
-                    SELECT ei.external_user_id,
-                           ei.person_id,
-                           ei.last_synced_at as ts
-                    FROM external_identities ei
-                    WHERE ei.provider_id = 1
-                ) combined
-                ORDER BY external_user_id, ts DESC NULLS LAST
-            ),
             -- Resolve person_id for all RSVPs in the session window
             resolved_rsvps AS (
                 SELECT cer.chat_event_id,
-                       COALESCE(cer.person_id, upm.person_id) as person_id,
+                       cer.person_id,
                        COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) as eff_rsvp_status_id
                 FROM chat_event_rsvps cer
-                LEFT JOIN user_person_map upm ON upm.external_user_id = cer.external_user_id
-                                              AND cer.person_id IS NULL
                 WHERE cer.chat_event_id = ANY($2::int[])
-                  AND COALESCE(cer.person_id, upm.person_id) IS NOT NULL
+                  AND cer.person_id IS NOT NULL
             ),
             -- Unified attendance: per-session, manual overrides RSVP
             -- For each (player, session): use training_attendance if it exists,
@@ -379,14 +331,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 SELECT rp.player_id,
                        rs.name as rsvp_status
                 FROM roster_players rp
-                JOIN chat_event_rsvps cer ON (
-                    cer.person_id = rp.person_id
-                    OR (cer.person_id IS NULL AND EXISTS(
-                        SELECT 1 FROM user_person_map upm
-                        WHERE upm.external_user_id = cer.external_user_id
-                          AND upm.person_id = rp.person_id
-                    ))
-                )
+                JOIN chat_event_rsvps cer ON cer.person_id = rp.person_id
                 JOIN chat_events ce ON ce.id = cer.chat_event_id
                 JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
                 WHERE ce.match_id = $3::int
@@ -437,112 +382,6 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         
         pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId});
         
-        // Step 5: Check GroupMe sync freshness — match-specific
-        std::string groupmeStatus = "no_data";
-        std::string groupmeLastSync = "";
-        int groupmeMinutesAgo = -1;
-        bool syncedWithin5Min = false;
-        bool hasLinkedEvent = false;
-        int linkedChatEventId = 0;
-        int linkedGoingCount = 0;
-        int linkedNotGoingCount = 0;
-        int linkedNoResponseCount = 0;
-        std::string calendarLastSyncedAt = "";
-
-        try {
-            // First check: does this match have a linked GroupMe chat_event?
-            pqxx::result linkedResult = db_->query(
-                "SELECT ce.id "
-                "FROM chat_events ce "
-                "JOIN chats c ON c.id = ce.chat_id "
-                "WHERE ce.match_id = $1::int "
-                "ORDER BY CASE WHEN c.team_id = $2::int THEN 0 ELSE 1 END, ce.id DESC "
-                "LIMIT 1",
-                {matchId, teamId}
-            );
-            hasLinkedEvent = !linkedResult.empty();
-            if (hasLinkedEvent) {
-                linkedChatEventId = linkedResult[0]["id"].as<int>();
-                // Count going RSVPs (effective status = yes, id=1)
-                pqxx::result goingResult = db_->query(
-                    "SELECT COUNT(*) as cnt FROM chat_event_rsvps "
-                    "WHERE chat_event_id = $1::int "
-                    "  AND COALESCE(override_rsvp_status_id, rsvp_status_id) = 1",
-                    {std::to_string(linkedChatEventId)}
-                );
-                if (!goingResult.empty()) linkedGoingCount = goingResult[0]["cnt"].as<int>();
-                // Count not-going RSVPs
-                pqxx::result notGoingResult = db_->query(
-                    "SELECT COUNT(*) as cnt FROM chat_event_rsvps "
-                    "WHERE chat_event_id = $1::int "
-                    "  AND COALESCE(override_rsvp_status_id, rsvp_status_id) = 2",
-                    {std::to_string(linkedChatEventId)}
-                );
-                if (!notGoingResult.empty()) linkedNotGoingCount = notGoingResult[0]["cnt"].as<int>();
-                // Count no-response (in chat but no RSVP row)
-                pqxx::result noRspResult = db_->query(
-                    "SELECT COUNT(cem.external_user_id)::int as cnt "
-                    "FROM chat_external_members cem "
-                    "WHERE cem.chat_id = (SELECT chat_id FROM chat_events WHERE id = $1::int) "
-                    "  AND NOT EXISTS ( "
-                    "    SELECT 1 FROM chat_event_rsvps cer "
-                    "    WHERE cer.chat_event_id = $1::int "
-                    "      AND (cer.person_id = cem.person_id OR cer.external_user_id = cem.external_user_id) "
-                    "  )",
-                    {std::to_string(linkedChatEventId)}
-                );
-                if (!noRspResult.empty()) linkedNoResponseCount = noRspResult[0]["cnt"].as<int>();
-            }
-
-            if (hasLinkedEvent) {
-                // Check freshness of RSVPs specifically for this match
-                pqxx::result syncResult = db_->query(
-                    "SELECT MAX(cer.responded_at) as last_sync "
-                    "FROM chat_event_rsvps cer "
-                    "JOIN chat_events ce ON ce.id = cer.chat_event_id "
-                    "WHERE ce.match_id = $1::int",
-                    {matchId}
-                );
-                if (!syncResult.empty() && !syncResult[0]["last_sync"].is_null()) {
-                    groupmeLastSync = syncResult[0]["last_sync"].c_str();
-                    pqxx::result ageResult = db_->query(
-                        "SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1::timestamp)) / 60 as minutes_ago",
-                        {groupmeLastSync}
-                    );
-                    if (!ageResult.empty()) {
-                        groupmeMinutesAgo = static_cast<int>(ageResult[0]["minutes_ago"].as<double>());
-                        syncedWithin5Min = (groupmeMinutesAgo >= 0 && groupmeMinutesAgo <= 5);
-                        if (groupmeMinutesAgo <= 5) {
-                            groupmeStatus = "fresh";
-                        } else if (groupmeMinutesAgo <= 60) {
-                            groupmeStatus = "stale";
-                        } else {
-                            groupmeStatus = "very_stale";
-                        }
-                    }
-                } else {
-                    // Event linked but no RSVPs yet synced
-                    groupmeStatus = "not_synced";
-                }
-            }
-            // else: no linked event → status stays "no_data"
-
-            // Get calendar last_synced_at from chat_integrations for this team's chat
-            pqxx::result calSyncResult = db_->query(
-                "SELECT ci.last_synced_at::text as synced_at "
-                "FROM chat_integrations ci "
-                "JOIN chats c ON c.id = ci.chat_id "
-                "WHERE c.team_id = $1::int AND ci.provider_id = 1 "
-                "LIMIT 1",
-                {teamId}
-            );
-            if (!calSyncResult.empty() && !calSyncResult[0]["synced_at"].is_null()) {
-                calendarLastSyncedAt = calSyncResult[0]["synced_at"].c_str();
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "⚠️ GroupMe freshness check failed: " << e.what() << std::endl;
-        }
-        
         // Step 6: Build response JSON
         std::ostringstream json;
         json << "{\"success\":true,\"data\":{";
@@ -556,40 +395,6 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"awayTeam\":\"" << escapeJson(awayTeamName) << "\"";
         json << "},";
         
-        // GroupMe sync status
-        json << "\"groupmeSync\":{";
-        json << "\"status\":\"" << groupmeStatus << "\"";
-        json << ",\"hasLinkedEvent\":" << (hasLinkedEvent ? "true" : "false");
-        json << ",\"isFresh5Min\":" << (syncedWithin5Min ? "true" : "false");
-        if (linkedChatEventId > 0) json << ",\"chatEventId\":" << linkedChatEventId;
-        if (linkedGoingCount > 0) json << ",\"goingCount\":" << linkedGoingCount;
-        if (linkedNotGoingCount > 0) json << ",\"notGoingCount\":" << linkedNotGoingCount;
-        if (linkedNoResponseCount > 0) json << ",\"noResponseCount\":" << linkedNoResponseCount;
-        if (!groupmeLastSync.empty()) {
-            // Convert Postgres "YYYY-MM-DD HH:MM:SS" (UTC) to ISO 8601 "YYYY-MM-DDTHH:MM:SSZ"
-            // so JavaScript's new Date() parses it as UTC, not local time.
-            std::string isoSync = groupmeLastSync;
-            auto spacePos = isoSync.find(' ');
-            if (spacePos != std::string::npos) isoSync[spacePos] = 'T';
-            // Trim microseconds if present, then append Z
-            auto dotPos = isoSync.find('.');
-            if (dotPos != std::string::npos) isoSync = isoSync.substr(0, dotPos);
-            isoSync += "Z";
-            json << ",\"lastSync\":\"" << isoSync << "\"";
-            json << ",\"minutesAgo\":" << groupmeMinutesAgo;
-        }
-        if (!calendarLastSyncedAt.empty()) {
-            // ISO-8601 timestamp of last sync-calendar run for this team
-            std::string isoCalSync = calendarLastSyncedAt;
-            auto sp = isoCalSync.find(' ');
-            if (sp != std::string::npos) isoCalSync[sp] = 'T';
-            auto dp = isoCalSync.find('.');
-            if (dp != std::string::npos) isoCalSync = isoCalSync.substr(0, dp);
-            isoCalSync += "Z";
-            json << ",\"calendarLastSyncedAt\":\"" << isoCalSync << "\"";
-        }
-        json << "},";
-
         // Policy info
         json << "\"policy\":{";
         json << "\"lookbackCount\":" << policy.lookback_count << ",";
@@ -750,34 +555,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         
         json << "],";
         
-        // Step 6b: Get unmatched GroupMe RSVP users (person_id IS NULL)
-        json << "\"unmatchedRsvps\":[";
-        try {
-            pqxx::result unmatchedResult = db_->query(R"(
-                SELECT cer.external_user_id, cer.external_username, rs.name as rsvp_status
-                FROM chat_event_rsvps cer
-                JOIN chat_events ce ON ce.id = cer.chat_event_id
-                JOIN chats c ON c.id = ce.chat_id
-                JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
-                WHERE ce.match_id = $1::int AND c.team_id = $2::int
-                  AND cer.person_id IS NULL
-                ORDER BY cer.external_username
-            )", {matchId, teamId});
-            
-            bool firstUnmatched = true;
-            for (const auto& row : unmatchedResult) {
-                if (!firstUnmatched) json << ",";
-                firstUnmatched = false;
-                json << "{";
-                json << "\"externalUserId\":\"" << escapeJson(row["external_user_id"].c_str()) << "\",";
-                json << "\"externalUsername\":\"" << escapeJson(row["external_username"].c_str()) << "\",";
-                json << "\"matchRsvp\":\"" << row["rsvp_status"].c_str() << "\"";
-                json << "}";
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "⚠️ Unmatched RSVPs query failed: " << e.what() << std::endl;
-        }
-        json << "],";
+        // Unmatched RSVPs (RSVPs in chat_event_rsvps with no person_id linked).
+        // Always empty now that chat sync providers are gone; kept as a stable
+        // field so the frontend response shape stays the same.
+        json << "\"unmatchedRsvps\":[],";
         
         json << "\"priorityStarterCount\":" << priorityStarterCount << ",";
         json << "\"priorityStarterSlots\":" << policy.priority_starter_slots << ",";
@@ -1348,34 +1129,17 @@ Response EligibilityController::handleGetPlayerAttendance(const Request& request
         std::string personId = personResult[0]["person_id"].c_str();
 
         // Query sessions with attendance + RSVP status for this player.
-        // Returns raw GroupMe RSVP and override separately.
+        // Returns raw RSVP and override separately.
         // Also handles game sessions where attendance is stored via match_id.
         std::string query = R"(
-            WITH user_person_map AS (
-                SELECT DISTINCT ON (external_user_id)
-                       external_user_id, person_id
-                FROM (
-                    SELECT cem.external_user_id, cem.person_id, cem.synced_at as ts
-                    FROM chat_external_members cem
-                    WHERE cem.person_id IS NOT NULL
-                    UNION ALL
-                    SELECT ei.external_user_id, ei.person_id, ei.last_synced_at as ts
-                    FROM external_identities ei
-                    WHERE ei.provider_id = 1
-                ) combined
-                ORDER BY external_user_id, ts DESC NULLS LAST
-            ),
-            resolved_rsvps AS (
+            WITH resolved_rsvps AS (
                 SELECT cer.chat_event_id,
                        rs.name  AS raw_rsvp_status,
                        ors.name AS override_rsvp_status
                 FROM chat_event_rsvps cer
-                LEFT JOIN user_person_map upm
-                    ON upm.external_user_id = cer.external_user_id
-                    AND cer.person_id IS NULL
                 LEFT JOIN rsvp_statuses rs  ON rs.id  = cer.rsvp_status_id
                 LEFT JOIN rsvp_statuses ors ON ors.id = cer.override_rsvp_status_id
-                WHERE (cer.person_id = $3::int OR upm.person_id = $3::int)
+                WHERE cer.person_id = $3::int
                   AND cer.chat_event_id = ANY($1::int[])
             )
             SELECT ce.id as session_id,
@@ -1592,7 +1356,7 @@ std::vector<int> EligibilityController::getRecentSessionIds(
 
     std::vector<int> sessionIds;
 
-    // Universal rule (matches GroupMeController + EventController lineup query):
+    // Universal rule (matches EventController lineup query):
     //   • Sessions come from the two global chats: Training Lighthouse and
     //     Philadelphia Pickup (no team/club scoping — these are the cross-team
     //     practice/pickup groups).

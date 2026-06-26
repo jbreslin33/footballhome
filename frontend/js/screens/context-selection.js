@@ -165,19 +165,27 @@ class ContextSelectionScreen extends Screen {
       }
       
       this.renderList('#context-list', teams,
-        team => `
-          <button class="btn btn-lg btn-primary context-option" 
-                  data-context-id="${team.id}" 
-                  data-context-name="${team.display_name || team.name}"
-                  data-context-type="team"
-                  data-club-id="${team.club_id || ''}"
-                  style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
-            <h3 style="margin: 0; font-size: 1.2rem;">⚽ ${team.display_name || team.name}</h3>
-            <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
-              ${team.player_count ? team.player_count + ' players' : 'Team'}
-            </p>
-          </button>
-        `,
+        team => {
+          // Prefer chat name if one exists, else fall back to display/team name.
+          const label = team.chat_name || team.display_name || team.name;
+          const subtitle = team.player_count
+            ? `${team.player_count} player${team.player_count === 1 ? '' : 's'}`
+            : 'Team';
+          return `
+            <button class="btn btn-lg btn-primary context-option"
+                    data-context-id="${team.id}"
+                    data-context-name="${label}"
+                    data-context-type="team"
+                    data-club-id="${team.club_id || ''}"
+                    data-chat-id="${team.chat_id || ''}"
+                    style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
+              <h3 style="margin: 0; font-size: 1.2rem;">⚽ ${label}</h3>
+              <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
+                ${subtitle}
+              </p>
+            </button>
+          `;
+        },
         '<div class="empty-state"><p>No teams available</p></div>'
       );
     });

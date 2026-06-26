@@ -123,15 +123,6 @@ Response InternalRosterController::handleGetRoster(const Request& request) {
                   AND s.name = '2025/2026'
                   AND t.name ILIKE 'Lighthouse%'
                 UNION
-                -- GroupMe members resolved to persons (excluding Pickup and Training)
-                SELECT DISTINCT pl.id AS player_id
-                FROM chat_external_members cem
-                JOIN chats c  ON c.id  = cem.chat_id
-                JOIN players pl ON pl.person_id = cem.person_id
-                WHERE cem.person_id IS NOT NULL
-                  AND c.name NOT ILIKE '%Philadelphia Pickup%'
-                  AND c.name NOT ILIKE '%Training%'
-                UNION
                 -- Anyone already placed in a working roster
                 SELECT DISTINCT player_id
                 FROM working_rosters
@@ -190,13 +181,7 @@ Response InternalRosterController::handleGetRoster(const Request& request) {
                 p.is_designated,
                 p.is_child,
                 COALESCE(p.num_clubs, 1)                               AS num_clubs,
-                ppn.position,
-                (SELECT STRING_AGG(DISTINCT c2.name, ', ' ORDER BY c2.name)
-                 FROM chat_external_members cem2
-                 JOIN chats c2 ON c2.id = cem2.chat_id
-                 WHERE cem2.person_id = per.id
-                   AND c2.name NOT ILIKE '%Philadelphia Pickup%'
-                   AND c2.name NOT ILIKE '%Training%')               AS groupme_chats
+                ppn.position
             FROM lighthouse_pool lp
             JOIN players  p   ON p.id  = lp.player_id
             JOIN persons  per ON per.id = p.person_id
@@ -262,8 +247,7 @@ Response InternalRosterController::handleGetRoster(const Request& request) {
                  << "\"isDesignated\":"        << boolVal("is_designated") << ","
                  << "\"isChild\":"             << boolVal("is_child") << ","
                  << "\"numClubs\":"            << row["num_clubs"].as<int>() << ","
-                 << "\"position\":"            << nullOrStr("position") << ","
-                 << "\"groupMeChats\":"        << nullOrStr("groupme_chats")
+                 << "\"position\":"            << nullOrStr("position")
                  << "}";
         }
         json << "]";

@@ -424,7 +424,7 @@ class SocialPostCard {
     const venueStr = this.buildVenueString(m);
     const competitionText = `${m.competition_name || ''} ${m.division_name || ''}`;
     const isCasa = (m.source_name === 'casa') || /casa|liga\s*[12]/i.test(competitionText);
-    const isCustomMatch = !m.source_name; // GroupMe calendar-synced or manually created (no source system)
+    const isCustomMatch = !m.source_name; // calendar-synced or manually created (no source system)
 
     // Fetch accolades for both teams
     const homeTeamId = m.home_team_id || null;

@@ -9,7 +9,7 @@
 /**
  * IdentityService - Business logic for external identity management
  * 
- * Handles fetching, filtering, and linking of external identities (GroupMe, etc.)
+ * Handles fetching, filtering, and linking of external identities.
  * to system users.
  */
 class IdentityService {

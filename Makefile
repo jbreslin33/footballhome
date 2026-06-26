@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-groupme sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 lighthouse-groupme lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty lighthouse-groupme-brazil lighthouse-groupme-puertorico
+.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -32,20 +32,13 @@ help:
 	@echo "  make lighthouse-casa                  CASA: both Lighthouse divisions"
 	@echo "    make lighthouse-casa-liga1        └─ Philadelphia Liga 1 (Lighthouse Boys Club)"
 	@echo "    make lighthouse-casa-liga2        └─ Philadelphia Liga 2 (Lighthouse Boys Club U23)"
-	@echo "  make lighthouse-groupme               GroupMe: all 5 Lighthouse chats"
-	@echo "    make lighthouse-groupme-apsl      └─ APSL Lighthouse chat"
-	@echo "    make lighthouse-groupme-liga1     └─ Lighthouse Boys Club Liga 1 & 2 chat"
-	@echo "    make lighthouse-groupme-liga2     └─ Lighthouse Boys Club U23 chat"
-	@echo "    make lighthouse-groupme-training  └─ Training Lighthouse chat"
-	@echo "    make lighthouse-groupme-pickup    └─ Philadelphia Pickup chat"
 	@echo ""
 	@echo "Sync (legacy whole-league — idempotent, safe to run anytime):"
-	@echo "  make sync          Sync all leagues + GroupMe"
-	@echo "  make sync-lighthouse Sync Lighthouse-only APSL + CASA + GroupMe"
+	@echo "  make sync          Sync all leagues"
+	@echo "  make sync-lighthouse Sync Lighthouse-only APSL + CASA"
 	@echo "  make sync-apsl     Sync APSL only"
 	@echo "  make sync-csl      Sync CSL only"
 	@echo "  make sync-casa     Sync CASA only"
-	@echo "  make sync-groupme  Sync GroupMe events + RSVPs"
 	@echo ""
 	@echo "Containers:"
 	@echo "  make build         Build images and start containers"
@@ -320,11 +313,10 @@ events-csl:
 # ============================================================
 # Sync (primary workflow: scrape → parse → UPSERT, idempotent)
 #
-# Full sync runs in 4 phases:
+# Full sync runs in 3 phases:
 #   Phase 1: Scrape all leagues in parallel (network I/O)
 #   Phase 2: Parse in dependency order (curation chain: APSL → CSL → CASA)
 #   Phase 3: Load in dependency order
-#   Phase 4: Sync GroupMe events + RSVPs (needs teams loaded first)
 #
 # Individual sync-* targets still run sequentially per league.
 # ============================================================
@@ -349,12 +341,7 @@ sync:
 	@$(MAKE) load-csl
 	@$(MAKE) load-casa
 	@echo ""
-	@echo "✓ All leagues synced"
-	@echo ""
-	@echo "💬 Phase 4: Syncing GroupMe events + RSVPs..."
-	@$(MAKE) sync-groupme
-	@echo ""
-	@echo "✓ Full sync complete (leagues + GroupMe)"
+	@echo "✓ Full sync complete"
 
 sync-apsl: scrape-apsl parse-apsl load-apsl
 	@echo "✓ APSL synced"
@@ -369,13 +356,7 @@ sync-lighthouse:
 	@echo "⏬ Syncing Lighthouse leagues..."
 	@FORCE_SCRAPE=1 LIGHTHOUSE_ONLY=1 $(MAKE) sync-apsl
 	@LIGHTHOUSE_ONLY=1 $(MAKE) sync-casa
-	@$(MAKE) sync-groupme
-	@echo "✓ Lighthouse synced (APSL + CASA + GroupMe)"
-
-sync-groupme:
-	@echo "💬 Syncing GroupMe events + RSVPs..."
-	@node scripts/sync-groupme-events.js
-	@echo "✓ GroupMe synced"
+	@echo "✓ Lighthouse synced (APSL + CASA)"
 
 # ============================================================
 # Lighthouse-focused targets
@@ -429,50 +410,10 @@ lighthouse-casa-liga2:
 lighthouse-casa: lighthouse-casa-liga1 lighthouse-casa-liga2
 	@echo "✅ lighthouse-casa done (Liga 1 + Liga 2)"
 
-# ── GroupMe ────────────────────────────────────────────────────────────
-lighthouse-groupme-apsl:
-	@echo "💬 Lighthouse → GroupMe: APSL Lighthouse..."
-	@node scripts/sync-groupme-events.js --group "APSL Lighthouse"
-
-lighthouse-groupme-liga1:
-	@echo "💬 Lighthouse → GroupMe: Lighthouse Boys Club Liga 1 & 2..."
-	@node scripts/sync-groupme-events.js --group "Lighthouse Boys Club Liga 1 & 2"
-
-lighthouse-groupme-liga2:
-	@echo "💬 Lighthouse → GroupMe: Lighthouse Boys Club U23..."
-	@node scripts/sync-groupme-events.js --group "Lighthouse Boys Club U23"
-
-lighthouse-groupme-training:
-	@echo "💬 Lighthouse → GroupMe: Training Lighthouse..."
-	@node scripts/sync-groupme-events.js --group "Training Lighthouse"
-
-lighthouse-groupme-pickup:
-	@echo "💬 Lighthouse → GroupMe: Philadelphia Pickup..."
-	@node scripts/sync-groupme-events.js --group "Philadelphia Pickup"
-
-lighthouse-groupme-women-u23:
-	@echo "💬 Lighthouse → GroupMe: Lighthouse Women's Club U23..."
-	@node scripts/sync-groupme-events.js --group "Lighthouse Women's Club U23"
-
-lighthouse-groupme-tricounty:
-	@echo "💬 Lighthouse → GroupMe: Tri County Women's Lighthouse..."
-	@node scripts/sync-groupme-events.js --group "Tri County Women's Lighthouse"
-
-lighthouse-groupme-brazil:
-	@echo "💬 Lighthouse → GroupMe: Brazil 🇧🇷 Trialists..."
-	@node scripts/sync-groupme-events.js --group "Brazil 🇧🇷 Trialists"
-
-lighthouse-groupme-puertorico:
-	@echo "💬 Lighthouse → GroupMe: Puerto Rico 🇵🇷 Trialists..."
-	@node scripts/sync-groupme-events.js --group "Puerto Rico 🇵🇷 Trialists"
-
-lighthouse-groupme: lighthouse-groupme-apsl lighthouse-groupme-liga1 lighthouse-groupme-liga2 lighthouse-groupme-training lighthouse-groupme-pickup lighthouse-groupme-women-u23 lighthouse-groupme-tricounty lighthouse-groupme-brazil lighthouse-groupme-puertorico
-	@echo "✅ lighthouse-groupme done (all 9 chats)"
-
 # ── Root: full Lighthouse refresh ─────────────────────────────────────
-lighthouse: lighthouse-apsl lighthouse-casa lighthouse-groupme
+lighthouse: lighthouse-apsl lighthouse-casa
 	@echo ""
-	@echo "🏆 lighthouse done (APSL + CASA Liga 1/2 + all GroupMe chats)"
+	@echo "🏆 lighthouse done (APSL + CASA Liga 1/2)"
 
 # ============================================================
 # Backup & Restore (pg_dump snapshots)
@@ -506,7 +447,6 @@ safe-rebuild: backup rebuild
 #   4. Wait for DB ready
 #   5. Load all league SQL (teams/players/schedule)
 #   6. Re-load user data (lineups + attendance)
-# RSVPs are not exported — re-fetch from source: make sync-groupme
 #
 # Usage:  make er           # interactive (prompts before destroying)
 #         make er FORCE=1   # no prompt, for true emergencies
@@ -544,7 +484,6 @@ emergency-rebuild er:
 	@echo "   Backend:  http://localhost:3001"
 	@echo ""
 	@echo "Optional next steps:"
-	@echo "   make sync-groupme   # restore RSVPs/chat events from GroupMe"
 	@echo "   make scrape         # refresh standings/results from web"
 
 export-user-data:

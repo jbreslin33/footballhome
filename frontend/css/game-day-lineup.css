@@ -17,40 +17,6 @@
 }
 
 /* ============================================================================
-   GroupMe Sync Warning Banner
-   ============================================================================ */
-.groupme-warning {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  margin: var(--space-2) 0;
-  border-radius: var(--radius-md);
-  font-size: 0.85em;
-  line-height: 1.4;
-}
-
-.groupme-warning-icon { font-size: 1.2em; flex-shrink: 0; }
-.groupme-warning-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
-.groupme-warning-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-.groupme-warning-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-
-.btn-groupme-refresh {
-  display: inline-block;
-  padding: 2px 10px;
-  margin-left: var(--space-2);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.6);
-  color: inherit;
-  font-size: 0.9em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.btn-groupme-refresh:hover { background: rgba(255,255,255,0.9); }
-.btn-groupme-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
-
-/* ============================================================================
    Controls Row (formation + roster size + actions inline)
    ============================================================================ */
 .lineup-controls-row {
@@ -255,7 +221,6 @@
   flex-direction: column;
   overflow: hidden;
 }
-.lineup-fit-screen .groupme-warning { display: none !important; }
 .lineup-fit-screen .lineup-controls-row {
   flex-shrink: 0;
   padding: 2px 0;

@@ -121,7 +121,7 @@ echo "  ${STEP}. Build app containers + load schema/bootstrap data:"
 echo -e "     ${YELLOW}make rebuild${NC}"
 STEP=$((STEP+1))
 echo ""
-echo "  ${STEP}. Sync all Lighthouse data (APSL + CASA + GroupMe):"
+echo "  ${STEP}. Sync all Lighthouse data (APSL + CASA):"
 echo -e "     ${YELLOW}make lighthouse${NC}"
 STEP=$((STEP+1))
 echo ""

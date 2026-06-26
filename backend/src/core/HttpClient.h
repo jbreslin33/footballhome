@@ -6,7 +6,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // HttpClient — thin OOP wrapper around libcurl easy-interface.
 //
-// Purpose: every outbound HTTP call from the C++ backend (GroupMe API,
+// Purpose: every outbound HTTP call from the C++ backend (external APIs,
 // LeagueApps OAuth + REST, Google OAuth, etc.) goes through this single
 // class so we have ONE place to manage timeouts, redirect policy, TLS
 // settings, and User-Agent strings.

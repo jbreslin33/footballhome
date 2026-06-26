@@ -490,7 +490,8 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "ht.id AS home_team_id, awt.id AS away_team_id, ";
         query << "ce.image_url AS calendar_image_url, ";
         query << "COALESCE(ss.name, '') AS source_name, ";
-        query << "m.source_system_id ";
+        query << "m.source_system_id, ";
+        query << "COALESCE(NULLIF(v.address,''), NULLIF(ce.location_address,'')) AS venue_address ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
@@ -555,6 +556,9 @@ Response EventController::handleGetMatches(const Request& request) {
             }
             if (!result[i][17].is_null()) {
                 matches_json << ",\"source_system_id\":" << result[i][17].c_str();
+            }
+            if (result.columns() > 18 && !result[i][18].is_null()) {
+                matches_json << ",\"venue_address\":\"" << escapeJSON(result[i][18].c_str()) << "\"";
             }
             
             matches_json << "}";
@@ -2136,7 +2140,7 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             // chat_events table not available — skip training RSVP data
         }
 
-        // Find the chat_event for this match (GroupMe RSVP source)
+        // Find the chat_event for this match (RSVP source)
         int matchChatEventId = 0;
         try {
             std::string matchEventQuery = R"(
@@ -2150,11 +2154,15 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 matchChatEventId = matchEventResult[0]["chat_event_id"].as<int>();
             }
         } catch (...) {
-            // chat_events table not available — skip GroupMe RSVP lookup
+            // chat_events table not available — skip chat RSVP lookup
         }
 
-        // Get all players from the home team roster with enriched data
-        // RSVP priority: admin override (player_rsvps_current) > GroupMe RSVP (chat_event_rsvps)
+        // Get all players from the home team roster with enriched data.
+        // After migration 059, event_rsvps is the single source of truth for
+        // player RSVPs (FH-native /api/rsvp writes + backfilled historical
+        // RSVPs + mirror-trigger copies of any C++ admin "pulse"
+        // writes that still target chat_event_rsvps).
+        // RSVP precedence: admin override (player_rsvps_current) > event_rsvps.
         std::string query = R"(
             SELECT DISTINCT
                 p.id as player_id,
@@ -2164,69 +2172,94 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 false::boolean as is_keeper,
                 NULL::text as position,
                 CASE WHEN ml.id IS NOT NULL THEN true ELSE false END as on_game_roster,
+                ml.zone as lineup_zone,
+                ml.slot_number as lineup_slot,
+                COALESCE(ml.is_starter, false) as lineup_is_starter,
                 COALESCE(r.jersey_number::text, '') as jersey_number,
                 r.team_id as roster_team_id,
-                -- Admin override RSVP (player_rsvps_current not available — use NULL)
-                NULL::int as admin_rsvp_id,
-                NULL::text as admin_rsvp,
-                -- GroupMe RSVP (chat tables not available — use NULL)
-                NULL::text as gm_rsvp,
+                -- Admin override RSVP (player_rsvps_current is keyed by users.id)
+                (
+                    SELECT rs.name FROM player_rsvps_current prc
+                    JOIN users u_admin ON u_admin.id = prc.player_id
+                    JOIN rsvp_statuses rs ON rs.id = prc.rsvp_status_id
+                    WHERE prc.event_id = m.id AND u_admin.person_id = pe.id
+                    LIMIT 1
+                ) as admin_rsvp,
+                -- FH-native RSVP — unified table written by /api/rsvp, the
+                -- mirror trigger from chat_event_rsvps, and historical
+                -- backfill (migration 059).  source_id distinguishes
+                -- ('app' | 'admin' | ...) but we don't surface it here.
+                (
+                    SELECT rs.name FROM event_rsvps er
+                    JOIN rsvp_statuses rs ON rs.id = er.rsvp_status_id
+                    WHERE er.chat_event_id = $3::int AND er.person_id = pe.id
+                    LIMIT 1
+                ) as fh_rsvp,
+                (
+                    SELECT er.updated_at::text FROM event_rsvps er
+                    WHERE er.chat_event_id = $3::int AND er.person_id = pe.id
+                    LIMIT 1
+                ) as fh_rsvp_at,
                 -- Individual chat memberships (chat_external_members not available)
                 false::boolean as in_chat_apsl,
                 false::boolean as in_chat_casa,
                 false::boolean as in_chat_u23,
-                -- Individual roster memberships (using team names for UUID lookup)
-                EXISTS(SELECT 1 FROM team_players r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse 1893 SC') AND r2.left_at IS NULL AND r2.is_active = true) as on_roster_lighthouse,
-                EXISTS(SELECT 1 FROM team_players r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Boys Club') AND r2.left_at IS NULL AND r2.is_active = true) as on_roster_casa,
-                EXISTS(SELECT 1 FROM team_players r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.left_at IS NULL AND r2.is_active = true) as on_roster_u23
+                -- Individual roster memberships (using team names for lookup)
+                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse 1893 SC') AND r2.left_at IS NULL) as on_roster_lighthouse,
+                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Boys Club') AND r2.left_at IS NULL) as on_roster_casa,
+                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.left_at IS NULL) as on_roster_u23
             FROM matches m
-            JOIN team_players r ON r.team_id = CASE WHEN $2 <> '' THEN $2::uuid ELSE m.home_team_id END AND r.left_at IS NULL AND r.is_active = true
+            JOIN rosters r ON r.team_id = CASE WHEN $2 <> '' THEN $2::int ELSE m.home_team_id END AND r.left_at IS NULL
+            JOIN teams t ON t.id = r.team_id
             JOIN players p ON r.player_id = p.id
             JOIN persons pe ON pe.id = p.person_id
             LEFT JOIN match_lineups ml ON ml.match_id = m.id AND ml.player_id = p.id
             WHERE m.id = $1
+              -- Lineup = FH-members only (June 2026 cutover).  An FH-member
+              -- is either:
+              --   1. A LeagueApps mens registrant (external_person_aliases
+              --      JOIN mens_team_assignments).  For non-pool teams the
+              --      assignment must be on THIS team; for pool teams
+              --      (Practice / Pickup, teams.is_pool=true) ANY mens
+              --      assignment counts since pool teams are open to every
+              --      mens member.
+              --   2. A FootballHome self-registrant (fh_member_at set).
+              -- No saved-lineup or admin-pulse escape hatch — ghost roster
+              -- regardless of any historical match_lineups or admin RSVP.
+              AND (
+                EXISTS (
+                  SELECT 1
+                    FROM external_person_aliases epa
+                    JOIN mens_team_assignments mta
+                      ON mta.leagueapps_user_id::text = epa.external_user_id
+                   WHERE epa.person_id = pe.id
+                     AND epa.provider = 'leagueapps'
+                     AND (mta.team_id = r.team_id OR t.is_pool)
+                )
+                OR pe.fh_member_at IS NOT NULL
+              )
             ORDER BY pe.last_name, pe.first_name
         )";
 
-        pqxx::result result = db_->query(query, {matchId, teamIdParam});
+        pqxx::result result = db_->query(query, {matchId, teamIdParam, std::to_string(matchChatEventId)});
 
         // Build practice map (person_id -> array of RSVPs for last 5 trainings)
         std::map<int, std::vector<std::string>> practiceMap;
         std::map<int, std::vector<bool>> practiceOverrideMap;
         if (!teIds.empty()) {
+            // After migration 059 event_rsvps is the unified RSVP table — admin
+            // pulses, FH-native /api/rsvp, mirror-trigger copies of any chat
+            // sync writes, and backfilled historical RSVPs all land
+            // here keyed by (chat_event_id, person_id).  is_override marks the
+            // 'admin' source so the UI can render the pulse indicator.
             std::string practiceQuery = R"(
-                SELECT DISTINCT ON (person_id, chat_event_id)
-                       person_id,
-                       chat_event_id,
-                       rsvp,
-                       is_override
-                FROM (
-                    -- Rows matched via external_user_id -> chat_external_members
-                    SELECT cem2.person_id,
-                           cer.chat_event_id,
-                           COALESCE(
-                               (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
-                               ''
-                           ) as rsvp,
-                           (cer.override_rsvp_status_id IS NOT NULL) as is_override
-                    FROM chat_event_rsvps cer
-                    JOIN chat_external_members cem2 ON cem2.external_user_id = cer.external_user_id
-                        AND cem2.person_id IS NOT NULL
-                    WHERE cer.chat_event_id = ANY($1)
-                    UNION
-                    -- Rows inserted directly with person_id (admin overrides)
-                    SELECT cer.person_id,
-                           cer.chat_event_id,
-                           COALESCE(
-                               (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
-                               ''
-                           ) as rsvp,
-                           true as is_override
-                    FROM chat_event_rsvps cer
-                    WHERE cer.chat_event_id = ANY($1)
-                      AND cer.person_id IS NOT NULL
-                      AND cer.external_user_id IS NULL
-                ) combined
+                SELECT er.person_id,
+                       er.chat_event_id,
+                       rs.name AS rsvp,
+                       (er.source_id = 3) AS is_override
+                  FROM event_rsvps er
+                  JOIN rsvp_statuses rs ON rs.id = er.rsvp_status_id
+                 WHERE er.chat_event_id = ANY($1)
             )";
             std::string arrayLiteral = "{";
             for (size_t i = 0; i < teIds.size(); i++) {
@@ -2271,17 +2304,21 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
 
             int personId = row["person_id"].as<int>();
 
-            // RSVP: admin override wins, else GM rsvp, else null
+            // RSVP precedence after migration 059:
+            //   1. admin override (player_rsvps_current) always wins
+            //   2. else event_rsvps (unified — covers app, mirrored admin,
+            //      and backfilled historical entries)
+            //   3. else null
             bool hasAdminRsvp = !row["admin_rsvp"].is_null();
-            bool hasGmRsvp = !row["gm_rsvp"].is_null();
+            bool hasFhRsvp    = !row["fh_rsvp"].is_null();
             std::string effectiveRsvp = "";
             std::string rsvpSource = "";
             if (hasAdminRsvp) {
                 effectiveRsvp = row["admin_rsvp"].c_str();
                 rsvpSource = "admin";
-            } else if (hasGmRsvp) {
-                effectiveRsvp = row["gm_rsvp"].c_str();
-                rsvpSource = "groupme";
+            } else if (hasFhRsvp) {
+                effectiveRsvp = row["fh_rsvp"].c_str();
+                rsvpSource = "footballhome";
             }
 
             json << "{";
@@ -2294,6 +2331,12 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             json << "\"rsvpStatus\":" << (effectiveRsvp.empty() ? "null" : "\"" + effectiveRsvp + "\"") << ",";
             json << "\"rsvpSource\":" << (rsvpSource.empty() ? "null" : "\"" + rsvpSource + "\"") << ",";
             json << "\"onGameRoster\":" << (row["on_game_roster"].as<bool>() ? "true" : "false") << ",";
+            // Saved lineup zone (null when player isn't on a saved lineup yet).
+            bool onLineup = row["on_game_roster"].as<bool>();
+            json << "\"onLineup\":" << (onLineup ? "true" : "false") << ",";
+            json << "\"lineupZone\":" << (row["lineup_zone"].is_null() ? "null" : "\"" + std::string(row["lineup_zone"].c_str()) + "\"") << ",";
+            json << "\"lineupSlot\":" << (row["lineup_slot"].is_null() ? "null" : std::string(row["lineup_slot"].c_str())) << ",";
+            json << "\"isStarter\":" << (row["lineup_is_starter"].as<bool>() ? "true" : "false") << ",";
             json << "\"jerseyNumber\":\"" << escapeJSON(row["jersey_number"].c_str()) << "\",";
             json << "\"rosterTeamId\":\"" << row["roster_team_id"].c_str() << "\",";
 
@@ -2335,7 +2378,100 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             json << ",\"date\":\"" << trainingEvents[(int)i]["event_date"].c_str() << "\"";
             json << ",\"isCanceled\":" << (isCanceled ? "true" : "false") << "}";
         }
-        json << "],\"count\":" << result.size() << "}";
+
+        // -------------------------------------------------------------
+        // Diagnostics — surfaces chat → footballhome person linking
+        // and admin/chat RSVP counts for this match so the lineup screen
+        // can show "why is everyone listed as no response?" up front.
+        // -------------------------------------------------------------
+        int totalRsvps = 0, linkedRsvps = 0, unlinkedRsvps = 0;
+        int rosterWithGmRsvp = 0, rosterWithAdminRsvp = 0;
+        std::string chatName = "";
+        std::vector<std::pair<std::string,std::string>> unlinkedMembers; // (external_username, external_user_id)
+        std::vector<std::tuple<std::string,std::string,std::string>> matchedSample; // (first,last,rsvp)
+
+        if (matchChatEventId > 0) {
+            try {
+                pqxx::result cn = db_->query(
+                    "SELECT c.name FROM chat_events ce JOIN chats c ON c.id = ce.chat_id WHERE ce.id = $1",
+                    {std::to_string(matchChatEventId)});
+                if (!cn.empty() && !cn[0][0].is_null()) chatName = cn[0][0].c_str();
+            } catch (...) {}
+
+            try {
+                pqxx::result counts = db_->query(R"(
+                    SELECT COUNT(*) AS total,
+                           COUNT(person_id) AS linked,
+                           COUNT(*) FILTER (WHERE person_id IS NULL) AS unlinked
+                    FROM chat_event_rsvps
+                    WHERE chat_event_id = $1
+                )", {std::to_string(matchChatEventId)});
+                if (!counts.empty()) {
+                    totalRsvps = counts[0]["total"].as<int>();
+                    linkedRsvps = counts[0]["linked"].as<int>();
+                    unlinkedRsvps = counts[0]["unlinked"].as<int>();
+                }
+            } catch (...) {}
+
+            try {
+                pqxx::result unl = db_->query(R"(
+                    SELECT COALESCE(external_username,'') AS external_username,
+                           COALESCE(external_user_id,'') AS external_user_id
+                    FROM chat_event_rsvps
+                    WHERE chat_event_id = $1 AND person_id IS NULL
+                    ORDER BY external_username
+                )", {std::to_string(matchChatEventId)});
+                for (const auto& row : unl) {
+                    unlinkedMembers.push_back({row["external_username"].c_str(), row["external_user_id"].c_str()});
+                }
+            } catch (...) {}
+        }
+
+        // Count from the result we already built (avoids a second join).
+        // After migration 059 "gm_rsvp" no longer exists as a separate column —
+        // fh_rsvp is the unified RSVP (app + historical backfill + mirrored
+        // admin writes).  We keep the historical JSON keys (rosterWithGmRsvp
+        // etc.) for frontend backward-compat; they now mean "roster players
+        // with any non-admin RSVP in event_rsvps".
+        for (const auto& row : result) {
+            if (!row["admin_rsvp"].is_null()) rosterWithAdminRsvp++;
+            if (!row["fh_rsvp"].is_null()) {
+                rosterWithGmRsvp++;
+                if (matchedSample.size() < 50) {
+                    matchedSample.emplace_back(
+                        row["first_name"].c_str(),
+                        row["last_name"].c_str(),
+                        row["fh_rsvp"].c_str());
+                }
+            }
+        }
+
+        json << "],\"diagnostics\":{";
+        json << "\"matchId\":\"" << matchId << "\"";
+        json << ",\"chatEventId\":" << matchChatEventId;
+        json << ",\"chatName\":\"" << escapeJSON(chatName) << "\"";
+        json << ",\"rosterSize\":" << result.size();
+        json << ",\"gmRsvpTotal\":" << totalRsvps;
+        json << ",\"gmRsvpLinkedToPerson\":" << linkedRsvps;
+        json << ",\"gmRsvpUnlinked\":" << unlinkedRsvps;
+        json << ",\"rosterWithGmRsvp\":" << rosterWithGmRsvp;
+        json << ",\"rosterWithAdminRsvp\":" << rosterWithAdminRsvp;
+        json << ",\"unlinkedMembers\":[";
+        for (size_t i = 0; i < unlinkedMembers.size(); i++) {
+            if (i > 0) json << ",";
+            json << "{\"externalUsername\":\"" << escapeJSON(unlinkedMembers[i].first) << "\""
+                 << ",\"externalUserId\":\"" << escapeJSON(unlinkedMembers[i].second) << "\"}";
+        }
+        json << "],\"matchedSample\":[";
+        for (size_t i = 0; i < matchedSample.size(); i++) {
+            if (i > 0) json << ",";
+            json << "{\"firstName\":\"" << escapeJSON(std::get<0>(matchedSample[i])) << "\""
+                 << ",\"lastName\":\"" << escapeJSON(std::get<1>(matchedSample[i])) << "\""
+                 << ",\"rsvp\":\"" << escapeJSON(std::get<2>(matchedSample[i])) << "\"}";
+        }
+        json << "]}";
+
+        json << ",\"count\":" << result.size() << "}";
         return Response(HttpStatus::OK, json.str());
 
     } catch (const std::exception& e) {
@@ -2576,12 +2712,12 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
                    ce.event_date, ce.event_time, ce.start_at, ce.end_at,
                    ce.external_id, ce.match_id, ce.is_active,
                    c.name as chat_name, c.id as chat_id, c.chat_type_id,
-                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
-                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 1) as going_count,
-                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
-                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 2) as not_going_count,
-                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
-                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 3) as maybe_count,
+                   (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND r.rsvp_status_id = 1) as going_count,
+                   (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND r.rsvp_status_id = 2) as not_going_count,
+                   (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND r.rsvp_status_id = 3) as maybe_count,
                    m.match_date, mt.name as match_type_name,
                    ht.name as home_team, at2.name as away_team,
                    m.home_score, m.away_score
@@ -2719,7 +2855,7 @@ Response EventController::handleOverrideRSVP(const Request& request) {
         std::string clearStr = parseJSON(body, "clear");
 
         if (clearStr == "true") {
-            // Clear override — revert to GroupMe synced value
+            // Clear override — revert to underlying RSVP value
             std::string clearSql = 
                 "UPDATE chat_event_rsvps SET "
                 "override_rsvp_status_id = NULL, "
@@ -2799,13 +2935,13 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
         }
 
         if (clearStr == "true") {
-            // Delete admin-only rows (no GroupMe data behind them)
+            // Delete admin-only rows (no external sync data behind them)
             db_->query(
                 "DELETE FROM chat_event_rsvps "
                 "WHERE chat_event_id = $1 AND person_id = $2 AND external_user_id IS NULL",
                 {chatEventId, personId});
 
-            // Clear override on GroupMe-synced rows so the original value shows through
+            // Clear override on externally-synced rows so the original value shows through
             db_->query(
                 "UPDATE chat_event_rsvps SET "
                 "override_rsvp_status_id = NULL, overridden_by_user_id = NULL, "
@@ -2813,7 +2949,7 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
                 "WHERE chat_event_id = $1 AND person_id = $2",
                 {chatEventId, personId});
 
-            // Return the underlying GroupMe value (if any)
+            // Return the underlying synced value (if any)
             pqxx::result underlying = db_->query(
                 "SELECT rs.name FROM chat_event_rsvps cer "
                 "JOIN rsvp_statuses rs ON rs.id = cer.rsvp_status_id "
@@ -2822,7 +2958,7 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
                 {chatEventId, personId});
 
             std::ostringstream json;
-            json << "{\"success\":true,\"message\":\"Released to GroupMe\"";
+            json << "{\"success\":true,\"message\":\"Override cleared\"";
             if (!underlying.empty()) {
                 json << ",\"rsvpStatus\":\"" << escapeJSON(underlying[0][0].c_str()) << "\"";
             }

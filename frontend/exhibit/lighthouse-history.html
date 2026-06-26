@@ -251,26 +251,107 @@
 
   /* Compact-frame override (used by the social-media renderer when it
      squashes a 24x48 poster into a 24x30 / 4:5 frame for an IG single
-     tile or carousel slide 1). A very tall body image — e.g. P3's
-     Manchester United match program — can monopolise one column and
-     leave a 200–300px dead zone at the bottom of the other when CSS
-     columns try to balance. We cap the image height and let it keep
-     its natural aspect so the columns balance. The cap is gated on
-     [data-slide-mode] so the native 24x48 museum print is unaffected;
-     the renderer sets data-slide-mode="full" on the article for slide
-     1 of the carousel AND for the single-tile output. */
-  .poster[data-slide-mode="full"] .poster-body.two-col p > img[style*="float"],
-  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float"] img {
+     tile or carousel slide 1). HARD RULE for these outputs: zero
+     blank space. The source's recalcFit scales text DOWN to absorb
+     any dead area, so a 200-300px empty band makes body copy
+     unreadable on a phone.
+
+     Critical fix: COLLAPSE the 2-column layout to a single column.
+     CSS multi-column pins floats to a column box and subsequent
+     siblings in that column DO NOT wrap around a float that overflows
+     the column — they start below the float, leaving a dead band.
+     `clear: none !important` doesn't help (computed value is honored,
+     the column algorithm still pushes the next sibling below the
+     float). Single-column flow is the only reliable way to get true
+     side-wrap with no whitespace.
+
+     With one wide column (full body width), 200px-wide floated images
+     leave ~800px for wrap text — fewer lines per paragraph, smaller
+     overall vertical height, and recalcFit scales text UP to fill the
+     4:5 frame. The long museum print is unaffected because
+     renderLongPoster never sets data-slide-mode. */
+  .poster[data-slide-mode="full"] .poster-body.two-col {
+    column-count: 1 !important;
+    -webkit-column-count: 1 !important;
+    column-rule: 0 !important;
+  }
+
+  /* In single-column mode the hero figure no longer needs
+     column-span:all (there's only one column). Float it LEFT at ~38%
+     of body width so neighboring paragraphs wrap to its right instead
+     of leaving big white bands beside an aspect-locked image
+     centered in a full-width box. */
+  .poster[data-slide-mode="full"] .poster-body.two-col > .poster-photo {
+    column-span: none !important;
+    -webkit-column-span: none !important;
+    float: left !important;
+    width: 38% !important;
+    max-width: 38% !important;
+    margin: 4px 22px 12px 0 !important;
+    text-align: left !important;
+  }
+  .poster[data-slide-mode="full"] .poster-body.two-col > .poster-photo img {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+
+  /* Restore real inline float behavior on body images. The global
+     `.poster-body.two-col p > img[style*="float"]` promotion to
+     full-column-block (great for the long museum print) leaves dead
+     space beside the image in 4:5 — undo it and let text wrap. */
+  .poster[data-slide-mode="full"] .poster-body.two-col p > img[style*="float:right"] {
+    float: right !important;
+    display: inline !important;
     width: auto !important;
+    max-width: 35% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 4px 0 10px 18px !important;
+  }
+  .poster[data-slide-mode="full"] .poster-body.two-col p > img[style*="float:left"] {
+    float: left !important;
+    display: inline !important;
+    width: auto !important;
+    max-width: 35% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 4px 18px 10px 0 !important;
+  }
+  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float:right"] {
+    float: right !important;
+    display: block !important;
+    width: auto !important;
+    max-width: 35% !important;
+    margin: 4px 0 10px 18px !important;
+  }
+  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float:left"] {
+    float: left !important;
+    display: block !important;
+    width: auto !important;
+    max-width: 35% !important;
+    margin: 4px 18px 10px 0 !important;
+  }
+  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float"] img {
+    width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
-    max-height: calc(11 * var(--print-scale)) !important;
-    margin: 10px auto 12px !important;
+    max-height: none !important;
     display: block;
   }
-  .poster[data-slide-mode="full"] .poster-body.two-col figure:not(.poster-photo)[style*="float"] {
-    width: auto !important;
-    max-width: 100% !important;
+
+  /* In single-column flow, inline `clear:right/left/both` from the
+     source HTML would push paragraphs below the preceding float —
+     creating exactly the dead band we just collapsed columns to
+     avoid. Disable all clears for slide-mode="full" so paragraphs
+     immediately fill any leftover width beside the float, then
+     continue at full width below it. */
+  .poster[data-slide-mode="full"] .poster-body.two-col > p,
+  .poster[data-slide-mode="full"] .poster-body.two-col > blockquote,
+  .poster[data-slide-mode="full"] .poster-body.two-col > figure {
+    clear: none !important;
   }
   .poster-photo {
     margin: 0;
@@ -876,7 +957,7 @@
   </article>
 
   <!-- POSTER 3 — Lighthouse Field: The Hub (highlights card) -->
-  <article class="poster">
+  <article class="poster" data-photo-with-para="3">
     <div class="poster-num">03</div>
     <header class="poster-band">
       <p class="kicker">The Hub of Soccer in Kensington</p>
@@ -893,7 +974,7 @@
       <p style="clear:right;"><span class="lead-in">The Concrete Grandstands &mdash; Still Standing Today.</span> To handle the rowdy weekend crowds that came for high-stakes Lighthouse senior matches and pro soccer games, permanent <strong>concrete bleachers</strong> were built on the edge of the pitch. The <strong>same bleachers still stand at Lighthouse Field today</strong> &mdash; the very seats from which Kensington watched a back-to-back ASL champion and, in 1952, cheered <strong>Manchester United</strong>.</p>
       <p><span class="lead-in">Home of a Back-to-Back ASL Champion Pro Club.</span> From 1953 onward, the Philadelphia <strong>Uhrik Truckers</strong> &mdash; the third identity of one of American soccer&rsquo;s most decorated 20th-century franchises &mdash; played their home matches here, winning the <strong>1954-55 and 1955-56 American Soccer League titles</strong> on Lighthouse Field with a roster built almost entirely from Lighthouse boys.</p>
       <p><span class="lead-in">Manchester United, 1952.</span> <img src="images/manu-1952-flyer.jpg" alt="Original 1952 match program: Manchester United vs Philadelphia, Lighthouse Field, May 11 1952" style="float:right;margin:4px 0 10px 18px;width:200px;height:auto;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.35);border-radius:4px;background:#000;">Less than two years after Walter Bahr crossed the ball that beat England at the 1950 World Cup, the reigning English League champions <strong>Manchester United</strong> &mdash; including their 23-year-old captain <strong>Roger Byrne</strong>, who would die six years later alongside seven teammates in the <strong>1958 Munich air disaster</strong> &mdash; came to Kensington on tour. The match program at right names the venue: <em>Lighthouse Field</em>.</p>
-      <p style="clear:right;"><span class="lead-in">The Greatest Show on Earth.</span> <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Barnum_%26_Bailey_greatest_show_on_Earth_poster.jpg?width=900" alt="Barnum &amp; Bailey 'Greatest Show on Earth' chromolithograph poster, 1899" style="float:right;margin:4px 0 10px 18px;width:200px;height:auto;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.35);border-radius:4px;background:#000;">Before it was a manicured soccer complex, the vast open footprint of Lighthouse Field served as the local staging grounds for the world-famous traveling <strong>Ringling Brothers and Barnum &amp; Bailey Circus</strong>. The &ldquo;Greatest Show on Earth&rdquo; pitched its tents on the same Front &amp; Erie ground that would later host championship pro soccer.</p>
+      <p><span class="lead-in">The Greatest Show on Earth.</span> <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Barnum_%26_Bailey_greatest_show_on_Earth_poster.jpg?width=900" alt="Barnum &amp; Bailey 'Greatest Show on Earth' chromolithograph poster, 1899" style="float:left;margin:4px 18px 10px 0;width:200px;height:auto;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.35);border-radius:4px;background:#000;">Before it was a manicured soccer complex, the vast open footprint of Lighthouse Field served as the local staging grounds for the world-famous traveling <strong>Ringling Brothers and Barnum &amp; Bailey Circus</strong>. The &ldquo;Greatest Show on Earth&rdquo; pitched its tents on the same Front &amp; Erie ground that would later host championship pro soccer.</p>
       <p style="clear:right;"><span class="lead-in">Before the Soccer Mecca: A Paid-Admission Baseball Diamond.</span> Earlier still, the corner was a <strong>paid-admission baseball diamond</strong>. The 1911 newspaper write-up of the Lighthouse Boys Club baseball championship preserves the detail: <strong>Potter A.C.</strong>, one of the clubs Lighthouse beat to take the title, ran &ldquo;one of the finest diamonds in the city&rdquo; at the S.W. corner of Front &amp; Erie. The 1911 Lighthouse boys &mdash; including future MLB outfielder <strong>Dick Spalding</strong> &mdash; won championships on the same ground their grandsons would play soccer on.</p>
       <p style="clear:right;margin:0 0 16px 0;padding:14px 18px;background:rgba(15,44,89,0.06);border-left:4px solid #C5A880;color:#0F2C59;font-weight:600;line-height:1.5;">One neighborhood field. A <strong>5-time U-19 national champion Lighthouse Boys&rsquo; Club</strong>, a back-to-back ASL champion pro club, <strong>Manchester United in 1952</strong>, the <strong>Ringling Brothers &amp; Barnum &amp; Bailey circus</strong>, a paid-admission baseball diamond, and the same <strong>concrete grandstands</strong> still standing today. Lighthouse Field was, and is, hallowed ground.</p>
     </div>
@@ -965,7 +1046,7 @@
   </article>
 
   <!-- POSTER 7 — Lighthouse Boys' Club -->
-  <article class="poster">
+  <article class="poster full-two-col">
     <div class="poster-num">07</div>
     <header class="poster-band">
       <p class="kicker">A Multi-Sport Powerhouse</p>

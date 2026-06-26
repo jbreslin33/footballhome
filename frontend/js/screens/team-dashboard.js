@@ -1,4 +1,8 @@
 // TeamDashboardScreen - tabbed team page with Schedule, Roster, Standings, Chat
+//
+// Entry flow: just reveals the tabbed UI and loads schedule. Older versions
+// ran a chat-provider sync on entry; that flow was removed when the provider
+// integrations were pulled out.
 class TeamDashboardScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -8,7 +12,23 @@ class TeamDashboardScreen extends Screen {
         <button id="back-btn" class="btn btn-secondary btn-sm">← Back</button>
         <h1 id="team-title">Team</h1>
       </div>
-      
+
+      <!-- Load screen: spinner shown briefly on entry; hidden once data loads. -->
+      <div id="td-loading" class="loading-state" style="padding: var(--space-4);">
+        <div class="spinner"></div>
+        <p id="td-loading-text">Loading team data...</p>
+        <div id="td-loading-sync-activity" style="display:none;margin:8px auto 6px;max-width:760px;text-align:left;font-size:0.75rem;line-height:1.35;color:#cbd5e1;padding:8px 10px;border-radius:8px;background:rgba(2,6,23,0.8);border:1px solid rgba(100,116,139,0.3);"></div>
+        <div id="td-loading-progress-log" style="display:none;margin:0 auto;max-width:760px;text-align:left;font-size:0.74rem;line-height:1.35;color:#cbd5e1;padding:8px 10px;border-radius:8px;background:rgba(2,6,23,0.7);border:1px solid rgba(100,116,139,0.25);"></div>
+        <div id="td-loading-continue-panel" style="display:none;margin:10px auto 0;max-width:760px;text-align:left;padding:10px;border-radius:8px;background:rgba(15,23,42,0.85);border:1px solid rgba(148,163,184,0.35);">
+          <div id="td-loading-continue-message" style="font-size:0.8rem;color:#e2e8f0;margin-bottom:8px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="td-loading-continue-btn" class="btn btn-primary" style="font-size:0.8rem;padding:6px 12px;">Continue to team</button>
+            <button id="td-loading-retry-btn" class="btn btn-secondary" style="font-size:0.8rem;padding:6px 12px;">Retry sync</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="td-main" style="display:none;">
       <div class="team-tabs">
         <button class="team-tab active" data-tab="schedule">Schedule</button>
         <button class="team-tab" data-tab="roster">Roster</button>
@@ -19,9 +39,9 @@ class TeamDashboardScreen extends Screen {
       <div class="team-tab-content">
         <div id="tab-schedule" class="tab-panel active">
           <div id="schedule-coach-actions" style="display:none; padding: var(--space-3) var(--space-3) 0; gap:var(--space-2); flex-wrap:wrap;">
-            <button data-action="sync-calendar" class="btn btn-secondary btn-sm">🔄 Sync from GroupMe</button>
             <button data-action="sync-league" class="btn btn-secondary btn-sm">🌐 Sync from League</button>
             <button data-action="open-next-lineup" class="btn btn-primary btn-sm">⚽ Open Lineup</button>
+            <button data-action="open-team-hub" class="btn btn-primary btn-sm">🆕 Team Hub (beta)</button>
           </div>
           <div id="schedule-list" class="match-cards"></div>
         </div>
@@ -38,6 +58,7 @@ class TeamDashboardScreen extends Screen {
           <div id="chat-content"></div>
         </div>
       </div>
+      </div><!-- /#td-main -->
     `;
     this.element = div;
     return div;
@@ -64,15 +85,42 @@ class TeamDashboardScreen extends Screen {
     if (titleEl && this.navigation.context.team) {
       titleEl.textContent = this.navigation.context.team.name;
     }
-    
-    // Load schedule by default
-    this.loadSchedule();
+
+    // Reveal the tabbed UI directly — the old chat-provider sync step is gone.
+    const teamId = this.navigation.context.team?.id;
+    const cache = (window.__teamDashboardSyncedTeams = window.__teamDashboardSyncedTeams || new Set());
+    const force = !!params?.forceSync;
+    if (teamId && (force || !cache.has(String(teamId)))) {
+      this.runEntryLoadFlow({ force });
+    } else {
+      // Already loaded this session — skip the load screen.
+      this.revealMain();
+      this.loadSchedule();
+    }
     
     // Event delegation
     this.element.addEventListener('click', (e) => {
       // Back button
       if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
         this.navigation.goBack();
+        return;
+      }
+
+      // Load-screen continue button → reveal tabs + load schedule
+      if (e.target.id === 'td-loading-continue-btn' || e.target.closest('#td-loading-continue-btn')) {
+        this.revealMain();
+        this.loadSchedule();
+        return;
+      }
+
+      // Load-screen retry button → re-run the sync flow
+      if (e.target.id === 'td-loading-retry-btn' || e.target.closest('#td-loading-retry-btn')) {
+        const teamId = this.navigation.context.team?.id;
+        if (teamId) {
+          const cache = (window.__teamDashboardSyncedTeams = window.__teamDashboardSyncedTeams || new Set());
+          cache.delete(String(teamId));
+        }
+        this.runEntryLoadFlow({ force: true });
         return;
       }
       
@@ -131,12 +179,7 @@ class TeamDashboardScreen extends Screen {
         return;
       }
 
-      // Training Attendance button
-      const trainingBtn = e.target.closest('[data-action="training-attendance"]');
-      if (trainingBtn) {
-        this.navigation.goTo('training-attendance');
-        return;
-      }
+      // Training Attendance button — removed (was chat-backed)
       
       // Manage roster button
       const manageBtn = e.target.closest('[data-action="manage-roster"]');
@@ -159,12 +202,7 @@ class TeamDashboardScreen extends Screen {
         return;
       }
 
-      // Sync calendar from GroupMe
-      const syncCalBtn = e.target.closest('[data-action="sync-calendar"]');
-      if (syncCalBtn) {
-        this.syncCalendarFromGroupMe(syncCalBtn);
-        return;
-      }
+      // (calendar-sync button removed along with chat-provider integration)
 
       // Sync scores from league website
       const syncLeagueBtn = e.target.closest('[data-action="sync-league"]');
@@ -181,6 +219,17 @@ class TeamDashboardScreen extends Screen {
         this.navigation.context.match = null;
         this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
         this.navigation.goTo('game-day-lineup');
+        return;
+      }
+
+      // Open Team Hub (beta) — unified roster + lineup + practice screen.
+      // Auto-resolves to the team's next match if scheduled, otherwise
+      // shows the ghost game card + season-roster view.
+      const openTeamHubBtn = e.target.closest('[data-action="open-team-hub"]');
+      if (openTeamHubBtn) {
+        this.navigation.context.match = null;
+        this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
+        this.navigation.goTo('team-hub');
         return;
       }
     });
@@ -358,10 +407,9 @@ class TeamDashboardScreen extends Screen {
               ${m.venue_name ? `<div class="meta-item"><span class="meta-icon">📍</span><span>${m.venue_name}</span></div>` : ''}
             </div>
             ${rsvpSection}
-            <div class="match-card-actions" style="margin-top:var(--space-2); border-top:1px solid var(--gray-200); padding-top:var(--space-2); display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-2);">
+            <div class="match-card-actions" style="margin-top:var(--space-2); border-top:1px solid var(--gray-200); padding-top:var(--space-2); display:grid; grid-template-columns:1fr 1fr; gap:var(--space-2);">
               <button data-action="game-day-roster" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">📋 Game Day</button>
               <button data-action="lineup" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">⚽ Lineup</button>
-              <button data-action="training-attendance" class="btn btn-secondary btn-sm">🏋️ Training</button>
             </div>
           </div>
         `;
@@ -389,29 +437,116 @@ class TeamDashboardScreen extends Screen {
     .catch(err => this.handleError(err, 'rsvp'));
   }
 
-  syncCalendarFromGroupMe(btn) {
-    const teamId = this.navigation.context.team?.id;
-    if (!teamId) return;
-    const orig = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '⏳ Syncing...';
-    this.auth.fetch(`/api/groupme/sync-calendar/${teamId}`, { method: 'POST' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          const d = data.data || {};
-          btn.textContent = `✅ ${d.created || 0} new, ${d.updated || 0} updated`;
-          this.matchesLoaded = false;
-          this.loadSchedule();
-        } else {
-          btn.textContent = `⚠️ ${data.message || 'Sync failed'}`;
-        }
-        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
-      })
-      .catch(() => {
-        btn.textContent = '❌ Error';
-        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
-      });
+  // ==========================================================================
+  // Entry load flow: just reveal the tabs and load schedule. Older versions
+  // ran a chat-provider sync here; the provider was removed.
+  // (same pattern game-day-lineup.js uses; namespaced #td-* so the two
+  // screens can coexist in the same DOM if needed).
+  // ==========================================================================
+
+  revealMain() {
+    const loading = this.find('#td-loading');
+    const main = this.find('#td-main');
+    if (loading) loading.style.display = 'none';
+    if (main) main.style.display = '';
+  }
+
+  hideMain() {
+    const loading = this.find('#td-loading');
+    const main = this.find('#td-main');
+    if (loading) loading.style.display = '';
+    if (main) main.style.display = 'none';
+  }
+
+  setLoadingStatus(text) {
+    const el = this.find('#td-loading-text');
+    if (el) el.textContent = text;
+  }
+
+  clearLoadingProgressLog() {
+    const log = this.find('#td-loading-progress-log');
+    if (!log) return;
+    log.innerHTML = '';
+    log.style.display = 'none';
+  }
+
+  appendLoadingProgress(message) {
+    const log = this.find('#td-loading-progress-log');
+    if (!log) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:1px 0;';
+    row.textContent = `${time} - ${message}`;
+    log.appendChild(row);
+    log.style.display = 'block';
+  }
+
+  renderTdSyncActivity(activities, heading = 'Sync Activity') {
+    const panel = this.find('#td-loading-sync-activity');
+    if (!panel) return;
+    const rows = Array.isArray(activities) ? activities : [];
+    if (rows.length === 0) {
+      panel.style.display = 'none';
+      panel.innerHTML = '';
+      return;
+    }
+    const statusColor = (s) => {
+      s = String(s || '');
+      if (s === 'success') return '#22c55e';
+      if (s === 'attempting') return '#60a5fa';
+      if (s === 'skipped' || s === 'no_integration' || s === 'no_token') return '#eab308';
+      if (s === 'failed' || s === 'fetch_failed' || s === 'error') return '#ef4444';
+      return '#cbd5e1';
+    };
+    const statusLabel = (s) => {
+      s = String(s || 'unknown');
+      if (s === 'success') return 'Success';
+      if (s === 'attempting') return 'Attempting';
+      if (s === 'failed' || s === 'fetch_failed' || s === 'error') return 'Failed';
+      return s.replace(/_/g, ' ');
+    };
+    const items = rows.map((r) => {
+      const name = r?.name || 'Unknown';
+      const status = r?.status || 'unknown';
+      const synced = Number.isFinite(r?.synced) ? r.synced : 0;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0;">`
+        + `<span style="color:#e2e8f0;">${name}</span>`
+        + `<span style="color:${statusColor(status)};font-weight:600;white-space:nowrap;">${statusLabel(status)}${synced > 0 ? ` (${synced})` : ''}</span>`
+        + `</div>`;
+    }).join('');
+    panel.innerHTML = `<div style="font-size:0.72rem;color:#94a3b8;margin-bottom:4px;font-weight:700;">${heading}</div>${items}`;
+    panel.style.display = 'block';
+  }
+
+  hideTdContinuePanel() {
+    const panel = this.find('#td-loading-continue-panel');
+    if (panel) panel.style.display = 'none';
+    const spinner = this.find('#td-loading .spinner');
+    if (spinner) spinner.style.display = 'block';
+  }
+
+  showTdContinuePanel(failures = []) {
+    const panel = this.find('#td-loading-continue-panel');
+    if (!panel) return;
+    const msg = this.find('#td-loading-continue-message');
+    const hasFailures = Array.isArray(failures) && failures.length > 0;
+    const summary = hasFailures
+      ? `Load completed with issues. ${failures[0]} Click Continue to use existing data, or Retry sync.`
+      : 'Load complete. Click Continue to open the team.';
+    if (msg) {
+      msg.textContent = summary;
+      msg.style.color = hasFailures ? '#fca5a5' : '#86efac';
+    }
+    panel.style.display = 'block';
+    const spinner = this.find('#td-loading .spinner');
+    if (spinner) spinner.style.display = 'none';
+    this.setLoadingStatus(hasFailures ? 'Review sync output and choose how to proceed.' : 'Ready.');
+  }
+
+  async runEntryLoadFlow({ force = false } = {}) {
+    // No chat-provider sync anymore — go straight to the tabs and load schedule.
+    this.revealMain();
+    this.loadSchedule();
   }
 
   syncFromLeague(btn) {

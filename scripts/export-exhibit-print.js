@@ -9,7 +9,7 @@
  * Per poster N, produces three files in frontend/exhibit/print/:
  *   exhibit-pNN.pdf          — vector PDF at exact physical size
  *                              (24"×48" portrait, 48"×24" landscape, 24"×24" half)
- *   exhibit-pNN-hires.png    — ~150 DPI raster (e.g. 3600×7200 for portrait)
+ *   exhibit-pNN-hi-res.png   — ~150 DPI raster (e.g. 3600×7200 for portrait)
  *   exhibit-pNN-preview.png  — small ~67 DPI preview (1600×3200 for portrait)
  *
  * Also writes a manifest (print-manifest.json) consumed by print.html.
@@ -183,7 +183,7 @@ async function exportPoster(browser, poster, kinds) {
   if (kinds.has('hires')) {
     const page = await openSourcePage(browser, HIRES_SCALE_FACTOR);
     await isolatePoster(page, poster.num);
-    const out = path.join(OUT_DIR, `exhibit-p${pad}-hires.png`);
+    const out = path.join(OUT_DIR, `exhibit-p${pad}-hi-res.png`);
     await renderHiResPNG(page, poster.num, out);
     const stat = fs.statSync(out);
     console.log(`  ✓ hi-res PNG   → ${path.basename(out)}  (${(stat.size / 1e6).toFixed(1)} MB)`);
@@ -217,7 +217,7 @@ function writeManifest(posters) {
     const dims = ORIENTATIONS[p.orientation] || ORIENTATIONS.portrait;
     const files = {};
     const pdf = `exhibit-p${pad}.pdf`;
-    const hires = `exhibit-p${pad}-hires.png`;
+    const hires = `exhibit-p${pad}-hi-res.png`;
     const preview = `exhibit-p${pad}-preview.png`;
     if (fs.existsSync(path.join(OUT_DIR, pdf)))    files.pdf = pdf;
     if (fs.existsSync(path.join(OUT_DIR, hires)))  files.hires = hires;
@@ -242,8 +242,10 @@ function writeManifest(posters) {
 async function main() {
   ensureDir(OUT_DIR);
   const argv = process.argv.slice(2);
-  // Optional kinds filter via env or first arg "--kinds=pdf,hires"
-  let kinds = new Set(['pdf', 'hires', 'preview']);
+  // Optional kinds filter via env or first arg "--kinds=pdf,hires,preview"
+  // Default: hi-res PNGs only — that's the format Fireball Printing uses
+  // and the only one we sync to the shared Drive folder.
+  let kinds = new Set(['hires']);
   const kindArg = argv.find(a => a.startsWith('--kinds='));
   if (kindArg) {
     kinds = new Set(kindArg.split('=')[1].split(',').map(s => s.trim()));

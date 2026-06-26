@@ -154,7 +154,7 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
     const char* genderStr  = (gender == Gender::Womens) ? "womens"         : "mens";
 
     // 1. Club teams in the requested gender bucket.  Skip pickup / training /
-    //    pool pseudo-teams (GroupMe chats, not assignable rosters).
+    //    pool pseudo-teams (chat-only groups, not assignable rosters).
     json teamsJson = json::array();
     std::unordered_set<int> clubTeamIds;
     std::unordered_map<int, std::string> teamNameById;

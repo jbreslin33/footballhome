@@ -106,49 +106,48 @@ async function openSourcePage(browser) {
 
       /* Slide 2: band only — hide the body wrapper entirely (otherwise its
          padding + the gold-divider keep occupying vertical space) and
-         expand the navy band to fill the entire frame as a title card
-         with the kicker / title / sub vertically centered. */
+         render the navy band as a tight, centered title card. Do NOT
+         force height:100% on the band/inner — let it have its NATURAL
+         stacked height so the renderer's post-pass binary-search can
+         narrow the layout width (forcing the title + sub to wrap onto
+         more lines) and then scale-to-fill the 1080x1350 frame. With
+         the old height:100% + justify-content:space-between setup the
+         band always reported scrollHeight === frame height, so the
+         post-pass found nothing to do and left huge vertical gaps. */
       .poster[data-slide-mode="band"] .poster-body {
         display: none !important;
       }
-      .poster[data-slide-mode="band"] .poster-inner {
-        height: 100%;
-      }
       .poster[data-slide-mode="band"] .poster-band {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 90px 70px !important;
+        display: block !important;
+        padding: 70px 70px !important;
         border-bottom: none !important;
         box-sizing: border-box;
       }
       .poster[data-slide-mode="band"] .poster-band .kicker {
         font-size: 1.6rem !important;
         letter-spacing: 7px !important;
-        margin: 0 !important;
+        margin: 0 0 36px 0 !important;
       }
       .poster[data-slide-mode="band"] .poster-band h2 {
         font-size: 5.4rem !important;
-        line-height: 1.02 !important;
+        line-height: 1.05 !important;
         margin: 0 !important;
       }
       .poster[data-slide-mode="band"] .poster-band .sub {
         font-size: 1.85rem !important;
         line-height: 1.45 !important;
         max-width: none !important;
-        margin: 0 !important;
+        margin: 36px 0 0 0 !important;
       }
-      /* Gold rule pinned just below the title block as a divider between
-         title and subtitle — a touch of brand color on the otherwise
-         all-navy slide. */
+      /* Gold rule pinned just below the title as a brand-color divider
+         between title and subtitle. */
       .poster[data-slide-mode="band"] .poster-band h2::after {
         content: '';
         display: block;
         width: 120px;
         height: 6px;
         background: var(--gold);
-        margin: 24px 0 0;
+        margin: 28px 0 0;
       }
 
       /* Slides that show a single piece of body content (one para, one
@@ -237,6 +236,147 @@ async function openSourcePage(browser) {
       .poster[data-slide-mode="quote"] .poster-body .gold-divider {
         display: none !important;
       }
+
+      /* Slide 1 (full poster squashed to 4:5): the article paragraphs use
+         inline style="clear:right" / "clear:left" / "clear:both" to give
+         the long 24x48 print poster a clean visual rhythm — but at the
+         squashed 1080x1350 frame those clears leave big empty bands
+         below floated photos because the next paragraph won't begin
+         until the float is past. Strip the clears in full mode so text
+         flows naturally around the floats and packs the frame edge-to-
+         edge. Inline style wins normally, so this rule needs !important. */
+      .poster[data-slide-mode="full"] .poster-body > p,
+      .poster[data-slide-mode="full"] .poster-body > blockquote,
+      .poster[data-slide-mode="full"] .poster-body > ul,
+      .poster[data-slide-mode="full"] .poster-body > ol {
+        clear: none !important;
+      }
+      /* Tighten paragraph spacing in full mode for the same reason —
+         the source's natural margin-bottom is generous for the long
+         poster, but at 4:5 every saved px lets recalcFit/post-pass
+         scale text up. */
+      .poster[data-slide-mode="full"] .poster-body > p {
+        margin-top: 0 !important;
+        margin-bottom: 8px !important;
+      }
+      /* Cap the width of inline floated photos in full mode. The source
+         uses 200-260px widths tuned for the 24-inch print poster, which
+         at the squashed 4:5 frame creates tall floats whose tails extend
+         below the text — leaving an L-shaped white gap in the corner
+         next to the float. A smaller width gives a shorter float tail
+         (height scales with width since each image is height:auto), so
+         text catches up to the float bottom and there's no orphan
+         column.
+         NOTE: matching specificity of the source's own .two-col rules
+         (lighthouse-history.html ~line 305) which set width:auto +
+         max-width:35% with !important — without matching those exact
+         selectors our cap loses on specificity tie-break. */
+      .poster[data-slide-mode="full"] .poster-body p > img[style*="float:right"],
+      .poster[data-slide-mode="full"] .poster-body p > img[style*="float:left"],
+      .poster[data-slide-mode="full"] .poster-body.two-col p > img[style*="float:right"],
+      .poster[data-slide-mode="full"] .poster-body.two-col p > img[style*="float:left"] {
+        width: 150px !important;
+        max-width: 150px !important;
+        height: auto !important;
+        max-height: none !important;
+        margin-top: 2px !important;
+        margin-bottom: 6px !important;
+      }
+      /* Belt-and-suspenders: any remaining gap below the last float
+         gets eaten by a flow-root on the body so the inner's
+         scrollHeight reflects ONLY visible content, plus min-height to
+         force the body to fill the frame. The post-pass then scales
+         the actually-visible content uniformly with no trailing dead
+         space at the bottom. */
+      .poster[data-slide-mode="full"] .poster-body {
+        display: flow-root !important;
+      }
+
+      /* Opt-in: 2-column slide 1. The default full-mode rule collapses
+         to 1 column because floats don't wrap across column boxes —
+         text-heavy posters with no floated images (or where the dead-
+         band tradeoff is acceptable) can re-enable 2-col by adding
+         class="full-two-col" to the article element. Higher specificity
+         than the source's [data-slide-mode=full] .poster-body.two-col
+         rule via the extra class. */
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col {
+        column-count: 2 !important;
+        -webkit-column-count: 2 !important;
+        column-gap: 24px !important;
+        column-rule: 1px solid rgba(15,44,89,0.12) !important;
+        display: block !important;  /* flow-root above kills columns */
+        /* column-fill: balance (default) equalises column heights — the
+           post-pass then scales the body so both columns reach the
+           bottom. break-inside: avoid below keeps the blockquote /
+           callout intact so the balancer has clean break points. */
+      }
+      /* Keep blockquotes / callouts intact across the column break. */
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col blockquote,
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col p[style*="border-left"] {
+        break-inside: avoid !important;
+        -webkit-column-break-inside: avoid !important;
+      }
+      /* Span the blockquote across both columns as a horizontal feature
+         band. This removes the single tallest indivisible element from
+         the balanced-column flow, letting the remaining paragraphs
+         distribute much more evenly between col 1 and col 2 — no
+         leftover dead bands at the bottom of either column. */
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col > blockquote {
+        column-span: all !important;
+        -webkit-column-span: all !important;
+        margin: 14px 0 !important;
+      }
+      /* Pump up body text in 2-col full mode — the balanced columns
+         naturally leave bottom dead-space when total content is
+         smaller than 2*frame-height, so growing the type makes the
+         columns balance taller and squeeze that gap shut. The post-
+         pass scaler then clamps both columns at exactly frame height. */
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col p,
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col li {
+        font-size: 1.15rem !important;
+        line-height: 1.45 !important;
+      }
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col blockquote {
+        font-size: 1.1rem !important;
+        line-height: 1.45 !important;
+      }
+      /* The closing callout (last .poster-body > p with the inline
+         border-left styling) anchors the poster — span it across both
+         columns so it sits as a wide footer band and absorbs the
+         column-balance dead space at the bottom of column 2. */
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col > p:last-child[style*="border-left"] {
+        column-span: all !important;
+        -webkit-column-span: all !important;
+        margin-top: 16px !important;
+      }
+      /* In 2-col full mode, keep images floated INSIDE their column so
+         the surrounding text wraps around them — no blank side bands.
+         Width is capped to ~45% of column so there's room for 2-3
+         words per line beside the image. The source's inline
+         clear:left/right/both on following paragraphs is stripped
+         (see the full-mode clear:none rule above) so float-wrap works
+         clean. Floats are constrained to their own column by the
+         column algorithm, so they can't bleed into the neighbor. */
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col p > img[style*="float:right"] {
+        float: right !important;
+        display: inline !important;
+        width: 42% !important;
+        max-width: 42% !important;
+        height: auto !important;
+        max-height: none !important;
+        object-fit: initial !important;
+        margin: 2px 0 6px 10px !important;
+      }
+      .poster.full-two-col[data-slide-mode="full"] .poster-body.two-col p > img[style*="float:left"] {
+        float: left !important;
+        display: inline !important;
+        width: 42% !important;
+        max-width: 42% !important;
+        height: auto !important;
+        max-height: none !important;
+        object-fit: initial !important;
+        margin: 2px 10px 6px 0 !important;
+      }
     `;
     document.head.appendChild(style);
     window.dispatchEvent(new Event('resize'));
@@ -317,19 +457,32 @@ async function renderSingleTile(page, posterNum, outPath) {
 // Slide order:
 //   1.        Full poster, nothing hidden    (= same view as the 4:5 single)
 //   2.        Band only (header / kicker / title / sub)
-//   3..K+2.   Each paragraph in turn. The photo rides with paragraph 1
-//             (the source moves it next to the first <p> during init).
+//   3..K+2.   Each paragraph in turn. The photo rides with the paragraph
+//             indicated by data-photo-with-para on <article class="poster">
+//             (1-based, defaults to 1).
 //   K+3..end. Each blockquote in turn.
 // ---------------------------------------------------------------------------
 
 async function renderCarouselSlides(page, posterNum, pad) {
-  // Discover paragraph and blockquote count from the live DOM.
+  // Discover paragraph and blockquote count from the live DOM, plus which
+  // paragraph the .poster-photo should ride with on its own slide.
   const counts = await page.evaluate((n) => {
     const p = document.getElementById('poster-' + n);
     const body = p.querySelector('.poster-body');
     const paras = Array.from(body.querySelectorAll(':scope > p'));
     const bqs   = Array.from(body.querySelectorAll(':scope > blockquote'));
-    return { paras: paras.length, bqs: bqs.length };
+    // Does this poster have a dedicated .poster-photo <figure>? Some
+    // posters (P6, P7) embed images inline inside paragraphs instead and
+    // have no separate hero figure — for those we must NOT switch to
+    // 'para-photo' mode (which would hide the inline <img> tags assuming
+    // a real figure is available) and should just render every paragraph
+    // in 'para' mode so the inline images stay visible.
+    const hasPhotoFigure = !!p.querySelector(':scope > .poster-inner > .poster-photo, :scope > .poster-photo');
+    // 1-based in source for readability ("3rd paragraph"); convert to
+    // 0-based here. Default: paragraph 1.
+    const raw = parseInt(p.dataset.photoWithPara || '1', 10);
+    const photoParaIdx = Math.max(0, Math.min(paras.length - 1, (isNaN(raw) ? 1 : raw) - 1));
+    return { paras: paras.length, bqs: bqs.length, photoParaIdx, hasPhotoFigure };
   }, posterNum);
 
   // 4:5 frame: 30 print-inches tall = 1080 x 1350 at scale 45.
@@ -422,18 +575,24 @@ async function renderCarouselSlides(page, posterNum, pad) {
     }, { n: posterNum, h: FRAME_HEIGHT, opts });
     await sleep(400);
 
-    // POST-PASS: for card slides (anything other than 'full'), recalcFit's
-    // MAX_DISTORT cap (1.18) and MIN_W floor (0.45) leave huge white space
-    // when only one paragraph (or one quote / the band) is visible inside a
-    // 1080x1350 frame. We replace its result with a more aggressive fit:
+    // POST-PASS: replace recalcFit's result with a more aggressive fit so
+    // every slide fills the 1080x1350 frame edge-to-edge. recalcFit's
+    // MAX_DISTORT cap (1.18) and MIN_W floor (0.45) leave huge white
+    // space when only a single paragraph (or the band, or a wide-and-
+    // short full-poster squashed from 2:4 to 4:5) is visible.
     //   1. Narrow the inner's layout width until the wrapped content's
     //      natural aspect ratio (h/w) is >= the frame's (h/w). At that
     //      point a uniform scale fills both axes.
     //   2. If even at the narrowest tested width (0.10 of frame) the
     //      content is still too "wide-and-short" (very little text — e.g.
-    //      a single-sentence pull-quote), fall back to anisotropic scale
-    //      with no distortion cap so the output still fills the frame.
-    if (opts.mode && opts.mode !== 'full') {
+    //      a single-sentence pull-quote, or a band with a 3-word title),
+    //      fall back to anisotropic scale with no distortion cap so the
+    //      output still fills the frame.
+    // Applied to ALL modes including 'full' — without it, slide 1 of
+    // image-heavy posters left ~30% blank at the bottom because
+    // recalcFit only scales DOWN, never up, and was hitting the
+    // "sparse poster" branch on the squashed 4:5 frame.
+    if (opts.mode) {
       const debug = await page.evaluate((n) => {
         const p = document.getElementById('poster-' + n);
         if (!p) return null;
@@ -514,16 +673,22 @@ async function renderCarouselSlides(page, posterNum, pad) {
   await compose({ band: true, photo: false, paras: 'none', quotes: 'none', mode: 'band' });
   await snap('band');
 
-  // SLIDES 3..K+2: each paragraph in order. Photo rides with paragraph 1.
+  // SLIDES 3..K+2: each paragraph in order. If this poster has a
+  // dedicated .poster-photo figure, ride it with the paragraph chosen by
+  // data-photo-with-para (default: paragraph 1) in 'para-photo' mode.
+  // If the poster has NO dedicated figure (P6/P7 style — inline images
+  // inside the paragraph), render every paragraph in plain 'para' mode
+  // so the inline <img> tags stay visible (para-photo mode hides them).
   for (let i = 0; i < counts.paras; i++) {
+    const withPhoto = counts.hasPhotoFigure && (i === counts.photoParaIdx);
     await compose({
       band: false,
-      photo: i === 0,
+      photo: withPhoto,
       paras: i,
       quotes: 'none',
-      mode: i === 0 ? 'para-photo' : 'para',
+      mode: withPhoto ? 'para-photo' : 'para',
     });
-    await snap(i === 0 ? 'para 1 + photo' : `para ${i + 1}`);
+    await snap(withPhoto ? `para ${i + 1} + photo` : `para ${i + 1}`);
   }
 
   // SLIDES K+3..end: each blockquote in order.

@@ -125,8 +125,34 @@ Response ClubController::handleGetClubDetail(const Request& request) {
         }
         
         int club_id = std::stoi(club_id_str);
-        
-        // 1. Get club info
+
+        // Optional ?gender=mens|womens|youth filter.  Defaults to 'mens' so
+        // the mens /lineups screen (which calls /api/clubs/:id with no
+        // params) only sees its own teams.  Passing 'all' disables the
+        // filter — useful for admin views that want every team.  Anything
+        // else falls back to 'mens'.
+        std::string gender = request.getQueryParam("gender");
+        if (gender.empty()) gender = "mens";
+
+        std::string genderFilter;
+        if (gender == "all") {
+            genderFilter = "";
+        } else {
+            // SQL-safe: gender is a tiny enum-ish string; reject anything
+            // other than the known set so a stray query value can't slip
+            // into the SQL.
+            if (gender != "mens" && gender != "womens" && gender != "youth") {
+                gender = "mens";
+            }
+            // gender_category IS NULL counts as 'mens' for backward compat
+            // until every team has been categorized.
+            if (gender == "mens") {
+                genderFilter = " AND (t.gender_category = 'mens' OR t.gender_category IS NULL)";
+            } else {
+                genderFilter = " AND t.gender_category = '" + gender + "'";
+            }
+        }
+
         std::string clubQuery = R"(
             SELECT c.id, c.name, c.logo_url, o.name as organization_name
             FROM clubs c
@@ -157,7 +183,7 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             JOIN leagues l ON s.league_id = l.id
             LEFT JOIN rosters r ON r.team_id = t.id
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
-            WHERE t.club_id = )" + std::to_string(club_id) + R"(
+            WHERE t.club_id = )" + std::to_string(club_id) + genderFilter + R"(
             GROUP BY t.id, t.name, d.name, s.name, l.name
             ORDER BY l.name, d.name, t.name
         )";

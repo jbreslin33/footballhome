@@ -1,6 +1,7 @@
 #include "AuthController.h"
 #include <sstream>
 #include <regex>
+#include <cstdio>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -456,15 +457,19 @@ Response AuthController::handleCoachTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
 
-        std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, COUNT(tp.player_id) AS player_count "
+        // Pull the team's chat (if any) alongside the team so the UI can
+        // label teams by their chat name when one exists.
+        std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, "
+                          "       ch.id AS chat_id, ch.name AS chat_name, "
+                          "       COUNT(tp.player_id) AS player_count "
                           "FROM coaches co "
                           "JOIN team_coaches tc ON co.id = tc.coach_id "
                           "JOIN teams t ON tc.team_id = t.id "
-                          "JOIN chats ch ON ch.team_id = t.id "
+                          "LEFT JOIN chats ch ON ch.team_id = t.id "
                           "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
                           "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
-                          "GROUP BY t.id, t.name, t.club_id "
-                          "ORDER BY t.name";
+                          "GROUP BY t.id, t.name, t.club_id, ch.id, ch.name "
+                          "ORDER BY ch.name NULLS LAST, t.name";
 
         pqxx::result result;
         try {
@@ -476,27 +481,60 @@ Response AuthController::handleCoachTeams(const Request& request) {
             }
 
             std::cerr << "⚠️ team_division_players missing, falling back to team_players in handleCoachTeams" << std::endl;
-            const std::string fallback_sql = "SELECT DISTINCT t.id, t.name, NULL::integer AS club_id, COUNT(tp.player_id) AS player_count "
+            const std::string fallback_sql = "SELECT DISTINCT t.id, t.name, NULL::integer AS club_id, "
+                                             "       ch.id AS chat_id, ch.name AS chat_name, "
+                                             "       COUNT(tp.player_id) AS player_count "
                                              "FROM coaches co "
                                              "JOIN team_coaches tc ON co.id = tc.coach_id "
                                              "JOIN teams t ON tc.team_id = t.id "
-                                             "JOIN chats ch ON ch.team_id = t.id "
+                                             "LEFT JOIN chats ch ON ch.team_id = t.id "
                                              "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
                                              "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
-                                             "GROUP BY t.id, t.name "
-                                             "ORDER BY t.name";
+                                             "GROUP BY t.id, t.name, ch.id, ch.name "
+                                             "ORDER BY ch.name NULLS LAST, t.name";
             result = db_->query(fallback_sql, {user_id});
         }
-        
+
+        // Helper: escape a string for embedding in a JSON string literal.
+        auto jsonEscape = [](const std::string& s) {
+            std::string out;
+            out.reserve(s.size() + 2);
+            for (char c : s) {
+                switch (c) {
+                    case '"':  out += "\\\""; break;
+                    case '\\': out += "\\\\"; break;
+                    case '\b': out += "\\b";  break;
+                    case '\f': out += "\\f";  break;
+                    case '\n': out += "\\n";  break;
+                    case '\r': out += "\\r";  break;
+                    case '\t': out += "\\t";  break;
+                    default:
+                        if (static_cast<unsigned char>(c) < 0x20) {
+                            char buf[8];
+                            std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+                            out += buf;
+                        } else {
+                            out += c;
+                        }
+                }
+            }
+            return out;
+        };
+
         std::ostringstream teams_json;
         teams_json << "[";
         bool first = true;
         for (auto row : result) {
             if (!first) teams_json << ",";
             first = false;
+            const std::string teamName = row["name"].as<std::string>();
+            const std::string rawChatName = row["chat_name"].is_null() ? "" : row["chat_name"].as<std::string>();
+            const std::string displayName = rawChatName.empty() ? teamName : rawChatName;
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
-                      << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
-                      << "\"name\":\"" << row["name"].as<std::string>() << "\","
+                      << "\"display_name\":\"" << jsonEscape(displayName) << "\","
+                      << "\"name\":\"" << jsonEscape(teamName) << "\","
+                      << "\"chat_id\":" << (row["chat_id"].is_null() ? "null" : std::to_string(row["chat_id"].as<int>())) << ","
+                      << "\"chat_name\":" << (rawChatName.empty() ? "null" : ("\"" + jsonEscape(rawChatName) + "\"")) << ","
                       << "\"club_id\":" << (row["club_id"].is_null() ? "null" : std::to_string(row["club_id"].as<int>())) << ","
                       << "\"player_count\":" << row["player_count"].as<int>() << "}";
         }

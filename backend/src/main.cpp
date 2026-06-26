@@ -13,6 +13,7 @@
 #include "core/Response.h"
 #include "core/TwilioSMSService.h"
 #include "database/Database.h"
+
 #include "database/SqlFileLogger.h"
 #include "controllers/AuthController.h"
 #include "controllers/OAuthController.h"
@@ -35,13 +36,11 @@
 #include "controllers/YouthRosterController.h"
 #include "controllers/MensRosterController.h"
 #include "controllers/PersonBillingController.h"
-#include "controllers/ChatExternalMemberController.h"
 #include "controllers/AdminLaBackfillController.h"
 #include "controllers/LeadsController.h"
 #include "controllers/AdsController.h"
 #include "controllers/StreamController.h"
 #include "controllers/EligibilityController.h"
-#include "controllers/GroupMeController.h"
 #include "controllers/SocialController.h"
 #include "controllers/InternalRosterController.h"
 #include "controllers/PublicController.h"
@@ -77,13 +76,11 @@ private:
     std::shared_ptr<YouthRosterController> youth_roster_controller_;
     std::shared_ptr<MensRosterController> mens_roster_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
-    std::shared_ptr<ChatExternalMemberController> chat_external_member_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<LeadsController> leads_controller_;
     std::shared_ptr<AdsController> ads_controller_;
     std::shared_ptr<StreamController> stream_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
-    std::shared_ptr<GroupMeController> groupme_controller_;
     std::shared_ptr<SocialController> social_controller_;
     std::shared_ptr<InternalRosterController> internal_roster_controller_;
     std::shared_ptr<PublicController> public_controller_;
@@ -112,13 +109,11 @@ public:
         youth_roster_controller_ = std::make_shared<YouthRosterController>();
         mens_roster_controller_ = std::make_shared<MensRosterController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
-        chat_external_member_controller_ = std::make_shared<ChatExternalMemberController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         leads_controller_ = std::make_shared<LeadsController>();
         ads_controller_ = std::make_shared<AdsController>();
         stream_controller_ = std::make_shared<StreamController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
-        groupme_controller_ = std::make_shared<GroupMeController>();
         social_controller_ = std::make_shared<SocialController>();
         internal_roster_controller_ = std::make_shared<InternalRosterController>();
         public_controller_ = std::make_shared<PublicController>();
@@ -129,12 +124,12 @@ public:
         
         // Initialize SQL file logger
         SqlFileLogger::initialize();
-        
+
         // Initialize Twilio SMS service
         const char* twilioSid = std::getenv("TWILIO_ACCOUNT_SID");
         const char* twilioToken = std::getenv("TWILIO_AUTH_TOKEN");
         const char* twilioPhone = std::getenv("TWILIO_FROM_PHONE");
-        
+
         if (twilioSid && twilioToken && twilioPhone) {
             TwilioSMSService::getInstance().initialize(
                 std::string(twilioSid),
@@ -144,7 +139,7 @@ public:
         } else {
             std::cout << "⚠️  Twilio credentials not found - SMS disabled" << std::endl;
         }
-        
+
         // Initialize database
         if (!db_->connect()) {
             std::cerr << "❌ Failed to connect to database" << std::endl;
@@ -246,10 +241,8 @@ private:
         router_.useController("/api/mens-roster", mens_roster_controller_);
         // Phase 9 — person-billing (POST upsert + /mark-billed) ported to C++.
         router_.useController("/api/person-billing", person_billing_controller_);
-        // Phase 10 — admin glue.  POST /api/chat-external-members/link
-        // (drag-link gesture on Lineups screen) and POST
-        // /api/admin/leagueapps-link/backfill (operator-driven persons sweep).
-        router_.useController("/api/chat-external-members", chat_external_member_controller_);
+        // Phase 10 — admin glue.  POST /api/admin/leagueapps-link/backfill
+        // (operator-driven persons sweep).
         router_.useController("/api/admin", admin_la_backfill_controller_);
         // Phase 11 — /api/leads* (Meta Lead-Ads triage surface).
         router_.useController("/api/leads", leads_controller_);
@@ -260,7 +253,6 @@ private:
         // owns the LISTEN fh_lineups socket and fans NOTIFY payloads out.
         router_.useController("/api", stream_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
-        router_.useController("/api/groupme", groupme_controller_);
         router_.useController("/api/social", social_controller_);
         router_.useController("/api/internal", internal_roster_controller_);
         router_.useController("/api/public", public_controller_);

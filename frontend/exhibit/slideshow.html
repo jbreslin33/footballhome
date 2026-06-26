@@ -94,8 +94,15 @@
         <button data-view="poster"     title="Whole poster fit to 1 IG portrait (1080×1350)">Single</button>
         <button data-view="longposter" title="Native 1:2 print aspect (1080×2160) — Stories / X / web">Long</button>
       </div>
+      <button id="btn-play" title="Auto-advance slides (Space)">▶ Play</button>
+      <select id="sel-interval" title="Slide interval" style="background:var(--panel);color:var(--ink);border:1px solid #2a3038;padding:6px 8px;border-radius:6px;font-size:12px;">
+        <option value="2000">2s</option>
+        <option value="3000" selected>3s</option>
+        <option value="5000">5s</option>
+        <option value="8000">8s</option>
+      </select>
       <button id="btn-reload">Reload</button>
-      <span class="hint">← / →&nbsp;or click ¼ edges</span>
+      <span class="hint">← / → · Space · click ¼ edges</span>
     </div>
   </footer>
 
@@ -217,14 +224,35 @@
       if (slides.length) show(Math.min(idx, slides.length - 1));
     };
 
+    // --- Autoplay ---
+    let playTimer = null;
+    const playBtn  = document.getElementById('btn-play');
+    const intervalSel = document.getElementById('sel-interval');
+    function isPlaying() { return playTimer !== null; }
+    function stopPlay() {
+      if (playTimer) { clearInterval(playTimer); playTimer = null; }
+      playBtn.textContent = '▶ Play';
+    }
+    function startPlay() {
+      if (!slides.length) return;
+      stopPlay();
+      const ms = parseInt(intervalSel.value, 10) || 3000;
+      playTimer = setInterval(() => show(idx + 1), ms);
+      playBtn.textContent = '⏸ Pause';
+    }
+    function togglePlay() { isPlaying() ? stopPlay() : startPlay(); }
+    playBtn.onclick = togglePlay;
+    intervalSel.onchange = () => { if (isPlaying()) startPlay(); };
+
     document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft')  show(idx - 1);
-      if (e.key === 'ArrowRight') show(idx + 1);
-      if (e.key === 'Home')       show(0);
-      if (e.key === 'End')        show(slides.length - 1);
+      if (e.key === 'ArrowLeft')  { stopPlay(); show(idx - 1); }
+      if (e.key === 'ArrowRight') { stopPlay(); show(idx + 1); }
+      if (e.key === 'Home')       { stopPlay(); show(0); }
+      if (e.key === 'End')        { stopPlay(); show(slides.length - 1); }
+      if (e.key === ' ')          { e.preventDefault(); togglePlay(); }
       if (/^[1-9]$/.test(e.key)) {
         const n = parseInt(e.key, 10) - 1;
-        if (n < slides.length) show(n);
+        if (n < slides.length) { stopPlay(); show(n); }
       }
     });
 

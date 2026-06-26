@@ -536,17 +536,12 @@ if (command === 'photo') {
     // third line points readers at the IG bio link tree where the per-poster
     // source citations live (the QR code is intentionally NOT printed on the
     // slides — link tree is the canonical place). The closing line is auto-
-    // numbered from posterNum so each post tells the viewer where it sits
-    // in the run (3rd in a series, 4th in a series, …). We deliberately do
-    // NOT print the total so we're not locked into a final count — posters
-    // can be added or dropped without re-publishing earlier captions.
+    // numbered from posterNum + the live total from postLog so each post
+    // says "Day N of M" (the cadence is one poster per day). The total is
+    // sourced from postLog.TOTAL_POSTERS, so adding/removing posters in
+    // exhibit-post-log.js automatically updates future captions.
     // To change the framing, edit this string.
-    const ordinal = (n) => {
-      const s = ['th', 'st', 'nd', 'rd'];
-      const v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    };
-    const seriesLine = `${ordinal(posterNum)} in a series.`;
+    const seriesLine = `Day ${posterNum} of ${postLog.TOTAL_POSTERS}.`;
     const caption = [
       'We are in awe of the countless members of Lighthouse whose story is not told in this series — but on the streets and fields of Philadelphia and beyond.',
       '',

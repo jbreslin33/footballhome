@@ -73,7 +73,7 @@ class UserDataExporter {
 
     let sql = `-- Manual attendance overrides (exported ${new Date().toISOString().split('T')[0]})\n`;
     sql += `-- ${result.rows.length} override(s)\n`;
-    sql += `-- Loaded after make sync to overlay on GroupMe-seeded attendance\n\n`;
+    sql += `-- Loaded after make sync to overlay coach-entered attendance\n\n`;
 
     for (const row of result.rows) {
       const note = row.override_note ? `'${this.esc(row.override_note)}'` : 'NULL';

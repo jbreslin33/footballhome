@@ -2,9 +2,7 @@
   "name": "footballhome",
   "version": "1.0.0",
   "description": "Football Home - Team management application",
-  "scripts": {
-    "groupme:import": "node scripts/import-all-groupme-users.js"
-  },
+  "scripts": {},
   "dependencies": {
     "csv-parse": "^6.1.0",
     "dotenv": "^16.0.0",

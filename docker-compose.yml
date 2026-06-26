@@ -75,34 +75,6 @@ services:
       db:
         condition: service_healthy
 
-  # GroupMe sync sidecar — DISABLED 2026-06-25 after migration 059 (GM cutover).
-  # event_rsvps is now the source of truth for player RSVPs.  Historical GM
-  # RSVPs were backfilled and chat_event_rsvps is read-only / frozen for audit.
-  # The GM chat is kept only for messaging (links back to footballhome.org).
-  # Re-enable only if you intentionally want to resume two-way GM sync.
-  # groupme-sync:
-  #   build:
-  #     context: .
-  #     dockerfile: .docker/groupme-sync/Dockerfile
-  #   container_name: footballhome_groupme_sync
-  #   restart: unless-stopped
-  #   env_file: ./env
-  #   environment:
-  #     DB_HOST: db
-  #     DB_PORT: 5432
-  #     DB_NAME: footballhome
-  #     DB_USER: footballhome_user
-  #     DB_PASSWORD: footballhome_pass
-  #     SYNC_INTERVAL: ${GROUPME_SYNC_INTERVAL:-300}
-  #   volumes:
-  #     - ./scripts:/app/scripts:ro,Z
-  #     - ./env:/app/env:ro,Z
-  #   networks:
-  #     - footballhome_network
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-
   # Meta Lead Gen Webhook receiver + leads API
   meta-leads-webhook:
     build:

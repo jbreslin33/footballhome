@@ -27,6 +27,8 @@ const VARIANTS = {
   'girls':     { word: 'GIRLS CLUB',   badge: 'Grades 1–6',   file: 'girls-club-ad.png'       },
   'boys-k12':  { word: 'BOYS CLUB',    badge: 'K – 12',         file: 'boys-club-k12-ad.png'    },
   'girls-k12': { word: 'GIRLS CLUB',   badge: 'K – 12',         file: 'girls-club-k12-ad.png'   },
+  'boys-u11u12':  { word: 'BOYS CLUB',  badge: 'U11 / U12', sub: 'GRADES 5 OR 6 AS OF FALL 2026', file: 'boys-u11u12-travel-ad.png'  },
+  'girls-u11u12': { word: 'GIRLS CLUB', badge: 'U11 / U12', sub: 'GRADES 5 OR 6 AS OF FALL 2026', file: 'girls-u11u12-travel-ad.png' },
   'mens':      { word: 'MENS CLUB',    badge: '16+',          sub: 'APSL \u00b7 CASA LIGA 1 & 2',  file: 'mens-club-ad.png'        },
   'womens':    { word: 'WOMENS CLUB',  badge: 'TRI COUNTY',     file: 'womens-club-ad.png'      },
 };

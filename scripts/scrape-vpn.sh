@@ -215,7 +215,7 @@ cmd_exec() {
   # dropped at the container boundary and the scraper serves stale cache.
   ENV_FORWARD=( -e VPN_ACTIVE=1 )
   for var in FORCE_SCRAPE LIGHTHOUSE_ONLY LIGHTHOUSE_DIVISION NO_VPN \
-             WIREGUARD_CONFIG_FILE GROUPME_ACCESS_TOKEN \
+             WIREGUARD_CONFIG_FILE \
              SCRAPE_DEBUG SEASON_EXTERNAL_ID; do
     if [ -n "${!var:-}" ]; then
       ENV_FORWARD+=( -e "${var}=${!var}" )

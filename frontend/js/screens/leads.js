@@ -11,8 +11,13 @@ class LeadsScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
-        <div id="ads-rundown" style="margin-bottom:var(--space-3);"></div>
-        <div id="templates-panel" style="margin-bottom:var(--space-3);"></div>
+        <div id="leads-sync-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
+          <span id="leads-sync-icon" style="font-size: 16px;">⏳</span>
+          <span id="leads-sync-status" style="flex:1; min-width: 200px;">Syncing latest leads from Meta…</span>
+          <button id="leads-sync-log-toggle" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px;" title="Show/hide load log">📜 Log</button>
+          <button id="leads-sync-refresh" class="btn btn-secondary" style="display:none; padding: 4px 10px; font-size: 13px;">🔄 Refresh now</button>
+        </div>
+        <div id="leads-sync-log" style="display:block; margin: 0 0 var(--space-3) 0; max-height: 220px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #1e293b; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.4;"></div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="leads-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No leads yet.</div>
@@ -29,108 +34,228 @@ class LeadsScreen extends Screen {
 
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) this.navigation.goBack();
+      if (e.target.closest('#leads-sync-refresh')) this.loadLeads({ force: true });
+      if (e.target.closest('#leads-sync-log-toggle')) {
+        const log = this.find('#leads-sync-log');
+        if (log) log.style.display = (log.style.display === 'none') ? 'block' : 'none';
+      }
     });
 
     this.loadLeads();
   }
 
-  async loadLeads() {
+  _setSyncBanner({ icon, text, showRefresh = false }) {
+    const iconEl = this.find('#leads-sync-icon');
+    const textEl = this.find('#leads-sync-status');
+    const btnEl  = this.find('#leads-sync-refresh');
+    if (iconEl) iconEl.textContent = icon;
+    if (textEl) textEl.textContent = text;
+    if (btnEl)  btnEl.style.display = showRefresh ? 'inline-block' : 'none';
+  }
+
+  // Sticky paste-instruction banner shown after clicking ✉ Email.  Two
+  // jobs:
+  //   1. Tell the coach the body is on the clipboard and how to use it
+  //      (Ctrl+A then Ctrl+V in Gmail's compose body to swap the plain-
+  //      text pre-fill for the HTML version with a clickable link).
+  //   2. Reassure: even if they don't paste, Gmail auto-linkifies URLs
+  //      for the recipient on send — clicking Send as-is still works.
+  // Banner is dismissible and auto-hides after 20s so it doesn't linger.
+  _showEmailPasteBanner(copied, toEmail) {
+    let el = this.find('#leads-paste-banner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'leads-paste-banner';
+      el.style.cssText =
+        'position:sticky; top:0; z-index:50; margin: 0 0 var(--space-3) 0; ' +
+        'padding: 10px 14px; border-radius:6px; background:#1e3a5f; ' +
+        'color:#dbeafe; border:1px solid #3b82f6; display:flex; ' +
+        'align-items:flex-start; gap:10px; font-size:13px; line-height:1.4;';
+      const banner = this.find('#leads-sync-banner');
+      if (banner && banner.parentElement) {
+        banner.parentElement.insertBefore(el, banner);
+      } else {
+        this.element.appendChild(el);
+      }
+    }
+    if (this._pasteBannerTimer) {
+      clearTimeout(this._pasteBannerTimer);
+      this._pasteBannerTimer = null;
+    }
+    const msg = copied
+      ? `<strong>📋 Rich body copied to clipboard.</strong> Gmail's compose pre-fills the body as <em>plain text</em> and won't show the URL as a link in the editor. ` +
+        `In the new Gmail tab, click in the body, press <kbd>Ctrl+A</kbd> then <kbd>Ctrl+V</kbd> to swap in the version with a clickable link — then hit Send. ` +
+        `(If you skip the paste, Gmail still auto-links URLs for the recipient on Send.)`
+      : `<strong>⚠ Clipboard blocked.</strong> Gmail opened with the body pre-filled as plain text. ` +
+        `Hit Send and Gmail will auto-link the URL for the recipient.`;
+    el.innerHTML =
+      `<span style="font-size:16px;">✉</span>` +
+      `<div style="flex:1;">${msg}` +
+      (toEmail ? `<div style="opacity:0.75; font-size:11px; margin-top:4px;">→ ${toEmail}</div>` : '') +
+      `</div>` +
+      `<button type="button" data-paste-banner-close style="background:transparent; color:#dbeafe; border:1px solid #3b82f6; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">Dismiss</button>`;
+    el.style.display = 'flex';
+    const closeBtn = el.querySelector('[data-paste-banner-close]');
+    if (closeBtn) closeBtn.onclick = () => { el.style.display = 'none'; };
+    this._pasteBannerTimer = setTimeout(() => { el.style.display = 'none'; }, 20000);
+  }
+
+  _clearLog() {
+    const log = this.find('#leads-sync-log');
+    if (log) log.innerHTML = '';
+  }
+
+  _appendLog(message, level = 'info') {
+    const log = this.find('#leads-sync-log');
+    if (!log) return;
+    const time = new Date().toLocaleTimeString([], { hour12: false });
+    const color =
+      level === 'error' ? '#f87171' :
+      level === 'warn'  ? '#fbbf24' :
+      level === 'ok'    ? '#4ade80' :
+      level === 'step'  ? '#60a5fa' :
+                          '#cbd5e1';
+    const row = document.createElement('div');
+    row.style.cssText = `padding:1px 0; color:${color}; white-space:pre-wrap;`;
+    row.textContent = `${time}  ${message}`;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async loadLeads({ force = false } = {}) {
+    // ── Accuracy > speed ─────────────────────────────────────────────
+    // We ALWAYS sync from Meta first, then render the DB.  Webhooks
+    // are usually live but Meta occasionally drops events; pulling
+    // before render is the only way the coach can trust the screen.
+    // The banner reports each phase so the user knows it isn't hung.
+    this.find('#leads-error').style.display = 'none';
+    this.find('#leads-list').style.display  = 'none';
+    this.find('#leads-empty').style.display = 'none';
     this.find('#leads-loading').style.display = 'block';
-    this.find('#leads-error').style.display   = 'none';
-    this.find('#leads-list').style.display    = 'none';
-    this.find('#leads-empty').style.display   = 'none';
+    this._setSyncBanner({ icon: '⏳', text: 'Syncing latest leads from Meta…' });
+    this._clearLog();
+    this._appendLog(`Load started${force ? ' (force=1, bypassing 30s TTL)' : ''}.`, 'step');
+    this._appendLog('POST /api/leads/sync — pulling latest from Meta Graph API…', 'step');
 
+    const syncStartMs = Date.now();
+    let syncReport = null;
     try {
-      const [leadsRes, spendRes, statsRes, targetingRes, pickupRes] = await Promise.all([
-        this.auth.fetch('/api/leads'),
-        this.auth.fetch('/api/ads/spend').catch(() => null),
-        this.auth.fetch('/api/leads/contact-stats').catch(() => null),
-        this.auth.fetch('/api/ads/targeting').catch(() => null),
-        this.auth.fetch('/api/leads/next-pickup').catch(() => null),
-      ]);
-      if (!leadsRes.ok) throw new Error(`HTTP ${leadsRes.status}`);
-      const leads = await leadsRes.json();
-      const spend = spendRes && spendRes.ok ? await spendRes.json() : [];
-      const stats = statsRes && statsRes.ok ? await statsRes.json() : { per_lead: {}, aggregates: {} };
-
-      // Distinguish "endpoint failed" from "endpoint returned no ads".
-      // The webhook proxies Meta Graph and occasionally fails with
-      // `fetch failed` (transient DNS / outbound networking on the
-      // container).  Without this flag we'd silently render the
-      // "No live ads on Meta" empty state and the coach would think
-      // every campaign is paused — which is what triggered the
-      // "leads screen has no categories lol" bug report.
-      const targetingOk = !!(targetingRes && targetingRes.ok);
-      const targeting   = targetingOk ? await targetingRes.json() : [];
-      const pickup      = pickupRes && pickupRes.ok ? await pickupRes.json() : { event: null };
-      this._nextPickup = pickup.event || null;
-
-      this.find('#leads-loading').style.display = 'none';
-
-      // Render targeting rundown at top — always, even if there are no leads yet
-      this.renderAdsRundown(targeting);
-      this.renderTemplatesPanel();
-
-      // Always render the live-ad columns — even with zero leads — so
-      // the coach sees an empty board for each currently-active ad.
-      this.find('#leads-list').style.display = 'block';
-      this._leads = leads;
-      this._spend = spend;
-      this._stats = stats;
-      this._targeting = targeting;
-      this._targetingOk = targetingOk;
-      this.renderLeads(leads, spend, stats, targeting);
-
-      // If targeting failed, auto-retry once after 20s.  Most outages
-      // are sub-minute container DNS hiccups so a single quiet retry
-      // is enough to recover without making the coach reload.
-      if (!targetingOk && !this._targetingRetryScheduled) {
-        this._targetingRetryScheduled = true;
-        setTimeout(() => {
-          this._targetingRetryScheduled = false;
-          // Don't reload if the screen has been left in the meantime.
-          if (this.element && this.element.isConnected) this.loadLeads();
-        }, 20000);
+      const syncRes = await this.auth.fetch(
+        `/api/leads/sync${force ? '?force=1' : ''}`,
+        { method: 'POST' }
+      );
+      if (!syncRes.ok) throw new Error(`sync HTTP ${syncRes.status}`);
+      syncReport = await syncRes.json();
+      const syncMs = Date.now() - syncStartMs;
+      if (syncReport.skippedByTtl) {
+        this._appendLog(`Sync skipped: cached <30s ago (use Refresh to force). (${syncMs}ms)`, 'info');
+      } else {
+        const synced  = syncReport.syncedRows ?? 0;
+        const formsT  = syncReport.formsTotal ?? '?';
+        const formsS  = syncReport.formsSynced ?? '?';
+        const failed  = (syncReport.failedForms || []).length;
+        this._appendLog(`Sync OK: ${synced} row(s) from ${formsS}/${formsT} form(s) in ${syncMs}ms.`, 'ok');
+        if (failed) {
+          this._appendLog(`${failed} form(s) failed during sync:`, 'warn');
+          for (const f of syncReport.failedForms) {
+            this._appendLog(`  • form ${f.form_id || f.formId || '?'}: ${f.error || 'unknown'}`, 'warn');
+          }
+        }
+        if (Array.isArray(syncReport.perForm)) {
+          for (const f of syncReport.perForm) {
+            const label = f.label || f.form_id || '?';
+            this._appendLog(`  • ${label}: +${f.synced ?? 0} new`, 'info');
+          }
+        }
       }
     } catch (err) {
+      this._appendLog(`Sync FAILED: ${err.message}`, 'error');
+      // Sync failed — still try to render the DB cache so the screen
+      // isn't useless, but warn loudly so the user knows the data may
+      // be stale.
+      this._setSyncBanner({
+        icon: '⚠️',
+        text: `Meta sync failed (${err.message}) — showing cached leads. Click refresh to retry.`,
+        showRefresh: true,
+      });
+    }
+
+    try {
+      this._appendLog('GET /api/leads — reading from database…', 'step');
+      const dbStart = Date.now();
+      const leadsRes = await this.auth.fetch('/api/leads');
+      if (!leadsRes.ok) throw new Error(`HTTP ${leadsRes.status}`);
+      const leads = await leadsRes.json();
+      this._appendLog(`DB returned ${leads.length} lead(s) in ${Date.now() - dbStart}ms.`, 'ok');
+
+      // Log per-funnel summary so the coach can see distribution at a glance.
+      try {
+        const buckets = {};
+        for (const l of leads) {
+          const lbl = this.formLabel(l.form_id) || 'Other';
+          buckets[lbl] = (buckets[lbl] || 0) + 1;
+        }
+        const summary = Object.entries(buckets)
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ');
+        if (summary) this._appendLog(`By funnel: ${summary}`, 'info');
+        const emailed = leads.filter(l => (l.email_count || 0) > 0).length;
+        this._appendLog(`Contact history: ${emailed}/${leads.length} have been emailed at least once.`, 'info');
+      } catch { /* non-fatal */ }
+
+      this.find('#leads-loading').style.display = 'none';
+      this.find('#leads-list').style.display = 'block';
+      this._leads = leads;
+
+      // Only overwrite the banner if the sync itself didn't already
+      // post a failure message above.
+      if (syncReport) {
+        const elapsedSec = ((Date.now() - syncStartMs) / 1000).toFixed(1);
+        let icon = '✅';
+        let text;
+        if (syncReport.skippedByTtl) {
+          icon = 'ℹ️';
+          text = `Cached (synced <30s ago). ${leads.length} leads.`;
+        } else if (syncReport.failedForms && syncReport.failedForms.length) {
+          icon = '⚠️';
+          text = `Partial sync: ${syncReport.syncedRows} rows from ${syncReport.formsSynced}/${syncReport.formsTotal} forms in ${elapsedSec}s. ${syncReport.failedForms.length} form(s) failed.`;
+        } else {
+          text = `Synced ${syncReport.syncedRows} row${syncReport.syncedRows === 1 ? '' : 's'} from ${syncReport.formsTotal} form${syncReport.formsTotal === 1 ? '' : 's'} in ${elapsedSec}s. ${leads.length} leads total.`;
+        }
+        this._setSyncBanner({ icon, text, showRefresh: true });
+      }
+
+      this._appendLog('Rendering cards…', 'step');
+      const renderStart = Date.now();
+      this.renderLeads(leads);
+      this._appendLog(`Render complete in ${Date.now() - renderStart}ms. Done.`, 'ok');
+    } catch (err) {
+      this._appendLog(`Failed to load leads: ${err.message}`, 'error');
       this.find('#leads-loading').style.display = 'none';
       this.find('#leads-error').style.display   = 'block';
       this.find('#leads-error').textContent     = `Failed to load leads: ${err.message}`;
+      this._setSyncBanner({
+        icon: '❌',
+        text: `Could not load leads from database: ${err.message}`,
+        showRefresh: true,
+      });
     }
   }
 
-  async refreshStats() {
-    try {
-      const res = await this.auth.fetch('/api/leads/contact-stats');
-      if (!res.ok) return;
-      this._stats = await res.json();
-      this.renderLeads(this._leads, this._spend, this._stats, this._targeting);
-    } catch {}
-  }
-
-  renderLeads(leads, spend = [], stats = { per_lead: {}, aggregates: {} }, targeting = []) {
+  renderLeads(leads) {
     const container = this.find('#leads-list');
-    const agg = stats.aggregates || {};
-    // Bot-risk thresholds for a personal long-code number
-    //   safe   : <10/hr, <30/day, <=3 in last 5min
-    //   warn   : 10-20/hr OR 30-50/day OR 4-5 in 5min
-    //   danger : >20/hr OR >50/day OR >5 in 5min
-    const txt5 = agg.texts_5min || 0, txtH = agg.texts_hour || 0, txtD = agg.texts_day || 0;
-    let risk = 'safe';
-    if (txt5 > 5 || txtH > 20 || txtD > 50) risk = 'danger';
-    else if (txt5 > 3 || txtH > 10 || txtD > 30) risk = 'warn';
-    const riskColors = {
-      safe:   { bg:'#0a3d2a', dot:'#10b981', label:'✓ Safe',    msg:'Well below carrier filter thresholds.' },
-      warn:   { bg:'#3d2a0a', dot:'#f59e0b', label:'⚠ Warning',  msg:'Approaching carrier filter thresholds. Slow down sends.' },
-      danger: { bg:'#3d0a0a', dot:'#ef4444', label:'✕ Danger',  msg:'Likely to get flagged. STOP sending texts for 24h.' },
-    };
-    const r = riskColors[risk];
 
-    // ── Columns = ACTIVE Meta ads (live from /api/ads/targeting) ─────
-    // We report only on what's currently live. Each ACTIVE ad becomes
-    // its own column, keyed by ad_id.  Funnel label (e.g. "PR Men",
-    // "Boys Club (Grades 1–6)") is used purely for color-coding the
-    // column header so the same family of ads stays visually grouped.
+    // SMS bot-risk banner removed 2026-06-16: leads page is email-only
+    // now (initial-touch via Gmail compose).  SMS will return as part
+    // of a separate RSVP-reminder workflow with its own throttling UI.
+
+    // ── Columns = funnel labels derived from each lead's own form_id ──
+    // We intentionally do NOT call /api/ads/targeting here — that's a
+    // Meta API hop and slows down the page.  Group by funnel label so
+    // leads from multiple ads pointing at the same form roll up
+    // cleanly.  Empty funnel columns (live ad, no leads yet) live on
+    // the Ads Stats screen, not here.
     const FUNNEL_COLORS = {
       'Brazil Men':              '#15803d',
       'U23 Men':                 '#1d4ed8',
@@ -143,66 +268,71 @@ class LeadsScreen extends Screen {
       'Youth (Grades 1–6)':      '#c9a14a',
       'Boys Club (Grades 1–6)':  '#0e7490',
       'Boys Club (K-12)':        '#0e7490',
+      'Boys Club (U11/U12)':     '#0e7490',
       'Girls Club (Grades 1–6)': '#db2777',
       'Girls Club (K-12)':       '#db2777',
+      'Girls Club (U11/U12)':    '#db2777',
     };
     const DEFAULT_COLOR = '#475569';
 
-    // Sort active ads by funnel label (canonical kanban order) so the
-    // columns stay stable across reloads.
     const FUNNEL_ORDER = [
       'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
       'U23 Women', 'Tri County Women', "Women's Club",
       'APSL / Liga 1',
       'Youth (Grades 1–6)',
-      'Boys Club (Grades 1–6)', 'Boys Club (K-12)',
-      'Girls Club (Grades 1–6)', 'Girls Club (K-12)',
+      'Boys Club (Grades 1–6)', 'Boys Club (K-12)', 'Boys Club (U11/U12)',
+      'Girls Club (Grades 1–6)', 'Girls Club (K-12)', 'Girls Club (U11/U12)',
     ];
     const funnelRank = (label) => {
       const i = FUNNEL_ORDER.indexOf(label);
       return i === -1 ? 999 : i;
     };
 
-    const activeAds = (targeting || [])
-      .filter(a => a.status === 'ACTIVE')
-      .map(a => {
-        const funnel = this.adFunnelLabel(a) || '(no form)';
-        return {
-          ad_id:   a.ad_id,
-          ad_name: a.ad_name || a.ad_id,
-          funnel,
-          color:   FUNNEL_COLORS[funnel] || DEFAULT_COLOR,
-          form_id: a.form_id,
-          link_url: a.link_url || null,
-          // Direct-CTA ads (no Meta lead form) bounce the click straight
-          // to LeagueApps. We can never see registrations from Meta for
-          // these ads, so the leads column will always be empty even when
-          // the ad is performing.  Track them separately on the column
-          // header so the coach sees clicks/CPC instead of leads/CPL.
-          directCta: !a.form_id && !!a.link_url,
-          daily:   Number(a.daily_budget_usd || 0),
-          spend:   Number(a.spend || 0),
-          impressions: Number(a.impressions || 0),
-          clicks:  Number(a.clicks || 0),
-          metaLeads: Number(a.leads || 0), // Meta-reported leads (CPL source)
-          start:   a.start_time || null,
-          days:    a.start_time ? Math.max(0, Math.floor((Date.now() - new Date(a.start_time).getTime()) / 86400000)) : 0,
-        };
-      })
-      .sort((x, y) => {
-        const dr = funnelRank(x.funnel) - funnelRank(y.funnel);
-        if (dr !== 0) return dr;
-        return x.ad_name.localeCompare(y.ad_name);
-      });
+    // Bucket leads by funnel label.  Leads with no form_id (or an
+    // unmapped form_id) fall into "Other" so they're not silently
+    // hidden — the coach should always see every lead.
+    const grouped = {};
+    for (const l of leads) {
+      const label = this.formLabel(l.form_id) || 'Other';
+      if (!grouped[label]) grouped[label] = [];
+      grouped[label].push(l);
+    }
+    for (const label of Object.keys(grouped)) {
+      grouped[label].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
 
-    const COLUMNS = activeAds.map(a => a.ad_id);
-    const adById  = {};
-    for (const a of activeAds) adById[a.ad_id] = a;
+    // Always-show funnels — currently-live ads that should appear as
+    // empty columns until their first lead lands.  Without this the
+    // coach has no signal on the Leads page that a freshly-launched
+    // ad is actually running.  Update this list when ads are
+    // launched / paused — keep it short (just the ones with $ behind
+    // them today).
+    const ALWAYS_SHOW = [
+      // Currently-live ads (as of 2026-06-20).  Update when ads are
+      // launched / paused via create-ad.js.
+      'U23 Men',
+      'Youth (Grades 1\u20136)',
+      'Boys Club (Grades 1\u20136)',
+      'Girls Club (Grades 1\u20136)',
+      'Boys Club (U11/U12)',
+      'Girls Club (U11/U12)',
+    ];
+    for (const label of ALWAYS_SHOW) {
+      if (!grouped[label]) grouped[label] = [];
+    }
+
+    const COLUMNS = Object.keys(grouped).sort((a, b) => {
+      const dr = funnelRank(a) - funnelRank(b);
+      if (dr !== 0) return dr;
+      return a.localeCompare(b);
+    });
 
     // Load hidden-column preferences (persisted in localStorage, keyed
-    // by ad_id).  Stale ad_ids (paused/archived since last visit) are
-    // dropped on read so the toggle list stays clean.
-    const HIDDEN_KEY = 'leads.hiddenColumns';
+    // by funnel label now — not ad_id).  Stale labels (funnels with
+    // zero leads this load) are dropped on read so the toggle list
+    // stays clean.  Use a fresh storage key so we don't read the old
+    // ad_id-keyed values from a prior page version.
+    const HIDDEN_KEY = 'leads.hiddenFunnels';
     let hidden;
     try {
       hidden = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
@@ -210,109 +340,38 @@ class LeadsScreen extends Screen {
     for (const c of [...hidden]) if (!COLUMNS.includes(c)) hidden.delete(c);
     const visible = COLUMNS.filter(c => !hidden.has(c));
 
-    const fmt = (n) => `$${(n || 0).toFixed(2)}`;
-
-    // Bucket leads by ad_id.  Leads whose ad_id doesn't match any
-    // currently-ACTIVE ad are intentionally hidden — per product rule
-    // "no dead ads. only live but all of them. that is what we will
-    // report on." Use _orphanLeadCount only to surface the count to
-    // the coach so they know how many leads are not on the board.
-    const grouped = {};
-    for (const adId of COLUMNS) grouped[adId] = [];
-    let orphanCount = 0;
-    for (const l of leads) {
-      if (l.ad_id && grouped[l.ad_id]) grouped[l.ad_id].push(l);
-      else orphanCount++;
-    }
-    for (const adId of COLUMNS) {
-      grouped[adId].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    }
-
     // Visible lead count (only counts leads in shown columns)
     const visibleLeadCount = visible.reduce((n, c) => n + grouped[c].length, 0);
 
     container.innerHTML = `
-      <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-2); padding:var(--space-2) var(--space-3); background:${r.bg}; border-radius:var(--radius-md); border-left:4px solid ${r.dot};">
-        <div style="flex:1; min-width:200px;">
-          <div style="font-weight:700; font-size:0.85rem;"><span style="color:${r.dot};">●</span> SMS bot-risk: ${r.label}</div>
-          <div style="font-size:0.75rem; opacity:0.85;">${r.msg}</div>
-        </div>
-        <div style="display:flex; gap:var(--space-3); font-size:0.75rem; opacity:0.9;">
-          <div title="texts in last 5 min"><strong>${txt5}</strong> /5m</div>
-          <div title="texts in last hour"><strong>${txtH}</strong> /hr</div>
-          <div title="texts in last 24h"><strong>${txtD}</strong> /day</div>
-          <div title="texts in last 7d"><strong>${agg.texts_week || 0}</strong> /wk</div>
-          <div title="emails in last 24h" style="opacity:0.7;">✉ <strong>${agg.emails_day || 0}</strong> /day</div>
-        </div>
-      </div>
       <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Show:</span>
-        ${COLUMNS.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No live ads on Meta right now.</span>` : ''}
-        ${COLUMNS.map(adId => {
-          const a = adById[adId];
+        ${COLUMNS.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No leads yet.</span>` : ''}
+        ${COLUMNS.map(label => {
+          const color = FUNNEL_COLORS[label] || DEFAULT_COLOR;
           return `
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${a.color};" title="${a.ad_name}">
-            <input type="checkbox" class="col-toggle" data-col="${adId}" ${hidden.has(adId) ? '' : 'checked'} style="cursor:pointer;">
-            ${a.funnel} <span style="opacity:0.55;">(${grouped[adId].length})</span>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${color};">
+            <input type="checkbox" class="col-toggle" data-col="${label}" ${hidden.has(label) ? '' : 'checked'} style="cursor:pointer;">
+            ${label} <span style="opacity:0.55;">(${grouped[label].length})</span>
           </label>`;
         }).join('')}
       </div>
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">
         ${visibleLeadCount} of ${leads.length} lead${leads.length !== 1 ? 's' : ''} shown
-        ${orphanCount > 0 ? ` &middot; <span style="opacity:0.7;">${orphanCount} hidden (from paused / archived ads)</span>` : ''}
       </p>
       ${COLUMNS.length === 0 ? `
-        <div style="text-align:center; padding:var(--space-6); ${this._targetingOk === false ? 'color:#fbbf24; background:#3d2a0a; border-radius:var(--radius-md);' : 'opacity:0.6;'}">
-          ${this._targetingOk === false
-            ? `⚠ Couldn't reach Meta to load live ad categories.<br>
-               <span style="font-size:0.8rem; opacity:0.85;">Retrying automatically in 20s — usually a transient DNS hiccup on the webhook container.</span>`
-            : `No live ads on Meta. Activate an ad to see its leads here.`}
-        </div>
+        <div style="text-align:center; padding:var(--space-6); opacity:0.6;">No leads yet.</div>
       ` : visible.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All columns hidden — check a box above to show leads.</div>
       ` : `
       <div style="display:grid; grid-template-columns:repeat(${visible.length},minmax(220px,1fr)); gap:var(--space-3); align-items:start; overflow-x:auto;">
-        ${visible.map(adId => {
-          const a = adById[adId];
-          const cpl = a.metaLeads > 0 && a.spend > 0 ? (a.spend / a.metaLeads) : null;
-          const cpc = a.clicks > 0 && a.spend > 0 ? (a.spend / a.clicks) : null;
-
-          // Direct-CTA ads (no Meta lead form) ship the click straight
-          // to LeagueApps — we cannot see registrations on this side,
-          // so render the column with a clear "no leads tracked here"
-          // banner and surface clicks/CPC instead of leads/CPL. If
-          // spend is climbing on a no-click ad it'll be obvious.
-          const headerStats = a.directCta
-            ? `
-              <span style="color:#f59e0b;">●</span> ${fmt(a.daily)}/day · ${a.days}d running<br>
-              Spent ${fmt(a.spend)} · ${a.clicks.toLocaleString()} click${a.clicks === 1 ? '' : 's'}${cpc !== null ? ` · ${fmt(cpc)}/click` : ''}<br>
-              <span style="display:inline-block; margin-top:4px; font-size:0.62rem; opacity:0.85; padding:1px 6px; border-radius:8px; background:#3d2a0a; color:#fbbf24; font-weight:600;">DIRECT → LeagueApps</span>
-              <div style="font-size:0.62rem; opacity:0.7; margin-top:3px;">No lead form. Registrations only visible in LeagueApps.</div>`
-            : `
-              <span style="color:#10b981;">●</span> ${fmt(a.daily)}/day · ${a.days}d running<br>
-              Spent ${fmt(a.spend)}${cpl !== null ? ` · ${fmt(cpl)}/lead` : ''}`;
-
-          // Inner column body: a regular form ad shows leads, a direct
-          // CTA ad shows a "No leads expected" placeholder + a button
-          // to open the LeagueApps registration page so the coach can
-          // hop straight there to check actual sign-ups.
-          const inner = a.directCta
-            ? `<div style="opacity:0.6; font-size:0.78rem; text-align:center; padding:var(--space-3); border:1px dashed var(--border-color, #4b5563); border-radius:var(--radius-md); line-height:1.5;">
-                 No leads tracked &mdash; this ad sends users straight to LeagueApps.<br>
-                 ${a.link_url ? `<a href="${a.link_url}" target="_blank" rel="noopener" style="display:inline-block; margin-top:6px; padding:4px 10px; font-size:0.72rem; border-radius:6px; background:#0e7490; color:#fff; text-decoration:none;">Open LeagueApps page →</a>` : ''}
-               </div>`
-            : (grouped[adId].map(l => this.renderLead(l, a.funnel, stats.per_lead || {})).join('') || '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:var(--space-2);">none</div>');
-
+        ${visible.map(label => {
+          const color = FUNNEL_COLORS[label] || DEFAULT_COLOR;
+          const inner = grouped[label].map(l => this.renderLead(l, label)).join('');
           return `
           <div>
-            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${a.color}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-1); text-align:center;" title="${a.ad_name}">
-              ${a.funnel} <span style="opacity:0.8;">(${a.directCta ? '↗' : grouped[adId].length})</span>
-            </div>
-            <div style="font-size:0.65rem; opacity:0.65; text-align:center; margin-bottom:4px; line-height:1.3; word-break:break-word;" title="ad_id ${adId}">
-              ${a.ad_name}
-            </div>
-            <div style="font-size:0.7rem; opacity:0.85; text-align:center; margin-bottom:var(--space-2); line-height:1.4;">
-              ${headerStats}
+            <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${color}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-2); text-align:center;">
+              ${label} <span style="opacity:0.8;">(${grouped[label].length})</span>
             </div>
             <div style="display:flex; flex-direction:column; gap:var(--space-2);">
               ${inner}
@@ -328,11 +387,13 @@ class LeadsScreen extends Screen {
         const col = cb.getAttribute('data-col');
         if (cb.checked) hidden.delete(col); else hidden.add(col);
         try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden])); } catch {}
-        this.renderLeads(this._leads || leads, this._spend || spend, this._stats || stats, this._targeting || targeting);
+        this.renderLeads(this._leads || leads);
       });
     });
 
-    // Wire contact action buttons (text/email/save)
+    // Wire contact action buttons (email / save vCard).  SMS / WhatsApp
+    // / snippet copy buttons are no longer rendered on this screen —
+    // copy snippets live on the Messages screen.
     container.querySelectorAll('.contact-btn').forEach(btn => {
       btn.addEventListener('click', (e) => this.onContactClick(e));
     });
@@ -371,6 +432,11 @@ class LeadsScreen extends Screen {
       '821845431008120':  "Men's Club",
       '3929429224026650': "Women's Club",
       // Tri County Women — form id TBD (no live ad yet).
+      // U11/U12 Travel lead forms created 2026-06-20 via create-ad.js —
+      // ads share boys-club / girls-club LeagueApps URLs but use
+      // utm_content=*-u11u12-travel to distinguish in funnel reports.
+      '966641426206505':  'Boys Club (U11/U12)',
+      '1666471931283440': 'Girls Club (U11/U12)',
     };
     return map[formId] || null;
   }
@@ -387,14 +453,17 @@ class LeadsScreen extends Screen {
     const url  = (ad.link_url || '').toLowerCase();
     const isK12     = /\(k-?12\)/.test(name);
     const isGrade16 = /\(grades?\s*1[\u2013\-]\s*6\)/.test(name);
+    const isU1112   = /u11\s*\/?\s*u12|u11u12|u11-u12/.test(name) || /utm_content=[a-z]+-u11u12-travel/.test(url);
 
     // Boys/Girls Club have parallel K-12 and Grades 1–6 ads sharing the
     // same LeagueApps URL — ad name is the only way to tell them apart.
     if (/boys club/.test(name) || /\bboys-club\b/.test(url)) {
+      if (isU1112)   return 'Boys Club (U11/U12)';
       if (isK12)     return 'Boys Club (K-12)';
       if (isGrade16) return 'Boys Club (Grades 1–6)';
     }
     if (/girls club/.test(name) || /\bgirls-club\b/.test(url)) {
+      if (isU1112)   return 'Girls Club (U11/U12)';
       if (isK12)     return 'Girls Club (K-12)';
       if (isGrade16) return 'Girls Club (Grades 1–6)';
     }
@@ -410,75 +479,57 @@ class LeadsScreen extends Screen {
     return null;
   }
 
-  // ── Ads rundown ─────────────────────────────────────────────────────
-  // Renders a per-ad summary at the top of the leads screen so the coach
-  // can spot targeting/perf problems (geo leaks, dead ads, CPL spikes)
-  // without leaving the page. Data comes from /api/ads/targeting which
-  // proxies Meta Marketing API and is polled on every screen load.
-  renderAdsRundown(ads) {
-    const root = this.find('#ads-rundown');
-    if (!root) return;
-    if (!ads || ads.length === 0) { root.innerHTML = ''; return; }
+  // ── Per-column ad details ───────────────────────────────────────────
+  // All ad-specific info — targeting (status/geo/audience/regions),
+  // Meta preview buttons, per-funnel message templates, and any
+  // performance warnings — lives inside each column's "⋮ Ad details"
+  // disclosure.  Replaces the old club-wide #ads-rundown table and
+  // #templates-panel so every piece of context for an ad is right
+  // where the coach is looking when they triage that ad's leads.
 
-    // Group ads by funnel label; show ACTIVE first, then others.
-    // Within each status, sort by canonical funnel order (same order as
-    // the kanban columns) so the rundown is stable + scannable.
-    const FUNNEL_ORDER = [
-      'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
-      'U23 Women', 'Tri County Women', "Women's Club",
-      'APSL / Liga 1',
-      'Youth (Grades 1–6)',
-      'Boys Club (Grades 1–6)', 'Boys Club (K-12)',
-      'Girls Club (Grades 1–6)', 'Girls Club (K-12)',
-    ];
-    const funnelRank = (label) => {
-      const i = FUNNEL_ORDER.indexOf(label);
-      return i === -1 ? 999 : i;
-    };
-    const decorated = ads.map(a => ({ ...a, funnel: this.adFunnelLabel(a) || '(no form)' }));
-    const statusRank = { ACTIVE: 0, PENDING_REVIEW: 1, IN_PROCESS: 2, PAUSED: 3, ARCHIVED: 4, DELETED: 5 };
-    decorated.sort((x, y) => {
-      const ds = (statusRank[x.status] ?? 9) - (statusRank[y.status] ?? 9);
-      if (ds !== 0) return ds;
-      return funnelRank(x.funnel) - funnelRank(y.funnel);
-    });
-
-    // Identify problems for the warning banner at the top
-    const warnings = [];
-    for (const a of decorated) {
-      if (a.status !== 'ACTIVE') continue;
-      // Geo leak: top region by impressions is NOT Pennsylvania/New Jersey/Delaware
-      const top = a.regions?.[0];
-      if (top && top.impressions > 50) {
-        const triState = ['Pennsylvania','New Jersey','Delaware'];
-        if (!triState.includes(top.region)) {
-          warnings.push({ kind:'geo-leak', ad: a, detail: `Top region is ${top.region} (${top.impressions} imp)` });
-        }
+  // Issues / warnings for a single ad (geo leak, CPL spike, dead spend,
+  // loose geo, "recent visitors" enabled).  Returns [] for non-ACTIVE ads.
+  _adWarnings(a) {
+    const out = [];
+    if (!a || a.status !== 'ACTIVE') return out;
+    // Geo leak: top region by impressions is NOT tri-state
+    const top = a.regions?.[0];
+    if (top && top.impressions > 50) {
+      const triState = ['Pennsylvania','New Jersey','Delaware'];
+      if (!triState.includes(top.region)) {
+        out.push({ kind:'geo-leak', detail: `Top region is ${top.region} (${top.impressions} imp)` });
       }
-      // CPL > $20 on adult ads (warn) / > $30 (danger)
-      const cpl = a.leads > 0 ? a.spend / a.leads : null;
-      if (cpl !== null && cpl > 30) warnings.push({ kind:'cpl-danger', ad: a, detail: `$${cpl.toFixed(2)}/lead` });
-      else if (cpl !== null && cpl > 20) warnings.push({ kind:'cpl-warn', ad: a, detail: `$${cpl.toFixed(2)}/lead` });
-      // Geo not locked down (must be 'zips' allowlist OR pin at Erie Ave)
-      const goodGeo = a.geo?.kind === 'zips'
-                   || (a.geo?.kind === 'pin' && /Erie/i.test(a.geo?.address || ''));
-      if (!goodGeo) {
-        warnings.push({ kind:'geo-loose', ad: a, detail: a.geo?.label || 'unknown' });
-      }
-      // Includes "recent" visitors (people just passing through Philly)
-      if (a.geo?.location_types?.includes('recent')) {
-        warnings.push({ kind:'location-recent', ad: a, detail: 'location_types includes "recent"' });
-      }
-      // Spending budget but no leads in 7+ days running
-      const days = a.start_time ? Math.floor((Date.now() - new Date(a.start_time).getTime()) / 86400000) : 0;
-      if (a.spend > 50 && a.leads === 0) warnings.push({ kind:'no-leads', ad: a, detail: `$${a.spend.toFixed(2)} spent, 0 leads (${days}d)` });
     }
+    // CPL > $20 warn / > $30 danger
+    const cpl = a.leads > 0 ? a.spend / a.leads : null;
+    if      (cpl !== null && cpl > 30) out.push({ kind:'cpl-danger', detail: `$${cpl.toFixed(2)}/lead` });
+    else if (cpl !== null && cpl > 20) out.push({ kind:'cpl-warn',   detail: `$${cpl.toFixed(2)}/lead` });
+    // Geo not locked down (zips allowlist or Erie Ave pin)
+    const goodGeo = a.geo?.kind === 'zips'
+                 || (a.geo?.kind === 'pin' && /Erie/i.test(a.geo?.address || ''));
+    if (!goodGeo) out.push({ kind:'geo-loose', detail: a.geo?.label || 'unknown' });
+    // "recent visitors" includes people passing through Philly
+    if (a.geo?.location_types?.includes('recent')) {
+      out.push({ kind:'location-recent', detail: 'location_types includes "recent"' });
+    }
+    // Spending budget but zero leads
+    if (a.spend > 50 && a.leads === 0) {
+      const days = a.start_time ? Math.floor((Date.now() - new Date(a.start_time).getTime()) / 86400000) : 0;
+      out.push({ kind:'no-leads', detail: `$${a.spend.toFixed(2)} spent, 0 leads (${days}d)` });
+    }
+    return out;
+  }
 
+  // HTML for the per-column "⋮ Ad details" disclosure: warnings +
+  // targeting (status / geo / audience / spend / regions) + Meta
+  // preview buttons + per-funnel message templates.
+  _renderAdColumnDetails(rawAd, funnelLabel) {
+    const a = rawAd || {};
     const fmt$ = (n) => `$${(n || 0).toFixed(2)}`;
     const statusPill = (s) => {
       const colors = { ACTIVE:'#10b981', PAUSED:'#6b7280', PENDING_REVIEW:'#f59e0b', IN_PROCESS:'#f59e0b', ARCHIVED:'#374151', DELETED:'#991b1b' };
       const c = colors[s] || '#6b7280';
-      return `<span style="background:${c}; color:#fff; padding:1px 6px; border-radius:8px; font-size:0.65rem; font-weight:700; letter-spacing:0.04em;">${s}</span>`;
+      return `<span style="background:${c}; color:#fff; padding:1px 6px; border-radius:8px; font-size:0.62rem; font-weight:700; letter-spacing:0.04em;">${s || '—'}</span>`;
     };
     const geoBadge = (g) => {
       if (!g) return '<span style="opacity:0.6;">no geo</span>';
@@ -486,243 +537,161 @@ class LeadsScreen extends Screen {
               || (g.kind === 'pin' && /Erie/i.test(g.address || ''));
       const color = ok ? '#10b981' : '#f59e0b';
       const lt = (g.location_types || []).join('+') || '?';
-      return `<span style="color:${color};">${g.label || '?'}</span> <span style="opacity:0.5; font-size:0.7rem;">(${lt})</span>`;
+      return `<span style="color:${color};">${g.label || '?'}</span> <span style="opacity:0.5; font-size:0.65rem;">(${lt})</span>`;
     };
-    const audBadge = (a) => {
-      const ages = (a.age_min && a.age_max) ? `${a.age_min}–${a.age_max}` : '?';
-      const g = a.genders ? (a.genders.includes(1) && a.genders.includes(2) ? 'All' : a.genders.includes(1) ? 'M' : 'F') : 'All';
+    const audBadge = (ad) => {
+      const ages = (ad.age_min && ad.age_max) ? `${ad.age_min}–${ad.age_max}` : '?';
+      const g = ad.genders ? (ad.genders.includes(1) && ad.genders.includes(2) ? 'All' : ad.genders.includes(1) ? 'M' : 'F') : 'All';
       return `ages ${ages} · ${g}`;
     };
-    const regionRow = (rs) => {
+    const regionRows = (rs) => {
       if (!rs || rs.length === 0) return '<span style="opacity:0.5;">no region data yet</span>';
       return rs.slice(0, 3).map(r => {
         const triState = ['Pennsylvania','New Jersey','Delaware'].includes(r.region);
         const color = triState ? '#10b981' : '#ef4444';
-        return `<span style="color:${color};">${r.region} ${r.impressions}🖼/${r.clicks}🖱/${r.leads}📥</span>`;
-      }).join(' · ');
+        return `<div style="color:${color}; font-size:0.68rem;">${r.region} — ${r.impressions}🖼 / ${r.clicks}🖱 / ${r.leads}📥</div>`;
+      }).join('');
     };
+    const previewBtn = (fmt, label, title) => `<a
+        href="/api/ads/${encodeURIComponent(a.ad_id)}/preview?format=${fmt}"
+        target="_blank" rel="noopener" title="${title}"
+        style="display:inline-block; padding:2px 8px; margin:0 4px 4px 0;
+               font-size:0.7rem; border-radius:6px;
+               background:var(--bg-tertiary, #374151); color:#e5e7eb;
+               text-decoration:none; border:1px solid var(--border-color, #4b5563);"
+      >${label}</a>`;
 
-    // Pop-out preview buttons — open Meta-hosted iframe preview in a new
-    // tab.  Backend (/api/ads/:adId/preview) proxies to Meta and 302s to
-    // the iframe URL so the access token stays server-side.
-    const previewBtns = (adId) => {
-      const btn = (fmt, label, title) =>
-        `<a href="/api/ads/${encodeURIComponent(adId)}/preview?format=${fmt}"
-            target="_blank" rel="noopener"
-            title="${title}"
-            style="display:inline-block; padding:1px 6px; margin:0 2px 2px 0;
-                   font-size:0.7rem; border-radius:6px;
-                   background:var(--bg-tertiary, #374151); color:#e5e7eb;
-                   text-decoration:none; border:1px solid var(--border-color, #4b5563);"
-         >${label}</a>`;
-      return [
-        btn('feed',     '📘 FB',    'Facebook mobile feed preview'),
-        btn('ig',       '📷 IG',    'Instagram feed preview'),
-        btn('ig_story', '📱 Story', 'Instagram story preview'),
-      ].join('');
-    };
-
-    const warnBanner = warnings.length > 0 ? `
-      <div style="background:#3d2a0a; border-left:4px solid #f59e0b; padding:var(--space-2) var(--space-3); border-radius:var(--radius-md); margin-bottom:var(--space-2);">
-        <div style="font-weight:700; font-size:0.85rem; color:#f59e0b;">⚠ ${warnings.length} issue${warnings.length>1?'s':''} detected</div>
-        <ul style="margin:4px 0 0 0; padding-left:18px; font-size:0.75rem; opacity:0.9;">
-          ${warnings.slice(0, 8).map(w => `<li><strong>${w.ad.funnel}</strong> [${w.kind}]: ${w.detail}</li>`).join('')}
-          ${warnings.length > 8 ? `<li>… and ${warnings.length - 8} more</li>` : ''}
+    const warnings = this._adWarnings(a);
+    const warnHtml = warnings.length ? `
+      <div style="background:#3d2a0a; border-left:3px solid #f59e0b; padding:6px 8px; border-radius:6px; margin-bottom:8px;">
+        <div style="font-weight:700; font-size:0.7rem; color:#f59e0b; margin-bottom:4px;">⚠ ${warnings.length} issue${warnings.length>1?'s':''}</div>
+        <ul style="margin:0; padding-left:16px; font-size:0.68rem; opacity:0.9; line-height:1.45;">
+          ${warnings.map(w => `<li>[${w.kind}] ${w.detail}</li>`).join('')}
         </ul>
       </div>` : '';
 
-    const collapsedKey = 'leads.rundownCollapsed';
-    let collapsed = false;
-    try { collapsed = localStorage.getItem(collapsedKey) === '1'; } catch {}
+    const targetingHtml = `
+      <div style="font-size:0.7rem; line-height:1.7;">
+        <div><span style="opacity:0.55;">Status:</span> ${statusPill(a.status)}</div>
+        <div><span style="opacity:0.55;">Geo:</span> ${geoBadge(a.geo)}</div>
+        <div><span style="opacity:0.55;">Audience:</span> ${audBadge(a)}</div>
+        <div><span style="opacity:0.55;">Daily / Spend:</span> ${fmt$(a.daily_budget_usd)} / ${fmt$(a.spend)}</div>
+        <div><span style="opacity:0.55;">Imp / Clk / Lds:</span> ${(a.impressions||0).toLocaleString()} / ${(a.clicks||0).toLocaleString()} / ${a.leads||0}</div>
+        <div style="margin-top:4px;"><span style="opacity:0.55;">Top regions (30d):</span>${regionRows(a.regions)}</div>
+      </div>`;
 
-    root.innerHTML = `
-      ${warnBanner}
-      <details ${collapsed ? '' : 'open'} style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3);">
-        <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; user-select:none; outline:none;">
-          📡 Ad Targeting Rundown <span style="opacity:0.5; font-weight:400; font-size:0.75rem;">(${decorated.length} ads · live from Meta)</span>
+    const previewHtml = a.ad_id ? `
+      <div style="margin-top:6px;">
+        <div style="opacity:0.55; font-size:0.7rem; margin-bottom:2px;">Preview:</div>
+        ${previewBtn('feed',     '📘 FB',    'Facebook mobile feed preview')}
+        ${previewBtn('ig',       '📷 IG',    'Instagram feed preview')}
+        ${previewBtn('ig_story', '📱 Story', 'Instagram story preview')}
+      </div>` : '';
+
+    return `
+      <details style="background:var(--bg-tertiary, #1f2937); border-radius:var(--radius-sm); padding:6px 8px; margin-bottom:var(--space-2);">
+        <summary style="cursor:pointer; font-size:0.72rem; font-weight:600; user-select:none; outline:none; opacity:0.85;">
+          ⋮ Ad details${warnings.length ? ` <span style="color:#f59e0b;">· ⚠ ${warnings.length}</span>` : ''}
         </summary>
-        <div style="overflow-x:auto; margin-top:var(--space-2);">
-          <table style="width:100%; font-size:0.75rem; border-collapse:collapse;">
-            <thead style="opacity:0.7; text-align:left;">
-              <tr>
-                <th style="padding:4px 8px;">Ad</th>
-                <th style="padding:4px 8px;">Status</th>
-                <th style="padding:4px 8px;">Preview</th>
-                <th style="padding:4px 8px;">Geo</th>
-                <th style="padding:4px 8px;">Audience</th>
-                <th style="padding:4px 8px; text-align:right;">$/day</th>
-                <th style="padding:4px 8px; text-align:right;">Spend</th>
-                <th style="padding:4px 8px; text-align:right;">Imp</th>
-                <th style="padding:4px 8px; text-align:right;">Clicks</th>
-                <th style="padding:4px 8px; text-align:right;">Leads</th>
-                <th style="padding:4px 8px; text-align:right;">CPL</th>
-                <th style="padding:4px 8px;">Top regions (30d)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${decorated.map(a => {
-                const cpl = a.leads > 0 ? `$${(a.spend / a.leads).toFixed(2)}` : '—';
-                const dim = a.status !== 'ACTIVE' ? 'opacity:0.55;' : '';
-                return `
-                  <tr style="border-top:1px solid var(--bg-tertiary, #1f2937); ${dim}">
-                    <td style="padding:6px 8px;"><strong>${a.funnel}</strong><br><span style="opacity:0.5; font-size:0.7rem;">${a.ad_name}</span></td>
-                    <td style="padding:6px 8px;">${statusPill(a.status)}</td>
-                    <td style="padding:6px 8px; white-space:nowrap;">${previewBtns(a.ad_id)}</td>
-                    <td style="padding:6px 8px;">${geoBadge(a.geo)}</td>
-                    <td style="padding:6px 8px;">${audBadge(a)}</td>
-                    <td style="padding:6px 8px; text-align:right;">${fmt$(a.daily_budget_usd)}</td>
-                    <td style="padding:6px 8px; text-align:right;">${fmt$(a.spend)}</td>
-                    <td style="padding:6px 8px; text-align:right;">${a.impressions.toLocaleString()}</td>
-                    <td style="padding:6px 8px; text-align:right;">${a.clicks.toLocaleString()}</td>
-                    <td style="padding:6px 8px; text-align:right;">${a.leads}</td>
-                    <td style="padding:6px 8px; text-align:right;">${cpl}</td>
-                    <td style="padding:6px 8px; font-size:0.7rem;">${regionRow(a.regions)}</td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+        <div style="margin-top:6px;">
+          ${warnHtml}
+          ${targetingHtml}
+          ${previewHtml}
+          <details style="margin-top:8px; background:var(--bg-secondary); border-radius:var(--radius-sm); padding:4px 6px;">
+            <summary style="cursor:pointer; font-size:0.72rem; font-weight:600; user-select:none; outline:none; opacity:0.85;">
+              📝 Message templates
+            </summary>
+            <div style="margin-top:6px;">
+              ${this._renderFunnelTemplatesHtml(funnelLabel)}
+            </div>
+          </details>
         </div>
-      </details>
-    `;
-
-    // Persist collapsed/open state
-    const det = root.querySelector('details');
-    if (det) det.addEventListener('toggle', () => {
-      try { localStorage.setItem(collapsedKey, det.open ? '0' : '1'); } catch {}
-    });
+      </details>`;
   }
 
-  // ── Message Templates panel ─────────────────────────────────────────
-  // Renders every initial outreach blurb (SMS + email) and every reply
-  // snippet for every funnel, with a Copy-to-clipboard button on each.
-  // Lets the coach read & critique exactly what gets sent without needing
-  // a real lead in front of them.  Tokens like {first} render as a
-  // bracketed placeholder ([Name]) since there's no specific lead.
-  renderTemplatesPanel() {
-    const root = this.find('#templates-panel');
-    if (!root) return;
-
-    // Canonical funnel labels — one of each funnel (formLabel() has dupes
-    // because the same funnel often has multiple Meta form IDs).
-    const FUNNELS = [
-      'Brazil Men',
-      'PR Men',
-      'U23 Men',
-      'APSL / Liga 1',
-      'U23 Women',
-      'Tri County Women',
-      'Boys Club (Grades 1–6)',
-      'Girls Club (Grades 1–6)',
-      'Youth (Grades 1–6)',
-    ];
-
-    // Synthetic "preview" lead — fillTemplate() will sub {first} → [Name].
-    const previewLead = { name: '[Name]', phone: '[Phone]' };
-
-    const collapsedKey = 'leads.templatesPanelCollapsed';
-    let collapsed = false;
-    try { collapsed = localStorage.getItem(collapsedKey) === '1'; } catch {}
-
+  // First-touch email + reply snippets for a single funnel, rendered as
+  // copy-to-clipboard blurbs.  Tokens like {first} render as [Name]
+  // placeholders so the templates read sensibly with no real lead.
+  //
+  // NOTE: pre/wrapper styling intentionally stays neutral — coaches
+  // often manually select + Cmd-C the body, and inline backgrounds
+  // get carried into Gmail/SMS as rich-text styling on paste.
+  _renderFunnelTemplatesHtml(funnelLabel) {
     const esc = (s) => String(s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const previewLead = { name: '[Name]', phone: '[Phone]' };
 
-    // NOTE: blurbBlock intentionally renders the body with NO background
-    // color, NO foreground color, and NO opacity tweaks on the <pre>.
-    // Reason: coaches often manually select + Cmd-C the text instead of
-    // hitting the 📋 button, and any inline background/color from this
-    // panel gets carried into Gmail/SMS as rich-text styling — which
-    // shows up as a dark band + colored text on the recipient side.
-    // Keeping the body styling neutral so a manual select-copy pastes
-    // as plain text. Only the wrapper has a faint border to separate
-    // blurbs visually.
     const blurbBlock = (title, body, todo = false) => {
-      const dim = todo ? 'opacity:0.55;' : '';
+      const dim  = todo ? 'opacity:0.55;' : '';
       const warn = todo ? ' <span style="color:#f59e0b;" title="Placeholder — fill this in">⚠</span>' : '';
       return `
-        <div style="border:1px solid var(--border-color, #334155); border-radius:var(--radius-sm); padding:var(--space-2); margin-bottom:var(--space-2); ${dim}">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-bottom:4px;">
-            <strong style="font-size:0.8rem;">${esc(title)}${warn}</strong>
-            <button class="copy-btn btn btn-secondary" data-copy="${esc(body)}" style="font-size:0.7rem; padding:2px 8px;">📋 Copy</button>
+        <div style="border:1px solid var(--border-color, #334155); border-radius:var(--radius-sm); padding:6px 8px; margin-bottom:6px; ${dim}">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;">
+            <strong style="font-size:0.72rem;">${esc(title)}${warn}</strong>
+            <button class="copy-btn btn btn-secondary" data-copy="${esc(body)}" style="font-size:0.65rem; padding:1px 6px;">📋 Copy</button>
           </div>
-          <pre style="white-space:pre-wrap; word-break:break-word; margin:0; font-family:inherit; font-size:0.78rem; line-height:1.45;">${esc(body)}</pre>
-        </div>
-      `;
+          <pre style="white-space:pre-wrap; word-break:break-word; margin:0; font-family:inherit; font-size:0.7rem; line-height:1.4;">${esc(body)}</pre>
+        </div>`;
     };
 
-    const funnelBlock = (label) => {
-      const t        = this.messageTemplate(label);
-      const subject  = this.fillTemplate(t.subject, previewLead);
-      const email    = this.fillTemplate(t.email,   previewLead);
-      const snippets = this.messageSnippets(label);
+    const t        = this.messageTemplate(funnelLabel);
+    const subject  = this.fillTemplate(t.subject, previewLead);
+    const email    = this.fillTemplate(t.email,   previewLead);
+    const snippets = this.messageSnippets(funnelLabel);
 
-      // Render in same tier order as the on-card chips:
-      //   qualify → close → soft → info
-      // so the coach reads the templates in the order they'd send them.
-      const TIER_ORDER = ['qualify', 'close', 'soft', 'info'];
-      const TIER_LABEL = { qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
-      const byTier = {};
-      for (const s of snippets) {
-        const t = s.tier || 'info';
-        (byTier[t] = byTier[t] || []).push(s);
-      }
-      const snippetHtml = TIER_ORDER.flatMap(tier => {
-        const items = byTier[tier];
-        if (!items || !items.length) return [];
-        const header = `
-          <div style="font-size:0.65rem; opacity:0.5; text-transform:uppercase;
-                      letter-spacing:1.5px; margin:var(--space-2) 0 4px;">
-            ${esc(TIER_LABEL[tier] || tier)}
-          </div>`;
-        const blocks = items.map(s => {
-          const body = this.fillTemplate(s.body, previewLead);
-          return blurbBlock(s.label, body, !!s.todo);
-        });
-        return [header, ...blocks];
-      }).join('');
+    const TIER_ORDER = ['qualify', 'close', 'soft', 'info'];
+    const TIER_LABEL = { qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
+    const byTier = {};
+    for (const s of snippets) {
+      const tt = s.tier || 'info';
+      (byTier[tt] = byTier[tt] || []).push(s);
+    }
+    const snippetHtml = TIER_ORDER.flatMap(tier => {
+      const items = byTier[tier];
+      if (!items || !items.length) return [];
+      const header = `<div style="font-size:0.6rem; opacity:0.5; text-transform:uppercase; letter-spacing:1.5px; margin:8px 0 4px;">
+                        ${esc(TIER_LABEL[tier] || tier)}
+                      </div>`;
+      const blocks = items.map(s => {
+        const body = this.fillTemplate(s.body, previewLead);
+        return blurbBlock(s.label, body, !!s.todo);
+      });
+      return [header, ...blocks];
+    }).join('');
 
-      return `
-        <details style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3); margin-bottom:var(--space-2);">
-          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; user-select:none; outline:none;">
-            ${esc(label)} <span style="opacity:0.5; font-weight:400; font-size:0.72rem;">(${snippets.length + 1} blurbs)</span>
-          </summary>
-          <div style="margin-top:var(--space-2);">
-            ${blurbBlock(`First-touch Email · Subject: ${subject}`, email)}
-            ${snippetHtml}
-          </div>
-        </details>
-      `;
-    };
+    return `
+      ${blurbBlock(`First-touch Email · Subject: ${subject}`, email)}
+      ${snippetHtml}`;
+  }
 
-    root.innerHTML = `
-      <details ${collapsed ? '' : 'open'} style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3);">
-        <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; user-select:none; outline:none;">
-          📝 Message Templates <span style="opacity:0.5; font-weight:400; font-size:0.75rem;">(${FUNNELS.length} funnels · copy & paste)</span>
-        </summary>
-        <div style="margin-top:var(--space-2); font-size:0.75rem; opacity:0.7;">
-          First-touch email + reply snippets per funnel.  Click 📋 Copy, paste into your Gmail reply, edit the <code>[Name]</code> placeholder.
-        </div>
-        <div style="margin-top:var(--space-2);">
-          ${FUNNELS.map(funnelBlock).join('')}
-        </div>
-      </details>
-    `;
-
-    // Persist collapsed/open state of the outer panel
-    const outer = root.querySelector(':scope > details');
-    if (outer) outer.addEventListener('toggle', () => {
-      try { localStorage.setItem(collapsedKey, outer.open ? '0' : '1'); } catch {}
+  // Auto-linkify a plain-text body into HTML: escape, wrap URLs in <a href>,
+  // turn newlines into <br>.  Used by copyToClipboard to give Gmail (and any
+  // other rich-text target) a proper clickable hyperlink on paste while
+  // keeping the plain-text fallback intact for SMS / Notes / etc.
+  // URL regex matches http(s):// up to whitespace; trims trailing punctuation
+  // (.,!?;:) so 'register here: https://x.com.' doesn't capture the period.
+  toLinkifiedHtml(text) {
+    const esc = (s) => String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const URL_RE = /\bhttps?:\/\/[^\s<>"']+/g;
+    let html = '';
+    let last = 0;
+    text.replace(URL_RE, (match, offset) => {
+      html += esc(text.slice(last, offset));
+      // Strip trailing punctuation so the period after a sentence doesn't
+      // get pulled into the href.
+      const trimmed = match.replace(/[.,!?;:)\]]+$/, '');
+      const trail   = match.slice(trimmed.length);
+      html += `<a href="${esc(trimmed)}">${esc(trimmed)}</a>${esc(trail)}`;
+      last = offset + match.length;
+      return match;
     });
-
-    // Wire copy buttons (event delegation on the panel root)
-    root.addEventListener('click', (e) => {
-      const btn = e.target.closest('.copy-btn');
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const text = btn.getAttribute('data-copy') || '';
-      this.copyToClipboard(text, btn);
-    });
+    html += esc(text.slice(last));
+    // Newlines → <br> so multi-line bodies render correctly in Gmail's
+    // rich-text composer.  Wrapped in a <div> so paste doesn't inherit the
+    // surrounding paragraph's color/font (Gmail respects div defaults).
+    return `<div>${html.replace(/\n/g, '<br>')}</div>`;
   }
 
   copyToClipboard(text, btn) {
@@ -739,7 +708,25 @@ class LeadsScreen extends Screen {
       btn.innerHTML = '⚠ Failed';
       setTimeout(() => { btn.innerHTML = orig; }, 1500);
     };
+    // Modern path — write BOTH text/plain (for SMS / Notes) AND text/html
+    // (for Gmail / Slack / rich editors) so URLs paste as clickable links
+    // in rich targets while plain-text targets get raw URLs.  Requires
+    // ClipboardItem support (Chrome 76+ / Safari 13.1+ / Firefox 127+ in
+    // 2024+) — falls through to writeText / execCommand on older browsers.
     try {
+      if (navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
+        const html = this.toLinkifiedHtml(text);
+        const item = new ClipboardItem({
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+          'text/html':  new Blob([html], { type: 'text/html' }),
+        });
+        navigator.clipboard.write([item]).then(done, () => {
+          // Some browsers reject HTML clipboard for security reasons —
+          // fall back to plain text rather than failing the whole copy.
+          navigator.clipboard.writeText(text).then(done, fail);
+        });
+        return;
+      }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(done, fail);
         return;
@@ -761,7 +748,7 @@ class LeadsScreen extends Screen {
     }
   }
 
-  renderLead(lead, columnLabel = null, perLeadStats = {}) {
+  renderLead(lead, columnLabel = null) {
     const date = new Date(lead.created_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
@@ -790,7 +777,6 @@ class LeadsScreen extends Screen {
     // Contact buttons + status
     const label = columnLabel || this.formLabel(lead.form_id) || '';
     const isYouth = /youth/i.test(label);
-    const contact = perLeadStats[lead.id] || {};
     const hasEmail = !!lead.email;
     const mailHref = hasEmail ? this.buildMailHref(lead, label)  : null;
 
@@ -805,25 +791,15 @@ class LeadsScreen extends Screen {
       return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
     };
 
-    // Leads workflow is EMAIL-ONLY on the cards as of 2026-06-13 —
-    // soccer-club leads (esp. parents) convert better via email and
-    // single-channel focus eliminates the SMS-vs-email decision the
-    // coach used to have to make per lead.  The SMS / WhatsApp helpers
-    // (buildSmsHref, buildWhatsAppHref, messageTemplate.sms,
-    // messageSnippets) are intentionally kept for OTHER use cases:
-    //   • player attendance / RSVP nudges from elsewhere in the app
-    //   • chat-bot or scheduled-reminder workflows
-    //   • future re-introduction of multi-channel here if the data
-    //     ever justifies it
-    // The backend /api/leads/:id/contact endpoint also still accepts
-    // 'text' / 'whatsapp' channels for the same reason.
-    //
-    // Tracked-touch badge for prior emails (no longer showing the
-    // text badge since we don't text from here anymore — if you ever
-    // want it back, the contact-stats endpoint still returns text_count
-    // and last_text_at).
-    const emailBadge = contact.email_count
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e2e4a; color:#60a5fa;">✉ Emailed ${ago(contact.last_email_at)}${contact.email_count > 1 ? ` ×${contact.email_count}` : ''}</span>`
+    // Email-clicked badge.  email_count + last_email_at are joined
+    // into the lead row by /api/leads (LEFT JOIN on lead_contacts) so
+    // we don't need a second contact-stats round-trip.  Bumped
+    // optimistically when the coach clicks the Email button (see
+    // onContactClick) so the badge appears instantly.
+    const emailCount  = Number(lead.email_count || 0);
+    const lastEmailAt = lead.last_email_at || null;
+    const emailBadge  = emailCount
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e2e4a; color:#60a5fa;">✉ Emailed ${ago(lastEmailAt)}${emailCount > 1 ? ` ×${emailCount}` : ''}</span>`
       : '';
 
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
@@ -877,7 +853,7 @@ class LeadsScreen extends Screen {
   //   first converts at 10-20% based on most documented youth-sports SMS data.
   //
   // Pricing (used in the Register snippet, not the first text):
-  //   • $1 to register (card capture)
+  //   • $35 to register (card capture)
   //   • Youth   → $35/mo
   //   • Adults  → $9/wk or $35/mo
   //
@@ -886,7 +862,7 @@ class LeadsScreen extends Screen {
   // template and the snippets.
 
   funnelContext(funnelLabel) {
-    // LeagueApps registration URLs ($1 to register; card on file → recurring).
+    // LeagueApps registration URLs ($35 to register; card on file → recurring).
     const URL_MEN   = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership';
     const URL_WOMEN = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership';
     const URL_BOYS  = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership';
@@ -896,32 +872,44 @@ class LeadsScreen extends Screen {
     // ALSO prepend the next scheduled pickup (if any) pulled live from the
     // chat's calendar via /api/leads/next-pickup.
     const PICKUP_LINK = 'https://groupme.com/join_group/65284700/VRuVK50q';
-    // Shared Practice GroupMe chat — ONE chat that every adult team uses
-    // for mid-week practice heads-up.  Game chats are per-team (see CHATS
-    // below) but practice + pickup are club-wide singletons.
-    // TODO: paste real share URL.
-    const PRACTICE_LINK = 'TODO_PRACTICE_CHAT_SHARE_URL';
+    // Shared Practice/Training GroupMe chat — ONE chat that every adult
+    // team uses for mid-week practice heads-up (chat name is "Training").
+    // Game chats are per-team (see GAME_CHATS below) but practice +
+    // pickup are club-wide singletons.
+    const PRACTICE_LINK = 'https://groupme.com/join_group/108640377/8jHkgybd';
 
     const LINKS = {
       'Brazil Men':                URL_MEN,
       'PR Men':                    URL_MEN,
       'U23 Men':                   URL_MEN,
       'APSL / Liga 1':             URL_MEN,
+      "Men's Club":                URL_MEN,
       'U23 Women':                 URL_WOMEN,
       'Tri County Women':          URL_WOMEN,
+      "Women's Club":              URL_WOMEN,
       'Boys Club (Grades 1–6)':    URL_BOYS,
+      'Boys Club (K-12)':          URL_BOYS,
+      'Boys Club (U11/U12)':       URL_BOYS,
       'Girls Club (Grades 1–6)':   URL_GIRLS,
+      'Girls Club (K-12)':         URL_GIRLS,
+      'Girls Club (U11/U12)':      URL_GIRLS,
       'Youth (Grades 1–6)':        URL_BOYS,   // legacy combined form
     };
     const PROGRAM_NAMES = {
       'Youth (Grades 1–6)':        'youth soccer program (grades 1–6)',
       'Boys Club (Grades 1–6)':    'Boys Club soccer program (grades 1–6)',
+      'Boys Club (K-12)':          'Boys Club soccer program',
+      'Boys Club (U11/U12)':       'Boys U11/U12 travel team',
       'Girls Club (Grades 1–6)':   'Girls Club soccer program (grades 1–6)',
+      'Girls Club (K-12)':         'Girls Club soccer program',
+      'Girls Club (U11/U12)':      'Girls U11/U12 travel team (co-ed for fall 2026 — plays in the boys division)',
       'Brazil Men':                "Brazilian Men's team",
       'PR Men':                    "Puerto Rican Men's team",
       'U23 Men':                   "U23 Men's team",
+      "Men's Club":                "Men's Club soccer team",
       'U23 Women':                 "U23 Women's team",
       'Tri County Women':          "Tri County Women's team",
+      "Women's Club":              "Women's Club soccer team",
       'APSL / Liga 1':             'APSL / Liga 1 team',
     };
     // Qualifying question asked in the FIRST message.  Goal: one short answer
@@ -931,7 +919,11 @@ class LeadsScreen extends Screen {
     // "want to play for our X this season?" — see messageTemplate).
     const QUESTIONS = {
       'Boys Club (Grades 1–6)':    "what's your son's name?",
+      'Boys Club (K-12)':          "what's your son's name?",
+      'Boys Club (U11/U12)':       "what's your son's name?",
       'Girls Club (Grades 1–6)':   "what's your daughter's name?",
+      'Girls Club (K-12)':         "what's your daughter's name?",
+      'Girls Club (U11/U12)':      "what's your daughter's name?",
       'Youth (Grades 1–6)':        'is it for a boy or girl?',
     };
 
@@ -943,7 +935,7 @@ class LeadsScreen extends Screen {
     //   url          — public schedule page (optional; omit if no public URL)
     //   sourceOf     — label used inline so the lead knows what they're clicking
     //                  ("CASA league page", "season Google Sheet", etc.)
-    //   practice     — concrete practice day/time ("Wednesday & Friday 7–8:45pm"), optional
+    //   practice     — concrete practice day/time ("Wednesday & Friday 7–8:30pm"), optional
     //   practiceNote — extra free-form line printed under Practice: (used for
     //                  Men funnels so the lead knows pickups count as a
     //                  practice if Wed/Fri don't fit), optional
@@ -952,43 +944,59 @@ class LeadsScreen extends Screen {
         day:          'Sundays',
         url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday & Friday 7–8:45pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice. We do this so it's as easy as possible to make a practice during the week.",
+        practice:     'Wednesday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice. We do this so it's as easy as possible to make a practice during the week.",
       },
       'PR Men': {
         day:          'Sundays',
         url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday & Friday 7–8:45pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
+        practice:     'Wednesday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       'U23 Men': {
         day:          'Sundays',
         url:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
         sourceOf:     'season Google Sheet',
-        practice:     'Wednesday & Friday 7–8:45pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
+        practice:     'Wednesday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       'APSL / Liga 1': {
         day:          'Sundays',
         url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday & Friday 7–8:45pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:45pm or Saturday 11am–12:30pm — and it counts as a practice.",
+        practice:     'Wednesday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
       // only.  Games mostly Saturdays (occasionally Sunday) + practice Mon/Wed.
       'Boys Club (Grades 1–6)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday 6–7:30pm',
+        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+      },
+      'Boys Club (K-12)': {
+        day:      'Saturdays',
+        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
       },
       'Girls Club (Grades 1–6)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday 6–7:30pm',
+        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+      },
+      'Girls Club (K-12)': {
+        day:      'Saturdays',
+        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+      },
+      'Boys Club (U11/U12)': {
+        day:      'Saturdays',
+        practice: 'Monday & Wednesday 5:30–7pm (5th & 6th graders). First practice: Wednesday June 24.',
+      },
+      'Girls Club (U11/U12)': {
+        day:      'Saturdays',
+        practice: 'Monday & Wednesday 5:30–7pm (5th & 6th graders). First practice: Wednesday June 24.',
       },
       'Youth (Grades 1–6)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday 6–7:30pm',
+        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
       },
       'Tri County Women': {
         day:      'Sundays',
@@ -1009,25 +1017,85 @@ class LeadsScreen extends Screen {
     // We can't auto-mint these from the DB (we only store {group_id}, not
     // the share token).  Funnels without an entry skip the Welcome chip.
     const GAME_CHATS = {
+      'Brazil Men':       'https://groupme.com/join_group/114866775/nMhuqv5R',
+      'PR Men':           'https://groupme.com/join_group/114866725/faQKo5Vv',
       'U23 Men':          'https://groupme.com/join_group/114664832/yYQrXaFS',
-      // Brazil Men, PR Men, APSL/Liga 1, U23 Women, Tri County Women — TODO.
+      // APSL/Liga 1, U23 Women, Tri County Women — TODO.
     };
 
-    const isYouth = /youth|grades?\s*1[–-]6/i.test(funnelLabel || '');
+    // Per-funnel public handbook URLs.  Currently only the Men's
+    // handbook exists (covers all adult Men funnels — Brazil, PR, U23,
+    // APSL, Men's Club).  Surfaced in the adult Welcome + More info
+    // snippets so new members can dig in on logistics without pinging
+    // the coach.  Add 'Women's Club' / etc. here when those handbooks
+    // are ready.
+    const MENS_HANDBOOK = 'https://docs.google.com/document/d/1xjekFzKZeYGnFL-QIy9YzII8trd50Nrz-tn1D-HQH_c/edit?usp=sharing';
+    const HANDBOOKS = {
+      'Brazil Men':    MENS_HANDBOOK,
+      'PR Men':        MENS_HANDBOOK,
+      'U23 Men':       MENS_HANDBOOK,
+      'APSL / Liga 1': MENS_HANDBOOK,
+      "Men's Club":    MENS_HANDBOOK,
+    };
+
+    // External team-roster registration URLs.  Separate from LINKS
+    // (LeagueApps club membership) — these are league-side roster
+    // forms required to play sanctioned games.  Currently CASA Philly
+    // Grassroots Cup uses one SportsEngine form for all its teams.
+    // PR Men + Brazil Men share that form; if APSL / Liga 1 or U23 Men
+    // need it later, add them here.  Surfaced in the adult Welcome
+    // blurb so new members register once they're locked into the team.
+    const CASA_ROSTER_URL = 'https://casasoccerleagues.sportngin.com/register/form/824938975';
+    const ROSTER_LINKS = {
+      'PR Men':     CASA_ROSTER_URL,
+      'Brazil Men': CASA_ROSTER_URL,
+    };
+    // The CASA / Grassroots Cup form asks the player to pick their
+    // country (Puerto Rico vs Brazil) — that's how it routes to the
+    // right team.  Spell out the answer per funnel so the player
+    // doesn't pick the wrong one.
+    const ROSTER_TEAM_NAME = {
+      'PR Men':     'Puerto Rico',
+      'Brazil Men': 'Brazil',
+    };
+
+    // Some leagues don't give us a sharable registration URL — instead
+    // they email each player directly with a player-specific link
+    // (Squadi for U23 Men's USASA league is the canonical case).  For
+    // those funnels we surface the *instruction* ("watch your inbox")
+    // as a numbered Welcome step instead of a link.  rosterNote and
+    // rosterLink are mutually exclusive at the funnel level — the
+    // Welcome builder picks whichever exists.
+    const ROSTER_NOTES = {
+      'U23 Men': 'Watch your inbox for an email from Squadi — that\'s our league\'s registration platform. Open it and complete the player registration so you\'re eligible for league games.',
+    };
+
+    const isYouth = /youth|grades?\s*1[–-]6|boys\s*club|girls\s*club/i.test(funnelLabel || '');
     // Legacy combined youth funnel — the only funnel where the form
     // doesn't pre-identify gender, so the close branches on the lead's
     // boy/girl answer (see Register chip split in messageSnippets).
     const isLegacyYouth = funnelLabel === 'Youth (Grades 1–6)';
+    // 'U23 Men + PR' is a combined funnel for players who are on both
+    // U23 Men's (USASA / Squadi) AND PR Men (CASA / SportsEngine).
+    // Reuse U23 Men's base lookups (chats, schedule, handbook, etc.)
+    // but layer on the CASA roster link with PR as the country pick so
+    // the Welcome lists BOTH registrations.
+    const isCombinedU23PR = funnelLabel === 'U23 Men + PR';
+    const baseLabel = isCombinedU23PR ? 'U23 Men' : funnelLabel;
     return {
-      program:       PROGRAM_NAMES[funnelLabel] || 'program',
-      link:          LINKS[funnelLabel] || 'https://lighthouse1893.leagueapps.com',
+      program:       PROGRAM_NAMES[baseLabel] || 'program',
+      link:          LINKS[baseLabel] || 'https://lighthouse1893.leagueapps.com',
       linkBoys:      URL_BOYS,
       linkGirls:     URL_GIRLS,
       pickupLink:    PICKUP_LINK,
       practiceLink:  PRACTICE_LINK,
-      gameChat:      GAME_CHATS[funnelLabel] || null,
-      question:      QUESTIONS[funnelLabel] || 'tell me a bit about your soccer background?',
-      schedule:      SCHEDULES[funnelLabel] || null,
+      gameChat:      GAME_CHATS[baseLabel] || null,
+      handbookLink:  HANDBOOKS[baseLabel] || null,
+      rosterLink:    isCombinedU23PR ? CASA_ROSTER_URL : (ROSTER_LINKS[baseLabel] || null),
+      rosterNote:    ROSTER_NOTES[baseLabel] || null,
+      rosterTeam:    isCombinedU23PR ? 'Puerto Rico' : (ROSTER_TEAM_NAME[baseLabel] || null),
+      question:      QUESTIONS[baseLabel] || 'tell me a bit about your soccer background?',
+      schedule:      SCHEDULES[baseLabel] || null,
       whose:         isYouth ? "your player's" : 'your',
       whoseCap:      isYouth ? "Your player's" : 'Your',
       pricing:       isYouth ? '$35/mo' : '$9/wk or $35/mo',
@@ -1042,7 +1110,7 @@ class LeadsScreen extends Screen {
     // DESIGN — single-CTA, lean copy:
     //   • Schedule / practice cadence omitted from all 9 first-touch emails.
     //     Generates "doesn't fit my schedule" objections before the lead
-    //     even sees the $1 hook.  Schedule lives in the snippet chip for
+    //     even sees the $35 hook.  Schedule lives in the snippet chip for
     //     follow-up after they reply or register.
     //   • Pickup invite omitted — that's the soft-fallback chip for
     //     hesitant adult leads, not part of the cold open.
@@ -1050,9 +1118,10 @@ class LeadsScreen extends Screen {
     //     For women's-league leads, day-of-week is a positive filter
     //     ("yep, Sundays work") not a friction generator.
 
-    // Auto-renewal disclosure — appears as a parenthetical under every
-    // first-touch email's CTA link.  Honest upfront disclosure beats
-    // post-checkout surprise: lower chargeback rate, fewer "I felt
+    // Auto-renewal disclosure — folded into the CTA sentence on every
+    // first-touch email ("$35 for initial registration and then $X/month
+    // — cancel anytime, no questions asked").  Honest upfront disclosure
+    // beats post-checkout surprise: lower chargeback rate, fewer "I felt
     // tricked" reviews, builds the word-of-mouth trust that compounds
     // in a small-club market.  LeagueApps re-discloses on the checkout
     // page (Program Description + Cancellation Policy checkbox); this
@@ -1061,7 +1130,6 @@ class LeadsScreen extends Screen {
     //   All others (Men's + Youth)             → $35/month
     const isWomensClub = /women/i.test(funnelLabel);
     const monthly = isWomensClub ? '$5' : '$35';
-    const disclosure = `(Membership renews at ${monthly}/month — cancel anytime, no questions asked.)`;
 
     // ── Legacy Youth (combined Boys+Girls form, gender unknown) ────────
     // Email closes with BOTH links — parent picks the right one.  Avoids
@@ -1072,15 +1140,21 @@ class LeadsScreen extends Screen {
       return {
         sms:
           `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
-          `Quick Q: ${c.question}`,
+          `Quick Q: ${c.question}\n` +
+          `Sign up — Boys: ${c.linkBoys} | Girls: ${c.linkGirls}`,
         subject: `Lighthouse 1893 — sign up your player for our youth soccer program`,
         email:
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Ready to sign your player up? It's $1 to join — pick the program that matches:\n` +
+          `Practice is Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140. Times are based on your child's grade in the upcoming school year — PreK–2nd grade 4:30pm–5:30pm, 3rd–10th grade 5:30pm–7pm, 11th grade and up 7pm–8:30pm. First practice is Wednesday June 24.\n\n` +
+          `Fall 2026 season format:\n` +
+          `• PreK–1st grade: In-House league\n` +
+          `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
+          `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
+          `Ready to join? It's $35 for initial registration and then ${monthly}/month — cancel anytime, no questions asked. Pick the program that matches:\n` +
           `• Boys (Grades 1–6): ${c.linkBoys}\n` +
-          `• Girls (Grades 1–6): ${c.linkGirls}\n` +
-          `${disclosure}\n\n` +
+          `• Girls (Grades 1–6): ${c.linkGirls}\n\n` +
+          `Everything is included — uniforms, tournaments, and gear. No hidden fees.\n\n` +
           `Or just hit reply with any questions — happy to help.\n\n` +
           `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
       };
@@ -1094,14 +1168,20 @@ class LeadsScreen extends Screen {
       return {
         sms:
           `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
-          `Quick Q: ${c.question}`,
+          `Quick Q: ${c.question}\n` +
+          `Sign up ($35): ${c.link}`,
         subject: `Lighthouse 1893 — sign your ${child} up for our ${c.program}`,
         email:
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Ready to sign your ${child} up? It's $1 to join — takes about 60 seconds:\n` +
-          `${c.link}\n` +
-          `${disclosure}\n\n` +
+          `Practice is Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140. Times are based on your ${child}'s grade in the upcoming school year — PreK–2nd grade 4:30pm–5:30pm, 3rd–10th grade 5:30pm–7pm, 11th grade and up 7pm–8:30pm. First practice is Wednesday June 24.\n\n` +
+          `Fall 2026 season format:\n` +
+          `• PreK–1st grade: In-House league\n` +
+          `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
+          `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
+          `Ready to join? It's $35 for initial registration and then ${monthly}/month — cancel anytime, no questions asked:\n` +
+          `${c.link}\n\n` +
+          `Everything is included — uniforms, tournaments, and gear. No hidden fees.\n\n` +
           `Or just hit reply with any questions — happy to help.\n\n` +
           `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
       };
@@ -1109,21 +1189,31 @@ class LeadsScreen extends Screen {
 
     // ── Adult funnels (Brazil / PR / U23 M / U23 W / Tri County W / APSL)
     // SMS stays SMS-native (tight single-sentence ask).  Email is the
-    // closing channel: warm intro, the $1 ask, register link, soft reply
+    // closing channel: warm intro, the $35 ask, register link, soft reply
     // out.  Reads like a club welcome, not a sales pitch.
     const isTriCountyWomen = funnelLabel === 'Tri County Women';
     const gameLine = isTriCountyWomen ? `Games on Sundays.\n\n` : '';
+    // Practice + pickup lines for adult funnels that have them wired in
+    // SCHEDULES (currently the four men's funnels).  Surfaced in the
+    // first-touch email so the lead knows the weekly cadence before
+    // they decide to join.
+    const practiceBlock = c.schedule?.practice
+      ? `Practice is ${c.schedule.practice} at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140.\n\n` +
+        (c.schedule.practiceNote ? `${c.schedule.practiceNote}\n\n` : '')
+      : '';
     return {
       sms:
-        `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?`,
+        `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
+        `Sign up ($35): ${c.link}`,
       subject: `Lighthouse 1893 — join our ${c.program} this season`,
       email:
         `Hi {first},\n\n` +
         `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
         gameLine +
-        `Ready to play? It's $1 to join — takes about 60 seconds:\n` +
-        `${c.link}\n` +
-        `${disclosure}\n\n` +
+        practiceBlock +
+        `Ready to join? It's $35 for initial registration and then ${monthly}/month — cancel anytime, no questions asked:\n` +
+        `${c.link}\n\n` +
+        `Everything is included — uniforms, tournaments, and gear. No hidden fees.\n\n` +
         `Or just hit reply with any questions — happy to chat.\n\n` +
         `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
     };
@@ -1138,7 +1228,7 @@ class LeadsScreen extends Screen {
   //     body  — message text; supports {first} {coach} tokens
   //     tier  — one of:
   //               'qualify' — mid-conversation digging Qs (no link)
-  //               'close'   — the ASK ($1 register) — always lead with this
+  //               'close'   — the ASK ($35 register) — always lead with this
   //               'soft'    — fallback for hesitant leads (pickup)
   //               'info'    — neutral info replies (schedule, requirements)
   //             Chips are grouped by tier in the UI so the close always
@@ -1167,16 +1257,114 @@ class LeadsScreen extends Screen {
     // chips so the coach taps the right one after the lead answers the
     // grade + boy/girl question.  All other funnels get one Register chip.
     const snippets = [];
+
+    // ── Broadcasts (LA Messages — paste into LeagueApps Messages to
+    // blast the entire roster).  Currently: Spring → Summer/Fall
+    // re-registration heads-up for Boys / Girls Club families.  Lives
+    // here so the Messages page surfaces it on the youth funnels.
+    // U11/U12 funnels are brand-new — no Spring roster to re-register
+    // — so they're skipped.
+    const isU1112 = /u11\s*\/?\s*u12/i.test(funnelLabel);
+    const springRenewalBody = (clubName, childRel, link) =>
+      `Hi Lighthouse 1893 ${clubName} families,\n\n` +
+      `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again at the link below.\n\n` +
+      `Register here:\n${link}\n\n` +
+      `Cost: $35 to register, then $35/month — cancel anytime, no questions asked. Everything is included: uniform, training, tournaments, and gear. No hidden fees.\n\n` +
+      `Practice (Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140):\n` +
+      `• PreK–2nd grade: 4:30pm–5:30pm\n` +
+      `• 3rd–10th grade: 5:30pm–7:00pm\n` +
+      `• 11th grade and up: 7:00pm–8:30pm\n\n` +
+      `First practice is Wednesday, June 24.\n\n` +
+      `Fall 2026 season format:\n` +
+      `• PreK–1st grade: In-House league\n` +
+      `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
+      `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
+      `Hit reply with any questions — happy to help.\n\n` +
+      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
+    if (c.isLegacyYouth) {
+      snippets.push({
+        id: 'spring-renewal-boys',
+        label: '📣 Spring → re-register (Boys)',
+        tier: 'broadcast',
+        subject: 'Lighthouse 1893 Boys Club — re-register for Summer/Fall (new registration)',
+        body: springRenewalBody('Boys Club', 'son', c.linkBoys),
+      });
+      snippets.push({
+        id: 'spring-renewal-girls',
+        label: '📣 Spring → re-register (Girls)',
+        tier: 'broadcast',
+        subject: 'Lighthouse 1893 Girls Club — re-register for Summer/Fall (new registration)',
+        body: springRenewalBody('Girls Club', 'daughter', c.linkGirls),
+      });
+    } else if (c.isYouth && !isU1112) {
+      const isGirls   = /girls/i.test(funnelLabel);
+      const clubName  = isGirls ? 'Girls Club' : 'Boys Club';
+      const childRel  = isGirls ? 'daughter'   : 'son';
+      snippets.push({
+        id: 'spring-renewal',
+        label: `📣 Spring → re-register (${clubName})`,
+        tier: 'broadcast',
+        subject: `Lighthouse 1893 ${clubName} — re-register for Summer/Fall (new registration)`,
+        body: springRenewalBody(clubName, childRel, c.link),
+      });
+    }
+
+    // ── Broadcast: Practice schedule — sent to CURRENTLY REGISTERED
+    // players (no registration ask, just logistics).  Explains the
+    // grade-based practice slots and first-practice date.  Surfaces on
+    // every youth funnel so the coach can paste into LA Messages once
+    // per club.
+    const practiceScheduleBody = (clubName) =>
+      `Hi Lighthouse 1893 ${clubName} families,\n\n` +
+      `Thanks for registering for the Summer/Fall 2026 season! Quick heads-up on the practice schedule so you can plan your week.\n\n` +
+      `Practice runs Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140. Times are based on your child's grade in the upcoming school year:\n\n` +
+      `• PreK–2nd grade: 4:30pm–5:30pm\n` +
+      `• 3rd–10th grade: 5:30pm–7:00pm\n` +
+      `• 11th grade and up: 7:00pm–8:30pm\n\n` +
+      `First practice is Wednesday, June 24.\n\n` +
+      `Fall 2026 season format:\n` +
+      `• PreK–1st grade: In-House league\n` +
+      `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
+      `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
+      `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
+      `Hit reply with any questions — see you on the field!\n\n` +
+      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
+    if (c.isLegacyYouth) {
+      snippets.push({
+        id: 'practice-schedule-boys',
+        label: '📣 Practice schedule (Boys — registered)',
+        tier: 'broadcast',
+        subject: 'Lighthouse 1893 Boys Club — Summer/Fall practice schedule',
+        body: practiceScheduleBody('Boys Club'),
+      });
+      snippets.push({
+        id: 'practice-schedule-girls',
+        label: '📣 Practice schedule (Girls — registered)',
+        tier: 'broadcast',
+        subject: 'Lighthouse 1893 Girls Club — Summer/Fall practice schedule',
+        body: practiceScheduleBody('Girls Club'),
+      });
+    } else if (c.isYouth && !isU1112) {
+      const clubName2 = /girls/i.test(funnelLabel) ? 'Girls Club' : 'Boys Club';
+      snippets.push({
+        id: 'practice-schedule',
+        label: `📣 Practice schedule (${clubName2} — registered)`,
+        tier: 'broadcast',
+        subject: `Lighthouse 1893 ${clubName2} — Summer/Fall practice schedule`,
+        body: practiceScheduleBody(clubName2),
+      });
+    }
+
     if (c.isLegacyYouth) {
       snippets.push({
         id: 'register-boys',
-        label: '💳 Register Boys ($1)',
+        label: '💳 Register Boys ($35)',
         tier: 'close',
         body: `Great. To register your son as a member of the soccer club, register here: ${c.linkBoys}`,
       });
       snippets.push({
         id: 'register-girls',
-        label: '💳 Register Girls ($1)',
+        label: '💳 Register Girls ($35)',
         tier: 'close',
         body: `Great. To register your daughter as a member of the soccer club, register here: ${c.linkGirls}`,
       });
@@ -1186,57 +1374,146 @@ class LeadsScreen extends Screen {
       const child = /girls/i.test(funnelLabel) ? 'daughter' : 'son';
       snippets.push({
         id: 'register',
-        label: '💳 Register ($1)',
+        label: '💳 Register ($35)',
         tier: 'close',
         body: `Great. To register your ${child} as a member of the soccer club, register here: ${c.link}`,
       });
     } else {
       snippets.push({
         id: 'register',
-        label: '💳 Register ($1)',
+        label: '💳 Register ($35)',
         tier: 'close',
         body:
-          `Great. To become a member of the club it's $1 registration on this link: ${c.link}\n` +
+          `Great. To become a member of the club it's $35 registration on this link: ${c.link}\n` +
           `Once you're in you can start coming to trainings and games.`,
       });
     }
 
-    // Welcome — sent AFTER the lead registers.  Welcomes them to the club
-    // and walks them through the three GroupMe chats they need to join in
-    // one numbered list.  Only renders for funnels with a gameChat in
-    // funnelContext (no game chat = team isn't fully onboarded yet, skip).
+    // Welcome — sent AFTER the lead registers.  Two flavors:
     //
-    // Chats are intentionally listed in the order the new member will USE
-    // them: game chat (RSVP for the next match) → practice chat (mid-week
-    // training heads-up) → pickup chat (open-run option if they miss
-    // practice).  Pickup last because it's the "extra" not the "core."
+    //   • Adult funnels  → list the GroupMe chats to join (game / practice
+    //                      / pickup).  Renders for ALL adult funnels; any
+    //                      chat that isn't set up yet is skipped from the
+    //                      list and called out in a closing "I'll send the
+    //                      link once it's up" line so the lead knows it's
+    //                      coming.  Chats listed in usage order: game (next
+    //                      match RSVP) → practice (mid-week heads-up) →
+    //                      pickup (open-run fallback).  Practice + pickup
+    //                      are club-wide singletons; only the game chat is
+    //                      team-specific.
     //
-    // Practice + pickup are club-wide singletons (same chat for every
-    // team).  Only the game chat is team-specific.
-    if (c.gameChat) {
-      const todo =
-        /^TODO_/.test(c.gameChat) ||
-        /^TODO_/.test(c.practiceLink) ||
-        /^TODO_/.test(c.pickupLink);
+    //   • Youth funnels  → there's no parent/player chat yet, so the
+    //                      blurb sets expectations: practice & game
+    //                      schedule will arrive by email, field address,
+    //                      reply with any questions.
+    if (c.isYouth) {
+      const practiceLine = c.schedule?.practice
+        ? `Practice is ${c.schedule.practice}.`
+        : `We'll confirm practice days as soon as the schedule's locked in.`;
+      // Games for youth: weekend (day not pinned — confirms once the
+      // schedule drops).  Do NOT pull from c.schedule.day; that field is
+      // set per-funnel in SCHEDULES and historically said "Saturdays",
+      // which over-promises a specific day before the season's locked in.
+      const gameLine = `Games are on weekends — exact day/time confirms once the schedule drops.`;
+      // Numbered steps so the parent can refer back ("did you read step
+      // 3?") and so it visually mirrors the adult Welcome layout.
       const lines = [
-        `Welcome to the club! 🎉 You're officially in.`,
+        `🎉 ${c.whoseCap} officially a member of the club. Next steps to play in games and attend practices:`,
         ``,
-        `Three quick chats to join so you're in the loop — takes 30 seconds:`,
+        `1. 📬 Practice & game schedule emails will go out before the season starts — keep an eye on this inbox.`,
+        `2. 🏃 ${practiceLine}`,
+        `3. ⚽ ${gameLine}`,
+        `4. 📍 Field address (practices and games):`,
+        `   Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140`,
+        `   https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140`,
         ``,
-        `1. 🗓 Game chat — RSVP for matches here:`,
-        `   ${c.gameChat}`,
-        `2. 🏃 Practice chat — Wed/Fri training heads-up:`,
-        `   ${c.practiceLink}`,
-        `3. ⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice:`,
-        `   ${c.pickupLink}`,
-        ``,
-        `Once you're in all three, you're set. See you on the field. 🤝`,
+        `Reply to this email with any questions — happy to help.`,
       ];
+      snippets.push({
+        id: 'welcome',
+        label: '🎉 Welcome (Youth)',
+        tier: 'close',
+        subject: 'Welcome to Lighthouse 1893 SC! Next steps',
+        body: lines.join('\n'),
+      });
+    } else {
+      // Adult: build the chat list from whatever is actually set up.
+      // Skip any TODO/missing chat from the list and append a closing
+      // line naming what's still coming so the lead knows to expect a
+      // follow-up link.  Roster registration (when required by the
+      // league — e.g. CASA for PR/Brazil Men) gets folded into the
+      // same numbered list so the whole onboarding reads as one
+      // checklist the lead can refer back to ("did you finish step 4?").
+      const isReal = (u) => !!u && !/^TODO_/.test(u);
+      // Men's funnels share Tue/Thu/Sat pickup AS a valid substitute
+      // for the Wed/Fri practice (this is how Brazil/PR/U23 actually
+      // run — coaches encourage hitting pickup if practice doesn't
+      // fit).  Women's adult funnels currently don't have that policy
+      // wired in, so we keep the line stricter for them.
+      const MENS_FUNNELS = new Set(['Brazil Men', 'PR Men', 'U23 Men', 'U23 Men + PR', "Men's Club", 'APSL / Liga 1']);
+      const isMens = MENS_FUNNELS.has(funnelLabel);
+      // Women's adult funnels have NO practice chat — they don't run
+      // mid-week practices.  Skip the practice step entirely for them
+      // (don't even surface as 'missing'; we'd never send the link).
+      const WOMENS_FUNNELS = new Set(['U23 Women', 'Tri County Women', "Women's Club"]);
+      const isWomens = WOMENS_FUNNELS.has(funnelLabel);
+      const stepLines = [];
+      const missing   = [];
+      let n = 1;
+      if (isReal(c.gameChat)) {
+        stepLines.push(`${n++}. 🗓 Game chat — RSVP for matches here:`);
+        stepLines.push(`   ${c.gameChat}`);
+      } else {
+        missing.push('team game chat');
+      }
+      if (!isWomens) {
+        if (isReal(c.practiceLink)) {
+          stepLines.push(`${n++}. 🏃 Practice chat — Wed/Fri training heads-up:`);
+          stepLines.push(`   ${c.practiceLink}`);
+        } else {
+          missing.push('practice chat');
+        }
+      }
+      if (isReal(c.pickupLink)) {
+        const pickupDesc = isMens
+          ? `⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice. Pickup counts as a team practice:`
+          : `⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice:`;
+        stepLines.push(`${n++}. ${pickupDesc}`);
+        stepLines.push(`   ${c.pickupLink}`);
+      }
+      if (c.rosterLink) {
+        stepLines.push(`${n++}. 📝 League team roster — required to play sanctioned games:`);
+        stepLines.push(`   ${c.rosterLink}`);
+        if (c.rosterTeam) {
+          stepLines.push(`   ⚠️ When the form asks for your country, choose **${c.rosterTeam}**.`);
+          stepLines.push(`   (You're not locked into just ${c.rosterTeam} games — we run friendlies every weekend, and you're welcome in any of them.)`);
+        }
+      }
+      if (c.rosterNote) {
+        stepLines.push(`${n++}. 📬 League registration — ${c.rosterNote}`);
+      }
+
+      const lines = [`🎉 You're officially a member of the club. Next steps to play in games and attend practices & pickups:`, ``];
+      if (stepLines.length) {
+        lines.push(...stepLines);
+      } else {
+        lines.push(`Team chats are getting set up this week — I'll send the links as soon as they're live.`);
+      }
+      if (missing.length) {
+        const list = missing.length > 1
+          ? `${missing.slice(0, -1).join(', ')} and ${missing.slice(-1)}`
+          : missing[0];
+        const verb = missing.length > 1 ? "they're" : "it's";
+        lines.push(``, `I'll send you the ${list} link${missing.length > 1 ? 's' : ''} as soon as ${verb} set up.`);
+      }
+      lines.push(``, `Let me know if you have any questions!`, ``, `See you on the field. 🤝`);
+
       snippets.push({
         id: 'welcome',
         label: '🎉 Welcome / Join chats',
         tier: 'close',
-        todo,
+        todo: missing.length > 0,
+        subject: 'Welcome to Lighthouse 1893 SC! Next steps',
         body: lines.join('\n'),
       });
     }
@@ -1270,11 +1547,11 @@ class LeadsScreen extends Screen {
         pickupBody =
           `Our next pickup: ${titleClause}${when}${where}.\n` +
           `RSVP "Going" here so we know to expect you: ${eventUrl}\n` +
-          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
+          `Come play, meet the squad, see if it's your scene. If it is, $35 to lock in your team spot.`;
       } else {
         pickupBody =
           `No pressure to commit yet — jump in our Philadelphia Pickup chat for the next session and RSVP "Going" on whichever pickup works for you: ${c.pickupLink}\n` +
-          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
+          `Come play, meet the squad, see if it's your scene. If it is, $35 to lock in your team spot.`;
       }
       snippets.push({
         id: 'pickup',
@@ -1285,8 +1562,41 @@ class LeadsScreen extends Screen {
     }
 
     snippets.push(
+      // More info — catch-all general blurb for the "tell me more" /
+      // "send me more info" follow-up.  Covers games, practice, field,
+      // cost, register link in one paste.  Game cadence intentionally
+      // generic — youth get "weekends", adults get "mostly Sundays" —
+      // so we never over-promise a specific day before rosters close.
+      // Cost line emphasizes all-inclusive (uniform + training + games,
+      // no hidden fees) since that's the #1 question after price.
+      (() => {
+        const gameLine = c.isYouth
+          ? `• Games are on weekends — exact day/time confirms once the schedule drops.`
+          : `• Games are mostly on Sundays — exact times confirm after rosters close.`;
+        const practiceLine = c.schedule?.practice
+          ? `• Practice: ${c.schedule.practice}.`
+          : `• Practice schedule confirms once the season starts.`;
+        return {
+          id: 'more-info',
+          label: 'ℹ️ More info',
+          tier: 'info',
+          body:
+            `Here's a quick rundown — happy to dig into any of these:\n` +
+            `\n` +
+            `${gameLine}\n` +
+            `${practiceLine}\n` +
+            `• Field: Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140\n` +
+            `  https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140\n` +
+            `• Cost: $35 to register, then ${c.pricing} — cancel anytime.\n` +
+            `  All-inclusive: uniform, training, and games — no hidden fees.\n` +
+            `\n` +
+            closeLink(`To register, head here:`) + `\n` +
+            `\n` +
+            `Reply with any other questions — happy to help.`,
+        };
+      })(),
       // Field — answers "where do you play?" with both Lighthouse venues +
-      // the $1 close. Same two addresses for every Lighthouse team, so this
+      // the $35 close. Same two addresses for every Lighthouse team, so this
       // chip lives in the shared snippet code (no per-funnel branch).
       // No flex copy — the "Lighthouse" in both venue names is the flex.
       {
@@ -1295,11 +1605,11 @@ class LeadsScreen extends Screen {
         tier: 'info',
         body:
           `📍 Lighthouse Sports Complex — 199 E Erie Ave (outdoor)\n` +
-          `   https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19134\n` +
+          `   https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140\n` +
           `📍 Lighthouse Community Center — 141 W Somerset St (indoor)\n` +
-          `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19134\n` +
+          `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19140\n` +
           `\n` +
-          closeLink(`$1 locks ${c.whose} spot:`),
+          closeLink(`$35 locks ${c.whose} spot:`),
       },
       // Schedule chips — three chips off the same data:
       //   📅 Practice  — just practice line(s) (+ pickup-counts-as-practice note)
@@ -1313,7 +1623,10 @@ class LeadsScreen extends Screen {
             // Shared line builders so all three chips stay in sync.
             const practiceLines = () => {
               const out = [];
-              if (c.schedule.practice) out.push(`Practice: ${c.schedule.practice}`);
+              if (c.schedule.practice) {
+                out.push(`Practice: ${c.schedule.practice}`);
+                out.push(`Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140`);
+              }
               // For Men funnels practiceNote tells the lead our pickups also
               // count as a practice if Wed/Fri don't fit — lowers the
               // friction of "I can't make those exact days" objections.
@@ -1331,7 +1644,7 @@ class LeadsScreen extends Screen {
               }
               return out;
             };
-            const close = closeLink(`If it works, $1 locks ${c.whose} spot:`);
+            const close = closeLink(`If it works, $35 locks ${c.whose} spot:`);
 
             const chips = [];
             // Practice chip — only shown when the funnel actually has
@@ -1374,10 +1687,26 @@ class LeadsScreen extends Screen {
         label: '💵 Cost',
         tier: 'info',
         body:
-          `$1 today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
+          `$35 today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
           `\n` +
           closeLink('Register here:'),
       },
+      // 📚 Fall Format — explains the 3-band Fall 2026 structure for
+      // youth funnels (PreK–1st in-house, 2nd–6th select/travel +
+      // alternative program, 7th+ tournament format).  Only relevant
+      // to youth funnels; adult chips don't render this.
+      ...(c.isYouth ? [{
+        id: 'fall-format',
+        label: '📚 Fall Format',
+        tier: 'info',
+        body:
+          `Fall 2026 season format at Lighthouse 1893 SC:\n` +
+          `• PreK–1st grade: In-House league\n` +
+          `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
+          `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
+          `\n` +
+          closeLink('Register here:'),
+      }] : []),
       // Add more snippets here as common questions come up:
       //
       //   { id: 'location',  label: '📍 Field',       body: '...' },
@@ -1487,8 +1816,17 @@ class LeadsScreen extends Screen {
       return;
     }
 
-    // text/email: let the sms: / mailto: navigation proceed,
-    // and log the touch in parallel. Don't preventDefault.
+    // text/email — intercept so we can:
+    //   1. write the rich-HTML body to the clipboard (Gmail compose
+    //      pre-fills body= as PLAIN TEXT and won't linkify the URL in
+    //      the editor — Ctrl+A then Ctrl+V swaps in the <a>-tagged
+    //      version with a clickable link).
+    //   2. open Gmail compose ourselves AFTER the clipboard write
+    //      resolves (if we let the link's default navigation fire, the
+    //      new tab steals focus and may cancel the pending clipboard
+    //      write).
+    //   3. log the touch + bump the cached email_count for the badge.
+    if (channel === 'email') e.preventDefault();
     try {
       const lead       = (this._leads || []).find(l => String(l.id) === String(leadId));
       const label      = lead ? this.formLabel(lead.form_id) : '';
@@ -1505,13 +1843,51 @@ class LeadsScreen extends Screen {
           ? this.fillTemplate(tmpl.sms,   lead || {})
           : this.fillTemplate(tmpl.email, lead || {});
       }
+      // Email: copy rich HTML to clipboard BEFORE navigating so the
+      // clipboard write completes while this tab still has focus.
+      if (channel === 'email' && body) {
+        const html = this.toLinkifiedHtml(body);
+        let copied = false;
+        try {
+          if (navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
+            const item = new ClipboardItem({
+              'text/plain': new Blob([body], { type: 'text/plain' }),
+              'text/html':  new Blob([html], { type: 'text/html' }),
+            });
+            await navigator.clipboard.write([item]);
+            copied = true;
+          } else if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(body);
+            copied = true;
+          }
+        } catch { /* clipboard blocked — fall through; Gmail still opens */ }
+
+        // Show a sticky banner explaining the paste step.  Lives near
+        // the top of the screen so it's visible when the coach Alt-Tabs
+        // back from Gmail.
+        this._showEmailPasteBanner(copied, lead?.email || '');
+
+        // Now open Gmail in a new tab.  We use the precomputed href
+        // (already on the <a>) so To/Subject/Body all pre-fill.  The
+        // plain-text body is the failsafe: if the coach forgets to
+        // paste, Gmail still linkifies recognizable URLs on send.
+        const href = btn.getAttribute('href');
+        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+      }
       await this.auth.fetch(`/api/leads/${leadId}/contact`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ channel, message_body: body }),
       });
-      // Refresh stats so the badge + risk meter update
-      this.refreshStats();
+      // Optimistically bump the email_count / last_email_at on the
+      // cached lead row + re-render so the "✉ Emailed just now"
+      // badge appears instantly.  /api/leads will return the same
+      // numbers on next load (since the POST above persisted).
+      if (channel === 'email' && lead) {
+        lead.email_count   = Number(lead.email_count || 0) + 1;
+        lead.last_email_at = new Date().toISOString();
+        this.renderLeads(this._leads);
+      }
     } catch {}
   }
 

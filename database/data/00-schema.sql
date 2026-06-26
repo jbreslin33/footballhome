@@ -178,8 +178,7 @@ CREATE TABLE source_systems (
 INSERT INTO source_systems (id, name, description, logo_url, is_active) VALUES
     (1, 'apsl', 'American Premier Soccer League', '/images/leagues/apsl.png', true),
     (2, 'casa', 'CASA Soccer Leagues', '/images/leagues/casa.png', true),
-    (3, 'csl', 'Cosmopolitan Soccer League', NULL, true),
-    (4, 'groupme', 'GroupMe calendar events', NULL, true)
+    (3, 'csl', 'Cosmopolitan Soccer League', NULL, true)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE chat_providers (
@@ -190,7 +189,6 @@ CREATE TABLE chat_providers (
 );
 
 INSERT INTO chat_providers (id, name, description, is_active) VALUES
-    (1, 'groupme', 'GroupMe messaging platform', true),
     (2, 'discord', 'Discord chat platform', true),
     (3, 'slack', 'Slack workspace', true),
     (4, 'teamsnap', 'TeamSnap messaging', true),
@@ -595,7 +593,7 @@ CREATE INDEX idx_person_phones_primary ON person_phones(person_id, is_primary) W
 
 COMMENT ON TABLE person_phones IS 'Phone numbers belong to persons';
 
--- External identities (GroupMe, Discord, etc.) - link to persons
+-- External identities (chat provider, Discord, etc.) - link to persons
 CREATE TABLE external_identities (
     id SERIAL PRIMARY KEY,
     person_id INTEGER NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
@@ -1320,7 +1318,7 @@ CREATE TABLE chat_integrations (
     id SERIAL PRIMARY KEY,
     chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     provider_id INTEGER NOT NULL REFERENCES chat_providers(id),
-    external_id VARCHAR(255) NOT NULL,  -- GroupMe group_id, Discord channel_id, etc.
+    external_id VARCHAR(255) NOT NULL,  -- Provider-specific id (Discord channel_id, etc.)
     external_name VARCHAR(255),
     is_primary BOOLEAN DEFAULT false,  -- Which system is source of truth
     sync_messages BOOLEAN DEFAULT false,
@@ -1354,35 +1352,6 @@ CREATE INDEX idx_chat_members_role ON chat_members(chat_role_id);
 CREATE INDEX idx_chat_members_current ON chat_members(chat_id, user_id) WHERE left_at IS NULL;
 CREATE INDEX idx_chat_members_history ON chat_members(user_id, joined_at, left_at);
 
--- Chat non-players: members who should be excluded from the lineup player pool
-CREATE TABLE chat_non_players (
-    id SERIAL PRIMARY KEY,
-    person_id INTEGER REFERENCES persons(id) ON DELETE CASCADE,
-    external_username VARCHAR(255),
-    reason VARCHAR(50) NOT NULL DEFAULT 'admin',  -- admin | manager | family | other
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(person_id),
-    UNIQUE(external_username)
-);
-
-COMMENT ON TABLE chat_non_players IS 'GroupMe chat members who should be excluded from the lineup player pool (admins, managers, non-players)';
-
--- External chat group members (e.g. GroupMe group members)
--- Persisted during sync so eligibility queries can use chat membership as player pool
-CREATE TABLE chat_external_members (
-    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-    provider_id INTEGER NOT NULL REFERENCES chat_providers(id),
-    external_user_id VARCHAR(255) NOT NULL,
-    external_username VARCHAR(255),
-    person_id INTEGER REFERENCES persons(id) ON DELETE SET NULL,
-    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (chat_id, provider_id, external_user_id)
-);
-
-CREATE INDEX idx_chat_external_members_person ON chat_external_members(person_id) WHERE person_id IS NOT NULL;
-CREATE INDEX idx_chat_external_members_chat ON chat_external_members(chat_id);
-
 CREATE TABLE chat_messages (
     id SERIAL PRIMARY KEY,
     chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
@@ -1408,8 +1377,8 @@ CREATE TABLE chat_events (
     event_time TIME,
     start_at TIMESTAMPTZ,  -- Full datetime (preferred over event_date + event_time)
     end_at TIMESTAMPTZ,    -- End datetime
-    external_id VARCHAR(255) UNIQUE,  -- GroupMe event_id for dedup
-    rsvp_snapshot JSONB,   -- Raw RSVP data from external source (GroupMe going/not_going/maybe)
+    external_id VARCHAR(255) UNIQUE,  -- Provider event_id for dedup
+    rsvp_snapshot JSONB,   -- Raw RSVP data from external provider (going/not_going/maybe)
     created_by_user_id INTEGER REFERENCES users(id),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1427,7 +1396,7 @@ CREATE TABLE chat_event_rsvps (
     chat_event_id INTEGER NOT NULL REFERENCES chat_events(id) ON DELETE CASCADE,
     person_id INTEGER REFERENCES persons(id),  -- Preferred: links to person (may or may not have user account)
     user_id INTEGER REFERENCES users(id),      -- Legacy: direct user link
-    external_user_id VARCHAR(255),             -- Fallback: GroupMe user ID for unmapped members
+    external_user_id VARCHAR(255),             -- Fallback: external provider user ID for unmapped members
     external_username VARCHAR(255),            -- Display name from external source
     rsvp_status_id INTEGER NOT NULL REFERENCES rsvp_statuses(id),
     response_note TEXT,
@@ -1567,7 +1536,7 @@ CREATE TABLE training_attendance (
     chat_event_id INTEGER REFERENCES chat_events(id) ON DELETE CASCADE,  -- Training/pickup session
     match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,           -- Weekday game counts as session
     attended BOOLEAN NOT NULL,
-    source VARCHAR(20) NOT NULL DEFAULT 'groupme',  -- 'groupme' | 'manual' | 'auto'
+    source VARCHAR(20) NOT NULL DEFAULT 'manual',  -- 'manual' | 'auto'
     override_by_user_id INTEGER REFERENCES users(id),
     override_note TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1585,7 +1554,7 @@ CREATE INDEX idx_training_attendance_event ON training_attendance(chat_event_id)
 CREATE INDEX idx_training_attendance_match ON training_attendance(match_id);
 CREATE INDEX idx_training_attendance_attended ON training_attendance(player_id, attended) WHERE attended = true;
 
-COMMENT ON TABLE training_attendance IS 'Actual training/session attendance. Source of truth for eligibility calculations. GroupMe RSVPs auto-populate; coaches can override.';
+COMMENT ON TABLE training_attendance IS 'Actual training/session attendance. Source of truth for eligibility calculations.';
 
 -- ============================================================================
 -- 8. TACTICAL BOARD SYSTEM (Lineup → Diagram → Simulation)

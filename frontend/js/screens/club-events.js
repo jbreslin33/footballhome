@@ -1,4 +1,4 @@
-// ClubEventsScreen - View GroupMe events & RSVPs with override capability
+// ClubEventsScreen - View chat events & RSVPs with override capability
 class ClubEventsScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -93,7 +93,6 @@ class ClubEventsScreen extends Screen {
         <div style="text-align: center; padding: var(--space-6); opacity: 0.7;">
           <div style="font-size: 3rem; margin-bottom: var(--space-2);">📅</div>
           <p>No events synced yet.</p>
-          <p style="font-size: 0.85em; margin-top: var(--space-2);">Run <code>node scripts/sync-groupme-events.js</code> to sync GroupMe events.</p>
         </div>`;
       return;
     }
@@ -168,7 +167,7 @@ class ClubEventsScreen extends Screen {
       const border = isOverridden ? '2px solid #6f42c1' : 'none';
       const overrideIcon = isOverridden ? '✏️' : '';
       const tooltip = isOverridden
-        ? `Overridden${r.override_note ? ': ' + r.override_note : ''} (GroupMe: ${r.synced_status})`
+        ? `Overridden${r.override_note ? ': ' + r.override_note : ''} (synced: ${r.synced_status})`
         : (r.linked ? 'Linked to person' : 'Not linked — click to override');
 
       return `<span 

@@ -80,3 +80,4 @@ footballhome-git-crypt.key.env
 *.xlsx
 sync.log
 .env
+scripts/__pycache__/

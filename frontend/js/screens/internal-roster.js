@@ -943,7 +943,6 @@ class InternalRosterScreen extends Screen {
         dateOfBirth: birthYear ? `${birthYear}-01-01` : null,
         workingTeamIds: [],
         officialTeams: null,
-        groupMeChats: null,
         position: null,
         jerseyNumber: null,
         isKeeper: false, isDesignated: false, isChild: false, numClubs: 1,
@@ -1042,10 +1041,9 @@ class InternalRosterScreen extends Screen {
     );
 
     // ── Collect available source options from player data ────────────────────
-    const gmChats = new Set();
     const officialTeamNames = new Set();
     for (const p of this.players) {
-      if (p.groupMeChats) p.groupMeChats.split(', ').forEach(c => gmChats.add(c));
+
       if (p.officialTeams) p.officialTeams.split(', ').forEach(t => officialTeamNames.add(t));
     }
 
@@ -1053,13 +1051,8 @@ class InternalRosterScreen extends Screen {
     if (this.activeSourceFilters.size > 0) {
       players = players.filter(p => {
         for (const src of this.activeSourceFilters) {
-          if (src.startsWith('gm:')) {
-            const chat = src.slice(3);
-            if (p.groupMeChats && p.groupMeChats.split(', ').includes(chat)) return true;
-          } else {
-            const team = src.slice(3);
-            if (p.officialTeams && p.officialTeams.split(', ').includes(team)) return true;
-          }
+          const team = src.slice(3);
+          if (p.officialTeams && p.officialTeams.split(', ').includes(team)) return true;
         }
         return false;
       });
@@ -1122,16 +1115,9 @@ class InternalRosterScreen extends Screen {
       return `<span data-src-key="${this.escapeHtml(src)}" style="cursor:pointer;padding:2px 7px;border-radius:8px;font-size:0.62rem;font-weight:500;white-space:nowrap;flex-shrink:0;border:1px solid ${border};background:${bg};color:${color}">${this.escapeHtml(label)}</span>`;
     };
     let filterSection = '';
-    if (gmChats.size > 0 || officialTeamNames.size > 0) {
-      let inner = '';
-      if (gmChats.size > 0) {
-        const pills = [...gmChats].sort().map(c => makeSrcPill('gm:' + c, c)).join('');
-        inner += `<div style="display:flex;flex-wrap:wrap;gap:3px;${officialTeamNames.size > 0 ? 'margin-bottom:3px;' : ''}">${pills}</div>`;
-      }
-      if (officialTeamNames.size > 0) {
-        const pills = [...officialTeamNames].sort().map(t => makeSrcPill('ot:' + t, t)).join('');
-        inner += `<div style="display:flex;flex-wrap:wrap;gap:3px;">${pills}</div>`;
-      }
+    if (officialTeamNames.size > 0) {
+      const pills = [...officialTeamNames].sort().map(t => makeSrcPill('ot:' + t, t)).join('');
+      const inner = `<div style="display:flex;flex-wrap:wrap;gap:3px;">${pills}</div>`;
       filterSection = `<div style="padding:5px 8px;border-bottom:1px solid #374151;">${inner}</div>`;
     }
 

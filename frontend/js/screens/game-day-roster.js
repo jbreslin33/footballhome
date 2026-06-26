@@ -118,11 +118,6 @@ class GameDayRosterScreen extends Screen {
             </select>
             <select id="list-filter" class="gdr-filter-select">
               <option value="all">All Players</option>
-              <optgroup label="GroupMe Chats">
-                <option value="chat_apsl">APSL Lighthouse</option>
-                <option value="chat_casa">Casa Liga 1 &amp; 2</option>
-                <option value="chat_u23">U23</option>
-              </optgroup>
               <optgroup label="Official Rosters">
                 <option value="roster_lighthouse">APSL Lighthouse 1893</option>
                 <option value="roster_casa">Lighthouse Boys Club</option>
@@ -295,13 +290,8 @@ class GameDayRosterScreen extends Screen {
     }
 
     try {
-      // Sync GroupMe RSVPs first (fresh data on every page load)
+      // (chat sync removed — RSVP data comes straight from event_rsvps)
       const teamId = this.resolveActiveTeamId();
-      try {
-        await this.auth.fetch(`/api/groupme/sync-for-match/${matchId}${teamId ? '?teamId=' + teamId : ''}`, { method: 'POST' });
-      } catch (e) {
-        console.warn('GroupMe sync skipped:', e.message);
-      }
 
       const [matchRes, playersRes] = await Promise.all([
         this.auth.fetch(`/api/matches/${matchId}`),
@@ -466,10 +456,9 @@ class GameDayRosterScreen extends Screen {
           if (p.rsvpStatus !== this.filterRsvp) return false;
         }
       }
-      // List filter (GroupMe chats or official rosters)
+      // List filter (official rosters)
       if (this.listFilter !== 'all') {
         const map = {
-          chat_apsl: 'inChatApsl', chat_casa: 'inChatCasa', chat_u23: 'inChatU23',
           roster_lighthouse: 'onRosterLighthouse', roster_casa: 'onRosterCasa', roster_u23: 'onRosterU23'
         };
         const key = map[this.listFilter];
@@ -508,15 +497,11 @@ class GameDayRosterScreen extends Screen {
             <th>GK</th>
             <th>Fam</th>
             <th class="gdr-section-divider" colspan="${(this.trainingEvents || []).length || 1}">Practice</th>
-            <th class="gdr-section-divider" colspan="3">GroupMe</th>
             <th class="gdr-section-divider" colspan="3">Roster</th>
           </tr>
           <tr class="gdr-subheader">
             <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
             ${practiceHeaders}
-            <th class="gdr-th-chat" title="APSL Lighthouse">A</th>
-            <th class="gdr-th-chat" title="Lighthouse Boys Club Liga 1 &amp; 2">Casa</th>
-            <th class="gdr-th-chat" title="Lighthouse Boys Club U23">U23</th>
             <th class="gdr-th-roster" title="APSL Lighthouse 1893 SC">APSL</th>
             <th class="gdr-th-roster" title="Lighthouse Boys Club">Casa</th>
             <th class="gdr-th-roster" title="Lighthouse Boys Club U23">U23</th>
@@ -542,11 +527,9 @@ class GameDayRosterScreen extends Screen {
       const cls = v === 'yes' ? 'gdr-prac-yes' : v === 'no' ? 'gdr-prac-no' : v === 'maybe' ? 'gdr-prac-maybe' : 'gdr-prac-none';
       const ovrCls = isOverride ? ' gdr-prac-override' : '';
       const sym = v === 'yes' ? '&check;' : v === 'no' ? '&cross;' : v === 'maybe' ? '?' : '&mdash;';
-      return `<td class="gdr-cell-center gdr-prac-cell ${cls}${ovrCls}" data-person-id="${p.personId}" data-event-id="${te.id}" data-event-idx="${i}" data-current="${v || ''}" title="${isOverride ? 'Admin override' : 'GroupMe'}">${sym}</td>`;
+      return `<td class="gdr-cell-center gdr-prac-cell ${cls}${ovrCls}" data-person-id="${p.personId}" data-event-id="${te.id}" data-event-idx="${i}" data-current="${v || ''}" title="${isOverride ? 'Admin override' : 'Synced'}">${sym}</td>`;
     }).join('');
 
-    // Chat membership cells
-    const chatCell = (val) => val ? '<td class="gdr-cell-center gdr-in">&check;</td>' : '<td class="gdr-cell-center gdr-out"></td>';
     // Roster membership cells
     const rosterCell = (val) => val ? '<td class="gdr-cell-center gdr-in">&check;</td>' : '<td class="gdr-cell-center gdr-out"></td>';
     
@@ -566,14 +549,11 @@ class GameDayRosterScreen extends Screen {
             <button class="gdr-rsvp-btn ${rsvpValue === 'maybe' ? 'gdr-rsvp-active-maybe' : ''}" data-player-id="${p.playerId}" data-rsvp="maybe" title="Maybe">M</button>
             <button class="gdr-rsvp-btn ${rsvpValue === 'no' ? 'gdr-rsvp-active-no' : ''}" data-player-id="${p.playerId}" data-rsvp="no" title="Not going">N</button>
           </div>
-          ${rsvpSource === 'groupme' ? '<span class="gdr-rsvp-src" title="From GroupMe">GM</span>' : rsvpSource === 'admin' ? '<span class="gdr-rsvp-src gdr-src-admin" title="Admin override">\u270e</span>' : ''}
+          ${rsvpSource === 'admin' ? '<span class="gdr-rsvp-src gdr-src-admin" title="Admin override">\u270e</span>' : ''}
         </td>
         <td class="gdr-cell-center">${p.isKeeper ? '\ud83e\udde4' : ''}</td>
         <td class="gdr-cell-center">${p.hasFamilyDiscount ? '\ud83d\udc6a' : ''}</td>
         ${practiceCells}
-        ${chatCell(p.inChatApsl)}
-        ${chatCell(p.inChatCasa)}
-        ${chatCell(p.inChatU23)}
         ${rosterCell(p.onRosterLighthouse)}
         ${rosterCell(p.onRosterCasa)}
         ${rosterCell(p.onRosterU23)}
@@ -613,7 +593,7 @@ class GameDayRosterScreen extends Screen {
         body: JSON.stringify({ person_id: String(personId), clear: 'true' })
       });
       const data = await resp.json();
-      // Restore underlying GroupMe value if one exists
+      // Restore underlying value if one exists
       if (player && player.practice && data.rsvpStatus) {
         player.practice[eventIdx] = { v: data.rsvpStatus, o: false };
       }

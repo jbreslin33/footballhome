@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lighthouse — U11/U12 Travel Ad Preview</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg:#0b0d10; --panel:#14181d; --ink:#f5f1e8; --muted:#8a8f97; --gold:#C5A880;
+    --ig-border:#262626; --ig-bg:#000; --ig-text:#fafafa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 18px; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; margin: 0 0 8px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .row { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; }
+  .ad { width: 470px; background: var(--ig-bg); color: var(--ig-text); border: 1px solid var(--ig-border); border-radius: 8px; overflow: hidden; font-size: 14px; }
+  .ad-head { display:flex; align-items:center; gap:10px; padding: 12px 14px; }
+  .ad-head .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,#0F2C59,#C5A880); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size: 12px; }
+  .ad-head .handle { font-weight: 600; font-size: 13px; }
+  .ad-head .sponsored { font-size: 11px; color: var(--muted); }
+  .ad-img { width: 100%; aspect-ratio: 1/1; background:#222; object-fit: cover; display:block; }
+  .ad-img.placeholder { position: relative; }
+  .ad-img.placeholder::after {
+    content: "PLACEHOLDER — replace with 1080×1080 U11/U12 creative";
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(15, 44, 89, 0.78); color: #C5A880; font-weight: 700; font-size: 14px;
+    text-align: center; padding: 16px; line-height: 1.4; letter-spacing: 0.5px;
+    border: 3px solid #C5A880;
+  }
+  .ad-cta {
+    background:#0095f6; color:#fff; padding: 11px; text-align:center; font-weight:600; font-size:13px;
+    display:flex; align-items:center; justify-content:space-between; padding: 10px 14px;
+  }
+  .ad-cta .arrow { opacity: 0.7; }
+  .ad-meta { padding: 10px 14px 14px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+  .ad-meta .handle { font-weight: 600; margin-right: 6px; }
+  .targeting {
+    background: var(--panel); border: 1px solid #2a3038; border-radius: 6px;
+    padding: 12px 14px; margin-top: 12px; font-size: 12px; color: var(--muted);
+  }
+  .targeting b { color: var(--ink); font-weight: 600; }
+  .targeting div { margin: 2px 0; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; max-width: 1080px; margin: 0 auto 16px; }
+  .head a { color: var(--gold); text-decoration: none; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="head">
+  <div>
+    <h1>U11 / U12 Travel — Ad Preview</h1>
+    <div class="subtitle">IG-feed mockups · creative URLs are placeholders until the real 1080×1080 PNGs are dropped at the noted paths</div>
+  </div>
+  <a href="javascript:location.reload()">Reload</a>
+</div>
+
+<div class="row">
+
+  <!-- BOYS -->
+  <div>
+    <div class="ad">
+      <div class="ad-head">
+        <div class="avatar">L1</div>
+        <div style="flex:1">
+          <div class="handle">lighthouse1893soccerclub</div>
+          <div class="sponsored">Sponsored · Philadelphia</div>
+        </div>
+        <div style="color:var(--muted)">⋯</div>
+      </div>
+      <div class="ad-img" style="background-image:url('/images/posts/boys-u11u12-travel-ad.png');background-size:cover;background-position:center"></div>
+      <div class="ad-cta">
+        <span>Sign Up</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="ad-meta"><span class="handle">lighthouse1893soccerclub</span>⚽ LIGHTHOUSE BOYS U11/U12 — TRAVEL TEAM
+
+Making the jump from rec to travel?
+We're forming our U11 and U12 boys travel squads for the 2026-27 season.
+
+🏆 Philadelphia League — Boys (USSF-affiliated city pyramid)
+📅 Summer training begins June · Fall placement
+🎯 All skill levels welcome — current club & first-time travel players
+
+📍 Lighthouse Sports & Entertainment Complex
+199 East Erie Avenue, Philadelphia, PA 19140
+
+📧 Questions? soccer@lighthouse1893.org
+
+#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub #U11 #U12 #TravelSoccer</div>
+    </div>
+    <div class="targeting">
+      <div><b>Key:</b> boys-u11u12-travel</div>
+      <div><b>Image needed:</b> frontend/images/posts/boys-u11u12-travel-ad.png</div>
+      <div><b>Mode:</b> LEAD FORM (in-app, coach follow-up)</div>
+      <div><b>UTM:</b> utm_content=boys-u11u12-travel</div>
+      <div><b>Geo:</b> 5mi pin · 199 E Erie Ave · home only</div>
+      <div><b>Audience:</b> all genders, ages 32–50 (parents)</div>
+      <div><b>Budget:</b> $5/day (runs until cancelled)</div>
+    </div>
+  </div>
+
+  <!-- GIRLS -->
+  <div>
+    <div class="ad">
+      <div class="ad-head">
+        <div class="avatar">L1</div>
+        <div style="flex:1">
+          <div class="handle">lighthouse1893soccerclub</div>
+          <div class="sponsored">Sponsored · Philadelphia</div>
+        </div>
+        <div style="color:var(--muted)">⋯</div>
+      </div>
+      <div class="ad-img" style="background-image:url('/images/posts/girls-u11u12-travel-ad.png');background-size:cover;background-position:center"></div>
+      <div class="ad-cta">
+        <span>Sign Up</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="ad-meta"><span class="handle">lighthouse1893soccerclub</span>⚽ LIGHTHOUSE GIRLS U11/U12 — TRAVEL TEAM
+
+Making the jump from rec to travel?
+We're forming our U11 and U12 girls travel squads for the 2026-27 season.
+
+ℹ️ Heads up: for Fall 2026 the U11/U12 girls will play on a co-ed travel team alongside the boys in the boys division. Girls-only roster planned as numbers grow.
+
+🏆 Philadelphia League · USSF-affiliated city pyramid
+📅 Summer training begins June · Fall placement
+🎯 All skill levels welcome — current club & first-time travel players
+
+📍 Lighthouse Sports & Entertainment Complex
+199 East Erie Avenue, Philadelphia, PA 19140
+
+📧 Questions? soccer@lighthouse1893.org
+
+#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub #U11 #U12 #TravelSoccer</div>
+    </div>
+    <div class="targeting">
+      <div><b>Key:</b> girls-u11u12-travel</div>
+      <div><b>Image needed:</b> frontend/images/posts/girls-u11u12-travel-ad.png</div>
+      <div><b>Mode:</b> LEAD FORM (in-app, coach follow-up)</div>
+      <div><b>UTM:</b> utm_content=girls-u11u12-travel</div>
+      <div><b>Geo:</b> 5mi pin · 199 E Erie Ave · home only</div>
+      <div><b>Audience:</b> all genders, ages 32–50 (parents)</div>
+      <div><b>Budget:</b> $5/day (runs until cancelled)</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

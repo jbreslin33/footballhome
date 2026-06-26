@@ -57,7 +57,7 @@ class AdminClubScreen extends Screen {
     const subNav = this.find('#sub-navigation');
     
     const sections = [
-      { id: 'events', icon: '📅', label: 'Events', description: 'GroupMe events & RSVPs' },
+      { id: 'events', icon: '📅', label: 'Events', description: 'Club events & RSVPs' },
       { id: 'users', icon: '👤', label: 'Users', description: 'Manage user accounts' },
       { id: 'players', icon: '⚽', label: 'Players', description: 'Manage player records' },
       { id: 'teams', icon: '👥', label: 'Teams', description: 'Manage teams' },
@@ -68,6 +68,10 @@ class AdminClubScreen extends Screen {
       { id: 'content-posts', icon: '📷', label: 'Content Posts', description: 'Upload photos & videos to Instagram' },
       { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
       { id: 'leads', icon: '📋', label: 'Leads', description: 'Ad interest form submissions' },
+      { id: 'youth-roster', icon: '⚽', label: 'Youth Roster', description: 'Live Boys/Girls Club roster from LeagueApps' },
+      { id: 'messages', icon: '💬', label: 'Messages', description: 'Canned responses & welcome messages per team' },
+      { id: 'lineups',         icon: '🧩', label: 'Lineups & Rosters',         description: 'One stop shop — assign players to teams (Brazil / PR / U23) and pick starters & bench for every team\'s next match' },
+      { id: 'lineups-womens',  icon: '🧩', label: 'Women\'s Lineups & Rosters', description: 'Same screen, women\'s side — Tri County + any future women\'s teams.  LA pool sourced from the Women\'s LA program.' },
       { id: 'ad-preview', icon: '📱', label: 'Ad Preview', description: 'See exactly what your ads look like' },
       { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits', description: 'Publicly shareable poster boards & history pages' },
       { id: 'exhibit-social', icon: '📲', label: 'Exhibit → Social', description: 'Preview IG carousel / 4:5 single / long poster renders' },
@@ -138,6 +142,39 @@ class AdminClubScreen extends Screen {
       this.navigation.goTo('leads', {
         clubId: this.clubId,
         clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'youth-roster') {
+      this.navigation.goTo('youth-roster', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'messages') {
+      this.navigation.goTo('messages', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'lineups') {
+      this.navigation.goTo('lineups', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'lineups-womens') {
+      this.navigation.goTo('lineups', {
+        clubId:   this.clubId,
+        clubName: this.clubName,
+        gender:   'womens',
       });
       return;
     }

@@ -12,7 +12,6 @@ Custom HTTP server built with C++17, libpqxx, and nlohmann/json. No frameworks.
 | Division | `/api` | Divisions, rosters by division |
 | Eligibility | `/api` | Player eligibility engine |
 | Event | `/api/events` | Matches, events, standings |
-| GroupMe | `/api/groupme` | GroupMe sync + RSVP import |
 | OAuth | `/api/oauth` | Google OAuth flow |
 | Stats | `/api/stats` | Player/team statistics |
 | SystemAdmin | `/api/admin` | System admin operations |
