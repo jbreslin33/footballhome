@@ -20,7 +20,6 @@ set(SOURCES
     src/core/Response.cpp
     src/core/Router.cpp
     src/core/Controller.cpp
-    src/core/TwilioSMSService.cpp
     src/core/HttpClient.cpp
     src/core/JwtRS256.cpp
     src/core/Crypto.cpp

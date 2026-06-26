@@ -82,17 +82,6 @@ class PracticeRSVPManagementScreen extends Screen {
         return;
       }
       
-      // Send reminder button clicked (check BEFORE player card)
-      const reminderBtn = e.target.closest('.send-reminder-btn');
-      if (reminderBtn) {
-        e.stopPropagation();
-        const practiceId = reminderBtn.getAttribute('data-practice-id');
-        const playerId = reminderBtn.getAttribute('data-player-id');
-        const playerName = reminderBtn.getAttribute('data-player-name');
-        this.sendReminder(practiceId, playerId, playerName);
-        return;
-      }
-      
       // Player card clicked - show bottom sheet
       const playerCard = e.target.closest('.player-card');
       if (playerCard) {
@@ -404,14 +393,6 @@ class PracticeRSVPManagementScreen extends Screen {
           <span style="font-size: 1.05em;">${name}</span>
         </div>
         <div style="display: flex; align-items: center; gap: var(--space-2);">
-          <button class="send-reminder-btn" 
-                  data-practice-id="${practiceId}" 
-                  data-player-id="${player.id}"
-                  data-player-name="${name}"
-                  style="padding: 6px 12px; background: var(--color-primary); color: white; border: none; border-radius: 6px; font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 4px;"
-                  title="Send SMS reminder to ${name}">
-            📲 Remind
-          </button>
           <span style="color: var(--color-text-secondary); font-size: 1.2em;">›</span>
         </div>
       </div>
@@ -461,33 +442,6 @@ class PracticeRSVPManagementScreen extends Screen {
       console.error('RSVP update failed:', err);
       alert('Failed to update RSVP. Please try again.');
     });
-  }
-  
-  async sendReminder(practiceId, playerId, playerName) {
-    if (!confirm(`Send SMS reminder to ${playerName}?`)) {
-      return;
-    }
-    
-    console.log('Sending SMS reminder:', { practiceId, playerId, playerName });
-    
-    try {
-      const response = await this.auth.fetch(`/api/events/${practiceId}/send-reminder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: playerId })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        alert(`✅ SMS reminder sent to ${playerName}!`);
-      } else {
-        alert(`❌ Failed to send SMS: ${result.message}`);
-      }
-    } catch (err) {
-      console.error('Send reminder failed:', err);
-      alert('❌ Failed to send SMS reminder. Please try again.');
-    }
   }
   
   find(selector) {

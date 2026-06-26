@@ -47,9 +47,6 @@ private:
     // Visibility flags (gameday_hidden / lineup_hidden) for public views
     Response handleSetMatchVisibility(const Request& request);
     
-    // SMS Reminder endpoint
-    Response handleSendReminder(const Request& request);
-    
     // Club Chat Events & RSVP Override
     Response handleGetClubChatEvents(const Request& request);
     Response handleOverrideRSVP(const Request& request);

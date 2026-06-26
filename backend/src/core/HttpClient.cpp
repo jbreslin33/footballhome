@@ -17,8 +17,7 @@ constexpr const char* kUserAgent  = "footballhome-cpp/1.0";
 HttpClient::HttpClient() {
     // No global init/cleanup here — libcurl tolerates multiple easy handles
     // without curl_global_init when libcurl was built with thread-safe init
-    // (the OpenSSL-backed Debian package is).  TwilioSMSService follows the
-    // same pattern.
+    // (the OpenSSL-backed Debian package is).
 }
 
 size_t HttpClient::writeCallback(void* contents, size_t size, size_t nmemb, void* userp) {

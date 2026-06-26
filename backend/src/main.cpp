@@ -11,7 +11,6 @@
 #include "core/Router.h"
 #include "core/Request.h"
 #include "core/Response.h"
-#include "core/TwilioSMSService.h"
 #include "database/Database.h"
 
 #include "database/SqlFileLogger.h"
@@ -124,21 +123,6 @@ public:
         
         // Initialize SQL file logger
         SqlFileLogger::initialize();
-
-        // Initialize Twilio SMS service
-        const char* twilioSid = std::getenv("TWILIO_ACCOUNT_SID");
-        const char* twilioToken = std::getenv("TWILIO_AUTH_TOKEN");
-        const char* twilioPhone = std::getenv("TWILIO_FROM_PHONE");
-
-        if (twilioSid && twilioToken && twilioPhone) {
-            TwilioSMSService::getInstance().initialize(
-                std::string(twilioSid),
-                std::string(twilioToken),
-                std::string(twilioPhone)
-            );
-        } else {
-            std::cout << "⚠️  Twilio credentials not found - SMS disabled" << std::endl;
-        }
 
         // Initialize database
         if (!db_->connect()) {

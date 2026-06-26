@@ -1,5 +1,4 @@
 #include "EventController.h"
-#include "../core/TwilioSMSService.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
 #include <sstream>
@@ -149,11 +148,6 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleSetPlayerRSVP(request);
     });
     
-    // POST /api/events/:eventId/send-reminder - Send SMS reminder to a player
-    router.post(prefix + "/:eventId/send-reminder", [this](const Request& request) {
-        return this->handleSendReminder(request);
-    });
-
     // GET /api/events/club/:clubId/chat-events - Get chat events for a club
     router.get(prefix + "/club/:clubId/chat-events", [this](const Request& request) {
         return this->handleGetClubChatEvents(request);
@@ -2521,88 +2515,6 @@ Response EventController::handleSetPlayerRSVP(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error setting player RSVP: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to set RSVP"));
-    }
-}
-
-Response EventController::handleSendReminder(const Request& request) {
-    std::string eventId = extractEventIdFromPath(request.getPath());
-    if (eventId.empty()) {
-        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Event ID is required"));
-    }
-    
-    try {
-        std::string body = request.getBody();
-        std::string playerId = parseJSON(body, "player_id");
-        
-        if (playerId.empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "player_id is required"));
-        }
-        
-        std::cout << "📲 Sending SMS reminder for event " << eventId << " to player " << playerId << std::endl;
-        
-        // Get event details and player phone
-        std::string query = R"(
-            SELECT 
-                e.title,
-                e.event_date,
-                e.duration_minutes,
-                v.name as venue_name,
-                v.address as venue_address,
-                p.first_name,
-                pp.phone_number as phone
-            FROM events e
-            LEFT JOIN venues v ON e.venue_id = v.id
-            JOIN users u ON u.id = $1
-            JOIN persons p ON u.person_id = p.id
-            LEFT JOIN person_phones pp ON pp.person_id = p.id AND pp.is_primary = true
-            WHERE e.id = $2
-        )";
-        
-        pqxx::result result = db_->query(query, {playerId, eventId});
-        
-        if (result.empty()) {
-            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Event or player not found"));
-        }
-        
-        auto row = result[0];
-        
-        if (row["phone"].is_null()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Player has no phone number on file"));
-        }
-        
-        std::string phone = row["phone"].as<std::string>();
-        std::string firstName = row["first_name"].as<std::string>();
-        std::string title = row["title"].as<std::string>();
-        std::string eventDate = row["event_date"].as<std::string>();
-        std::string venueName = row["venue_name"].is_null() ? "TBD" : row["venue_name"].as<std::string>();
-        
-        // Parse event date/time (format: YYYY-MM-DD HH:MM:SS)
-        std::string dateStr = eventDate.substr(0, 10);  // YYYY-MM-DD
-        std::string timeStr = eventDate.substr(11, 5);  // HH:MM
-        
-        // Format message
-        std::ostringstream message;
-        message << "Hi " << firstName << "! Reminder: " << title 
-                << " on " << dateStr << " at " << timeStr;
-        if (venueName != "TBD") {
-            message << " at " << venueName;
-        }
-        message << ". See you there! ⚽";
-        
-        // Send SMS
-        bool success = TwilioSMSService::getInstance().sendSMS(phone, message.str());
-        
-        if (success) {
-            std::cout << "✅ SMS sent successfully to " << phone << std::endl;
-            return Response(HttpStatus::OK, createJSONResponse(true, "SMS reminder sent successfully"));
-        } else {
-            std::cerr << "❌ Failed to send SMS to " << phone << std::endl;
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to send SMS"));
-        }
-        
-    } catch (const std::exception& e) {
-        std::cerr << "❌ Error sending reminder: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to send reminder"));
     }
 }
 

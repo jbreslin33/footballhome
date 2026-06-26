@@ -18,7 +18,7 @@ cd footballhome
 
 # Step 2: Credentials
 cp .env.example env
-# Edit env with your Twilio / Google OAuth / Docker Hub credentials (optional)
+# Edit env with your Google OAuth / Docker Hub credentials (optional)
 
 # Step 3: Install system dependencies (Podman, Node.js, npm packages)
 ./setup.sh
@@ -215,7 +215,7 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 ### Event Management
 - **Practice Scheduling**: Create and manage team practices
 - **Match Tracking**: View upcoming and past matches from league schedule
-- **RSVP System**: Players can respond to events (SMS + in-app)
+- **RSVP System**: Players can respond to events in-app
 
 ## 🗄️ Data Pipeline
 
