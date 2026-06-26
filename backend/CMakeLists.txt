@@ -21,6 +21,8 @@ set(SOURCES
     src/core/Router.cpp
     src/core/Controller.cpp
     src/core/TwilioSMSService.cpp
+    src/core/HttpClient.cpp
+    src/core/JwtRS256.cpp
     src/database/Database.cpp
     src/database/Model.cpp
     src/database/SqlFileLogger.cpp
@@ -29,11 +31,16 @@ set(SOURCES
     src/models/Team.cpp
     src/models/TeamCoach.cpp
     src/models/TeamRoster.cpp
+    src/models/PersonLinker.cpp
+    src/models/TeamReconciliation.cpp
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
+    src/services/GroupMeService.cpp
+    src/services/LeagueAppsService.cpp
     src/controllers/AuthController.cpp
+    src/controllers/TeamReconciliationController.cpp
     src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp
     src/controllers/TeamCoachController.cpp
