@@ -20,6 +20,7 @@
 #include "controllers/TeamCoachController.h"
 #include "controllers/TeamRosterController.h"
 #include "controllers/TeamReconciliationController.h"
+#include "controllers/MagicLinkAuthController.h"
 #include "controllers/PersonOverrideController.h"
 #include "controllers/PersonMergeController.h"
 #include "controllers/EventController.h"
@@ -44,6 +45,7 @@ private:
     
     // Controllers
     std::shared_ptr<AuthController> auth_controller_;
+    std::shared_ptr<MagicLinkAuthController> magic_link_auth_controller_;
     std::shared_ptr<OAuthController> oauth_controller_;
     std::shared_ptr<TeamController> team_controller_;
     std::shared_ptr<TeamCoachController> team_coach_controller_;
@@ -68,6 +70,7 @@ public:
     HttpServer(int port = 3001) : port_(port) {
         db_ = Database::getInstance();
         auth_controller_ = std::make_shared<AuthController>();
+        magic_link_auth_controller_ = std::make_shared<MagicLinkAuthController>();
         oauth_controller_ = std::make_shared<OAuthController>();
         team_controller_ = std::make_shared<TeamController>();
         team_coach_controller_ = std::make_shared<TeamCoachController>();
@@ -154,6 +157,13 @@ private:
     void setupRoutes() {
         // Register controllers
         router_.useController("/api/auth/google", oauth_controller_);
+        // Magic-link / cookie session controller registered BEFORE the
+        // legacy AuthController so that /api/auth/me and /api/auth/logout
+        // resolve to the FH-native cookie semantics (Phase 4) instead of
+        // the older bearer/email-password handlers.  The legacy ones
+        // (login, register, me/roles, user/teams, ...) stay reachable
+        // because their paths don't collide.
+        router_.useController("/api/auth", magic_link_auth_controller_);
         router_.useController("/api/auth", auth_controller_);
         router_.useController("/api/auth/google", oauth_controller_);
         router_.useController("/api/teams", team_controller_);

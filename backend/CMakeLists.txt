@@ -23,6 +23,7 @@ set(SOURCES
     src/core/TwilioSMSService.cpp
     src/core/HttpClient.cpp
     src/core/JwtRS256.cpp
+    src/core/Crypto.cpp
     src/database/Database.cpp
     src/database/Model.cpp
     src/database/SqlFileLogger.cpp
@@ -39,7 +40,9 @@ set(SOURCES
     src/services/IdentityService.cpp
     src/services/GroupMeService.cpp
     src/services/LeagueAppsService.cpp
+    src/services/SessionService.cpp
     src/controllers/AuthController.cpp
+    src/controllers/MagicLinkAuthController.cpp
     src/controllers/TeamReconciliationController.cpp
     src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp
