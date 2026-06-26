@@ -21,6 +21,7 @@
 #include "controllers/TeamRosterController.h"
 #include "controllers/TeamReconciliationController.h"
 #include "controllers/MagicLinkAuthController.h"
+#include "controllers/EventRsvpController.h"
 #include "controllers/PersonOverrideController.h"
 #include "controllers/PersonMergeController.h"
 #include "controllers/EventController.h"
@@ -46,6 +47,7 @@ private:
     // Controllers
     std::shared_ptr<AuthController> auth_controller_;
     std::shared_ptr<MagicLinkAuthController> magic_link_auth_controller_;
+    std::shared_ptr<EventRsvpController> event_rsvp_controller_;
     std::shared_ptr<OAuthController> oauth_controller_;
     std::shared_ptr<TeamController> team_controller_;
     std::shared_ptr<TeamCoachController> team_coach_controller_;
@@ -71,6 +73,7 @@ public:
         db_ = Database::getInstance();
         auth_controller_ = std::make_shared<AuthController>();
         magic_link_auth_controller_ = std::make_shared<MagicLinkAuthController>();
+        event_rsvp_controller_ = std::make_shared<EventRsvpController>();
         oauth_controller_ = std::make_shared<OAuthController>();
         team_controller_ = std::make_shared<TeamController>();
         team_coach_controller_ = std::make_shared<TeamCoachController>();
@@ -172,6 +175,12 @@ private:
         router_.useController("/api/teams", team_reconciliation_controller_);
         router_.useController("/api/persons", person_override_controller_);
         router_.useController("/api/persons", person_merge_controller_);
+        // FH-native cookie-authed event + RSVP surface registered
+        // BEFORE the legacy EventController so /api/events/:chatEventId
+        // resolves here (chat_events table) instead of the older
+        // /api/events/:eventId handler (deprecated internal `events`
+        // table).  Also owns /api/rsvp.  Phase 5.
+        router_.useController("/api", event_rsvp_controller_);
         router_.useController("/api/events", event_controller_);
         router_.useController("/api", division_controller_);
         router_.useController("/api", availability_controller_);

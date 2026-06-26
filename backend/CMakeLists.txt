@@ -43,6 +43,7 @@ set(SOURCES
     src/services/SessionService.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp
+    src/controllers/EventRsvpController.cpp
     src/controllers/TeamReconciliationController.cpp
     src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp
