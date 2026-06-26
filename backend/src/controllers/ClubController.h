@@ -21,8 +21,6 @@ private:
     Response handleGetClubDetail(const Request& request);
     
     // Helper methods
-    std::string escapeJson(const std::string& input);
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
 };
 
 #endif

@@ -37,5 +37,4 @@ private:
     static std::string extractAction(const std::string& body);
 
     // Bearer presence check (no signature verification).
-    bool requireBearer(const Request& request) const;
 };

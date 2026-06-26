@@ -62,8 +62,6 @@ private:
     std::string extractEventIdFromPath(const std::string& path);
     std::string extractMatchIdFromPath(const std::string& path);
     std::string extractAttendanceIdFromPath(const std::string& path);
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
     std::string parseJSON(const std::string& body, const std::string& key);
     std::string getCurrentTimestamp();
-    std::string escapeJSON(const std::string& str);
 };

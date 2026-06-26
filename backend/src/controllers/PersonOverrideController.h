@@ -38,7 +38,6 @@ private:
                                std::string& field) const;
 
     // Bearer presence check (no signature verification — see header).
-    bool requireBearer(const Request& request) const;
 
     // Best-effort decoder for the optional setByUserId, taken from a
     // request header (`X-User-Id`) when present.  Returns nullopt if the

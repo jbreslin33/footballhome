@@ -24,7 +24,6 @@ private:
     Response handleGetMatchEvents(const Request& request);
     
     // Helper methods
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
 };
 
 #endif

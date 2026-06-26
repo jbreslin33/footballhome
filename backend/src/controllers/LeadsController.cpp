@@ -579,11 +579,6 @@ Response LeadsController::handleVcard(const Request& request) {
 // Helpers
 // ────────────────────────────────────────────────────────────────────────────
 
-bool LeadsController::requireBearer(const Request& request) {
-    std::string h = request.getHeader("Authorization");
-    if (h.empty()) h = request.getHeader("authorization");
-    return h.size() > 7 && h.compare(0, 7, "Bearer ") == 0;
-}
 
 std::optional<int>
 LeadsController::extractUserIdJwt(const Request& request) {

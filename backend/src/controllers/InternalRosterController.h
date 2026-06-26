@@ -32,7 +32,6 @@ private:
     // Helpers
     std::string parseJsonString(const std::string& body, const std::string& key);
     int  parseJsonInt(const std::string& body, const std::string& key, int defaultValue = 0);
-    std::string escapeJson(const std::string& str);
     std::string createJsonResponse(bool success, const std::string& message, const std::string& data = "");
     std::string extractPlayerId(const std::string& path);
 };

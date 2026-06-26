@@ -1,4 +1,5 @@
 #include "SocialController.h"
+#include "../core/HttpClient.h"
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -394,27 +395,6 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     });
 }
 
-std::string SocialController::escapeJson(const std::string& input) {
-    std::ostringstream output;
-    for (char c : input) {
-        switch (c) {
-            case '"': output << "\\\""; break;
-            case '\\': output << "\\\\"; break;
-            case '\b': output << "\\b"; break;
-            case '\f': output << "\\f"; break;
-            case '\n': output << "\\n"; break;
-            case '\r': output << "\\r"; break;
-            case '\t': output << "\\t"; break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<unsigned int>(static_cast<unsigned char>(c));
-                } else {
-                    output << c;
-                }
-        }
-    }
-    return output.str();
-}
 
 std::string SocialController::escapeSql(const std::string& input) {
     std::string output;
@@ -426,17 +406,6 @@ std::string SocialController::escapeSql(const std::string& input) {
     return output;
 }
 
-std::string SocialController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
-    std::ostringstream json;
-    json << "{";
-    json << "\"success\":" << (success ? "true" : "false") << ",";
-    json << "\"message\":\"" << message << "\"";
-    if (!data.empty()) {
-        json << ",\"data\":" << data;
-    }
-    json << "}";
-    return json.str();
-}
 
 // ---------- Post Types ----------
 
@@ -841,45 +810,29 @@ std::string SocialController::urlEncode(CURL* curl, const std::string& value) {
 }
 
 std::string SocialController::httpGet(const std::string& url) {
-    std::string response;
-    CURL* curl = curl_easy_init();
-    if (!curl) return "";
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        std::cerr << "❌ curl GET failed: " << curl_easy_strerror(res) << std::endl;
+    // Routed through the shared HttpClient so timeout / redirect / TLS
+    // policy live in one place.  Returns body on success or "" on
+    // transport failure (logged below).
+    HttpClient client;
+    auto resp = client.get(url);
+    if (!resp.error.empty()) {
+        std::cerr << "❌ HttpClient GET failed: " << resp.error
+                  << " (url=" << url << ")" << std::endl;
     }
-    curl_easy_cleanup(curl);
-    return response;
+    return resp.body;
 }
 
 std::string SocialController::httpPost(const std::string& url, const std::string& postData) {
-    std::string response;
-    CURL* curl = curl_easy_init();
-    if (!curl) return "";
-
-    std::cout << "🌐 curl POST to: " << url << std::endl;
-
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_POST, 1L);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_DNS_SERVERS, "8.8.8.8,8.8.4.4");
-
-    CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        std::cerr << "❌ curl POST failed: " << curl_easy_strerror(res)
+    // Same wrapper as httpGet — the Meta Graph endpoints we call accept
+    // application/x-www-form-urlencoded payloads built upstream.
+    std::cout << "🌐 HttpClient POST to: " << url << std::endl;
+    HttpClient client;
+    auto resp = client.postForm(url, postData);
+    if (!resp.error.empty()) {
+        std::cerr << "❌ HttpClient POST failed: " << resp.error
                   << " (url=" << url << ")" << std::endl;
     }
-    curl_easy_cleanup(curl);
-    return response;
+    return resp.body;
 }
 
 Response SocialController::handlePostToInstagram(const Request& request) {

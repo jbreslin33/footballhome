@@ -482,37 +482,4 @@ std::string PublicController::extractSlugFromPath(const std::string& path) {
     return "";
 }
 
-std::string PublicController::createJSONResponse(bool success, const std::string& message,
-                                                const std::string& data) {
-    std::ostringstream j;
-    j << "{\"success\":" << (success ? "true" : "false")
-      << ",\"message\":\"" << escapeJSON(message) << "\"";
-    if (!data.empty()) j << ",\"data\":" << data;
-    j << "}";
-    return j.str();
-}
 
-std::string PublicController::escapeJSON(const std::string& str) {
-    std::string out;
-    out.reserve(str.size() + 8);
-    for (char c : str) {
-        switch (c) {
-            case '"':  out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\b': out += "\\b";  break;
-            case '\f': out += "\\f";  break;
-            case '\n': out += "\\n";  break;
-            case '\r': out += "\\r";  break;
-            case '\t': out += "\\t";  break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    char buf[8];
-                    snprintf(buf, sizeof(buf), "\\u%04x", c);
-                    out += buf;
-                } else {
-                    out += c;
-                }
-        }
-    }
-    return out;
-}

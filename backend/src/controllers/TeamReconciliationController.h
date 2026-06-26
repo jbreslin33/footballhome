@@ -30,5 +30,4 @@ private:
     static bool extractTeamId(const std::string& path, int& teamId);
 
     // Bearer presence check (no signature verification).
-    static bool requireBearer(const Request& request);
 };

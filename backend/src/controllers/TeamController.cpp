@@ -321,14 +321,6 @@ std::string TeamController::extractTeamIdGeneric(const std::string& path) {
     return "";
 }
 
-std::string TeamController::createJSONResponse(bool success, const std::string& message) {
-    std::ostringstream json;
-    json << "{";
-    json << "\"success\":" << (success ? "true" : "false") << ",";
-    json << "\"message\":\"" << message << "\"";
-    json << "}";
-    return json.str();
-}
 
 bool TeamController::hasBearerToken(const Request& request) {
     std::string h = request.getHeader("Authorization");

@@ -1,4 +1,5 @@
 #include "TacticalBoardController.h"
+#include "../core/Crypto.h"
 #include "../database/SqlFileLogger.h"
 #include <string>
 #include <sstream>
@@ -10,62 +11,9 @@
 #include <iostream>
 
 // Helper function to decode base64url to string
-static std::string base64UrlDecode(const std::string& input) {
-    std::string base64 = input;
-    
-    // Convert base64url to base64
-    for (size_t i = 0; i < base64.length(); ++i) {
-        if (base64[i] == '-') base64[i] = '+';
-        else if (base64[i] == '_') base64[i] = '/';
-    }
-    
-    // Add padding if necessary
-    while (base64.length() % 4 != 0) {
-        base64 += '=';
-    }
-    
-    // Decode base64
-    BIO *bio, *b64;
-    char *buffer = new char[base64.length()];
-    
-    bio = BIO_new_mem_buf(base64.c_str(), base64.length());
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_push(b64, bio);
-    
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    int decoded_length = BIO_read(bio, buffer, base64.length());
-    BIO_free_all(bio);
-    
-    std::string result(buffer, decoded_length);
-    delete[] buffer;
-    
-    return result;
-}
 
 // Helper function to escape JSON strings
-static std::string escapeJson(std::string input) {
-    std::string output;
-    for (unsigned char c : input) {
-        switch (c) {
-            case '"':  output += "\\\""; break;
-            case '\\': output += "\\\\"; break;
-            case '\b': output += "\\b"; break;
-            case '\f': output += "\\f"; break;
-            case '\n': output += "\\n"; break;
-            case '\r': output += "\\r"; break;
-            case '\t': output += "\\t"; break;
-            default:
-                if (c < 0x20) {
-                    output += "\\u00";
-                    output += "0123456789abcdef"[c >> 4];
-                    output += "0123456789abcdef"[c & 0x0f];
-                } else {
-                    output += c;
-                }
-        }
-    }
-    return output;
-}TacticalBoardController::TacticalBoardController() {
+TacticalBoardController::TacticalBoardController() {
     db_ = Database::getInstance();
 }
 
@@ -1050,7 +998,7 @@ std::string TacticalBoardController::extractUserIdFromToken(const Request& reque
     std::string payload_encoded = token.substr(first_dot + 1, second_dot - first_dot - 1);
     
     // Decode payload
-    std::string payload = base64UrlDecode(payload_encoded);
+    std::string payload = fh::crypto::base64UrlDecode(payload_encoded);
     
     // Extract userId from JSON payload
     // Format: {"userId":"xxx","email":"..."}

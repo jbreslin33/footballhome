@@ -4,29 +4,6 @@
 #include <regex>
 
 // Helper function to escape JSON strings
-static std::string escapeJson(const std::string& input) {
-    std::string output;
-    for (unsigned char c : input) {
-        switch (c) {
-            case '"':  output += "\\\""; break;
-            case '\\': output += "\\\\"; break;
-            case '\b': output += "\\b"; break;
-            case '\f': output += "\\f"; break;
-            case '\n': output += "\\n"; break;
-            case '\r': output += "\\r"; break;
-            case '\t': output += "\\t"; break;
-            default:
-                if (c < 0x20) {
-                    output += "\\u00";
-                    output += "0123456789abcdef"[c >> 4];
-                    output += "0123456789abcdef"[c & 0x0f];
-                } else {
-                    output += c;
-                }
-        }
-    }
-    return output;
-}
 
 DivisionController::DivisionController() {
     db_ = Database::getInstance();
@@ -337,13 +314,3 @@ Response DivisionController::handleUpdateDivisionPlayer(const Request& request) 
     }
 }
 
-std::string DivisionController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
-    std::ostringstream json;
-    json << "{\"success\":" << (success ? "true" : "false") 
-         << ",\"message\":\"" << message << "\"";
-    if (!data.empty()) {
-        json << ",\"data\":" << data;
-    }
-    json << "}";
-    return json.str();
-}

@@ -37,7 +37,6 @@ private:
     Response handleVcard        (const Request& request);
 
     // Auth helpers.
-    static bool                requireBearer    (const Request& request);
     static std::optional<int>  extractUserIdJwt (const Request& request);
 
     // /api/leads/:id/contact  and  /api/leads/:id/vcard

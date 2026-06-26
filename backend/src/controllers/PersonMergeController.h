@@ -42,7 +42,6 @@ private:
     // Same X-User-Id header convention as PersonOverrideController.
     std::optional<int> extractActingUserId(const Request& request) const;
 
-    bool requireBearer(const Request& request) const;
 
     // JSON-rendering helpers (no JSON lib in this project — same pattern
     // as TeamCoach/PersonOverride controllers).

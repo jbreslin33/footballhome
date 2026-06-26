@@ -23,4 +23,9 @@ std::string randomTokenB64Url(std::size_t bytes = 32);
 std::string base64UrlEncode(const std::string& raw);
 std::string urlEncode(const std::string& raw);
 
+// Inverse of base64UrlEncode — accepts the URL-safe alphabet (- and _),
+// re-pads to a multiple of 4 if needed, and returns the raw bytes.  Used
+// when verifying JWT payloads and decoding magic-link tokens.
+std::string base64UrlDecode(const std::string& encoded);
+
 }  // namespace fh::crypto

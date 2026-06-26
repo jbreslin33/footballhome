@@ -158,11 +158,6 @@ bool PersonOverrideController::extractPersonAndField(const std::string& path,
 // ────────────────────────────────────────────────────────────────────────────
 // Auth + identity helpers.
 // ────────────────────────────────────────────────────────────────────────────
-bool PersonOverrideController::requireBearer(const Request& request) const {
-    std::string h = request.getHeader("Authorization");
-    if (h.empty()) h = request.getHeader("authorization");
-    return h.size() > 7 && h.substr(0, 7) == "Bearer ";
-}
 
 std::optional<int>
 PersonOverrideController::extractSetByUserId(const Request& request) const {

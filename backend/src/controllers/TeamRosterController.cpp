@@ -96,8 +96,3 @@ std::string TeamRosterController::extractAction(const std::string& body) {
 // ────────────────────────────────────────────────────────────────────────────
 // Auth.
 // ────────────────────────────────────────────────────────────────────────────
-bool TeamRosterController::requireBearer(const Request& request) const {
-    std::string h = request.getHeader("Authorization");
-    if (h.empty()) h = request.getHeader("authorization");
-    return h.size() > 7 && h.substr(0, 7) == "Bearer ";
-}

@@ -29,6 +29,5 @@ private:
     std::string extractPlayerIdFromPath(const std::string& path);
     std::string extractTeamIdGeneric(const std::string& path);
     std::string extractTeamIdForLiveMatch(const std::string& path);
-    std::string createJSONResponse(bool success, const std::string& message);
     bool hasBearerToken(const Request& request);
 };

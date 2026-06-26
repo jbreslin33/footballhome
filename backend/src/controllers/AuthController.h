@@ -28,8 +28,10 @@ private:
     Response handleAdminContexts(const Request& request);
     
     // Utility methods
+    // Bring the base Controller::createJSONResponse(bool, str, str) into
+    // scope so the UserData overload below doesn't hide it.
+    using Controller::createJSONResponse;
     std::string createJSONResponse(bool success, const std::string& message, const UserData& userData = {});
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& data);
     std::string generateJWT(const UserData& userData);
     std::string extractField(const std::string& json, const std::string& field);
     std::string extractUserIdFromToken(const Request& request);

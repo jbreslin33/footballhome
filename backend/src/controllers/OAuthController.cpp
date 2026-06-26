@@ -1,4 +1,5 @@
 #include "OAuthController.h"
+#include "../core/Crypto.h"
 #include "../core/Response.h"
 #include "../database/Database.h"
 #include <cstdlib>
@@ -20,36 +21,6 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
 }
 
 // Helper to base64url encode
-std::string base64UrlEncode(const std::string& input) {
-    BIO *bio, *b64;
-    BUF_MEM *bufferPtr;
-    
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_new(BIO_s_mem());
-    bio = BIO_push(b64, bio);
-    
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    BIO_write(bio, input.c_str(), input.length());
-    BIO_flush(bio);
-    BIO_get_mem_ptr(bio, &bufferPtr);
-    
-    std::string encoded(bufferPtr->data, bufferPtr->length);
-    BIO_free_all(bio);
-    
-    // Convert base64 to base64url: replace + with -, / with _, remove =
-    for (size_t i = 0; i < encoded.length(); ++i) {
-        if (encoded[i] == '+') encoded[i] = '-';
-        else if (encoded[i] == '/') encoded[i] = '_';
-    }
-    
-    // Remove padding
-    size_t pad = encoded.find('=');
-    if (pad != std::string::npos) {
-        encoded = encoded.substr(0, pad);
-    }
-    
-    return encoded;
-}
 
 // Helper to URL encode strings
 std::string urlEncode(const std::string& value) {
@@ -330,15 +301,15 @@ std::string OAuthController::generateJWT(const std::string& userId, const std::s
     std::string payload = payloadStream.str();
     
     // Base64url encode header and payload
-    std::string encodedHeader = base64UrlEncode(header);
-    std::string encodedPayload = base64UrlEncode(payload);
+    std::string encodedHeader = fh::crypto::base64UrlEncode(header);
+    std::string encodedPayload = fh::crypto::base64UrlEncode(payload);
     
     // Create the signature base (header.payload)
     std::string signatureBase = encodedHeader + "." + encodedPayload;
     
     // For now, use a simple signature (in production, use proper HMAC-SHA256)
     // This creates a valid JWT structure that can be parsed
-    std::string signature = base64UrlEncode("signature");
+    std::string signature = fh::crypto::base64UrlEncode("signature");
     
     // Return complete JWT
     std::string token = signatureBase + "." + signature;

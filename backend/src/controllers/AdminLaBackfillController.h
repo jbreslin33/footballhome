@@ -39,5 +39,4 @@ private:
 
     Response handleBackfill(const Request& request);
 
-    static bool requireBearer(const Request& request);
 };

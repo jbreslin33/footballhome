@@ -38,7 +38,6 @@ private:
     Response handleAdPreviewIframe(const Request& request);
 
     // Pulled out so all four handlers share one auth gate.
-    bool requireBearer(const Request& request);
 
     // /api/ads/:adId/preview returns HTML (rendered in a popped-out tab),
     // not JSON, on failure — keep the error template in one place.

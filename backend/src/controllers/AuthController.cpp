@@ -1,4 +1,5 @@
 #include "AuthController.h"
+#include "../core/Crypto.h"
 #include <sstream>
 #include <regex>
 #include <cstdio>
@@ -96,67 +97,8 @@ Response AuthController::handleLogout(const Request& request) {
 }
 
 // Helper function to encode base64url (static to avoid multiple definition)
-static std::string base64UrlEncode(const std::string& input) {
-    // Encode to base64
-    BIO *bio, *b64;
-    BUF_MEM *bufferPtr;
-    
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_new(BIO_s_mem());
-    bio = BIO_push(b64, bio);
-    
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    BIO_write(bio, input.c_str(), input.length());
-    BIO_flush(bio);
-    BIO_get_mem_ptr(bio, &bufferPtr);
-    
-    std::string base64(bufferPtr->data, bufferPtr->length);
-    BIO_free_all(bio);
-    
-    // Convert base64 to base64url
-    std::string result;
-    for (char c : base64) {
-        if (c == '+') result += '-';
-        else if (c == '/') result += '_';
-        else if (c == '=') break; // Remove padding
-        else result += c;
-    }
-    
-    return result;
-}
 
 // Helper function to decode base64url (static to avoid multiple definition)
-static std::string base64UrlDecode(const std::string& input) {
-    std::string base64 = input;
-    
-    // Convert base64url to base64
-    for (size_t i = 0; i < base64.length(); ++i) {
-        if (base64[i] == '-') base64[i] = '+';
-        else if (base64[i] == '_') base64[i] = '/';
-    }
-    
-    // Add padding if necessary
-    while (base64.length() % 4 != 0) {
-        base64 += '=';
-    }
-    
-    // Decode base64
-    BIO *bio, *b64;
-    char *buffer = new char[base64.length()];
-    
-    bio = BIO_new_mem_buf(base64.c_str(), base64.length());
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_push(b64, bio);
-    
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    int decoded_length = BIO_read(bio, buffer, base64.length());
-    BIO_free_all(bio);
-    
-    std::string result(buffer, decoded_length);
-    delete[] buffer;
-    
-    return result;
-}
 
 // Helper function to extract userId from JWT token (static to avoid multiple definition)
 static std::string extractUserIdFromJWT(const std::string& token) {
@@ -178,7 +120,7 @@ static std::string extractUserIdFromJWT(const std::string& token) {
     std::cout << "🔍 JWT payload_encoded: " << payload_encoded << std::endl;
     
     // Decode payload
-    std::string payload = base64UrlDecode(payload_encoded);
+    std::string payload = fh::crypto::base64UrlDecode(payload_encoded);
     std::cout << "🔍 JWT payload decoded: " << payload << std::endl;
     
     // Extract userId from JSON payload
@@ -324,8 +266,8 @@ std::string AuthController::generateJWT(const UserData& userData) {
     payload << "}";
     
     // Encode header and payload
-    std::string header_encoded = base64UrlEncode(header);
-    std::string payload_encoded = base64UrlEncode(payload.str());
+    std::string header_encoded = fh::crypto::base64UrlEncode(header);
+    std::string payload_encoded = fh::crypto::base64UrlEncode(payload.str());
     
     // Create JWT token (no signature for now)
     return header_encoded + "." + payload_encoded + ".";
@@ -652,14 +594,3 @@ Response AuthController::handleAdminContexts(const Request& request) {
     }
 }
 
-std::string AuthController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
-    std::ostringstream json;
-    json << "{";
-    json << "\"success\":" << (success ? "true" : "false") << ",";
-    json << "\"message\":\"" << message << "\"";
-    if (!data.empty()) {
-        json << ",\"data\":" << data;
-    }
-    json << "}";
-    return json.str();
-}

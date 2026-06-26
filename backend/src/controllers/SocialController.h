@@ -91,7 +91,5 @@ private:
     void checkScheduledPosts();
 
     // Utility
-    std::string escapeJson(const std::string& input);
     std::string escapeSql(const std::string& input);
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
 };

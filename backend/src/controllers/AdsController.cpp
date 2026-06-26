@@ -581,11 +581,6 @@ void AdsController::registerRoutes(Router& router, const std::string& prefix) {
         [this](const Request& r) { return handleAdPreviewIframe(r); });
 }
 
-bool AdsController::requireBearer(const Request& request) {
-    std::string h = request.getHeader("Authorization");
-    if (h.empty()) h = request.getHeader("authorization");
-    return h.size() > 7 && h.compare(0, 7, "Bearer ") == 0;
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // GET /api/ads/preview

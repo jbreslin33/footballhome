@@ -1,4 +1,5 @@
 #include "EventController.h"
+#include "../core/Crypto.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
 #include <sstream>
@@ -1290,17 +1291,6 @@ Response EventController::handleSetMatchVisibility(const Request& request) {
     }
 }
 
-std::string EventController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
-    std::ostringstream json;
-    json << "{";
-    json << "\"success\":" << (success ? "true" : "false") << ",";
-    json << "\"message\":\"" << message << "\"";
-    if (!data.empty()) {
-        json << ",\"data\":" << data;
-    }
-    json << "}";
-    return json.str();
-}
 
 std::string EventController::parseJSON(const std::string& body, const std::string& key) {
     // Simple JSON parsing for key-value pairs
@@ -1337,33 +1327,6 @@ std::string EventController::parseJSON(const std::string& body, const std::strin
     return body.substr(pos, end_pos - pos);
 }
 
-std::string EventController::escapeJSON(const std::string& str) {
-    std::ostringstream escaped;
-    for (char c : str) {
-        switch (c) {
-            case '"':  escaped << "\\\""; break;
-            case '\\': escaped << "\\\\"; break;
-            case '\b': escaped << "\\b"; break;
-            case '\f': escaped << "\\f"; break;
-            case '\n': escaped << "\\n"; break;
-            case '\r': escaped << "\\r"; break;
-            case '\t': escaped << "\\t"; break;
-            default:
-                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
-                // 0x80-0xFF) are passed through unchanged. Using signed `char`
-                // would treat them as negative and incorrectly escape them as
-                // control characters, mangling emoji and other non-ASCII text.
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    // Escape other control characters
-                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
-                            << static_cast<int>(static_cast<unsigned char>(c));
-                } else {
-                    escaped << c;
-                }
-        }
-    }
-    return escaped.str();
-}
 
 std::string EventController::getCurrentTimestamp() {
     auto now = std::time(nullptr);
@@ -2519,37 +2482,6 @@ Response EventController::handleSetPlayerRSVP(const Request& request) {
 }
 
 // Helper function to decode base64url
-static std::string base64UrlDecode(const std::string& input) {
-    std::string base64 = input;
-    
-    // Convert base64url to base64
-    for (size_t i = 0; i < base64.length(); ++i) {
-        if (base64[i] == '-') base64[i] = '+';
-        else if (base64[i] == '_') base64[i] = '/';
-    }
-    
-    // Add padding if necessary
-    while (base64.length() % 4 != 0) {
-        base64 += '=';
-    }
-    
-    // Decode base64
-    BIO *bio, *b64;
-    char *buffer = new char[base64.length()];
-    
-    bio = BIO_new_mem_buf(base64.c_str(), base64.length());
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_push(b64, bio);
-    
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    int decoded_length = BIO_read(bio, buffer, base64.length());
-    BIO_free_all(bio);
-    
-    std::string result(buffer, decoded_length);
-    delete[] buffer;
-    
-    return result;
-}
 
 std::string EventController::extractUserIdFromToken(const Request& request) {
     // Extract Authorization header
@@ -2572,7 +2504,7 @@ std::string EventController::extractUserIdFromToken(const Request& request) {
             std::string payload_encoded = token.substr(first_dot + 1, second_dot - first_dot - 1);
             
             // Decode payload
-            std::string payload = base64UrlDecode(payload_encoded);
+            std::string payload = fh::crypto::base64UrlDecode(payload_encoded);
             
             // Extract userId from JSON payload
             // Format: {"userId":"xxx",...}

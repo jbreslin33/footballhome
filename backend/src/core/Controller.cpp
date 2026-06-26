@@ -1,4 +1,5 @@
 #include "Controller.h"
+#include <cstdio>
 #include <sstream>
 #include <regex>
 
@@ -87,4 +88,57 @@ std::string Controller::getPathParam(const Request& request, const std::string& 
     // Would need to be implemented with proper route matching
     // For now, return empty string
     return "";
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Shared helpers (previously duplicated in 8+ controllers).
+// ────────────────────────────────────────────────────────────────────────────
+
+std::string Controller::createJSONResponse(bool success,
+                                           const std::string& message,
+                                           const std::string& data) {
+    std::ostringstream out;
+    out << "{\"success\":" << (success ? "true" : "false")
+        << ",\"message\":\"" << escapeJson(message) << "\"";
+    if (!data.empty()) {
+        out << ",\"data\":" << data;
+    }
+    out << "}";
+    return out.str();
+}
+
+std::string Controller::escapeJson(const std::string& input) {
+    std::string out;
+    out.reserve(input.size() + 8);
+    for (char c : input) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b";  break;
+            case '\f': out += "\\f";  break;
+            case '\n': out += "\\n";  break;
+            case '\r': out += "\\r";  break;
+            case '\t': out += "\\t";  break;
+            default:
+                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
+                // 0x80-0xFF) are passed through unchanged.  Using signed `char`
+                // would treat them as negative and incorrectly escape them as
+                // control characters, mangling emoji and non-ASCII text.
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char buf[8];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x",
+                                  static_cast<unsigned int>(static_cast<unsigned char>(c)));
+                    out += buf;
+                } else {
+                    out += c;
+                }
+        }
+    }
+    return out;
+}
+
+bool Controller::requireBearer(const Request& request) {
+    std::string h = request.getHeader("Authorization");
+    if (h.empty()) h = request.getHeader("authorization");
+    return h.size() > 7 && h.compare(0, 7, "Bearer ") == 0;
 }

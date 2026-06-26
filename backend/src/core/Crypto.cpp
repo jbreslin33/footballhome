@@ -1,5 +1,7 @@
 #include "Crypto.h"
 
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -96,6 +98,30 @@ std::string urlEncode(const std::string& raw) {
         }
     }
     return out;
+}
+
+std::string base64UrlDecode(const std::string& encoded) {
+    // Translate URL-safe alphabet back to canonical base64 and re-add
+    // the padding stripped by base64UrlEncode.  Then hand off to OpenSSL's
+    // BIO chain to do the actual decode.
+    std::string b64 = encoded;
+    for (char& c : b64) {
+        if      (c == '-') c = '+';
+        else if (c == '_') c = '/';
+    }
+    while (b64.size() % 4 != 0) b64.push_back('=');
+
+    BIO* mem = BIO_new_mem_buf(b64.data(), static_cast<int>(b64.size()));
+    BIO* b64f = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64f, BIO_FLAGS_BASE64_NO_NL);
+    BIO* chain = BIO_push(b64f, mem);
+
+    std::vector<char> buf(b64.size());
+    const int n = BIO_read(chain, buf.data(), static_cast<int>(buf.size()));
+    BIO_free_all(chain);
+
+    if (n <= 0) return {};
+    return std::string(buf.data(), static_cast<std::size_t>(n));
 }
 
 }  // namespace fh::crypto

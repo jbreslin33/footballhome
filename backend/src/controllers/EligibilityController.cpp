@@ -1,4 +1,5 @@
 #include "EligibilityController.h"
+#include "../core/Crypto.h"
 #include <sstream>
 #include <regex>
 #include <iomanip>
@@ -10,26 +11,6 @@
 // ============================================================================
 // Helper: base64url decode (for JWT token parsing)
 // ============================================================================
-static std::string base64UrlDecode(const std::string& input) {
-    std::string base64 = input;
-    for (size_t i = 0; i < base64.length(); ++i) {
-        if (base64[i] == '-') base64[i] = '+';
-        else if (base64[i] == '_') base64[i] = '/';
-    }
-    while (base64.length() % 4 != 0) base64 += '=';
-    
-    BIO *bio, *b64;
-    char *buffer = new char[base64.length()];
-    bio = BIO_new_mem_buf(base64.c_str(), base64.length());
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_push(b64, bio);
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    int decoded_length = BIO_read(bio, buffer, base64.length());
-    BIO_free_all(bio);
-    std::string result(buffer, decoded_length);
-    delete[] buffer;
-    return result;
-}
 
 // ============================================================================
 // Constructor
@@ -1473,7 +1454,7 @@ std::string EligibilityController::extractUserIdFromToken(const Request& request
         size_t first_dot = token.find('.');
         size_t second_dot = token.find('.', first_dot + 1);
         if (first_dot != std::string::npos && second_dot != std::string::npos) {
-            std::string payload = base64UrlDecode(token.substr(first_dot + 1, second_dot - first_dot - 1));
+            std::string payload = fh::crypto::base64UrlDecode(token.substr(first_dot + 1, second_dot - first_dot - 1));
             std::regex user_id_regex(R"re("userId"\s*:\s*"([^"]+)")re");            std::smatch match;
             if (std::regex_search(payload, match, user_id_regex)) {
                 return match[1].str();
@@ -1532,31 +1513,6 @@ std::string EligibilityController::createJsonResponse(bool success, const std::s
     return json.str();
 }
 
-std::string EligibilityController::escapeJson(const std::string& str) {
-    std::ostringstream escaped;
-    for (char c : str) {
-        switch (c) {
-            case '"':  escaped << "\\\""; break;
-            case '\\': escaped << "\\\\"; break;
-            case '\b': escaped << "\\b"; break;
-            case '\f': escaped << "\\f"; break;
-            case '\n': escaped << "\\n"; break;
-            case '\r': escaped << "\\r"; break;
-            case '\t': escaped << "\\t"; break;
-            default:
-                // Cast to unsigned char so UTF-8 multi-byte sequences (high bytes
-                // 0x80-0xFF) are passed through unchanged instead of being
-                // mistakenly escaped as control characters.
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
-                            << static_cast<int>(static_cast<unsigned char>(c));
-                } else {
-                    escaped << c;
-                }
-        }
-    }
-    return escaped.str();
-}
 
 // ============================================================================
 // PUT /api/eligibility/player/:playerId/flags

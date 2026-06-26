@@ -20,5 +20,4 @@ private:
     // Helper methods
     std::string extractDivisionIdFromPath(const std::string& path);
     std::string extractPlayerIdFromPath(const std::string& path);
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
 };

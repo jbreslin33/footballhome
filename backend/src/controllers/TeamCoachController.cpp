@@ -90,10 +90,3 @@ bool TeamCoachController::extractIds(const std::string& path,
     return true;
 }
 
-bool TeamCoachController::requireBearer(const Request& request) const {
-    std::string h = request.getHeader("Authorization");
-    if (h.empty()) {
-        h = request.getHeader("authorization");
-    }
-    return h.size() > 7 && h.substr(0, 7) == "Bearer ";
-}

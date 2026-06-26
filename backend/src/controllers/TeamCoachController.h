@@ -33,7 +33,6 @@ private:
 
     // Presence check on a Bearer token. We deliberately don't verify the
     // signature here — that's the system-wide JwtAuthService refactor.
-    bool requireBearer(const Request& request) const;
 
     std::unique_ptr<TeamCoach> model_;
 };

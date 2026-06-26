@@ -42,7 +42,4 @@ private:
 
     // Path/JSON helpers
     std::string extractSlugFromPath(const std::string& path);
-    std::string createJSONResponse(bool success, const std::string& message,
-                                   const std::string& data = "");
-    std::string escapeJSON(const std::string& str);
 };

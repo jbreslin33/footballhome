@@ -498,27 +498,6 @@ int InternalRosterController::parseJsonInt(const std::string& body, const std::s
     try { return std::stoi(val); } catch (...) { return defaultValue; }
 }
 
-std::string InternalRosterController::escapeJson(const std::string& str) {
-    std::ostringstream out;
-    for (char c : str) {
-        switch (c) {
-            case '"':  out << "\\\""; break;
-            case '\\': out << "\\\\"; break;
-            case '\b': out << "\\b";  break;
-            case '\f': out << "\\f";  break;
-            case '\n': out << "\\n";  break;
-            case '\r': out << "\\r";  break;
-            case '\t': out << "\\t";  break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
-                } else {
-                    out << c;
-                }
-        }
-    }
-    return out.str();
-}
 
 std::string InternalRosterController::createJsonResponse(bool success, const std::string& message, const std::string& data) {
     std::ostringstream json;

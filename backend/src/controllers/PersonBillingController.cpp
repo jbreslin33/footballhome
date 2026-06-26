@@ -198,7 +198,3 @@ Response PersonBillingController::handleMarkBilled(const Request& request) {
     }
 }
 
-bool PersonBillingController::requireBearer(const Request& request) {
-    const std::string h = request.getHeader("Authorization");
-    return h.size() > 7 && h.compare(0, 7, "Bearer ") == 0;
-}

@@ -32,5 +32,4 @@ private:
     Response handleUpsert    (const Request& request);
     Response handleMarkBilled(const Request& request);
 
-    static bool requireBearer(const Request& request);
 };

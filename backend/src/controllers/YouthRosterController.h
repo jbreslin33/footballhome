@@ -29,5 +29,4 @@ private:
     Response handleGet(const Request& request);
 
     // Bearer presence check (no signature verification).
-    static bool requireBearer(const Request& request);
 };

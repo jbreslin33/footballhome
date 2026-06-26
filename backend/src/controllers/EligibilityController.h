@@ -129,5 +129,4 @@ private:
     int parseJsonInt(const std::string& body, const std::string& key, int defaultValue = 0);
     bool parseJsonBool(const std::string& body, const std::string& key, bool defaultValue = false);
     std::string createJsonResponse(bool success, const std::string& message, const std::string& data = "");
-    std::string escapeJson(const std::string& str);
 };

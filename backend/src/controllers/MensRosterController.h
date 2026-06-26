@@ -39,5 +39,4 @@ private:
     Response handleAssign(const Request& request);
     Response handleRosterStatus(const Request& request);
 
-    static bool requireBearer(const Request& request);
 };
