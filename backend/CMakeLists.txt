@@ -41,6 +41,9 @@ set(SOURCES
     src/models/PersonBilling.cpp
     src/models/YouthAgeGroups.cpp
     src/models/YouthRoster.cpp
+    src/models/MensTeamColumns.cpp
+    src/models/MensTeamAssignments.cpp
+    src/models/MensRoster.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/services/GroupMeService.cpp
@@ -66,6 +69,7 @@ set(SOURCES
     src/controllers/ClubController.cpp
     src/controllers/ClubLaPoolController.cpp
     src/controllers/YouthRosterController.cpp
+    src/controllers/MensRosterController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/GroupMeController.cpp
     src/controllers/SocialController.cpp
