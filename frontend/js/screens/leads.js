@@ -670,6 +670,15 @@ class LeadsScreen extends Screen {
   // keeping the plain-text fallback intact for SMS / Notes / etc.
   // URL regex matches http(s):// up to whitespace; trims trailing punctuation
   // (.,!?;:) so 'register here: https://x.com.' doesn't capture the period.
+  //
+  // For full first-touch emails (detected by the "Lighthouse 1893 SC /
+  // soccer@lighthouse1893.org" sign-off), we wrap the linkified body in a
+  // light branded shell — small 1893 crest + club name at the top, plus
+  // the labeled-block headers ("Practice — ", "Where — ", "Next:", "Games
+  // — ", "Cost — ", "Season — ") bolded so the lead can scan the key
+  // facts.  Snippet replies (which don't include the sign-off) fall
+  // through to the plain linkified <div> — short SMS-flavored chips
+  // shouldn't carry a giant logo header.
   toLinkifiedHtml(text) {
     const esc = (s) => String(s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -688,10 +697,54 @@ class LeadsScreen extends Screen {
       return match;
     });
     html += esc(text.slice(last));
-    // Newlines → <br> so multi-line bodies render correctly in Gmail's
-    // rich-text composer.  Wrapped in a <div> so paste doesn't inherit the
-    // surrounding paragraph's color/font (Gmail respects div defaults).
-    return `<div>${html.replace(/\n/g, '<br>')}</div>`;
+
+    // Detect a full club email (sign-off present).  Snippet/SMS replies
+    // bypass the branded wrapper.
+    const isClubEmail = /Lighthouse 1893 SC\s*\n\s*soccer@lighthouse1893\.org/.test(text);
+    if (!isClubEmail) {
+      // Newlines → <br> so multi-line bodies render correctly in Gmail's
+      // rich-text composer.  Wrapped in a <div> so paste doesn't inherit the
+      // surrounding paragraph's color/font (Gmail respects div defaults).
+      return `<div>${html.replace(/\n/g, '<br>')}</div>`;
+    }
+
+    // Bold labeled-block headers at line starts.  Match BEFORE the
+    // newline→<br> swap (so `\n` anchors still work).  Allowlist of
+    // labels keeps mid-sentence em-dashes ("We're in season — new
+    // players welcome") from getting bolded.
+    html = html
+      .replace(/(^|\n)(Practice|Where|Games|Cost|Season|Subject) — /g,
+               (_, pfx, lbl) => `${pfx}<strong>${lbl} — </strong>`)
+      .replace(/(^|\n)Next: /g, '$1<strong>Next:</strong> ');
+
+    // Final newline → <br> swap.
+    html = html.replace(/\n/g, '<br>');
+
+    // Branded email shell.  Inline styles only (Gmail strips <style>
+    // blocks on paste).  Logo loads from /images/ on footballhome.org —
+    // public, no auth required, survives the paste-into-Gmail round-trip.
+    // Recipient mail clients fetch the <img src> over the wire; modern
+    // clients (Gmail web, Apple Mail) load it inline.  Conservative
+    // clients (Outlook desktop default config) show a tasteful alt-text
+    // placeholder until the recipient clicks "show images" — still reads
+    // professional, never blocks the actual message content.
+    const LOGO = 'https://footballhome.org/images/lighthouse-1893-crest.png';
+    return (
+      `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; font-size:14px; line-height:1.55; max-width:560px;">` +
+        `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid #1e3a8a;">` +
+          `<tr>` +
+            `<td style="padding-right:12px; vertical-align:middle;">` +
+              `<img src="${LOGO}" alt="Lighthouse 1893 SC" width="48" height="48" style="display:block; border:0; width:48px; height:48px;">` +
+            `</td>` +
+            `<td style="vertical-align:middle;">` +
+              `<div style="font-weight:700; font-size:14px; color:#1e3a8a; letter-spacing:0.5px;">LIGHTHOUSE 1893 SC</div>` +
+              `<div style="font-size:11px; color:#6b7280; letter-spacing:1px; text-transform:uppercase;">Est. Kensington &middot; 1893</div>` +
+            `</td>` +
+          `</tr>` +
+        `</table>` +
+        `<div>${html}</div>` +
+      `</div>`
+    );
   }
 
   copyToClipboard(text, btn) {
