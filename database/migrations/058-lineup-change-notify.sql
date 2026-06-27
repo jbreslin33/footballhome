@@ -1,7 +1,7 @@
 -- 058 — pg_notify('fh_lineups', …) on every change that affects the
 -- /dashboard#lineups screen.  Drives the SSE channel `/api/stream` served
--- by the meta-leads-webhook (it holds a LISTEN connection and broadcasts
--- each payload to every connected admin browser).
+-- by the C++ backend's LineupNotificationHub (it holds a LISTEN connection
+-- and broadcasts each payload to every connected admin browser).
 --
 -- Payload shape (JSON):
 --   { "kind": "rsvp" | "lineup" | "roster" | "coach" | "chat_member",
