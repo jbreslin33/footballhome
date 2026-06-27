@@ -1071,6 +1071,7 @@ class LeadsScreen extends Screen {
     };
 
     const isYouth = /youth|grades?\s*1[–-]6|boys\s*club|girls\s*club/i.test(funnelLabel || '');
+    const isWomensClub = /women/i.test(funnelLabel || '');
     // Legacy combined youth funnel — the only funnel where the form
     // doesn't pre-identify gender, so the close branches on the lead's
     // boy/girl answer (see Register chip split in messageSnippets).
@@ -1098,9 +1099,11 @@ class LeadsScreen extends Screen {
       schedule:      SCHEDULES[baseLabel] || null,
       whose:         isYouth ? "your player's" : 'your',
       whoseCap:      isYouth ? "Your player's" : 'Your',
-      pricing:       isYouth ? '$35/mo' : '$9/wk or $35/mo',
+      initialFee:    isWomensClub ? '$10' : '$35',
+      pricing:       isYouth ? '$35/mo' : (isWomensClub ? '$10/mo' : '$9/wk or $35/mo'),
       isYouth,
       isLegacyYouth,
+      isWomensClub,
     };
   }
 
@@ -1126,10 +1129,10 @@ class LeadsScreen extends Screen {
     // in a small-club market.  LeagueApps re-discloses on the checkout
     // page (Program Description + Cancellation Policy checkbox); this
     // is the belt to LeagueApps' suspenders.
-    //   Women's Club (Tri County + U23 Women) → $5/month
-    //   All others (Men's + Youth)             → $35/month
+    //   Women's Club (Tri County + U23 Women) → $10 to start / $10/month
+    //   All others (Men's + Youth)             → $35 to start / $35/month
     const isWomensClub = /women/i.test(funnelLabel);
-    const monthly = isWomensClub ? '$5' : '$35';
+    const monthly = isWomensClub ? '$10' : '$35';
 
     // Recurring-cadence cancellations — one-off skips (club events,
     // holidays, weather).  Add YYYY-MM-DD dates here and nextPractice()
@@ -1317,7 +1320,7 @@ class LeadsScreen extends Screen {
     return {
       sms:
         `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
-        `Sign up ($35): ${c.link}`,
+        `Sign up (${c.initialFee}): ${c.link}`,
       subject: `Lighthouse 1893 — join our ${c.program} this season`,
       email:
         `Hi {first},\n\n` +
@@ -1326,7 +1329,7 @@ class LeadsScreen extends Screen {
         `Games on Sunday mornings or early afternoons at Lighthouse.\n\n` +
         `Location — Lighthouse Sports Complex\n` +
         `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
-        `Cost — $35 to start, then ${monthly}/month\n` +
+        `Cost — ${c.initialFee} to start, then ${monthly}/month\n` +
         `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
         `Registration is open — lock in your roster spot for the September kickoff:\n` +
         `${c.link}\n\n` +
@@ -1496,10 +1499,10 @@ class LeadsScreen extends Screen {
     } else {
       snippets.push({
         id: 'register',
-        label: '💳 Register ($35)',
+        label: `💳 Register (${c.initialFee})`,
         tier: 'close',
         body:
-          `Great. To become a member of the club it's $35 registration on this link: ${c.link}\n` +
+          `Great. To become a member of the club it's ${c.initialFee} registration on this link: ${c.link}\n` +
           `Once you're in you can start coming to trainings and games.`,
       });
     }
@@ -1702,7 +1705,7 @@ class LeadsScreen extends Screen {
             `${practiceLine}\n` +
             `• Field: Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140\n` +
             `  https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140\n` +
-            `• Cost: $35 to register, then ${c.pricing} — cancel anytime.\n` +
+            `• Cost: ${c.initialFee} to register, then ${c.pricing} — cancel anytime.\n` +
             `  All-inclusive: uniform, training, and games — no hidden fees.\n` +
             `\n` +
             closeLink(`To register, head here:`) + `\n` +
@@ -1802,7 +1805,7 @@ class LeadsScreen extends Screen {
         label: '💵 Cost',
         tier: 'info',
         body:
-          `$35 today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
+          `${c.initialFee} today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
           `\n` +
           closeLink('Register here:'),
       },
