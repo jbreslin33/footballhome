@@ -1131,6 +1131,65 @@ class LeadsScreen extends Screen {
     const isWomensClub = /women/i.test(funnelLabel);
     const monthly = isWomensClub ? '$5' : '$35';
 
+    // Recurring-cadence cancellations — one-off skips (club events,
+    // holidays, weather).  Add YYYY-MM-DD dates here and nextPractice()
+    // rolls forward to the next session in the cadence.  Lives inline
+    // because it ships with the template; if it grows past ~5 entries,
+    // promote to a config endpoint so the coach can edit without a deploy.
+    const PRACTICE_CANCELLATIONS = new Set([
+      '2026-06-29', // Mon — club event at Lighthouse (youth)
+    ]);
+
+    // One-off time overrides for practices that still happen but at a
+    // different time than the usual cadence (e.g. shifted earlier so
+    // the team can watch a big game after).  Keyed by YYYY-MM-DD.
+    //   time — replaces the default time on the "Next:" line
+    //   note — appears in parens after the time; phrase it the way
+    //          you'd say it out loud ("earlier so we can catch the
+    //          USA World Cup game after — regular time is 7pm–8:30pm").
+    //          Surface the reason — "why we moved practice" is a
+    //          community-identity signal, not a logistics footnote.
+    const PRACTICE_OVERRIDES = new Map([
+      ['2026-07-01', {
+        time: '5:30pm–7pm',
+        note: 'earlier so we can catch the USA World Cup game after — regular time is 7pm–8:30pm',
+      }],
+    ]);
+
+    // Compute next practice for a given cadence so the email always
+    // shows a fresh date (template renders at view time — never stale).
+    //   cadenceDays — array of weekday numbers (0=Sun … 6=Sat)
+    //   endHour     — hour after which today no longer counts as "next"
+    //                 (19 for youth's 7pm end; 21 for men's 8:30pm end
+    //                 with a half-hour buffer so 8:15pm reads still on).
+    // If today is in the cadence, before endHour, and not cancelled, today
+    // counts ("join us tonight").  Otherwise advance day-by-day, skipping
+    // cancellations.  Returns { ymd, label } so callers can look up
+    // PRACTICE_OVERRIDES by ymd while rendering the human label.
+    const nextPractice = (cadenceDays, endHour) => {
+      const ymd = (x) => {
+        const y  = x.getFullYear();
+        const m  = String(x.getMonth() + 1).padStart(2, '0');
+        const dd = String(x.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+      };
+      const now = new Date();
+      const stillToday =
+        cadenceDays.includes(now.getDay()) &&
+        now.getHours() < endHour &&
+        !PRACTICE_CANCELLATIONS.has(ymd(now));
+      const d = new Date(now);
+      if (!stillToday) {
+        do {
+          d.setDate(d.getDate() + 1);
+        } while (!cadenceDays.includes(d.getDay()) || PRACTICE_CANCELLATIONS.has(ymd(d)));
+      }
+      return {
+        ymd:   ymd(d),
+        label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      };
+    };
+
     // ── Legacy Youth (combined Boys+Girls form, gender unknown) ────────
     // Email closes with BOTH links — parent picks the right one.  Avoids
     // a round-trip ("which one?") and gets the lead to register in one
@@ -1146,17 +1205,19 @@ class LeadsScreen extends Screen {
         email:
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice is Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140. Times are based on your child's grade in the upcoming school year — PreK–2nd grade 4:30pm–5:30pm, 3rd–10th grade 5:30pm–7pm, 11th grade and up 7pm–8:30pm. First practice is Wednesday June 24.\n\n` +
-          `Fall 2026 season format:\n` +
-          `• PreK–1st grade: In-House league\n` +
-          `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
-          `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
-          `Ready to join? It's $35 for initial registration and then ${monthly}/month — cancel anytime, no questions asked. Pick the program that matches:\n` +
+          `Practice — Mondays & Wednesdays (next: ${nextPractice([1, 3], 19).label})\n` +
+          `• 2nd grade and younger: 4:30pm–5:30pm\n` +
+          `• 3rd grade and older: 5:30pm–7pm\n` +
+          `We're in season — new players welcome any week.\n\n` +
+          `Games — Weekends\n\n` +
+          `Location — Lighthouse Sports Complex\n` +
+          `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
+          `Cost — $35 to start, then ${monthly}/month\n` +
+          `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
+          `Last step is registration so we can group your player with the right age cohort before their first practice — pick the one that matches:\n` +
           `• Boys (Grades 1–6): ${c.linkBoys}\n` +
           `• Girls (Grades 1–6): ${c.linkGirls}\n\n` +
-          `Everything is included — uniforms, tournaments, and gear. No hidden fees.\n\n` +
-          `Or just hit reply with any questions — happy to help.\n\n` +
-          `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
       };
     }
 
@@ -1174,23 +1235,63 @@ class LeadsScreen extends Screen {
         email:
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice is Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140. Times are based on your ${child}'s grade in the upcoming school year — PreK–2nd grade 4:30pm–5:30pm, 3rd–10th grade 5:30pm–7pm, 11th grade and up 7pm–8:30pm. First practice is Wednesday June 24.\n\n` +
-          `Fall 2026 season format:\n` +
-          `• PreK–1st grade: In-House league\n` +
-          `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
-          `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
-          `Ready to join? It's $35 for initial registration and then ${monthly}/month — cancel anytime, no questions asked:\n` +
+          `Practice — Mondays & Wednesdays (next: ${nextPractice([1, 3], 19).label})\n` +
+          `• 2nd grade and younger: 4:30pm–5:30pm\n` +
+          `• 3rd grade and older: 5:30pm–7pm\n` +
+          `We're in season — new players welcome any week.\n\n` +
+          `Games — Weekends\n\n` +
+          `Location — Lighthouse Sports Complex\n` +
+          `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
+          `Cost — $35 to start, then ${monthly}/month\n` +
+          `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
+          `Last step is registration so we can group your ${child} with the right age cohort before their first practice:\n` +
           `${c.link}\n\n` +
-          `Everything is included — uniforms, tournaments, and gear. No hidden fees.\n\n` +
-          `Or just hit reply with any questions — happy to help.\n\n` +
-          `Thanks!\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
       };
     }
 
-    // ── Adult funnels (Brazil / PR / U23 M / U23 W / Tri County W / APSL)
-    // SMS stays SMS-native (tight single-sentence ask).  Email is the
-    // closing channel: warm intro, the $35 ask, register link, soft reply
-    // out.  Reads like a club welcome, not a sales pitch.
+    // ── Men's Adult funnels (Brazil / PR / U23 M / U23 M + PR / APSL) ──
+    // Same structured-block layout as youth (Practice / Games / Location /
+    // Cost) so the lead can scan the four facts in two seconds.  All four
+    // men's funnels share the same practice cadence (Wed/Fri 7–8:30pm) and
+    // play CASA games on Sundays — hardcoded rather than pulled from
+    // SCHEDULES because the layout is opinionated (next-practice date,
+    // "in season" reassurance, cost adjacent to CTA).  When the next
+    // practice has a PRACTICE_OVERRIDES entry (e.g. shifted earlier for
+    // a World Cup game), surface the new time + reason inline — "why
+    // we moved practice" reads as club personality, not logistics.
+    if (!isWomensClub) {
+      const np       = nextPractice([3, 5], 21);
+      const override = PRACTICE_OVERRIDES.get(np.ymd);
+      const timeLine = override
+        ? `Next: ${np.label}, ${override.time} (${override.note})\n`
+        : `Next: ${np.label}, 7pm–8:30pm\n`;
+      return {
+        sms:
+          `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
+          `Sign up ($35): ${c.link}`,
+        subject: `Lighthouse 1893 — join our ${c.program} this season`,
+        email:
+          `Hi {first},\n\n` +
+          `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
+          `Practice — Wednesdays & Fridays\n` +
+          timeLine +
+          `We're in season — new players welcome any week.\n\n` +
+          `Games — Sundays\n\n` +
+          `Location — Lighthouse Sports Complex\n` +
+          `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
+          `Cost — $35 to start, then $35/month\n` +
+          `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
+          `Last step is registration so we can get you on a roster before your next practice:\n` +
+          `${c.link}\n\n` +
+          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+      };
+    }
+
+    // ── Women's Adult funnels (Tri County Women / U23 Women) ──────────
+    // Untouched legacy format — pending separate review.  SMS stays
+    // SMS-native (tight single-sentence ask).  Email is the closing
+    // channel: warm intro, the $35 ask, register link, soft reply out.
     const isTriCountyWomen = funnelLabel === 'Tri County Women';
     const gameLine = isTriCountyWomen ? `Games on Sundays.\n\n` : '';
     // Practice + pickup lines for adult funnels that have them wired in
