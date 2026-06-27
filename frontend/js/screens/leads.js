@@ -1337,7 +1337,7 @@ class LeadsScreen extends Screen {
         `Hi {first},\n\n` +
         `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
         `Season — Kicks off ${this._nextKickoff()}\n` +
-        `Games on Sunday mornings or early afternoons at Lighthouse.\n\n` +
+        `Games — Sundays\n\n` +
         `Location — Lighthouse Sports Complex\n` +
         `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
         `Cost — ${c.initialFee} to start, then ${monthly}/month\n` +
