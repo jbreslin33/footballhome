@@ -18,7 +18,10 @@ namespace {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Static child-table catalogue.  Mirrors CHILD_TABLES in person-data.js.
+// Static child-table catalogue.  Every table here must (a) exist in the
+// schema and (b) have a `person_id` column referencing `persons(id)`.  When
+// migrations add or drop a person-owning table, this list MUST be updated
+// or the merge transaction will fail on the snapshot subquery.
 // ────────────────────────────────────────────────────────────────────────────
 const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
     static const std::vector<ChildTable> kTables = {
@@ -28,12 +31,17 @@ const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
         { "external_identities",     Conflict::NoPersonUnique,       {},                 {"id"} },
         { "players",                 Conflict::UniquePerson,         {},                 {"id"} },
         { "coaches",                 Conflict::UniquePerson,         {},                 {"id"} },
-        { "chat_non_players",        Conflict::UniquePerson,         {},                 {"id"} },
-        { "chat_external_members",   Conflict::NoPersonUnique,       {},
-          {"chat_id", "provider_id", "external_user_id"} },
         { "chat_event_rsvps",        Conflict::UniquePersonPlusCols, {"chat_event_id"},  {"id"} },
+        { "event_rsvps",             Conflict::UniquePersonPlusCols, {"chat_event_id"},  {"id"} },
         { "external_person_aliases", Conflict::NoPersonUnique,       {},                 {"id"} },
         { "person_field_overrides",  Conflict::UniquePersonPlusCols, {"field_name"},     {"id"} },
+        // Auth state: many rows per person, no per-person uniqueness.  We
+        // reparent (rather than delete) so the kept identity inherits the
+        // dropped identity's active sessions / unconsumed magic links —
+        // matches the user-visible "these are the same person" intent and
+        // is fully reversible via unmerge.
+        { "sessions",                Conflict::NoPersonUnique,       {},                 {"id"} },
+        { "magic_link_tokens",       Conflict::NoPersonUnique,       {},                 {"id"} },
     };
     return kTables;
 }
