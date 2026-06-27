@@ -1197,16 +1197,14 @@ class LeadsScreen extends Screen {
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
 
-    // DESIGN — single-CTA, lean copy:
-    //   • Schedule / practice cadence omitted from all 9 first-touch emails.
-    //     Generates "doesn't fit my schedule" objections before the lead
-    //     even sees the $35 hook.  Schedule lives in the snippet chip for
-    //     follow-up after they reply or register.
-    //   • Pickup invite omitted — that's the soft-fallback chip for
-    //     hesitant adult leads, not part of the cold open.
-    //   • Only special line: Tri County Women gets "Games on Sundays."
-    //     For women's-league leads, day-of-week is a positive filter
-    //     ("yep, Sundays work") not a friction generator.
+    // DESIGN — labeled-block format (Practice / Games / Practice Location /
+    // Cost) so the lead can scan the four facts in two seconds.  "Practice
+    // Location" (not bare "Location") is deliberate — bare "Location" right
+    // after "Games — Sundays" reads as the game venue, but most adult games
+    // are away.  The address is the practice/home field only; game venues
+    // vary by week and aren't surfaced in cold copy.  Women's pre-season
+    // template drops the address block entirely (no weekly practice to
+    // anchor it to + pre-season leads don't need a field address yet).
 
     // Cost disclosure — every lead-facing surface that quotes a price
     // shows it as "${initialFee} to start, then ${monthly}/month" with
@@ -1243,7 +1241,7 @@ class LeadsScreen extends Screen {
           `• 3rd grade and older: 5:30pm–7pm\n` +
           `We're in season — new players welcome any week.\n\n` +
           `Games — Weekends\n\n` +
-          `Location — Lighthouse Sports Complex\n` +
+          `Practice Location — Lighthouse Sports Complex\n` +
           `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
           `Cost — $35 to start, then ${monthly}/month\n` +
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
@@ -1273,7 +1271,7 @@ class LeadsScreen extends Screen {
           `• 3rd grade and older: 5:30pm–7pm\n` +
           `We're in season — new players welcome any week.\n\n` +
           `Games — Weekends\n\n` +
-          `Location — Lighthouse Sports Complex\n` +
+          `Practice Location — Lighthouse Sports Complex\n` +
           `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
           `Cost — $35 to start, then ${monthly}/month\n` +
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
@@ -1311,7 +1309,7 @@ class LeadsScreen extends Screen {
           timeLine +
           `We're in season — new players welcome any week.\n\n` +
           `Games — Sundays\n\n` +
-          `Location — Lighthouse Sports Complex\n` +
+          `Practice Location — Lighthouse Sports Complex\n` +
           `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
           `Cost — $35 to start, then $35/month\n` +
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
@@ -1336,10 +1334,8 @@ class LeadsScreen extends Screen {
       email:
         `Hi {first},\n\n` +
         `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-        `Season — Kicks off ${this._nextKickoff()}\n` +
+        `Season — Kicks off ${this._nextKickoff()}\n\n` +
         `Games — Sundays\n\n` +
-        `Location — Lighthouse Sports Complex\n` +
-        `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
         `Cost — ${c.initialFee} to start, then ${monthly}/month\n` +
         `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
         `Registration is open — lock in your roster spot for the September kickoff:\n` +
@@ -1402,7 +1398,7 @@ class LeadsScreen extends Screen {
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
       `Games — Weekends\n\n` +
-      `Location — Lighthouse Sports Complex\n` +
+      `Practice Location — Lighthouse Sports Complex\n` +
       `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
       `Cost — $35 to start, then $35/month\n` +
       `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
@@ -1448,7 +1444,7 @@ class LeadsScreen extends Screen {
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
       `Games — Weekends\n\n` +
-      `Location — Lighthouse Sports Complex\n` +
+      `Practice Location — Lighthouse Sports Complex\n` +
       `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
       `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
       `Hit reply with any questions — see you on the field!\n\n` +
