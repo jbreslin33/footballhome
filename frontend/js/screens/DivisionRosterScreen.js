@@ -13,11 +13,8 @@ class DivisionRosterScreen extends Screen {
       <div style="padding: var(--space-4);">
         <div style="margin-bottom: var(--space-3); display: flex; gap: var(--space-2); align-items: center;">
           <select id="status-filter" class="form-control" style="max-width: 200px;">
-            <option value="all">All Players</option>
             <option value="active" selected>Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="suspended">Suspended</option>
-            <option value="waitlist">Waitlist</option>
+            <option value="all">All Players</option>
           </select>
           <button class="btn btn-primary" id="add-player-btn">+ Add Player</button>
         </div>
@@ -93,10 +90,6 @@ class DivisionRosterScreen extends Screen {
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <h3 style="margin: 0;">${p.first_name} ${p.last_name}</h3>
-                <p style="margin: var(--space-1) 0 0 0; opacity: 0.7;">
-                  Status: <span class="badge badge-${p.status}">${p.status}</span>
-                  ${p.registration_number ? ` | Reg #: ${p.registration_number}` : ''}
-                </p>
               </div>
               <button class="btn btn-sm btn-secondary view-player-btn" data-player-id="${p.player_id}">Edit</button>
             </div>
@@ -138,22 +131,6 @@ class DivisionRosterScreen extends Screen {
                  style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
         </div>
         
-        <div style="margin-bottom: var(--space-3);">
-          <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">Status</label>
-          <select id="edit-status" style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
-            <option value="active" ${player.status === 'active' ? 'selected' : ''}>Active</option>
-            <option value="inactive" ${player.status === 'inactive' ? 'selected' : ''}>Inactive</option>
-            <option value="suspended" ${player.status === 'suspended' ? 'selected' : ''}>Suspended</option>
-            <option value="waitlist" ${player.status === 'waitlist' ? 'selected' : ''}>Waitlist</option>
-          </select>
-        </div>
-        
-        <div style="margin-bottom: var(--space-3);">
-          <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">Registration Number</label>
-          <input type="text" id="edit-reg-number" value="${player.registration_number || ''}" 
-                 style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
-        </div>
-        
         <div style="display: flex; gap: var(--space-2); justify-content: flex-end;">
           <button id="edit-cancel" class="btn btn-secondary">Cancel</button>
           <button id="edit-save" class="btn btn-primary">💾 Save Changes</button>
@@ -174,8 +151,6 @@ class DivisionRosterScreen extends Screen {
     modal.querySelector('#edit-save').addEventListener('click', async () => {
       const firstName = modal.querySelector('#edit-first-name').value;
       const lastName = modal.querySelector('#edit-last-name').value;
-      const status = modal.querySelector('#edit-status').value;
-      const regNumber = modal.querySelector('#edit-reg-number').value;
       
       try {
         const response = await fetch(`/api/divisions/${this.division.id}/players/${playerId}`, {
@@ -186,9 +161,7 @@ class DivisionRosterScreen extends Screen {
           },
           body: JSON.stringify({
             firstName: firstName,
-            lastName: lastName,
-            status: status,
-            registrationNumber: regNumber
+            lastName: lastName
           })
         });
         

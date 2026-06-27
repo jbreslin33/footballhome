@@ -88,10 +88,14 @@ These were on the audit list but skipped because the data isn't ready:
   against `/api/clubs/134/divisions`, `/api/divisions/73/players` (43
   active / 120 total), and `PUT /api/divisions/73/players/22205`.
 
-  Follow-up: the frontend modal collects `status` (active/inactive/
-  suspended/waitlist) and `registrationNumber`. The current schema has
-  no place to put those — either drop the fields from the modal or add
-  per-division-player columns and a join table. Out of scope here.
+  Follow-up: ~~the frontend modal collects `status` and
+  `registrationNumber` that the backend silently discards.~~ DONE
+  (2026-06-27). Dropped both fields from
+  `frontend/js/screens/DivisionRosterScreen.js` (modal inputs, card
+  display, and PUT body) plus the inactive/suspended/waitlist options
+  from the status filter (filter now only offers Active / All, which
+  is what `handleGetDivisionPlayers` actually supports). Revisit if/
+  when a per-division-player metadata table is added.
 - ~~**`SocialController` media-upload curl encoders**~~ — DONE (2026-06-26).
   All 10 direct `curl_easy_init` sites removed. The 6 "media-upload encoders"
   turned out to be URL-encoders only (calling `curl_easy_escape` via a local
