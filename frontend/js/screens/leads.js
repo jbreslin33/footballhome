@@ -1190,6 +1190,25 @@ class LeadsScreen extends Screen {
       };
     };
 
+    // Women's league kickoff = Sunday after Labor Day = first Sunday
+    // on or after Sept 8.  Computed from current year so the email
+    // stays fresh year-over-year without a code change.  If we're
+    // already past this year's kickoff, shows next year's date —
+    // appropriate for off-season leads, but if you start converting
+    // mid-season (Sept-Nov) leads where the "kicks off" framing reads
+    // wrong, add an in-season women's branch and gate on date.
+    const nextKickoff = () => {
+      const forYear = (y) => {
+        const sept1 = new Date(y, 8, 1);
+        const daysToMonday = (1 - sept1.getDay() + 7) % 7;  // Labor Day = first Mon of Sept
+        return new Date(y, 8, 1 + daysToMonday + 6);        // Sunday after Labor Day
+      };
+      const now = new Date();
+      let k = forYear(now.getFullYear());
+      if (k < now) k = forYear(now.getFullYear() + 1);
+      return k.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    };
+
     // ── Legacy Youth (combined Boys+Girls form, gender unknown) ────────
     // Email closes with BOTH links — parent picks the right one.  Avoids
     // a round-trip ("which one?") and gets the lead to register in one
@@ -1289,19 +1308,12 @@ class LeadsScreen extends Screen {
     }
 
     // ── Women's Adult funnels (Tri County Women / U23 Women) ──────────
-    // Untouched legacy format — pending separate review.  SMS stays
-    // SMS-native (tight single-sentence ask).  Email is the closing
-    // channel: warm intro, the $35 ask, register link, soft reply out.
-    const isTriCountyWomen = funnelLabel === 'Tri County Women';
-    const gameLine = isTriCountyWomen ? `Games on Sundays.\n\n` : '';
-    // Practice + pickup lines for adult funnels that have them wired in
-    // SCHEDULES (currently the four men's funnels).  Surfaced in the
-    // first-touch email so the lead knows the weekly cadence before
-    // they decide to join.
-    const practiceBlock = c.schedule?.practice
-      ? `Practice is ${c.schedule.practice} at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140.\n\n` +
-        (c.schedule.practiceNote ? `${c.schedule.practiceNote}\n\n` : '')
-      : '';
+    // Pre-season template — women's club doesn't run weekly practices,
+    // so the "what week is it" anchor becomes "Season — Kicks off
+    // {date}".  Frames registration as "lock in your roster spot"
+    // rather than "join us this week" since kickoff can be 10+ weeks
+    // out for early-summer leads.  Kickoff date computes dynamically
+    // (Sunday after Labor Day) so the copy stays fresh year-over-year.
     return {
       sms:
         `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
@@ -1310,12 +1322,14 @@ class LeadsScreen extends Screen {
       email:
         `Hi {first},\n\n` +
         `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-        gameLine +
-        practiceBlock +
-        `Ready to join? It's $35 for initial registration and then ${monthly}/month — cancel anytime, no questions asked:\n` +
+        `Season — Kicks off ${nextKickoff()}\n` +
+        `Games on Sunday mornings or early afternoons at Lighthouse.\n\n` +
+        `Location — Lighthouse Sports Complex\n` +
+        `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
+        `Cost — $35 to start, then ${monthly}/month\n` +
+        `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
+        `Registration is open — lock in your roster spot for the September kickoff:\n` +
         `${c.link}\n\n` +
-        `Everything is included — uniforms, tournaments, and gear. No hidden fees.\n\n` +
-        `Or just hit reply with any questions — happy to chat.\n\n` +
         `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
     };
   }
