@@ -4,7 +4,18 @@ Running list of known issues and follow-ups. Newest items at the top.
 
 ## Bugs
 
-(none currently tracked)
+- **`PersonMerge::childTables()` catalogue is stale** — the C++
+  `backend/src/models/PersonMerge.cpp` registry references
+  `chat_non_players` and `chat_external_members` (both dropped from the
+  schema; chat_non_players went with the GroupMe removal) and is missing
+  `sessions`, `event_rsvps`, `magic_link_tokens` (present in the schema and
+  used by the JS path in `meta-leads-webhook/person-data.js`). As a result,
+  every `POST /api/persons/merge` call hits a Postgres
+  `relation "chat_non_players" does not exist` error and the transaction
+  rolls back. Workaround for now: use the JS merge path. Fix: rebuild the
+  catalogue from the live `persons.id`-referencing columns, or at minimum
+  remove the two dead tables and add the three missing ones, then test
+  round-trip merge/unmerge against a synthetic person pair.
 
 ## Data hardening (deferred from 2026-06-26 audit)
 
@@ -38,13 +49,16 @@ These were on the audit list but skipped because the data isn't ready:
 
   All 4 were imported 2026-05-26 (probably scraper stubs), have no users/
   emails/phones/match-events/lineups, and all current rosters were ended
-  2026-06-25. Three are merge candidates; Dylan needs human disambiguation.
-  Not auto-merged because `PersonMerge` doesn't reparent `rosters` (player_id
-  CASCADE-deletes historical roster entries when the orphan player is
-  dropped). If those rosters don't matter, run `PersonMerge::merge(kept,
-  dropped)` for the 3 confident cases via `PersonMergeController` and then
-  delete person 22233 if Dylan can't be resolved. If we want a stronger
-  constraint, add a `CHECK (length(btrim(last_name)) > 0)` after cleanup.
+  2026-06-25.
+
+  **Update 2026-06-27**: Musa (22218→1359), Gian (22223→14454), and Karim
+  (22245→1315) were merged via the JS merge path (rows 8/9/10 in
+  `person_merges`). The Dylan stub (22233) was investigated and is almost
+  certainly Dylan Martinez (22311) — Dylan Martinez joined the exact same
+  3 teams (903 U23 Men, 908 Training Lighthouse, 909 Pickup Lighthouse) on
+  the exact day (2026-06-25) the stub left them, and the stub has zero
+  ancillary data. Merge blocked by the `PersonMerge::childTables` bug
+  above; run via JS path or after the bug is fixed.
 - **`mens_team_columns.internal_role` → FK lookup** — column does not exist on
   this table. The audit was wrong. Re-audit complete: the closest concept is
   `mens_team_columns.mutex_group` (free-form TEXT identifier used to enforce
@@ -60,6 +74,24 @@ These were on the audit list but skipped because the data isn't ready:
 
 ## Refactor follow-ups (Phase 1 leftovers)
 
+- ~~**`DivisionController` other handlers**~~ — DONE (2026-06-27).
+  `handleGetClubDivisions`, `handleGetDivisionPlayers`, and
+  `handleUpdateDivisionPlayer` were all broken: UUID regexes on integer
+  IDs, references to a nonexistent `team_division_players` table, and a
+  fallback that updated `users.id = playerId` (wrong table, wrong id).
+  Rewrote against the actual schema (`teams.club_id`, `teams.division_id`,
+  rosters for active/historical). `handleUpdateDivisionPlayer` now updates
+  the `persons` row reached via `players.person_id`, accepts but ignores
+  the unsupported `status`/`registrationNumber` fields, and refuses to
+  edit a player that isn't on a team in the supplied division (verified
+  with a cross-division write attempt). Live-tested all three endpoints
+  against `/api/clubs/134/divisions`, `/api/divisions/73/players` (43
+  active / 120 total), and `PUT /api/divisions/73/players/22205`.
+
+  Follow-up: the frontend modal collects `status` (active/inactive/
+  suspended/waitlist) and `registrationNumber`. The current schema has
+  no place to put those — either drop the fields from the modal or add
+  per-division-player columns and a join table. Out of scope here.
 - ~~**`SocialController` media-upload curl encoders**~~ — DONE (2026-06-26).
   All 10 direct `curl_easy_init` sites removed. The 6 "media-upload encoders"
   turned out to be URL-encoders only (calling `curl_easy_escape` via a local
