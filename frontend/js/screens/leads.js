@@ -1265,6 +1265,50 @@ class LeadsScreen extends Screen {
     return k.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
+  // Convert ASCII letters/digits to Unicode mathematical sans-serif bold
+  // codepoints (U+1D5D4..U+1D7FF).  These are REAL Unicode characters,
+  // not styling — they render as visually bold in every modern email
+  // client (Gmail web, Gmail mobile, Apple Mail, iOS Mail, Outlook 2019+,
+  // Thunderbird) without needing any HTML.  Crucially, they survive the
+  // Gmail compose `?body=` URL pre-fill round-trip, so the lead sees
+  // bold section labels even when the coach skips the Ctrl+A/Ctrl+V
+  // paste of the rich-HTML clipboard payload.
+  //
+  // Accessibility caveat: screen readers announce these char-by-char
+  // ("mathematical sans-serif bold P, r, a, c, t, i, c, e"), so we use
+  // them ONLY on short structural labels (Practice / Where / Next /
+  // Games / Cost / Season), NEVER on body content.  Sighted recipients
+  // get visual hierarchy; screen-reader users still hear the words
+  // (just spelled out), which is acceptable for a 6-character label.
+  _boldText(s) {
+    const OFFSET_UPPER = 0x1D5D4 - 0x41;   // A → 𝗔
+    const OFFSET_LOWER = 0x1D5EE - 0x61;   // a → 𝗮
+    const OFFSET_DIGIT = 0x1D7EC - 0x30;   // 0 → 𝟬
+    return String(s).replace(/[A-Za-z0-9]/g, (ch) => {
+      const code = ch.charCodeAt(0);
+      if (code >= 0x41 && code <= 0x5A) return String.fromCodePoint(code + OFFSET_UPPER);
+      if (code >= 0x61 && code <= 0x7A) return String.fromCodePoint(code + OFFSET_LOWER);
+      if (code >= 0x30 && code <= 0x39) return String.fromCodePoint(code + OFFSET_DIGIT);
+      return ch;
+    });
+  }
+
+  // Bold the labeled-block section headers in a first-touch email body
+  // so the plain-text version has clear visual hierarchy.  Matches at
+  // line starts only (^ or after \n) so mid-sentence em-dashes
+  // ("We're in season — new players welcome") aren't accidentally bolded.
+  // Allowlist of labels keeps the transformation predictable as new
+  // copy lands.  Applied at template-build time (before fillTemplate
+  // substitutes {first}/{coach} tokens) so dynamic text never gets
+  // bolded by accident.
+  _proBold(text) {
+    const bold = (s) => this._boldText(s);
+    return String(text)
+      .replace(/(^|\n)(Practice|Where|Games|Cost|Season|Subject) — /g,
+               (_, pfx, lbl) => `${pfx}${bold(lbl)} — `)
+      .replace(/(^|\n)Next: /g, (_, pfx) => `${pfx}${bold('Next:')} `);
+  }
+
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
 
@@ -1307,7 +1351,7 @@ class LeadsScreen extends Screen {
           `Quick Q: ${c.question}\n` +
           `Sign up — Boys: ${c.linkBoys} | Girls: ${c.linkGirls}`,
         subject: `Lighthouse 1893 — sign up your player for our youth soccer program`,
-        email:
+        email: this._proBold(
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
           `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
@@ -1322,7 +1366,8 @@ class LeadsScreen extends Screen {
           `Last step is registration so we can group your player with the right age cohort before their first practice — pick the one that matches:\n` +
           `• Boys (Grades 1–6): ${c.linkBoys}\n` +
           `• Girls (Grades 1–6): ${c.linkGirls}\n\n` +
-          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+        ),
       };
     }
 
@@ -1337,7 +1382,7 @@ class LeadsScreen extends Screen {
           `Quick Q: ${c.question}\n` +
           `Sign up ($35): ${c.link}`,
         subject: `Lighthouse 1893 — sign your ${child} up for our ${c.program}`,
-        email:
+        email: this._proBold(
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
           `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
@@ -1351,7 +1396,8 @@ class LeadsScreen extends Screen {
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
           `Last step is registration so we can group your ${child} with the right age cohort before their first practice:\n` +
           `${c.link}\n\n` +
-          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+        ),
       };
     }
 
@@ -1376,7 +1422,7 @@ class LeadsScreen extends Screen {
           `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
           `Sign up ($35): ${c.link}`,
         subject: `Lighthouse 1893 — join our ${c.program} this season`,
-        email:
+        email: this._proBold(
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
           `Practice — Wednesdays & Fridays\n` +
@@ -1389,7 +1435,8 @@ class LeadsScreen extends Screen {
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
           `Last step is registration so we can get you on a roster before your next practice:\n` +
           `${c.link}\n\n` +
-          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+        ),
       };
     }
 
@@ -1405,7 +1452,7 @@ class LeadsScreen extends Screen {
         `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
         `Sign up (${c.initialFee}): ${c.link}`,
       subject: `Lighthouse 1893 — join our ${c.program} this season`,
-      email:
+      email: this._proBold(
         `Hi {first},\n\n` +
         `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
         `Season — Kicks off ${this._nextKickoff()}\n\n` +
@@ -1414,7 +1461,8 @@ class LeadsScreen extends Screen {
         `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
         `Registration is open — lock in your roster spot for the September kickoff:\n` +
         `${c.link}\n\n` +
-        `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`,
+        `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+      ),
     };
   }
 
@@ -1464,7 +1512,7 @@ class LeadsScreen extends Screen {
     // U11/U12 funnels are brand-new — no Spring roster to re-register
     // — so they're skipped.
     const isU1112 = /u11\s*\/?\s*u12/i.test(funnelLabel);
-    const springRenewalBody = (clubName, childRel, link) =>
+    const springRenewalBody = (clubName, childRel, link) => this._proBold(
       `Hi Lighthouse 1893 ${clubName} families,\n\n` +
       `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again:\n` +
       `${link}\n\n` +
@@ -1477,7 +1525,8 @@ class LeadsScreen extends Screen {
       `Cost — $35 to start, then $35/month\n` +
       `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
       `Hit reply with any questions — happy to help.\n\n` +
-      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
+      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+    );
     if (c.isLegacyYouth) {
       snippets.push({
         id: 'spring-renewal-boys',
@@ -1511,7 +1560,7 @@ class LeadsScreen extends Screen {
     // grade-based practice slots and first-practice date.  Surfaces on
     // every youth funnel so the coach can paste into LA Messages once
     // per club.
-    const practiceScheduleBody = (clubName) =>
+    const practiceScheduleBody = (clubName) => this._proBold(
       `Hi Lighthouse 1893 ${clubName} families,\n\n` +
       `Thanks for registering for the Summer/Fall 2026 season! Quick heads-up on the practice schedule so you can plan your week.\n\n` +
       `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
@@ -1522,7 +1571,8 @@ class LeadsScreen extends Screen {
       `Games — Weekends\n\n` +
       `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
       `Hit reply with any questions — see you on the field!\n\n` +
-      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
+      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
+    );
     if (c.isLegacyYouth) {
       snippets.push({
         id: 'practice-schedule-boys',
