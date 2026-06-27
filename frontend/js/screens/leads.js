@@ -1197,14 +1197,17 @@ class LeadsScreen extends Screen {
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
 
-    // DESIGN — labeled-block format (Practice / Games / Practice Location /
-    // Cost) so the lead can scan the four facts in two seconds.  "Practice
-    // Location" (not bare "Location") is deliberate — bare "Location" right
-    // after "Games — Sundays" reads as the game venue, but most adult games
-    // are away.  The address is the practice/home field only; game venues
-    // vary by week and aren't surfaced in cold copy.  Women's pre-season
-    // template drops the address block entirely (no weekly practice to
-    // anchor it to + pre-season leads don't need a field address yet).
+    // DESIGN — labeled-block format so the lead can scan the facts in two
+    // seconds.  Each block is a labeled property: "Practice — <days>",
+    // "Games — <day>", "Cost — <price>".  The practice address ("Where —
+    // ...") lives INSIDE the Practice block (parallel to "Next: <date>")
+    // because it describes where practice happens — putting a bare
+    // "Location" line between Games and Cost was reading as the game
+    // venue, but most adult games are away.  Game venues vary by week
+    // and aren't surfaced in cold copy.  Women's pre-season template
+    // has no Practice block (no weekly practices yet), so no address
+    // appears at all — pre-season leads don't need a field address
+    // weeks before kickoff.
 
     // Cost disclosure — every lead-facing surface that quotes a price
     // shows it as "${initialFee} to start, then ${monthly}/month" with
@@ -1237,12 +1240,12 @@ class LeadsScreen extends Screen {
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
           `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
+          `Where — Lighthouse Sports Complex\n` +
+          `199 East Erie Avenue, Philadelphia PA 19140\n` +
           `• 2nd grade and younger: 4:30pm–5:30pm\n` +
           `• 3rd grade and older: 5:30pm–7pm\n` +
           `We're in season — new players welcome any week.\n\n` +
           `Games — Weekends\n\n` +
-          `Practice Location — Lighthouse Sports Complex\n` +
-          `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
           `Cost — $35 to start, then ${monthly}/month\n` +
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
           `Last step is registration so we can group your player with the right age cohort before their first practice — pick the one that matches:\n` +
@@ -1267,12 +1270,12 @@ class LeadsScreen extends Screen {
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
           `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
+          `Where — Lighthouse Sports Complex\n` +
+          `199 East Erie Avenue, Philadelphia PA 19140\n` +
           `• 2nd grade and younger: 4:30pm–5:30pm\n` +
           `• 3rd grade and older: 5:30pm–7pm\n` +
           `We're in season — new players welcome any week.\n\n` +
           `Games — Weekends\n\n` +
-          `Practice Location — Lighthouse Sports Complex\n` +
-          `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
           `Cost — $35 to start, then ${monthly}/month\n` +
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
           `Last step is registration so we can group your ${child} with the right age cohort before their first practice:\n` +
@@ -1282,8 +1285,8 @@ class LeadsScreen extends Screen {
     }
 
     // ── Men's Adult funnels (Brazil / PR / U23 M / U23 M + PR / APSL) ──
-    // Same structured-block layout as youth (Practice / Games / Location /
-    // Cost) so the lead can scan the four facts in two seconds.  All four
+    // Same structured-block layout as youth (Practice / Games / Cost)
+    // so the lead can scan the three facts in two seconds.  All four
     // men's funnels share the same practice cadence (Wed/Fri 7–8:30pm) and
     // play CASA games on Sundays — hardcoded rather than pulled from
     // SCHEDULES because the layout is opinionated (next-practice date,
@@ -1306,11 +1309,11 @@ class LeadsScreen extends Screen {
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
           `Practice — Wednesdays & Fridays\n` +
+          `Where — Lighthouse Sports Complex\n` +
+          `199 East Erie Avenue, Philadelphia PA 19140\n` +
           timeLine +
           `We're in season — new players welcome any week.\n\n` +
           `Games — Sundays\n\n` +
-          `Practice Location — Lighthouse Sports Complex\n` +
-          `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
           `Cost — $35 to start, then $35/month\n` +
           `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
           `Last step is registration so we can get you on a roster before your next practice:\n` +
@@ -1395,11 +1398,11 @@ class LeadsScreen extends Screen {
       `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again:\n` +
       `${link}\n\n` +
       `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
+      `Where — Lighthouse Sports Complex\n` +
+      `199 East Erie Avenue, Philadelphia PA 19140\n` +
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
       `Games — Weekends\n\n` +
-      `Practice Location — Lighthouse Sports Complex\n` +
-      `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
       `Cost — $35 to start, then $35/month\n` +
       `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
       `Hit reply with any questions — happy to help.\n\n` +
@@ -1441,11 +1444,11 @@ class LeadsScreen extends Screen {
       `Hi Lighthouse 1893 ${clubName} families,\n\n` +
       `Thanks for registering for the Summer/Fall 2026 season! Quick heads-up on the practice schedule so you can plan your week.\n\n` +
       `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
+      `Where — Lighthouse Sports Complex\n` +
+      `199 East Erie Avenue, Philadelphia PA 19140\n` +
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
       `Games — Weekends\n\n` +
-      `Practice Location — Lighthouse Sports Complex\n` +
-      `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
       `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
       `Hit reply with any questions — see you on the field!\n\n` +
       `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
