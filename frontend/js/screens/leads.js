@@ -1121,14 +1121,16 @@ class LeadsScreen extends Screen {
     //     For women's-league leads, day-of-week is a positive filter
     //     ("yep, Sundays work") not a friction generator.
 
-    // Auto-renewal disclosure — folded into the CTA sentence on every
-    // first-touch email ("$35 for initial registration and then $X/month
-    // — cancel anytime, no questions asked").  Honest upfront disclosure
-    // beats post-checkout surprise: lower chargeback rate, fewer "I felt
-    // tricked" reviews, builds the word-of-mouth trust that compounds
-    // in a small-club market.  LeagueApps re-discloses on the checkout
-    // page (Program Description + Cancellation Policy checkbox); this
-    // is the belt to LeagueApps' suspenders.
+    // Cost disclosure — every lead-facing surface that quotes a price
+    // shows it as "${initialFee} to start, then ${monthly}/month" with
+    // "all included — no hidden fees" reassurance, but no "cancel
+    // anytime" escape-hatch language.  We learned that planting the
+    // word "cancel" before the lead has even joined reads defensive
+    // and primes the cancellation idea — "all included, no hidden
+    // fees" carries the trust signal without inviting an exit.  The
+    // formal auto-renewal + cancellation policy still gets disclosed
+    // at the LeagueApps checkout page (Program Description checkbox),
+    // which is where it legally needs to live anyway.
     //   Women's Club (Tri County + U23 Women) → $10 to start / $10/month
     //   All others (Men's + Youth)             → $35 to start / $35/month
     const isWomensClub = /women/i.test(funnelLabel);
@@ -1387,7 +1389,7 @@ class LeadsScreen extends Screen {
       `Hi Lighthouse 1893 ${clubName} families,\n\n` +
       `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again at the link below.\n\n` +
       `Register here:\n${link}\n\n` +
-      `Cost: $35 to register, then $35/month — cancel anytime, no questions asked. Everything is included: uniform, training, tournaments, and gear. No hidden fees.\n\n` +
+      `Cost: $35 to register, then $35/month. Everything is included: uniform, training, tournaments, and gear. No hidden fees.\n\n` +
       `Practice (Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140):\n` +
       `• PreK–2nd grade: 4:30pm–5:30pm\n` +
       `• 3rd–10th grade: 5:30pm–7:00pm\n` +
@@ -1705,7 +1707,7 @@ class LeadsScreen extends Screen {
             `${practiceLine}\n` +
             `• Field: Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140\n` +
             `  https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140\n` +
-            `• Cost: ${c.initialFee} to register, then ${c.pricing} — cancel anytime.\n` +
+            `• Cost: ${c.initialFee} to register, then ${c.pricing}.\n` +
             `  All-inclusive: uniform, training, and games — no hidden fees.\n` +
             `\n` +
             closeLink(`To register, head here:`) + `\n` +
@@ -1805,7 +1807,7 @@ class LeadsScreen extends Screen {
         label: '💵 Cost',
         tier: 'info',
         body:
-          `${c.initialFee} today to lock ${c.whose} spot. After that it's ${c.pricing} — cancel anytime.\n` +
+          `${c.initialFee} today to lock ${c.whose} spot. After that it's ${c.pricing}.\n` +
           `\n` +
           closeLink('Register here:'),
       },
