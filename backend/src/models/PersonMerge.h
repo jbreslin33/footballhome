@@ -94,12 +94,10 @@ private:
         // Used only when conflict == UniquePersonPlusCols.
         std::vector<std::string> conflictCols;
         // Primary-key columns — used by unmerge() to UPDATE-or-INSERT a
-        // snapshot row.  All tables use "id" except chat_external_members
-        // which has a composite PK.
+        // snapshot row.  All tables in the current catalogue use "id".
         std::vector<std::string> pkCols;
     };
 
-    // Single source of truth for the child-table catalogue.  Mirrors the
-    // CHILD_TABLES constant in meta-leads-webhook/person-data.js.
+    // Single source of truth for the child-table catalogue.
     static const std::vector<ChildTable>& childTables();
 };

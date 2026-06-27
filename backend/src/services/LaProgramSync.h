@@ -7,13 +7,12 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 // LaProgramSync — wraps the "fetch every LeagueApps registration for a
-// program AND link active ones into the persons table" loop that lives
-// in meta-leads-webhook/index.js as `syncLaProgramToDb(programId)`.
+// program AND link active ones into the persons table" loop.
 //
 // Every endpoint that drives the lineups / pool screens must call this
 // before its bucket SQL so freshly-paid LA registrants self-heal into
 // the local DB (persons + external_person_aliases) and stop showing as
-// phantom gmOnly entries.
+// phantom unlinked entries.
 //
 // Singleton-style stateless service: instantiate once per request, call
 // `run(programId)`, consume the Result.  Per-record errors are swallowed

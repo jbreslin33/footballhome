@@ -2157,7 +2157,8 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                     WHERE er.chat_event_id = $3::int AND er.person_id = pe.id
                     LIMIT 1
                 ) as fh_rsvp_at,
-                -- Individual chat memberships (chat_external_members not available)
+                -- Individual chat memberships removed with the GroupMe cutover;
+                -- columns retained for API shape compatibility.
                 false::boolean as in_chat_apsl,
                 false::boolean as in_chat_casa,
                 false::boolean as in_chat_u23,
