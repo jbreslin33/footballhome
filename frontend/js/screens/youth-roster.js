@@ -4,9 +4,10 @@
 // mailto: / sms: / tel: actions per card so a coach can reach a player's
 // parent with one tap.
 //
-// Data source: GET /api/youth-roster (proxied to meta-leads-webhook,
-// which calls the LeagueApps Public Data API live).  No DB cache — the
-// dashboard always reflects what's currently in LA.
+// Data source: GET /api/youth-roster (served by the C++ backend's
+// YouthRosterController, which calls the LeagueApps Public Data API
+// live).  No DB cache — the dashboard always reflects what's currently
+// in LA.
 //
 // Buckets (Fall 2026 / Spring 2027, season-end-year=2027, served by the backend):
 //   In-House                          — U6 and below (co-ed)

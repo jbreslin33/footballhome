@@ -1,6 +1,10 @@
 // Audit youth roster vs LA boys/girls program registrations.
-// Usage:  podman cp scripts/audit-youth-la.js footballhome_meta_leads:/tmp/audit.js && \
-//         podman exec footballhome_meta_leads node /tmp/audit.js
+//
+// Standalone Node script — the meta-leads-webhook container that used to
+// host this was removed in the Phase 14 port; run it from the host with
+// the LEAGUEAPPS_* env vars set and the PEM living at
+// $LEAGUEAPPS_PEM_DIR/<CID>.pem (defaults to ./config/<CID>.pem).
+// Usage:  (cd /path/to/footballhome && env $(grep -E '^LEAGUEAPPS_|^POSTGRES_' env | xargs) node scripts/audit-youth-la.js)
 const jwt = require('jsonwebtoken');
 const fsp = require('fs').promises;
 const { Pool } = require('pg');
@@ -13,7 +17,8 @@ const GIRLS = parseInt(process.env.LEAGUEAPPS_GIRLS_CLUB_PROGRAM_ID || '5039357'
 const CID   = process.env.LEAGUEAPPS_API_PRIVATE_KEY;
 
 async function getToken() {
-  const pem = await fsp.readFile('/app/config/' + CID + '.pem', 'utf8');
+  const pemDir = process.env.LEAGUEAPPS_PEM_DIR || './config';
+  const pem = await fsp.readFile(`${pemDir}/${CID}.pem`, 'utf8');
   const now = Math.floor(Date.now() / 1000);
   const assertion = jwt.sign(
     { aud: LA_AUTH, iss: CID, sub: CID, iat: now, exp: now + 300 },

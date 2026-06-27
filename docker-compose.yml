@@ -67,29 +67,8 @@ services:
       # LeagueApps API private key for JWT-bearer OAuth (RS256).  Used by
       # LeagueAppsService when fetching program registrations during team
       # reconciliation.  Read-only — same key file the Python sync scripts
-      # and the meta-leads-webhook container use.
+      # used to share with the (now-removed) meta-leads-webhook container.
       - ./config:/app/config:ro
-    networks:
-      - footballhome_network
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # Meta Lead Gen Webhook receiver + leads API
-  meta-leads-webhook:
-    build:
-      context: ./meta-leads-webhook
-      dockerfile: Dockerfile
-    container_name: footballhome_meta_leads
-    restart: unless-stopped
-    env_file: ./env
-    environment:
-      POSTGRES_PASSWORD: footballhome_pass
-    # Phase 14: this service is now just the Meta leadgen webhook receiver.
-    # No /app/config mount needed — the LeagueApps PEM-signing flow lives in
-    # the C++ backend (LeagueAppsService) as of earlier phases.
-    ports:
-      - "3003:3003"
     networks:
       - footballhome_network
     depends_on:

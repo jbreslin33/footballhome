@@ -144,13 +144,8 @@ up:
 restart:
 	@echo "🔄 Restarting all containers..."
 	@$(COMPOSE) --env-file env down 2>&1 | grep -v "no container" || true
-	@$(ENGINE) rm -f footballhome_db footballhome_backend footballhome_frontend footballhome_meta_leads 2>/dev/null || true
+	@$(ENGINE) rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
 	@$(COMPOSE) --env-file env up -d
-	@echo "⏳ Waiting for webhook service..."
-	@for i in $$(seq 1 20); do \
-		$(ENGINE) exec footballhome_meta_leads wget -q --spider http://localhost:3003/ 2>/dev/null && break; \
-		sleep 1; \
-	done
 	@$(ENGINE) exec footballhome_frontend nginx -s reload 2>/dev/null || true
 	@echo "✓ All containers restarted"
 	@echo ""

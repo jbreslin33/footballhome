@@ -37,6 +37,7 @@
 #include "controllers/PersonBillingController.h"
 #include "controllers/AdminLaBackfillController.h"
 #include "controllers/LeadsController.h"
+#include "controllers/LeadsWebhookController.h"
 #include "controllers/AdsController.h"
 #include "controllers/StreamController.h"
 #include "controllers/EligibilityController.h"
@@ -77,6 +78,7 @@ private:
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<LeadsController> leads_controller_;
+    std::shared_ptr<LeadsWebhookController> leads_webhook_controller_;
     std::shared_ptr<AdsController> ads_controller_;
     std::shared_ptr<StreamController> stream_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
@@ -110,6 +112,7 @@ public:
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         leads_controller_ = std::make_shared<LeadsController>();
+        leads_webhook_controller_ = std::make_shared<LeadsWebhookController>();
         ads_controller_ = std::make_shared<AdsController>();
         stream_controller_ = std::make_shared<StreamController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
@@ -232,6 +235,9 @@ private:
         router_.useController("/api/leads", leads_controller_);
         // Phase 12 — /api/ads* (Meta Ads Marketing API surface).
         router_.useController("/api/ads", ads_controller_);
+        // Phase 14 — /webhook/meta-leads (Meta lead-ads webhook receiver).
+        // Replaces the deleted meta-leads-webhook Node service.
+        router_.useController("/webhook", leads_webhook_controller_);
         // Phase 13 — /api/stream (long-lived SSE channel for /dashboard#lineups).
         // The LineupNotificationHub background thread (started in initialize())
         // owns the LISTEN fh_lineups socket and fans NOTIFY payloads out.

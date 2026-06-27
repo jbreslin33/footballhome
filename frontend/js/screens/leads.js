@@ -659,8 +659,26 @@ class LeadsScreen extends Screen {
       return [header, ...blocks];
     }).join('');
 
+    // Rendered HTML preview — what the recipient actually sees once the
+    // coach pastes the rich body into Gmail (Ctrl+A, Ctrl+V swap).  The
+    // plain-text source above is what gets copied; this is the visual
+    // confirmation that the branded logo + bold labels are intact.  Open
+    // by default so it's discoverable — easy to spot the difference
+    // between the plain pre-fill in Gmail and the actual sent version.
+    const renderedHtml = this.toLinkifiedHtml(email);
+    const renderedBlock = `
+      <details open style="border:1px solid var(--border-color, #334155); border-radius:var(--radius-sm); padding:6px 8px; margin-bottom:6px; background:#f9fafb;">
+        <summary style="cursor:pointer; font-size:0.72rem; font-weight:600; user-select:none; outline:none; color:#1e3a8a;">
+          📧 Recipient preview — what they see after you paste in Gmail
+        </summary>
+        <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:4px; padding:14px; margin-top:6px;">
+          ${renderedHtml}
+        </div>
+      </details>`;
+
     return `
       ${blurbBlock(`First-touch Email · Subject: ${subject}`, email)}
+      ${renderedBlock}
       ${snippetHtml}`;
   }
 

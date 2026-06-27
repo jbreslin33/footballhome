@@ -76,6 +76,7 @@ set(SOURCES
     src/controllers/PersonBillingController.cpp
     src/controllers/AdminLaBackfillController.cpp
     src/controllers/LeadsController.cpp
+    src/controllers/LeadsWebhookController.cpp
     src/controllers/AdsController.cpp
     src/controllers/StreamController.cpp
     src/controllers/EligibilityController.cpp
