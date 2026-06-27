@@ -4,18 +4,15 @@ Running list of known issues and follow-ups. Newest items at the top.
 
 ## Bugs
 
-- **`PersonMerge::childTables()` catalogue is stale** — the C++
-  `backend/src/models/PersonMerge.cpp` registry references
-  `chat_non_players` and `chat_external_members` (both dropped from the
-  schema; chat_non_players went with the GroupMe removal) and is missing
-  `sessions`, `event_rsvps`, `magic_link_tokens` (present in the schema and
-  used by the JS path in `meta-leads-webhook/person-data.js`). As a result,
-  every `POST /api/persons/merge` call hits a Postgres
-  `relation "chat_non_players" does not exist` error and the transaction
-  rolls back. Workaround for now: use the JS merge path. Fix: rebuild the
-  catalogue from the live `persons.id`-referencing columns, or at minimum
-  remove the two dead tables and add the three missing ones, then test
-  round-trip merge/unmerge against a synthetic person pair.
+- ~~**`PersonMerge::childTables()` catalogue is stale**~~ — FIXED
+  (2026-06-27). Removed dropped tables (`chat_non_players`,
+  `chat_external_members`) and added three missing ones with FKs to
+  `persons(id)`: `sessions`, `event_rsvps`, `magic_link_tokens` (all
+  `NoPersonUnique` except `event_rsvps` which has UNIQUE(chat_event_id,
+  person_id) → `UniquePersonPlusCols`). Verified by completing the Dylan
+  merge end-to-end with a merge → unmerge → re-merge cycle
+  (`person_merges` rows 11+12). Forward-compatible with legacy snapshots
+  (missing keys yield 0-row results in unmerge).
 
 ## Data hardening (deferred from 2026-06-26 audit)
 
@@ -52,13 +49,16 @@ These were on the audit list but skipped because the data isn't ready:
   2026-06-25.
 
   **Update 2026-06-27**: Musa (22218→1359), Gian (22223→14454), and Karim
-  (22245→1315) were merged via the JS merge path (rows 8/9/10 in
-  `person_merges`). The Dylan stub (22233) was investigated and is almost
-  certainly Dylan Martinez (22311) — Dylan Martinez joined the exact same
-  3 teams (903 U23 Men, 908 Training Lighthouse, 909 Pickup Lighthouse) on
-  the exact day (2026-06-25) the stub left them, and the stub has zero
-  ancillary data. Merge blocked by the `PersonMerge::childTables` bug
-  above; run via JS path or after the bug is fixed.
+  (22245→1315) were merged earlier in the day via an unknown path (rows
+  8/9/10 in `person_merges`). Dylan stub (22233) merged into Dylan
+  Martinez (22311) once the catalogue bug above was fixed (rows 11
+  reverted, 12 live). Decisive evidence: Dylan Martinez joined the exact
+  same 3 teams (903 U23 Men, 908 Training Lighthouse, 909 Pickup
+  Lighthouse) on the exact day (2026-06-25) the stub left them, and the
+  stub had zero ancillary data. Rosters cascade-deleted with the stub's
+  players row are not restorable from snapshot (rosters not in the
+  merge catalogue) — acceptable here because all 3 had `left_at`
+  predating the merge.
 - **`mens_team_columns.internal_role` → FK lookup** — column does not exist on
   this table. The audit was wrong. Re-audit complete: the closest concept is
   `mens_team_columns.mutex_group` (free-form TEXT identifier used to enforce
