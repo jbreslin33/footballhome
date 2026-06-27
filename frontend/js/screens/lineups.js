@@ -222,7 +222,7 @@ class LineupsScreen extends Screen {
       if (editBtn) {
         e.preventDefault();
         e.stopPropagation();
-        const kind     = editBtn.dataset.editCard; // 'player'|'coach'|'laOnly'|'gmOnly'|'laPool'
+        const kind     = editBtn.dataset.editCard; // 'player'|'coach'|'laPool'
         const personIdRaw = editBtn.dataset.personId;
         const personId = personIdRaw ? parseInt(personIdRaw, 10) : null;
         if (kind === 'laPool' && personId) {
@@ -266,14 +266,6 @@ class LineupsScreen extends Screen {
         return;
       }
 
-      // Link button (loose-end → counterpart from dropdown)
-      const linkBtn = e.target.closest('[data-card-modal-link]');
-      if (linkBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        this._onLinkClick(linkBtn);
-        return;
-      }
       // Diagnostic-report controls
       if (e.target.closest('#lineups-report-continue')) {
         this._showColumns();
@@ -334,81 +326,9 @@ class LineupsScreen extends Screen {
       }
     });
 
-    // Drag-to-merge — loose-end (LA only / GM only) cards are draggable;
-    // dropping one onto a card of the OPPOSITE kind opens a merge confirm.
-    this.element.addEventListener('dragstart', (e) => {
-      const card = e.target.closest('[data-kind][data-person-id]');
-      if (!card) return;
-      const kind = card.dataset.kind;
-      if (kind !== 'laOnly' && kind !== 'gmOnly') return;
-      const payload = {
-        kind,
-        personId: parseInt(card.dataset.personId, 10),
-        teamId:   parseInt(card.closest('[data-team-col]').dataset.teamCol, 10),
-      };
-      e.dataTransfer.setData('application/json', JSON.stringify(payload));
-      e.dataTransfer.effectAllowed = 'link';
-      card.style.opacity = '0.4';
-    });
-
-    this.element.addEventListener('dragend', (e) => {
-      const card = e.target.closest('[data-kind][data-person-id]');
-      if (card) card.style.opacity = '';
-    });
-
-    this.element.addEventListener('dragover', (e) => {
-      const target = e.target.closest('[data-merge-target]');
-      if (!target) return;
-      // Only valid: laOnly card hovering over gmOnly target (or vice versa).
-      // We can't see the dragged payload during dragover for security reasons
-      // in all browsers, so we always allow the drop and validate on drop.
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'link';
-      target.style.outline = '2px dashed var(--accent, #60a5fa)';
-      target.style.outlineOffset = '-2px';
-    });
-
-    this.element.addEventListener('dragleave', (e) => {
-      const target = e.target.closest('[data-merge-target]');
-      if (target) {
-        target.style.outline = '';
-        target.style.outlineOffset = '';
-      }
-    });
-
-    this.element.addEventListener('drop', (e) => {
-      const target = e.target.closest('[data-merge-target]');
-      if (!target) return;
-      e.preventDefault();
-      target.style.outline = '';
-      target.style.outlineOffset = '';
-
-      let payload = null;
-      try { payload = JSON.parse(e.dataTransfer.getData('application/json')); }
-      catch { return; }
-      if (!payload) return;
-
-      const targetKind = target.dataset.mergeTarget; // 'laOnly' | 'gmOnly'
-      const targetPersonId = parseInt(target.dataset.personId, 10);
-
-      if (payload.kind === targetKind) {
-        // Same-kind drop — meaningless.  Could surface a toast; just no-op.
-        return;
-      }
-      if (payload.personId === targetPersonId) return;
-
-      // Resolve who's LA and who's GM regardless of drag direction.
-      let laPersonId, gmPersonId;
-      if (payload.kind === 'laOnly') {
-        laPersonId = payload.personId; gmPersonId = targetPersonId;
-      } else {
-        laPersonId = targetPersonId;  gmPersonId = payload.personId;
-      }
-      this._openMergeConfirm({
-        teamId: payload.teamId,
-        laPersonId, gmPersonId,
-      });
-    });
+    // Drag-to-merge removed with the GroupMe cutover — no more loose-end
+    // (LA-only / GM-only) cards exist to drag, and the merge modal can be
+    // reached directly from Club Admin if a stray duplicate appears.
   }
 
   // -------------------------------------------------------------------------
@@ -485,7 +405,7 @@ class LineupsScreen extends Screen {
         players: [],
         trainingEvents: [],
         diagnostics: null,
-        // Reconciliation is the canonical bucket source: {players,coaches,laOnly,gmOnly}.
+        // Reconciliation is the canonical bucket source: {players,coaches,laOnly}.
         // Cross-referenced with `players` by personId for RSVP / jersey enrichment.
         reconciliation: null,
         zones: { starting: [], bench: [], alternates: [] },
@@ -677,8 +597,8 @@ class LineupsScreen extends Screen {
       const url = `/api/matches/${matchId}/roster-players?teamId=${teamId}`;
       this._appendLoading(`  [${td.team.name}] GET ${url}`);
       // Fire roster-players + reconciliation in parallel — reconciliation is
-      // the source of truth for which 4-section bucket each person falls in
-      // (Players / Coaches / LA only / GM only); roster-players supplies RSVP
+      // the source of truth for which 3-section bucket each person falls in
+      // (Players / Coaches / LA only); roster-players supplies RSVP
       // + jersey enrichment we cross-reference by personId.
       const [playersRes, recRes] = await Promise.all([
         this.auth.fetch(url),
@@ -1194,130 +1114,23 @@ class LineupsScreen extends Screen {
   // The lineup card stays minimal (S / B / ✏️).  Tapping ✏️ pops a modal
   // where lower-frequency actions live — currently just "mark / un-mark as
   // coach", but jersey #, RSVP override, etc. will land here next.
-  // Find a card entry in this team's reconciliation by personId, OR by
-  // (chatId + externalUserId) for unlinked chat members which have no
-  // persons.id of their own.
+  // Find a card entry in this team's reconciliation by personId.
   _findEntry(teamId, ident) {
     const td = this.teamData.find(t => t.team.id === teamId);
     if (!td || !td.reconciliation) return { td: null, entry: null, kind: null };
     const rec = td.reconciliation;
-
-    // Unlinked-chat-member path
-    if (!ident.personId && ident.externalUserId) {
-      const m = (rec.unlinkedChatMembers || []).find(x =>
-        String(x.externalUserId) === String(ident.externalUserId)
-      );
-      if (!m) return { td, entry: null, kind: null };
-      return {
-        td,
-        kind: 'gmOnly',
-        entry: {
-          personId:        null,
-          firstName:       m.chatDisplayName || '',
-          lastName:        '',
-          chatUserId:      m.externalUserId,
-          chatDisplayName: m.chatDisplayName,
-          chatId:          m.chatId,
-          externalUserId:  m.externalUserId,
-          isUnlinked:      true,
-        },
-      };
-    }
 
     const personId = ident.personId;
     const buckets = [
       ['player', rec.players  || []],
       ['coach',  rec.coaches  || []],
       ['laOnly', rec.laOnly   || []],
-      ['gmOnly', rec.gmOnly   || []],
     ];
     for (const [kind, list] of buckets) {
       const entry = list.find(e => e.personId === personId);
       if (entry) return { td, entry, kind };
     }
     return { td, entry: null, kind: null };
-  }
-
-  // Render the "Link to…" section of the edit modal for loose-end kinds.
-  // Post-GroupMe rip: there are no more gmOnly / unlinkedChatMembers entries,
-  // so this is effectively a no-op kept as a placeholder.
-  _renderLinkSection(td, entry, kind) {
-    return '';
-  }
-
-  async _onLinkClick(btn) {
-    const teamId   = parseInt(btn.dataset.teamId, 10);
-    const selfId   = String(btn.dataset.self || '');
-    const selfKind = String(btn.dataset.selfKind || '');
-    const select   = this.element.querySelector('#lineups-link-select');
-    const target   = select ? String(select.value || '') : '';
-    if (!target) { alert('Pick someone from the dropdown first.'); return; }
-
-    const parseId = (s) => {
-      if (s.startsWith('person:')) return { kind: 'person', personId: parseInt(s.slice(7), 10) };
-      if (s.startsWith('cm:')) {
-        const rest = s.slice(3);
-        const idx = rest.indexOf(':');
-        return { kind: 'cm', chatId: parseInt(rest.slice(0, idx), 10), externalUserId: rest.slice(idx + 1) };
-      }
-      return null;
-    };
-    const self = parseId(selfId);
-    const other = parseId(target);
-    if (!self || !other) { alert('Could not parse selection.'); return; }
-
-    let laPersonId = null;
-    let gmPersonId = null;
-    let chatLinkPayload = null;
-
-    if (selfKind === 'laOnly') {
-      laPersonId = self.personId;
-      if (other.kind === 'person') gmPersonId = other.personId;
-      else chatLinkPayload = { chatId: other.chatId, externalUserId: other.externalUserId, personId: laPersonId };
-    } else {
-      laPersonId = other.personId;
-      if (self.kind === 'person')  gmPersonId = self.personId;
-      else chatLinkPayload = { chatId: self.chatId, externalUserId: self.externalUserId, personId: laPersonId };
-    }
-
-    btn.disabled = true;
-    btn.style.opacity = '0.5';
-    btn.textContent = '… linking';
-    try {
-      if (chatLinkPayload) {
-        const res = await this.auth.fetch('/api/chat-external-members/link', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(chatLinkPayload),
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
-        }
-      } else {
-        const res = await this.auth.fetch('/api/persons/merge', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ laPersonId, gmPersonId }),
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
-        }
-      }
-      this._closeCardModal();
-      const td = this.teamData.find(t => t.team.id === teamId);
-      if (td) {
-        await this._refreshReconciliation(td);
-        await this._loadTeamPlayers(td);
-      }
-      this._renderColumns();
-    } catch (err) {
-      btn.disabled = false;
-      btn.style.opacity = '';
-      btn.textContent = '🔗 Link →';
-      alert(`Could not link: ${err.message}`);
-    }
   }
 
   // Look up a player's official-roster flag for a team from the cached
@@ -1424,13 +1237,6 @@ class LineupsScreen extends Screen {
       `;
     }
 
-    // Link-to-counterpart dropdown for loose-end kinds.
-    //   laOnly → dropdown of GM candidates (linked gmOnly persons + unlinked
-    //            chat members), confirm → /api/persons/merge (both have personId)
-    //            or /api/chat-external-members/link (GM side unlinked).
-    //   gmOnly → dropdown of LA candidates, confirm → same routing as above.
-    const linkHTML = this._renderLinkSection(td, entry, effectiveKind);
-
     const jersey = p.jerseyNumber != null && p.jerseyNumber !== ''
       ? `#${this._escape(String(p.jerseyNumber))}`
       : '—';
@@ -1515,8 +1321,6 @@ class LineupsScreen extends Screen {
             <div><span style="color:var(--text-muted);">Jersey:</span> <strong>${jersey}</strong></div>
             <div><span style="color:var(--text-muted);">RSVP:</span> <strong>${this._escape(rsvp)}</strong></div>
           </div>
-
-          ${linkHTML}
 
           ${coachActionBtn ? `
             <div style="display:flex; flex-direction:column; gap: var(--space-2);">
@@ -1938,7 +1742,7 @@ class LineupsScreen extends Screen {
 
     // Order: lineup zones first (starter → bench → alternate), then unpicked
     // matched players tiered by going-readiness, then declines / silence,
-    // then coaches, then the reconciliation junk drawer (LA only, GM only).
+    // then coaches, then the reconciliation junk drawer (LA only).
     // `alwaysShow` keeps a banner visible even when empty — used for the
     // three lineup zones so the user always sees where their clicks land.
     const sections = [
@@ -1969,14 +1773,7 @@ class LineupsScreen extends Screen {
   }
 
   _renderSection(td, { kind, title, subtitle, color, entries }) {
-    // LA-only and GM-only sections accept drops from their opposite — the
-    // drop-target visual feedback is handled in the dragover/dragleave events.
-    const acceptsDrop = (kind === 'laOnly' || kind === 'gmOnly');
-    const dropAttrs = acceptsDrop ? `data-drop-zone="${kind}" data-team-id="${td.team.id}"` : '';
-
-    // Every section gets a bold full-width banner so the categories are
-    // unmistakable. Color comes from the section config and tints the strip
-    // background + the left accent bar.
+    // Build the bold full-width banner header for the section.
     const headerHtml = `
       <div style="
         padding: 8px var(--space-3);
@@ -1992,7 +1789,7 @@ class LineupsScreen extends Screen {
       </div>`;
 
     return `
-      <div ${dropAttrs}>
+      <div>
         ${headerHtml}
         ${entries.map(e => this._renderPersonCard(td, e, kind)).join('')}
       </div>
@@ -2024,16 +1821,13 @@ class LineupsScreen extends Screen {
     </div>`;
   }
 
-  // Card renderer — one shape for all four buckets, but behavior + chrome
-  // varies by `kind`:
+  // Card renderer — one shape for both rendered kinds, behavior varies by `kind`:
   //   • 'player'  → Starter/Bench toggles + coach button
   //   • 'coach'   → coach button only (un-mark)
-  //   • 'laOnly'  → draggable; no toggles
-  //   • 'gmOnly'  → draggable; no toggles
   _renderPersonCard(td, entry, kind) {
     const p = entry._player || {};
     // entry has {personId, firstName, lastName, birthDate, leagueAppsUserId,
-    //            chatUserId, chatDisplayName, isCoach, laOnRoster, ...}
+    //            isCoach, laOnRoster, ...}
     // playerId may come in as a string from the API — normalize so all
     // downstream comparisons against td.zones.* (which hold numbers) work.
     const playerId = p.playerId != null && p.playerId !== '' ? Number(p.playerId) : null;
@@ -2066,7 +1860,7 @@ class LineupsScreen extends Screen {
     // team.  Two icon buttons (📧 / 📱) call POST /api/auth/magic-link/mint
     // and open the resulting mailto:/sms: URI in the admin's own client.
     //   • Hidden once the player has any RSVP (yes/maybe/no).
-    //   • Hidden for coach / laOnly / gmOnly kinds (no chat_event scope).
+    //   • Hidden for coach kind (no chat_event scope).
     //   • Each button disabled when the corresponding contact (email/phone)
     //     is missing from LeagueApps.
     let mintBtns = '';
@@ -2120,7 +1914,7 @@ class LineupsScreen extends Screen {
     if (p.isKeeper) badges.push('<span title="Goalkeeper" style="font-size:0.7em;">🧤</span>');
     // Official roster indicator — only meaningful for LA-registered people
     // (players + laOnly).  Green R = on official roster; red R = LA-registered
-    // but not yet rostered.  Skipped for gmOnly/coach (no LA registration).
+    // but not yet rostered.  Skipped for coach (no LA registration).
     if (kind === 'player' || kind === 'laOnly') {
       if (entry.laOnRoster === true) {
         badges.push('<span title="On official roster" style="font-size:0.7em; font-weight:700; padding:1px 5px; border-radius:3px; background:#22c55e; color:#0b1220;">R</span>');
@@ -2129,14 +1923,13 @@ class LineupsScreen extends Screen {
       }
     }
 
-    // Drag attrs — only loose-ends are draggable for now.
-    const draggable = (kind === 'laOnly' || kind === 'gmOnly') ? 'draggable="true"' : '';
+    // Drag-to-merge removed with the GroupMe cutover — no draggable cards.
+    const draggable = '';
 
     // Toggle / edit controls.  Edit (✏️) shows for EVERY card kind so the
     // detail modal is always reachable; S/B only when we have a playerId.
     //   Player kind — Starter (S) + Bench (B) + Edit (✏️)
     //   Coach  kind — Edit only
-    //   laOnly / gmOnly — Edit only (modal carries the link-to dropdown)
     const editBtn = `
       <button
         data-edit-card="${kind}"
@@ -2144,7 +1937,7 @@ class LineupsScreen extends Screen {
         ${personId
           ? `data-person-id="${personId}"`
           : `data-external-user-id="${this._escape(entry.externalUserId || '')}" data-chat-id="${entry.chatId || ''}"`}
-        title="${(kind === 'laOnly' || kind === 'gmOnly') ? 'Link…' : 'Edit…'}"
+        title="Edit…"
         style="all:unset;cursor:pointer;width:22px;height:22px;line-height:20px;text-align:center;border-radius:4px;font-size:0.75em;border:1px solid var(--border-color);color:var(--text-muted);"
       >✏️</button>
     `;
@@ -2189,27 +1982,18 @@ class LineupsScreen extends Screen {
         </span>
       `;
     } else {
-      // player without playerId (column with no match) OR coach / laOnly / gmOnly
+      // player without playerId (column with no match) OR coach
       controls = editBtn;
     }
 
-    // Drop-target on a loose-end card itself: lets the user drop onto a
-    // specific counterpart rather than into the section as a whole.
-    const dropTargetAttrs = (kind === 'laOnly' || kind === 'gmOnly')
-      ? `data-merge-target="${kind}" data-person-id="${personId}"`
-      : '';
-
     return `
       <div
-        ${draggable}
-        ${dropTargetAttrs}
         data-person-id="${personId}"
         data-kind="${kind}"
         style="
           display:flex; flex-direction:column; gap:3px;
           padding: 6px var(--space-3);
           border-bottom: 1px solid var(--border-color);
-          ${draggable ? 'cursor: grab;' : ''}
         "
       >
         <div style="display:flex; align-items:center; gap: var(--space-2);">
@@ -2287,95 +2071,10 @@ class LineupsScreen extends Screen {
   }
 
   // -------------------------------------------------------------------------
-  // Merge confirm modal
+  // Merge confirm modal removed with the GroupMe cutover — no loose-end
+  // (LA-only / GM-only) cards exist to drag, so there's no drag-merge flow.
+  // /api/persons/merge is still callable from Club Admin tools if needed.
   // -------------------------------------------------------------------------
-  //
-  // Drag-merge fires this with the two persons it's proposing to fuse.  By
-  // policy LA is source of truth, so keep=LA, drop=GM — no swap UI.  The
-  // modal just confirms identity before committing the irreversible-by-policy
-  // (but reversible-by-API) merge.
-  _openMergeConfirm({ teamId, laPersonId, gmPersonId }) {
-    const td = this.teamData.find(t => t.team.id === teamId);
-    if (!td || !td.reconciliation) return;
-    const la = td.reconciliation.laOnly.find(e => e.personId === laPersonId);
-    const gm = td.reconciliation.gmOnly.find(e => e.personId === gmPersonId);
-    if (!la || !gm) {
-      console.warn('merge confirm: missing entries', { la, gm });
-      return;
-    }
-
-    // Remove any prior modal.
-    const prior = document.querySelector('#lineups-merge-modal');
-    if (prior) prior.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'lineups-merge-modal';
-    modal.style.cssText = `
-      position: fixed; inset: 0; z-index: 1000;
-      background: rgba(0,0,0,0.6);
-      display: flex; align-items: center; justify-content: center;
-    `;
-    modal.innerHTML = `
-      <div style="
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: var(--space-4);
-        max-width: 500px; width: 90%;
-        font-size: 0.9em;
-      ">
-        <h3 style="margin: 0 0 var(--space-3);">Merge these two records?</h3>
-        <p style="color: var(--text-muted); margin: 0 0 var(--space-3);">
-          LeagueApps is the source of truth for first/last name and DOB.
-          The drop record will be absorbed into the LeagueApps one.
-        </p>
-        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:var(--space-3);align-items:center;margin: var(--space-3) 0;">
-          <div style="padding:var(--space-2);border:1px solid var(--border-color);border-radius:6px;">
-            <div style="font-size:0.7em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">⚪ LA (keep)</div>
-            <div style="font-weight:600;margin-top:4px;">${this._escape(la.firstName)} ${this._escape(la.lastName)}</div>
-            <div style="font-size:0.78em;color:var(--text-muted);">DOB: ${this._escape(la.birthDate || '—')}</div>
-            <div style="font-size:0.78em;color:var(--text-muted);">LA #${this._escape(la.leagueAppsUserId || '—')}</div>
-          </div>
-          <div style="font-size:1.3em;color:var(--text-muted);">←</div>
-          <div style="padding:var(--space-2);border:1px solid var(--border-color);border-radius:6px;opacity:0.7;">
-            <div style="font-size:0.7em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">🟣 GM (drop)</div>
-            <div style="font-weight:600;margin-top:4px;">${this._escape(gm.firstName)} ${this._escape(gm.lastName)}</div>
-            <div style="font-size:0.78em;color:var(--text-muted);">Chat name: ${this._escape(gm.chatDisplayName || '—')}</div>
-            <div style="font-size:0.78em;color:var(--text-muted);">GM #${this._escape(gm.chatUserId || '—')}</div>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:var(--space-2);margin-top:var(--space-3);">
-          <button id="merge-cancel" class="btn btn-secondary">Cancel</button>
-          <button id="merge-confirm" class="btn btn-primary">Merge →</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    const close = () => modal.remove();
-    modal.querySelector('#merge-cancel').addEventListener('click', close);
-    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-    modal.querySelector('#merge-confirm').addEventListener('click', async () => {
-      modal.querySelector('#merge-confirm').disabled = true;
-      modal.querySelector('#merge-confirm').textContent = 'Merging…';
-      try {
-        const res = await this.auth.fetch('/api/persons/merge', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ laPersonId, gmPersonId }),
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-        close();
-        await this._refreshReconciliation(td);
-      } catch (err) {
-        console.error('merge failed:', err);
-        alert(`Merge failed: ${err.message}`);
-        modal.querySelector('#merge-confirm').disabled = false;
-        modal.querySelector('#merge-confirm').textContent = 'Merge →';
-      }
-    });
-  }
 
   async _refreshReconciliation(td) {
     try {
