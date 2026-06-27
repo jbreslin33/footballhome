@@ -9,13 +9,7 @@
 #include <cstdlib>
 #include <thread>
 #include <chrono>
-#include <curl/curl.h>
 #include <sys/stat.h>
-
-static size_t SocialWriteCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
-    out->append(static_cast<char*>(contents), size * nmemb);
-    return size * nmemb;
-}
 
 static std::string base64Decode(const std::string& encoded) {
     static const std::string chars =
@@ -801,14 +795,6 @@ Response SocialController::handleUploadMedia(const Request& request) {
     }
 }
 
-std::string SocialController::urlEncode(CURL* curl, const std::string& value) {
-    char* encoded = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
-    if (!encoded) return value;
-    std::string result(encoded);
-    curl_free(encoded);
-    return result;
-}
-
 std::string SocialController::httpGet(const std::string& url) {
     // Routed through the shared HttpClient so timeout / redirect / TLS
     // policy live in one place.  Returns body on success or "" on
@@ -890,23 +876,21 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         );
 
         // Step 1: Create media container (URL-encode values for form POST)
-        CURL* encoderCurl = curl_easy_init();
         std::string createUrl = apiBase + "/" + igUserId + "/media";
         std::string createData;
         if (mediaType == "video") {
             // Instagram Reels API
             createData = "media_type=REELS"
-                "&video_url=" + urlEncode(encoderCurl, videoUrl) +
-                "&caption=" + urlEncode(encoderCurl, caption) +
-                "&access_token=" + urlEncode(encoderCurl, igToken);
+                "&video_url=" + HttpClient::urlEncode(videoUrl) +
+                "&caption=" + HttpClient::urlEncode(caption) +
+                "&access_token=" + HttpClient::urlEncode(igToken);
             std::cout << "📤 Instagram: Creating REELS container for post " << postId << std::endl;
         } else {
-            createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-                "&caption=" + urlEncode(encoderCurl, caption) +
-                "&access_token=" + urlEncode(encoderCurl, igToken);
+            createData = "image_url=" + HttpClient::urlEncode(imageUrl) +
+                "&caption=" + HttpClient::urlEncode(caption) +
+                "&access_token=" + HttpClient::urlEncode(igToken);
             std::cout << "📤 Instagram: Creating image container for post " << postId << std::endl;
         }
-        curl_easy_cleanup(encoderCurl);
         std::string createResponse = httpPost(createUrl, createData);
         std::cout << "📤 Instagram create response: " << createResponse << std::endl;
 
@@ -946,11 +930,9 @@ Response SocialController::handlePostToInstagram(const Request& request) {
         if (!containerReady && mediaType == "video" && !imageUrl.empty()) {
             std::cout << "⚠️ Instagram: Video processing failed/timed out, falling back to image for post " << postId << std::endl;
 
-            CURL* fallbackCurl = curl_easy_init();
-            std::string fallbackCreateData = "image_url=" + urlEncode(fallbackCurl, imageUrl) +
-                "&caption=" + urlEncode(fallbackCurl, caption) +
-                "&access_token=" + urlEncode(fallbackCurl, igToken);
-            curl_easy_cleanup(fallbackCurl);
+            std::string fallbackCreateData = "image_url=" + HttpClient::urlEncode(imageUrl) +
+                "&caption=" + HttpClient::urlEncode(caption) +
+                "&access_token=" + HttpClient::urlEncode(igToken);
 
             std::string fallbackCreateResp = httpPost(createUrl, fallbackCreateData);
             std::string fallbackCreationId = extractJsonField(fallbackCreateResp, "id");
@@ -997,11 +979,9 @@ Response SocialController::handlePostToInstagram(const Request& request) {
 
             if (mediaType == "video" && !imageUrl.empty()) {
                 std::cout << "⚠️ Instagram: Video publish failed, retrying as image for post " << postId << std::endl;
-                CURL* fallbackCurl = curl_easy_init();
-                std::string fallbackCreateData = "image_url=" + urlEncode(fallbackCurl, imageUrl) +
-                    "&caption=" + urlEncode(fallbackCurl, caption) +
-                    "&access_token=" + urlEncode(fallbackCurl, igToken);
-                curl_easy_cleanup(fallbackCurl);
+                std::string fallbackCreateData = "image_url=" + HttpClient::urlEncode(imageUrl) +
+                    "&caption=" + HttpClient::urlEncode(caption) +
+                    "&access_token=" + HttpClient::urlEncode(igToken);
 
                 std::string fallbackCreateResp = httpPost(createUrl, fallbackCreateData);
                 std::string fallbackCreationId = extractJsonField(fallbackCreateResp, "id");
@@ -1413,12 +1393,10 @@ Response SocialController::handlePublishHolidayPost(const Request& request) {
         );
 
         // Step 1: Create media container (URL-encode values for form POST)
-        CURL* encoderCurl = curl_easy_init();
         std::string createUrl = apiBase + "/" + igUserId + "/media";
-        std::string createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-            "&caption=" + urlEncode(encoderCurl, caption) +
-            "&access_token=" + urlEncode(encoderCurl, igToken);
-        curl_easy_cleanup(encoderCurl);
+        std::string createData = "image_url=" + HttpClient::urlEncode(imageUrl) +
+            "&caption=" + HttpClient::urlEncode(caption) +
+            "&access_token=" + HttpClient::urlEncode(igToken);
 
         std::cout << "📤 Instagram: Creating media container for holiday " << holidayId << std::endl;
         std::string createResponse = httpPost(createUrl, createData);
@@ -1805,20 +1783,18 @@ bool SocialController::publishPromoById(const std::string& promoId, std::string&
         "WHERE id = " + escapeSql(promoId)
     );
 
-    CURL* encoderCurl = curl_easy_init();
     std::string createUrl = apiBase + "/" + igUserId + "/media";
     std::string createData;
     if (isVideo) {
         createData = "media_type=REELS"
-            "&video_url=" + urlEncode(encoderCurl, videoUrl) +
-            "&caption=" + urlEncode(encoderCurl, caption) +
-            "&access_token=" + urlEncode(encoderCurl, igToken);
+            "&video_url=" + HttpClient::urlEncode(videoUrl) +
+            "&caption=" + HttpClient::urlEncode(caption) +
+            "&access_token=" + HttpClient::urlEncode(igToken);
     } else {
-        createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-            "&caption=" + urlEncode(encoderCurl, caption) +
-            "&access_token=" + urlEncode(encoderCurl, igToken);
+        createData = "image_url=" + HttpClient::urlEncode(imageUrl) +
+            "&caption=" + HttpClient::urlEncode(caption) +
+            "&access_token=" + HttpClient::urlEncode(igToken);
     }
-    curl_easy_cleanup(encoderCurl);
 
     std::cout << "📤 Instagram: Creating media container for promo " << promoId << std::endl;
     std::string createResponse = httpPost(createUrl, createData);
@@ -2217,7 +2193,6 @@ Response SocialController::handlePublishContentPost(const Request& request) {
             "WHERE id = " + contentId
         );
 
-        CURL* encoderCurl = curl_easy_init();
         std::string createUrl = apiBase + "/" + igUserId + "/media";
         std::string createData;
 
@@ -2226,21 +2201,20 @@ Response SocialController::handlePublishContentPost(const Request& request) {
         if (isVideoPost) {
             // Video: use REELS media type
             createData = "media_type=REELS"
-                "&video_url=" + urlEncode(encoderCurl, videoUrl) +
-                "&caption=" + urlEncode(encoderCurl, caption) +
-                "&access_token=" + urlEncode(encoderCurl, igToken);
+                "&video_url=" + HttpClient::urlEncode(videoUrl) +
+                "&caption=" + HttpClient::urlEncode(caption) +
+                "&access_token=" + HttpClient::urlEncode(igToken);
         } else if (format == "story") {
             // Story: use STORIES media type
             createData = "media_type=STORIES"
-                "&image_url=" + urlEncode(encoderCurl, imageUrl) +
-                "&access_token=" + urlEncode(encoderCurl, igToken);
+                "&image_url=" + HttpClient::urlEncode(imageUrl) +
+                "&access_token=" + HttpClient::urlEncode(igToken);
         } else {
             // Regular image post
-            createData = "image_url=" + urlEncode(encoderCurl, imageUrl) +
-                "&caption=" + urlEncode(encoderCurl, caption) +
-                "&access_token=" + urlEncode(encoderCurl, igToken);
+            createData = "image_url=" + HttpClient::urlEncode(imageUrl) +
+                "&caption=" + HttpClient::urlEncode(caption) +
+                "&access_token=" + HttpClient::urlEncode(igToken);
         }
-        curl_easy_cleanup(encoderCurl);
 
         std::cout << "📤 Instagram: Creating media container for content " << contentId << " (format: " << format << ")" << std::endl;
         std::string createResponse = httpPost(createUrl, createData);
@@ -2379,37 +2353,27 @@ std::string SocialController::refreshGoogleToken(const std::string& userId, cons
     const char* clientSecret = std::getenv("GOOGLE_OAUTH_CLIENT_SECRET");
     if (!clientId || !clientSecret) return "";
 
-    CURL* curl = curl_easy_init();
-    if (!curl) return "";
-
     std::string postData = "grant_type=refresh_token";
-    postData += "&refresh_token=" + urlEncode(curl, refreshToken);
-    postData += "&client_id=" + urlEncode(curl, std::string(clientId));
-    postData += "&client_secret=" + urlEncode(curl, std::string(clientSecret));
+    postData += "&refresh_token=" + HttpClient::urlEncode(refreshToken);
+    postData += "&client_id=" + HttpClient::urlEncode(std::string(clientId));
+    postData += "&client_secret=" + HttpClient::urlEncode(std::string(clientSecret));
 
-    std::string response;
-    curl_easy_setopt(curl, CURLOPT_URL, "https://oauth2.googleapis.com/token");
-    curl_easy_setopt(curl, CURLOPT_POST, 1L);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-    CURLcode res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
+    HttpClient client;
+    auto resp = client.postForm("https://oauth2.googleapis.com/token", postData);
 
-    if (res != CURLE_OK) {
-        std::cerr << "Token refresh failed: " << curl_easy_strerror(res) << std::endl;
+    if (!resp.error.empty()) {
+        std::cerr << "Token refresh failed: " << resp.error << std::endl;
         return "";
     }
 
-    std::string newAccessToken = extractJsonField(response, "access_token");
+    std::string newAccessToken = extractJsonField(resp.body, "access_token");
     if (newAccessToken.empty()) {
-        std::cerr << "Token refresh response missing access_token: " << response << std::endl;
+        std::cerr << "Token refresh response missing access_token: " << resp.body << std::endl;
         return "";
     }
 
     int expSec = 3600;
-    std::string expiresIn = extractJsonField(response, "expires_in");
+    std::string expiresIn = extractJsonField(resp.body, "expires_in");
     if (!expiresIn.empty()) {
         try { expSec = std::stoi(expiresIn); } catch (...) {}
     }
@@ -2445,40 +2409,24 @@ Response SocialController::handleListDriveMedia(const Request& request) {
         std::string query = "(mimeType contains 'image/' or mimeType contains 'video/')";
         query += " and trashed = false";
 
-        CURL* curl = curl_easy_init();
-        if (!curl) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, "Failed to initialize HTTP client"));
-        }
-
         std::string url = "https://www.googleapis.com/drive/v3/files"
-            "?q=" + urlEncode(curl, query) +
-            "&fields=" + urlEncode(curl, "nextPageToken,files(id,name,mimeType,thumbnailLink,createdTime,size)") +
+            "?q=" + HttpClient::urlEncode(query) +
+            "&fields=" + HttpClient::urlEncode("nextPageToken,files(id,name,mimeType,thumbnailLink,createdTime,size)") +
             "&orderBy=createdTime desc"
             "&pageSize=50";
         if (!pageToken.empty()) {
-            url += "&pageToken=" + urlEncode(curl, pageToken);
+            url += "&pageToken=" + HttpClient::urlEncode(pageToken);
         }
 
-        std::string response;
-        struct curl_slist* headers = nullptr;
-        headers = curl_slist_append(headers, ("Authorization: Bearer " + accessToken).c_str());
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        CURLcode res = curl_easy_perform(curl);
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
+        HttpClient client;
+        auto driveResp = client.get(url, {{"Authorization", "Bearer " + accessToken}});
 
-        if (res != CURLE_OK) {
+        if (!driveResp.error.empty()) {
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, "Failed to fetch Drive files"));
         }
 
-        Response resp(HttpStatus::OK, response);
+        Response resp(HttpStatus::OK, driveResp.body);
         resp.setHeader("Content-Type", "application/json");
         return resp;
     } catch (const std::exception& e) {
@@ -2507,65 +2455,40 @@ Response SocialController::handleDownloadDriveFile(const Request& request) {
                 createJSONResponse(false, "Google Drive not connected"));
         }
 
-        CURL* curl = curl_easy_init();
-        if (!curl) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, "Failed to initialize HTTP client"));
-        }
-
         // Validate fileId format (alphanumeric, hyphens, underscores only)
         for (char c : fileId) {
             if (!std::isalnum(c) && c != '-' && c != '_') {
-                curl_easy_cleanup(curl);
                 return Response(HttpStatus::BAD_REQUEST,
                     createJSONResponse(false, "Invalid file ID"));
             }
         }
 
+        HttpClient client;
+        HttpClient::Headers authHeaders{{"Authorization", "Bearer " + accessToken}};
+
         // Get file metadata
         std::string metaUrl = "https://www.googleapis.com/drive/v3/files/" + fileId
             + "?fields=id,name,mimeType,size";
 
-        std::string metaResponse;
-        struct curl_slist* headers = nullptr;
-        headers = curl_slist_append(headers, ("Authorization: Bearer " + accessToken).c_str());
-        curl_easy_setopt(curl, CURLOPT_URL, metaUrl.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &metaResponse);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-        CURLcode res = curl_easy_perform(curl);
-        curl_slist_free_all(headers);
-
-        if (res != CURLE_OK) {
-            curl_easy_cleanup(curl);
+        auto metaResp = client.get(metaUrl, authHeaders);
+        if (!metaResp.error.empty()) {
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, "Failed to get file metadata"));
         }
 
-        std::string mimeType = extractJsonField(metaResponse, "mimeType");
-        std::string fileName = extractJsonField(metaResponse, "name");
+        std::string mimeType = extractJsonField(metaResp.body, "mimeType");
+        std::string fileName = extractJsonField(metaResp.body, "name");
 
         // Download the actual file content
         std::string downloadUrl = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media";
-        std::string fileContent;
-        headers = nullptr;
-        headers = curl_slist_append(headers, ("Authorization: Bearer " + accessToken).c_str());
-        curl_easy_setopt(curl, CURLOPT_URL, downloadUrl.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fileContent);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        res = curl_easy_perform(curl);
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
+        auto downloadResp = client.get(downloadUrl, authHeaders);
 
-        if (res != CURLE_OK) {
+        if (!downloadResp.error.empty()) {
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, "Failed to download file"));
         }
 
-        Response resp(HttpStatus::OK, fileContent);
+        Response resp(HttpStatus::OK, downloadResp.body);
         resp.setHeader("Content-Type", mimeType);
         resp.setHeader("Content-Disposition", "inline; filename=\"" + fileName + "\"");
         return resp;
@@ -2590,31 +2513,15 @@ Response SocialController::handleLogoProxy(const Request& request) {
                 createJSONResponse(false, "Only SportsEngine team logos are allowed"));
         }
 
-        CURL* curl = curl_easy_init();
-        if (!curl) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-                createJSONResponse(false, "Failed to initialize curl"));
-        }
+        HttpClient client;
+        auto logoResp = client.get(url);
 
-        std::string imageData;
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SocialWriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &imageData);
-
-        CURLcode code = curl_easy_perform(curl);
-        long status = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-        curl_easy_cleanup(curl);
-
-        if (code != CURLE_OK || status != 200 || imageData.empty()) {
+        if (!logoResp.error.empty() || logoResp.status != 200 || logoResp.body.empty()) {
             return Response(HttpStatus::NOT_FOUND,
                 createJSONResponse(false, "Logo fetch failed"));
         }
 
-        Response resp(HttpStatus::OK, imageData);
+        Response resp(HttpStatus::OK, logoResp.body);
         resp.setHeader("Content-Type", "image/png");
         resp.setHeader("Cache-Control", "public, max-age=86400");
         resp.setCorsHeaders();

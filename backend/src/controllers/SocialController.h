@@ -1,7 +1,6 @@
 #pragma once
 #include "../core/Controller.h"
 #include "../database/Database.h"
-#include <curl/curl.h>
 #include <memory>
 #include <regex>
 #include <atomic>
@@ -82,7 +81,6 @@ private:
     // Instagram Graph API helpers
     std::string httpPost(const std::string& url, const std::string& postData);
     std::string httpGet(const std::string& url);
-    std::string urlEncode(CURL* curl, const std::string& value);
 
     // Scheduler internals
     std::atomic<bool> schedulerRunning_{false};
