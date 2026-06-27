@@ -972,31 +972,31 @@ class LeadsScreen extends Screen {
       // only.  Games mostly Saturdays (occasionally Sunday) + practice Mon/Wed.
       'Boys Club (Grades 1–6)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Boys Club (K-12)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Girls Club (Grades 1–6)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Girls Club (K-12)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Boys Club (U11/U12)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday 5:30–7pm (5th & 6th graders). First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays 5:30–7pm (5th & 6th graders).',
       },
       'Girls Club (U11/U12)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday 5:30–7pm (5th & 6th graders). First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays 5:30–7pm (5th & 6th graders).',
       },
       'Youth (Grades 1–6)': {
         day:      'Saturdays',
-        practice: 'Monday & Wednesday — by grade in the upcoming school year: PreK–2nd grade 4:30–5:30pm, 3rd–10th grade 5:30–7pm, 11th grade and up 7–8:30pm. First practice: Wednesday June 24.',
+        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Tri County Women': {
         day:      'Sundays',
@@ -1107,6 +1107,93 @@ class LeadsScreen extends Screen {
     };
   }
 
+  // ── Practice date helpers ─────────────────────────────────────────
+  // Shared by every lead-facing surface that needs to surface a fresh
+  // "next practice" date — first-touch lead emails (messageTemplate)
+  // and roster broadcasts (messageSnippets).  Living on the class
+  // means the cancellation skip-list and override schedule have a
+  // single source of truth; otherwise an added cancellation would
+  // silently disagree between the lead email and the broadcast.
+
+  _practiceCancellations() {
+    // One-off skips (club events, holidays, weather).  YYYY-MM-DD.
+    // If this grows past ~5 entries, promote to a config endpoint so
+    // the coach can edit without a deploy.
+    return new Set([
+      '2026-06-29', // Mon — club event at Lighthouse (youth)
+    ]);
+  }
+
+  _practiceOverride(ymd) {
+    // One-off time overrides for practices that still happen but at a
+    // different time than the usual cadence (e.g. shifted earlier so
+    // the team can watch a big game after).
+    //   time — replaces the default time on the "Next:" line
+    //   note — appears in parens after the time; phrase the reason
+    //          the way you'd say it out loud ("earlier so we can catch
+    //          the USA World Cup game after — regular time is 7pm–8:30pm").
+    //          "Why we moved practice" is a community-identity signal,
+    //          not a logistics footnote — surface it.
+    const overrides = new Map([
+      ['2026-07-01', {
+        time: '5:30pm–7pm',
+        note: 'earlier so we can catch the USA World Cup game after — regular time is 7pm–8:30pm',
+      }],
+    ]);
+    return overrides.get(ymd) || null;
+  }
+
+  _nextPractice(cadenceDays, endHour) {
+    // Compute next practice for a given cadence so every render shows
+    // a fresh date — never stale, no manual updates.
+    //   cadenceDays — array of weekday numbers (0=Sun … 6=Sat)
+    //   endHour     — hour after which today no longer counts as "next"
+    //                 (19 for youth's 7pm end; 21 for men's 8:30pm end
+    //                 with a half-hour buffer so 8:15pm reads still on).
+    // If today is in the cadence, before endHour, and not cancelled,
+    // today counts ("join us tonight").  Otherwise advance day-by-day,
+    // skipping cancellations.  Returns { ymd, label } so callers can
+    // look up _practiceOverride(ymd) while rendering the human label.
+    const ymd = (x) => {
+      const y  = x.getFullYear();
+      const m  = String(x.getMonth() + 1).padStart(2, '0');
+      const dd = String(x.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dd}`;
+    };
+    const cancellations = this._practiceCancellations();
+    const now = new Date();
+    const stillToday =
+      cadenceDays.includes(now.getDay()) &&
+      now.getHours() < endHour &&
+      !cancellations.has(ymd(now));
+    const d = new Date(now);
+    if (!stillToday) {
+      do {
+        d.setDate(d.getDate() + 1);
+      } while (!cadenceDays.includes(d.getDay()) || cancellations.has(ymd(d)));
+    }
+    return {
+      ymd:   ymd(d),
+      label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    };
+  }
+
+  _nextKickoff() {
+    // Women's league kickoff = Sunday after Labor Day = first Sunday
+    // on or after Sept 8.  Computed from current year so the email
+    // stays fresh year-over-year without a code change.  If we're
+    // already past this year's kickoff, shows next year's date.
+    const forYear = (y) => {
+      const sept1 = new Date(y, 8, 1);
+      const daysToMonday = (1 - sept1.getDay() + 7) % 7;  // Labor Day = first Mon of Sept
+      return new Date(y, 8, 1 + daysToMonday + 6);        // Sunday after Labor Day
+    };
+    const now = new Date();
+    let k = forYear(now.getFullYear());
+    if (k < now) k = forYear(now.getFullYear() + 1);
+    return k.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
 
@@ -1136,84 +1223,6 @@ class LeadsScreen extends Screen {
     const isWomensClub = /women/i.test(funnelLabel);
     const monthly = isWomensClub ? '$10' : '$35';
 
-    // Recurring-cadence cancellations — one-off skips (club events,
-    // holidays, weather).  Add YYYY-MM-DD dates here and nextPractice()
-    // rolls forward to the next session in the cadence.  Lives inline
-    // because it ships with the template; if it grows past ~5 entries,
-    // promote to a config endpoint so the coach can edit without a deploy.
-    const PRACTICE_CANCELLATIONS = new Set([
-      '2026-06-29', // Mon — club event at Lighthouse (youth)
-    ]);
-
-    // One-off time overrides for practices that still happen but at a
-    // different time than the usual cadence (e.g. shifted earlier so
-    // the team can watch a big game after).  Keyed by YYYY-MM-DD.
-    //   time — replaces the default time on the "Next:" line
-    //   note — appears in parens after the time; phrase it the way
-    //          you'd say it out loud ("earlier so we can catch the
-    //          USA World Cup game after — regular time is 7pm–8:30pm").
-    //          Surface the reason — "why we moved practice" is a
-    //          community-identity signal, not a logistics footnote.
-    const PRACTICE_OVERRIDES = new Map([
-      ['2026-07-01', {
-        time: '5:30pm–7pm',
-        note: 'earlier so we can catch the USA World Cup game after — regular time is 7pm–8:30pm',
-      }],
-    ]);
-
-    // Compute next practice for a given cadence so the email always
-    // shows a fresh date (template renders at view time — never stale).
-    //   cadenceDays — array of weekday numbers (0=Sun … 6=Sat)
-    //   endHour     — hour after which today no longer counts as "next"
-    //                 (19 for youth's 7pm end; 21 for men's 8:30pm end
-    //                 with a half-hour buffer so 8:15pm reads still on).
-    // If today is in the cadence, before endHour, and not cancelled, today
-    // counts ("join us tonight").  Otherwise advance day-by-day, skipping
-    // cancellations.  Returns { ymd, label } so callers can look up
-    // PRACTICE_OVERRIDES by ymd while rendering the human label.
-    const nextPractice = (cadenceDays, endHour) => {
-      const ymd = (x) => {
-        const y  = x.getFullYear();
-        const m  = String(x.getMonth() + 1).padStart(2, '0');
-        const dd = String(x.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dd}`;
-      };
-      const now = new Date();
-      const stillToday =
-        cadenceDays.includes(now.getDay()) &&
-        now.getHours() < endHour &&
-        !PRACTICE_CANCELLATIONS.has(ymd(now));
-      const d = new Date(now);
-      if (!stillToday) {
-        do {
-          d.setDate(d.getDate() + 1);
-        } while (!cadenceDays.includes(d.getDay()) || PRACTICE_CANCELLATIONS.has(ymd(d)));
-      }
-      return {
-        ymd:   ymd(d),
-        label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      };
-    };
-
-    // Women's league kickoff = Sunday after Labor Day = first Sunday
-    // on or after Sept 8.  Computed from current year so the email
-    // stays fresh year-over-year without a code change.  If we're
-    // already past this year's kickoff, shows next year's date —
-    // appropriate for off-season leads, but if you start converting
-    // mid-season (Sept-Nov) leads where the "kicks off" framing reads
-    // wrong, add an in-season women's branch and gate on date.
-    const nextKickoff = () => {
-      const forYear = (y) => {
-        const sept1 = new Date(y, 8, 1);
-        const daysToMonday = (1 - sept1.getDay() + 7) % 7;  // Labor Day = first Mon of Sept
-        return new Date(y, 8, 1 + daysToMonday + 6);        // Sunday after Labor Day
-      };
-      const now = new Date();
-      let k = forYear(now.getFullYear());
-      if (k < now) k = forYear(now.getFullYear() + 1);
-      return k.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    };
-
     // ── Legacy Youth (combined Boys+Girls form, gender unknown) ────────
     // Email closes with BOTH links — parent picks the right one.  Avoids
     // a round-trip ("which one?") and gets the lead to register in one
@@ -1229,7 +1238,7 @@ class LeadsScreen extends Screen {
         email:
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice — Mondays & Wednesdays (next: ${nextPractice([1, 3], 19).label})\n` +
+          `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
           `• 2nd grade and younger: 4:30pm–5:30pm\n` +
           `• 3rd grade and older: 5:30pm–7pm\n` +
           `We're in season — new players welcome any week.\n\n` +
@@ -1259,7 +1268,7 @@ class LeadsScreen extends Screen {
         email:
           `Hi {first},\n\n` +
           `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice — Mondays & Wednesdays (next: ${nextPractice([1, 3], 19).label})\n` +
+          `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
           `• 2nd grade and younger: 4:30pm–5:30pm\n` +
           `• 3rd grade and older: 5:30pm–7pm\n` +
           `We're in season — new players welcome any week.\n\n` +
@@ -1281,12 +1290,12 @@ class LeadsScreen extends Screen {
     // play CASA games on Sundays — hardcoded rather than pulled from
     // SCHEDULES because the layout is opinionated (next-practice date,
     // "in season" reassurance, cost adjacent to CTA).  When the next
-    // practice has a PRACTICE_OVERRIDES entry (e.g. shifted earlier for
+    // practice has a _practiceOverride() entry (e.g. shifted earlier for
     // a World Cup game), surface the new time + reason inline — "why
     // we moved practice" reads as club personality, not logistics.
     if (!isWomensClub) {
-      const np       = nextPractice([3, 5], 21);
-      const override = PRACTICE_OVERRIDES.get(np.ymd);
+      const np       = this._nextPractice([3, 5], 21);
+      const override = this._practiceOverride(np.ymd);
       const timeLine = override
         ? `Next: ${np.label}, ${override.time} (${override.note})\n`
         : `Next: ${np.label}, 7pm–8:30pm\n`;
@@ -1327,7 +1336,7 @@ class LeadsScreen extends Screen {
       email:
         `Hi {first},\n\n` +
         `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-        `Season — Kicks off ${nextKickoff()}\n` +
+        `Season — Kicks off ${this._nextKickoff()}\n` +
         `Games on Sunday mornings or early afternoons at Lighthouse.\n\n` +
         `Location — Lighthouse Sports Complex\n` +
         `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
@@ -1387,18 +1396,16 @@ class LeadsScreen extends Screen {
     const isU1112 = /u11\s*\/?\s*u12/i.test(funnelLabel);
     const springRenewalBody = (clubName, childRel, link) =>
       `Hi Lighthouse 1893 ${clubName} families,\n\n` +
-      `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again at the link below.\n\n` +
-      `Register here:\n${link}\n\n` +
-      `Cost: $35 to register, then $35/month. Everything is included: uniform, training, tournaments, and gear. No hidden fees.\n\n` +
-      `Practice (Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140):\n` +
-      `• PreK–2nd grade: 4:30pm–5:30pm\n` +
-      `• 3rd–10th grade: 5:30pm–7:00pm\n` +
-      `• 11th grade and up: 7:00pm–8:30pm\n\n` +
-      `First practice is Wednesday, June 24.\n\n` +
-      `Fall 2026 season format:\n` +
-      `• PreK–1st grade: In-House league\n` +
-      `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
-      `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
+      `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again:\n` +
+      `${link}\n\n` +
+      `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
+      `• 2nd grade and younger: 4:30pm–5:30pm\n` +
+      `• 3rd grade and older: 5:30pm–7pm\n\n` +
+      `Games — Weekends\n\n` +
+      `Location — Lighthouse Sports Complex\n` +
+      `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
+      `Cost — $35 to start, then $35/month\n` +
+      `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
       `Hit reply with any questions — happy to help.\n\n` +
       `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
     if (c.isLegacyYouth) {
@@ -1437,15 +1444,12 @@ class LeadsScreen extends Screen {
     const practiceScheduleBody = (clubName) =>
       `Hi Lighthouse 1893 ${clubName} families,\n\n` +
       `Thanks for registering for the Summer/Fall 2026 season! Quick heads-up on the practice schedule so you can plan your week.\n\n` +
-      `Practice runs Mondays & Wednesdays at Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140. Times are based on your child's grade in the upcoming school year:\n\n` +
-      `• PreK–2nd grade: 4:30pm–5:30pm\n` +
-      `• 3rd–10th grade: 5:30pm–7:00pm\n` +
-      `• 11th grade and up: 7:00pm–8:30pm\n\n` +
-      `First practice is Wednesday, June 24.\n\n` +
-      `Fall 2026 season format:\n` +
-      `• PreK–1st grade: In-House league\n` +
-      `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
-      `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n\n` +
+      `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
+      `• 2nd grade and younger: 4:30pm–5:30pm\n` +
+      `• 3rd grade and older: 5:30pm–7pm\n\n` +
+      `Games — Weekends\n\n` +
+      `Location — Lighthouse Sports Complex\n` +
+      `199 East Erie Avenue, Philadelphia PA 19140\n\n` +
       `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
       `Hit reply with any questions — see you on the field!\n\n` +
       `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
