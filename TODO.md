@@ -2,6 +2,47 @@
 
 Running list of known issues and follow-ups. Newest items at the top.
 
+## Leads funnel — email → registration conversion lift
+
+Current state (2026-06-29): ~521 leads in last 6 weeks, ~67% emailed,
+~2/35 boys converted, 0/32 girls (Girls LA program was set to "opens
+soon" — being fixed manually).  Single-touch 5-7% conversion is low
+end of normal for a Meta lead-form funnel; the two interventions
+below should push it toward 15-20%.
+
+- [ ] **Meta lead-form thank-you-screen CTA** (no code; Ads Manager).
+  In each active Meta lead form (Ads Manager → Instant Forms → form →
+  Completion step), add a "View website" button pointing at the LA
+  program URL for that funnel.  Captures the lead AND lets high-intent
+  submitters tap straight through to register without leaving the
+  Facebook in-app browser.  Mirrors the per-funnel LA URLs in
+  `frontend/js/screens/leads.js#funnelContext()`:
+    - Boys Club forms (1704106777282059, 2471488896628970) → URL_BOYS
+    - Girls Club forms (1571742281184926, 1008195014960429) → URL_GIRLS
+    - Men's Club forms → URL_MEN
+    - Women's Club forms → URL_WOMEN
+
+- [ ] **Multi-touch email follow-up sequence** (code).
+  Currently we send exactly one email per lead (day-0 informational +
+  CTA) and nothing else.  Add day-3 conversational nudge + day-10
+  social-proof nudge for leads that haven't converted.  Two-part build:
+    1. Backend surface — schedule + queue model.  Likely a view that
+       joins `leads` against `lead_contacts` to compute "leads who got
+       email 1 N days ago and have NOT converted (no matching active
+       LA registration by email)."  Surface on `/api/leads` so the
+       leads screen can render a "Follow-up due" filter / tab.
+    2. Frontend — two new template variants in `funnelContext()`:
+       a. **Touch 2 (day 3, conversational).**  No LA link.  Goal: get
+          a reply.  Tone: "Hi {first} — any questions about practice
+          times or whether {program} is the right fit?  Happy to hop
+          on a quick call."
+       b. **Touch 3 (day 10, social proof + urgency).**  "We had {N}
+          new players join this week — {next_practice} session is open
+          if you want to drop in before committing." LA link returns.
+    3. Optionally: detect-and-suppress for leads who replied to touch
+       1 (currently no inbound mail integration; manual mark-as-done
+       button on the lead card would be enough).
+
 ## Bugs
 
 - ~~**`PersonMerge::childTables()` catalogue is stale**~~ — FIXED
