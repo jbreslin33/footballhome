@@ -50,6 +50,20 @@ public:
     std::optional<std::string> convertedNote;        // free-text
     bool needsFollowup = false;
 
+    // Closed-lost flag (migration 074).  NULL = still in the active
+    // funnel.  Set by markDead() / cleared by unmarkDead().  Wins over
+    // converted_at in the computed `status` field — a lead can carry
+    // both flags in the row (audit trail) but reports as 'dead' first.
+    std::optional<std::string> deadAtIso;            // YYYY-MM-DDTHH:MM:SS.sssZ
+
+    // Server-computed lifecycle state, one of:
+    //   "new"       — never emailed, not converted, not dead
+    //   "responded" — emailed at least once, not converted, not dead
+    //   "signedup"  — converted_at IS NOT NULL and not dead
+    //   "dead"      — dead_at IS NOT NULL (highest precedence)
+    // Empty when this Lead came from a narrower SELECT (e.g. findById).
+    std::string status;
+
     // GET /api/leads — DB-only LEFT JOIN aggregate.  Sorted created_at DESC.
     static std::vector<Lead> listAll();
 
@@ -67,6 +81,14 @@ public:
     // DELETE /api/leads/:id/mark-converted — clear all three converted_*
     // columns.  Same return contract as markConverted().
     static std::optional<Lead> unmarkConverted(int leadId);
+
+    // POST /api/leads/:id/mark-dead — set dead_at = NOW().  No body /
+    // reason captured in v1.  Returns the refreshed Lead row.
+    static std::optional<Lead> markDead(int leadId);
+
+    // DELETE /api/leads/:id/mark-dead — clear dead_at, reviving the
+    // lead to its derived (new / responded / signedup) state.
+    static std::optional<Lead> unmarkDead(int leadId);
 
     // Upsert one Meta lead-form record into `leads`.  Returns false iff the
     // lead was in the blocklist and skipped.  Throws on DB error.

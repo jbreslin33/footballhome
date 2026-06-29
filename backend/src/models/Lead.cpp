@@ -67,6 +67,13 @@ Lead rowToLead(const pqxx::row& row) {
         const auto& f = row["needs_followup"];
         l.needsFollowup = !f.is_null() && f.as<bool>();
     } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.deadAtIso = optStr(row["dead_at"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        const auto& f = row["status"];
+        if (!f.is_null()) l.status = f.c_str();
+    } catch (const std::exception&) { /* not selected */ }
     return l;
 }
 
@@ -83,13 +90,26 @@ const char* kSelectListAggregate =
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS converted_at, "
     "       l.converted_source, "
     "       l.converted_note, "
+    "       to_char(l.dead_at AT TIME ZONE 'UTC', "
+    "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS dead_at, "
     // Server-side computation: a lead "needs follow-up" iff it's still
-    // open AND has been emailed at least once AND the last email is
-    // >= 3 days old.  Brand-new untouched leads stay in the Open tab.
+    // open (not converted, not dead) AND has been emailed at least once
+    // AND the last email is >= 3 days old.  Brand-new untouched leads
+    // stay in the New state, dead leads stay in the Dead state.
     "       (l.converted_at IS NULL "
+    "        AND l.dead_at IS NULL "
     "        AND c.last_email_at IS NOT NULL "
     "        AND c.last_email_at < (NOW() - INTERVAL '3 days') "
-    "       ) AS needs_followup "
+    "       ) AS needs_followup, "
+    // Mutually-exclusive lifecycle state.  Dead wins over converted_at
+    // so the row stays in the Dead bucket even if both flags are set
+    // (audit-trail tolerance — the UI never sets both).
+    "       CASE "
+    "         WHEN l.dead_at IS NOT NULL      THEN 'dead' "
+    "         WHEN l.converted_at IS NOT NULL THEN 'signedup' "
+    "         WHEN c.last_email_at IS NOT NULL THEN 'responded' "
+    "         ELSE 'new' "
+    "       END AS status "
     "  FROM leads l "
     "  LEFT JOIN ( "
     "    SELECT lead_id, "
@@ -179,6 +199,28 @@ std::optional<Lead> Lead::unmarkConverted(int leadId) {
         "   SET converted_at = NULL, "
         "       converted_source = NULL, "
         "       converted_note = NULL "
+        " WHERE id = $1",
+        { std::to_string(leadId) });
+    return fetchListRowById(leadId);
+}
+
+// Mark closed-lost (migration 074).  Pure boolean flip — no source /
+// reason captured in v1.  Audit trail lives in the timestamp itself.
+std::optional<Lead> Lead::markDead(int leadId) {
+    auto db = Database::getInstance();
+    db->query(
+        "UPDATE leads "
+        "   SET dead_at = NOW() "
+        " WHERE id = $1",
+        { std::to_string(leadId) });
+    return fetchListRowById(leadId);
+}
+
+std::optional<Lead> Lead::unmarkDead(int leadId) {
+    auto db = Database::getInstance();
+    db->query(
+        "UPDATE leads "
+        "   SET dead_at = NULL "
         " WHERE id = $1",
         { std::to_string(leadId) });
     return fetchListRowById(leadId);

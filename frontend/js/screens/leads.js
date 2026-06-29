@@ -464,6 +464,12 @@ class LeadsScreen extends Screen {
     container.querySelectorAll('.convert-btn').forEach(btn => {
       btn.addEventListener('click', (e) => this.onConvertClick(e));
     });
+
+    // Wire mark-dead / revive buttons.  No confirm — the dead lead
+    // stays visible in All + Dead tabs and revive is one click away.
+    container.querySelectorAll('.dead-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => this.onDeadClick(e));
+    });
   }
 
   formLabel(formId) {
@@ -933,26 +939,41 @@ class LeadsScreen extends Screen {
     // into the lead row by /api/leads (LEFT JOIN on lead_contacts) so
     // we don't need a second contact-stats round-trip.  Bumped
     // optimistically when the coach clicks the Email button (see
-    // onContactClick) so the badge appears instantly.
+    // onContactClick) so the badge appears instantly.  Yellow because
+    // "responded to" is the yellow lifecycle state in our color scheme.
     const emailCount  = Number(lead.email_count || 0);
     const lastEmailAt = lead.last_email_at || null;
     const emailBadge  = emailCount
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e2e4a; color:#60a5fa;">✉ Emailed ${ago(lastEmailAt)}${emailCount > 1 ? ` ×${emailCount}` : ''}</span>`
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#451a03; color:#fbbf24;">✉ Emailed ${ago(lastEmailAt)}${emailCount > 1 ? ` ×${emailCount}` : ''}</span>`
       : '';
 
-    // Conversion status badges (migration 073 + Lead::markConverted).
-    //   - converted_at → green ✓ Signed up [date]
-    //   - needs_followup → amber ⚠ Follow-up due
-    // Server already enforces mutual exclusion (needs_followup is
-    // forced false when converted_at is non-null).
-    const convertedAt = lead.converted_at || null;
-    const convertBadge = convertedAt
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#14532d; color:#86efac;">✓ Signed up ${ago(convertedAt)}${lead.converted_source && lead.converted_source !== 'manual' ? ` · ${lead.converted_source}` : ''}</span>`
+    // Lifecycle badges (server-computed lead.status, migration 074).
+    //   new       → 🟢 green  "New"
+    //   signedup  → 🔵 blue   "✓ Signed up [date]"  (Lighthouse primary)
+    //   dead      → 🔴 red    "✖ Dead [date]"
+    //   responded → (no extra badge; the yellow Emailed badge carries
+    //                the signal, plus the stale sub-marker below)
+    // Server enforces mutual exclusion so at most one of new/signedup/
+    // dead can render.
+    const status       = lead.status || '';
+    const convertedAt  = lead.converted_at || null;
+    const deadAt       = lead.dead_at || null;
+    const newBadge = status === 'new'
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#14532d; color:#86efac;">🟢 New</span>`
       : '';
-    const followupBadge = (!convertedAt && lead.needs_followup)
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#451a03; color:#fbbf24;">⚠ Follow-up due</span>`
+    const convertBadge = convertedAt && status !== 'dead'
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e3a8a; color:#93c5fd;">✓ Signed up ${ago(convertedAt)}${lead.converted_source && lead.converted_source !== 'manual' ? ` · ${lead.converted_source}` : ''}</span>`
       : '';
-    const badges = [convertBadge, emailBadge, followupBadge].filter(Boolean);
+    const deadBadge = deadAt
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#450a0a; color:#fca5a5;">✖ Dead ${ago(deadAt)}</span>`
+      : '';
+    // Stale sub-marker inside Responded — fired when the last email
+    // is > 3 days old (server-computed needs_followup, which already
+    // excludes converted + dead leads).
+    const followupBadge = (status === 'responded' && lead.needs_followup)
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#7c2d12; color:#fed7aa;">⚠ Stale</span>`
+      : '';
+    const badges = [newBadge, convertBadge, deadBadge, emailBadge, followupBadge].filter(Boolean);
 
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
 
@@ -975,11 +996,25 @@ class LeadsScreen extends Screen {
       ? `
       <a href="javascript:void(0)" class="convert-btn"
          data-lead-id="${lead.id}" data-action="unmark"
-         style="${btnStyle} background:#374151; color:#fbbf24;" title="Clear signed-up flag">↩ Undo</a>`
+         style="${btnStyle} background:#374151; color:#93c5fd;" title="Clear signed-up flag">↩ Undo</a>`
       : `
       <a href="javascript:void(0)" class="convert-btn"
          data-lead-id="${lead.id}" data-action="mark"
          style="${btnStyle} background:#15803d; color:#fff;" title="Mark this lead as signed up">✓ Signed up</a>`;
+
+    // Mark-dead / undo button.  Mirrors the convert button pattern but
+    // skips the confirm() prompt — the dead lead stays visible in the
+    // All + Dead tabs, so a misclick is one click to undo.  Wired in
+    // renderLeads to .dead-btn → onDeadClick.
+    const deadBtn = deadAt
+      ? `
+      <a href="javascript:void(0)" class="dead-btn"
+         data-lead-id="${lead.id}" data-action="unmark"
+         style="${btnStyle} background:#374151; color:#fca5a5;" title="Revive this lead">↩ Revive</a>`
+      : `
+      <a href="javascript:void(0)" class="dead-btn"
+         data-lead-id="${lead.id}" data-action="mark"
+         style="${btnStyle} background:#7f1d1d; color:#fff;" title="Mark this lead as dead (closed-lost)">✖ Dead</a>`;
 
     // Snippet chips were previously rendered here for SMS quick-replies
     // (Register/Pickup/Schedule/etc).  Removed from the card UI on
@@ -1006,7 +1041,7 @@ class LeadsScreen extends Screen {
         ${location ? `<div style="font-size:0.85rem; opacity:0.85;">📍 ${location}</div>` : ''}
         ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
         ${badges.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${saveBtn}${convertBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${saveBtn}${convertBtn}${deadBtn}</div>
       </div>
     `;
   }
@@ -2096,6 +2131,42 @@ class LeadsScreen extends Screen {
       btn.dataset.busy = '0';
       btn.textContent = origText;
       alert(`Failed to ${action === 'mark' ? 'mark signed up' : 'undo'}: ${err.message}`);
+    }
+  }
+
+  // Mark-dead / revive handler.  POSTs (or DELETEs) to
+  // /api/leads/:id/mark-dead, patches the in-memory lead array, and
+  // re-renders so the card moves between status tabs without a full
+  // reload.  No confirm() prompt: dead leads remain visible in the
+  // All + Dead tabs and revive is one click away.
+  async onDeadClick(e) {
+    const btn    = e.currentTarget;
+    const leadId = btn.getAttribute('data-lead-id');
+    const action = btn.getAttribute('data-action');  // 'mark' | 'unmark'
+    if (!leadId || !action) return;
+
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    const origText = btn.textContent;
+    btn.textContent = '…';
+
+    try {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/mark-dead`, {
+        method: action === 'mark' ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const refreshed = await res.json();
+
+      if (Array.isArray(this._leads)) {
+        const idx = this._leads.findIndex(l => String(l.id) === String(leadId));
+        if (idx >= 0) this._leads[idx] = refreshed;
+      }
+      this.renderLeads(this._leads || []);
+    } catch (err) {
+      btn.dataset.busy = '0';
+      btn.textContent = origText;
+      alert(`Failed to ${action === 'mark' ? 'mark dead' : 'revive'}: ${err.message}`);
     }
   }
 

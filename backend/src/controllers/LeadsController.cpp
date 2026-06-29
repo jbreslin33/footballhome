@@ -83,6 +83,8 @@ std::string serializeLead(const Lead& l) {
       << ",\"converted_source\":"  << jsonOrNull(l.convertedSource)
       << ",\"converted_note\":"    << jsonOrNull(l.convertedNote)
       << ",\"needs_followup\":"    << jsonBool(l.needsFollowup)
+      << ",\"dead_at\":"           << jsonOrNull(l.deadAtIso)
+      << ",\"status\":"            << jsonStr(l.status)
       << "}";
     return o.str();
 }
@@ -271,6 +273,8 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.get (prefix + "/:id/vcard",          [this](const Request& r){ return handleVcard          (r); });
     router.post(prefix + "/:id/mark-converted", [this](const Request& r){ return handleMarkConverted  (r); });
     router.del (prefix + "/:id/mark-converted", [this](const Request& r){ return handleUnmarkConverted(r); });
+    router.post(prefix + "/:id/mark-dead",      [this](const Request& r){ return handleMarkDead       (r); });
+    router.del (prefix + "/:id/mark-dead",      [this](const Request& r){ return handleUnmarkDead     (r); });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -452,6 +456,50 @@ Response LeadsController::handleUnmarkConverted(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error unmarking lead converted: " << e.what() << std::endl;
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to unmark converted");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST   /api/leads/:id/mark-dead   — closed-lost flag (migration 074)
+// DELETE /api/leads/:id/mark-dead   — clear the flag (revive)
+//
+// No body fields in v1 — pure boolean lifecycle flip.  Frontend issues
+// the request without a confirm prompt because the lead stays visible
+// in the "All" + "Dead" tabs and the action is one-click reversible.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleMarkDead(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+
+    try {
+        auto refreshed = Lead::markDead(leadId);
+        if (!refreshed) return errJson(HttpStatus::NOT_FOUND, "Lead not found");
+        return errOk(HttpStatus::OK, serializeLead(*refreshed));
+    } catch (const std::exception& e) {
+        std::cerr << "Error marking lead dead: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to mark dead");
+    }
+}
+
+Response LeadsController::handleUnmarkDead(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+
+    try {
+        auto refreshed = Lead::unmarkDead(leadId);
+        if (!refreshed) return errJson(HttpStatus::NOT_FOUND, "Lead not found");
+        return errOk(HttpStatus::OK, serializeLead(*refreshed));
+    } catch (const std::exception& e) {
+        std::cerr << "Error unmarking lead dead: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to unmark dead");
     }
 }
 
@@ -664,8 +712,8 @@ LeadsController::extractUserIdJwt(const Request& request) {
 }
 
 bool LeadsController::extractLeadId(const std::string& path, int& leadId) {
-    // /api/leads/<id>/contact | /vcard | /mark-converted
-    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard|mark-converted))");
+    // /api/leads/<id>/contact | /vcard | /mark-converted | /mark-dead
+    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard|mark-converted|mark-dead))");
     std::smatch m;
     if (!std::regex_search(path, m, re)) return false;
     try { leadId = std::stoi(m[1].str()); }

@@ -18,6 +18,8 @@
 //                                                         youth-pair)
 //   POST   /api/leads/:id/mark-converted  manual signed-up flag (set)
 //   DELETE /api/leads/:id/mark-converted  clear the flag (undo)
+//   POST   /api/leads/:id/mark-dead       closed-lost flag (set)
+//   DELETE /api/leads/:id/mark-dead       clear the flag (revive)
 //
 // All routes are bearer-presence gated.  The contact handler additionally
 // decodes the JWT payload (no signature verify) to extract `userId` so
@@ -39,10 +41,12 @@ private:
     Response handleVcard            (const Request& request);
     Response handleMarkConverted    (const Request& request);
     Response handleUnmarkConverted  (const Request& request);
+    Response handleMarkDead         (const Request& request);
+    Response handleUnmarkDead       (const Request& request);
 
     // Auth helpers.
     static std::optional<int>  extractUserIdJwt (const Request& request);
 
-    // /api/leads/:id/{contact,vcard,mark-converted}
+    // /api/leads/:id/{contact,vcard,mark-converted,mark-dead}
     static bool extractLeadId(const std::string& path, int& leadId);
 };
