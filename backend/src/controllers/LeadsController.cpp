@@ -84,6 +84,7 @@ std::string serializeLead(const Lead& l) {
       << ",\"converted_note\":"    << jsonOrNull(l.convertedNote)
       << ",\"needs_followup\":"    << jsonBool(l.needsFollowup)
       << ",\"dead_at\":"           << jsonOrNull(l.deadAtIso)
+      << ",\"status_override\":"   << jsonOrNull(l.statusOverride)
       << ",\"status\":"            << jsonStr(l.status)
       << "}";
     return o.str();
@@ -275,6 +276,7 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.del (prefix + "/:id/mark-converted", [this](const Request& r){ return handleUnmarkConverted(r); });
     router.post(prefix + "/:id/mark-dead",      [this](const Request& r){ return handleMarkDead       (r); });
     router.del (prefix + "/:id/mark-dead",      [this](const Request& r){ return handleUnmarkDead     (r); });
+    router.post(prefix + "/:id/status-override",[this](const Request& r){ return handleSetStatusOverride(r); });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -504,6 +506,48 @@ Response LeadsController::handleUnmarkDead(const Request& request) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// POST /api/leads/:id/status-override   body: {status: '<one of>' | null}
+//
+// Manual display override (migration 075).  Pure visual flag — does
+// NOT mutate converted_at / dead_at / last_email_at.  Allowed values:
+// 'new' | 'responded' | 'signedup' | 'dead' | null (clears override).
+// Any other value (including missing key) is treated as a clear so
+// the client can post `{"status": null}` or `{}` to reset.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleSetStatusOverride(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+
+    std::optional<std::string> status;
+    try {
+        auto body = json::parse(request.getBody());
+        if (body.contains("status") && body["status"].is_string()) {
+            auto s = body["status"].get<std::string>();
+            // Whitelist — anything else falls through as a clear.
+            if (s == "new" || s == "responded" || s == "signedup" || s == "dead") {
+                status = s;
+            }
+        }
+        // body["status"] == null or missing → clear (status stays nullopt).
+    } catch (const std::exception&) {
+        // Empty / unparseable body == clear override.
+    }
+
+    try {
+        auto refreshed = Lead::setStatusOverride(leadId, status);
+        if (!refreshed) return errJson(HttpStatus::NOT_FOUND, "Lead not found");
+        return errOk(HttpStatus::OK, serializeLead(*refreshed));
+    } catch (const std::exception& e) {
+        std::cerr << "Error setting lead status override: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to set status override");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // GET /api/leads/contact-stats
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleContactStats(const Request& request) {
@@ -712,8 +756,8 @@ LeadsController::extractUserIdJwt(const Request& request) {
 }
 
 bool LeadsController::extractLeadId(const std::string& path, int& leadId) {
-    // /api/leads/<id>/contact | /vcard | /mark-converted | /mark-dead
-    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard|mark-converted|mark-dead))");
+    // /api/leads/<id>/contact | /vcard | /mark-converted | /mark-dead | /status-override
+    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard|mark-converted|mark-dead|status-override))");
     std::smatch m;
     if (!std::regex_search(path, m, re)) return false;
     try { leadId = std::stoi(m[1].str()); }

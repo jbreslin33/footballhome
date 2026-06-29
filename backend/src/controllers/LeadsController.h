@@ -20,6 +20,10 @@
 //   DELETE /api/leads/:id/mark-converted  clear the flag (undo)
 //   POST   /api/leads/:id/mark-dead       closed-lost flag (set)
 //   DELETE /api/leads/:id/mark-dead       clear the flag (revive)
+//   POST   /api/leads/:id/status-override manual lifecycle color override
+//                                          body: {status: 'new'|'responded'|
+//                                                 'signedup'|'dead'|null}
+//                                          null clears the override.
 //
 // All routes are bearer-presence gated.  The contact handler additionally
 // decodes the JWT payload (no signature verify) to extract `userId` so
@@ -43,10 +47,11 @@ private:
     Response handleUnmarkConverted  (const Request& request);
     Response handleMarkDead         (const Request& request);
     Response handleUnmarkDead       (const Request& request);
+    Response handleSetStatusOverride(const Request& request);
 
     // Auth helpers.
     static std::optional<int>  extractUserIdJwt (const Request& request);
 
-    // /api/leads/:id/{contact,vcard,mark-converted,mark-dead}
+    // /api/leads/:id/{contact,vcard,mark-converted,mark-dead,status-override}
     static bool extractLeadId(const std::string& path, int& leadId);
 };

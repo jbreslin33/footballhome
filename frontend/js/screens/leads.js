@@ -470,6 +470,16 @@ class LeadsScreen extends Screen {
     container.querySelectorAll('.dead-btn').forEach(btn => {
       btn.addEventListener('click', (e) => this.onDeadClick(e));
     });
+
+    // Wire ✏️ Edit buttons → opens the lifecycle / color-override
+    // modal.  Cards themselves no longer render lifecycle controls;
+    // those live in the modal so the card stays scannable.
+    container.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const leadId = e.currentTarget.getAttribute('data-lead-id');
+        if (leadId) this.openEditModal(leadId);
+      });
+    });
   }
 
   formLabel(formId) {
@@ -893,88 +903,37 @@ class LeadsScreen extends Screen {
   }
 
   renderLead(lead, columnLabel = null) {
-    const date = new Date(lead.created_at).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-
-    const fieldMap = this.extractFieldMap(lead.raw_fields);
-    const location = this.buildLocationLabel(fieldMap);
+    // Funnel + capability flags.  Funnel label drives the SMS / email
+    // body templates; isYouth controls vCard-pair generation.
+    const label    = columnLabel || this.formLabel(lead.form_id) || '';
+    const hasEmail = !!lead.email;
+    const hasPhone = !!lead.phone;
+    const mailHref = hasEmail ? this.buildMailHref(lead, label) : null;
+    const smsHref  = hasPhone ? this.buildSmsHref (lead, label) : null;
     const formattedPhone = this.formatPhoneNumber(lead.phone || '');
 
-    // Parse extra fields from raw_fields for display
-    const extras = [];
-    const locationKeys = new Set([
-      'city', 'current_city', 'state', 'region', 'zip', 'zipcode', 'postal_code',
-      'country', 'country_code', 'address', 'street_address'
-    ]);
-    if (Array.isArray(lead.raw_fields)) {
-      for (const f of lead.raw_fields) {
-        const key = f.name;
-        const keyLower = String(key || '').trim().toLowerCase();
-        if (['full_name','name','email','email_address','phone_number','phone'].includes(keyLower)) continue;
-        if (locationKeys.has(keyLower)) continue;
-        const val = f.values?.[0];
-        if (val) extras.push(`<span style="opacity:0.7;">${key}:</span> ${val}`);
-      }
-    }
-
-    // Contact buttons + status
-    const label = columnLabel || this.formLabel(lead.form_id) || '';
-    const isYouth = /youth/i.test(label);
-    const hasEmail = !!lead.email;
-    const mailHref = hasEmail ? this.buildMailHref(lead, label)  : null;
-
-    const ago = (iso) => {
-      if (!iso) return '';
-      const d = new Date(iso);
-      const m = Math.floor((Date.now() - d.getTime()) / 60000);
-      if (m < 1)   return 'just now';
-      if (m < 60)  return `${m}m ago`;
-      const h = Math.floor(m / 60);
-      if (h < 24)  return `${h}h ago`;
-      return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    // Whole-card color coding by lifecycle status (migration 074, with
+    // manual override from migration 075 already folded in server-side).
+    // The user's primary at-a-glance signal is the card itself — we
+    // intentionally do NOT render badges or lifecycle buttons here;
+    // those live in the Edit modal so the card stays scannable.
+    //   new       — green   border + faint green tint
+    //   responded — yellow  border + faint amber tint
+    //   signedup  — blue    border + slightly stronger blue tint (Lighthouse)
+    //   dead      — red     border + faint red tint + 0.55 opacity so dead
+    //               cards recede visually from the active funnel
+    const STATUS_COLORS = {
+      new:       { border: '#16a34a', tint: 'rgba(22, 163, 74, 0.10)', opacity: '1'    },
+      responded: { border: '#eab308', tint: 'rgba(234, 179, 8, 0.10)', opacity: '1'    },
+      signedup:  { border: '#2563eb', tint: 'rgba(37, 99, 235, 0.16)', opacity: '1'    },
+      dead:      { border: '#dc2626', tint: 'rgba(220, 38, 38, 0.08)', opacity: '0.55' },
     };
+    const c = STATUS_COLORS[lead.status] || STATUS_COLORS.new;
 
-    // Email-clicked badge.  email_count + last_email_at are joined
-    // into the lead row by /api/leads (LEFT JOIN on lead_contacts) so
-    // we don't need a second contact-stats round-trip.  Bumped
-    // optimistically when the coach clicks the Email button (see
-    // onContactClick) so the badge appears instantly.  Yellow because
-    // "responded to" is the yellow lifecycle state in our color scheme.
-    const emailCount  = Number(lead.email_count || 0);
-    const lastEmailAt = lead.last_email_at || null;
-    const emailBadge  = emailCount
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#451a03; color:#fbbf24;">✉ Emailed ${ago(lastEmailAt)}${emailCount > 1 ? ` ×${emailCount}` : ''}</span>`
-      : '';
-
-    // Lifecycle badges (server-computed lead.status, migration 074).
-    //   new       → 🟢 green  "New"
-    //   signedup  → 🔵 blue   "✓ Signed up [date]"  (Lighthouse primary)
-    //   dead      → 🔴 red    "✖ Dead [date]"
-    //   responded → (no extra badge; the yellow Emailed badge carries
-    //                the signal, plus the stale sub-marker below)
-    // Server enforces mutual exclusion so at most one of new/signedup/
-    // dead can render.
-    const status       = lead.status || '';
-    const convertedAt  = lead.converted_at || null;
-    const deadAt       = lead.dead_at || null;
-    const newBadge = status === 'new'
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#14532d; color:#86efac;">🟢 New</span>`
-      : '';
-    const convertBadge = convertedAt && status !== 'dead'
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e3a8a; color:#93c5fd;">✓ Signed up ${ago(convertedAt)}${lead.converted_source && lead.converted_source !== 'manual' ? ` · ${lead.converted_source}` : ''}</span>`
-      : '';
-    const deadBadge = deadAt
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#450a0a; color:#fca5a5;">✖ Dead ${ago(deadAt)}</span>`
-      : '';
-    // Stale sub-marker inside Responded — fired when the last email
-    // is > 3 days old (server-computed needs_followup, which already
-    // excludes converted + dead leads).
-    const followupBadge = (status === 'responded' && lead.needs_followup)
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#7c2d12; color:#fed7aa;">⚠ Stale</span>`
-      : '';
-    const badges = [newBadge, convertBadge, deadBadge, emailBadge, followupBadge].filter(Boolean);
-
+    // Action buttons share the same flex-1 strip styling.  Email + Text
+    // are class="contact-btn" so onContactClick logs the touch and (for
+    // email only) writes rich HTML to the clipboard before opening Gmail.
+    // Edit is its own class — opens the override / lifecycle modal.
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
 
     const emailBtn = hasEmail ? `
@@ -982,66 +941,24 @@ class LeadsScreen extends Screen {
          target="_blank" rel="noopener noreferrer"
          data-lead-id="${lead.id}" data-channel="email"
          style="${btnStyle} background:#3b82f6; color:#fff;">✉ Email</a>` : '';
-    const saveKind = isYouth ? 'youth-pair' : 'self';
-    const saveLabel = isYouth ? '📇 Save (2)' : '📇 Save';
-    const saveBtn = `
-      <a href="javascript:void(0)" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="vcard" data-kind="${saveKind}"
-         style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">${saveLabel}</a>`;
-
-    // Mark-signed-up / undo button.  Wired in renderLeads to
-    // .convert-btn → onConvertClick.  data-action toggles between
-    // 'mark' (POST) and 'unmark' (DELETE).
-    const convertBtn = convertedAt
-      ? `
-      <a href="javascript:void(0)" class="convert-btn"
-         data-lead-id="${lead.id}" data-action="unmark"
-         style="${btnStyle} background:#374151; color:#93c5fd;" title="Clear signed-up flag">↩ Undo</a>`
-      : `
-      <a href="javascript:void(0)" class="convert-btn"
-         data-lead-id="${lead.id}" data-action="mark"
-         style="${btnStyle} background:#15803d; color:#fff;" title="Mark this lead as signed up">✓ Signed up</a>`;
-
-    // Mark-dead / undo button.  Mirrors the convert button pattern but
-    // skips the confirm() prompt — the dead lead stays visible in the
-    // All + Dead tabs, so a misclick is one click to undo.  Wired in
-    // renderLeads to .dead-btn → onDeadClick.
-    const deadBtn = deadAt
-      ? `
-      <a href="javascript:void(0)" class="dead-btn"
-         data-lead-id="${lead.id}" data-action="unmark"
-         style="${btnStyle} background:#374151; color:#fca5a5;" title="Revive this lead">↩ Revive</a>`
-      : `
-      <a href="javascript:void(0)" class="dead-btn"
-         data-lead-id="${lead.id}" data-action="mark"
-         style="${btnStyle} background:#7f1d1d; color:#fff;" title="Mark this lead as dead (closed-lost)">✖ Dead</a>`;
-
-    // Snippet chips were previously rendered here for SMS quick-replies
-    // (Register/Pickup/Schedule/etc).  Removed from the card UI on
-    // 2026-06-13 to keep leads workflow email-only.  messageSnippets()
-    // itself is still defined below — left in place for potential reuse
-    // (templates panel, future re-enable, or as a source for email
-    // quick-reply templates).
-
-    // Converted leads get a subtle green left accent + slight dim so the
-    // pipeline view stays at-a-glance scannable.
-    const cardBorder = convertedAt
-      ? 'border-left: 3px solid #15803d;'
-      : (lead.needs_followup ? 'border-left: 3px solid #d97706;' : '');
-    const cardOpacity = convertedAt ? 'opacity: 0.78;' : '';
+    const textBtn = hasPhone ? `
+      <a href="${smsHref}" class="contact-btn"
+         data-lead-id="${lead.id}" data-channel="text"
+         style="${btnStyle} background:#16a34a; color:#fff;">💬 Text</a>` : '';
+    const editBtn = `
+      <a href="javascript:void(0)" class="edit-btn"
+         data-lead-id="${lead.id}"
+         style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">✏️ Edit</a>`;
 
     return `
-      <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3); ${cardBorder} ${cardOpacity}">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-1);">
-          <strong style="font-size:0.9rem;">${lead.name || '(no name)'}</strong>
-          <span style="font-size:0.75rem; opacity:0.5; white-space:nowrap; margin-left:var(--space-2);">${date}</span>
-        </div>
-        ${lead.email ? `<div style="font-size:0.85rem;">${lead.email}</div>` : ''}
-        ${lead.phone ? `<div style="font-size:1rem; font-weight:600; opacity:0.95; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
-        ${location ? `<div style="font-size:0.85rem; opacity:0.85;">📍 ${location}</div>` : ''}
-        ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
-        ${badges.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${saveBtn}${convertBtn}${deadBtn}</div>
+      <div class="lead-card" data-lead-id="${lead.id}"
+           style="background:linear-gradient(90deg, ${c.tint} 0%, var(--bg-secondary) 65%);
+                  border-radius:var(--radius-lg); padding:var(--space-3);
+                  border-left:6px solid ${c.border}; opacity:${c.opacity};">
+        <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
+        ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
+        ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${editBtn}</div>
       </div>
     `;
   }
@@ -2166,6 +2083,275 @@ class LeadsScreen extends Screen {
     } catch (err) {
       btn.dataset.busy = '0';
       btn.textContent = origText;
+      alert(`Failed to ${action === 'mark' ? 'mark dead' : 'revive'}: ${err.message}`);
+    }
+  }
+
+  // ─── Lead edit modal ─────────────────────────────────────────────
+  // The card render intentionally only shows essentials (name / phone
+  // / email / Email / Text / Edit).  All lifecycle actions, color
+  // overrides, vCard download, and richer metadata live in this
+  // modal so the card itself stays scannable.  Whole-card color is
+  // the primary at-a-glance signal; this modal is the back-channel
+  // for forcing or correcting that color.
+
+  // Patch this._leads in place with the freshest server payload.
+  // Used by every modal action so the underlying card re-renders
+  // immediately with the new status / color / timestamps.
+  _patchLead(refreshed) {
+    if (!refreshed || !Array.isArray(this._leads)) return;
+    const idx = this._leads.findIndex(l => String(l.id) === String(refreshed.id));
+    if (idx >= 0) this._leads[idx] = refreshed;
+  }
+
+  openEditModal(leadId) {
+    const lead = (this._leads || []).find(l => String(l.id) === String(leadId));
+    if (!lead) return;
+
+    // Tear down any prior modal so re-opening on a different lead
+    // doesn't stack overlays.
+    document.getElementById('lead-edit-modal')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'lead-edit-modal';
+    overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; padding:var(--space-3);';
+
+    overlay.innerHTML = `
+      <div id="lead-edit-modal-panel"
+           style="background:var(--bg-secondary); border-radius:var(--radius-lg);
+                  padding:var(--space-3); max-width:480px; width:100%;
+                  max-height:90vh; overflow-y:auto; color:var(--text-primary);
+                  box-shadow:0 20px 50px rgba(0,0,0,0.4);">
+        <div id="lead-edit-modal-body">${this.renderEditModalBody(lead)}</div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Backdrop click closes; clicks inside the panel are swallowed by
+    // the target check so they don't propagate as close.
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    this.wireEditModal(leadId);
+  }
+
+  renderEditModalBody(lead) {
+    const label       = this.formLabel(lead.form_id) || '';
+    const override    = lead.status_override || null;
+    const convertedAt = lead.converted_at || null;
+    const deadAt      = lead.dead_at || null;
+
+    const fmtDate = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    };
+    const fmtDateTime = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    };
+    const ago = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const m = Math.floor((Date.now() - d.getTime()) / 60000);
+      if (m < 1)  return 'just now';
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}h ago`;
+      return fmtDate(iso);
+    };
+
+    // Same palette as the card so the swatch the coach picks matches
+    // exactly what the card flips to.
+    const SWATCHES = [
+      { id: 'new',       color: '#16a34a', label: 'New'       },
+      { id: 'responded', color: '#eab308', label: 'Responded' },
+      { id: 'signedup',  color: '#2563eb', label: 'Signed up' },
+      { id: 'dead',      color: '#dc2626', label: 'Dead'      },
+    ];
+
+    const swatchRow = SWATCHES.map(s => {
+      const isActive = override === s.id;
+      return `<button type="button" class="status-swatch" data-status="${s.id}"
+                title="Force color: ${s.label}"
+                style="width:38px; height:38px; border-radius:50%; cursor:pointer; background:${s.color}; padding:0;
+                       border:${isActive ? '3px solid #fff' : '2px solid rgba(255,255,255,0.20)'};
+                       box-shadow:${isActive ? '0 0 0 2px rgba(255,255,255,0.35)' : 'none'};"></button>`;
+    }).join('');
+
+    const autoActive = (override === null || override === undefined);
+    const autoBtn = `<button type="button" class="status-swatch" data-status=""
+        title="Auto (clear override — follow lifecycle)"
+        style="height:38px; padding:0 14px; border-radius:19px; cursor:pointer; font-size:0.8rem;
+               background:${autoActive ? '#374151' : 'transparent'}; color:var(--text-primary);
+               border:${autoActive ? '3px solid #fff' : '2px solid rgba(255,255,255,0.20)'};">↺ Auto</button>`;
+
+    const btnStyle = 'padding:8px 14px; font-size:0.85rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;';
+
+    const convertSection = convertedAt
+      ? `
+        <div style="font-size:0.8rem; opacity:0.85;">✓ Signed up ${ago(convertedAt)}${lead.converted_source && lead.converted_source !== 'manual' ? ` · ${lead.converted_source}` : ''}</div>
+        <button type="button" class="modal-convert-btn" data-action="unmark"
+                style="${btnStyle} background:#374151; color:#93c5fd; align-self:flex-start;">↩ Undo signed up</button>`
+      : `<button type="button" class="modal-convert-btn" data-action="mark"
+                style="${btnStyle} background:#15803d; color:#fff; align-self:flex-start;">✓ Mark signed up</button>`;
+
+    const deadSection = deadAt
+      ? `
+        <div style="font-size:0.8rem; opacity:0.85;">✖ Marked dead ${ago(deadAt)}</div>
+        <button type="button" class="modal-dead-btn" data-action="unmark"
+                style="${btnStyle} background:#374151; color:#fca5a5; align-self:flex-start;">↩ Revive</button>`
+      : `<button type="button" class="modal-dead-btn" data-action="mark"
+                style="${btnStyle} background:#7f1d1d; color:#fff; align-self:flex-start;">✖ Mark dead</button>`;
+
+    const emailCount = Number(lead.email_count || 0);
+    const lastEmailedLine = emailCount
+      ? `Emailed ${ago(lead.last_email_at)} (×${emailCount})`
+      : 'Never emailed';
+
+    const isYouth   = /youth/i.test(label);
+    const saveKind  = isYouth ? 'youth-pair' : 'self';
+    const saveLabel = isYouth ? '📇 Save contact (2)' : '📇 Save contact';
+
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-2); margin-bottom:var(--space-3);">
+        <div>
+          <div style="font-size:1.05rem; font-weight:700;">${lead.name || '(no name)'}</div>
+          ${label ? `<div style="font-size:0.78rem; opacity:0.65;">${label}</div>` : ''}
+        </div>
+        <button type="button" id="lead-edit-close"
+                style="background:none; border:none; color:var(--text-primary); cursor:pointer; font-size:1.5rem; line-height:1; padding:0 4px;">×</button>
+      </div>
+
+      <div style="margin-bottom:var(--space-3);">
+        <div style="font-size:0.78rem; opacity:0.7; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em;">Color override</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">${swatchRow}${autoBtn}</div>
+        <div style="font-size:0.72rem; opacity:0.55; margin-top:8px;">
+          ${override ? `Forced to <strong>${override}</strong> — card ignores lifecycle.` : 'Auto — card color follows lifecycle.'}
+        </div>
+      </div>
+
+      <div style="margin-bottom:var(--space-3); display:flex; gap:8px; flex-direction:column;">
+        <div style="font-size:0.78rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.05em;">Lifecycle</div>
+        ${convertSection}
+        ${deadSection}
+      </div>
+
+      <div style="margin-bottom:var(--space-3); font-size:0.82rem; opacity:0.85; line-height:1.6;">
+        <div style="font-size:0.78rem; opacity:0.85; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;">Details</div>
+        ${lead.phone ? `<div>Phone: ${this.formatPhoneNumber(lead.phone)}</div>` : ''}
+        ${lead.email ? `<div>Email: ${lead.email}</div>` : ''}
+        <div>Created: ${fmtDateTime(lead.created_at)}</div>
+        <div>${lastEmailedLine}</div>
+        ${lead.form_id ? `<div>Form: ${lead.form_id}</div>` : ''}
+        ${lead.ad_id  ? `<div>Ad: ${lead.ad_id}</div>` : ''}
+      </div>
+
+      <div>
+        <a href="javascript:void(0)" class="modal-vcard-btn"
+           data-kind="${saveKind}"
+           style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">${saveLabel}</a>
+      </div>
+    `;
+  }
+
+  // Re-attach handlers after every modal body refresh.  Cheap to
+  // re-bind on a single-card panel and keeps the state machine
+  // trivial (one source of truth = this._leads).
+  wireEditModal(leadId) {
+    const overlay = document.getElementById('lead-edit-modal');
+    if (!overlay) return;
+
+    overlay.querySelector('#lead-edit-close')?.addEventListener('click', () => overlay.remove());
+
+    overlay.querySelectorAll('.status-swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.getAttribute('data-status');
+        this.onModalStatusOverride(leadId, v ? v : null);
+      });
+    });
+
+    overlay.querySelector('.modal-convert-btn')?.addEventListener('click', (e) => {
+      this.onModalConvert(leadId, e.currentTarget.getAttribute('data-action'));
+    });
+
+    overlay.querySelector('.modal-dead-btn')?.addEventListener('click', (e) => {
+      this.onModalDead(leadId, e.currentTarget.getAttribute('data-action'));
+    });
+
+    overlay.querySelector('.modal-vcard-btn')?.addEventListener('click', async (e) => {
+      const kind = e.currentTarget.getAttribute('data-kind') || 'self';
+      try {
+        const res = await this.auth.fetch(`/api/leads/${leadId}/vcard?kind=${kind}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const cd = res.headers.get('Content-Disposition') || '';
+        const m  = /filename="([^"]+)"/.exec(cd);
+        const filename = m ? m[1] : `lead-${leadId}.vcf`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (err) {
+        alert(`Failed to download contact: ${err.message}`);
+      }
+    });
+  }
+
+  // Refresh both the underlying card grid and the modal body in
+  // place.  Called by every modal action handler after a successful
+  // server round-trip.
+  _refreshAfterModalAction(leadId, refreshed) {
+    this._patchLead(refreshed);
+    this.renderLeads(this._leads || []);
+    const body = document.getElementById('lead-edit-modal-body');
+    if (body) {
+      body.innerHTML = this.renderEditModalBody(refreshed);
+      this.wireEditModal(leadId);
+    }
+  }
+
+  async onModalStatusOverride(leadId, value) {
+    try {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/status-override`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: value }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this._refreshAfterModalAction(leadId, await res.json());
+    } catch (err) {
+      alert(`Failed to set color override: ${err.message}`);
+    }
+  }
+
+  async onModalConvert(leadId, action) {
+    try {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/mark-converted`, {
+        method: action === 'mark' ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: action === 'mark' ? JSON.stringify({ source: 'manual' }) : undefined,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this._refreshAfterModalAction(leadId, await res.json());
+    } catch (err) {
+      alert(`Failed to ${action === 'mark' ? 'mark signed up' : 'undo'}: ${err.message}`);
+    }
+  }
+
+  async onModalDead(leadId, action) {
+    try {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/mark-dead`, {
+        method: action === 'mark' ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this._refreshAfterModalAction(leadId, await res.json());
+    } catch (err) {
       alert(`Failed to ${action === 'mark' ? 'mark dead' : 'revive'}: ${err.message}`);
     }
   }

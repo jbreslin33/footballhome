@@ -71,6 +71,9 @@ Lead rowToLead(const pqxx::row& row) {
         l.deadAtIso = optStr(row["dead_at"]);
     } catch (const std::exception&) { /* not selected */ }
     try {
+        l.statusOverride = optStr(row["status_override"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
         const auto& f = row["status"];
         if (!f.is_null()) l.status = f.c_str();
     } catch (const std::exception&) { /* not selected */ }
@@ -92,6 +95,7 @@ const char* kSelectListAggregate =
     "       l.converted_note, "
     "       to_char(l.dead_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS dead_at, "
+    "       l.status_override, "
     // Server-side computation: a lead "needs follow-up" iff it's still
     // open (not converted, not dead) AND has been emailed at least once
     // AND the last email is >= 3 days old.  Brand-new untouched leads
@@ -101,15 +105,18 @@ const char* kSelectListAggregate =
     "        AND c.last_email_at IS NOT NULL "
     "        AND c.last_email_at < (NOW() - INTERVAL '3 days') "
     "       ) AS needs_followup, "
-    // Mutually-exclusive lifecycle state.  Dead wins over converted_at
-    // so the row stays in the Dead bucket even if both flags are set
-    // (audit-trail tolerance — the UI never sets both).
-    "       CASE "
+    // Mutually-exclusive lifecycle state.  status_override (migration
+    // 075) wins when set — pure display override that does NOT
+    // mutate the underlying timestamp columns.  Otherwise: dead wins
+    // over converted_at so the row stays in the Dead bucket even if
+    // both flags are set (audit-trail tolerance — the UI never sets
+    // both directly).
+    "       COALESCE(l.status_override, CASE "
     "         WHEN l.dead_at IS NOT NULL      THEN 'dead' "
     "         WHEN l.converted_at IS NOT NULL THEN 'signedup' "
     "         WHEN c.last_email_at IS NOT NULL THEN 'responded' "
     "         ELSE 'new' "
-    "       END AS status "
+    "       END) AS status "
     "  FROM leads l "
     "  LEFT JOIN ( "
     "    SELECT lead_id, "
@@ -223,6 +230,31 @@ std::optional<Lead> Lead::unmarkDead(int leadId) {
         "   SET dead_at = NULL "
         " WHERE id = $1",
         { std::to_string(leadId) });
+    return fetchListRowById(leadId);
+}
+
+// Set / clear the manual display override (migration 075).  Pure
+// display override — leaves converted_at + dead_at untouched.
+std::optional<Lead>
+Lead::setStatusOverride(int leadId,
+                        const std::optional<std::string>& status) {
+    auto db = Database::getInstance();
+    if (status) {
+        // Cap to VARCHAR(16) (controller already validates the value).
+        std::string v = *status;
+        if (v.size() > 16) v.resize(16);
+        db->query(
+            "UPDATE leads "
+            "   SET status_override = $2 "
+            " WHERE id = $1",
+            { std::to_string(leadId), v });
+    } else {
+        db->query(
+            "UPDATE leads "
+            "   SET status_override = NULL "
+            " WHERE id = $1",
+            { std::to_string(leadId) });
+    }
     return fetchListRowById(leadId);
 }
 

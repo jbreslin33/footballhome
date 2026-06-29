@@ -56,11 +56,19 @@ public:
     // both flags in the row (audit trail) but reports as 'dead' first.
     std::optional<std::string> deadAtIso;            // YYYY-MM-DDTHH:MM:SS.sssZ
 
+    // Manual lifecycle override (migration 075).  When non-NULL,
+    // trumps the derived status for display + tab filtering.  Set
+    // from the Edit modal in the Leads admin screen.  Pure display
+    // override — does NOT mutate converted_at / dead_at, so the
+    // LeagueApps sync + audit trail are unaffected.
+    std::optional<std::string> statusOverride;       // 'new'|'responded'|'signedup'|'dead'
+
     // Server-computed lifecycle state, one of:
     //   "new"       — never emailed, not converted, not dead
     //   "responded" — emailed at least once, not converted, not dead
     //   "signedup"  — converted_at IS NOT NULL and not dead
     //   "dead"      — dead_at IS NOT NULL (highest precedence)
+    // statusOverride wins over the derived value when set.
     // Empty when this Lead came from a narrower SELECT (e.g. findById).
     std::string status;
 
@@ -89,6 +97,14 @@ public:
     // DELETE /api/leads/:id/mark-dead — clear dead_at, reviving the
     // lead to its derived (new / responded / signedup) state.
     static std::optional<Lead> unmarkDead(int leadId);
+
+    // POST /api/leads/:id/status-override — set or clear the manual
+    // display override (migration 075).  Pass std::nullopt to clear
+    // (revert to auto-derived).  Returns the refreshed Lead row.
+    // Caller must have already validated the status string against
+    // the allowed set ('new'|'responded'|'signedup'|'dead').
+    static std::optional<Lead> setStatusOverride(int leadId,
+                                                 const std::optional<std::string>& status);
 
     // Upsert one Meta lead-form record into `leads`.  Returns false iff the
     // lead was in the blocklist and skipped.  Throws on DB error.
