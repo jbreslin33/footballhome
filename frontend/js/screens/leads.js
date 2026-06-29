@@ -1461,15 +1461,14 @@ class LeadsScreen extends Screen {
     return {
       sms:
         `Hi {first}, {coachFirst} here — Soccer Director at ` +
-        `Lighthouse 1893. Thanks for reaching out about our ` +
-        `${c.program}. Are you looking to join us this season?`,
+        `Lighthouse 1893. Are you looking to join our ${c.program} ` +
+        `this season?`,
       subject: `Hi from Lighthouse 1893`,
       email:
         `Hi {first},\n\n` +
-        `{coachFirst} here, Soccer Director at Lighthouse 1893. ` +
-        `Thanks for reaching out about our ${c.program}.\n\n` +
-        `Are you looking to join us this season?\n\n` +
-        `Best,\n{coachFirst}\nSoccer Director\nLighthouse 1893 SC\n` +
+        `{coachFirst} here, Soccer Director at Lighthouse 1893.\n\n` +
+        `Are you looking to join our ${c.program} this season?\n\n` +
+        `Thanks,\n{coachFirst}\nSoccer Director\nLighthouse 1893 SC\n` +
         `soccer@lighthouse1893.org`,
     };
   }
