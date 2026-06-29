@@ -36,12 +36,37 @@ public:
     std::string createdAtIso;                  // YYYY-MM-DDTHH:MM:SS.sssZ
     int emailCount = 0;
     std::optional<std::string> lastEmailAtIso;
+    // Most-recent email's `template` value (touch1 / touch2 / touch3 / ...).
+    // NULL when the lead has never been emailed, or when the latest email
+    // was logged before migration 072 (legacy pre-multitouch).
+    std::optional<std::string> lastEmailTemplate;
+
+    // Manual signed-up flag (migration 073).  All three are NULL for an
+    // open lead.  Set together by markConverted() / cleared together by
+    // unmarkConverted().  needsFollowup is a server-computed boolean —
+    // true iff the lead is still open AND was last emailed >= 3 days ago.
+    std::optional<std::string> convertedAtIso;       // YYYY-MM-DDTHH:MM:SS.sssZ
+    std::optional<std::string> convertedSource;      // 'manual' | 'leagueapps' | ...
+    std::optional<std::string> convertedNote;        // free-text
+    bool needsFollowup = false;
 
     // GET /api/leads — DB-only LEFT JOIN aggregate.  Sorted created_at DESC.
     static std::vector<Lead> listAll();
 
     // GET /api/leads/:id/vcard — single-row lookup, no aggregate.
     static std::optional<Lead> findById(int leadId);
+
+    // POST /api/leads/:id/mark-converted — set converted_at = NOW() and
+    // record source + note.  Returns the refreshed Lead row (so the
+    // controller can serialize the same shape /api/leads emits).  Throws
+    // on DB error; returns std::nullopt if the lead id doesn't exist.
+    static std::optional<Lead> markConverted(int leadId,
+                                             const std::string& source,
+                                             const std::optional<std::string>& note);
+
+    // DELETE /api/leads/:id/mark-converted — clear all three converted_*
+    // columns.  Same return contract as markConverted().
+    static std::optional<Lead> unmarkConverted(int leadId);
 
     // Upsert one Meta lead-form record into `leads`.  Returns false iff the
     // lead was in the blocklist and skipped.  Throws on DB error.

@@ -340,10 +340,59 @@ class LeadsScreen extends Screen {
     for (const c of [...hidden]) if (!COLUMNS.includes(c)) hidden.delete(c);
     const visible = COLUMNS.filter(c => !hidden.has(c));
 
-    // Visible lead count (only counts leads in shown columns)
-    const visibleLeadCount = visible.reduce((n, c) => n + grouped[c].length, 0);
+    // ── Status filter (Open / Follow-up due / Converted / All) ────────
+    // Orthogonal to the funnel-column toggles above.  Filters leads
+    // inside each visible column.  Persisted via localStorage.  Default
+    // 'open' so a fresh page load shows the actionable funnel state
+    // without surfacing every converted lead from history.
+    const STATUS_KEY  = 'leads.activeStatus';
+    const STATUS_TABS = [
+      { id: 'open',      label: 'Open',          match: l => !l.converted_at && !l.needs_followup },
+      { id: 'followup',  label: 'Follow-up due', match: l => !l.converted_at &&  l.needs_followup },
+      { id: 'converted', label: 'Converted',     match: l => !!l.converted_at                     },
+      { id: 'all',       label: 'All',           match: () => true                                 },
+    ];
+    let activeStatus;
+    try {
+      activeStatus = localStorage.getItem(STATUS_KEY) || 'open';
+    } catch { activeStatus = 'open'; }
+    if (!STATUS_TABS.some(t => t.id === activeStatus)) activeStatus = 'open';
+    const statusMatch = (STATUS_TABS.find(t => t.id === activeStatus) || STATUS_TABS[0]).match;
+
+    // Status counts are computed across ALL leads (every funnel),
+    // independent of the funnel-column visibility, so the tab badges
+    // are stable as the coach toggles columns.
+    const statusCounts = Object.fromEntries(
+      STATUS_TABS.map(t => [t.id, leads.filter(t.match).length])
+    );
+
+    // Filter each grouped[label] array to only leads that match the
+    // active status tab.  The funnel column still renders even if
+    // empty after filtering (so the layout doesn't jump).
+    const groupedFiltered = {};
+    for (const c of COLUMNS) {
+      groupedFiltered[c] = grouped[c].filter(statusMatch);
+    }
+
+    // Visible lead count = filtered count across visible columns only.
+    const visibleLeadCount = visible.reduce((n, c) => n + groupedFiltered[c].length, 0);
 
     container.innerHTML = `
+      <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);">
+        ${STATUS_TABS.map(t => {
+          const active = t.id === activeStatus;
+          const bg     = active ? '#1e3a5f' : 'var(--bg-secondary)';
+          const fg     = active ? '#dbeafe' : 'inherit';
+          const border = active ? '#3b82f6' : 'transparent';
+          return `
+          <button type="button" class="status-tab" data-status="${t.id}"
+                  style="padding:6px 12px; font-size:0.85rem; font-weight:600; border-radius:999px; cursor:pointer;
+                         background:${bg}; color:${fg}; border:1px solid ${border};">
+            ${t.label}
+            <span style="opacity:0.65; font-weight:500; margin-left:4px;">(${statusCounts[t.id]})</span>
+          </button>`;
+        }).join('')}
+      </div>
       <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Show:</span>
         ${COLUMNS.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No leads yet.</span>` : ''}
@@ -352,26 +401,29 @@ class LeadsScreen extends Screen {
           return `
           <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${color};">
             <input type="checkbox" class="col-toggle" data-col="${label}" ${hidden.has(label) ? '' : 'checked'} style="cursor:pointer;">
-            ${label} <span style="opacity:0.55;">(${grouped[label].length})</span>
+            ${label} <span style="opacity:0.55;">(${groupedFiltered[label].length}${groupedFiltered[label].length !== grouped[label].length ? `/${grouped[label].length}` : ''})</span>
           </label>`;
         }).join('')}
       </div>
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">
         ${visibleLeadCount} of ${leads.length} lead${leads.length !== 1 ? 's' : ''} shown
+        ${activeStatus !== 'all' ? `<span style="opacity:0.7;">— filtered by <strong>${(STATUS_TABS.find(t => t.id === activeStatus) || {}).label}</strong></span>` : ''}
       </p>
       ${COLUMNS.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.6;">No leads yet.</div>
       ` : visible.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All columns hidden — check a box above to show leads.</div>
+      ` : visibleLeadCount === 0 ? `
+        <div style="text-align:center; padding:var(--space-6); opacity:0.5;">No leads in this tab. Try a different status above.</div>
       ` : `
       <div style="display:grid; grid-template-columns:repeat(${visible.length},minmax(220px,1fr)); gap:var(--space-3); align-items:start; overflow-x:auto;">
         ${visible.map(label => {
           const color = FUNNEL_COLORS[label] || DEFAULT_COLOR;
-          const inner = grouped[label].map(l => this.renderLead(l, label)).join('');
+          const inner = groupedFiltered[label].map(l => this.renderLead(l, label)).join('');
           return `
           <div>
             <div style="font-weight:700; font-size:0.85rem; color:#fff; background:${color}; border-radius:var(--radius-sm); padding:var(--space-1) var(--space-2); margin-bottom:var(--space-2); text-align:center;">
-              ${label} <span style="opacity:0.8;">(${grouped[label].length})</span>
+              ${label} <span style="opacity:0.8;">(${groupedFiltered[label].length}${groupedFiltered[label].length !== grouped[label].length ? `/${grouped[label].length}` : ''})</span>
             </div>
             <div style="display:flex; flex-direction:column; gap:var(--space-2);">
               ${inner}
@@ -380,6 +432,15 @@ class LeadsScreen extends Screen {
         `;}).join('')}
       </div>`}
     `;
+
+    // Wire status-tab clicks → persist + re-render from cached data.
+    container.querySelectorAll('.status-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-status');
+        try { localStorage.setItem(STATUS_KEY, id); } catch {}
+        this.renderLeads(this._leads || leads);
+      });
+    });
 
     // Wire checkbox toggles → persist + re-render with cached data
     container.querySelectorAll('.col-toggle').forEach(cb => {
@@ -396,6 +457,12 @@ class LeadsScreen extends Screen {
     // copy snippets live on the Messages screen.
     container.querySelectorAll('.contact-btn').forEach(btn => {
       btn.addEventListener('click', (e) => this.onContactClick(e));
+    });
+
+    // Wire signed-up / undo buttons.  Confirm before clearing so a
+    // misclick doesn't wipe a valid conversion record.
+    container.querySelectorAll('.convert-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => this.onConvertClick(e));
     });
   }
 
@@ -873,6 +940,20 @@ class LeadsScreen extends Screen {
       ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#1e2e4a; color:#60a5fa;">✉ Emailed ${ago(lastEmailAt)}${emailCount > 1 ? ` ×${emailCount}` : ''}</span>`
       : '';
 
+    // Conversion status badges (migration 073 + Lead::markConverted).
+    //   - converted_at → green ✓ Signed up [date]
+    //   - needs_followup → amber ⚠ Follow-up due
+    // Server already enforces mutual exclusion (needs_followup is
+    // forced false when converted_at is non-null).
+    const convertedAt = lead.converted_at || null;
+    const convertBadge = convertedAt
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#14532d; color:#86efac;">✓ Signed up ${ago(convertedAt)}${lead.converted_source && lead.converted_source !== 'manual' ? ` · ${lead.converted_source}` : ''}</span>`
+      : '';
+    const followupBadge = (!convertedAt && lead.needs_followup)
+      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#451a03; color:#fbbf24;">⚠ Follow-up due</span>`
+      : '';
+    const badges = [convertBadge, emailBadge, followupBadge].filter(Boolean);
+
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
 
     const emailBtn = hasEmail ? `
@@ -887,6 +968,19 @@ class LeadsScreen extends Screen {
          data-lead-id="${lead.id}" data-channel="vcard" data-kind="${saveKind}"
          style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">${saveLabel}</a>`;
 
+    // Mark-signed-up / undo button.  Wired in renderLeads to
+    // .convert-btn → onConvertClick.  data-action toggles between
+    // 'mark' (POST) and 'unmark' (DELETE).
+    const convertBtn = convertedAt
+      ? `
+      <a href="javascript:void(0)" class="convert-btn"
+         data-lead-id="${lead.id}" data-action="unmark"
+         style="${btnStyle} background:#374151; color:#fbbf24;" title="Clear signed-up flag">↩ Undo</a>`
+      : `
+      <a href="javascript:void(0)" class="convert-btn"
+         data-lead-id="${lead.id}" data-action="mark"
+         style="${btnStyle} background:#15803d; color:#fff;" title="Mark this lead as signed up">✓ Signed up</a>`;
+
     // Snippet chips were previously rendered here for SMS quick-replies
     // (Register/Pickup/Schedule/etc).  Removed from the card UI on
     // 2026-06-13 to keep leads workflow email-only.  messageSnippets()
@@ -894,9 +988,15 @@ class LeadsScreen extends Screen {
     // (templates panel, future re-enable, or as a source for email
     // quick-reply templates).
 
+    // Converted leads get a subtle green left accent + slight dim so the
+    // pipeline view stays at-a-glance scannable.
+    const cardBorder = convertedAt
+      ? 'border-left: 3px solid #15803d;'
+      : (lead.needs_followup ? 'border-left: 3px solid #d97706;' : '');
+    const cardOpacity = convertedAt ? 'opacity: 0.78;' : '';
 
     return `
-      <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3);">
+      <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); padding:var(--space-3); ${cardBorder} ${cardOpacity}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-1);">
           <strong style="font-size:0.9rem;">${lead.name || '(no name)'}</strong>
           <span style="font-size:0.75rem; opacity:0.5; white-space:nowrap; margin-left:var(--space-2);">${date}</span>
@@ -905,8 +1005,8 @@ class LeadsScreen extends Screen {
         ${lead.phone ? `<div style="font-size:1rem; font-weight:600; opacity:0.95; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${location ? `<div style="font-size:0.85rem; opacity:0.85;">📍 ${location}</div>` : ''}
         ${extras.length ? `<div style="font-size:0.8rem; margin-top:var(--space-1); opacity:0.8;">${extras.join(' · ')}</div>` : ''}
-        ${emailBadge ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${emailBadge}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px;">${emailBtn}${saveBtn}</div>
+        ${badges.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>` : ''}
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${saveBtn}${convertBtn}</div>
       </div>
     `;
   }
@@ -1948,6 +2048,58 @@ class LeadsScreen extends Screen {
       body:     body,
     });
     return `https://mail.google.com/mail/?${params.toString()}`;
+  }
+
+  // Mark-signed-up / undo handler.  POSTs (or DELETEs) to
+  // /api/leads/:id/mark-converted, then patches the in-memory lead
+  // array with the refreshed row and re-renders so the card moves
+  // between tabs without a full reload.
+  async onConvertClick(e) {
+    const btn    = e.currentTarget;
+    const leadId = btn.getAttribute('data-lead-id');
+    const action = btn.getAttribute('data-action');  // 'mark' | 'unmark'
+    if (!leadId || !action) return;
+
+    // Guard against double-clicks while the request is in flight.
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    const origText = btn.textContent;
+    btn.textContent = '…';
+
+    try {
+      let res;
+      if (action === 'mark') {
+        res = await this.auth.fetch(`/api/leads/${leadId}/mark-converted`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: 'manual' }),
+        });
+      } else {
+        // Undo — confirm so a stray tap doesn't wipe a real conversion.
+        if (!confirm('Clear the signed-up flag on this lead?')) {
+          btn.dataset.busy = '0';
+          btn.textContent = origText;
+          return;
+        }
+        res = await this.auth.fetch(`/api/leads/${leadId}/mark-converted`, {
+          method: 'DELETE',
+        });
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const refreshed = await res.json();
+
+      // Patch the cached array in place so re-render picks up the
+      // new converted_at / needs_followup state without another GET.
+      if (Array.isArray(this._leads)) {
+        const idx = this._leads.findIndex(l => String(l.id) === String(leadId));
+        if (idx >= 0) this._leads[idx] = refreshed;
+      }
+      this.renderLeads(this._leads || []);
+    } catch (err) {
+      btn.dataset.busy = '0';
+      btn.textContent = origText;
+      alert(`Failed to ${action === 'mark' ? 'mark signed up' : 'undo'}: ${err.message}`);
+    }
   }
 
   async onContactClick(e) {

@@ -78,6 +78,11 @@ std::string serializeLead(const Lead& l) {
       << ",\"created_at\":"        << jsonStr(l.createdAtIso)
       << ",\"email_count\":"       << jsonInt(l.emailCount)
       << ",\"last_email_at\":"     << jsonOrNull(l.lastEmailAtIso)
+      << ",\"last_email_template\":" << jsonOrNull(l.lastEmailTemplate)
+      << ",\"converted_at\":"      << jsonOrNull(l.convertedAtIso)
+      << ",\"converted_source\":"  << jsonOrNull(l.convertedSource)
+      << ",\"converted_note\":"    << jsonOrNull(l.convertedNote)
+      << ",\"needs_followup\":"    << jsonBool(l.needsFollowup)
       << "}";
     return o.str();
 }
@@ -257,13 +262,15 @@ std::string isoFromMs(long long ms) {
 
 void LeadsController::registerRoutes(Router& router, const std::string& prefix) {
     // Bare list (no trailing slash, no suffix).
-    router.get (prefix,                       [this](const Request& r){ return handleList         (r); });
-    router.post(prefix + "/sync",             [this](const Request& r){ return handleSync         (r); });
-    router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats (r); });
-    router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup   (r); });
+    router.get (prefix,                       [this](const Request& r){ return handleList            (r); });
+    router.post(prefix + "/sync",             [this](const Request& r){ return handleSync            (r); });
+    router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
+    router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
     // `:id` routes go last so the literal suffixes above win.
-    router.post(prefix + "/:id/contact",      [this](const Request& r){ return handleLogContact   (r); });
-    router.get (prefix + "/:id/vcard",        [this](const Request& r){ return handleVcard        (r); });
+    router.post(prefix + "/:id/contact",        [this](const Request& r){ return handleLogContact     (r); });
+    router.get (prefix + "/:id/vcard",          [this](const Request& r){ return handleVcard          (r); });
+    router.post(prefix + "/:id/mark-converted", [this](const Request& r){ return handleMarkConverted  (r); });
+    router.del (prefix + "/:id/mark-converted", [this](const Request& r){ return handleUnmarkConverted(r); });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -343,6 +350,7 @@ Response LeadsController::handleLogContact(const Request& request) {
     std::string channel;
     std::optional<std::string> messageBody;
     std::optional<std::string> status;
+    std::optional<std::string> templateId;
     try {
         auto body = json::parse(request.getBody());
         if (body.contains("channel") && body["channel"].is_string())
@@ -351,6 +359,10 @@ Response LeadsController::handleLogContact(const Request& request) {
             messageBody = body["message_body"].get<std::string>();
         if (body.contains("status") && body["status"].is_string())
             status = body["status"].get<std::string>();
+        if (body.contains("template") && body["template"].is_string()) {
+            auto t = body["template"].get<std::string>();
+            if (!t.empty()) templateId = t;
+        }
     } catch (const std::exception&) {
         // Node treats unparseable body as missing channel → 400 below.
     }
@@ -363,7 +375,7 @@ Response LeadsController::handleLogContact(const Request& request) {
 
     try {
         auto userId = extractUserIdJwt(request);
-        auto row = LeadContact::insert(leadId, channel, userId, messageBody, status);
+        auto row = LeadContact::insert(leadId, channel, userId, messageBody, status, templateId);
 
         std::ostringstream b;
         b << "{\"id\":"      << jsonInt(row.id)
@@ -376,6 +388,70 @@ Response LeadsController::handleLogContact(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error logging contact: " << e.what() << std::endl;
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to log contact");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/leads/:id/mark-converted   body: {source?, note?}
+// DELETE /api/leads/:id/mark-converted
+//
+// Manual signed-up flag.  Body fields are optional; if omitted, `source`
+// defaults to "manual" and `note` is left NULL.  Returns the refreshed
+// lead row (same JSON shape as /api/leads).
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleMarkConverted(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+
+    std::string source = "manual";
+    std::optional<std::string> note;
+    try {
+        auto body = json::parse(request.getBody());
+        if (body.contains("source") && body["source"].is_string()) {
+            auto s = body["source"].get<std::string>();
+            if (!s.empty()) source = s;
+        }
+        if (body.contains("note") && body["note"].is_string()) {
+            auto n = body["note"].get<std::string>();
+            if (!n.empty()) note = n;
+        }
+    } catch (const std::exception&) {
+        // Empty / unparseable body is fine — treat as defaults.
+    }
+
+    // Cap source length to the column's VARCHAR(16) so a typo in the
+    // client can't push us into a database error.
+    if (source.size() > 16) source.resize(16);
+
+    try {
+        auto refreshed = Lead::markConverted(leadId, source, note);
+        if (!refreshed) return errJson(HttpStatus::NOT_FOUND, "Lead not found");
+        return errOk(HttpStatus::OK, serializeLead(*refreshed));
+    } catch (const std::exception& e) {
+        std::cerr << "Error marking lead converted: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to mark converted");
+    }
+}
+
+Response LeadsController::handleUnmarkConverted(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+
+    try {
+        auto refreshed = Lead::unmarkConverted(leadId);
+        if (!refreshed) return errJson(HttpStatus::NOT_FOUND, "Lead not found");
+        return errOk(HttpStatus::OK, serializeLead(*refreshed));
+    } catch (const std::exception& e) {
+        std::cerr << "Error unmarking lead converted: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to unmark converted");
     }
 }
 
@@ -588,8 +664,8 @@ LeadsController::extractUserIdJwt(const Request& request) {
 }
 
 bool LeadsController::extractLeadId(const std::string& path, int& leadId) {
-    // /api/leads/<id>/contact   or   /api/leads/<id>/vcard
-    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard))");
+    // /api/leads/<id>/contact | /vcard | /mark-converted
+    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard|mark-converted))");
     std::smatch m;
     if (!std::regex_search(path, m, re)) return false;
     try { leadId = std::stoi(m[1].str()); }

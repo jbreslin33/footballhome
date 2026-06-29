@@ -15,7 +15,8 @@ LeadContact::Row LeadContact::insert(int leadId,
                                       const std::string& channel,
                                       std::optional<int>         contactedBy,
                                       std::optional<std::string> messageBody,
-                                      std::optional<std::string> status) {
+                                      std::optional<std::string> status,
+                                      std::optional<std::string> templateId) {
     auto db = Database::getInstance();
 
     // sent_at is `timestamp without time zone` defaulted to CURRENT_TIMESTAMP
@@ -25,9 +26,9 @@ LeadContact::Row LeadContact::insert(int leadId,
     // the format.
     auto rs = db->query(
         "INSERT INTO lead_contacts (lead_id, channel, contacted_by, "
-        "                           message_body, status) "
+        "                           message_body, status, template) "
         "VALUES ($1::int, $2, NULLIF($3, '')::int, NULLIF($4, ''), "
-        "        COALESCE(NULLIF($5, ''), 'sent')) "
+        "        COALESCE(NULLIF($5, ''), 'sent'), NULLIF($6, '')) "
         "RETURNING id, lead_id, channel, "
         "          to_char(sent_at AT TIME ZONE 'UTC', "
         "                  'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS sent_at, "
@@ -38,6 +39,7 @@ LeadContact::Row LeadContact::insert(int leadId,
             contactedBy.has_value() ? std::to_string(*contactedBy) : std::string{},
             messageBody.value_or(std::string{}),
             status.value_or(std::string{}),
+            templateId.value_or(std::string{}),
         });
 
     Row r;

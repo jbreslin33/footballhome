@@ -49,6 +49,24 @@ Lead rowToLead(const pqxx::row& row) {
     try {
         l.lastEmailAtIso = optStr(row["last_email_at"]);
     } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.lastEmailTemplate = optStr(row["last_email_template"]);
+    } catch (const std::exception&) { /* not selected */ }
+    // converted_* + needs_followup are also aggregate-only on the list
+    // query.  findById() omits them, so guard each lookup individually.
+    try {
+        l.convertedAtIso = optStr(row["converted_at"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.convertedSource = optStr(row["converted_source"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.convertedNote = optStr(row["converted_note"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        const auto& f = row["needs_followup"];
+        l.needsFollowup = !f.is_null() && f.as<bool>();
+    } catch (const std::exception&) { /* not selected */ }
     return l;
 }
 
@@ -59,13 +77,31 @@ const char* kSelectListAggregate =
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS created_at, "
     "       COALESCE(c.email_count, 0)::int AS email_count, "
     "       to_char(c.last_email_at AT TIME ZONE 'UTC', "
-    "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_email_at "
+    "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_email_at, "
+    "       c.last_email_template, "
+    "       to_char(l.converted_at AT TIME ZONE 'UTC', "
+    "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS converted_at, "
+    "       l.converted_source, "
+    "       l.converted_note, "
+    // Server-side computation: a lead "needs follow-up" iff it's still
+    // open AND has been emailed at least once AND the last email is
+    // >= 3 days old.  Brand-new untouched leads stay in the Open tab.
+    "       (l.converted_at IS NULL "
+    "        AND c.last_email_at IS NOT NULL "
+    "        AND c.last_email_at < (NOW() - INTERVAL '3 days') "
+    "       ) AS needs_followup "
     "  FROM leads l "
     "  LEFT JOIN ( "
     "    SELECT lead_id, "
-    "           COUNT(*) FILTER (WHERE channel='email')    AS email_count, "
-    "           MAX(sent_at) FILTER (WHERE channel='email') AS last_email_at "
+    "           COUNT(*)     AS email_count, "
+    "           MAX(sent_at) AS last_email_at, "
+    // `(array_agg(... ORDER BY sent_at DESC))[1]` returns the template
+    // string from the most-recent email row in a single aggregate scan.
+    // Cheaper than a correlated subquery + leverages the new partial
+    // index from migration 072.
+    "           (array_agg(template ORDER BY sent_at DESC))[1] AS last_email_template "
     "      FROM lead_contacts "
+    "     WHERE channel='email' "
     "     GROUP BY lead_id "
     "  ) c ON c.lead_id = l.id "
     " ORDER BY l.created_at DESC";
@@ -94,6 +130,58 @@ std::optional<Lead> Lead::findById(int leadId) {
     auto rs = db->query(kSelectById, { std::to_string(leadId) });
     if (rs.empty()) return std::nullopt;
     return rowToLead(rs[0]);
+}
+
+// Re-fetch a single lead through the list aggregate so the JSON shape
+// matches what /api/leads emits (includes email_count, last_email_*,
+// converted_*, needs_followup).  Used by markConverted / unmarkConverted
+// to return the freshly-updated row.
+static std::optional<Lead> fetchListRowById(int leadId) {
+    auto db = Database::getInstance();
+    // Wrap kSelectListAggregate in an outer SELECT * FROM (...) WHERE id = $1
+    // so we get the same projection + aggregate join without duplicating
+    // the query string in two places.  ORDER BY is harmless on a 1-row
+    // result so we leave it baked into the inner.
+    const std::string sql =
+        std::string("SELECT * FROM (") + kSelectListAggregate +
+        std::string(") AS agg WHERE id = $1");
+    auto rs = db->query(sql, { std::to_string(leadId) });
+    if (rs.empty()) return std::nullopt;
+    return rowToLead(rs[0]);
+}
+
+std::optional<Lead>
+Lead::markConverted(int leadId,
+                    const std::string& source,
+                    const std::optional<std::string>& note) {
+    auto db = Database::getInstance();
+    // Use NOW() (server clock) so the timestamp matches whatever the
+    // sync sidecar will use later — keeps the audit trail consistent
+    // across manual + auto-match paths.
+    db->query(
+        "UPDATE leads "
+        "   SET converted_at     = NOW(), "
+        "       converted_source = NULLIF($2, ''), "
+        "       converted_note   = NULLIF($3, '') "
+        " WHERE id = $1",
+        {
+            std::to_string(leadId),
+            source,
+            note.value_or(std::string{}),
+        });
+    return fetchListRowById(leadId);
+}
+
+std::optional<Lead> Lead::unmarkConverted(int leadId) {
+    auto db = Database::getInstance();
+    db->query(
+        "UPDATE leads "
+        "   SET converted_at = NULL, "
+        "       converted_source = NULL, "
+        "       converted_note = NULL "
+        " WHERE id = $1",
+        { std::to_string(leadId) });
+    return fetchListRowById(leadId);
 }
 
 std::optional<std::string>

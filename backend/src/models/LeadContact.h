@@ -54,11 +54,15 @@ public:
 
     // INSERT a contact row.  `contactedBy` is allowed to be null when the
     // caller couldn't decode the JWT bearer (matches Node behavior).
+    // `templateId` is the multi-touch sequence identifier (touch1 / touch2
+    // / touch3 / ...) added in migration 072 — pass std::nullopt to leave
+    // it NULL (legacy / untemplated send).
     static Row insert(int leadId,
                       const std::string& channel,
                       std::optional<int>          contactedBy,
                       std::optional<std::string>  messageBody,
-                      std::optional<std::string>  status);
+                      std::optional<std::string>  status,
+                      std::optional<std::string>  templateId = std::nullopt);
 
     static Stats fetchStats();
 };
