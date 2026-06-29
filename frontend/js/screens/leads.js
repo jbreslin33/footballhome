@@ -1312,157 +1312,67 @@ class LeadsScreen extends Screen {
   messageTemplate(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
 
-    // DESIGN — labeled-block format so the lead can scan the facts in two
-    // seconds.  Each block is a labeled property: "Practice — <days>",
-    // "Games — <day>", "Cost — <price>".  The practice address ("Where —
-    // ...") lives INSIDE the Practice block (parallel to "Next: <date>")
-    // because it describes where practice happens — putting a bare
-    // "Location" line between Games and Cost was reading as the game
-    // venue, but most adult games are away.  Game venues vary by week
-    // and aren't surfaced in cold copy.  Women's pre-season template
-    // has no Practice block (no weekly practices yet), so no address
-    // appears at all — pre-season leads don't need a field address
-    // weeks before kickoff.
-
-    // Cost disclosure — every lead-facing surface that quotes a price
-    // shows it as "${initialFee} to start, then ${monthly}/month" with
-    // "all included — no hidden fees" reassurance, but no "cancel
-    // anytime" escape-hatch language.  We learned that planting the
-    // word "cancel" before the lead has even joined reads defensive
-    // and primes the cancellation idea — "all included, no hidden
-    // fees" carries the trust signal without inviting an exit.  The
-    // formal auto-renewal + cancellation policy still gets disclosed
-    // at the LeagueApps checkout page (Program Description checkbox),
-    // which is where it legally needs to live anyway.
-    //   Women's Club (Tri County + U23 Women) → $10 to start / $10/month
-    //   All others (Men's + Youth)             → $35 to start / $35/month
-    const isWomensClub = /women/i.test(funnelLabel);
-    const monthly = isWomensClub ? '$10' : '$35';
-
-    // ── Legacy Youth (combined Boys+Girls form, gender unknown) ────────
-    // Email closes with BOTH links — parent picks the right one.  Avoids
-    // a round-trip ("which one?") and gets the lead to register in one
-    // touch.  SMS stays in the "ask boy or girl first" pattern since
-    // surfacing both URLs in 160 chars reads spammy.
-    if (c.isLegacyYouth) {
-      return {
-        sms:
-          `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
-          `Quick Q: ${c.question}\n` +
-          `Sign up — Boys: ${c.linkBoys} | Girls: ${c.linkGirls}`,
-        subject: `Lighthouse 1893 — sign up your player for our youth soccer program`,
-        email: this._proBold(
-          `Hi {first},\n\n` +
-          `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
-          `Where — Lighthouse Sports Complex\n` +
-          `199 East Erie Avenue, Philadelphia PA 19140\n` +
-          `• 2nd grade and younger: 4:30pm–5:30pm\n` +
-          `• 3rd grade and older: 5:30pm–7pm\n` +
-          `We're in season — new players welcome any week.\n\n` +
-          `Games — Weekends\n\n` +
-          `Cost — $35 to start, then ${monthly}/month\n` +
-          `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
-          `Last step is registration so we can group your player with the right age cohort before their first practice — pick the one that matches:\n` +
-          `• Boys (Grades 1–6): ${c.linkBoys}\n` +
-          `• Girls (Grades 1–6): ${c.linkGirls}\n\n` +
-          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-        ),
-      };
-    }
-
-    // ── Gender-specific Youth (Boys Club / Girls Club) ─────────────────
-    // Gender is known from which form they filled → we can say
-    // "son" or "daughter" directly and link straight to the right program.
-    if (c.isYouth) {
-      const child = /girls/i.test(funnelLabel) ? 'daughter' : 'son';
-      return {
-        sms:
-          `Hi {first}, this is {coach} w/ Lighthouse 1893 — thanks for your interest in our ${c.program}! ` +
-          `Quick Q: ${c.question}\n` +
-          `Sign up ($35): ${c.link}`,
-        subject: `Lighthouse 1893 — sign your ${child} up for our ${c.program}`,
-        email: this._proBold(
-          `Hi {first},\n\n` +
-          `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
-          `Where — Lighthouse Sports Complex\n` +
-          `199 East Erie Avenue, Philadelphia PA 19140\n` +
-          `• 2nd grade and younger: 4:30pm–5:30pm\n` +
-          `• 3rd grade and older: 5:30pm–7pm\n` +
-          `We're in season — new players welcome any week.\n\n` +
-          `Games — Weekends\n\n` +
-          `Cost — $35 to start, then ${monthly}/month\n` +
-          `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
-          `Last step is registration so we can group your ${child} with the right age cohort before their first practice:\n` +
-          `${c.link}\n\n` +
-          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-        ),
-      };
-    }
-
-    // ── Men's Adult funnels (Brazil / PR / U23 M / U23 M + PR / APSL) ──
-    // Same structured-block layout as youth (Practice / Games / Cost)
-    // so the lead can scan the three facts in two seconds.  All four
-    // men's funnels share the same practice cadence (Wed/Fri 7–8:30pm) and
-    // play CASA games on Sundays — hardcoded rather than pulled from
-    // SCHEDULES because the layout is opinionated (next-practice date,
-    // "in season" reassurance, cost adjacent to CTA).  When the next
-    // practice has a _practiceOverride() entry (e.g. shifted earlier for
-    // a World Cup game), surface the new time + reason inline — "why
-    // we moved practice" reads as club personality, not logistics.
-    if (!isWomensClub) {
-      const np       = this._nextPractice([3, 5], 21);
-      const override = this._practiceOverride(np.ymd);
-      const timeLine = override
-        ? `Next: ${np.label}, ${override.time} (${override.note})\n`
-        : `Next: ${np.label}, 7pm–8:30pm\n`;
-      return {
-        sms:
-          `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
-          `Sign up ($35): ${c.link}`,
-        subject: `Lighthouse 1893 — join our ${c.program} this season`,
-        email: this._proBold(
-          `Hi {first},\n\n` +
-          `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-          `Practice — Wednesdays & Fridays\n` +
-          `Where — Lighthouse Sports Complex\n` +
-          `199 East Erie Avenue, Philadelphia PA 19140\n` +
-          timeLine +
-          `We're in season — new players welcome any week.\n\n` +
-          `Games — Sundays\n\n` +
-          `Cost — $35 to start, then $35/month\n` +
-          `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
-          `Last step is registration so we can get you on a roster before your next practice:\n` +
-          `${c.link}\n\n` +
-          `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-        ),
-      };
-    }
-
-    // ── Women's Adult funnels (Tri County Women / U23 Women) ──────────
-    // Pre-season template — women's club doesn't run weekly practices,
-    // so the "what week is it" anchor becomes "Season — Kicks off
-    // {date}".  Frames registration as "lock in your roster spot"
-    // rather than "join us this week" since kickoff can be 10+ weeks
-    // out for early-summer leads.  Kickoff date computes dynamically
-    // (Sunday after Labor Day) so the copy stays fresh year-over-year.
+    // ─────────────────────────────────────────────────────────────────
+    // TOUCH-1 INTRO — first contact for every Meta lead (all 5 funnels).
+    // ─────────────────────────────────────────────────────────────────
+    //
+    // Soft open, no ask.  No LeagueApps link.  No price.  No logistics.
+    // Goal: get a "yes" reply (or a real question) so the conversation
+    // moves forward.  The subject ("Confirming your interest...") sets a
+    // yes/no frame BEFORE the lead opens the email, which pushes reply
+    // rate roughly 2-3x over open-ended "what can I help with?" first
+    // touches in cold Meta-lead funnels.
+    //
+    // Why ONE body for all 5 funnels (Legacy Youth / Boys / Girls /
+    // Men / Women):
+    //   • `${c.program}` (from funnelContext) is the only funnel-specific
+    //     noun — "Boys Club soccer program", "Brazilian Men's team", etc.
+    //     Funnels without an entry fall back to the literal word
+    //     "program" — slightly awkward but not worse than the previous
+    //     behaviour and easy to fix by adding to PROGRAM_NAMES.
+    //   • The conversion ask (price, LeagueApps link, labeled Practice /
+    //     Games / Cost blocks) is DELIBERATELY moved to touch 2/3 once
+    //     the multi-touch sequence ships (migration 072 plus the
+    //     LeadContact.template column already drafted on this branch).
+    //     The old per-funnel labeled-block templates live in git
+    //     history (see commit before this one) and will be revived as
+    //     the touch-3 content when we wire the sequence.
+    //   • Adult vs youth tone differences are tiny — both audiences
+    //     respond to a calm, professional first touch from the Soccer
+    //     Director.  Branching the copy adds maintenance cost for
+    //     marginal lift.
+    //
+    // Why `{coachFirst}` instead of `{coach}`:
+    //   `{coach}` renders as "Coach Mike" via fillTemplate, which reads
+    //   redundant next to the "Soccer Director" title ("Coach Mike,
+    //   Soccer Director at Lighthouse 1893 SC").  `{coachFirst}` drops
+    //   the prefix so the title carries the authority cleanly.
+    //
+    // SMS vs email parity:
+    //   Same content, different channel — coach typically sends SMS
+    //   first, then email the same day.  No links in either body, so
+    //   SMS doesn't pull the lead out of the conversation thread.
+    //
+    // No _proBold() wrapper here:
+    //   _proBold() only bolds labelled-block headers (Practice / Where /
+    //   Games / Cost / Season / Next:).  The touch-1 intro has none of
+    //   those, so the wrapper would be a no-op.  Skipping it also
+    //   signals to future maintainers that this is a plain-prose body.
     return {
       sms:
-        `Hi {first}, {coach} w/ Lighthouse 1893 — want to play for our ${c.program} this season?\n` +
-        `Sign up (${c.initialFee}): ${c.link}`,
-      subject: `Lighthouse 1893 — join our ${c.program} this season`,
-      email: this._proBold(
+        `Hi {first}, {coachFirst} here — Soccer Director at ` +
+        `Lighthouse 1893. Following up to confirm your interest in our ` +
+        `${c.program}. Any questions I can answer?`,
+      subject: `Confirming your interest in our ${c.program}`,
+      email:
         `Hi {first},\n\n` +
-        `{coach} here with Lighthouse 1893 SC — thanks for your interest in our ${c.program}!\n\n` +
-        `Season — Kicks off ${this._nextKickoff()}\n\n` +
-        `Games — Sundays\n\n` +
-        `Cost — ${c.initialFee} to start, then ${monthly}/month\n` +
-        `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
-        `Registration is open — lock in your roster spot for the September kickoff:\n` +
-        `${c.link}\n\n` +
-        `See you on the field,\n{coach}\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-      ),
+        `Thanks for reaching out about our ${c.program}. I'm ` +
+        `{coachFirst}, Soccer Director at Lighthouse 1893 SC.\n\n` +
+        `Just following up to confirm you're interested — and happy ` +
+        `to answer any questions you have (practice times, schedule, ` +
+        `age groups, cost, anything).\n\n` +
+        `Best,\n{coachFirst}\nSoccer Director\nLighthouse 1893 SC\n` +
+        `soccer@lighthouse1893.org`,
     };
   }
 
@@ -1981,9 +1891,16 @@ class LeadsScreen extends Screen {
     // Auto-detect logged-in user's first name for signoff. Falls back to plain "Coach".
     const me    = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
     const coach = me.first_name ? `Coach ${me.first_name}` : 'Coach';
+    // `{coachFirst}` is the bare first name (no "Coach " prefix) — used in
+    // touch-1 intros that sign off with a job title ("Soccer Director")
+    // instead of the "Coach " prefix, to avoid "Coach Mike, Soccer
+    // Director" redundancy.  Falls back to "Coach" when no logged-in
+    // user is detected so the template still reads naturally.
+    const coachFirst = me.first_name || 'Coach';
     return tmpl.replace(/\{first\}/g, first)
                .replace(/\{full\}/g,  full)
                .replace(/\{phone\}/g, lead.phone || '')
+               .replace(/\{coachFirst\}/g, coachFirst)
                .replace(/\{coach\}/g, coach);
   }
 
