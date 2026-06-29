@@ -98,6 +98,50 @@ services:
       timeout: 10s
       retries: 3
 
+  # LeagueApps → leads.converted_at auto-match sidecar.
+  #
+  # Hourly poll of every configured LeagueApps program ID (boys / girls /
+  # mens / membership) — for each active SPOT_RESERVED registrant whose
+  # email also lives in our `leads` table as an open lead, we POST
+  # `/api/leads/:id/mark-converted` with source='leagueapps'.  Manual
+  # signed-up flags always win (the script skips any lead whose
+  # converted_at is already non-NULL).
+  #
+  # The sidecar speaks only to the backend HTTP API — no direct DB
+  # access — so it stays cleanly isolated.  Bearer is presence-only
+  # today; LEADS_SYNC_BEARER is opaque but kept overridable so we can
+  # tighten this later without a code change here.
+  leagueapps-sync:
+    image: python:3.11-slim
+    container_name: footballhome_leagueapps_sync
+    restart: unless-stopped
+    env_file: ./env
+    environment:
+      BACKEND_URL: http://backend:3001
+      LEADS_SYNC_BEARER: leagueapps-sync
+      # Re-run every hour.  Registration export is cheap (one HTTPS call
+      # per program) and pause-friendly — bumping this to 5min during
+      # a registration push is safe.
+      SYNC_INTERVAL_SECONDS: "3600"
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./config:/app/config:ro
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install --quiet --no-cache-dir requests pyjwt cryptography &&
+        echo 'leagueapps-sync ready — interval='$$SYNC_INTERVAL_SECONDS's' &&
+        while true; do
+          python3 scripts/sync-leagueapps-conversions.py 2>&1 || echo 'sync failed (will retry next cycle)';
+          sleep $$SYNC_INTERVAL_SECONDS;
+        done
+      "
+    networks:
+      - footballhome_network
+    depends_on:
+      backend:
+        condition: service_started
+
 
 
 # Named volumes for persistent data
