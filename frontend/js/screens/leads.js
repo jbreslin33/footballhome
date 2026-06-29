@@ -1469,8 +1469,7 @@ class LeadsScreen extends Screen {
         `Thanks for reaching out about our ${c.program}. I'm ` +
         `{coachFirst}, Soccer Director at Lighthouse 1893 SC.\n\n` +
         `Just following up to confirm you're interested — and happy ` +
-        `to answer any questions you have (practice times, schedule, ` +
-        `age groups, cost, anything).\n\n` +
+        `to answer any questions you have.\n\n` +
         `Best,\n{coachFirst}\nSoccer Director\nLighthouse 1893 SC\n` +
         `soccer@lighthouse1893.org`,
     };
