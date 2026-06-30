@@ -345,7 +345,7 @@ class LeadsScreen extends Screen {
     // inside each visible column.  Persisted via localStorage.  Default
     // 'open' so a fresh page load shows the actionable funnel state
     // without surfacing every converted lead from history.
-    const STATUS_KEY  = 'leads.activeStatus';
+    const STATUS_KEY  = 'leads.activeStatus.v2';
     const STATUS_TABS = [
       { id: 'open',      label: 'Open',          match: l => !l.converted_at && !l.needs_followup },
       { id: 'followup',  label: 'Follow-up due', match: l => !l.converted_at &&  l.needs_followup },
@@ -354,9 +354,9 @@ class LeadsScreen extends Screen {
     ];
     let activeStatus;
     try {
-      activeStatus = localStorage.getItem(STATUS_KEY) || 'open';
-    } catch { activeStatus = 'open'; }
-    if (!STATUS_TABS.some(t => t.id === activeStatus)) activeStatus = 'open';
+      activeStatus = localStorage.getItem(STATUS_KEY) || 'all';
+    } catch { activeStatus = 'all'; }
+    if (!STATUS_TABS.some(t => t.id === activeStatus)) activeStatus = 'all';
     const statusMatch = (STATUS_TABS.find(t => t.id === activeStatus) || STATUS_TABS[0]).match;
 
     // Status counts are computed across ALL leads (every funnel),
