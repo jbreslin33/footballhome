@@ -38,7 +38,8 @@ Lead rowToLead(const pqxx::row& row) {
     l.rawFields        = parseJsonb(row["raw_fields"]);
     l.preferredChannel = optStr(row["preferred_channel"]);
     l.createdAtIso     = row["created_at"].is_null() ? std::string{} : row["created_at"].c_str();
-    // email_count / last_email_at are aggregate-only; tolerate their
+    // email_count / last_email_at / text_count / last_text_at are
+    // aggregate-only; tolerate their
     // absence when this row came from findById (single-row select).
     // pqxx::row::column_number() throws on unknown name rather than
     // returning -1, so guard via try/catch.
@@ -47,7 +48,14 @@ Lead rowToLead(const pqxx::row& row) {
         l.emailCount = f.is_null() ? 0 : f.as<int>();
     } catch (const std::exception&) { /* not selected */ }
     try {
+        const auto& f = row["text_count"];
+        l.textCount = f.is_null() ? 0 : f.as<int>();
+    } catch (const std::exception&) { /* not selected */ }
+    try {
         l.lastEmailAtIso = optStr(row["last_email_at"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.lastTextAtIso = optStr(row["last_text_at"]);
     } catch (const std::exception&) { /* not selected */ }
     try {
         l.lastEmailTemplate = optStr(row["last_email_template"]);
@@ -86,8 +94,11 @@ const char* kSelectListAggregate =
     "       to_char(l.created_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS created_at, "
     "       COALESCE(c.email_count, 0)::int AS email_count, "
+    "       COALESCE(c.text_count,  0)::int AS text_count, "
     "       to_char(c.last_email_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_email_at, "
+    "       to_char(c.last_text_at  AT TIME ZONE 'UTC', "
+    "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_text_at, "
     "       c.last_email_template, "
     "       to_char(l.converted_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS converted_at, "
@@ -97,38 +108,41 @@ const char* kSelectListAggregate =
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS dead_at, "
     "       l.status_override, "
     // Server-side computation: a lead "needs follow-up" iff it's still
-    // open (not converted, not dead) AND has been emailed at least once
-    // AND the last email is >= 3 days old.  Brand-new untouched leads
-    // stay in the New state, dead leads stay in the Dead state.
+    // open (not converted, not dead) AND has been touched at least once
+    // on ANY channel (email OR text) AND the last touch is >= 3 days
+    // old.  Brand-new untouched leads stay in the New state, dead
+    // leads stay in the Dead state.
     "       (l.converted_at IS NULL "
     "        AND l.dead_at IS NULL "
-    "        AND c.last_email_at IS NOT NULL "
-    "        AND c.last_email_at < (NOW() - INTERVAL '3 days') "
+    "        AND c.last_contact_at IS NOT NULL "
+    "        AND c.last_contact_at < (NOW() - INTERVAL '3 days') "
     "       ) AS needs_followup, "
     // Mutually-exclusive lifecycle state.  status_override (migration
     // 075) wins when set — pure display override that does NOT
     // mutate the underlying timestamp columns.  Otherwise: dead wins
     // over converted_at so the row stays in the Dead bucket even if
     // both flags are set (audit-trail tolerance — the UI never sets
-    // both directly).
+    // both directly).  'responded' fires the moment ANY channel has
+    // logged a touch (email or text).
     "       COALESCE(l.status_override, CASE "
     "         WHEN l.dead_at IS NOT NULL      THEN 'dead' "
     "         WHEN l.converted_at IS NOT NULL THEN 'signedup' "
-    "         WHEN c.last_email_at IS NOT NULL THEN 'responded' "
+    "         WHEN c.last_contact_at IS NOT NULL THEN 'responded' "
     "         ELSE 'new' "
     "       END) AS status "
     "  FROM leads l "
     "  LEFT JOIN ( "
     "    SELECT lead_id, "
-    "           COUNT(*)     AS email_count, "
-    "           MAX(sent_at) AS last_email_at, "
-    // `(array_agg(... ORDER BY sent_at DESC))[1]` returns the template
-    // string from the most-recent email row in a single aggregate scan.
-    // Cheaper than a correlated subquery + leverages the new partial
-    // index from migration 072.
-    "           (array_agg(template ORDER BY sent_at DESC))[1] AS last_email_template "
+    "           COUNT(*) FILTER (WHERE channel='email')      AS email_count, "
+    "           COUNT(*) FILTER (WHERE channel='text')       AS text_count, "
+    "           MAX(sent_at) FILTER (WHERE channel='email')  AS last_email_at, "
+    "           MAX(sent_at) FILTER (WHERE channel='text')   AS last_text_at, "
+    "           MAX(sent_at)                                  AS last_contact_at, "
+    // `(array_agg(... ORDER BY sent_at DESC) FILTER (...))[1]` pulls the
+    // template string from the most-recent EMAIL row in a single
+    // aggregate scan (text rows don't carry a meaningful template).
+    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='email'))[1] AS last_email_template "
     "      FROM lead_contacts "
-    "     WHERE channel='email' "
     "     GROUP BY lead_id "
     "  ) c ON c.lead_id = l.id "
     " ORDER BY l.created_at DESC";

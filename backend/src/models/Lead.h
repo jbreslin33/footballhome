@@ -35,7 +35,12 @@ public:
     std::optional<std::string> preferredChannel;
     std::string createdAtIso;                  // YYYY-MM-DDTHH:MM:SS.sssZ
     int emailCount = 0;
+    int textCount  = 0;
     std::optional<std::string> lastEmailAtIso;
+    // Most-recent text/SMS touch from lead_contacts (channel='text').
+    // Mirrors lastEmailAtIso for the SMS channel so the leads list
+    // can render an "Emailed" / "Texted" / "Emailed + Texted" label.
+    std::optional<std::string> lastTextAtIso;
     // Most-recent email's `template` value (touch1 / touch2 / touch3 / ...).
     // NULL when the lead has never been emailed, or when the latest email
     // was logged before migration 072 (legacy pre-multitouch).

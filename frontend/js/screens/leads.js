@@ -914,8 +914,8 @@ class LeadsScreen extends Screen {
 
     // Visual status (5 buckets) — combines lifecycle (4-state, migration
     // 074) + manual override (migration 075, COALESCEd server-side) +
-    // staleness derivation (responded leads with no fresh contact in
-    // 3+ days bump from "Contacted" → "Needs recontact").  A manual
+    // staleness derivation (touched leads with no fresh contact in
+    // 3+ days bump from "Emailed/Texted" → "Needs recontact").  A manual
     // override bypasses the stale check so coaches can pin a card.
     //
     // Card carries TWO redundant signals so status reads at a glance:
@@ -923,8 +923,9 @@ class LeadsScreen extends Screen {
     //   2. Small text pill at the top of the card
     //
     //   new             green   "New"
-    //   contacted       yellow  "Contacted"          (responded + fresh)
-    //   needs_recontact orange  "Needs recontact"    (responded + stale)
+    //   contacted       yellow  "Emailed" / "Texted" / "Emailed + Texted"
+    //                            (depending on which channels logged a touch)
+    //   needs_recontact orange  "Needs recontact"    (touched + stale)
     //   signedup        blue    "Signed up"          (Lighthouse blue)
     //   dead            red     "Dead"               + 0.55 opacity
     const baseStatus = lead.status || 'new';
@@ -934,9 +935,18 @@ class LeadsScreen extends Screen {
       ? 'needs_recontact'
       : (baseStatus === 'responded' ? 'contacted' : baseStatus);
 
+    // Channel-specific label for the contacted bucket.  Override + dead
+    // + signedup + new all use the static visualStatus label.
+    const emailedN = Number(lead.email_count || 0);
+    const textedN  = Number(lead.text_count  || 0);
+    let contactedLabel = 'Contacted';
+    if (emailedN && textedN) contactedLabel = 'Emailed + Texted';
+    else if (emailedN)       contactedLabel = 'Emailed';
+    else if (textedN)        contactedLabel = 'Texted';
+
     const STATUS_STYLES = {
       new:             { border: '#16a34a', tint: 'rgba(22, 163, 74, 0.10)', opacity: '1',    label: 'New'             },
-      contacted:       { border: '#eab308', tint: 'rgba(234, 179, 8, 0.10)', opacity: '1',    label: 'Contacted'       },
+      contacted:       { border: '#eab308', tint: 'rgba(234, 179, 8, 0.10)', opacity: '1',    label: contactedLabel    },
       needs_recontact: { border: '#f97316', tint: 'rgba(249, 115, 22, 0.14)', opacity: '1',   label: 'Needs recontact' },
       signedup:        { border: '#2563eb', tint: 'rgba(37, 99, 235, 0.16)', opacity: '1',    label: 'Signed up'       },
       dead:            { border: '#dc2626', tint: 'rgba(220, 38, 38, 0.08)', opacity: '0.55', label: 'Dead'            },
@@ -949,6 +959,38 @@ class LeadsScreen extends Screen {
                    text-transform:uppercase; color:${c.border};">
         <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${c.border};"></span>
         ${c.label}${overridden ? ' (forced)' : ''}
+      </span>`;
+
+    // Inline timestamps on the card so the coach sees both "when did
+    // this lead come in" and "when did we last reach out" without
+    // opening the modal.  Format:  "in 2d · last 4h"  (last omitted
+    // when there's been no contact yet).
+    const agoShort = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const m = Math.floor((Date.now() - d.getTime()) / 60000);
+      if (m < 1)   return 'now';
+      if (m < 60)  return `${m}m`;
+      const h = Math.floor(m / 60);
+      if (h < 24)  return `${h}h`;
+      const dys = Math.floor(h / 24);
+      if (dys < 30) return `${dys}d`;
+      const mo = Math.floor(dys / 30);
+      if (mo < 12)  return `${mo}mo`;
+      return `${Math.floor(mo / 12)}y`;
+    };
+    // Last-contact = whichever channel touched the lead most recently.
+    const lastEmailAt = lead.last_email_at || null;
+    const lastTextAt  = lead.last_text_at  || null;
+    const lastContactAt = (lastEmailAt && lastTextAt)
+      ? (new Date(lastEmailAt) > new Date(lastTextAt) ? lastEmailAt : lastTextAt)
+      : (lastEmailAt || lastTextAt);
+
+    const inAgo   = lead.created_at ? agoShort(lead.created_at) : '';
+    const lastAgo = lastContactAt   ? agoShort(lastContactAt)   : '';
+    const timeStrip = `
+      <span style="font-size:0.7rem; opacity:0.6; font-variant-numeric:tabular-nums;">
+        ${inAgo ? `in ${inAgo}` : ''}${lastAgo ? ` · last ${lastAgo}` : ''}
       </span>`;
 
     // Action buttons share the same flex-1 strip styling.  Email + Text
@@ -976,7 +1018,10 @@ class LeadsScreen extends Screen {
            style="background:linear-gradient(90deg, ${c.tint} 0%, var(--bg-secondary) 65%);
                   border-radius:var(--radius-lg); padding:var(--space-3);
                   border-left:6px solid ${c.border}; opacity:${c.opacity};">
-        <div style="margin-bottom:4px;">${statusPill}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px;">
+          ${statusPill}
+          ${timeStrip}
+        </div>
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
@@ -2251,9 +2296,13 @@ class LeadsScreen extends Screen {
                 style="${btnStyle} background:#7f1d1d; color:#fff; align-self:flex-start;">✖ Mark dead</button>`;
 
     const emailCount = Number(lead.email_count || 0);
+    const textCount  = Number(lead.text_count  || 0);
     const lastEmailedLine = emailCount
       ? `Emailed ${ago(lead.last_email_at)} (×${emailCount})`
       : 'Never emailed';
+    const lastTextedLine = textCount
+      ? `Texted ${ago(lead.last_text_at)} (×${textCount})`
+      : 'Never texted';
 
     const isYouth   = /youth/i.test(label);
     const saveKind  = isYouth ? 'youth-pair' : 'self';
@@ -2289,6 +2338,7 @@ class LeadsScreen extends Screen {
         ${lead.email ? `<div>Email: ${lead.email}</div>` : ''}
         <div>Created: ${fmtDateTime(lead.created_at)}</div>
         <div>${lastEmailedLine}</div>
+        <div>${lastTextedLine}</div>
         ${lead.form_id ? `<div>Form: ${lead.form_id}</div>` : ''}
         ${lead.ad_id  ? `<div>Ad: ${lead.ad_id}</div>` : ''}
       </div>
