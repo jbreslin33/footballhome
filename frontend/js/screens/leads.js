@@ -1881,7 +1881,7 @@ class LeadsScreen extends Screen {
           label: 'ℹ️ More info',
           tier: 'followup',
           body:
-            `Details:\n` +
+            `Here are the details:\n` +
             `\n` +
             `${gameLine}\n` +
             `${practiceLine}\n` +
