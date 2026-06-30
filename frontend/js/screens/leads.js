@@ -2539,13 +2539,27 @@ class LeadsScreen extends Screen {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ channel, message_body: body }),
       });
-      // Optimistically bump the email_count / last_email_at on the
-      // cached lead row + re-render so the "✉ Emailed just now"
-      // badge appears instantly.  /api/leads will return the same
-      // numbers on next load (since the POST above persisted).
-      if (channel === 'email' && lead) {
-        lead.email_count   = Number(lead.email_count || 0) + 1;
-        lead.last_email_at = new Date().toISOString();
+      // Optimistically bump the per-channel count + last-touch timestamp
+      // on the cached lead row + re-render so the status pill flips to
+      // "Emailed" / "Texted" / "Emailed + Texted" instantly (without
+      // waiting for a /api/leads refresh).  The server will return the
+      // same numbers on next load since the POST above persisted.
+      if (lead && (channel === 'email' || channel === 'text')) {
+        const nowIso = new Date().toISOString();
+        if (channel === 'email') {
+          lead.email_count   = Number(lead.email_count || 0) + 1;
+          lead.last_email_at = nowIso;
+        } else {
+          lead.text_count   = Number(lead.text_count || 0) + 1;
+          lead.last_text_at = nowIso;
+        }
+        // Bump status to 'responded' if the lead was 'new' so the pill
+        // flips colors immediately.  (Server-derived status takes over
+        // on next refresh — this just keeps the optimistic render in
+        // sync with the persisted row.)
+        if (lead.status === 'new' && !lead.status_override) {
+          lead.status = 'responded';
+        }
         this.renderLeads(this._leads);
       }
     } catch {}
