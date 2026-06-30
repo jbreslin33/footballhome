@@ -1879,7 +1879,7 @@ class LeadsScreen extends Screen {
             `\n` +
             closeLink(`To register, head here:`) + `\n` +
             `\n` +
-            `Reply with any other questions — happy to help.`,
+            `Reply with any other questions — or if it's easier, happy to hop on a quick call. Just let me know what time works.`,
         };
       })(),
       // Field — answers "where do you play?" with both Lighthouse venues +
@@ -2534,31 +2534,48 @@ class LeadsScreen extends Screen {
         const href = btn.getAttribute('href');
         if (href) window.open(href, '_blank', 'noopener,noreferrer');
       }
-      await this.auth.fetch(`/api/leads/${leadId}/contact`, {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/contact`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ channel, message_body: body }),
       });
-      // Optimistically bump the per-channel count + last-touch timestamp
-      // on the cached lead row + re-render so the status pill flips to
-      // "Emailed" / "Texted" / "Emailed + Texted" instantly (without
-      // waiting for a /api/leads refresh).  The server will return the
-      // same numbers on next load since the POST above persisted.
-      if (lead && (channel === 'email' || channel === 'text')) {
-        const nowIso = new Date().toISOString();
-        if (channel === 'email') {
-          lead.email_count   = Number(lead.email_count || 0) + 1;
-          lead.last_email_at = nowIso;
-        } else {
-          lead.text_count   = Number(lead.text_count || 0) + 1;
-          lead.last_text_at = nowIso;
+      // Server fans the contact out to every lead sharing the same
+      // email (for channel='email') or phone (for channel='text'),
+      // returning the list of affected lead IDs in
+      // `affected_lead_ids`.  Patch each cached lead row so all
+      // duplicate cards flip together — coach sees consistent state
+      // across funnels for the same person.  Falls back to the
+      // single clicked lead when the response is malformed / older
+      // backend / vcard channel etc.
+      let affectedIds = [Number(leadId)];
+      try {
+        if (res && res.ok) {
+          const payload = await res.json();
+          if (Array.isArray(payload.affected_lead_ids) && payload.affected_lead_ids.length) {
+            affectedIds = payload.affected_lead_ids.map(Number);
+          }
         }
-        // Bump status to 'responded' if the lead was 'new' so the pill
-        // flips colors immediately.  (Server-derived status takes over
-        // on next refresh — this just keeps the optimistic render in
-        // sync with the persisted row.)
-        if (lead.status === 'new' && !lead.status_override) {
-          lead.status = 'responded';
+      } catch { /* non-JSON or empty body — fall through */ }
+
+      if (channel === 'email' || channel === 'text') {
+        const nowIso = new Date().toISOString();
+        for (const aid of affectedIds) {
+          const target = (this._leads || []).find(l => String(l.id) === String(aid));
+          if (!target) continue;
+          if (channel === 'email') {
+            target.email_count   = Number(target.email_count || 0) + 1;
+            target.last_email_at = nowIso;
+          } else {
+            target.text_count   = Number(target.text_count || 0) + 1;
+            target.last_text_at = nowIso;
+          }
+          // Bump status to 'responded' if the lead was 'new' so the pill
+          // flips colors immediately.  (Server-derived status takes over
+          // on next refresh — this just keeps the optimistic render in
+          // sync with the persisted row.)
+          if (target.status === 'new' && !target.status_override) {
+            target.status = 'responded';
+          }
         }
         this.renderLeads(this._leads);
       }
