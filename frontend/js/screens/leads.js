@@ -2390,6 +2390,15 @@ class LeadsScreen extends Screen {
         ${lead.ad_id  ? `<div>Ad: ${lead.ad_id}</div>` : ''}
       </div>
 
+      <div style="margin-bottom:var(--space-3);">
+        <div style="font-size:0.78rem; opacity:0.85; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;">Recent touches</div>
+        <div style="font-size:0.70rem; opacity:0.55; margin-bottom:6px;">
+          Click ✕ if you opened the composer but didn't actually send.  Deleting
+          a fan-out touch also clears the sibling rows on duplicate-email/phone leads.
+        </div>
+        <div id="lead-edit-contacts" style="font-size:0.82rem; opacity:0.9;">Loading…</div>
+      </div>
+
       <div>
         <a href="javascript:void(0)" class="modal-vcard-btn"
            data-kind="${saveKind}"
@@ -2440,6 +2449,126 @@ class LeadsScreen extends Screen {
         alert(`Failed to download contact: ${err.message}`);
       }
     });
+
+    // Recent-touches list lives in its own placeholder so we can
+    // re-render it independently of the rest of the modal body when
+    // a row is deleted.  Loaded asynchronously so the modal opens
+    // immediately rather than waiting on a round-trip.
+    this.loadModalContacts(leadId);
+  }
+
+  // GET /api/leads/:id/contacts → render the Recent-touches list.
+  async loadModalContacts(leadId) {
+    const root = document.getElementById('lead-edit-contacts');
+    if (!root) return;
+    try {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/contacts`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = await res.json();
+      const list = Array.isArray(payload.contacts) ? payload.contacts : [];
+      this._renderModalContacts(leadId, list);
+    } catch (err) {
+      root.innerHTML = `<span style="opacity:0.6;">Failed to load: ${err.message}</span>`;
+    }
+  }
+
+  _renderModalContacts(leadId, list) {
+    const root = document.getElementById('lead-edit-contacts');
+    if (!root) return;
+    if (!list.length) {
+      root.innerHTML = '<span style="opacity:0.6;">No touches yet.</span>';
+      root._contacts = [];
+      return;
+    }
+    const ago = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const m = Math.floor((Date.now() - d.getTime()) / 60000);
+      if (m < 1)  return 'just now';
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}h ago`;
+      const days = Math.floor(h / 24);
+      if (days < 30) return `${days}d ago`;
+      return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    };
+    const verbOf = (ch) => ch === 'email' ? 'Emailed' : ch === 'text' ? 'Texted' : ch;
+    root.innerHTML = list.map(c => {
+      const tpl = c.template ? ` <span style="opacity:0.55;">· ${c.template}</span>` : '';
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+          <span>${verbOf(c.channel)} ${ago(c.sent_at)}${tpl}</span>
+          <button type="button" class="modal-del-contact"
+                  data-cid="${c.id}" data-channel="${c.channel}"
+                  title="Delete this touch (also removes sibling fan-out rows)"
+                  style="background:none; border:none; color:#fca5a5; cursor:pointer; font-size:1.2rem; line-height:1; padding:0 8px;">✕</button>
+        </div>`;
+    }).join('');
+    root._contacts = list;
+    root.querySelectorAll('.modal-del-contact').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.onModalDeleteContact(
+          leadId,
+          Number(btn.getAttribute('data-cid')),
+          btn.getAttribute('data-channel'),
+        );
+      });
+    });
+  }
+
+  // DELETE one logged touch + fan-out siblings.  Decrement cached
+  // counts immediately so every affected card flips back; refresh
+  // the modal lead's timestamps from the fresh contacts list.
+  async onModalDeleteContact(leadId, contactId, channel) {
+    if (!confirm('Delete this logged touch?\n\nIf this was a fan-out send (duplicate email/phone) the matching sibling rows will also be removed.')) return;
+    try {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/contacts/${contactId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = await res.json();
+      const affected = Array.isArray(payload.affected_lead_ids) && payload.affected_lead_ids.length
+        ? payload.affected_lead_ids.map(Number)
+        : [Number(leadId)];
+
+      // Decrement cached counts on every affected lead.  Sibling
+      // last_X_at timestamps may temporarily lag (their next page
+      // refresh fixes them) — the modal lead gets fresh timestamps
+      // recomputed below from the just-reloaded contacts list.
+      for (const aid of affected) {
+        const target = (this._leads || []).find(l => String(l.id) === String(aid));
+        if (!target) continue;
+        if (channel === 'email') {
+          target.email_count = Math.max(0, Number(target.email_count || 0) - 1);
+          if (target.email_count === 0) target.last_email_at = null;
+        } else if (channel === 'text') {
+          target.text_count = Math.max(0, Number(target.text_count || 0) - 1);
+          if (target.text_count === 0) target.last_text_at = null;
+        }
+      }
+
+      // Reload the modal lead's contacts (gives us authoritative
+      // last_X_at values for this card).
+      await this.loadModalContacts(leadId);
+      const root = document.getElementById('lead-edit-contacts');
+      const fresh = (root && root._contacts) || [];
+      const modalLead = (this._leads || []).find(l => String(l.id) === String(leadId));
+      if (modalLead) {
+        const newestEmail = fresh.find(c => c.channel === 'email');
+        const newestText  = fresh.find(c => c.channel === 'text');
+        modalLead.last_email_at = newestEmail ? newestEmail.sent_at : null;
+        modalLead.last_text_at  = newestText  ? newestText.sent_at  : null;
+      }
+
+      // Re-render cards + the modal body (counts, pill label, color
+      // all derive from this._leads).
+      this.renderLeads(this._leads || []);
+      const body = document.getElementById('lead-edit-modal-body');
+      if (body && modalLead) {
+        body.innerHTML = this.renderEditModalBody(modalLead);
+        this.wireEditModal(leadId);
+      }
+    } catch (err) {
+      alert(`Failed to delete touch: ${err.message}`);
+    }
   }
 
   // Refresh both the underlying card grid and the modal body in

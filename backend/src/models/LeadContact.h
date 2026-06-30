@@ -2,6 +2,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <vector>
 
 class Database;
 
@@ -63,6 +64,28 @@ public:
                       std::optional<std::string>  messageBody,
                       std::optional<std::string>  status,
                       std::optional<std::string>  templateId = std::nullopt);
+
+    // One row in the Edit-modal "Recent touches" list.
+    struct LogRow {
+        int                        id        = 0;
+        int                        leadId    = 0;
+        std::string                channel;
+        std::string                sentAtIso;
+        std::optional<std::string> status;
+        std::optional<std::string> templateId;
+    };
+
+    // Last N contact rows for a lead, newest first.  Used to render the
+    // "Recent touches" list in the Edit modal so coaches can audit /
+    // delete accidental sends.
+    static std::vector<LogRow> listForLead(int leadId, int limit = 20);
+
+    // Delete a single contact row + any sibling rows that were inserted
+    // by the same fan-out batch (same channel, same lead-set by
+    // email/phone match, sent_at within ±5s).  Returns the list of
+    // lead_ids whose aggregates need re-rendering.  Empty vector means
+    // nothing matched (already deleted, or wrong lead).
+    static std::vector<int> removeWithFanout(int contactId, int leadId);
 
     static Stats fetchStats();
 };

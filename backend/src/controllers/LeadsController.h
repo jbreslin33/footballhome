@@ -12,6 +12,8 @@
 //   POST   /api/leads/sync                refresh-from-Meta + return report
 //   GET    /api/leads                     DB-only list with per-row contact agg
 //   POST   /api/leads/:id/contact         log a text/email/whatsapp/call send
+//   GET    /api/leads/:id/contacts        recent touches for one lead (audit)
+//   DELETE /api/leads/:id/contacts/:cid   remove an accidental touch (+ siblings)
 //   GET    /api/leads/contact-stats       per-lead + windowed aggregates
 //   GET    /api/leads/next-pickup         next upcoming Pickup chat_event
 //   GET    /api/leads/:id/vcard           vCard download (self/parent/player/
@@ -40,6 +42,8 @@ private:
     Response handleSync             (const Request& request);
     Response handleList             (const Request& request);
     Response handleLogContact       (const Request& request);
+    Response handleListContacts     (const Request& request);
+    Response handleDeleteContact    (const Request& request);
     Response handleContactStats     (const Request& request);
     Response handleNextPickup       (const Request& request);
     Response handleVcard            (const Request& request);
@@ -52,6 +56,8 @@ private:
     // Auth helpers.
     static std::optional<int>  extractUserIdJwt (const Request& request);
 
-    // /api/leads/:id/{contact,vcard,mark-converted,mark-dead,status-override}
-    static bool extractLeadId(const std::string& path, int& leadId);
+    // /api/leads/:id/{contact,contacts,vcard,mark-converted,mark-dead,status-override}
+    static bool extractLeadId   (const std::string& path, int& leadId);
+    // /api/leads/:id/contacts/<cid>
+    static bool extractContactId(const std::string& path, int& contactId);
 };

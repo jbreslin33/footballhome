@@ -273,6 +273,8 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
     // `:id` routes go last so the literal suffixes above win.
     router.post(prefix + "/:id/contact",        [this](const Request& r){ return handleLogContact     (r); });
+    router.get (prefix + "/:id/contacts",       [this](const Request& r){ return handleListContacts   (r); });
+    router.del (prefix + "/:id/contacts/:cid",  [this](const Request& r){ return handleDeleteContact  (r); });
     router.get (prefix + "/:id/vcard",          [this](const Request& r){ return handleVcard          (r); });
     router.post(prefix + "/:id/mark-converted", [this](const Request& r){ return handleMarkConverted  (r); });
     router.del (prefix + "/:id/mark-converted", [this](const Request& r){ return handleUnmarkConverted(r); });
@@ -457,6 +459,88 @@ Response LeadsController::handleLogContact(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error logging contact: " << e.what() << std::endl;
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to log contact");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/leads/:id/contacts
+//
+// Recent touches for one lead (newest first, capped at 20).  Drives the
+// "Recent touches" list inside the Edit modal so the operator can audit
+// the log and delete accidental clicks.
+//
+// Response: {"contacts": [
+//   {"id":123, "channel":"email", "sent_at":"...", "status":"sent",
+//    "template":"touch1"}, ...
+// ]}
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleListContacts(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+
+    try {
+        auto rows = LeadContact::listForLead(leadId, 20);
+        std::ostringstream b;
+        b << "{\"contacts\":[";
+        for (size_t i = 0; i < rows.size(); ++i) {
+            if (i) b << ',';
+            b << "{\"id\":"        << jsonInt(rows[i].id)
+              << ",\"lead_id\":"   << jsonInt(rows[i].leadId)
+              << ",\"channel\":"   << jsonStr(rows[i].channel)
+              << ",\"sent_at\":"   << jsonStr(rows[i].sentAtIso)
+              << ",\"status\":"    << jsonOrNull(rows[i].status)
+              << ",\"template\":"  << jsonOrNull(rows[i].templateId)
+              << "}";
+        }
+        b << "]}";
+        return errOk(HttpStatus::OK, b.str());
+    } catch (const std::exception& e) {
+        std::cerr << "Error listing contacts: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to list contacts");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// DELETE /api/leads/:id/contacts/:cid
+//
+// Remove a logged touch.  If the touch came in via a duplicate-email or
+// duplicate-phone fan-out, the sibling rows go with it so the per-lead
+// counts stay in lock-step.
+//
+// Response: {"deleted":true, "affected_lead_ids":[27400, 51960]}
+// 404 when the (lead_id, contact_id) pair doesn't match an existing row.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleDeleteContact(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    int leadId = 0, contactId = 0;
+    if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "leadId required");
+    }
+    if (!extractContactId(request.getPath(), contactId) || contactId <= 0) {
+        return errJson(HttpStatus::BAD_REQUEST, "contactId required");
+    }
+
+    try {
+        auto affected = LeadContact::removeWithFanout(contactId, leadId);
+        if (affected.empty()) {
+            return errJson(HttpStatus::NOT_FOUND, "Contact not found");
+        }
+        std::ostringstream b;
+        b << "{\"deleted\":true,\"affected_lead_ids\":[";
+        for (size_t i = 0; i < affected.size(); ++i) {
+            if (i) b << ',';
+            b << affected[i];
+        }
+        b << "]}";
+        return errOk(HttpStatus::OK, b.str());
+    } catch (const std::exception& e) {
+        std::cerr << "Error deleting contact: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to delete contact");
     }
 }
 
@@ -819,11 +903,21 @@ LeadsController::extractUserIdJwt(const Request& request) {
 }
 
 bool LeadsController::extractLeadId(const std::string& path, int& leadId) {
-    // /api/leads/<id>/contact | /vcard | /mark-converted | /mark-dead | /status-override
-    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|vcard|mark-converted|mark-dead|status-override))");
+    // /api/leads/<id>/contact | /contacts[/<cid>] | /vcard | /mark-converted | /mark-dead | /status-override
+    static const std::regex re(R"(/api/leads/(\d+)/(?:contact|contacts|vcard|mark-converted|mark-dead|status-override))");
     std::smatch m;
     if (!std::regex_search(path, m, re)) return false;
     try { leadId = std::stoi(m[1].str()); }
+    catch (const std::exception&) { return false; }
+    return true;
+}
+
+bool LeadsController::extractContactId(const std::string& path, int& contactId) {
+    // /api/leads/<id>/contacts/<cid>
+    static const std::regex re(R"(/api/leads/\d+/contacts/(\d+))");
+    std::smatch m;
+    if (!std::regex_search(path, m, re)) return false;
+    try { contactId = std::stoi(m[1].str()); }
     catch (const std::exception&) { return false; }
     return true;
 }

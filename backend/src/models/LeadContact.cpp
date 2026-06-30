@@ -54,6 +54,124 @@ LeadContact::Row LeadContact::insert(int leadId,
     return r;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// List recent touches for a lead.  Drives the Edit-modal "Recent touches"
+// section so the operator can spot + delete accidental sends.
+// ────────────────────────────────────────────────────────────────────────────
+std::vector<LeadContact::LogRow> LeadContact::listForLead(int leadId, int limit) {
+    auto db = Database::getInstance();
+    std::vector<LogRow> out;
+    if (limit <= 0) limit = 20;
+
+    auto rs = db->query(
+        "SELECT id, lead_id, channel, "
+        "       to_char(sent_at AT TIME ZONE 'UTC', "
+        "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS sent_at, "
+        "       status, template "
+        "  FROM lead_contacts "
+        " WHERE lead_id = $1::int "
+        " ORDER BY sent_at DESC "
+        " LIMIT $2::int",
+        { std::to_string(leadId), std::to_string(limit) });
+
+    out.reserve(rs.size());
+    for (const auto& row : rs) {
+        LogRow r;
+        r.id          = row["id"].as<int>();
+        r.leadId      = row["lead_id"].as<int>();
+        r.channel     = row["channel"].c_str();
+        r.sentAtIso   = row["sent_at"].is_null() ? std::string{} : row["sent_at"].c_str();
+        r.status      = optStr(row["status"]);
+        r.templateId  = optStr(row["template"]);
+        out.push_back(std::move(r));
+    }
+    return out;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Delete a contact row, plus any sibling rows that the same fan-out batch
+// inserted across duplicate-email/phone leads.
+//
+// Fan-out batches share: same channel, same lead-set (sibling leads by
+// email for channel='email' / phone for channel='text'), and a sent_at
+// within a few seconds of each other (each INSERT runs in its own
+// statement so timestamps differ by microseconds, but ±5s is generous
+// enough to catch them and tight enough to never sweep an unrelated
+// touch).
+//
+// Returns the list of lead_ids whose rows were removed so the frontend
+// can patch the cached per-lead counts in lock-step.  Empty vector ⇒
+// nothing matched (already gone, or the row didn't belong to the
+// supplied lead — which we treat as a 404).
+// ────────────────────────────────────────────────────────────────────────────
+std::vector<int> LeadContact::removeWithFanout(int contactId, int leadId) {
+    auto db = Database::getInstance();
+
+    // 1) Look up the target row.  Must match (id, lead_id) so the URL
+    //    can't reach into another lead's contacts.
+    auto rs = db->query(
+        "SELECT id, lead_id, channel, sent_at "
+        "  FROM lead_contacts "
+        " WHERE id = $1::int AND lead_id = $2::int",
+        { std::to_string(contactId), std::to_string(leadId) });
+    if (rs.empty()) return {};
+
+    const auto& tgt = rs[0];
+    const std::string channel = tgt["channel"].c_str();
+    const std::string sentAt  = tgt["sent_at"].c_str();
+
+    // 2) Resolve sibling lead_ids by the fan-out key.  Same rules as
+    //    handleLogContact in LeadsController so deletes mirror inserts.
+    std::vector<int> siblingIds;
+    {
+        std::string match;
+        if (channel == "email") {
+            match =
+                "SELECT id FROM leads "
+                "WHERE id = $1::int "
+                "   OR (email IS NOT NULL AND email <> '' "
+                "       AND LOWER(email) = LOWER( (SELECT email FROM leads WHERE id = $1::int) ) )";
+        } else if (channel == "text") {
+            match =
+                "SELECT id FROM leads "
+                "WHERE id = $1::int "
+                "   OR (phone IS NOT NULL AND phone <> '' "
+                "       AND phone = (SELECT phone FROM leads WHERE id = $1::int) )";
+        } else {
+            match = "SELECT id FROM leads WHERE id = $1::int";
+        }
+        auto sibs = db->query(match, { std::to_string(leadId) });
+        for (const auto& r : sibs) siblingIds.push_back(r[0].as<int>());
+    }
+    if (siblingIds.empty()) siblingIds.push_back(leadId);
+
+    // 3) Build "(id1,id2,...)" literal for the IN list.  Values came
+    //    straight from an integer column so no quoting concerns.
+    std::string inList = "(";
+    for (size_t i = 0; i < siblingIds.size(); ++i) {
+        if (i) inList += ",";
+        inList += std::to_string(siblingIds[i]);
+    }
+    inList += ")";
+
+    // 4) Delete the matching rows in one shot.  RETURNING lead_id so we
+    //    can echo the truly-affected ids back (in case the fan-out only
+    //    hit a subset — e.g. a sibling whose touch was already deleted).
+    auto del = db->query(
+        "DELETE FROM lead_contacts "
+        " WHERE channel = $1 "
+        "   AND lead_id IN " + inList + " "
+        "   AND sent_at BETWEEN ($2::timestamp - INTERVAL '5 seconds') "
+        "                   AND ($2::timestamp + INTERVAL '5 seconds') "
+        " RETURNING lead_id",
+        { channel, sentAt });
+
+    std::vector<int> out;
+    out.reserve(del.size());
+    for (const auto& r : del) out.push_back(r["lead_id"].as<int>());
+    return out;
+}
+
 LeadContact::Stats LeadContact::fetchStats() {
     auto db = Database::getInstance();
     Stats out;
