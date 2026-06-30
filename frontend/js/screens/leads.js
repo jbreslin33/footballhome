@@ -912,23 +912,44 @@ class LeadsScreen extends Screen {
     const smsHref  = hasPhone ? this.buildSmsHref (lead, label) : null;
     const formattedPhone = this.formatPhoneNumber(lead.phone || '');
 
-    // Whole-card color coding by lifecycle status (migration 074, with
-    // manual override from migration 075 already folded in server-side).
-    // The user's primary at-a-glance signal is the card itself — we
-    // intentionally do NOT render badges or lifecycle buttons here;
-    // those live in the Edit modal so the card stays scannable.
-    //   new       — green   border + faint green tint
-    //   responded — yellow  border + faint amber tint
-    //   signedup  — blue    border + slightly stronger blue tint (Lighthouse)
-    //   dead      — red     border + faint red tint + 0.55 opacity so dead
-    //               cards recede visually from the active funnel
-    const STATUS_COLORS = {
-      new:       { border: '#16a34a', tint: 'rgba(22, 163, 74, 0.10)', opacity: '1'    },
-      responded: { border: '#eab308', tint: 'rgba(234, 179, 8, 0.10)', opacity: '1'    },
-      signedup:  { border: '#2563eb', tint: 'rgba(37, 99, 235, 0.16)', opacity: '1'    },
-      dead:      { border: '#dc2626', tint: 'rgba(220, 38, 38, 0.08)', opacity: '0.55' },
+    // Visual status (5 buckets) — combines lifecycle (4-state, migration
+    // 074) + manual override (migration 075, COALESCEd server-side) +
+    // staleness derivation (responded leads with no fresh contact in
+    // 3+ days bump from "Contacted" → "Needs recontact").  A manual
+    // override bypasses the stale check so coaches can pin a card.
+    //
+    // Card carries TWO redundant signals so status reads at a glance:
+    //   1. Whole-card color (left border + bg tint, fade for dead)
+    //   2. Small text pill at the top of the card
+    //
+    //   new             green   "New"
+    //   contacted       yellow  "Contacted"          (responded + fresh)
+    //   needs_recontact orange  "Needs recontact"    (responded + stale)
+    //   signedup        blue    "Signed up"          (Lighthouse blue)
+    //   dead            red     "Dead"               + 0.55 opacity
+    const baseStatus = lead.status || 'new';
+    const overridden = !!lead.status_override;
+    const isStale    = !overridden && !!lead.needs_followup;
+    const visualStatus = (baseStatus === 'responded' && isStale)
+      ? 'needs_recontact'
+      : (baseStatus === 'responded' ? 'contacted' : baseStatus);
+
+    const STATUS_STYLES = {
+      new:             { border: '#16a34a', tint: 'rgba(22, 163, 74, 0.10)', opacity: '1',    label: 'New'             },
+      contacted:       { border: '#eab308', tint: 'rgba(234, 179, 8, 0.10)', opacity: '1',    label: 'Contacted'       },
+      needs_recontact: { border: '#f97316', tint: 'rgba(249, 115, 22, 0.14)', opacity: '1',   label: 'Needs recontact' },
+      signedup:        { border: '#2563eb', tint: 'rgba(37, 99, 235, 0.16)', opacity: '1',    label: 'Signed up'       },
+      dead:            { border: '#dc2626', tint: 'rgba(220, 38, 38, 0.08)', opacity: '0.55', label: 'Dead'            },
     };
-    const c = STATUS_COLORS[lead.status] || STATUS_COLORS.new;
+    const c = STATUS_STYLES[visualStatus] || STATUS_STYLES.new;
+
+    const statusPill = `
+      <span style="display:inline-flex; align-items:center; gap:6px;
+                   font-size:0.7rem; font-weight:700; letter-spacing:0.04em;
+                   text-transform:uppercase; color:${c.border};">
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${c.border};"></span>
+        ${c.label}${overridden ? ' (forced)' : ''}
+      </span>`;
 
     // Action buttons share the same flex-1 strip styling.  Email + Text
     // are class="contact-btn" so onContactClick logs the touch and (for
@@ -955,6 +976,7 @@ class LeadsScreen extends Screen {
            style="background:linear-gradient(90deg, ${c.tint} 0%, var(--bg-secondary) 65%);
                   border-radius:var(--radius-lg); padding:var(--space-3);
                   border-left:6px solid ${c.border}; opacity:${c.opacity};">
+        <div style="margin-bottom:4px;">${statusPill}</div>
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
