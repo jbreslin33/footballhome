@@ -1159,33 +1159,33 @@ class LeadsScreen extends Screen {
         practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
-      // only.  Games mostly Saturdays (occasionally Sunday) + practice Mon/Wed.
+      // only.  Games on Sunday mornings to early afternoon + practice Mon/Wed.
       'Boys Club (Grades 1–6)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Boys Club (K-12)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Girls Club (Grades 1–6)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Girls Club (K-12)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Boys Club (U11/U12)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays 5:30–7pm (5th & 6th graders).',
       },
       'Girls Club (U11/U12)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays 5:30–7pm (5th & 6th graders).',
       },
       'Youth (Grades 1–6)': {
-        day:      'Saturdays',
+        day:      'Sunday mornings to early afternoon',
         practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Tri County Women': {
@@ -1564,7 +1564,7 @@ class LeadsScreen extends Screen {
       `199 East Erie Avenue, Philadelphia PA 19140\n` +
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
-      `Games — Weekends\n\n` +
+      `Games — Sunday mornings to early afternoon\n\n` +
       `Cost — $35 to start, then $35/month\n` +
       `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
       `Hit reply with any questions — happy to help.\n\n` +
@@ -1611,7 +1611,7 @@ class LeadsScreen extends Screen {
       `199 East Erie Avenue, Philadelphia PA 19140\n` +
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
-      `Games — Weekends\n\n` +
+      `Games — Sunday mornings to early afternoon\n\n` +
       `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
       `Hit reply with any questions — see you on the field!\n\n` +
       `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
@@ -1697,11 +1697,10 @@ class LeadsScreen extends Screen {
       const practiceLine = c.schedule?.practice
         ? `Practice is ${c.schedule.practice}.`
         : `We'll confirm practice days as soon as the schedule's locked in.`;
-      // Games for youth: weekend (day not pinned — confirms once the
-      // schedule drops).  Do NOT pull from c.schedule.day; that field is
-      // set per-funnel in SCHEDULES and historically said "Saturdays",
-      // which over-promises a specific day before the season's locked in.
-      const gameLine = `Games are on weekends — exact day/time confirms once the schedule drops.`;
+      // Games for youth: Sunday mornings to early afternoon.  Do NOT pull
+      // from c.schedule.day; that field is set per-funnel in SCHEDULES and
+      // historically said "Saturdays", which over-promised the wrong day.
+      const gameLine = `Games are on Sunday mornings to early afternoon.`;
       // Numbered steps so the parent can refer back ("did you read step
       // 3?") and so it visually mirrors the adult Welcome layout.
       const lines = [
@@ -1851,14 +1850,15 @@ class LeadsScreen extends Screen {
     snippets.push(
       // More info — catch-all general blurb for the "tell me more" /
       // "send me more info" follow-up.  Covers games, practice, field,
-      // cost, register link in one paste.  Game cadence intentionally
-      // generic — youth get "weekends", adults get "mostly Sundays" —
-      // so we never over-promise a specific day before rosters close.
+      // cost, register link in one paste.  Game cadence: youth get a
+      // concrete Sunday-mornings-to-early-afternoon window; adults get
+      // "mostly Sundays" since exact kickoff time confirms after rosters
+      // close.
       // Cost line emphasizes all-inclusive (uniform + training + games,
       // no hidden fees) since that's the #1 question after price.
       (() => {
         const gameLine = c.isYouth
-          ? `• Games are on weekends — exact day/time confirms once the schedule drops.`
+          ? `• Games are on Sunday mornings to early afternoon.`
           : `• Games are mostly on Sundays — exact times confirm after rosters close.`;
         const practiceLine = c.schedule?.practice
           ? `• Practice: ${c.schedule.practice}.`
