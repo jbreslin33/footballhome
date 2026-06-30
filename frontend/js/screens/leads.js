@@ -938,12 +938,13 @@ class LeadsScreen extends Screen {
 
     // Channel-specific label for the contacted bucket.  Override + dead
     // + signedup + new all use the static visualStatus label.
+    // Show "×N" when a channel was touched more than once so a
+    // recontact is visible at a glance without opening the modal.
     const emailedN = Number(lead.email_count || 0);
     const textedN  = Number(lead.text_count  || 0);
-    let contactedLabel = 'Contacted';
-    if (emailedN && textedN) contactedLabel = 'Emailed + Texted';
-    else if (emailedN)       contactedLabel = 'Emailed';
-    else if (textedN)        contactedLabel = 'Texted';
+    const partE = emailedN ? `Emailed${emailedN > 1 ? ' ×' + emailedN : ''}` : '';
+    const partT = textedN  ? `Texted${textedN  > 1 ? ' ×' + textedN  : ''}` : '';
+    const contactedLabel = [partE, partT].filter(Boolean).join(' + ') || 'Contacted';
 
     const STATUS_STYLES = {
       new:             { border: '#16a34a', tint: 'rgba(22, 163, 74, 0.10)', opacity: '1',    label: 'New'             },
@@ -2622,6 +2623,11 @@ class LeadsScreen extends Screen {
           if (target.status === 'new' && !target.status_override) {
             target.status = 'responded';
           }
+          // Fresh touch — lead is no longer stale.  Clear the optimistic
+          // staleness flag so a "Needs recontact" card flips back to the
+          // yellow "Emailed/Texted" bucket immediately instead of staying
+          // orange until the next server refresh.
+          target.needs_followup = false;
         }
         this.renderLeads(this._leads);
       }
