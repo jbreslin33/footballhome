@@ -1,18 +1,24 @@
 #include "LeadsController.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstring>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <cstdlib>
 #include <regex>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../database/Database.h"
 #include "../models/Lead.h"
 #include "../models/LeadContact.h"
+#include "../models/YouthRoster.h"
+#include "../services/LeagueAppsService.h"
 #include "../services/MetaLeadsService.h"
 #include "../third_party/json.hpp"
 
@@ -271,6 +277,7 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.post(prefix + "/sync",             [this](const Request& r){ return handleSync            (r); });
     router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
+    router.get (prefix + "/unjoined-members", [this](const Request& r){ return handleUnjoinedMembers (r); });
     // `:id` routes go last so the literal suffixes above win.
     router.post(prefix + "/:id/contact",        [this](const Request& r){ return handleLogContact     (r); });
     router.get (prefix + "/:id/contacts",       [this](const Request& r){ return handleListContacts   (r); });
@@ -790,6 +797,236 @@ Response LeadsController::handleNextPickup(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error fetching next pickup: " << e.what() << std::endl;
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to fetch next pickup");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/leads/unjoined-members
+//
+// Lists ALL current Lighthouse members (Men / Women / Boys / Girls).
+// The frontend uses this list for two purposes:
+//   1. Render the blue "Members" section on the leads screen.
+//   2. Cross-reference each lead's email against the union of member
+//      emails; any lead that matches a member is hidden from the main
+//      leads list (they're already in the club — they aren't a prospect).
+//
+// Endpoint name retained for backward compat with the original
+// "members not in the leads funnel" framing; today's behavior is
+// strictly broader (no lead-overlap filtering happens here).
+//
+// Sources:
+//   • Men   — mens_team_assignments → external_person_aliases('leagueapps')
+//             → persons → person_emails, with email/phone overlay from
+//             a live LA fetch (person_emails is sparse for men).
+//   • Women — rosters (left_at IS NULL) → players → persons, restricted to
+//             teams.gender_category='womens'.
+//   • Boys  — live LA fetch via YouthRoster::run(), club="Boys Club".
+//   • Girls — same, club="Girls Club"; emails surface as parentEmail || playerEmail.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleUnjoinedMembers(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    try {
+        auto db = Database::getInstance();
+
+        std::ostringstream b;
+        b << "[";
+        bool first = true;
+        auto emit = [&](const std::string& category,
+                        std::optional<int> personId,
+                        std::optional<long long> laUserId,
+                        const std::string& firstName,
+                        const std::string& lastName,
+                        const std::string& teamName,
+                        const std::string& emails,
+                        const std::string& phone = {}) {
+            if (!first) b << ",";
+            first = false;
+            b << "{"
+              <<  "\"category\":"            << jsonStr(category)
+              << ",\"person_id\":"           << (personId.has_value() ? jsonInt(*personId) : std::string{"null"})
+              << ",\"league_apps_user_id\":" << (laUserId.has_value() ? jsonLong(*laUserId) : std::string{"null"})
+              << ",\"first_name\":"          << jsonStr(firstName)
+              << ",\"last_name\":"           << jsonStr(lastName)
+              << ",\"team_name\":"           << jsonStr(teamName)
+              << ",\"emails\":"              << (emails.empty() ? std::string{"null"} : jsonStr(emails))
+              << ",\"phone\":"               << (phone.empty()  ? std::string{"null"} : jsonStr(phone))
+              << "}";
+        };
+
+        // 2. Men — mens_team_assignments only counts rostered or pool, both
+        //    are members of the club.  We do NOT filter on_roster=true so
+        //    bench/pool members are surfaced too.
+        //
+        //    Email enrichment: person_emails is often empty for men because
+        //    the mens-roster sync pre-dates the email-import path.  We do a
+        //    live LA fetch and overlay email/phone from the registration
+        //    record when the DB column came back blank.  Same LA-derived
+        //    email is also checked against leadEmails so a man who DID join
+        //    via Meta but never had person_emails populated is correctly
+        //    excluded from the "unjoined" list.
+        {
+            // Build LA user_id -> { email, phone } map.  Failure is
+            // non-fatal: we just fall back to the pre-enrichment behavior.
+            std::unordered_map<long long, std::pair<std::string, std::string>> laMap;
+            try {
+                const char* mensProgIdEnv = std::getenv("LEAGUEAPPS_MENS_PROGRAM_ID");
+                const int mensProgId = mensProgIdEnv ? std::atoi(mensProgIdEnv) : 5039300;
+                auto recs = LeagueAppsService::getInstance()
+                                .fetchProgramRegistrations(mensProgId);
+                for (const auto& r : recs) {
+                    auto uidIt = r.find("userId");
+                    if (uidIt == r.end() || uidIt->is_null()) continue;
+                    long long uid = 0;
+                    try {
+                        if (uidIt->is_number_integer()) uid = uidIt->get<long long>();
+                        else if (uidIt->is_string())    uid = std::stoll(uidIt->get<std::string>());
+                    } catch (...) { continue; }
+                    auto strField = [&](const char* k) -> std::string {
+                        auto it = r.find(k);
+                        if (it == r.end() || !it->is_string()) return {};
+                        return it->get<std::string>();
+                    };
+                    const std::string email = strField("email");
+                    const std::string phone = strField("phone");
+                    // First-seen wins; LA already dedups by latest reg.
+                    laMap.emplace(uid, std::make_pair(email, phone));
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "unjoined-members: men LA fetch failed: "
+                          << e.what() << " — continuing without enrichment."
+                          << std::endl;
+            }
+
+            auto rs = db->query(
+                "SELECT t.name AS team_name, p.id AS person_id, "
+                "       p.first_name, p.last_name, m.leagueapps_user_id, "
+                "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
+                "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails "
+                "  FROM mens_team_assignments m "
+                "  JOIN teams t ON t.id = m.team_id "
+                "  JOIN external_person_aliases epa "
+                "    ON epa.provider = 'leagueapps' "
+                "   AND epa.external_user_id = m.leagueapps_user_id::text "
+                "  JOIN persons p ON p.id = epa.person_id "
+                " ORDER BY t.name, p.last_name, p.first_name");
+            for (const auto& row : rs) {
+                const long long uid = row["leagueapps_user_id"].as<long long>();
+                std::string emails = row["emails"].c_str();
+                std::string phone;
+                auto laIt = laMap.find(uid);
+                if (laIt != laMap.end()) {
+                    const std::string& laEmail = laIt->second.first;
+                    const std::string& laPhone = laIt->second.second;
+                    if (emails.empty() && !laEmail.empty()) emails = laEmail;
+                    if (phone.empty()  && !laPhone.empty()) phone  = laPhone;
+                }
+                emit("Men",
+                     row["person_id"].as<int>(),
+                     uid,
+                     row["first_name"].is_null() ? std::string{} : row["first_name"].c_str(),
+                     row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str(),
+                     row["team_name"].is_null()  ? std::string{} : row["team_name"].c_str(),
+                     emails,
+                     phone);
+            }
+        }
+
+        // 3. Women — rosters via players, filtered to womens-category teams.
+        {
+            auto rs = db->query(
+                "SELECT t.name AS team_name, p.id AS person_id, "
+                "       p.first_name, p.last_name, "
+                "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
+                "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails "
+                "  FROM rosters r "
+                "  JOIN teams t ON t.id = r.team_id "
+                "  JOIN players pl ON pl.id = r.player_id "
+                "  JOIN persons p ON p.id = pl.person_id "
+                " WHERE r.left_at IS NULL "
+                "   AND t.gender_category = 'womens' "
+                " ORDER BY t.name, p.last_name, p.first_name");
+            for (const auto& row : rs) {
+                emit("Women",
+                     row["person_id"].as<int>(),
+                     std::nullopt,
+                     row["first_name"].is_null() ? std::string{} : row["first_name"].c_str(),
+                     row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str(),
+                     row["team_name"].is_null()  ? std::string{} : row["team_name"].c_str(),
+                     row["emails"].c_str());
+            }
+        }
+
+        // 4. Boys / Girls — live LA fetch.  Adds latency to the page load
+        //    (two LA HTTP calls) but matches user requirement "checked on
+        //    every load".  On any LA failure we silently skip youth so the
+        //    Men/Women section still renders.
+        try {
+            YouthRoster yr;
+            auto result = yr.run(YouthRoster::defaultSeasonEndYear(), /*includeAll=*/false);
+            if (result.error.empty() && result.body.contains("buckets")) {
+                auto handleYouthRow = [&](const nlohmann::json& row,
+                                          const std::string& bucketLabel) {
+                    const std::string club = row.value("club", std::string{});
+                    const std::string category = (club == "Boys Club") ? "Boys" : "Girls";
+                    const std::string firstName  = row.value("firstName", std::string{});
+                    const std::string lastName   = row.value("lastName",  std::string{});
+                    auto strOrEmpty = [&](const char* k) -> std::string {
+                        auto it = row.find(k);
+                        if (it == row.end() || !it->is_string()) return {};
+                        return it->get<std::string>();
+                    };
+                    const std::string parentEmail = strOrEmpty("parentEmail");
+                    const std::string playerEmail = strOrEmpty("playerEmail");
+                    const std::string parentPhone = strOrEmpty("parentPhone");
+
+                    // LA user id may be number or string.
+                    std::optional<long long> laUid;
+                    auto laIt = row.find("leagueAppsUserId");
+                    if (laIt != row.end() && !laIt->is_null()) {
+                        try {
+                            if (laIt->is_number_integer()) laUid = laIt->get<long long>();
+                            else if (laIt->is_string())    laUid = std::stoll(laIt->get<std::string>());
+                        } catch (...) { /* ignore */ }
+                    }
+
+                    std::string emails;
+                    if (!parentEmail.empty()) emails = parentEmail;
+                    if (!playerEmail.empty()) {
+                        if (!emails.empty()) emails += ", ";
+                        emails += playerEmail;
+                    }
+
+                    emit(category, std::nullopt, laUid, firstName, lastName,
+                         bucketLabel, emails, parentPhone);
+                };
+
+                for (auto it = result.body["buckets"].begin();
+                     it != result.body["buckets"].end(); ++it) {
+                    if (!it.value().is_array()) continue;
+                    for (const auto& row : it.value()) {
+                        handleYouthRow(row, it.key());
+                    }
+                }
+                if (result.body.contains("unbucketed") && result.body["unbucketed"].is_array()) {
+                    for (const auto& row : result.body["unbucketed"]) {
+                        handleYouthRow(row, "(unbucketed)");
+                    }
+                }
+            } else if (!result.error.empty()) {
+                std::cerr << "unjoined-members: youth fetch skipped: "
+                          << result.error << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "unjoined-members: youth fetch threw: "
+                      << e.what() << " — continuing without youth." << std::endl;
+        }
+
+        b << "]";
+        return errOk(HttpStatus::OK, b.str());
+    } catch (const std::exception& e) {
+        std::cerr << "Error fetching unjoined members: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to fetch unjoined members");
     }
 }
 

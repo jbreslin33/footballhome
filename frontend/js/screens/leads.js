@@ -21,6 +21,7 @@ class LeadsScreen extends Screen {
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="leads-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No leads yet.</div>
+        <div id="leads-unjoined" style="display:none;"></div>
         <div id="leads-list"    style="display:none;"></div>
       </div>
     `;
@@ -230,6 +231,15 @@ class LeadsScreen extends Screen {
       const renderStart = Date.now();
       this.renderLeads(leads);
       this._appendLog(`Render complete in ${Date.now() - renderStart}ms. Done.`, 'ok');
+
+      // Fire-and-forget: fetch unjoined members (members on Men/Women/
+      // Boys/Girls rosters whose email never showed up in leads) and
+      // render them at the top in blue.  Runs on every load (including
+      // refresh) per the explicit user requirement.  Failures are
+      // logged but never block the leads render.
+      this.loadUnjoinedMembers().catch(err => {
+        this._appendLog(`Unjoined-members check failed: ${err.message}`, 'warn');
+      });
     } catch (err) {
       this._appendLog(`Failed to load leads: ${err.message}`, 'error');
       this.find('#leads-loading').style.display = 'none';
@@ -243,8 +253,135 @@ class LeadsScreen extends Screen {
     }
   }
 
+  // ── Members section ───────────────────────────────────────────────
+  // GET /api/leads/unjoined-members returns ALL rostered Lighthouse
+  // members (Men / Women / Boys / Girls).  We use the list for two
+  // things on this screen:
+  //   1. Render the collapsible blue "Members" card up top.
+  //   2. Build _memberEmailSet so renderLeads() can hide any lead
+  //      whose email matches an existing member (already in the club
+  //      — they aren't a prospect).
+  // Runs on every loadLeads() call.  Endpoint name is legacy.
+  async loadUnjoinedMembers() {
+    const box = this.find('#leads-unjoined');
+    if (!box) return;
+
+    this._appendLog('GET /api/leads/unjoined-members — loading roster…', 'step');
+    const t0 = Date.now();
+    let rows = [];
+    try {
+      const res = await this.auth.fetch('/api/leads/unjoined-members');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      rows = await res.json();
+      this._appendLog(`Members: ${rows.length} loaded in ${Date.now() - t0}ms.`, 'ok');
+    } catch (err) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      throw err;
+    }
+
+    // Build the email → member set so renderLeads() can hide matches.
+    // Each row's `emails` is a comma-joined string (may be empty).
+    const set = new Set();
+    for (const r of rows) {
+      const s = (r && r.emails) ? String(r.emails) : '';
+      for (const part of s.split(',')) {
+        const e = part.trim().toLowerCase();
+        if (e) set.add(e);
+      }
+    }
+    this._memberEmailSet = set;
+
+    this.renderUnjoinedMembers(rows);
+
+    // Re-render leads now that we know which ones to suppress.
+    if (Array.isArray(this._leads)) this.renderLeads(this._leads);
+  }
+
+  renderUnjoinedMembers(rows) {
+    const box = this.find('#leads-unjoined');
+    if (!box) return;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+      c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+    // Group by category (Men / Women / Boys / Girls), preserve a stable order.
+    const order = ['Men', 'Women', 'Boys', 'Girls'];
+    const groups = {};
+    for (const r of rows) {
+      const k = r.category || 'Other';
+      (groups[k] ||= []).push(r);
+    }
+
+    const cardsHtml = order
+      .filter(cat => groups[cat] && groups[cat].length)
+      .map(cat => {
+        const items = groups[cat].map(r => {
+          const name  = `${r.first_name || ''} ${r.last_name || ''}`.trim() || '(no name)';
+          const team  = r.team_name ? ` <span style="opacity:0.75;">— ${esc(r.team_name)}</span>` : '';
+          const email = r.emails ? `<div style="font-size:0.78rem; opacity:0.85;">${esc(r.emails)}</div>` : '<div style="font-size:0.78rem; opacity:0.6; font-style:italic;">no email on file</div>';
+          const phone = r.phone  ? `<div style="font-size:0.78rem; opacity:0.85;">📱 ${esc(r.phone)}</div>` : '';
+          return `
+            <li style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+              <div style="font-weight:600;">${esc(name)}${team}</div>
+              ${email}${phone}
+            </li>`;
+        }).join('');
+        return `
+          <div style="flex:1; min-width:240px;">
+            <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.9;">
+              ${esc(cat)} <span style="opacity:0.7;">(${groups[cat].length})</span>
+            </div>
+            <ul style="list-style:none; padding:0; margin:0;">${items}</ul>
+          </div>`;
+      }).join('');
+
+    box.style.display = 'block';
+    box.innerHTML = `
+      <details style="margin-bottom: var(--space-3); border-radius:8px;
+                      background:#1e3a8a; color:#dbeafe; border:1px solid #3b82f6;">
+        <summary style="padding: var(--space-3); cursor:pointer; list-style:revert;
+                        display:flex; align-items:baseline; gap:10px;">
+          <span style="font-size:1.05rem;">🔵</span>
+          <strong style="font-size:0.95rem;">Members</strong>
+          <span style="opacity:0.8; font-size:0.8rem;">
+            (${rows.length} rostered ${rows.length === 1 ? 'person' : 'people'}
+             — click to expand. Anyone here is hidden from the leads list below.)
+          </span>
+        </summary>
+        <div style="padding: 0 var(--space-3) var(--space-3); display:flex; flex-wrap:wrap; gap: var(--space-4);">
+          ${cardsHtml}
+        </div>
+      </details>
+    `;
+  }
+
   renderLeads(leads) {
     const container = this.find('#leads-list');
+
+    // Hide leads whose email matches a current Lighthouse member.
+    // Members are loaded async by loadUnjoinedMembers() and stashed
+    // in _memberEmailSet; on first paint that set may be empty (race
+    // — members fetch hasn't returned yet), in which case we render
+    // everything and a follow-up renderLeads() fires after members
+    // load.  When the set is present we also expose a small counter
+    // so the coach can see how many got merged into the Members card.
+    let suppressedAsMembers = 0;
+    if (this._memberEmailSet && this._memberEmailSet.size > 0) {
+      const before = leads.length;
+      leads = leads.filter(l => {
+        const e = (l && l.email) ? String(l.email).trim().toLowerCase() : '';
+        return !(e && this._memberEmailSet.has(e));
+      });
+      suppressedAsMembers = before - leads.length;
+    }
+    this._suppressedAsMembers = suppressedAsMembers;
 
     // SMS bot-risk banner removed 2026-06-16: leads page is email-only
     // now (initial-touch via Gmail compose).  SMS will return as part
