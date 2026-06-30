@@ -6,7 +6,7 @@ const fs = require('fs');
 const { generateCard, findLogo } = require('./generate-match-card');
 const postLog = require('./scripts/exhibit-post-log');
 
-const INSTAGRAM_USER_ID = '26233831926285183';
+const INSTAGRAM_USER_ID = process.env.INSTAGRAM_USER_ID || '27772857462308985';
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
 const API_BASE = 'https://graph.instagram.com/v21.0';
 const PUBLIC_BASE = 'https://footballhome.org/images/posts';
