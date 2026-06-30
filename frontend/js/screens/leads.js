@@ -1925,13 +1925,14 @@ class LeadsScreen extends Screen {
         // Urgency line: practice is already in session.  Phrased to
         // signal "we're rolling, don't wait" without making the lead
         // feel behind or pressured — the second half explicitly
-        // dissolves the "am I too late?" anxiety.  Youth wording is
-        // parent-facing ("new players join all season"), adult wording
-        // assumes the lead is the player ("jumping in this week is no
-        // problem").
+        // dissolves the "am I too late?" anxiety AND nudges the next
+        // action (register) rather than a soft "come hang out".
+        // Youth wording is parent-facing ("new players join all
+        // season"), adult wording assumes the lead is the player
+        // ("we're still bringing in new players").
         const startedLine = c.isYouth
-          ? `Heads up — practice has already started, but new players join all season, so jumping in this week is no problem.`
-          : `Heads up — practice is already underway, but we're still bringing in new players, so jumping in this week is no problem.`;
+          ? `Heads up — practice has already started, but new players join all season, so registering this week is no problem.`
+          : `Heads up — practice is already underway, but we're still bringing in new players, so registering this week is no problem.`;
         return {
           id: 'more-info',
           label: 'ℹ️ More info',
