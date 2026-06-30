@@ -175,6 +175,22 @@ async function openSourcePage(browser) {
         display: none !important;
       }
 
+      /* Hide inline decorative figures on card slides. These are the
+         right-floated / left-floated portrait <figure>s embedded inside
+         .poster-body (e.g. poster 16's "Walter Bahr in his US kit"
+         portrait, poster 18's Hollywood-film and book figures). They
+         belong with their attached paragraph in the printed museum
+         layout, but without explicit per-slide pairing they leak onto
+         every card slide. The dedicated hero <figure class="poster-photo">
+         is excluded so it still rides slide 3 (the para-photo slide).
+         JS sets display:none too but the static .two-col rule wins on
+         specificity; this !important rule is the actual enforcement. */
+      .poster[data-slide-mode="para"] .poster-body > figure:not(.poster-photo),
+      .poster[data-slide-mode="para-photo"] .poster-body > figure:not(.poster-photo),
+      .poster[data-slide-mode="quote"] .poster-body > figure:not(.poster-photo) {
+        display: none !important;
+      }
+
       /* Paragraph-only slides — biggest possible body text. */
       .poster[data-slide-mode="para"] .poster-body p {
         font-size: 1.55rem !important;
@@ -563,7 +579,20 @@ async function renderCarouselSlides(page, posterNum, pad) {
           const tag = child.tagName.toLowerCase();
           // Keep the chosen para / quote and (for para-photo) the figure.
           if (tag === 'p' || tag === 'blockquote') return; // visibility set above
-          if (tag === 'figure') return;                    // visibility set above
+          // Only the dedicated hero <figure class="poster-photo"> is
+          // toggled by the photo on/off pass above. Other inline figures
+          // (e.g. the right-floated "Walter Bahr in his US kit" portrait
+          // inside poster 16's body) are paragraph-attached decorations
+          // that would otherwise float onto every card slide. The actual
+          // enforcement is the !important CSS rule in social-renderer-
+          // overrides (the static .two-col stylesheet overrides this
+          // inline style on specificity) — the inline set here is just
+          // defense-in-depth.
+          if (tag === 'figure') {
+            if (child.classList.contains('poster-photo')) return;
+            child.style.display = 'none';
+            return;
+          }
           // gold-divider is already hidden by social-renderer-overrides CSS
           // for card slides; hiding it inline too is harmless and avoids
           // any specificity surprises.

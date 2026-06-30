@@ -488,8 +488,22 @@ if (command === 'photo') {
     // which the operator-dashboard buttons and the 9am cron rely on.
     const flagSet = new Set(args.slice(1).map(a => (a || '').toLowerCase()));
     const skipConfirm = flagSet.has('--yes') || flagSet.has('-y');
-    // Strip flags from the positional list before parsing mode args.
-    const positionals = args.slice(1).filter(a => !String(a).startsWith('-'));
+    // --caption "..." overrides the recurring series caption for this
+    // post only.  Used for anniversaries / special-day posts where the
+    // default "Day N of M" framing would confuse followers or miss the
+    // editorial hook.  Source caption / postLog are untouched — the
+    // override applies to this single Graph API publish.
+    const captionFlagIdx = args.findIndex(a => a === '--caption');
+    const captionOverride = captionFlagIdx >= 0 ? (args[captionFlagIdx + 1] || '') : null;
+    // Strip flags AND their values from the positional list before parsing mode args.
+    const positionals = args.slice(1).filter((a, i) => {
+      if (String(a).startsWith('-')) return false;
+      // i is 0-based within args.slice(1) — add 1 to map back to args index.
+      const argsIdx = i + 1;
+      // Drop the value that immediately follows --caption.
+      if (captionFlagIdx >= 0 && argsIdx === captionFlagIdx + 1) return false;
+      return true;
+    });
 
     // Resolve poster number.
     //   `exhibit <N> ...`  -> use N.
@@ -542,7 +556,7 @@ if (command === 'photo') {
     // exhibit-post-log.js automatically updates future captions.
     // To change the framing, edit this string.
     const seriesLine = `Day ${posterNum} of ${postLog.TOTAL_POSTERS}.`;
-    const caption = [
+    const defaultCaption = [
       'We are in awe of the countless members of Lighthouse whose story is not told in this series — but on the streets and fields of Philadelphia and beyond.',
       '',
       'Some highlights, daily through the World Cup.',
@@ -551,6 +565,10 @@ if (command === 'photo') {
       '',
       seriesLine,
     ].join('\n');
+    const caption = captionOverride !== null ? captionOverride : defaultCaption;
+    if (captionOverride !== null) {
+      console.log(`\n✍️  Using --caption override (${captionOverride.length} chars).`);
+    }
 
     // Step 2 — preview
     console.log('\n' + '='.repeat(60));
