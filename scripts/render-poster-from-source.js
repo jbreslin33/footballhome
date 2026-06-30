@@ -183,12 +183,37 @@ async function openSourcePage(browser) {
          layout, but without explicit per-slide pairing they leak onto
          every card slide. The dedicated hero <figure class="poster-photo">
          is excluded so it still rides slide 3 (the para-photo slide).
+         Also excluded: <figure.slide-show> — an opt-in per-figure ride
+         set by data-with-para="N" on the figure. The renderer adds the
+         .slide-show class on the paragraph slide whose 0-based index
+         matches (N-1), and removes it on every other slide.
          JS sets display:none too but the static .two-col rule wins on
          specificity; this !important rule is the actual enforcement. */
-      .poster[data-slide-mode="para"] .poster-body > figure:not(.poster-photo),
-      .poster[data-slide-mode="para-photo"] .poster-body > figure:not(.poster-photo),
-      .poster[data-slide-mode="quote"] .poster-body > figure:not(.poster-photo) {
+      .poster[data-slide-mode="para"] .poster-body > figure:not(.poster-photo):not(.slide-show),
+      .poster[data-slide-mode="para-photo"] .poster-body > figure:not(.poster-photo):not(.slide-show),
+      .poster[data-slide-mode="quote"] .poster-body > figure:not(.poster-photo):not(.slide-show) {
         display: none !important;
+      }
+
+      /* Per-slide ride: an inline body <figure> with data-with-para has
+         the .slide-show class added by the renderer for ONE paragraph
+         slide. Style it the same way the hero <figure class="poster-photo">
+         is styled in para-photo mode — de-floated, full-width centered,
+         pinned above the paragraph via flex order. */
+      .poster[data-slide-mode="para-photo"] .poster-body > figure.slide-show {
+        float: none !important;
+        display: block !important;
+        margin: 0 auto 22px !important;
+        width: 100% !important;
+        max-width: 720px !important;
+        order: -1;
+      }
+      .poster[data-slide-mode="para-photo"] .poster-body > figure.slide-show img {
+        max-height: 560px !important;
+        max-width: 100% !important;
+        width: auto !important;
+        margin: 0 auto !important;
+        display: block !important;
       }
 
       /* Paragraph-only slides — biggest possible body text. */
@@ -493,12 +518,31 @@ async function renderCarouselSlides(page, posterNum, pad) {
     // 'para-photo' mode (which would hide the inline <img> tags assuming
     // a real figure is available) and should just render every paragraph
     // in 'para' mode so the inline images stay visible.
-    const hasPhotoFigure = !!p.querySelector(':scope > .poster-inner > .poster-photo, :scope > .poster-photo');
+    //
+    // After the source's boot JS runs, the .poster-photo figure is
+    // MOVED into .poster-body (so text always leads on the printed
+    // poster). So we look in three places: the article's direct
+    // children (pre-boot fallback), .poster-inner's children (post-
+    // inner-wrap, pre-photo-move), and .poster-body's children (the
+    // current post-boot location).
+    const hasPhotoFigure = !!p.querySelector(':scope > .poster-photo, :scope > .poster-inner > .poster-photo, :scope > .poster-inner > .poster-body > .poster-photo');
     // 1-based in source for readability ("3rd paragraph"); convert to
     // 0-based here. Default: paragraph 1.
     const raw = parseInt(p.dataset.photoWithPara || '1', 10);
     const photoParaIdx = Math.max(0, Math.min(paras.length - 1, (isNaN(raw) ? 1 : raw) - 1));
-    return { paras: paras.length, bqs: bqs.length, photoParaIdx, hasPhotoFigure };
+    // Inline body <figure>s (e.g. right-floated portraits) can opt-in to
+    // a single carousel slide via data-with-para="N" (1-based). Without
+    // it, inline figures are hidden on every card slide (they'd leak
+    // onto every paragraph slide otherwise). The 0-based indices of
+    // paragraphs that have a paired inline figure are returned so the
+    // slide loop can switch the slide to 'para-photo' mode for them.
+    const inlineFigParaIdxs = Array.from(body.querySelectorAll(':scope > figure'))
+      .filter(f => !f.classList.contains('poster-photo'))
+      .map(f => parseInt(f.dataset.withPara || '', 10))
+      .filter(v => !isNaN(v))
+      .map(v => v - 1)
+      .filter(i => i >= 0 && i < paras.length);
+    return { paras: paras.length, bqs: bqs.length, photoParaIdx, hasPhotoFigure, inlineFigParaIdxs };
   }, posterNum);
 
   // 4:5 frame: 30 print-inches tall = 1080 x 1350 at scale 45.
@@ -590,6 +634,18 @@ async function renderCarouselSlides(page, posterNum, pad) {
           // defense-in-depth.
           if (tag === 'figure') {
             if (child.classList.contains('poster-photo')) return;
+            // Per-figure ride: if data-with-para matches the current
+            // slide's paragraph index, the figure is the slide's hero.
+            // Mark it with .slide-show (CSS exception lets it render and
+            // styles it like a centered hero), clear stale inline hide.
+            const withPara = parseInt(child.dataset.withPara || '', 10);
+            const isRiding = !isNaN(withPara) && (withPara - 1) === opts.inlineFigParaIdx;
+            if (isRiding) {
+              child.classList.add('slide-show');
+              child.style.display = '';
+              return;
+            }
+            child.classList.remove('slide-show');
             child.style.display = 'none';
             return;
           }
@@ -597,6 +653,12 @@ async function renderCarouselSlides(page, posterNum, pad) {
           // for card slides; hiding it inline too is harmless and avoids
           // any specificity surprises.
           child.style.display = 'none';
+        });
+      } else {
+        // Non-card slides: clear any lingering slide-show marker so the
+        // full-poster slide doesn't preferentially style one figure.
+        Array.from(body.querySelectorAll(':scope > figure.slide-show')).forEach(f => {
+          f.classList.remove('slide-show');
         });
       }
 
@@ -708,16 +770,22 @@ async function renderCarouselSlides(page, posterNum, pad) {
   // If the poster has NO dedicated figure (P6/P7 style — inline images
   // inside the paragraph), render every paragraph in plain 'para' mode
   // so the inline <img> tags stay visible (para-photo mode hides them).
+  // Inline body <figure>s with data-with-para="N" also trigger para-
+  // photo mode for their paragraph so they get the same hero treatment.
   for (let i = 0; i < counts.paras; i++) {
     const withPhoto = counts.hasPhotoFigure && (i === counts.photoParaIdx);
+    const withInlineFig = counts.inlineFigParaIdxs.includes(i);
+    const isPhotoSlide = withPhoto || withInlineFig;
     await compose({
       band: false,
       photo: withPhoto,
       paras: i,
       quotes: 'none',
-      mode: withPhoto ? 'para-photo' : 'para',
+      inlineFigParaIdx: withInlineFig ? i : -1,
+      mode: isPhotoSlide ? 'para-photo' : 'para',
     });
-    await snap(withPhoto ? `para ${i + 1} + photo` : `para ${i + 1}`);
+    const label = withPhoto ? `para ${i + 1} + hero` : withInlineFig ? `para ${i + 1} + inline fig` : `para ${i + 1}`;
+    await snap(label);
   }
 
   // SLIDES K+3..end: each blockquote in order.
