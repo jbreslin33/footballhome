@@ -1287,6 +1287,24 @@ class LeadsScreen extends Screen {
     // the Welcome lists BOTH registrations.
     const isCombinedU23PR = funnelLabel === 'U23 Men + PR';
     const baseLabel = isCombinedU23PR ? 'U23 Men' : funnelLabel;
+    // Branded club name keyed off the lead's source funnel — single
+    // source of truth used as the touch-1 email subject AND inside the
+    // Touch-2 "That's great that you want to play for ${clubTitle}!"
+    // opener. So a Boys Club lead sees "Lighthouse Boys Soccer Club
+    // 1893", a Women's lead sees "Lighthouse Women's Soccer Club
+    // 1893", the legacy combined youth funnel (no pre-identified
+    // gender) sees "Lighthouse Boys & Girls Soccer Club 1893", and
+    // adult-men funnels (PR / Brazil / U23) see "Lighthouse Men's
+    // Soccer Club 1893". Checks ordered most-specific → most-general.
+    const fl = funnelLabel || '';
+    const clubTitle =
+        isLegacyYouth         ? 'Lighthouse Boys & Girls Soccer Club 1893'
+      : isWomensClub          ? "Lighthouse Women's Soccer Club 1893"
+      : /girls/i.test(fl)     ? 'Lighthouse Girls Soccer Club 1893'
+      : /boys/i.test(fl)      ? 'Lighthouse Boys Soccer Club 1893'
+      : /\bmen\b/i.test(fl)   ? "Lighthouse Men's Soccer Club 1893"
+      : isYouth               ? 'Lighthouse Boys & Girls Soccer Club 1893'
+      :                         'Lighthouse Soccer Club 1893';
     return {
       program:       PROGRAM_NAMES[baseLabel] || 'program',
       link:          LINKS[baseLabel] || 'https://lighthouse1893.leagueapps.com',
@@ -1308,6 +1326,7 @@ class LeadsScreen extends Screen {
       isYouth,
       isLegacyYouth,
       isWomensClub,
+      clubTitle,
     };
   }
 
@@ -1492,21 +1511,12 @@ class LeadsScreen extends Screen {
     //   those, so the wrapper would be a no-op.  Skipping it also
     //   signals to future maintainers that this is a plain-prose body.
     // Club-title shown in the touch-1 subject line.  Branded by audience
-    // so a Boys Club lead sees "Lighthouse Boys Soccer Club 1893", a
-    // Women's lead sees "Lighthouse Women's Soccer Club 1893", the
-    // legacy combined youth funnel (which doesn't pre-identify gender)
-    // sees "Lighthouse Boys & Girls Soccer Club 1893", and adult-men
-    // funnels (PR / Brazil / U23) see "Lighthouse Men's Soccer Club
-    // 1893".  Checks ordered most-specific → most-general.
-    const fl = funnelLabel || '';
-    const clubTitle =
-        c.isLegacyYouth          ? 'Lighthouse Boys & Girls Soccer Club 1893'
-      : c.isWomensClub           ? "Lighthouse Women's Soccer Club 1893"
-      : /girls/i.test(fl)        ? 'Lighthouse Girls Soccer Club 1893'
-      : /boys/i.test(fl)         ? 'Lighthouse Boys Soccer Club 1893'
-      : /\bmen\b/i.test(fl)      ? "Lighthouse Men's Soccer Club 1893"
-      : c.isYouth                ? 'Lighthouse Boys & Girls Soccer Club 1893'
-      :                            'Lighthouse Soccer Club 1893';
+    // Club name comes from funnelContext (single source of truth shared
+    // with messageSnippets so the Touch-2 "That's great that you want
+    // to play for ${clubTitle}!" opener stays in lock-step with the
+    // touch-1 subject line). See funnelContext.clubTitle for the per-
+    // funnel mapping (Boys / Girls / Women's / Men's / Legacy Youth).
+    const clubTitle = c.clubTitle;
 
     return {
       sms:
@@ -1888,6 +1898,10 @@ class LeadsScreen extends Screen {
           label: 'ℹ️ More info',
           tier: 'followup',
           body:
+            `Hi {first},\n` +
+            `\n` +
+            `That's great that you want to play soccer for ${c.clubTitle}!\n` +
+            `\n` +
             `Here are the details:\n` +
             `\n` +
             `${gameLine}\n` +
