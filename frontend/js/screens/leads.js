@@ -965,8 +965,13 @@ class LeadsScreen extends Screen {
 
     // Inline timestamps on the card so the coach sees both "when did
     // this lead come in" and "when did we last reach out" without
-    // opening the modal.  Format:  "in 2d · last 4h"  (last omitted
-    // when there's been no contact yet).
+    // opening the modal.
+    //
+    // Top-right strip owns the lead-age info only:    "in 4d".
+    // A separate per-channel touches line under the contact details
+    // shows the latest send time for each channel independently so
+    // the coach can tell at a glance whether they emailed an hour
+    // ago or texted yesterday — see `touchesLine` below.
     const agoShort = (iso) => {
       if (!iso) return '';
       const d = new Date(iso);
@@ -981,19 +986,42 @@ class LeadsScreen extends Screen {
       if (mo < 12)  return `${mo}mo`;
       return `${Math.floor(mo / 12)}y`;
     };
-    // Last-contact = whichever channel touched the lead most recently.
     const lastEmailAt = lead.last_email_at || null;
     const lastTextAt  = lead.last_text_at  || null;
-    const lastContactAt = (lastEmailAt && lastTextAt)
-      ? (new Date(lastEmailAt) > new Date(lastTextAt) ? lastEmailAt : lastTextAt)
-      : (lastEmailAt || lastTextAt);
 
-    const inAgo   = lead.created_at ? agoShort(lead.created_at) : '';
-    const lastAgo = lastContactAt   ? agoShort(lastContactAt)   : '';
-    const timeStrip = `
+    const inAgo = lead.created_at ? agoShort(lead.created_at) : '';
+    const timeStrip = inAgo ? `
       <span style="font-size:0.7rem; opacity:0.6; font-variant-numeric:tabular-nums;">
-        ${inAgo ? `in ${inAgo}` : ''}${lastAgo ? ` · last ${lastAgo}` : ''}
-      </span>`;
+        in ${inAgo}
+      </span>` : '';
+
+    // Per-channel last-touch line.  Renders only when at least one
+    // channel has been touched.  Format:
+    //   ✉ 1m            (one email)
+    //   ✉ 1m (×2)        (multiple emails, time = MAX(sent_at))
+    //   💬 4h            (text)
+    //   ✉ 1m · 💬 4h    (both channels)
+    // The whole line is bold so a 4-day-old "last touch" jumps out
+    // visually as something that probably needs a recontact even
+    // before the orange stale color kicks in at 3 days.
+    const touchParts = [];
+    if (emailedN) {
+      touchParts.push(
+        `✉ ${lastEmailAt ? agoShort(lastEmailAt) : '?'}` +
+        (emailedN > 1 ? ` (×${emailedN})` : '')
+      );
+    }
+    if (textedN) {
+      touchParts.push(
+        `💬 ${lastTextAt ? agoShort(lastTextAt) : '?'}` +
+        (textedN > 1 ? ` (×${textedN})` : '')
+      );
+    }
+    const touchesLine = touchParts.length ? `
+      <div style="font-size:0.78rem; font-weight:600; opacity:0.9;
+                  font-variant-numeric:tabular-nums; margin-top:4px;">
+        ${touchParts.join(' · ')}
+      </div>` : '';
 
     // Action buttons share the same flex-1 strip styling.  Email + Text
     // are class="contact-btn" so onContactClick logs the touch and (for
@@ -1039,6 +1067,7 @@ class LeadsScreen extends Screen {
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
+        ${touchesLine}
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${touch2Btn}${textBtn}${editBtn}</div>
       </div>
     `;
