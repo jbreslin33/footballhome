@@ -1865,15 +1865,15 @@ class LeadsScreen extends Screen {
       // More info — catch-all general blurb for the "tell me more" /
       // "send me more info" follow-up.  Covers games, practice, field,
       // cost, register link in one paste.  Game cadence: youth get a
-      // concrete Sunday-mornings-to-early-afternoon window; adults get
-      // "mostly Sundays" since exact kickoff time confirms after rosters
-      // close.
+      // concrete Sunday-mornings-to-early-afternoon window; adults just
+      // get "mostly Sundays" without committing to a kickoff window
+      // (kickoffs depend on league scheduling once rosters close).
       // Cost line emphasizes all-inclusive (uniform + training + games,
       // no hidden fees) since that's the #1 question after price.
       (() => {
         const gameLine = c.isYouth
           ? `• Games are on Sunday mornings to early afternoon.`
-          : `• Games are mostly on Sundays — exact times confirm after rosters close.`;
+          : `• Games are mostly on Sundays.`;
         const practiceLine = c.schedule?.practice
           ? `• Practice: ${c.schedule.practice}.`
           : `• Practice schedule confirms once the season starts.`;
