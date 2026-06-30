@@ -290,10 +290,14 @@ class MessagesScreen extends Screen {
   _renderSnippets(snippets) {
     if (!snippets || !snippets.length) return '';
 
-    // Group by tier so close (the ASK) reads first, then soft fallback,
-    // then info chips.  Matches the visual grouping on the Leads page.
-    const TIER_ORDER = ['broadcast', 'close', 'soft', 'info', 'qualify'];
+    // Group by tier so the post-touch-1 follow-up reads first
+    // (most-common chip — touch 1 is sent from the Leads list, not here),
+    // then broadcasts, close (the ASK), soft fallback, info chips, and
+    // qualifying questions last.  Matches the visual grouping on the
+    // Leads page.
+    const TIER_ORDER = ['followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
     const TIER_TITLES = {
+      followup: '📨 Follow-up (touch 2 — after they say yes)',
       broadcast: '📣 Broadcasts (LA Messages — entire roster)',
       close:   '🎯 Close (the ask)',
       soft:    '🌱 Soft fallback',
