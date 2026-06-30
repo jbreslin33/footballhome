@@ -1881,6 +1881,8 @@ class LeadsScreen extends Screen {
           label: 'ℹ️ More info',
           tier: 'followup',
           body:
+            `Details:\n` +
+            `\n` +
             `${gameLine}\n` +
             `${practiceLine}\n` +
             `• Field: Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140\n` +
