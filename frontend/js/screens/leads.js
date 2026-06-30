@@ -908,8 +908,9 @@ class LeadsScreen extends Screen {
     const label    = columnLabel || this.formLabel(lead.form_id) || '';
     const hasEmail = !!lead.email;
     const hasPhone = !!lead.phone;
-    const mailHref = hasEmail ? this.buildMailHref(lead, label) : null;
-    const smsHref  = hasPhone ? this.buildSmsHref (lead, label) : null;
+    const mailHref   = hasEmail ? this.buildMailHref(lead, label) : null;
+    const touch2Href = hasEmail ? this.buildMailHrefForSnippet(lead, label, 'more-info') : null;
+    const smsHref    = hasPhone ? this.buildSmsHref (lead, label) : null;
     const formattedPhone = this.formatPhoneNumber(lead.phone || '');
 
     // Visual status (5 buckets) — combines lifecycle (4-state, migration
@@ -1004,6 +1005,18 @@ class LeadsScreen extends Screen {
          target="_blank" rel="noopener noreferrer"
          data-lead-id="${lead.id}" data-channel="email"
          style="${btnStyle} background:#3b82f6; color:#fff;">✉ Email</a>` : '';
+    // Touch-2 ("More info") shortcut — copies the personalized
+    // follow-up body (rich HTML + plain text) to the clipboard and
+    // opens Gmail compose with it pre-filled, so the coach can either
+    // paste into an existing reply thread OR send fresh from the new
+    // compose tab.  Same onContactClick handler as Email; the
+    // data-snippet="more-info" attribute tells it to pull the chip
+    // body instead of the touch-1 template.
+    const touch2Btn = hasEmail && touch2Href ? `
+      <a href="${touch2Href}" class="contact-btn"
+         target="_blank" rel="noopener noreferrer"
+         data-lead-id="${lead.id}" data-channel="email" data-snippet="more-info"
+         style="${btnStyle} background:#7c3aed; color:#fff;">📨 Touch 2</a>` : '';
     const textBtn = hasPhone ? `
       <a href="${smsHref}" class="contact-btn"
          data-lead-id="${lead.id}" data-channel="text"
@@ -1025,7 +1038,7 @@ class LeadsScreen extends Screen {
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${editBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${touch2Btn}${textBtn}${editBtn}</div>
       </div>
     `;
   }
@@ -2075,6 +2088,39 @@ class LeadsScreen extends Screen {
     //   Wins: no mailto handler weirdness, no Outlook/Mail.app surprises,
     //   no OAuth/SMTP infra, real From: address is the club mailbox so
     //   replies route to soccer@lighthouse1893.org naturally.
+    const FROM_ACCOUNT = 'soccer@lighthouse1893.org';
+    const params = new URLSearchParams({
+      view:     'cm',
+      fs:       '1',
+      authuser: FROM_ACCOUNT,
+      to:       lead.email,
+      su:       subject,
+      body:     body,
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
+  }
+
+  // Touch-2 (or any snippet) variant of buildMailHref — pre-fills Gmail
+  // compose with the snippet's body and a sensible follow-up subject so
+  // a single click on the lead card opens a ready-to-send email.
+  //
+  // Subject precedence:
+  //   1. snippet.subject (broadcasts set this explicitly)
+  //   2. fallback: 'Re: ' + the touch-1 club title — keeps the visual
+  //      thread with the original outreach even though Gmail can't
+  //      actually merge it into the existing thread (no In-Reply-To
+  //      header is possible from a compose link).
+  //
+  // Body is the personalized snippet body — same flow as the existing
+  // copy chip on the Messages page, just one-click instead of two.
+  buildMailHrefForSnippet(lead, label, snippetId) {
+    const snippets = this.messageSnippets(label) || [];
+    const snip = snippets.find(s => s.id === snippetId);
+    if (!snip || !lead.email) return '';
+    const body = this.fillTemplate(snip.body, lead);
+    const subjectRaw = snip.subject
+      || ('Re: ' + (this.messageTemplate(label).subject || ''));
+    const subject = this.fillTemplate(subjectRaw, lead);
     const FROM_ACCOUNT = 'soccer@lighthouse1893.org';
     const params = new URLSearchParams({
       view:     'cm',
