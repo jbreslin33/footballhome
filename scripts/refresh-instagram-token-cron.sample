@@ -1,0 +1,22 @@
+# Instagram long-lived token — auto-refresh every 50 days
+#
+# Install:   crontab -l > /tmp/cron.cur && cat scripts/refresh-instagram-token-cron.sample >> /tmp/cron.cur && crontab /tmp/cron.cur
+# Verify:    crontab -l | grep refresh-instagram-token
+# Manual:    bash scripts/refresh-instagram-token.sh
+# Log:       tail -f scripts/refresh-instagram-token.log
+#
+# Background: IG long-lived tokens expire 60 days after issue. Calling
+# graph.instagram.com/refresh_access_token while still valid mints a
+# fresh 60-day token. We run at 50-day cadence to keep a 10-day cushion.
+#
+# Crontab doesn't have a native "every 50 days" syntax, so we run on
+# the 1st and 20th of every month (~20 day cadence — extra safety) at
+# 03:30 local time. The script is a no-op if the token hasn't changed.
+#
+# NOTE: this script does NOT re-encrypt env.age (no passphrase in cron).
+# After cron rotates the token, run `age -p -o env.age env` and commit
+# env.age the next time you're at the keyboard.
+
+PATH=/usr/local/bin:/usr/bin:/bin
+REPO_PATH=/home/jbreslin/sandbox/github/footballhome
+30 3 1,20 * * cd $REPO_PATH && /bin/bash scripts/refresh-instagram-token.sh
