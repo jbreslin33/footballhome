@@ -1870,13 +1870,19 @@ class LeadsScreen extends Screen {
       // (kickoffs depend on league scheduling once rosters close).
       // Cost line emphasizes all-inclusive (uniform + training + games,
       // no hidden fees) since that's the #1 question after price.
+      // Adult practice line stays deliberately vague ("during the week
+      // at 7pm at Lighthouse Field") — the full Wed/Fri + Tue/Thu/Sat
+      // pickup expectation lives in the dedicated Practice chip and is
+      // too much detail for a touch-1 / general-info paste.
       (() => {
         const gameLine = c.isYouth
           ? `• Games are on Sunday mornings to early afternoon.`
           : `• Games are mostly on Sundays.`;
-        const practiceLine = c.schedule?.practice
-          ? `• Practice: ${c.schedule.practice}.`
-          : `• Practice schedule confirms once the season starts.`;
+        const practiceLine = c.isYouth
+          ? (c.schedule?.practice
+              ? `• Practice: ${c.schedule.practice}.`
+              : `• Practice schedule confirms once the season starts.`)
+          : `• Practices during the week at 7pm at Lighthouse Field.`;
         return {
           id: 'more-info',
           label: 'ℹ️ More info',
