@@ -1959,15 +1959,19 @@ class LeadsScreen extends Screen {
   fillTemplate(tmpl, lead) {
     const full  = (lead.name || '').trim();
     const first = full.split(/\s+/)[0] || 'there';
-    // Auto-detect logged-in user's first name for signoff. Falls back to plain "Coach".
+    // Auto-detect logged-in user's name for signoff. Falls back to plain "Coach".
     const me    = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
     const coach = me.first_name ? `Coach ${me.first_name}` : 'Coach';
-    // `{coachFirst}` is the bare first name (no "Coach " prefix) — used in
+    // `{coachFirst}` is the bare name (no "Coach " prefix) — used in
     // touch-1 intros that sign off with a job title ("Soccer Director")
     // instead of the "Coach " prefix, to avoid "Coach Mike, Soccer
-    // Director" redundancy.  Falls back to "Coach" when no logged-in
-    // user is detected so the template still reads naturally.
-    const coachFirst = me.first_name || 'Coach';
+    // Director" redundancy.  Resolves to "{first_name} {last_name}"
+    // when both are on the auth profile so the signoff carries the full
+    // name (token name kept for backwards compat with existing
+    // templates).  Falls back to "Coach" when no logged-in user.
+    const coachFirst = me.first_name
+      ? (me.last_name ? `${me.first_name} ${me.last_name}` : me.first_name)
+      : 'Coach';
     return tmpl.replace(/\{first\}/g, first)
                .replace(/\{full\}/g,  full)
                .replace(/\{phone\}/g, lead.phone || '')
