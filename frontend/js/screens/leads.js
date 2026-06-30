@@ -1711,7 +1711,7 @@ class LeadsScreen extends Screen {
         `3. ⚽ ${gameLine}`,
         `4. 📍 Field address (practices and games):`,
         `   Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140`,
-        `   https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140`,
+        `   https://maps.google.com/?q=Lighthouse+Sport+Complex+Field`,
         ``,
         `Reply to this email with any questions — happy to help.`,
       ];
@@ -1873,7 +1873,7 @@ class LeadsScreen extends Screen {
             `${gameLine}\n` +
             `${practiceLine}\n` +
             `• Field: Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140\n` +
-            `  https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140\n` +
+            `  https://maps.google.com/?q=Lighthouse+Sport+Complex+Field\n` +
             `• Cost: ${c.initialFee} to register, then ${c.pricing}.\n` +
             `  All-inclusive: uniform, training, and games — no hidden fees.\n` +
             `\n` +
@@ -1892,7 +1892,7 @@ class LeadsScreen extends Screen {
         tier: 'info',
         body:
           `📍 Lighthouse Sports Complex — 199 E Erie Ave (outdoor)\n` +
-          `   https://maps.google.com/?q=199+E+Erie+Ave+Philadelphia+PA+19140\n` +
+          `   https://maps.google.com/?q=Lighthouse+Sport+Complex+Field\n` +
           `📍 Lighthouse Community Center — 141 W Somerset St (indoor)\n` +
           `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19140\n` +
           `\n` +
