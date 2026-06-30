@@ -383,15 +383,76 @@ Response LeadsController::handleLogContact(const Request& request) {
 
     try {
         auto userId = extractUserIdJwt(request);
-        auto row = LeadContact::insert(leadId, channel, userId, messageBody, status, templateId);
+
+        // ─── Sibling fan-out ───────────────────────────────────────
+        // Some people fill out multiple lead forms (e.g. same email
+        // signs up for both Boys Club AND Men's).  When the coach
+        // emails or texts that person, conceptually they've contacted
+        // ALL of those lead rows in one outbound touch.  Insert a
+        // contact row for each so per-lead aggregates + status all
+        // flip together.
+        //
+        // Match key per channel:
+        //   email channel → leads with the same email (case-insensitive)
+        //   text  channel → leads with the same phone (raw equality —
+        //                   Meta hands us normalized E.164 already)
+        //   other         → original lead only (no fan-out)
+        //
+        // The original lead_id is always included even if its email/
+        // phone is NULL (defensive — a lead with no email could still
+        // have a manual touch logged).
+        auto db = Database::getInstance();
+        std::vector<int> affectedIds;
+        try {
+            std::string match;
+            if (channel == "email") {
+                match =
+                    "SELECT id FROM leads "
+                    "WHERE id = $1::int "
+                    "   OR (email IS NOT NULL AND email <> '' "
+                    "       AND LOWER(email) = LOWER( (SELECT email FROM leads WHERE id = $1::int) ) )";
+            } else if (channel == "text") {
+                match =
+                    "SELECT id FROM leads "
+                    "WHERE id = $1::int "
+                    "   OR (phone IS NOT NULL AND phone <> '' "
+                    "       AND phone = (SELECT phone FROM leads WHERE id = $1::int) )";
+            }
+            if (!match.empty()) {
+                auto rs = db->query(match, { std::to_string(leadId) });
+                for (const auto& row : rs) affectedIds.push_back(row[0].as<int>());
+            }
+        } catch (const std::exception&) {
+            // Fan-out lookup failed — fall back to original lead only.
+        }
+        if (affectedIds.empty()) affectedIds.push_back(leadId);
+
+        // Insert a contact row per affected lead.  The first insert
+        // (the originally-clicked lead) is the canonical row whose
+        // id/sent_at we echo back at the top level so existing
+        // callers that only read those fields keep working.
+        LeadContact::Row canonical{};
+        bool canonicalSet = false;
+        for (int aid : affectedIds) {
+            auto row = LeadContact::insert(aid, channel, userId, messageBody, status, templateId);
+            if (aid == leadId || !canonicalSet) {
+                canonical = row;
+                canonicalSet = true;
+            }
+        }
 
         std::ostringstream b;
-        b << "{\"id\":"      << jsonInt(row.id)
-          << ",\"lead_id\":" << jsonInt(row.leadId)
-          << ",\"channel\":" << jsonStr(row.channel)
-          << ",\"sent_at\":" << jsonStr(row.sentAtIso)
-          << ",\"status\":"  << jsonOrNull(row.status)
-          << "}";
+        b << "{\"id\":"      << jsonInt(canonical.id)
+          << ",\"lead_id\":" << jsonInt(canonical.leadId)
+          << ",\"channel\":" << jsonStr(canonical.channel)
+          << ",\"sent_at\":" << jsonStr(canonical.sentAtIso)
+          << ",\"status\":"  << jsonOrNull(canonical.status)
+          << ",\"affected_lead_ids\":[";
+        for (size_t i = 0; i < affectedIds.size(); ++i) {
+            if (i > 0) b << ',';
+            b << affectedIds[i];
+        }
+        b << "]}";
         return errOk(HttpStatus::OK, b.str());
     } catch (const std::exception& e) {
         std::cerr << "Error logging contact: " << e.what() << std::endl;
