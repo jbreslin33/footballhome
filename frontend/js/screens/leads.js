@@ -1432,12 +1432,29 @@ class LeadsScreen extends Screen {
     //   Games / Cost / Season / Next:).  The touch-1 intro has none of
     //   those, so the wrapper would be a no-op.  Skipping it also
     //   signals to future maintainers that this is a plain-prose body.
+    // Club-title shown in the touch-1 subject line.  Branded by audience
+    // so a Boys Club lead sees "Lighthouse Boys Soccer Club 1893", a
+    // Women's lead sees "Lighthouse Women's Soccer Club 1893", the
+    // legacy combined youth funnel (which doesn't pre-identify gender)
+    // sees "Lighthouse Boys & Girls Soccer Club 1893", and adult-men
+    // funnels (PR / Brazil / U23) see "Lighthouse Men's Soccer Club
+    // 1893".  Checks ordered most-specific → most-general.
+    const fl = funnelLabel || '';
+    const clubTitle =
+        c.isLegacyYouth          ? 'Lighthouse Boys & Girls Soccer Club 1893'
+      : c.isWomensClub           ? "Lighthouse Women's Soccer Club 1893"
+      : /girls/i.test(fl)        ? 'Lighthouse Girls Soccer Club 1893'
+      : /boys/i.test(fl)         ? 'Lighthouse Boys Soccer Club 1893'
+      : /\bmen\b/i.test(fl)      ? "Lighthouse Men's Soccer Club 1893"
+      : c.isYouth                ? 'Lighthouse Boys & Girls Soccer Club 1893'
+      :                            'Lighthouse Soccer Club 1893';
+
     return {
       sms:
         `Hi {first}, {coachFirst} here — Soccer Director at ` +
         `Lighthouse 1893. Are you looking to join our ${c.program} ` +
         `this season?`,
-      subject: `Hi from Lighthouse 1893`,
+      subject: clubTitle,
       email:
         `Hi {first},\n\n` +
         `{coachFirst} here, Soccer Director at Lighthouse 1893.\n\n` +
