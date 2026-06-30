@@ -1879,7 +1879,7 @@ class LeadsScreen extends Screen {
             `\n` +
             closeLink(`To register, head here:`) + `\n` +
             `\n` +
-            `Reply with any other questions — or if it's easier, happy to hop on a quick call. Just let me know what time works.`,
+            `Reply with any other questions — or if it's easier, let me know a good time to call.`,
         };
       })(),
       // Field — answers "where do you play?" with both Lighthouse venues +
