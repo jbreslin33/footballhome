@@ -6,6 +6,7 @@
 class MensTeamColumns;
 class MensTeamAssignments;
 class PersonBilling;
+class PersonPayments;
 
 // ────────────────────────────────────────────────────────────────────────────
 // MensRoster — model behind GET /api/mens-roster.
@@ -44,6 +45,7 @@ private:
     std::unique_ptr<MensTeamColumns>     columns_;
     std::unique_ptr<MensTeamAssignments> assignments_;
     std::unique_ptr<PersonBilling>       billing_;
+    std::unique_ptr<PersonPayments>      payments_;
     int mensProgramId_;
 
     static int envInt(const char* name, int fallback);

@@ -99,7 +99,16 @@ class MessagesScreen extends Screen {
         const sel = copyBtn.dataset.copyTarget;
         const src = this.element.querySelector(sel);
         if (src) {
-          this._copy(src.textContent, copyBtn);
+          // If the source is flagged as HTML (rendered snippet body),
+          // write BOTH text/html and text/plain to the clipboard so
+          // pasting into a WYSIWYG editor (LeagueApps' program editor,
+          // Gmail, etc.) preserves the bold/lists, while plain-text
+          // targets still receive readable copy.
+          if (src.dataset.copyHtml === '1') {
+            this._copyHtml(src.innerHTML, src.textContent, copyBtn);
+          } else {
+            this._copy(src.textContent, copyBtn);
+          }
         }
         return;
       }
@@ -195,6 +204,34 @@ class MessagesScreen extends Screen {
         btn.textContent = '⚠️ Copy failed';
         setTimeout(() => { btn.textContent = '📋 Copy'; }, 1800);
       }
+    }
+  }
+
+  // Copy an HTML snippet.  Writes text/html + text/plain via the async
+  // Clipboard API so pasting into a WYSIWYG editor preserves formatting
+  // (bold, lists, links) while plain-text targets still get readable
+  // copy.  Falls back to plain text if ClipboardItem isn't available.
+  async _copyHtml(html, text, btn) {
+    try {
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        const item = new ClipboardItem({
+          'text/html':  new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+        });
+        await navigator.clipboard.write([item]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      const orig = btn.textContent;
+      btn.textContent = '✅ Copied';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.disabled = false;
+      }, 1400);
+    } catch (err) {
+      console.error('HTML clipboard write failed, falling back to text:', err);
+      this._copy(text, btn);
     }
   }
 
@@ -294,9 +331,12 @@ class MessagesScreen extends Screen {
     // (most-common chip — touch 1 is sent from the Leads list, not here),
     // then broadcasts, close (the ASK), soft fallback, info chips, and
     // qualifying questions last.  Matches the visual grouping on the
-    // Leads page.
-    const TIER_ORDER = ['followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
+    // Leads page.  'program' is the canonical LA program-page copy —
+    // pinned at the top so admins can grab-and-paste when editing a
+    // LeagueApps program listing.
+    const TIER_ORDER = ['program', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
     const TIER_TITLES = {
+      program:  '📋 LeagueApps Program Description',
       followup: '📨 Follow-up (touch 2 — after they say yes)',
       broadcast: '📣 Broadcasts (LA Messages — entire roster)',
       close:   '🎯 Close (the ask)',
@@ -315,12 +355,21 @@ class MessagesScreen extends Screen {
       .map((t) => {
         const items = groups[t].map((s, idx) => {
           const bodyText = this._personalize(s.body);
+          const bodyHtml = s.html ? this._personalize(s.html) : null;
           const id = `snip-${t}-${idx}`;
           const subjectId = `snip-${t}-${idx}-subject`;
           const subjectText = s.subject ? this._personalize(s.subject) : '';
           const todoBadge = s.todo
             ? `<span style="margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: #fef3c7; color: #92400e; font-size: 0.7rem; font-weight: 600;">⚠ TODO</span>`
             : '';
+          // HTML snippets render inside a styled <div> (so bold/lists
+          // actually show up) and flag data-copy-html="1" so the copy
+          // handler writes text/html to the clipboard.  Plain-text
+          // snippets keep the <pre> renderer that preserves the exact
+          // paste-into-GroupMe formatting they were authored in.
+          const bodyBlock = bodyHtml
+            ? `<div id="${id}" data-copy-html="1" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; line-height: 1.55;">${bodyHtml}</div>`
+            : `<pre id="${id}" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.88rem; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.5;">${this.escapeHtml(bodyText)}</pre>`;
           return `
             <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: var(--space-3); background: var(--bg-surface); color: var(--text-primary); margin-bottom: var(--space-2);">
               <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); margin-bottom: var(--space-2);">
@@ -334,7 +383,7 @@ class MessagesScreen extends Screen {
                 <button class="btn btn-secondary" data-copy-target="#${subjectId}" style="font-size: 0.8rem; padding: 4px 10px;">📋 Copy</button>
               </div>
               ` : ''}
-              <pre id="${id}" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.88rem; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.5;">${this.escapeHtml(bodyText)}</pre>
+              ${bodyBlock}
             </div>
           `;
         }).join('');

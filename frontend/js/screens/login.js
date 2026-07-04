@@ -12,8 +12,12 @@ class LoginScreen extends Screen {
       <div class="card" style="max-width: 400px; margin: var(--space-4) auto;">
         <h2 style="margin-bottom: var(--space-4);">Login</h2>
         
-        <!-- Google Sign In Button -->
-        <a href="/api/auth/google/login" class="btn btn-secondary w-full" style="margin-bottom: var(--space-3); display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
+        <!-- Google Sign In Button.
+             Rendered hidden; probeGoogleStatus() below reveals it only
+             after /api/auth/google/status confirms creds are configured.
+             This prevents users seeing a raw 500 page when the env
+             file is missing GOOGLE_OAUTH_CLIENT_ID / _SECRET. -->
+        <a href="/api/auth/google/login" id="google-login-btn" class="btn btn-secondary w-full" style="display: none; margin-bottom: var(--space-3); align-items: center; justify-content: center; gap: var(--space-2);">
           <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -22,12 +26,11 @@ class LoginScreen extends Screen {
           </svg>
           Sign in with Google
         </a>
-        
-        <div style="text-align: center; margin: var(--space-3) 0; color: var(--text-secondary);">
+        <div id="google-login-divider" style="display: none; text-align: center; margin: var(--space-3) 0; color: var(--text-secondary);">
           <span style="background: white; padding: 0 var(--space-2);">or</span>
           <hr style="margin-top: -12px; border: none; border-top: 1px solid var(--border-color);">
         </div>
-        
+
         <form id="login-form">
           <div class="form-group">
             <label for="username" class="form-label">Email</label>
@@ -48,6 +51,11 @@ class LoginScreen extends Screen {
   }
   
   onEnter(params) {
+    // Reveal the Google button only if the server confirms creds are
+    // configured.  A bare HTTP failure or `configured:false` leaves the
+    // button hidden so the user never lands on a 500 page.
+    this._probeGoogleStatus();
+
     // Handle login form submission
     const form = this.find('#login-form');
     if (form) {
@@ -58,6 +66,25 @@ class LoginScreen extends Screen {
         
         this.handleLogin(username, password);
       });
+    }
+  }
+
+  async _probeGoogleStatus() {
+    try {
+      const res = await fetch('/api/auth/google/status', {
+        headers: { 'Cache-Control': 'no-store' },
+      });
+      if (!res.ok) return;               // silent fallback: keep button hidden
+      const data = await res.json();
+      if (data && data.configured === true) {
+        const btn = this.find('#google-login-btn');
+        const divider = this.find('#google-login-divider');
+        if (btn)     btn.style.display     = 'flex';
+        if (divider) divider.style.display = 'block';
+      }
+    } catch (_) {
+      // Network/parse failure — leave the button hidden.  Email/password
+      // login remains available regardless.
     }
   }
   

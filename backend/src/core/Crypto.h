@@ -28,4 +28,41 @@ std::string urlEncode(const std::string& raw);
 // when verifying JWT payloads and decoding magic-link tokens.
 std::string base64UrlDecode(const std::string& encoded);
 
+// ──────────────────────────────────────────────────────────────────────
+// JWT (HS256) — used by AuthController and OAuthController for issuing
+// login tokens, and by Controller::requireBearer for verifying them on
+// every authenticated request.  Both issuers MUST use signJwtHS256 and
+// the sole verifier MUST use verifyJwtHS256 so the two flows can never
+// drift again.
+// ──────────────────────────────────────────────────────────────────────
+
+// Returns the JWT signing secret.  Reads the JWT_SECRET env var on
+// first call; if unset (or empty), generates a cryptographically-random
+// 32-byte secret and caches it in a function-local static, logging a
+// loud warning that all sessions will be invalidated on the next
+// process restart.  This is deliberately non-fatal so a fresh dev
+// checkout still boots — production MUST set JWT_SECRET.
+const std::string& jwtSecret();
+
+// HMAC-SHA256(key, data).  Returns 32 raw bytes.
+std::string hmacSha256(const std::string& key, const std::string& data);
+
+// Signs a JWT using HS256 with the process JWT secret.  Header is the
+// fixed literal {"alg":"HS256","typ":"JWT"} and the payload is passed
+// through verbatim (caller is responsible for including "exp" and any
+// other claims).  Returns "header.payload.signature" with all three
+// parts base64url-encoded (no padding).
+std::string signJwtHS256(const std::string& payloadJson);
+
+// Verifies an HS256-signed JWT against the process JWT secret.
+// Checks (in order):
+//   1. token has exactly two '.' separators
+//   2. header decodes and contains alg=HS256
+//   3. signature matches, compared in constant time
+//   4. payload's "exp" claim (if present) is >= now (Unix seconds)
+// On success, if outPayloadJson is non-null, it receives the decoded
+// payload JSON string.  Returns false on any failure without leaking
+// which check failed.
+bool verifyJwtHS256(const std::string& token, std::string* outPayloadJson = nullptr);
+
 }  // namespace fh::crypto

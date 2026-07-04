@@ -125,6 +125,11 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         // rosters → players → persons for names
         // LEFT JOIN roster_positions → positions for position
         // LEFT JOIN users (via person_id) for email/avatar
+        // NOT EXISTS filter: hide anyone currently on a paused-variant
+        // LA sub-program.  Paused members remain in `rosters` (we do
+        // NOT delete history) but are excluded from every roster
+        // read.  They surface only in the Paused Membership admin
+        // screen (via person_la_memberships).
         std::string sql = 
             "SELECT "
             "  pl.id as player_id, "
@@ -143,6 +148,13 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "LEFT JOIN positions pos ON rp.position_id = pos.id "
             "LEFT JOIN person_emails pem ON pem.person_id = pe.id AND pem.is_primary = true "
             "WHERE r.team_id = $1 AND r.left_at IS NULL "
+            "  AND NOT EXISTS ( "
+            "        SELECT 1 FROM person_la_memberships plm "
+            "        JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "       WHERE plm.person_id = pe.id "
+            "         AND plm.ended_at IS NULL "
+            "         AND lp.variant = 'paused' "
+            "      ) "
             "ORDER BY "
             "  r.jersey_number NULLS LAST, "
             "  pe.last_name, pe.first_name";

@@ -234,3 +234,113 @@ LeagueAppsService::fetchProgramRegistrations(int programId) {
     }
     return out;
 }
+
+int LeagueAppsService::getSiteId() {
+    ensureConfigured();
+    return siteId_;
+}
+
+LeagueAppsService::RawResponse
+LeagueAppsService::rawGet(const std::string& path) {
+    ensureConfigured();
+
+    // Build URL: prepend base if the caller gave a relative path.
+    std::string url;
+    if (path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0) {
+        url = path;
+    } else if (!path.empty() && path.front() == '/') {
+        url = std::string(kApiBase) + path;
+    } else {
+        url = std::string(kApiBase) + "/" + path;
+    }
+
+    std::string token = getAccessToken();
+    bool retriedAuth = false;
+
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        HttpClient::Headers headers = {{"Authorization", "Bearer " + token}};
+        auto r = http_->get(url, headers);
+
+        if (r.status == 401 && !retriedAuth) {
+            retriedAuth = true;
+            invalidateToken();
+            token = getAccessToken();
+            continue;
+        }
+        RawResponse out;
+        out.status = r.status;
+        out.body   = r.body;
+        out.error  = r.error;
+        return out;
+    }
+    return {};
+}
+
+LeagueAppsService::TransactionFetchResult
+LeagueAppsService::fetchTransactionsSince(long long cursorLastUpdatedMs,
+                                          long long cursorLastId) {
+    ensureConfigured();
+    if (siteId_ <= 0) throw std::runtime_error("LEAGUEAPPS_SITE_ID not configured");
+
+    TransactionFetchResult out;
+    out.newLastUpdatedMs = cursorLastUpdatedMs;
+    out.newLastId        = cursorLastId;
+
+    std::string token = getAccessToken();
+    bool retriedAuth = false;
+
+    long long lastUpdated = cursorLastUpdatedMs;
+    long long lastId      = cursorLastId;
+
+    for (int page = 0; page < kMaxPages; ++page) {
+        std::ostringstream url;
+        url << kApiBase << "/sites/" << siteId_
+            << "/export/transactions-2"
+            << "?last-updated=" << lastUpdated
+            << "&last-id="      << lastId;
+
+        HttpClient::Headers headers = {{"Authorization", "Bearer " + token}};
+        auto r = http_->get(url.str(), headers);
+
+        if (r.status == 401 && !retriedAuth) {
+            retriedAuth = true;
+            invalidateToken();
+            token = getAccessToken();
+            --page;
+            continue;
+        }
+        if (!r.ok()) {
+            throw std::runtime_error("LeagueApps transactions-2 failed (status="
+                                     + std::to_string(r.status)
+                                     + (r.error.empty() ? "" : ", " + r.error)
+                                     + "): " + r.body.substr(0, 200));
+        }
+
+        json batch;
+        try {
+            batch = json::parse(r.body);
+        } catch (const std::exception& e) {
+            throw std::runtime_error(std::string("LeagueApps transactions-2 JSON parse failed: ") + e.what());
+        }
+        if (!batch.is_array() || batch.empty()) break;
+
+        for (auto& rec : batch) out.records.push_back(rec);
+
+        const auto& tail = batch.back();
+        long long newLu = tail.contains("lastUpdated") && tail["lastUpdated"].is_number()
+                        ? tail["lastUpdated"].get<long long>() : 0;
+        long long newId = tail.contains("id") && tail["id"].is_number()
+                        ? tail["id"].get<long long>() : 0;
+
+        // Stop if the tail didn't advance — protects against runaway loops
+        // if LA ever returns a fixed page.
+        if (newLu == lastUpdated && newId == lastId) break;
+
+        lastUpdated = newLu;
+        lastId      = newId;
+    }
+
+    out.newLastUpdatedMs = lastUpdated;
+    out.newLastId        = lastId;
+    return out;
+}

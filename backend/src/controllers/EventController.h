@@ -55,6 +55,10 @@ private:
     Response handleGetRosterPlayers(const Request& request);
     Response handleSetPlayerRSVP(const Request& request);
     Response handleSetPracticeRSVP(const Request& request);
+
+    // Compact RSVP + attendance counts for a single match — used by
+    // Practice/Pickup Dashboard row badges.
+    Response handleGetMatchRsvpSummary(const Request& request);
     
     // Helper methods
     std::string extractUserIdFromToken(const Request& request);

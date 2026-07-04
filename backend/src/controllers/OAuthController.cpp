@@ -121,17 +121,51 @@ void OAuthController::registerRoutes(Router& router, const std::string& prefix) 
     router.get(prefix + "/callback", [this](const Request& req) {
         return this->handleGoogleCallback(req);
     });
+
+    // Lightweight config probe so the login page can hide/disable the
+    // Google button when creds aren't set instead of letting the user
+    // click through to a 500 error page.  Never reveals the actual
+    // credential values — just a boolean.
+    router.get(prefix + "/status", [this](const Request& req) {
+        return this->handleGoogleStatus(req);
+    });
 }
 
 std::string OAuthController::getGoogleAuthUrl() {
+    // Base scopes = just what's needed for identity ("who is this user?").
+    // `openid email profile` are all NON-sensitive scopes — Google does NOT
+    // require app verification for them, so we can Publish the OAuth
+    // consent screen immediately with no "unverified app" warning.
+    //
+    // `https://www.googleapis.com/auth/drive.readonly` was originally in
+    // this string to power the Drive photo browser in
+    // frontend/js/screens/content-posts.js.  Drive is a "sensitive" scope:
+    // requesting it puts the app in Google's verification queue (4–6 weeks
+    // to complete) and until verification finishes, users see a scary
+    // "Google hasn't verified this app" red interstitial and refresh
+    // tokens expire in 7 days.  Neither is acceptable at go-live.
+    //
+    // How to re-enable Drive later (post-verification) WITHOUT a redeploy:
+    // set GOOGLE_OAUTH_EXTRA_SCOPES in env to the space-separated extra
+    // scopes, e.g.:
+    //     GOOGLE_OAUTH_EXTRA_SCOPES=https://www.googleapis.com/auth/drive.readonly
+    // then `make restart`.  Existing users will need to log out + back in
+    // once for the new scope to actually get granted.
+    std::string scopes = "openid email profile";
+    const char* extra = std::getenv("GOOGLE_OAUTH_EXTRA_SCOPES");
+    if (extra && *extra) {
+        scopes += " ";
+        scopes += extra;
+    }
+
     std::string authUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     authUrl += "?client_id=" + urlEncode(clientId_);
     authUrl += "&redirect_uri=" + urlEncode(redirectUri_);
     authUrl += "&response_type=code";
-    authUrl += "&scope=" + urlEncode("openid email profile https://www.googleapis.com/auth/drive.readonly");
+    authUrl += "&scope=" + urlEncode(scopes);
     authUrl += "&access_type=offline";
     authUrl += "&prompt=consent";
-    
+
     return authUrl;
 }
 
@@ -146,6 +180,21 @@ Response OAuthController::handleGoogleLogin(const Request& request) {
     Response response = Response::ok();
     response.setStatus(HttpStatus::FOUND);
     response.setHeader("Location", authUrl);
+    return response;
+}
+
+Response OAuthController::handleGoogleStatus(const Request& /*request*/) {
+    // No auth required — this is what the login page probes BEFORE the
+    // user has a token.  Returns only booleans; no secret material leaks.
+    const bool configured =
+        !clientId_.empty() && !clientSecret_.empty() && !redirectUri_.empty();
+
+    std::ostringstream body;
+    body << "{\"configured\":" << (configured ? "true" : "false") << "}";
+
+    Response response(HttpStatus::OK, body.str());
+    response.setHeader("Content-Type", "application/json");
+    response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     return response;
 }
 
@@ -286,36 +335,27 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
 }
 
 std::string OAuthController::generateJWT(const std::string& userId, const std::string& email) {
-    // JWT header
-    std::string header = R"({"alg":"HS256","typ":"JWT"})";
-    
-    // JWT payload
-    std::time_t now = std::time(nullptr);
-    std::time_t exp = now + (24 * 60 * 60); // 24 hours
-    
-    std::ostringstream payloadStream;
-    payloadStream << R"({"userId":")" << userId << R"(",)";
-    payloadStream << R"("email":")" << email << R"(",)";
-    payloadStream << R"("iat":)" << now << R"(,)";
-    payloadStream << R"("exp":)" << exp << "}";
-    std::string payload = payloadStream.str();
-    
-    // Base64url encode header and payload
-    std::string encodedHeader = fh::crypto::base64UrlEncode(header);
-    std::string encodedPayload = fh::crypto::base64UrlEncode(payload);
-    
-    // Create the signature base (header.payload)
-    std::string signatureBase = encodedHeader + "." + encodedPayload;
-    
-    // For now, use a simple signature (in production, use proper HMAC-SHA256)
-    // This creates a valid JWT structure that can be parsed
-    std::string signature = fh::crypto::base64UrlEncode("signature");
-    
-    // Return complete JWT
-    std::string token = signatureBase + "." + signature;
-    
+    // HS256-signed JWT.  Payload shape MUST stay byte-compatible with
+    // AuthController::generateJWT: {"userId","email","role","iat","exp"}
+    // in that exact order.  role="" here because Google OAuth doesn't
+    // know the app-side role yet — the frontend fetches /api/auth/me
+    // after login to resolve it.  If you change one generator, change
+    // the other, or Controller::requireBearer will start rejecting
+    // tokens minted by whichever generator drifted.
+    const std::time_t now = std::time(nullptr);
+    const std::time_t exp = now + (90LL * 24 * 60 * 60);  // 90 days
+
+    std::ostringstream payload;
+    payload << "{";
+    payload << "\"userId\":\"" << userId << "\",";
+    payload << "\"email\":\""  << email  << "\",";
+    payload << "\"role\":\"\",";
+    payload << "\"iat\":" << now << ",";
+    payload << "\"exp\":" << exp;
+    payload << "}";
+
+    const std::string token = fh::crypto::signJwtHS256(payload.str());
     std::cout << "Generated JWT token (length=" << token.length() << ")" << std::endl;
-    
     return token;
 }
 
@@ -359,8 +399,18 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
         return Response::internalError("Failed to create or find user");
     }
     
-    // Store Google tokens for Drive API access
-    try {
+    // Store Google tokens for Drive API access — only when Drive scope
+    // was actually requested (see GOOGLE_OAUTH_EXTRA_SCOPES in
+    // getGoogleAuthUrl above).  If we didn't ask for Drive scope, the
+    // access_token can't call Drive anyway, so persisting it is dead
+    // weight and just clutters user_google_tokens with rows that expire
+    // in an hour and never get used.  The row is still upserted when
+    // Drive scope IS present so content-posts.js keeps working.
+    const char* extraScopes = std::getenv("GOOGLE_OAUTH_EXTRA_SCOPES");
+    const bool haveDriveScope =
+        extraScopes && std::string(extraScopes).find("drive") != std::string::npos;
+
+    if (haveDriveScope) try {
         auto db = Database::getInstance();
         std::string refreshToken = tokenData.count("refresh_token") ? tokenData.at("refresh_token") : "";
         int expSec = 3600;

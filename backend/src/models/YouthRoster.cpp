@@ -5,11 +5,13 @@
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
 
 #include "PersonBilling.h"
+#include "PersonPayments.h"
 #include "YouthAgeGroups.h"
 #include "../services/LeagueAppsService.h"
 
@@ -116,6 +118,7 @@ bool isActive(const json& rec, bool includeAll) {
 YouthRoster::YouthRoster()
     : ageGroups_(std::make_unique<YouthAgeGroups>()),
       billing_  (std::make_unique<PersonBilling>()),
+      payments_ (std::make_unique<PersonPayments>()),
       boysProgramId_ (envInt("LEAGUEAPPS_BOYS_CLUB_PROGRAM_ID",  5039252)),
       girlsProgramId_(envInt("LEAGUEAPPS_GIRLS_CLUB_PROGRAM_ID", 5039357)) {}
 
@@ -213,6 +216,18 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
     auto boysRecs  = LeagueAppsService::getInstance().fetchProgramRegistrations(boysProgramId_);
     auto girlsRecs = LeagueAppsService::getInstance().fetchProgramRegistrations(girlsProgramId_);
 
+    // Sync new LA transactions into person_payments (see MensRoster.cpp
+    // for rationale).  Non-fatal on failure.
+    try {
+        payments_->syncFromLa();
+    } catch (const std::exception& e) {
+        std::cerr << "[YouthRoster] payment sync failed: " << e.what() << std::endl;
+    }
+    auto boysLastPaid  = payments_->loadLastPositiveByProgramByRegistration(boysProgramId_);
+    auto girlsLastPaid = payments_->loadLastPositiveByProgramByRegistration(girlsProgramId_);
+    auto boysRecent    = payments_->loadRecentByProgramByRegistration(boysProgramId_, 3);
+    auto girlsRecent   = payments_->loadRecentByProgramByRegistration(girlsProgramId_, 3);
+
     std::vector<json> shapedAll;
     shapedAll.reserve(boysRecs.size() + girlsRecs.size());
     for (const auto& r : boysRecs)  if (isActive(r, includeAll)) shapedAll.push_back(shapeYouthPlayer(r, "boys"));
@@ -221,10 +236,41 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
     auto billingMap = billing_->loadAll();
 
     for (auto& p : shapedAll) {
-        const auto bill = PersonBilling::resolve(billingMap, userIdString(p.at("leagueAppsUserId")));
+        const std::string uid = userIdString(p.at("leagueAppsUserId"));
+        const auto bill = PersonBilling::resolve(billingMap, uid);
         p["nextBillDate"]   = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
         p["nextBillAmount"] = bill.nextBillAmount;
         p["isDefault"]      = bill.isDefault;
+
+        // lastPaid pill data.  Join by registrationId (parent pays for
+        // child on youth, so la_user_id on transactions ≠ player uid).
+        const std::string club = p.at("club").is_string() ? p.at("club").get<std::string>() : std::string{};
+        const auto& lpMap  = (club == "Boys Club") ? boysLastPaid : girlsLastPaid;
+        const auto& recMap = (club == "Boys Club") ? boysRecent   : girlsRecent;
+        p["lastPaidAmount"] = nullptr;
+        p["lastPaidAt"]     = nullptr;
+        p["lastPaidType"]   = nullptr;
+        p["lastPayments"]   = json::array();
+        std::string regKey;
+        if (p.at("registrationId").is_number_integer())       regKey = std::to_string(p.at("registrationId").get<long long>());
+        else if (p.at("registrationId").is_number_unsigned())  regKey = std::to_string(p.at("registrationId").get<unsigned long long>());
+        else if (p.at("registrationId").is_string())           regKey = p.at("registrationId").get<std::string>();
+        if (!regKey.empty()) {
+            if (auto pit = lpMap.find(regKey); pit != lpMap.end()) {
+                p["lastPaidAmount"] = pit->second.amount;
+                p["lastPaidAt"]     = pit->second.paidAt.empty() ? json(nullptr) : json(pit->second.paidAt);
+                p["lastPaidType"]   = pit->second.txnType.empty() ? json(nullptr) : json(pit->second.txnType);
+            }
+            if (auto rit = recMap.find(regKey); rit != recMap.end()) {
+                for (const auto& lp : rit->second) {
+                    json row = json::object();
+                    row["amount"]  = lp.amount;
+                    row["paidAt"]  = lp.paidAt.empty()  ? json(nullptr) : json(lp.paidAt);
+                    row["txnType"] = lp.txnType.empty() ? json(nullptr) : json(lp.txnType);
+                    p["lastPayments"].push_back(std::move(row));
+                }
+            }
+        }
 
         // School-year age group: cohortYear = (mm >= 8 ? yy+1 : yy);
         //                       ageGroup   = "U" + (seasonEndYear - cohortYear)

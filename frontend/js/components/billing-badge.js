@@ -52,68 +52,182 @@ window.BillingBadge = (() => {
     return 'future';
   };
 
+  // ── Last-paid mini-table ──────────────────────────────────────────────
+  // Data source: /api/mens-roster + /api/youth-roster expose
+  //   p.lastPayments : [{ amount:number, paidAt:ISO8601, txnType:string }, ...]
+  //                    newest-first, up to 3 rows per player.
+  //
+  // Sync from LeagueApps runs every roster page load (user directive
+  // 2026-07-02).  Display is a boxed 3-column mini table:
+  //     amount | date | days-since
+  //
+  // Colour rule (user directive 2026-07-02):
+  //   Green — at least one of the recent payments is EITHER
+  //             $35 paid in the current monthly window
+  //               [previous 1st Friday, next 1st Friday)
+  //           OR
+  //             $8.75 / $9 paid on the most recent past Friday
+  //   Red   — otherwise
+  //
+  // Layout: renders as a block that takes the full card width on its own
+  // row (flex-basis:100%) so the numbers are legible at a glance.
+
+  const EXPECTED_MONTHLY_AMOUNT = 35;
+  const REDUCED_FRIDAY_AMOUNTS  = [8.75, 9];
+
+  const parseIsoUtc = (s) => {
+    if (!s || typeof s !== 'string') return null;
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const fmtLastAmount = (n) => {
+    const v = Number(n);
+    if (!isFinite(v)) return '$?';
+    return Number.isInteger(v) ? `$${v}` : `$${v.toFixed(2)}`;
+  };
+
+  const fmtLastDate = (d) => {
+    if (!d) return '';
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth() + 1;
+    const day = d.getUTCDate();
+    return `${m}/${day}/${y}`;
+  };
+
+  const daysSince = (d, nowDate = new Date()) => {
+    if (!d) return '';
+    const ms = nowDate.getTime() - d.getTime();
+    const days = Math.floor(ms / 86400000);
+    if (days < 0) return '0d';
+    return `${days}d`;
+  };
+
+  // First Friday of the given (UTC year, monthIdx0).
+  const firstFridayOf = (y, m) => {
+    const first = new Date(Date.UTC(y, m, 1));
+    const daysToFri = (5 - first.getUTCDay() + 7) % 7;
+    return new Date(Date.UTC(y, m, 1 + daysToFri));
+  };
+
+  // Monthly window driven by the "1st Friday" calendar:
+  //   • If today's UTC date is on/before THIS month's 1st Friday, we are
+  //     still in the "prev-to-current" cycle → window = [prevFF, thisFF].
+  //   • Otherwise (past this month's 1st Friday) roll forward
+  //     → window = [thisFF, nextFF].
+  // End boundary is exclusive at (endFF + 1 day) so a payment stamped any
+  // time on the boundary Friday counts as inside the window.
+  const monthlyWindow = (nowDate) => {
+    const y = nowDate.getUTCFullYear();
+    const m = nowDate.getUTCMonth();
+    const thisFF = firstFridayOf(y, m);
+    const todayMid = new Date(Date.UTC(y, m, nowDate.getUTCDate()));
+    const beforeCycle = todayMid.getTime() <= thisFF.getTime();
+    const prevFF = firstFridayOf(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1);
+    const nextFF = firstFridayOf(m === 11 ? y + 1 : y, m === 11 ? 0 : m + 1);
+    const start = beforeCycle ? prevFF : thisFF;
+    const endFF = beforeCycle ? thisFF : nextFF;
+    const end   = new Date(endFF.getTime() + 86400000);
+    return { start, end };
+  };
+
+  // Most recent past Friday (or today if today IS Friday) at UTC midnight.
+  const lastFridayMidnight = (nowDate) => {
+    const dow = nowDate.getUTCDay();  // 0=Sun … 5=Fri … 6=Sat
+    const back = (dow - 5 + 7) % 7;
+    return new Date(Date.UTC(
+      nowDate.getUTCFullYear(),
+      nowDate.getUTCMonth(),
+      nowDate.getUTCDate() - back
+    ));
+  };
+
+  const nearAmount = (a, target) => Math.abs(Number(a) - target) < 0.005;
+
+  const isPaidGreen = (payments, nowDate = new Date()) => {
+    if (!Array.isArray(payments) || !payments.length) return false;
+    const { start, end } = monthlyWindow(nowDate);
+    const friStart = lastFridayMidnight(nowDate);
+    const friEnd   = new Date(friStart.getTime() + 86400000);
+    for (const lp of payments) {
+      const d = parseIsoUtc(lp && lp.paidAt);
+      if (!d) continue;
+      const amt = Number(lp && lp.amount);
+      if (nearAmount(amt, EXPECTED_MONTHLY_AMOUNT)
+          && d >= start && d < end) {
+        return true;
+      }
+      if (REDUCED_FRIDAY_AMOUNTS.some((x) => nearAmount(amt, x))
+          && d >= friStart && d < friEnd) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  function renderLastPaid(p) {
+    if (!p) return '';
+    const list = Array.isArray(p.lastPayments) ? p.lastPayments : [];
+    const now  = new Date();
+    const green = isPaidGreen(list, now);
+
+    // Palette: green = paid-up, red = not paid-up (covers empty list too).
+    const bg     = green ? '#052e1a' : '#3a1f1f';
+    const fg     = green ? '#bbf7d0' : '#fecaca';
+    const border = green ? '#166534' : '#b91c1c';
+    const dim    = green ? '#86efac' : '#fca5a5';
+
+    let body;
+    if (list.length === 0) {
+      body = `<div style="padding:4px 0; font-weight:700; opacity:0.9;">No recent payments</div>`;
+    } else {
+      const rows = list.slice(0, 3).map((lp) => {
+        const paidAt = parseIsoUtc(lp && lp.paidAt);
+        if (!paidAt) return '';
+        const amt  = fmtLastAmount(lp.amount);
+        const date = fmtLastDate(paidAt);
+        const ago  = daysSince(paidAt, now);
+        const tip  = lp.txnType ? `${lp.txnType}: ${amt} on ${date}` : `${amt} on ${date}`;
+        return `
+          <tr title="${escapeAttr(tip)}">
+            <td style="padding:2px 8px 2px 0; text-align:left; font-weight:800;">${amt}</td>
+            <td style="padding:2px 8px; text-align:left;">${date}</td>
+            <td style="padding:2px 0 2px 8px; text-align:right; color:${dim};">${ago}</td>
+          </tr>`;
+      }).join('');
+      body = `
+        <table style="border-collapse:collapse; font-variant-numeric:tabular-nums; width:100%;">
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    return `
+      <div class="bb-last-paid-box"
+           style="flex-basis:100%; width:100%; display:block; box-sizing:border-box;
+                  margin-top:4px; padding:5px 8px;
+                  border:1px solid ${border}; border-radius:4px;
+                  background:${bg}; color:${fg};
+                  font-size:0.75rem; line-height:1.3; letter-spacing:0.02em;">
+        <div style="font-size:0.6rem; font-weight:800; opacity:0.75;
+                    letter-spacing:0.1em; margin-bottom:2px;">RECENT PAYMENTS</div>
+        ${body}
+      </div>
+    `;
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
   const escapeAttr = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   function render(p) {
     if (!p || !p.leagueAppsUserId) return '';
-    const amount = Number(p.nextBillAmount);
-    const isFA   = amount === 0;
-    const state  = dueState(p.nextBillDate);
-
-    // Colour scheme:
-    //   FA      → slate (informational)
-    //   past    → red (overdue)
-    //   today   → orange (act now)
-    //   soon    → amber (heads-up)
-    //   future  → muted green/grey (fine)
-    let bg, fg, border;
-    if (isFA) {
-      bg = '#1e293b'; fg = '#cbd5e1'; border = '#475569';
-    } else if (state === 'past') {
-      bg = '#3a1f1f'; fg = '#fca5a5'; border = '#b91c1c';
-    } else if (state === 'today') {
-      bg = '#3a2a14'; fg = '#fdba74'; border = '#ea580c';
-    } else if (state === 'soon') {
-      bg = '#3a3214'; fg = '#fde68a'; border = '#ca8a04';
-    } else {
-      bg = '#1f2937'; fg = '#cbd5e1'; border = '#374151';
-    }
-
-    const label = isFA
-      ? `FA · ${shortDate(p.nextBillDate)}`
-      : `${fmtAmount(amount)} · ${shortDate(p.nextBillDate)}`;
-
-    const tip = isFA
-      ? `Free agent (no charge). Next review: ${longDate(p.nextBillDate)}. Click to edit.`
-      : `Next bill: ${fmtAmount(amount)} on ${longDate(p.nextBillDate)}. Click to edit.`;
-
-    const markTip = `Mark billed: roll ${longDate(p.nextBillDate)} forward one month.`;
-
-    return `
-      <span style="display:inline-flex; gap:2px; align-items:center;">
-        <button class="bb-badge" type="button"
-                data-user-id="${p.leagueAppsUserId}"
-                data-next-bill-date="${escapeAttr(p.nextBillDate)}"
-                data-next-bill-amount="${escapeAttr(amount)}"
-                title="${escapeAttr(tip)}"
-                style="padding:2px 6px; font-size:0.65rem; font-weight:700;
-                       border-radius:4px 0 0 4px; cursor:pointer; line-height:1.3;
-                       letter-spacing:0.02em; white-space:nowrap;
-                       background:${bg}; color:${fg}; border:1px solid ${border};">
-          💲 ${label}
-        </button>
-        <button class="bb-mark-billed" type="button"
-                data-user-id="${p.leagueAppsUserId}"
-                title="${escapeAttr(markTip)}"
-                style="padding:2px 5px; font-size:0.65rem; font-weight:700;
-                       border-radius:0 4px 4px 0; cursor:pointer; line-height:1.3;
-                       background:transparent; color:${fg}; border:1px solid ${border}; border-left:none;">
-          ✓
-        </button>
-      </span>
-    `;
+    // Single financial section on the card — the "Recent payments" box.
+    // The old next-bill pill + mark-billed button were removed
+    // 2026-07-02 (user: "just one financial section").  wire() below
+    // still binds handlers for `.bb-badge` / `.bb-mark-billed` in case
+    // they're re-introduced later, but nothing renders them today.
+    return renderLastPaid(p);
   }
 
   // Bind delegated click handler.  authFetch is the screen's auth.fetch
@@ -209,5 +323,4 @@ window.BillingBadge = (() => {
     }
   }
 
-  return { render, wire };
-})();
+  return { render, wire, renderLastPaid };})();

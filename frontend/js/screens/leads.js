@@ -1045,9 +1045,23 @@ class LeadsScreen extends Screen {
     const label    = columnLabel || this.formLabel(lead.form_id) || '';
     const hasEmail = !!lead.email;
     const hasPhone = !!lead.phone;
-    const mailHref   = hasEmail ? this.buildMailHref(lead, label) : null;
-    const touch2Href = hasEmail ? this.buildMailHrefForSnippet(lead, label, 'more-info') : null;
-    const smsHref    = hasPhone ? this.buildSmsHref (lead, label) : null;
+    const mailHref         = hasEmail ? this.buildMailHref(lead, label) : null;
+    const smsHref          = hasPhone ? this.buildSmsHref (lead, label) : null;
+    // Follow-up chip hrefs — one per (template × channel) combination.
+    // Email variants use buildMailHrefForSnippet (Gmail compose w/ body
+    // pre-filled); text variants use buildSmsHrefForSnippet (sms: URI
+    // w/ snip.smsBody pre-filled).  Order matters below — we render
+    // the chip only when the corresponding channel exists on the lead.
+    const closeMailHref    = hasEmail ? this.buildMailHrefForSnippet(lead, label, 'close')     : null;
+    const closeSmsHref     = hasPhone ? this.buildSmsHrefForSnippet (lead, label, 'close')     : null;
+    const moreInfoMailHref = hasEmail ? this.buildMailHrefForSnippet(lead, label, 'more-info') : null;
+    const moreInfoSmsHref  = hasPhone ? this.buildSmsHrefForSnippet (lead, label, 'more-info') : null;
+    // Call button is a plain tel: URI — no template body, no clipboard,
+    // just fire the dialer.  We still POST a `call` contact row so we
+    // know a dial was attempted (see onContactClick channel='call' branch).
+    const callHref         = hasPhone
+      ? `tel:${(lead.phone || '').replace(/[^\d+]/g, '')}`
+      : null;
     const formattedPhone = this.formatPhoneNumber(lead.phone || '');
 
     // Visual status (5 buckets) — combines lifecycle (4-state, migration
@@ -1125,6 +1139,8 @@ class LeadsScreen extends Screen {
     };
     const lastEmailAt = lead.last_email_at || null;
     const lastTextAt  = lead.last_text_at  || null;
+    const lastCallAt  = lead.last_call_at  || null;
+    const callN       = Number(lead.call_count || 0);
 
     const inAgo = lead.created_at ? agoShort(lead.created_at) : '';
     const timeStrip = inAgo ? `
@@ -1132,15 +1148,46 @@ class LeadsScreen extends Screen {
         in ${inAgo}
       </span>` : '';
 
+    // Unified last-contact badge — computes the single most recent
+    // touch across all three channels (email / text / call) and shows
+    // its icon, template name, and time-ago in one bold line.  This is
+    // the "at-a-glance freshness" indicator the coach uses to decide
+    // whether a lead needs another poke.  Template names are shortened
+    // for card real-estate ("first-touch" → "touch 1", "more-info" →
+    // "info"); the full name lives in the modal history.  A NULL
+    // template (legacy pre-072 email rows) renders as "—".
+    const TEMPLATE_LABELS = {
+      'first-touch': 'touch 1',
+      'close':       'close',
+      'more-info':   'info',
+      'call':        'call',
+    };
+    const contactChannels = [
+      { at: lastEmailAt, tpl: lead.last_email_template, icon: '✉',  channel: 'email' },
+      { at: lastTextAt,  tpl: lead.last_text_template,  icon: '💬', channel: 'text'  },
+      { at: lastCallAt,  tpl: lead.last_call_template,  icon: '📞', channel: 'call'  },
+    ].filter(x => !!x.at);
+    let lastContactBadge = '';
+    if (contactChannels.length) {
+      contactChannels.sort((a, b) => new Date(b.at) - new Date(a.at));
+      const top = contactChannels[0];
+      const tplLabel = TEMPLATE_LABELS[top.tpl] || (top.tpl || '—');
+      lastContactBadge = `
+        <div style="font-size:0.82rem; font-weight:700; opacity:0.95;
+                    font-variant-numeric:tabular-nums; margin-top:6px;">
+          Last: ${top.icon} ${tplLabel} · ${agoShort(top.at)} ago
+        </div>`;
+    }
+
     // Per-channel last-touch line.  Renders only when at least one
     // channel has been touched.  Format:
     //   ✉ 1m            (one email)
     //   ✉ 1m (×2)        (multiple emails, time = MAX(sent_at))
     //   💬 4h            (text)
-    //   ✉ 1m · 💬 4h    (both channels)
-    // The whole line is bold so a 4-day-old "last touch" jumps out
-    // visually as something that probably needs a recontact even
-    // before the orange stale color kicks in at 3 days.
+    //   📞 2d            (call)
+    //   ✉ 1m · 💬 4h · 📞 2d    (multi-channel)
+    // Dimmer than lastContactBadge — the badge is "what happened
+    // most recently", this line is "what's happened on each channel".
     const touchParts = [];
     if (emailedN) {
       touchParts.push(
@@ -1154,43 +1201,91 @@ class LeadsScreen extends Screen {
         (textedN > 1 ? ` (×${textedN})` : '')
       );
     }
+    if (callN) {
+      touchParts.push(
+        `📞 ${lastCallAt ? agoShort(lastCallAt) : '?'}` +
+        (callN > 1 ? ` (×${callN})` : '')
+      );
+    }
     const touchesLine = touchParts.length ? `
-      <div style="font-size:0.78rem; font-weight:600; opacity:0.9;
-                  font-variant-numeric:tabular-nums; margin-top:4px;">
+      <div style="font-size:0.72rem; font-weight:500; opacity:0.7;
+                  font-variant-numeric:tabular-nums; margin-top:2px;">
         ${touchParts.join(' · ')}
       </div>` : '';
 
-    // Action buttons share the same flex-1 strip styling.  Email + Text
-    // are class="contact-btn" so onContactClick logs the touch and (for
-    // email only) writes rich HTML to the clipboard before opening Gmail.
-    // Edit is its own class — opens the override / lifecycle modal.
-    const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
+    // Action buttons — two conceptual rows that wrap freely.
+    //
+    // Row 1 (primary — Row 1 is where 90% of the daily clicks land):
+    //   Email  → touch-1 outreach (data-template="first-touch")
+    //   Text   → touch-1 outreach (data-template="first-touch")
+    //   Call   → dial + log a call touch (data-template="call")
+    //   Edit   → open lifecycle modal
+    //
+    // Row 2 (follow-ups — chips for template × channel combinations):
+    //   Close · Email → send close reply via email  (data-template="close")
+    //   Close · Text  → send close reply via text
+    //   Info · Email  → send more-info via email    (data-template="more-info")
+    //   Info · Text   → send more-info via text
+    //
+    // EVERY contact-btn carries data-channel + data-template so
+    // onContactClick can POST /api/leads/:id/contact with the correct
+    // (channel, template) pair and update the last-contact badge on
+    // the next render.
+    const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; min-width:76px;';
 
     const emailBtn = hasEmail ? `
       <a href="${mailHref}" class="contact-btn"
          target="_blank" rel="noopener noreferrer"
-         data-lead-id="${lead.id}" data-channel="email"
-         style="${btnStyle} background:#3b82f6; color:#fff;">✉ Email</a>` : '';
-    // Touch-2 ("More info") shortcut — copies the personalized
-    // follow-up body (rich HTML + plain text) to the clipboard and
-    // opens Gmail compose with it pre-filled, so the coach can either
-    // paste into an existing reply thread OR send fresh from the new
-    // compose tab.  Same onContactClick handler as Email; the
-    // data-snippet="more-info" attribute tells it to pull the chip
-    // body instead of the touch-1 template.
-    const touch2Btn = hasEmail && touch2Href ? `
-      <a href="${touch2Href}" class="contact-btn"
-         target="_blank" rel="noopener noreferrer"
-         data-lead-id="${lead.id}" data-channel="email" data-snippet="more-info"
-         style="${btnStyle} background:#7c3aed; color:#fff;">📨 Touch 2</a>` : '';
+         data-lead-id="${lead.id}" data-channel="email" data-template="first-touch"
+         style="${btnStyle} background:#3b82f6; color:#fff;">Email</a>` : '';
     const textBtn = hasPhone ? `
       <a href="${smsHref}" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="text"
-         style="${btnStyle} background:#16a34a; color:#fff;">💬 Text</a>` : '';
+         data-lead-id="${lead.id}" data-channel="text" data-template="first-touch"
+         style="${btnStyle} background:#16a34a; color:#fff;">Text</a>` : '';
+    // Call button — tel: URI fires the native dialer on mobile / OS
+    // handler on desktop.  onContactClick's channel='call' branch
+    // POSTs a `call` contact row (empty message_body, template='call')
+    // then lets the tel: link's default action proceed so the dial
+    // actually happens.  data-template="call" so the last-contact
+    // badge can render "Last: 📞 call · 1m ago".
+    const callBtn = hasPhone ? `
+      <a href="${callHref}" class="contact-btn"
+         data-lead-id="${lead.id}" data-channel="call" data-template="call"
+         title="Dial ${formattedPhone} and log a call touch"
+         style="${btnStyle} background:#eab308; color:#111;">Call</a>` : '';
     const editBtn = `
       <a href="javascript:void(0)" class="edit-btn"
          data-lead-id="${lead.id}"
-         style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">✏️ Edit</a>`;
+         style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">Edit</a>`;
+
+    // Row 2 chips.  Purple = close (locking in a YES reply); teal =
+    // more-info (answering a "tell me more" question).  Second word
+    // (Email / Text) denotes the channel so the coach can pattern-match
+    // at a glance which combination they're firing.  Same button width
+    // across the row via flex:1 + min-width, no emoji glyphs (which
+    // rendered at inconsistent widths and made the row look ragged).
+    const closeMailBtn = hasEmail && closeMailHref ? `
+      <a href="${closeMailHref}" class="contact-btn"
+         target="_blank" rel="noopener noreferrer"
+         data-lead-id="${lead.id}" data-channel="email" data-template="close" data-snippet="close"
+         title="Reply to a YES — email w/ register link"
+         style="${btnStyle} background:#7c3aed; color:#fff;">Close · Email</a>` : '';
+    const closeSmsBtn = hasPhone && closeSmsHref ? `
+      <a href="${closeSmsHref}" class="contact-btn"
+         data-lead-id="${lead.id}" data-channel="text" data-template="close" data-snippet="close"
+         title="Reply to a YES — text w/ register link"
+         style="${btnStyle} background:#7c3aed; color:#fff;">Close · Text</a>` : '';
+    const moreInfoMailBtn = hasEmail && moreInfoMailHref ? `
+      <a href="${moreInfoMailHref}" class="contact-btn"
+         target="_blank" rel="noopener noreferrer"
+         data-lead-id="${lead.id}" data-channel="email" data-template="more-info" data-snippet="more-info"
+         title="Send full program description — email"
+         style="${btnStyle} background:#0891b2; color:#fff;">Info · Email</a>` : '';
+    const moreInfoSmsBtn = hasPhone && moreInfoSmsHref ? `
+      <a href="${moreInfoSmsHref}" class="contact-btn"
+         data-lead-id="${lead.id}" data-channel="text" data-template="more-info" data-snippet="more-info"
+         title="Send full program description — text"
+         style="${btnStyle} background:#0891b2; color:#fff;">Info · Text</a>` : '';
 
     return `
       <div class="lead-card" data-lead-id="${lead.id}"
@@ -1204,8 +1299,10 @@ class LeadsScreen extends Screen {
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
+        ${lastContactBadge}
         ${touchesLine}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${touch2Btn}${textBtn}${editBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${editBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">${closeMailBtn}${closeSmsBtn}${moreInfoMailBtn}${moreInfoSmsBtn}</div>
       </div>
     `;
   }
@@ -1223,16 +1320,19 @@ class LeadsScreen extends Screen {
   //   first converts at 10-20% based on most documented youth-sports SMS data.
   //
   // Pricing (used in the Register snippet, not the first text):
-  //   • $35 to register (card capture)
-  //   • Youth   → $35/mo
-  //   • Adults  → $9/wk or $35/mo
+  //   • $1 to register (card capture)
+  //   • Youth / Men → $35/month
+  //   • Women       → $10/month
+  //   • Mid-month signups prorate weekly ($8.75/wk youth+men, $2.50/wk
+  //     women) until the first Friday of the following month, when the
+  //     monthly cadence begins.  See the LA Program Description snippet.
   //
   // Per-program LeagueApps registration URLs and qualifying questions live in
   // funnelContext() below — single source of truth used by both the initial
   // template and the snippets.
 
   funnelContext(funnelLabel) {
-    // LeagueApps registration URLs ($35 to register; card on file → recurring).
+    // LeagueApps registration URLs ($1 to register; card on file → recurring).
     const URL_MEN   = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership';
     const URL_WOMEN = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership';
     const URL_BOYS  = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership';
@@ -1471,6 +1571,34 @@ class LeadsScreen extends Screen {
       : /\bmen\b/i.test(fl)   ? "Lighthouse Men's Soccer Club 1893"
       : isYouth               ? 'Lighthouse Boys & Girls Soccer Club 1893'
       :                         'Lighthouse Soccer Club 1893';
+    // Touch-2 opener phrasing.  Youth flips subject to parent-of ("your
+    // son / daughter / child wants to play soccer for …") AND swaps the
+    // per-gender club name for the combined "Boys & Girls" branding, so
+    // a parent who picked the Boys funnel still sees the club as one
+    // co-ed program.  Adults keep the first-person "you want to play
+    // soccer for {gendered clubTitle}" (Men's / Women's / fallback).
+    const isBoysYouth  = isYouth && !isLegacyYouth && /boys/i.test(fl);
+    const isGirlsYouth = isYouth && !isLegacyYouth && /girls/i.test(fl);
+    const openerLine =
+        isBoysYouth    ? 'your son wants to play soccer for Lighthouse Boys & Girls Soccer Club 1893'
+      : isGirlsYouth   ? 'your daughter wants to play soccer for Lighthouse Boys & Girls Soccer Club 1893'
+      : isLegacyYouth  ? 'your child wants to play soccer for Lighthouse Boys & Girls Soccer Club 1893'
+      :                  `you want to play soccer for ${clubTitle}`;
+    // Close-context opener — tighter than openerLine, used by the
+    // `close` snippet (response to a YES reply on touch-1's "want to
+    // play?" question).  Deliberately drops the full club title and
+    // stays under ~10 words so the SMS variant fits in a single
+    // segment, and the email variant reads as a one-line congratulation
+    // + register CTA rather than an info dump.  Women's Club gets "with"
+    // instead of "for" — it's a co-ed-friendly community team, not a
+    // competitive travel squad, and the "with" phrasing matches how
+    // the coach speaks about it verbally.
+    const closerLine =
+        isBoysYouth    ? 'glad your son wants to play for Lighthouse'
+      : isGirlsYouth   ? 'glad your daughter wants to play for Lighthouse'
+      : isLegacyYouth  ? 'glad your player wants to play for Lighthouse'
+      : isWomensClub   ? 'glad you want to play with Lighthouse'
+      :                  'glad you want to play for Lighthouse';
     return {
       program:       PROGRAM_NAMES[baseLabel] || 'program',
       link:          LINKS[baseLabel] || 'https://lighthouse1893.leagueapps.com',
@@ -1487,12 +1615,14 @@ class LeadsScreen extends Screen {
       schedule:      SCHEDULES[baseLabel] || null,
       whose:         isYouth ? "your player's" : 'your',
       whoseCap:      isYouth ? "Your player's" : 'Your',
-      initialFee:    isWomensClub ? '$10' : '$35',
-      pricing:       isYouth ? '$35/mo' : (isWomensClub ? '$10/mo' : '$9/wk or $35/mo'),
+      initialFee:    '$1',
+      pricing:       isWomensClub ? '$10/month' : '$35/month',
       isYouth,
       isLegacyYouth,
       isWomensClub,
       clubTitle,
+      openerLine,
+      closerLine,
     };
   }
 
@@ -1708,7 +1838,7 @@ class LeadsScreen extends Screen {
   //     body  — message text; supports {first} {coach} tokens
   //     tier  — one of:
   //               'qualify' — mid-conversation digging Qs (no link)
-  //               'close'   — the ASK ($35 register) — always lead with this
+  //               'close'   — the ASK ($1 register) — always lead with this
   //               'soft'    — fallback for hesitant leads (pickup)
   //               'info'    — neutral info replies (schedule, requirements)
   //             Chips are grouped by tier in the UI so the close always
@@ -1738,6 +1868,127 @@ class LeadsScreen extends Screen {
     // grade + boy/girl question.  All other funnels get one Register chip.
     const snippets = [];
 
+    // ── LeagueApps Program Description ────────────────────────────────
+    // Canonical copy for the LA program-listing "Description" field.
+    // Written as HTML (not Markdown) so it pastes into LeagueApps'
+    // WYSIWYG editor as formatted content — the Copy button on the
+    // Messages screen writes both text/html and text/plain to the
+    // clipboard for HTML snippets.  Tone is factual / policy-page —
+    // we're a nonprofit club, not a product pitch.  Only three things
+    // vary between programs:
+    //   • the two dollar figures
+    //   • adult vs. parent phrasing ("your membership" / "your player's
+    //     membership")
+    //   • the kit pronoun ("your kit" / "their kit")
+    //
+    // Hoisted to the outer function scope (via `let laDescText`) so the
+    // ℹ️ More info follow-up snippet below can reuse the exact same
+    // policy copy — one source of truth for the club's program
+    // description / details across both the LA program page and the
+    // more-info email reply.
+    let laDescText;
+    {
+      const monthly = c.isWomensClub ? '10'   : '35';
+      const weekly  = c.isWomensClub ? '2.50' : '8.75';
+      const membership = c.isYouth
+        ? "Your player's membership"
+        : "Your membership";
+      const kit = c.isYouth ? 'their uniform' : 'your uniform';
+
+      // ── Schedule block ──
+      // LA program pages get a clean, audience-wide schedule — not the
+      // per-team specifics (which live in the funnel-specific messages
+      // below).  Rationale:
+      //   • adult men → list all five weekly sessions equally and set
+      //     the expectation ("attend at least 2 sessions per week").
+      //     Framing them as 5 equivalent sessions instead of
+      //     "practice + pickup fallback" avoids the old confusion about
+      //     whether pickup counts.
+      //   • adult women → no practice yet; Sunday games starting
+      //     September.
+      //   • youth → split by grade tier so parents scanning the page
+      //     immediately see which days apply to their kid: 2nd and
+      //     under practice Mon/Wed; 3rd and older practice Mon/Wed/Fri.
+      // Field is club-wide and always the same.
+      let practiceBlockHtml;
+      let practiceBlockText;
+      let gamesLine;
+      if (c.isYouth) {
+        practiceBlockHtml =
+          `<li><strong>Practice:</strong>` +
+            `<ul>` +
+              `<li>2nd grade and younger &mdash; Mondays &amp; Wednesdays, 4:30&ndash;5:30pm</li>` +
+              `<li>3rd grade and older &mdash; Mondays, Wednesdays &amp; Fridays, 5:30&ndash;7pm</li>` +
+            `</ul>` +
+          `</li>`;
+        practiceBlockText =
+          `  • Practice:\n` +
+          `      – 2nd grade and younger — Mondays & Wednesdays, 4:30–5:30pm\n` +
+          `      – 3rd grade and older — Mondays, Wednesdays & Fridays, 5:30–7pm\n`;
+        gamesLine = 'Sunday mornings to early afternoon';
+      } else if (c.isWomensClub) {
+        practiceBlockHtml = '';   // no practice bullet on women's LA page
+        practiceBlockText = '';
+        gamesLine = 'Sundays, starting in September';
+      } else {
+        const adultPractice = 'Tuesday through Friday 7:00–8:30pm, Saturday 11:00am–12:30pm. Players are expected to attend 2 sessions per week.';
+        practiceBlockHtml = `<li><strong>Practice:</strong> ${this.escapeHtml(adultPractice)}</li>`;
+        practiceBlockText = `  • Practice: ${adultPractice}\n`;
+        gamesLine = 'Sundays';
+      }
+      const outdoorLine =
+        'Lighthouse Sports Complex, 199 E Erie Avenue, Philadelphia PA 19140';
+      const indoorLine =
+        'Lighthouse Community Center, 141 W Somerset Street, Philadelphia PA 19133';
+
+      const laDescHtml =
+        `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years.</p>` +
+        `<h3>Membership</h3>` +
+        `<p>${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>` +
+        `<h3>Schedule</h3>` +
+        `<ul>` +
+        practiceBlockHtml +
+        `<li><strong>Games:</strong> ${this.escapeHtml(gamesLine)}</li>` +
+        `<li><strong>Home Outdoor Facility:</strong> ${this.escapeHtml(outdoorLine)}</li>` +
+        `<li><strong>Home Indoor Facility:</strong> ${this.escapeHtml(indoorLine)}</li>` +
+        `</ul>` +
+        `<h3>Billing</h3>` +
+        `<p>Registration is $1 at signup. Membership is $${monthly}/month, charged on the first Friday of each month.</p>` +
+        `<p>If you sign up mid-month, your first partial month is prorated at <strong>$${weekly} per week</strong>, charged each Friday until the first Friday of the following month, when the $${monthly}/month cadence begins.</p>` +
+        `<p>Payment cards saved at registration are charged automatically through LeagueApps. A receipt is emailed for each charge. Members can pause or cancel anytime.</p>` +
+        `<h3>Changes &amp; questions</h3>` +
+        `<p>To pause or cancel a membership, or ask a question, email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`;
+      // Plain-text fallback used when the clipboard API can't write
+      // text/html (older browsers) and when the snippet is displayed in
+      // any surface that expects plain text.  Mirrors the HTML content
+      // without markup so nothing looks broken.  Assigned to the
+      // outer-scope `laDescText` so the More info snippet can reuse it
+      // verbatim below.
+      laDescText =
+        `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years.\n\n` +
+        `MEMBERSHIP:\n` +
+        `${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
+        `SCHEDULE:\n` +
+        practiceBlockText +
+        `  • Games: ${gamesLine}\n` +
+        `  • Home Outdoor Facility: ${outdoorLine}\n` +
+        `  • Home Indoor Facility: ${indoorLine}\n\n` +
+        `BILLING:\n` +
+        `Registration is $1 at signup. Membership is $${monthly}/month, charged on the first Friday of each month.\n\n` +
+        `If you sign up mid-month, your first partial month is prorated at $${weekly} per week, charged each Friday until the first Friday of the following month, when the $${monthly}/month cadence begins.\n\n` +
+        `Payment cards saved at registration are charged automatically through LeagueApps. A receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
+        `CHANGES & QUESTIONS:\n` +
+        `To pause or cancel a membership, or ask a question, email soccer@lighthouse1893.org.`;
+      snippets.push({
+        id: 'la-program-description',
+        label: `📋 LA Program Description ($${monthly}/mo)`,
+        tier: 'program',
+        subject: 'Program Description',
+        html: laDescHtml,
+        body: laDescText,
+      });
+    }
+
     // ── Broadcasts (LA Messages — paste into LeagueApps Messages to
     // blast the entire roster).  Currently: Spring → Summer/Fall
     // re-registration heads-up for Boys / Girls Club families.  Lives
@@ -1755,7 +2006,7 @@ class LeadsScreen extends Screen {
       `• 2nd grade and younger: 4:30pm–5:30pm\n` +
       `• 3rd grade and older: 5:30pm–7pm\n\n` +
       `Games — Sunday mornings to early afternoon\n\n` +
-      `Cost — $35 to start, then $35/month\n` +
+      `Cost — $1 to register, then $35/month\n` +
       `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
       `Hit reply with any questions — happy to help.\n\n` +
       `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
@@ -1835,13 +2086,13 @@ class LeadsScreen extends Screen {
     if (c.isLegacyYouth) {
       snippets.push({
         id: 'register-boys',
-        label: '💳 Register Boys ($35)',
+        label: '💳 Register Boys ($1)',
         tier: 'close',
         body: `Great. To register your son as a member of the soccer club, register here: ${c.linkBoys}`,
       });
       snippets.push({
         id: 'register-girls',
-        label: '💳 Register Girls ($35)',
+        label: '💳 Register Girls ($1)',
         tier: 'close',
         body: `Great. To register your daughter as a member of the soccer club, register here: ${c.linkGirls}`,
       });
@@ -1851,7 +2102,7 @@ class LeadsScreen extends Screen {
       const child = /girls/i.test(funnelLabel) ? 'daughter' : 'son';
       snippets.push({
         id: 'register',
-        label: '💳 Register ($35)',
+        label: '💳 Register ($1)',
         tier: 'close',
         body: `Great. To register your ${child} as a member of the soccer club, register here: ${c.link}`,
       });
@@ -2023,11 +2274,11 @@ class LeadsScreen extends Screen {
         pickupBody =
           `Our next pickup: ${titleClause}${when}${where}.\n` +
           `RSVP "Going" here so we know to expect you: ${eventUrl}\n` +
-          `Come play, meet the squad, see if it's your scene. If it is, $35 to lock in your team spot.`;
+          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
       } else {
         pickupBody =
           `No pressure to commit yet — jump in our Philadelphia Pickup chat for the next session and RSVP "Going" on whichever pickup works for you: ${c.pickupLink}\n` +
-          `Come play, meet the squad, see if it's your scene. If it is, $35 to lock in your team spot.`;
+          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
       }
       snippets.push({
         id: 'pickup',
@@ -2038,38 +2289,89 @@ class LeadsScreen extends Screen {
     }
 
     snippets.push(
-      // More info — catch-all general blurb for the "tell me more" /
-      // "send me more info" follow-up.  Covers games, practice, field,
-      // cost, register link in one paste.  Game cadence: youth get a
-      // concrete Sunday-mornings-to-early-afternoon window; adults just
-      // get "mostly Sundays" without committing to a kickoff window
-      // (kickoffs depend on league scheduling once rosters close).
-      // Cost line emphasizes all-inclusive (uniform + training + games,
-      // no hidden fees) since that's the #1 question after price.
-      // Adult practice line stays deliberately vague ("during the week
-      // at 7pm at Lighthouse Field") — the full Wed/Fri + Tue/Thu/Sat
-      // pickup expectation lives in the dedicated Practice chip and is
-      // too much detail for a touch-1 / general-info paste.
+      // Close — response to a YES reply on touch-1's "want to play?"
+      // question.  Ultra-minimum: one-line congratulation + register
+      // link + sign-off.  NO info dump.  A lead who said "yes I want
+      // to play" already has intent; adding cost/schedule/field details
+      // here just gives them more surface to reconsider on.  Info-
+      // hungry leads (who reply with "can you tell me more about…")
+      // get the More Info snippet instead.
+      //
+      // Subject deliberately inherits 'Re: ' + touch-1 subject (via
+      // buildMailHrefForSnippet fallback) so Gmail visually threads the
+      // reply into the original outreach — coach clicks Send and it
+      // looks like a natural continuation of the conversation.
+      //
+      // smsBody: same message compressed to one segment so the coach
+      // can close via SMS on leads that came in phone-preferred.
       (() => {
-        const gameLine = c.isYouth
-          ? `• Games are on Sunday mornings to early afternoon.`
-          : `• Games are mostly on Sundays.`;
-        const practiceLine = c.isYouth
-          ? (c.schedule?.practice
-              ? `• Practice: ${c.schedule.practice}.`
-              : `• Practice schedule confirms once the season starts.`)
-          : `• Practices during the week at 7pm at Lighthouse Field.`;
-        // Urgency line: practice is already in session.  Phrased to
-        // signal "we're rolling, don't wait" without making the lead
-        // feel behind or pressured — the second half explicitly
-        // dissolves the "am I too late?" anxiety AND nudges the next
-        // action (register) rather than a soft "come hang out".
-        // Youth wording is parent-facing ("new players join all
-        // season"), adult wording assumes the lead is the player
-        // ("we're still bringing in new players").
-        const startedLine = c.isYouth
-          ? `Heads up — practice has already started, but new players join all season, so registering this week is no problem.`
-          : `Heads up — practice is already underway, but we're still bringing in new players, so registering this week is no problem.`;
+        const linkBlock = c.isLegacyYouth
+          ? `Register here (full program details on the page):\n` +
+            `• Boys: ${c.linkBoys}\n` +
+            `• Girls: ${c.linkGirls}`
+          : `Register here (full program details on the page):\n${c.link}`;
+        const smsLinkBit = c.isLegacyYouth
+          ? `Boys: ${c.linkBoys} · Girls: ${c.linkGirls}`
+          : c.link;
+        return {
+          id: 'close',
+          label: '📨 Close',
+          tier: 'followup',
+          body:
+            `Hi {first},\n` +
+            `\n` +
+            `Great — ${c.closerLine}.\n` +
+            `\n` +
+            `${linkBlock}\n` +
+            `\n` +
+            `— {coachFirst}\n` +
+            `Soccer Director\n` +
+            `Lighthouse 1893 SC`,
+          smsBody:
+            `Great — ${c.closerLine}. Register: ${smsLinkBit}\n` +
+            `— {coachFirst}`,
+        };
+      })(),
+      // More info — catch-all reply for the "tell me more" /
+      // "send me more info" follow-up.  The email body is a coach-
+      // wrapped clone of the LA program description text (single
+      // source of truth: any edit to laDescText updates both the LA
+      // program page copy AND this reply).  SMS body stays compressed
+      // — SMS can't carry a policy dump without ballooning to a
+      // 6-segment monster, and the three questions leads actually ask
+      // via text are field / cost / register link.
+      //
+      // Next-practice injection: the SCHEDULE section gets a fresh
+      // "Next practice: <weekday, mon day>" line prepended (Unicode-
+      // bold so it survives Gmail's plain-text pipeline).  Lives ONLY
+      // in the more-info email — the LA program page is static content
+      // and cannot carry a time-sensitive date.  Women's Club skips
+      // this (no practice yet, kickoff is Sundays starting Sept).
+      (() => {
+        // Cadence used to compute "next practice" per audience:
+        //   • youth   → Mon/Wed — the days shared by BOTH grade tiers
+        //               (2nd-and-under practice Mon/Wed; 3rd-and-older
+        //               practice Mon/Wed/Fri).  Using the shared pair
+        //               avoids surfacing a Friday date that only applies
+        //               to half the roster.
+        //   • adult M → Tue/Wed/Thu/Fri/Sat — all five weekly sessions;
+        //               8:30pm end hour + buffer means 21.
+        //   • women's → skipped (no practice yet).
+        let nextPracticeLine = '';
+        if (c.isYouth) {
+          const np = this._nextPractice([1, 3], 19);
+          nextPracticeLine = `  • ${this._boldText('Next practice:')} ${np.label}\n`;
+        } else if (!c.isWomensClub) {
+          const np = this._nextPractice([2, 3, 4, 5, 6], 21);
+          nextPracticeLine = `  • ${this._boldText('Next practice:')} ${np.label}\n`;
+        }
+        // Inject the next-practice line right under the SCHEDULE:
+        // header so it sits at the top of the schedule bullets.  The
+        // laDescText variable itself is untouched — this is a per-
+        // render string transform.
+        const moreInfoDescText = nextPracticeLine
+          ? laDescText.replace(/SCHEDULE:\n/, `SCHEDULE:\n${nextPracticeLine}`)
+          : laDescText;
         return {
           id: 'more-info',
           label: 'ℹ️ More info',
@@ -2077,26 +2379,28 @@ class LeadsScreen extends Screen {
           body:
             `Hi {first},\n` +
             `\n` +
-            `That's great that you want to play soccer for ${c.clubTitle}!\n` +
+            `That's great that ${c.openerLine}!\n` +
             `\n` +
-            `${startedLine}\n` +
+            `Here's the full program description:\n` +
             `\n` +
-            `Here are the details:\n` +
-            `\n` +
-            `${gameLine}\n` +
-            `${practiceLine}\n` +
-            `• Field: Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140\n` +
-            `  https://maps.google.com/?q=Lighthouse+Sport+Complex+Field\n` +
-            `• Cost: ${c.initialFee} to register, then ${c.pricing}.\n` +
-            `  All-inclusive: uniform, training, and games — no hidden fees.\n` +
+            `${moreInfoDescText}\n` +
             `\n` +
             closeLink(`To register, head here:`) + `\n` +
             `\n` +
             `Reply with any other questions — or if it's easier, let me know a good time to call.`,
+          // SMS variant — compressed to a couple of segments.  Ditches
+          // the full description; keeps field address, cost, register
+          // link (the three questions leads actually ask via text).
+          smsBody:
+            `Hi {first} — quick details on ${c.program}:\n` +
+            `• Field: 199 E Erie Ave, Philadelphia PA\n` +
+            `• Cost: ${c.initialFee} to register, then ${c.pricing}\n` +
+            `Register: ${c.isLegacyYouth ? (c.linkBoys + ' (boys) · ' + c.linkGirls + ' (girls)') : c.link}\n` +
+            `Reply w/ any Qs — {coachFirst}`,
         };
       })(),
       // Field — answers "where do you play?" with both Lighthouse venues +
-      // the $35 close. Same two addresses for every Lighthouse team, so this
+      // the $1 close. Same two addresses for every Lighthouse team, so this
       // chip lives in the shared snippet code (no per-funnel branch).
       // No flex copy — the "Lighthouse" in both venue names is the flex.
       {
@@ -2109,7 +2413,7 @@ class LeadsScreen extends Screen {
           `📍 Lighthouse Community Center — 141 W Somerset St (indoor)\n` +
           `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19140\n` +
           `\n` +
-          closeLink(`$35 locks ${c.whose} spot:`),
+          closeLink(`$1 locks ${c.whose} spot:`),
       },
       // Schedule chips — three chips off the same data:
       //   📅 Practice  — just practice line(s) (+ pickup-counts-as-practice note)
@@ -2144,7 +2448,7 @@ class LeadsScreen extends Screen {
               }
               return out;
             };
-            const close = closeLink(`If it works, $35 locks ${c.whose} spot:`);
+            const close = closeLink(`If it works, $1 locks ${c.whose} spot:`);
 
             const chips = [];
             // Practice chip — only shown when the funnel actually has
@@ -2258,6 +2562,20 @@ class LeadsScreen extends Screen {
     const t = this.messageTemplate(label);
     const body = this.fillTemplate(t.sms, lead);
     // sms: URI with both ?body= and &body= — iOS uses &, Android uses ?
+    const phone = (lead.phone || '').replace(/[^\d+]/g, '');
+    return `sms:${phone}?&body=${encodeURIComponent(body)}`;
+  }
+
+  // SMS variant of buildMailHrefForSnippet — pre-fills the phone's
+  // Messages app with a snippet's `smsBody` (or `body` as a fallback,
+  // so snippets that only defined the email variant still work at all,
+  // just not as pretty).  Powers the 📨 Close 💬 and ℹ Info 💬 chips.
+  buildSmsHrefForSnippet(lead, label, snippetId) {
+    const snippets = this.messageSnippets(label) || [];
+    const snip = snippets.find(s => s.id === snippetId);
+    if (!snip || !lead.phone) return '';
+    const raw = snip.smsBody || snip.body || '';
+    const body = this.fillTemplate(raw, lead);
     const phone = (lead.phone || '').replace(/[^\d+]/g, '');
     return `sms:${phone}?&body=${encodeURIComponent(body)}`;
   }
@@ -2851,27 +3169,49 @@ class LeadsScreen extends Screen {
       return;
     }
 
-    // text/email — intercept so we can:
-    //   1. write the rich-HTML body to the clipboard (Gmail compose
-    //      pre-fills body= as PLAIN TEXT and won't linkify the URL in
-    //      the editor — Ctrl+A then Ctrl+V swaps in the <a>-tagged
-    //      version with a clickable link).
-    //   2. open Gmail compose ourselves AFTER the clipboard write
-    //      resolves (if we let the link's default navigation fire, the
-    //      new tab steals focus and may cancel the pending clipboard
-    //      write).
-    //   3. log the touch + bump the cached email_count for the badge.
+    // text/email/call — intercept so we can:
+    //   1. (email only) write the rich-HTML body to the clipboard —
+    //      Gmail compose pre-fills body= as PLAIN TEXT and won't
+    //      linkify the URL in the editor.  Ctrl+A then Ctrl+V swaps
+    //      in the <a>-tagged version with a clickable link.
+    //   2. (email only) open Gmail compose ourselves AFTER the
+    //      clipboard write resolves — letting the link's default
+    //      navigation fire steals focus and may cancel the pending
+    //      clipboard write.
+    //   3. (call) skip clipboard/Gmail entirely — just POST the touch
+    //      then let the tel: link's default action fire the dialer.
+    //   4. (text) pre-fill the sms: URI with the snippet's smsBody
+    //      (or the touch-1 SMS template if no snippet) — the OS
+    //      Messages app opens the compose sheet w/ text ready.
+    //   5. always POST the touch to /contact w/ (channel, template,
+    //      body) + bump the cached counts so the card re-renders
+    //      immediately with fresh badge + status pill.
     if (channel === 'email') e.preventDefault();
+    // Read the template the coach clicked (first-touch / close /
+    // more-info / call).  Fall back to first-touch when a legacy
+    // button (no data-template) fires so the DB row still gets a
+    // non-NULL value.
+    const template = btn.getAttribute('data-template') || 'first-touch';
     try {
       const lead       = (this._leads || []).find(l => String(l.id) === String(leadId));
       const label      = lead ? this.formLabel(lead.form_id) : '';
       const snippetId  = btn.getAttribute('data-snippet');
       let   body;
-      if (snippetId) {
-        // Snippet chip click — look up the snippet's body, fall back to '' if missing.
+      if (channel === 'call') {
+        // Call channel — no message body, just an intent-to-dial log.
+        body = '';
+      } else if (snippetId) {
+        // Snippet chip click — look up the snippet's body, fall back
+        // to '' if missing.  For text channel we prefer smsBody
+        // (shorter, plain-text formatting); email uses the rich body.
         const snippets = this.messageSnippets(label);
         const snip     = snippets.find(s => s.id === snippetId);
-        body = snip ? this.fillTemplate(snip.body, lead || {}) : '';
+        if (snip) {
+          const raw = (channel === 'text' && snip.smsBody) ? snip.smsBody : snip.body;
+          body = this.fillTemplate(raw, lead || {});
+        } else {
+          body = '';
+        }
       } else {
         const tmpl = this.messageTemplate(label);
         body = channel === 'text'
@@ -2912,7 +3252,7 @@ class LeadsScreen extends Screen {
       const res = await this.auth.fetch(`/api/leads/${leadId}/contact`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ channel, message_body: body }),
+        body:    JSON.stringify({ channel, message_body: body, template }),
       });
       // Server fans the contact out to every lead sharing the same
       // email (for channel='email') or phone (for channel='text'),
@@ -2932,17 +3272,23 @@ class LeadsScreen extends Screen {
         }
       } catch { /* non-JSON or empty body — fall through */ }
 
-      if (channel === 'email' || channel === 'text') {
+      if (channel === 'email' || channel === 'text' || channel === 'call') {
         const nowIso = new Date().toISOString();
         for (const aid of affectedIds) {
           const target = (this._leads || []).find(l => String(l.id) === String(aid));
           if (!target) continue;
           if (channel === 'email') {
-            target.email_count   = Number(target.email_count || 0) + 1;
-            target.last_email_at = nowIso;
+            target.email_count       = Number(target.email_count || 0) + 1;
+            target.last_email_at     = nowIso;
+            target.last_email_template = template;
+          } else if (channel === 'text') {
+            target.text_count        = Number(target.text_count || 0) + 1;
+            target.last_text_at      = nowIso;
+            target.last_text_template = template;
           } else {
-            target.text_count   = Number(target.text_count || 0) + 1;
-            target.last_text_at = nowIso;
+            target.call_count        = Number(target.call_count || 0) + 1;
+            target.last_call_at      = nowIso;
+            target.last_call_template = template;
           }
           // Bump status to 'responded' if the lead was 'new' so the pill
           // flips colors immediately.  (Server-derived status takes over

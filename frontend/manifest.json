@@ -1,0 +1,25 @@
+{
+  "name": "Lighthouse 1893 — Football Home",
+  "short_name": "Football Home",
+  "description": "Lighthouse 1893 club roster, lineups, payments, and RSVP.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    {
+      "src": "/images/lighthouse-1893-crest.png",
+      "sizes": "192x192 512x512 1024x1024 1940x1940",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/lighthouse-1893-crest.png",
+      "sizes": "192x192 512x512 1024x1024 1940x1940",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

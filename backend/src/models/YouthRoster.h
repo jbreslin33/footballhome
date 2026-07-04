@@ -4,6 +4,7 @@
 #include "../third_party/json.hpp"
 
 class PersonBilling;
+class PersonPayments;
 class YouthAgeGroups;
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ public:
 private:
     std::unique_ptr<YouthAgeGroups> ageGroups_;
     std::unique_ptr<PersonBilling>  billing_;
+    std::unique_ptr<PersonPayments> payments_;
     int boysProgramId_;
     int girlsProgramId_;
 

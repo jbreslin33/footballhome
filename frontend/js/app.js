@@ -39,6 +39,7 @@ class App {
       adminEntityList: new AdminEntityListScreen(this.navigation, this.auth),
       adminSystem: new AdminSystemScreen(this.navigation, this.auth),
       adminClub: new AdminClubScreen(this.navigation, this.auth),
+      adminClubTeams: new AdminClubTeamsScreen(this.navigation, this.auth),
       clubEvents: new ClubEventsScreen(this.navigation, this.auth),
       adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
       adminTeam: new AdminTeamScreen(this.navigation, this.auth),
@@ -55,9 +56,13 @@ class App {
       flyers: new FlyersScreen(this.navigation, this.auth),
       internalRoster: new InternalRosterScreen(this.navigation, this.auth),
       leads: new LeadsScreen(this.navigation, this.auth),
+      leadsAnalytics: new LeadsAnalyticsScreen(this.navigation, this.auth),
+      pausedMembers: new PausedMembersScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
+      payments: new PaymentsScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
+      practiceDashboard: new PracticeDashboardScreen(this.navigation, this.auth),
       rsvp: new RsvpScreen(this.navigation, this.auth),
       adPreview: new AdPreviewScreen(this.navigation, this.auth),
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
@@ -99,8 +104,8 @@ class App {
     this.screenManager.register('admin-entity-list', this.screens.adminEntityList);
     this.screenManager.register('admin-system', this.screens.adminSystem);
     this.screenManager.register('admin-club', this.screens.adminClub);
-    this.screenManager.register('club-events', this.screens.clubEvents);
-    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
+    this.screenManager.register('admin-club-teams', this.screens.adminClubTeams);
+    this.screenManager.register('club-events', this.screens.clubEvents);    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
     this.screenManager.register('admin-team', this.screens.adminTeam);
     this.screenManager.register('tactical-board', this.screens.tacticalBoard);
     this.screenManager.register('club-directory', this.screens.clubDirectory);
@@ -115,9 +120,24 @@ class App {
     this.screenManager.register('flyers', this.screens.flyers);
     this.screenManager.register('internal-roster', this.screens.internalRoster);
     this.screenManager.register('leads', this.screens.leads);
+    this.screenManager.register('leads-analytics', this.screens.leadsAnalytics);
+    this.screenManager.register('paused-members', this.screens.pausedMembers);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
+    this.screenManager.register('payments', this.screens.payments);
     this.screenManager.register('messages', this.screens.messages);
+    // Mens is the default; womens is the same screen with a gender param.
+    // 'lineups' kept as a backward-compat alias for any old bookmarks / links.
+    this.screenManager.register('mens-lineups', this.screens.lineups);
+    this.screenManager.register('womens-lineups', this.screens.lineups);
     this.screenManager.register('lineups', this.screens.lineups);
+    // Practice / Pickup dashboards — same screen instance, params drive
+    // gender (mens/womens/youth) and kind (practice/pickup).
+    this.screenManager.register('mens-practice-dash',   this.screens.practiceDashboard);
+    this.screenManager.register('womens-practice-dash', this.screens.practiceDashboard);
+    this.screenManager.register('youth-practice-dash',  this.screens.practiceDashboard);
+    this.screenManager.register('mens-pickup-dash',     this.screens.practiceDashboard);
+    this.screenManager.register('womens-pickup-dash',   this.screens.practiceDashboard);
+    this.screenManager.register('youth-pickup-dash',    this.screens.practiceDashboard);
     this.screenManager.register('rsvp', this.screens.rsvp);
     this.screenManager.register('ad-preview', this.screens.adPreview);
     this.screenManager.register('public-gameday', this.screens.publicGameday);

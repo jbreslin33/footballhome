@@ -46,6 +46,8 @@ private:
     Response handleDeleteContact    (const Request& request);
     Response handleContactStats     (const Request& request);
     Response handleNextPickup       (const Request& request);
+    Response handleUnjoinedMembers  (const Request& request);
+    Response handleAnalytics        (const Request& request);
     Response handleVcard            (const Request& request);
     Response handleMarkConverted    (const Request& request);
     Response handleUnmarkConverted  (const Request& request);

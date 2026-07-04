@@ -52,13 +52,26 @@ Lead rowToLead(const pqxx::row& row) {
         l.textCount = f.is_null() ? 0 : f.as<int>();
     } catch (const std::exception&) { /* not selected */ }
     try {
+        const auto& f = row["call_count"];
+        l.callCount = f.is_null() ? 0 : f.as<int>();
+    } catch (const std::exception&) { /* not selected */ }
+    try {
         l.lastEmailAtIso = optStr(row["last_email_at"]);
     } catch (const std::exception&) { /* not selected */ }
     try {
         l.lastTextAtIso = optStr(row["last_text_at"]);
     } catch (const std::exception&) { /* not selected */ }
     try {
+        l.lastCallAtIso = optStr(row["last_call_at"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
         l.lastEmailTemplate = optStr(row["last_email_template"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.lastTextTemplate = optStr(row["last_text_template"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
+        l.lastCallTemplate = optStr(row["last_call_template"]);
     } catch (const std::exception&) { /* not selected */ }
     // converted_* + needs_followup are also aggregate-only on the list
     // query.  findById() omits them, so guard each lookup individually.
@@ -95,11 +108,16 @@ const char* kSelectListAggregate =
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS created_at, "
     "       COALESCE(c.email_count, 0)::int AS email_count, "
     "       COALESCE(c.text_count,  0)::int AS text_count, "
+    "       COALESCE(c.call_count,  0)::int AS call_count, "
     "       to_char(c.last_email_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_email_at, "
     "       to_char(c.last_text_at  AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_text_at, "
+    "       to_char(c.last_call_at  AT TIME ZONE 'UTC', "
+    "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_call_at, "
     "       c.last_email_template, "
+    "       c.last_text_template, "
+    "       c.last_call_template, "
     "       to_char(l.converted_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS converted_at, "
     "       l.converted_source, "
@@ -135,13 +153,20 @@ const char* kSelectListAggregate =
     "    SELECT lead_id, "
     "           COUNT(*) FILTER (WHERE channel='email')      AS email_count, "
     "           COUNT(*) FILTER (WHERE channel='text')       AS text_count, "
+    "           COUNT(*) FILTER (WHERE channel='call')       AS call_count, "
     "           MAX(sent_at) FILTER (WHERE channel='email')  AS last_email_at, "
     "           MAX(sent_at) FILTER (WHERE channel='text')   AS last_text_at, "
+    "           MAX(sent_at) FILTER (WHERE channel='call')   AS last_call_at, "
     "           MAX(sent_at)                                  AS last_contact_at, "
     // `(array_agg(... ORDER BY sent_at DESC) FILTER (...))[1]` pulls the
-    // template string from the most-recent EMAIL row in a single
-    // aggregate scan (text rows don't carry a meaningful template).
-    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='email'))[1] AS last_email_template "
+    // template string from the most-recent row on each channel in a
+    // single aggregate scan.  All three channels carry a meaningful
+    // template now (first-touch / close / more-info / call), so all
+    // three arrays get computed and surfaced to the frontend for the
+    // "last touch: 📨 close · 1h ago" card indicator.
+    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='email'))[1] AS last_email_template, "
+    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='text'))[1]  AS last_text_template, "
+    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='call'))[1]  AS last_call_template "
     "      FROM lead_contacts "
     "     GROUP BY lead_id "
     "  ) c ON c.lead_id = l.id "

@@ -18,6 +18,7 @@ public:
 private:
     Response handleGoogleLogin(const Request& request);
     Response handleGoogleCallback(const Request& request);
+    Response handleGoogleStatus(const Request& request);
     
     std::string getGoogleAuthUrl();
     std::map<std::string, std::string> exchangeCodeForToken(const std::string& code);

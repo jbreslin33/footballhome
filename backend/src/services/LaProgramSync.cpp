@@ -59,22 +59,35 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
 
         out.statusByUser[uid] = status;
 
-        const bool isActive = (status == "SPOT_RESERVED" || status == "SPOT_PENDING");
-        if (isActive) {
-            out.activeUserIds.insert(uid);
+        // Everyone LA returns for this program is a member of that program
+        // (i.e. shows up on the LA console Members list at
+        // /console/sites/41983/players?bid=<programId>).  registrationStatus
+        // (`SPOT_RESERVED`, `SPOT_PENDING`, `WAITING_LIST`, …) does NOT
+        // gate membership — coaches manually move truly-inactive folks to
+        // the paused-variant program, which is handled by
+        // `person_la_memberships` + the paused filter in LaPool/roster.
+        // (User directive 2026-07-03.)
+        out.activeUserIds.insert(uid);
 
-            try {
-                auto r = linker.linkLa(rec);
-                if (!r.skipReason.empty()) {
-                    std::cerr << "[la-sync program=" << programId
-                              << "] linkLa skipped userId=" << uid
-                              << ": " << r.skipReason << std::endl;
-                }
-            } catch (const std::exception& e) {
+        // Link EVERY reg (active + paused + waitlisted) — per user directive
+        // 2026-07-01, presence in any sub-program = member.  The membership
+        // row we write records WHICH program (and therefore variant) they
+        // are currently registered in; downstream queries decide whether to
+        // show them (variant='active') or hide them from rosters/pool
+        // (variant='paused').
+        try {
+            auto r = linker.linkLa(rec);
+            if (!r.skipReason.empty()) {
                 std::cerr << "[la-sync program=" << programId
-                          << "] linkLa failed userId=" << uid
-                          << ": " << e.what() << std::endl;
+                          << "] linkLa skipped userId=" << uid
+                          << ": " << r.skipReason << std::endl;
+            } else if (r.personId > 0) {
+                linker.recordMembership(r.personId, programId);
             }
+        } catch (const std::exception& e) {
+            std::cerr << "[la-sync program=" << programId
+                      << "] linkLa failed userId=" << uid
+                      << ": " << e.what() << std::endl;
         }
 
         out.recs.push_back(std::move(rec));

@@ -38,5 +38,17 @@ private:
     Response handleGet(const Request& request);
     Response handleAssign(const Request& request);
     Response handleRosterStatus(const Request& request);
+    // POST /api/lineups/games — create an ad-hoc match/event bound to a
+    // team so the lineup column has an "upcoming match" to attach RSVPs
+    // to.  Body: {team_id, opponent, date:"YYYY-MM-DD", time?:"HH:MM"}.
+    Response handleCreateGame(const Request& request);
+    // PUT /api/lineups/games/:matchId — edit an ad-hoc match previously
+    // created via handleCreateGame.  Same body shape as create (opponent,
+    // date, time?) minus team_id (immutable — a lineup match belongs to
+    // one team column for its whole life).  Only matches with
+    // match_type_id=2 (ad-hoc / lineup-created) are editable through
+    // this endpoint — real events/matches route through EventController's
+    // heavier PUT /api/matches/:matchId which owns the full event schema.
+    Response handleUpdateGame(const Request& request);
 
 };

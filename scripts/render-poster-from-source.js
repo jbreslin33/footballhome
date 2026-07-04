@@ -164,7 +164,7 @@ async function openSourcePage(browser) {
       .poster[data-slide-mode="quote"] .poster-body {
         column-count: 1 !important;
         column-rule: 0 !important;
-        padding: 8px 14px !important;
+        padding: 0 8px !important;
       }
       /* Hide the gold-divider on card slides — it's a band-to-body
          separator that adds vertical bulk above the lone visible
@@ -203,7 +203,7 @@ async function openSourcePage(browser) {
       .poster[data-slide-mode="para-photo"] .poster-body > figure.slide-show {
         float: none !important;
         display: block !important;
-        margin: 0 auto 22px !important;
+        margin: 0 auto 8px !important;
         width: 100% !important;
         max-width: 720px !important;
         order: -1;
@@ -218,21 +218,21 @@ async function openSourcePage(browser) {
 
       /* Paragraph-only slides — biggest possible body text. */
       .poster[data-slide-mode="para"] .poster-body p {
-        font-size: 1.55rem !important;
-        line-height: 1.5 !important;
+        font-size: 2.2rem !important;
+        line-height: 1.35 !important;
         margin: 0 !important;
       }
       .poster[data-slide-mode="para"] .poster-body .lead-in {
-        font-size: 1.4rem !important;
-        display: block;
-        margin-bottom: 10px;
+        font-size: 2.2rem !important;
+        display: inline !important;
+        margin: 0 !important;
       }
 
       /* Para + photo (slide 3) — keep both visible, vertically centered,
          photo enlarged. Photo de-floated so flex layout works. */
       .poster[data-slide-mode="para-photo"] .poster-body > .poster-photo {
         float: none !important;
-        margin: 0 auto 22px !important;
+        margin: 0 auto 8px !important;
         width: 100% !important;
         max-width: 720px !important;
         order: -1;  /* photo always on top of the stack */
@@ -244,14 +244,14 @@ async function openSourcePage(browser) {
         margin: 0 auto !important;
       }
       .poster[data-slide-mode="para-photo"] .poster-body p {
-        font-size: 1.25rem !important;
-        line-height: 1.5 !important;
+        font-size: 1.7rem !important;
+        line-height: 1.35 !important;
         margin: 0 !important;
       }
       .poster[data-slide-mode="para-photo"] .poster-body .lead-in {
-        font-size: 1.15rem !important;
-        display: block;
-        margin-bottom: 8px;
+        font-size: 1.7rem !important;
+        display: inline !important;
+        margin: 0 !important;
       }
       /* Strip any inline images out of the first paragraph during
          para-photo mode — the floating right-rail image they're meant
@@ -322,6 +322,31 @@ async function openSourcePage(browser) {
         max-height: none !important;
         margin-top: 2px !important;
         margin-bottom: 6px !important;
+      }
+      /* Same L-gap fix for direct .poster-body > figure children (used
+         by P18 for the book cover / movie poster figures — they escape
+         the p > img rule above because they aren't wrapped in a p).
+         Cap the figure width AND cap the inner image height, so a
+         short surrounding paragraph doesn't leave a tall figure tail
+         extending into empty space below the text.  Also drop the
+         figcaption during full mode — the caption text lengthens the
+         float even further and the source citation is already in the
+         link tree per the caption convention. */
+      .poster[data-slide-mode="full"] .poster-body > figure[style*="float:left"],
+      .poster[data-slide-mode="full"] .poster-body > figure[style*="float:right"] {
+        width: 150px !important;
+        max-width: 150px !important;
+        margin-top: 2px !important;
+        margin-bottom: 6px !important;
+      }
+      .poster[data-slide-mode="full"] .poster-body > figure[style*="float:left"] img,
+      .poster[data-slide-mode="full"] .poster-body > figure[style*="float:right"] img {
+        max-height: 220px !important;
+        object-fit: cover !important;
+      }
+      .poster[data-slide-mode="full"] .poster-body > figure[style*="float:left"] figcaption,
+      .poster[data-slide-mode="full"] .poster-body > figure[style*="float:right"] figcaption {
+        display: none !important;
       }
       /* Belt-and-suspenders: any remaining gap below the last float
          gets eaten by a flow-root on the body so the inner's

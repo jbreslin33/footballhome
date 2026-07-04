@@ -3,6 +3,7 @@
 #include <sstream>
 #include <regex>
 #include <cstdio>
+#include <ctime>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -254,23 +255,24 @@ std::string AuthController::createJSONResponse(bool success, const std::string& 
 }
 
 std::string AuthController::generateJWT(const UserData& userData) {
-    // Create JWT header
-    std::string header = "{\"alg\":\"none\",\"typ\":\"JWT\"}";
-    
-    // Create JWT payload
+    // HS256-signed JWT.  Payload shape MUST stay byte-compatible with
+    // OAuthController::generateJWT: {"userId","email","role","iat","exp"}
+    // in that exact order.  If you change one, change the other, or
+    // Controller::requireBearer will start rejecting tokens minted by
+    // whichever generator drifted.
+    const std::time_t now = std::time(nullptr);
+    const std::time_t exp = now + (90LL * 24 * 60 * 60);  // 90 days
+
     std::ostringstream payload;
     payload << "{";
     payload << "\"userId\":\"" << userData.id << "\",";
-    payload << "\"email\":\"" << userData.email << "\",";
-    payload << "\"role\":\"" << userData.role << "\"";
+    payload << "\"email\":\""  << userData.email << "\",";
+    payload << "\"role\":\""   << userData.role  << "\",";
+    payload << "\"iat\":" << now << ",";
+    payload << "\"exp\":" << exp;
     payload << "}";
-    
-    // Encode header and payload
-    std::string header_encoded = fh::crypto::base64UrlEncode(header);
-    std::string payload_encoded = fh::crypto::base64UrlEncode(payload.str());
-    
-    // Create JWT token (no signature for now)
-    return header_encoded + "." + payload_encoded + ".";
+
+    return fh::crypto::signJwtHS256(payload.str());
 }
 
 std::string AuthController::extractField(const std::string& json, const std::string& field) {

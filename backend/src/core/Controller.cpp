@@ -1,4 +1,5 @@
 #include "Controller.h"
+#include "Crypto.h"
 #include <cstdio>
 #include <sstream>
 #include <regex>
@@ -140,5 +141,13 @@ std::string Controller::escapeJson(const std::string& input) {
 bool Controller::requireBearer(const Request& request) {
     std::string h = request.getHeader("Authorization");
     if (h.empty()) h = request.getHeader("authorization");
-    return h.size() > 7 && h.compare(0, 7, "Bearer ") == 0;
+    if (h.size() <= 7 || h.compare(0, 7, "Bearer ") != 0) return false;
+
+    // Verify signature + exp against the process JWT secret.  This is the
+    // ONLY authentication gate on the server — no route may skip it.  If
+    // this returns false the token is malformed, forged, has the wrong
+    // alg, or has expired; the handler will emit a 401 without leaking
+    // which of those failed.
+    const std::string token = h.substr(7);
+    return fh::crypto::verifyJwtHS256(token);
 }

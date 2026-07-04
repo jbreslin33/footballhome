@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
@@ -17,6 +18,7 @@
 #include "../database/Database.h"
 #include "../models/Lead.h"
 #include "../models/LeadContact.h"
+#include "../models/MensRoster.h"
 #include "../models/YouthRoster.h"
 #include "../services/LeagueAppsService.h"
 #include "../services/MetaLeadsService.h"
@@ -84,9 +86,13 @@ std::string serializeLead(const Lead& l) {
       << ",\"created_at\":"        << jsonStr(l.createdAtIso)
       << ",\"email_count\":"       << jsonInt(l.emailCount)
       << ",\"text_count\":"        << jsonInt(l.textCount)
+      << ",\"call_count\":"        << jsonInt(l.callCount)
       << ",\"last_email_at\":"     << jsonOrNull(l.lastEmailAtIso)
       << ",\"last_text_at\":"      << jsonOrNull(l.lastTextAtIso)
+      << ",\"last_call_at\":"      << jsonOrNull(l.lastCallAtIso)
       << ",\"last_email_template\":" << jsonOrNull(l.lastEmailTemplate)
+      << ",\"last_text_template\":"  << jsonOrNull(l.lastTextTemplate)
+      << ",\"last_call_template\":"  << jsonOrNull(l.lastCallTemplate)
       << ",\"converted_at\":"      << jsonOrNull(l.convertedAtIso)
       << ",\"converted_source\":"  << jsonOrNull(l.convertedSource)
       << ",\"converted_note\":"    << jsonOrNull(l.convertedNote)
@@ -278,6 +284,7 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
     router.get (prefix + "/unjoined-members", [this](const Request& r){ return handleUnjoinedMembers (r); });
+    router.get (prefix + "/analytics",        [this](const Request& r){ return handleAnalytics       (r); });
     // `:id` routes go last so the literal suffixes above win.
     router.post(prefix + "/:id/contact",        [this](const Request& r){ return handleLogContact     (r); });
     router.get (prefix + "/:id/contacts",       [this](const Request& r){ return handleListContacts   (r); });
@@ -832,6 +839,14 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
         std::ostringstream b;
         b << "[";
         bool first = true;
+
+        // LA userIds we've already surfaced via a roster-shaped section
+        // (Men from mens_team_assignments, Boys/Girls from YouthRoster).
+        // The trailing catch-all sweep (section 5, added 2026-07-01) uses
+        // this to avoid duplicating a person who is BOTH on a roster AND
+        // in the LA program registration feed.
+        std::set<long long> emittedLaUids;
+
         auto emit = [&](const std::string& category,
                         std::optional<int> personId,
                         std::optional<long long> laUserId,
@@ -852,6 +867,9 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
               << ",\"emails\":"              << (emails.empty() ? std::string{"null"} : jsonStr(emails))
               << ",\"phone\":"               << (phone.empty()  ? std::string{"null"} : jsonStr(phone))
               << "}";
+            if (laUserId.has_value() && *laUserId > 0) {
+                emittedLaUids.insert(*laUserId);
+            }
         };
 
         // 2. Men — mens_team_assignments only counts rostered or pool, both
@@ -1022,11 +1040,568 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
                       << e.what() << " — continuing without youth." << std::endl;
         }
 
+        // 5. Catch-all — every LA-linked person surfaced by ANY registration
+        //    in the `leagueapps_programs` registry (active + paused sub-
+        //    programs).  Paused-membership regs, and any active reg whose
+        //    person hasn't landed in a roster table yet, get emitted here
+        //    so their email/phone flows into the frontend's suppression
+        //    set (a paused member must never be cold-emailed).
+        //
+        //    Contact info comes from person_emails / person_phones (which
+        //    PersonLinker::linkLa now backfills on every sync).  For youth
+        //    the child's `parent_person_id` redirects the contact lookup
+        //    to the parent's rows.  LA record fields (email / parentEmail
+        //    / phoneNumber / parentPhone) are used as a fallback when the
+        //    DB tables are still empty.
+        try {
+            auto progRows = db->query(
+                "SELECT program_id, category, variant, program_name "
+                "  FROM leagueapps_programs ORDER BY category, variant");
+            auto& la = LeagueAppsService::getInstance();
+            for (const auto& prog : progRows) {
+                const int pid = static_cast<int>(prog["program_id"].as<long long>());
+                const std::string cat = prog["category"].is_null() ? std::string{} : prog["category"].c_str();
+                const std::string var = prog["variant"].is_null()  ? std::string{} : prog["variant"].c_str();
+                const std::string progName = prog["program_name"].is_null() ? std::string{} : prog["program_name"].c_str();
+
+                // Human-friendly labels for the frontend Members card.
+                std::string uiCategory;
+                if      (cat == "men")   uiCategory = (var == "paused") ? "Men Paused"   : "Men";
+                else if (cat == "boys")  uiCategory = (var == "paused") ? "Boys Paused"  : "Boys";
+                else if (cat == "girls") uiCategory = (var == "paused") ? "Girls Paused" : "Girls";
+                else                     uiCategory = cat;
+
+                std::vector<nlohmann::json> recs;
+                try {
+                    recs = la.fetchProgramRegistrations(pid);
+                } catch (const std::exception& e) {
+                    std::cerr << "unjoined-members: LA fetch failed for program="
+                              << pid << ": " << e.what() << std::endl;
+                    continue;
+                }
+
+                for (const auto& r : recs) {
+                    // Per user directive 2026-07-01: no registrationStatus
+                    // filter — any presence in a sub-program = member.
+
+                    long long uid = 0;
+                    auto uidIt = r.find("userId");
+                    if (uidIt == r.end() || uidIt->is_null()) continue;
+                    try {
+                        if      (uidIt->is_number_integer()) uid = uidIt->get<long long>();
+                        else if (uidIt->is_string())         uid = std::stoll(uidIt->get<std::string>());
+                    } catch (...) { continue; }
+                    if (uid <= 0) continue;
+                    if (emittedLaUids.count(uid)) continue;
+
+                    // Resolve person via LA alias.  If the alias hasn't
+                    // been created yet (linker hasn't seen this rec) fall
+                    // back to LA record fields so we still suppress.
+                    auto pLookup = db->query(
+                        "SELECT p.id AS person_id, p.first_name, p.last_name, "
+                        "       p.parent_person_id "
+                        "  FROM external_person_aliases a "
+                        "  JOIN persons p ON p.id = a.person_id "
+                        " WHERE a.provider = 'leagueapps' "
+                        "   AND a.external_user_id = $1 LIMIT 1",
+                        {std::to_string(uid)});
+
+                    std::optional<int> personId;
+                    std::string fn, ln;
+                    int contactPersonId = 0;
+                    if (!pLookup.empty()) {
+                        const auto& row = pLookup[0];
+                        personId = row["person_id"].as<int>();
+                        contactPersonId = *personId;
+                        fn = row["first_name"].is_null() ? std::string{} : row["first_name"].c_str();
+                        ln = row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str();
+                        if (!row["parent_person_id"].is_null()) {
+                            contactPersonId = row["parent_person_id"].as<int>();
+                        }
+                    }
+
+                    // Fallback names from LA rec if no person row.
+                    auto strField = [&](const char* k) -> std::string {
+                        auto it = r.find(k);
+                        if (it == r.end() || !it->is_string()) return {};
+                        return it->get<std::string>();
+                    };
+                    if (fn.empty()) fn = strField("firstName");
+                    if (ln.empty()) ln = strField("lastName");
+
+                    // Contact from person_emails / person_phones (or parent's).
+                    std::string emails, phone;
+                    if (contactPersonId > 0) {
+                        auto ems = db->query(
+                            "SELECT COALESCE(string_agg(email, ', ' "
+                            "                 ORDER BY is_primary DESC, email), '') AS emails "
+                            "  FROM person_emails WHERE person_id = $1::int",
+                            {std::to_string(contactPersonId)});
+                        if (!ems.empty() && !ems[0]["emails"].is_null()) {
+                            emails = ems[0]["emails"].c_str();
+                        }
+                        auto phs = db->query(
+                            "SELECT phone_number FROM person_phones "
+                            " WHERE person_id = $1::int "
+                            " ORDER BY is_primary DESC, id LIMIT 1",
+                            {std::to_string(contactPersonId)});
+                        if (!phs.empty() && !phs[0]["phone_number"].is_null()) {
+                            phone = phs[0]["phone_number"].c_str();
+                        }
+                    }
+                    // Fallback to LA record fields if DB tables empty.
+                    if (emails.empty()) {
+                        std::string e = strField("email");
+                        if (e.empty()) e = strField("parentEmail");
+                        if (!e.empty()) emails = e;
+                    }
+                    if (phone.empty()) {
+                        std::string p = strField("phoneNumber");
+                        if (p.empty()) p = strField("phone");
+                        if (p.empty()) p = strField("parentPhone");
+                        if (!p.empty()) phone = p;
+                    }
+
+                    emit(uiCategory, personId, uid, fn, ln, progName, emails, phone);
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "unjoined-members: catch-all sweep failed: "
+                      << e.what() << std::endl;
+        }
+
         b << "]";
         return errOk(HttpStatus::OK, b.str());
     } catch (const std::exception& e) {
         std::cerr << "Error fetching unjoined members: " << e.what() << std::endl;
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to fetch unjoined members");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/leads/analytics
+//
+// Cross-references every lead + every logged email/text/whatsapp touch
+// against the live LeagueApps registration data (Mens + Youth) to answer:
+// "of the leads we touched, which actually registered?"
+//
+// Sources joined:
+//   • leads             — all lead rows
+//   • lead_contacts     — touch log (channel + sent_at); touch # derived
+//                         via ROW_NUMBER() over (lead_id ORDER BY sent_at)
+//   • MensRoster.run()  — live LA fetch, exposes email + phone for adults
+//   • YouthRoster.run() — live LA fetch, exposes parentEmail/playerEmail
+//                         + parentPhone for boys/girls (K-12)
+//
+// Match rule: normalised email (lower-case) OR normalised phone (last 10
+// digits) equality between lead and any LA registration row.
+//
+// Response shape (top-level keys):
+//   generatedAt, laFetchOk, summary, byFunnel, byTouchCount,
+//   bySecondTouchGap, recentActivity, matchedUnmarked
+//
+// This endpoint is intended for the Club Admin → Leads Analytics screen
+// and is NOT called on every load; it's opened deliberately.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleAnalytics(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    using nlohmann::json;
+
+    auto toLower = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c){ return std::tolower(c); });
+        return s;
+    };
+    // Normalise a phone to its trailing 10 digits (US numbers).  Empty
+    // string if fewer than 10 digits are present.
+    auto normPhone = [](const std::string& raw) -> std::string {
+        std::string digits;
+        digits.reserve(raw.size());
+        for (char c : raw) if (c >= '0' && c <= '9') digits.push_back(c);
+        if (digits.size() < 10) return {};
+        return digits.substr(digits.size() - 10);
+    };
+
+    try {
+        auto db = Database::getInstance();
+
+        // ── 1. Load LA registration email + phone sets ────────────────
+        // Both live-fetched.  Each is wrapped in its own try so a single
+        // failure doesn't kill the whole page.
+        std::unordered_set<std::string> laEmails;
+        std::unordered_set<std::string> laPhones;
+        bool mensFetchOk = false;
+        bool youthFetchOk = false;
+
+        auto ingestRow = [&](const json& row) {
+            auto tryField = [&](const char* k) {
+                auto it = row.find(k);
+                if (it == row.end() || !it->is_string()) return;
+                const std::string v = it->get<std::string>();
+                if (v.empty()) return;
+                if (std::strstr(k, "mail") != nullptr) {
+                    laEmails.insert(toLower(v));
+                } else {
+                    const auto p = normPhone(v);
+                    if (!p.empty()) laPhones.insert(p);
+                }
+            };
+            tryField("email");
+            tryField("phone");
+            tryField("parentEmail");
+            tryField("playerEmail");
+            tryField("parentPhone");
+        };
+
+        // Mens (live LA fetch)
+        try {
+            MensRoster mr;
+            auto res = mr.run(/*includeAll=*/false);
+            if (res.error.empty() && res.body.contains("buckets")) {
+                for (auto it = res.body["buckets"].begin();
+                     it != res.body["buckets"].end(); ++it) {
+                    if (!it.value().is_array()) continue;
+                    for (const auto& row : it.value()) ingestRow(row);
+                }
+                if (res.body.contains("unassigned") && res.body["unassigned"].is_array()) {
+                    for (const auto& row : res.body["unassigned"]) ingestRow(row);
+                }
+                mensFetchOk = true;
+            } else if (!res.error.empty()) {
+                std::cerr << "analytics: mens LA fetch: " << res.error << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "analytics: mens LA threw: " << e.what() << std::endl;
+        }
+
+        // Youth (live LA fetch)
+        try {
+            YouthRoster yr;
+            auto res = yr.run(YouthRoster::defaultSeasonEndYear(), /*includeAll=*/false);
+            if (res.error.empty() && res.body.contains("buckets")) {
+                for (auto it = res.body["buckets"].begin();
+                     it != res.body["buckets"].end(); ++it) {
+                    if (!it.value().is_array()) continue;
+                    for (const auto& row : it.value()) ingestRow(row);
+                }
+                if (res.body.contains("unbucketed") && res.body["unbucketed"].is_array()) {
+                    for (const auto& row : res.body["unbucketed"]) ingestRow(row);
+                }
+                youthFetchOk = true;
+            } else if (!res.error.empty()) {
+                std::cerr << "analytics: youth LA fetch: " << res.error << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "analytics: youth LA threw: " << e.what() << std::endl;
+        }
+
+        // ── 2. Load all leads + touch summaries in one pass ──────────
+        // We include a per-lead: email, phone, form_id, created_at,
+        // converted_at, dead_at, touch_count, first_touch_at, second_touch_at.
+        auto rs = db->query(
+            "WITH t AS ( "
+            "  SELECT lead_id, "
+            "         COUNT(*) AS touch_count, "
+            "         MIN(sent_at) FILTER (WHERE channel='email') AS first_email_at, "
+            "         MIN(sent_at) FILTER (WHERE channel='email' "
+            "                              AND sent_at > (SELECT MIN(sent_at) FROM lead_contacts x "
+            "                                             WHERE x.lead_id = lead_contacts.lead_id AND x.channel='email')) AS second_email_at, "
+            "         MAX(sent_at) AS last_touch_at "
+            "    FROM lead_contacts "
+            "   GROUP BY lead_id "
+            ") "
+            "SELECT l.id, "
+            "       COALESCE(l.name, '')     AS name, "
+            "       LOWER(COALESCE(l.email, '')) AS email, "
+            "       COALESCE(l.phone, '')    AS phone, "
+            "       COALESCE(l.form_id, '')  AS form_id, "
+            "       to_char(l.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS created_date, "
+            "       (l.converted_at IS NOT NULL) AS is_converted, "
+            "       (l.dead_at IS NOT NULL)      AS is_dead, "
+            "       COALESCE(t.touch_count, 0)   AS touch_count, "
+            "       to_char(t.first_email_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS first_email_at, "
+            "       to_char(t.second_email_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS second_email_at, "
+            "       to_char(t.last_touch_at   AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS last_touch_at "
+            "  FROM leads l "
+            "  LEFT JOIN t ON t.lead_id = l.id");
+
+        struct LeadRow {
+            int id = 0;
+            std::string name;
+            std::string email;      // already lower-cased
+            std::string phoneNorm;  // last-10 digits
+            std::string phoneRaw;
+            std::string formId;
+            std::string createdDate;
+            bool isConverted = false;
+            bool isDead = false;
+            int touchCount = 0;
+            std::string firstEmailAt;   // iso, may be empty
+            std::string secondEmailAt;  // iso, may be empty
+            std::string lastTouchAt;    // iso, may be empty
+            bool matchedLa = false;
+        };
+        std::vector<LeadRow> leadRows;
+        leadRows.reserve(rs.size());
+        for (const auto& row : rs) {
+            LeadRow lr;
+            lr.id            = row["id"].as<int>();
+            lr.name          = row["name"].c_str();
+            lr.email         = row["email"].c_str();
+            lr.phoneRaw      = row["phone"].c_str();
+            lr.phoneNorm     = normPhone(lr.phoneRaw);
+            lr.formId        = row["form_id"].c_str();
+            lr.createdDate   = row["created_date"].c_str();
+            lr.isConverted   = row["is_converted"].as<bool>();
+            lr.isDead        = row["is_dead"].as<bool>();
+            lr.touchCount    = row["touch_count"].as<int>();
+            lr.firstEmailAt  = row["first_email_at"].is_null()  ? std::string{} : row["first_email_at"].c_str();
+            lr.secondEmailAt = row["second_email_at"].is_null() ? std::string{} : row["second_email_at"].c_str();
+            lr.lastTouchAt   = row["last_touch_at"].is_null()   ? std::string{} : row["last_touch_at"].c_str();
+
+            lr.matchedLa = (!lr.email.empty() && laEmails.count(lr.email))
+                        || (!lr.phoneNorm.empty() && laPhones.count(lr.phoneNorm));
+
+            leadRows.push_back(std::move(lr));
+        }
+
+        // ── 3. Aggregations ──────────────────────────────────────────
+        // 3a. Summary
+        int totalLeads          = static_cast<int>(leadRows.size());
+        int leadsWithEmail      = 0;
+        int leadsWithPhone      = 0;
+        int leadsTouched        = 0;
+        int leadsMarked         = 0;
+        int leadsMatchedLa      = 0;
+        int matchedNotMarked    = 0;
+        int matchedAndMarked    = 0;
+        int leadsDead           = 0;
+        for (const auto& l : leadRows) {
+            if (!l.email.empty())     ++leadsWithEmail;
+            if (!l.phoneNorm.empty()) ++leadsWithPhone;
+            if (l.touchCount > 0)     ++leadsTouched;
+            if (l.isConverted)        ++leadsMarked;
+            if (l.isDead)             ++leadsDead;
+            if (l.matchedLa)          ++leadsMatchedLa;
+            if (l.matchedLa && !l.isConverted) ++matchedNotMarked;
+            if (l.matchedLa &&  l.isConverted) ++matchedAndMarked;
+        }
+
+        // 3b. By funnel (form_id)
+        struct FunnelAgg {
+            int leads = 0;
+            int touched = 0;
+            int matched = 0;
+            int marked = 0;
+        };
+        std::map<std::string, FunnelAgg> byFunnel;
+        for (const auto& l : leadRows) {
+            auto& f = byFunnel[l.formId];
+            ++f.leads;
+            if (l.touchCount > 0) ++f.touched;
+            if (l.matchedLa)      ++f.matched;
+            if (l.isConverted)    ++f.marked;
+        }
+
+        // 3c. By touch count bucket
+        struct TouchAgg {
+            int leads = 0;
+            int matched = 0;
+            int marked = 0;
+        };
+        std::map<std::string, TouchAgg> byTouch;   // ordered: 0, 1, 2, 3, 4+
+        auto touchBucket = [](int n) -> std::string {
+            if (n == 0) return "0";
+            if (n == 1) return "1";
+            if (n == 2) return "2";
+            if (n == 3) return "3";
+            return "4+";
+        };
+        for (const auto& l : leadRows) {
+            auto& t = byTouch[touchBucket(l.touchCount)];
+            ++t.leads;
+            if (l.matchedLa)   ++t.matched;
+            if (l.isConverted) ++t.marked;
+        }
+
+        // 3d. By second-touch gap (only leads with a 2nd email)
+        struct GapAgg {
+            int leads = 0;
+            int matched = 0;
+            int marked = 0;
+        };
+        std::map<std::string, GapAgg> byGap;      // <1d, 1-3d, 3-7d, 7-14d, 14-30d, 30d+
+        auto gapBucket = [](long long seconds) -> std::string {
+            const long long day = 86400;
+            if (seconds < 1  * day) return "<1d";
+            if (seconds < 3  * day) return "1-3d";
+            if (seconds < 7  * day) return "3-7d";
+            if (seconds < 14 * day) return "7-14d";
+            if (seconds < 30 * day) return "14-30d";
+            return "30d+";
+        };
+        auto parseIsoToSecs = [](const std::string& iso) -> long long {
+            if (iso.size() < 19) return 0;
+            std::tm tmv{};
+            // YYYY-MM-DDTHH:MI:SSZ
+            tmv.tm_year = std::atoi(iso.substr(0, 4).c_str()) - 1900;
+            tmv.tm_mon  = std::atoi(iso.substr(5, 2).c_str()) - 1;
+            tmv.tm_mday = std::atoi(iso.substr(8, 2).c_str());
+            tmv.tm_hour = std::atoi(iso.substr(11, 2).c_str());
+            tmv.tm_min  = std::atoi(iso.substr(14, 2).c_str());
+            tmv.tm_sec  = std::atoi(iso.substr(17, 2).c_str());
+            return static_cast<long long>(timegm(&tmv));
+        };
+        for (const auto& l : leadRows) {
+            if (l.firstEmailAt.empty() || l.secondEmailAt.empty()) continue;
+            const long long a = parseIsoToSecs(l.firstEmailAt);
+            const long long b_ = parseIsoToSecs(l.secondEmailAt);
+            if (a == 0 || b_ == 0 || b_ <= a) continue;
+            auto& g = byGap[gapBucket(b_ - a)];
+            ++g.leads;
+            if (l.matchedLa)   ++g.matched;
+            if (l.isConverted) ++g.marked;
+        }
+
+        // 3e. Recent daily activity (last 30 days).  Count touches + new leads.
+        auto daily = db->query(
+            "WITH d AS ( "
+            "  SELECT to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, "
+            "         COUNT(*) FILTER (WHERE channel='email') AS emails, "
+            "         COUNT(*) FILTER (WHERE channel='text')  AS texts "
+            "    FROM lead_contacts "
+            "   WHERE sent_at > NOW() - INTERVAL '30 days' "
+            "   GROUP BY 1 "
+            "), n AS ( "
+            "  SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, "
+            "         COUNT(*) AS new_leads "
+            "    FROM leads "
+            "   WHERE created_at > NOW() - INTERVAL '30 days' "
+            "   GROUP BY 1 "
+            ") "
+            "SELECT COALESCE(d.day, n.day) AS day, "
+            "       COALESCE(d.emails, 0)  AS emails, "
+            "       COALESCE(d.texts,  0)  AS texts, "
+            "       COALESCE(n.new_leads, 0) AS new_leads "
+            "  FROM d FULL OUTER JOIN n ON n.day = d.day "
+            " ORDER BY day DESC");
+
+        // 3f. Matched-but-not-marked list (actionable — these registered
+        // but nobody clicked "Signed up" so the flag is stale).
+        struct ActRow {
+            int id;
+            std::string name;
+            std::string email;
+            std::string phone;
+            std::string formId;
+            std::string lastTouchAt;
+            int touchCount;
+        };
+        std::vector<ActRow> matchedUnmarked;
+        for (const auto& l : leadRows) {
+            if (l.matchedLa && !l.isConverted) {
+                matchedUnmarked.push_back({
+                    l.id, l.name, l.email, l.phoneRaw, l.formId,
+                    l.lastTouchAt, l.touchCount
+                });
+            }
+        }
+        // Sort so most-recently-touched-and-unmarked show first.
+        std::sort(matchedUnmarked.begin(), matchedUnmarked.end(),
+                  [](const ActRow& a, const ActRow& b) {
+                      return a.lastTouchAt > b.lastTouchAt;
+                  });
+
+        // ── 4. Build response JSON ──────────────────────────────────
+        json body;
+        body["generatedAt"] = isoFromMs(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count());
+        body["laFetchOk"] = { {"mens", mensFetchOk}, {"youth", youthFetchOk} };
+        body["laRegistrationCounts"] = {
+            {"emails", static_cast<int>(laEmails.size())},
+            {"phones", static_cast<int>(laPhones.size())}
+        };
+
+        body["summary"] = {
+            {"totalLeads",           totalLeads},
+            {"leadsWithEmail",       leadsWithEmail},
+            {"leadsWithPhone",       leadsWithPhone},
+            {"leadsTouched",         leadsTouched},
+            {"leadsDead",            leadsDead},
+            {"leadsMarkedConverted", leadsMarked},
+            {"leadsMatchedLa",       leadsMatchedLa},
+            {"matchedAndMarked",     matchedAndMarked},
+            {"matchedNotMarked",     matchedNotMarked}
+        };
+
+        json byFunnelArr = json::array();
+        for (const auto& [formId, a] : byFunnel) {
+            byFunnelArr.push_back({
+                {"formId",  formId},
+                {"leads",   a.leads},
+                {"touched", a.touched},
+                {"matched", a.matched},
+                {"marked",  a.marked}
+            });
+        }
+        body["byFunnel"] = std::move(byFunnelArr);
+
+        json byTouchArr = json::array();
+        for (const auto& key : std::vector<std::string>{"0","1","2","3","4+"}) {
+            auto it = byTouch.find(key);
+            if (it == byTouch.end()) continue;
+            byTouchArr.push_back({
+                {"touches", key},
+                {"leads",   it->second.leads},
+                {"matched", it->second.matched},
+                {"marked",  it->second.marked}
+            });
+        }
+        body["byTouchCount"] = std::move(byTouchArr);
+
+        json byGapArr = json::array();
+        for (const auto& key : std::vector<std::string>{"<1d","1-3d","3-7d","7-14d","14-30d","30d+"}) {
+            auto it = byGap.find(key);
+            if (it == byGap.end()) continue;
+            byGapArr.push_back({
+                {"bucket",  key},
+                {"leads",   it->second.leads},
+                {"matched", it->second.matched},
+                {"marked",  it->second.marked}
+            });
+        }
+        body["bySecondTouchGap"] = std::move(byGapArr);
+
+        json dailyArr = json::array();
+        for (const auto& row : daily) {
+            dailyArr.push_back({
+                {"day",      row["day"].c_str()},
+                {"emails",   row["emails"].as<int>()},
+                {"texts",    row["texts"].as<int>()},
+                {"newLeads", row["new_leads"].as<int>()}
+            });
+        }
+        body["recentActivity"] = std::move(dailyArr);
+
+        json matchedArr = json::array();
+        for (const auto& r : matchedUnmarked) {
+            matchedArr.push_back({
+                {"id",           r.id},
+                {"name",         r.name},
+                {"email",        r.email},
+                {"phone",        r.phone},
+                {"formId",       r.formId},
+                {"lastTouchAt",  r.lastTouchAt.empty() ? json(nullptr) : json(r.lastTouchAt)},
+                {"touchCount",   r.touchCount}
+            });
+        }
+        body["matchedUnmarked"] = std::move(matchedArr);
+
+        return errOk(HttpStatus::OK, body.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "Error building leads analytics: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to build analytics");
     }
 }
 

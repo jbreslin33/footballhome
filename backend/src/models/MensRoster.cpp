@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
 #include <limits>
 #include <sstream>
 #include <unordered_map>
@@ -14,6 +15,7 @@
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonBilling.h"
+#include "PersonPayments.h"
 #include "../services/LeagueAppsService.h"
 
 using nlohmann::json;
@@ -151,6 +153,7 @@ MensRoster::MensRoster()
     : columns_    (std::make_unique<MensTeamColumns>()),
       assignments_(std::make_unique<MensTeamAssignments>()),
       billing_    (std::make_unique<PersonBilling>()),
+      payments_   (std::make_unique<PersonPayments>()),
       mensProgramId_(envInt("LEAGUEAPPS_MENS_PROGRAM_ID", 5039300)) {}
 
 MensRoster::~MensRoster() = default;
@@ -217,6 +220,18 @@ MensRoster::Result MensRoster::run(bool includeAll) {
 
     auto recs = LeagueAppsService::getInstance().fetchProgramRegistrations(mensProgramId_);
 
+    // Sync new LA transactions into person_payments so lastPaid on each
+    // card reflects reality every time the roster loads (user directive
+    // 2026-07-02).  Sync failure is non-fatal — we fall back to whatever
+    // we already have persisted.
+    try {
+        payments_->syncFromLa();
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] payment sync failed: " << e.what() << std::endl;
+    }
+    auto lastPaidByReg = payments_->loadLastPositiveByProgramByRegistration(mensProgramId_);
+    auto recentByReg   = payments_->loadRecentByProgramByRegistration(mensProgramId_, 3);
+
     std::vector<json> all;
     all.reserve(recs.size());
     for (const auto& r : recs) {
@@ -238,6 +253,35 @@ MensRoster::Result MensRoster::run(bool includeAll) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
         const auto bill = PersonBilling::resolve(billingMap, uid);
 
+        // lastPaid pill data — sourced from person_payments (synced above).
+        // Joined by registrationId (the transaction's registration-id is
+        // the reliable link even when the paying account differs from the
+        // player account).
+        json lastPaidAmount = nullptr;
+        json lastPaidAt     = nullptr;
+        json lastPaidType   = nullptr;
+        json lastPayments   = json::array();
+        std::string regKey;
+        if (p.at("registrationId").is_number_integer())      regKey = std::to_string(p.at("registrationId").get<long long>());
+        else if (p.at("registrationId").is_number_unsigned()) regKey = std::to_string(p.at("registrationId").get<unsigned long long>());
+        else if (p.at("registrationId").is_string())          regKey = p.at("registrationId").get<std::string>();
+        if (!regKey.empty()) {
+            if (auto pit = lastPaidByReg.find(regKey); pit != lastPaidByReg.end()) {
+                lastPaidAmount = jsNumber(pit->second.amount);
+                lastPaidAt     = pit->second.paidAt.empty() ? json(nullptr) : json(pit->second.paidAt);
+                lastPaidType   = pit->second.txnType.empty() ? json(nullptr) : json(pit->second.txnType);
+            }
+            if (auto rit = recentByReg.find(regKey); rit != recentByReg.end()) {
+                for (const auto& lp : rit->second) {
+                    json row = json::object();
+                    row["amount"]  = jsNumber(lp.amount);
+                    row["paidAt"]  = lp.paidAt.empty()  ? json(nullptr) : json(lp.paidAt);
+                    row["txnType"] = lp.txnType.empty() ? json(nullptr) : json(lp.txnType);
+                    lastPayments.push_back(std::move(row));
+                }
+            }
+        }
+
         // Find the user's assignment list; intersect with the configured
         // columns so off-dashboard team_ids never leak into the response.
         const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;
@@ -257,6 +301,10 @@ MensRoster::Result MensRoster::run(bool includeAll) {
             row["nextBillDate"]  = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
             row["nextBillAmount"] = jsNumber(bill.nextBillAmount);
             row["isDefault"]     = bill.isDefault;
+            row["lastPaidAmount"] = lastPaidAmount;
+            row["lastPaidAt"]     = lastPaidAt;
+            row["lastPaidType"]   = lastPaidType;
+            row["lastPayments"]   = lastPayments;
             unassigned.push_back(std::move(row));
         } else {
             for (int tid : relevant) {
@@ -267,6 +315,10 @@ MensRoster::Result MensRoster::run(bool includeAll) {
                 row["nextBillDate"]  = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
                 row["nextBillAmount"] = jsNumber(bill.nextBillAmount);
                 row["isDefault"]     = bill.isDefault;
+                row["lastPaidAmount"] = lastPaidAmount;
+                row["lastPaidAt"]     = lastPaidAt;
+                row["lastPaidType"]   = lastPaidType;
+                row["lastPayments"]   = lastPayments;
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }
         }

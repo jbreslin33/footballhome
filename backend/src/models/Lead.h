@@ -36,15 +36,26 @@ public:
     std::string createdAtIso;                  // YYYY-MM-DDTHH:MM:SS.sssZ
     int emailCount = 0;
     int textCount  = 0;
+    int callCount  = 0;
     std::optional<std::string> lastEmailAtIso;
     // Most-recent text/SMS touch from lead_contacts (channel='text').
     // Mirrors lastEmailAtIso for the SMS channel so the leads list
     // can render an "Emailed" / "Texted" / "Emailed + Texted" label.
     std::optional<std::string> lastTextAtIso;
-    // Most-recent email's `template` value (touch1 / touch2 / touch3 / ...).
-    // NULL when the lead has never been emailed, or when the latest email
-    // was logged before migration 072 (legacy pre-multitouch).
+    // Most-recent phone-call touch from lead_contacts (channel='call').
+    // Populated when the coach taps the Call button on a lead card —
+    // logs a row before the tel: link fires so we know a dial was
+    // attempted even if the call itself didn't connect.
+    std::optional<std::string> lastCallAtIso;
+    // Most-recent template string per channel.  Frontend picks the
+    // most-recent-across-channels timestamp and shows the corresponding
+    // template + icon on the card front so the coach can see "last
+    // touch: 📨 close · 1h ago" at a glance without opening the modal.
+    // NULL when never contacted on that channel, or (for email) when
+    // the touch predates migration 072.
     std::optional<std::string> lastEmailTemplate;
+    std::optional<std::string> lastTextTemplate;
+    std::optional<std::string> lastCallTemplate;
 
     // Manual signed-up flag (migration 073).  All three are NULL for an
     // open lead.  Set together by markConverted() / cleared together by

@@ -153,8 +153,13 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
     const int  programId   = (gender == Gender::Womens) ? womensProgramId_ : mensProgramId_;
     const char* genderStr  = (gender == Gender::Womens) ? "womens"         : "mens";
 
-    // 1. Club teams in the requested gender bucket.  Skip pickup / training /
-    //    pool pseudo-teams (chat-only groups, not assignable rosters).
+    // 1. Club teams in the requested gender bucket.
+    //
+    // Every mens/womens team the club owns is eligible for pill toggles,
+    // including pool teams (Practice / Pickup) — those are legitimate
+    // "internal-roster only" columns on the Lineups screen.  The old
+    // name-based exclusion (`^(pickup|training|pool)`) was dropped when
+    // Practice / Pickup became first-class mens_team_columns.
     json teamsJson = json::array();
     std::unordered_set<int> clubTeamIds;
     std::unordered_map<int, std::string> teamNameById;
@@ -163,7 +168,6 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
             "SELECT id, name "
             "  FROM teams "
             " WHERE club_id = $1 "
-            "   AND name !~* '^(pickup|training|pool)' "
             "   AND ( "
             "       ($2 = 'mens'   AND (gender_category = 'mens'   OR gender_category IS NULL)) "
             "    OR ($2 = 'womens' AND  gender_category = 'womens') "
@@ -224,31 +228,103 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         }
     }
 
-    // 4. For all matched person_ids, fetch open rosters within THIS club.
-    std::unordered_map<int, std::vector<int>> teamsByPersonId;
-    {
-        std::set<int> matchedPersonIds;
-        for (const auto& kv : personIdByLaId) matchedPersonIds.insert(kv.second);
-        if (!matchedPersonIds.empty()) {
-            const std::vector<int> personIdVec(matchedPersonIds.begin(), matchedPersonIds.end());
+    // 3a. Filter out anyone currently on a paused-variant LA sub-program.
+    // A person is "paused" iff there's an open row in
+    // person_la_memberships (`ended_at IS NULL`) pointing at a program
+    // whose `leagueapps_programs.variant = 'paused'`.  Paused members
+    // are still club members (they show up in the Paused Membership
+    // admin screen) but are not eligible for the pool / team rosters.
+    std::unordered_set<int> pausedPersonIds;
+    if (!personIdByLaId.empty()) {
+        std::vector<std::string> personIdStrs;
+        personIdStrs.reserve(personIdByLaId.size());
+        for (const auto& kv : personIdByLaId) personIdStrs.push_back(std::to_string(kv.second));
+        try {
             const std::string sql =
-                "SELECT p.person_id, r.team_id "
-                "  FROM rosters r "
-                "  JOIN players p ON p.id = r.player_id "
-                " WHERE r.left_at IS NULL "
-                "   AND p.person_id = ANY($1::int[]) "
-                "   AND r.team_id IN (SELECT id FROM teams WHERE club_id = $2)";
-            const std::vector<std::string> params = {
-                intArrayLiteral(personIdVec),
-                std::to_string(clubId),
-            };
+                "SELECT DISTINCT plm.person_id "
+                "  FROM person_la_memberships plm "
+                "  JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+                " WHERE plm.ended_at IS NULL "
+                "   AND lp.variant = 'paused' "
+                "   AND plm.person_id = ANY($1::int[])";
+            const std::vector<std::string> params = { textArrayLiteral(personIdStrs) };
             const auto rows = db_->query(sql, params);
             for (const auto& row : rows) {
-                const int teamId   = row["team_id"].as<int>();
-                const int personId = row["person_id"].as<int>();
-                if (clubTeamIds.count(teamId) == 0) continue;
-                teamsByPersonId[personId].push_back(teamId);
+                if (row["person_id"].is_null()) continue;
+                pausedPersonIds.insert(row["person_id"].as<int>());
             }
+        } catch (const std::exception& e) {
+            std::cerr << "la-pool paused-filter query failed: " << e.what() << std::endl;
+        }
+    }
+
+    // 3b. Auto-assign every active mens registrant to every POOL team
+    // (Practice / Pickup / etc — teams.is_pool = true) in this club.
+    // Pool teams have no cutoff; everyone in the mens program is on them
+    // by default.  Idempotent: `ON CONFLICT DO NOTHING` skips existing
+    // assignments so this is safe to run on every pool load.  Only for
+    // mens (mens_team_assignments is a mens-only table by design).
+    // Paused-membership persons are excluded (see step 3a).
+    std::vector<std::string> nonPausedLaIds;
+    nonPausedLaIds.reserve(laUserIdList.size());
+    for (const auto& lauid : laUserIdList) {
+        auto it = personIdByLaId.find(lauid);
+        if (it != personIdByLaId.end() && pausedPersonIds.count(it->second)) continue;
+        nonPausedLaIds.push_back(lauid);
+    }
+
+    if (gender == Gender::Mens && !nonPausedLaIds.empty()) {
+        try {
+            const std::string sql =
+                "INSERT INTO mens_team_assignments (leagueapps_user_id, team_id) "
+                "SELECT ua.uid::bigint, t.id "
+                "  FROM UNNEST($1::text[]) AS ua(uid) "
+                "  CROSS JOIN teams t "
+                " WHERE t.club_id = $2 "
+                "   AND t.is_pool = true "
+                "   AND (t.gender_category = 'mens' OR t.gender_category IS NULL) "
+                "ON CONFLICT (leagueapps_user_id, team_id) DO NOTHING";
+            const std::vector<std::string> params = {
+                textArrayLiteral(nonPausedLaIds),
+                std::to_string(clubId),
+            };
+            db_->query(sql, params);
+        } catch (const std::exception& e) {
+            std::cerr << "la-pool pool-team auto-assign failed: " << e.what() << std::endl;
+        }
+    }
+
+    // 4. Team-pill state.  `onRosterOn` is the INTERNAL roster (what
+    // Lighthouse considers on the team, managed via mens_team_assignments
+    // pill toggles).  It is intentionally NOT read from public.rosters —
+    // that table now represents the OFFICIAL roster (scraped from league
+    // websites or manually entered), which can be empty between seasons
+    // even while the internal roster is populated.  Keeping the two
+    // separate is what lets a coach build a Practice / Pickup roster
+    // without touching the official league listing.
+    std::unordered_map<int, std::vector<int>> teamsByPersonId;
+    if (!personIdByLaId.empty()) {
+        // Build a lookup of LA userId → personId so we can map assignment
+        // rows (keyed by leagueapps_user_id) back to a personId.
+        std::unordered_map<std::string, int> personIdByLaIdCopy = personIdByLaId;
+        std::vector<std::string> laIds;
+        laIds.reserve(personIdByLaIdCopy.size());
+        for (const auto& kv : personIdByLaIdCopy) laIds.push_back(kv.first);
+
+        const std::string sql =
+            "SELECT mta.leagueapps_user_id::text AS lauid, mta.team_id "
+            "  FROM mens_team_assignments mta "
+            " WHERE mta.leagueapps_user_id::text = ANY($1::text[])";
+        const std::vector<std::string> params = { textArrayLiteral(laIds) };
+        const auto rows = db_->query(sql, params);
+        for (const auto& row : rows) {
+            if (row["team_id"].is_null() || row["lauid"].is_null()) continue;
+            const std::string lauid = row["lauid"].c_str();
+            const int teamId        = row["team_id"].as<int>();
+            if (clubTeamIds.count(teamId) == 0) continue;
+            auto it = personIdByLaIdCopy.find(lauid);
+            if (it == personIdByLaIdCopy.end()) continue;
+            teamsByPersonId[it->second].push_back(teamId);
         }
     }
 
@@ -273,6 +349,14 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         json personIdJson = nullptr;
         if (auto pit = personIdByLaId.find(uid); pit != personIdByLaId.end()) {
             personIdJson = pit->second;
+        }
+
+        // Skip anyone currently on a paused-variant sub-program (see 3a).
+        // Paused members are still club members (visible in the Paused
+        // Membership screen) but are excluded from the LA pool.
+        if (!personIdJson.is_null() &&
+            pausedPersonIds.count(personIdJson.get<int>())) {
+            continue;
         }
 
         const std::string first = trim(optStr(rec, "firstName"));

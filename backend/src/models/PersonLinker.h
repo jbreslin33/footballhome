@@ -40,6 +40,17 @@ public:
     // `wouldCreate*` flags) without writing.
     Result linkLa(const nlohmann::json& rec, bool dryRun = false);
 
+    // Mark `personId` as a current member of LA sub-program `programId`.
+    // Idempotent: if the person already has an open row for this program,
+    // no writes occur.  If they have an open row for a DIFFERENT program,
+    // that row is closed (ended_at = now()) and a new open row inserted —
+    // this is how "active → paused" (or vice-versa) transitions are
+    // captured with a preserved audit trail.  Callers must have already
+    // resolved `personId` via linkLa (or otherwise) and the referenced
+    // `programId` must exist in `leagueapps_programs.program_id`.
+    // Best-effort: logs + swallows on DB errors (does not throw).
+    void recordMembership(int personId, long long programId);
+
 private:
     Database* db_;
 
@@ -52,4 +63,22 @@ private:
 
     // Trim leading/trailing whitespace.
     static std::string trim(const std::string&);
+
+    // Contact backfill (2026-07-01): every LA reg carries email/phone for
+    // the person we just linked.  Youth regs (userType='CHILD') carry the
+    // parent's contact under parent* keys — we upsert a separate parent
+    // person row (linked via persons.parent_person_id) so the parent's
+    // email/phone lands in person_emails/person_phones for lead-suppression.
+    //
+    // These are best-effort: on any DB error we log and swallow (never
+    // fail the caller — the alias linkage is what matters most).
+
+    // Upsert `email` and/or `phone` onto `personId`.  No-op for empty strings.
+    void upsertContact(int personId, const std::string& email, const std::string& phone);
+
+    // For CHILD records, resolve-or-create the parent person from
+    // parentUserId + parentFirstName/parentLastName, upsert parentEmail/
+    // parentPhone on the parent, and set persons.parent_person_id on the
+    // child.  For non-CHILD records this is a no-op.
+    void ensureParentLink(int childPersonId, const nlohmann::json& rec);
 };

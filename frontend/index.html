@@ -2,9 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Football Home - Coach</title>
-    
+
+    <!-- PWA: installable to home screen (Android/Chrome/Edge + iOS Safari). -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1220">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Football Home">
+    <link rel="apple-touch-icon" href="/images/lighthouse-1893-crest.png">
+    <link rel="icon" type="image/png" href="/images/lighthouse-1893-crest.png">
+
     <!-- CSS -->
     <link rel="stylesheet" href="css/main.css?v=5">
     <link rel="stylesheet" href="css/admin-system.css">
@@ -47,8 +56,8 @@
   <script src="js/entities/Arrow.js"></script>
   
   <!-- Screens -->
-  <script src="js/screens/login.js"></script>
-  <script src="js/screens/oauth-success.js"></script>
+  <script src="js/screens/login.js?v=20260703b"></script>
+  <script src="js/screens/oauth-success.js?v=20260703b"></script>
   <script src="js/screens/role-selection.js?v=20260407"></script>
   <script src="js/screens/context-selection.js"></script>
   <script src="js/screens/DivisionSelectionScreen.js"></script>
@@ -69,14 +78,14 @@
   <script src="js/screens/match-options.js"></script>
   <script src="js/screens/match-management.js"></script>
   <script src="js/components/SocialPostCard.js?v=20260406"></script>
-  <script src="js/components/billing-badge.js?v=20260619"></script>
+  <script src="js/components/billing-badge.js?v=20260702f"></script>
   <script src="js/screens/match-form.js"></script>
   <script src="js/screens/match-list.js"></script>
-  <script src="js/screens/match-rsvp-management.js"></script>
+  <script src="js/screens/match-rsvp-management.js?v=7"></script>
   <script src="js/screens/match-detail.js"></script>
   <script src="js/screens/game-day-roster.js"></script>
   <script src="js/screens/game-day-lineup.js?v=19"></script>
-  <script src="js/screens/team-hub.js?v=1"></script>
+  <script src="js/screens/team-hub.js?v=11"></script>
   <script src="js/screens/MatchShareScreen.js"></script>
   <script src="js/screens/MatchSocialScreen.js"></script>
   <script src="js/screens/SocialScheduleScreen.js"></script>
@@ -86,16 +95,21 @@
   <script src="js/screens/internal-roster.js"></script>
   <script src="js/screens/flyers.js"></script>
   <script src="js/screens/leads.js"></script>
+  <script src="js/screens/leads-analytics.js"></script>
   <script src="js/screens/youth-roster.js"></script>
+  <script src="js/screens/payments.js?v=20260703g"></script>
 
   <script src="js/screens/messages.js"></script>
-  <script src="js/screens/lineups.js?v=20260625c"></script>
+  <script src="js/screens/lineups.js?v=20260703a"></script>
+  <script src="js/screens/practice-dashboard.js?v=6"></script>
   <script src="js/screens/rsvp.js?v=20260625b"></script>
   <script src="js/screens/ad-preview.js"></script>
   <script src="js/screens/admin-level-selection.js"></script>
   <script src="js/screens/admin-entity-list.js"></script>
   <script src="js/screens/admin-system.js?v=20260407"></script>
-  <script src="js/screens/admin-club.js"></script>
+  <script src="js/screens/admin-club.js?v=20260703f"></script>
+  <script src="js/screens/paused-members.js?v=6"></script>
+  <script src="js/screens/admin-club-teams.js?v=1"></script>
   <script src="js/screens/club-events.js"></script>
   <script src="js/screens/admin-sport-division.js"></script>
   <script src="js/screens/admin-team.js"></script>
@@ -119,6 +133,18 @@
   <script src="js/screens/club-detail.js"></script>
   <script src="js/screens/public-team.js?v=1"></script>
     <!-- App Bootstrap -->
-    <script src="js/app.js?v=20260625a"></script>
+    <script src="js/app.js?v=20260701a"></script>
+
+    <!-- Service worker: enables "Add to Home Screen" / install prompt.
+         Pure network passthrough, no caching (per project policy). -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('[pwa] service worker registration failed:', err);
+          });
+        });
+      }
+    </script>
 </body>
 </html>

@@ -85,11 +85,26 @@ class LineupsScreen extends Screen {
     this.clubId = params?.clubId;
     this.clubName = params?.clubName;
     this.gender = (params?.gender === 'womens') ? 'womens' : 'mens';
-    // Update header copy to reflect the chosen gender (lineups.js is
-    // shared between the mens and womens screens — the only difference
-    // is the gender param and the resulting team set + LA pool).
+    // matchType filter — 'game' (default) shows league/scrimmage/etc,
+    // 'practice' shows only practices, 'pickup' shows only pickups.
+    // Match types: 1=league, 2=custom, 3=practice, 4=scrimmage,
+    // 5=tournament, 6=cup, 7=pickup.  We filter by match_type_id if
+    // present, falling back to a title regex.
+    const mt = params?.matchType;
+    this.matchType = (mt === 'practice' || mt === 'pickup') ? mt : 'game';
+    this.division  = params?.division  || null;   // future: 'apsl' | 'liga1' | 'liga2' | 'tricounty'
+    this.ageGroup  = params?.ageGroup  || null;   // future: 'u8' | 'u10' | 'u12'
+    // Update header copy to reflect the chosen gender + match type.
     const h1 = this.element.querySelector('.screen-header h1');
-    if (h1) h1.textContent = this.gender === 'womens' ? '🧩 Women’s Lineup' : '🧩 Lineup';
+    if (h1) {
+      const genderLabel = this.gender === 'womens' ? 'Women’s' : 'Men’s';
+      const typeLabel = this.matchType === 'practice'
+        ? '🏃 ' + genderLabel + ' Practice Dashboard'
+        : this.matchType === 'pickup'
+          ? '⚡ ' + genderLabel + ' Pickup Dashboard'
+          : '🧩 ' + genderLabel + ' Lineup';
+      h1.textContent = typeLabel;
+    }
     this.hiddenTeams = this._loadHiddenTeams();
 
     if (!this._listenersAttached) {
@@ -296,6 +311,86 @@ class LineupsScreen extends Screen {
         this._toggleCoach(teamId, personId, action);
         return;
       }
+
+      // Team-hub deep link: click the team name in the column header to
+      // open that team's home page (roster + schedule + attendance +
+      // chat).  Coaches use Men's Lineups daily; this is the shortest
+      // path from there to any given team's page.
+      const hubOpen = e.target.closest('[data-team-hub-open]');
+      if (hubOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        const teamId = parseInt(hubOpen.dataset.teamHubOpen, 10);
+        const td = (this.teamData || []).find(t => t?.team?.id === teamId);
+        const teamName = td?.team?.name || 'Team';
+        this.navigation.goTo('team-hub', {
+          teamId,
+          teamName,
+          clubId: this.clubId,
+          lineupTeamId: teamId,
+        });
+        return;
+      }
+
+      // Add-match: toggle form open in team column header.
+      const addOpen = e.target.closest('[data-add-match-open]');
+      if (addOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        const teamId = parseInt(addOpen.dataset.addMatchOpen, 10);
+        const td = (this.teamData || []).find(t => t?.team?.id === teamId);
+        if (td) {
+          // "+ Match" always opens the form in ADD mode — clear any
+          // in-progress edit so a re-open doesn't inherit stale
+          // prefill values.
+          td._matchFormEditId = null;
+          td._addMatchOpen = !td._addMatchOpen;
+          this._renderColumn(td);
+        }
+        return;
+      }
+      // Edit-match: open the same match form pre-filled with the
+      // current match's opponent/date/time and switched to PUT mode.
+      // Reuses _renderAddMatchForm / _onAddMatchSave so create + edit
+      // share one form and one save code path.
+      const editOpen = e.target.closest('[data-edit-match-open]');
+      if (editOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        const teamId = parseInt(editOpen.dataset.editMatchOpen, 10);
+        const td = (this.teamData || []).find(t => t?.team?.id === teamId);
+        if (td && td.nextMatch?.id) {
+          td._matchFormEditId = td.nextMatch.id;
+          td._addMatchOpen = true;
+          this._renderColumn(td);
+        }
+        return;
+      }
+      // Add-match: cancel button — close the form.
+      const addCancel = e.target.closest('[data-add-match-cancel]');
+      if (addCancel) {
+        e.preventDefault();
+        e.stopPropagation();
+        const teamId = parseInt(addCancel.dataset.addMatchCancel, 10);
+        const td = (this.teamData || []).find(t => t?.team?.id === teamId);
+        if (td) {
+          td._addMatchOpen = false;
+          td._matchFormEditId = null;
+          this._renderColumn(td);
+        }
+        return;
+      }
+      // Add-match: save button — POST (create) or PUT (edit) based on
+      // whether td._matchFormEditId is set.  _onAddMatchSave reads that
+      // flag to route.
+      const addSave = e.target.closest('[data-add-match-save]');
+      if (addSave) {
+        e.preventDefault();
+        e.stopPropagation();
+        const teamId = parseInt(addSave.dataset.addMatchSave, 10);
+        this._onAddMatchSave(teamId);
+        return;
+      }
     });
 
     // Zone select change handler — picks Starter / Bench / Alternate / Null.
@@ -399,6 +494,14 @@ class LineupsScreen extends Screen {
       const laPoolPromise = this._loadLaPool();
 
       // Initialize team data shells; matches load in parallel below.
+      // Two roster sizes per team:
+      //   rosterSize         — game-day cap (starting 11 + bench, ~20).
+      //                        Drives bench-slot math in the lineup zones.
+      //   internalRosterSize — full club-internal target (~35).  Drives
+      //                        the "x/35 · % full · need N" header display
+      //                        on the LEFT of every team column.
+      // Both default uniformly; team-specific overrides live in the DB
+      // (mens_team_columns.roster_size / internal_roster_size — TODO).
       this.teamData = teams.map(team => ({
         team,
         nextMatch: null,
@@ -410,6 +513,7 @@ class LineupsScreen extends Screen {
         reconciliation: null,
         zones: { starting: [], bench: [], alternates: [] },
         rosterSize: 20,
+        internalRosterSize: 35,
         matchesLoaded: false,
         loaded: false,
         error: null,
@@ -541,12 +645,23 @@ class LineupsScreen extends Screen {
       const data = await res.json();
       if (!data.success) return;
       const matches = Array.isArray(data.data) ? data.data : [];
-      // Soonest non-ended match.
+      // match_type_id: 1=league, 2=custom, 3=practice, 4=scrimmage,
+      // 5=tournament, 6=cup, 7=pickup.  Practices+pickups also often
+      // show up with match_type_id=3 due to the chat_event trigger and
+      // have "practice"/"pickup" in their title, so we combine both
+      // signals to classify.
+      const isPractice = (m) => Number(m.match_type_id) === 3 || /practice/i.test(m.title || '');
+      const isPickup   = (m) => Number(m.match_type_id) === 7 || /pickup/i.test(m.title || '');
+      const typeFilter = this.matchType === 'practice'
+        ? isPractice
+        : this.matchType === 'pickup'
+          ? isPickup
+          : (m) => !isPractice(m) && !isPickup(m);   // default 'game'
+      // Soonest non-ended match matching the type filter.
       const upcoming = matches
         .filter(m => !m.has_ended)
         .filter(m => !this._isFinished(m.match_status))
-        // Skip pickup matches — those aren't a real lineup decision.
-        .filter(m => !/pickup/i.test(m.title || ''))
+        .filter(typeFilter)
         .sort((a, b) => String(a.event_date || '').localeCompare(String(b.event_date || '')));
       td.nextMatch = upcoming[0] || null;
       td.matchesLoaded = true;
@@ -574,8 +689,12 @@ class LineupsScreen extends Screen {
     try {
       // No upcoming match (e.g. APSL, Liga 1, Pool): skip roster-players,
       // but still pull reconciliation so the LA-only section is reachable.
+      // We then fall through to _augmentPlayersWithMensRoster so every
+      // player assigned to this team (via mens_team_assignments on the
+      // LEFT side pills) still appears in the column — bucketed as
+      // "NO RESPONSE" until they RSVP or an admin sets it manually.
       if (!matchId) {
-        this._appendLoading(`  [${td.team.name}] no upcoming match — reconciliation only`);
+        this._appendLoading(`  [${td.team.name}] no upcoming match — reconciliation + mens roster only`);
         const recRes = await this.auth.fetch(`/api/teams/${teamId}/reconciliation`);
         const rec = await this._safeJson(recRes);
         if (recRes.ok && !rec.error) {
@@ -591,6 +710,7 @@ class LineupsScreen extends Screen {
         }
         td.players = [];
         td.zones = { starting: [], bench: [], alternates: [] };
+        this._augmentPlayersWithMensRoster(td);
         td.loaded = true;
         return;
       }
@@ -653,6 +773,13 @@ class LineupsScreen extends Screen {
         else td.zones.bench.push(pid);
       }
 
+      // Union in every person assigned to this team on the LEFT (via
+      // mens_team_assignments / /api/mens-roster).  Anyone not already in
+      // td.players from roster-players gets a synthetic row so they show
+      // in the column bucketed as "NO RESPONSE" — the coach can then
+      // manually set their RSVP.
+      this._augmentPlayersWithMensRoster(td);
+
       td.loaded = true;
     } catch (err) {
       console.error(`LineupsScreen team ${teamId} load:`, err);
@@ -681,12 +808,84 @@ class LineupsScreen extends Screen {
         return;
       }
       this.mensRoster = await res.json();
+      // Union the freshly-loaded assignments into every already-loaded
+      // team column so people show even before their next match exists.
+      for (const td of (this.teamData || [])) {
+        if (td && td.loaded) this._augmentPlayersWithMensRoster(td);
+      }
       // Re-render columns if they're already on screen
       if (this.find('#lineups-columns')?.style.display === 'flex') {
         this._renderColumns();
       }
     } catch {
       this.mensRoster = null;
+    }
+  }
+
+  // Union every person assigned to this team on the LEFT side
+  // (mens_team_assignments, surfaced via /api/mens-roster) into
+  // td.players.  Anyone missing from the roster-players response gets
+  // a synthetic row (no personId / no playerId / rsvpStatus=''); the
+  // renderer buckets those under "NO RESPONSE" so the column always
+  // reflects the full team roster.
+  //
+  // De-dup key priority:
+  //   1. leagueAppsUserId  (most reliable — comes from LA registration)
+  //   2. lowercase "first last" name  (fallback for FH-native persons)
+  _augmentPlayersWithMensRoster(td) {
+    if (!this.mensRoster || !Array.isArray(this.mensRoster.columns)) return;
+    const bucket = this.mensRoster.buckets?.[String(td.team.id)];
+    if (!Array.isArray(bucket) || bucket.length === 0) return;
+
+    if (!Array.isArray(td.players)) td.players = [];
+
+    const seenLaUid = new Set();
+    const seenName  = new Set();
+    const nameKey = (f, l) =>
+      `${(f || '').toString().trim().toLowerCase()} ${(l || '').toString().trim().toLowerCase()}`.trim();
+
+    for (const p of td.players) {
+      if (p?.leagueAppsUserId != null) seenLaUid.add(String(p.leagueAppsUserId));
+      const nk = nameKey(p?.firstName, p?.lastName);
+      if (nk) seenName.add(nk);
+    }
+
+    let added = 0;
+    for (const m of bucket) {
+      const laUid = m?.leagueAppsUserId != null ? String(m.leagueAppsUserId) : null;
+      const nk    = nameKey(m?.firstName, m?.lastName);
+      if (laUid && seenLaUid.has(laUid)) continue;
+      if (!laUid && nk && seenName.has(nk)) continue;
+
+      td.players.push({
+        // Identity — no personId/playerId because this row hasn't been
+        // linked to a persons/players record yet (or the team has no
+        // upcoming match so the roster-players join never ran).
+        personId:         null,
+        playerId:         null,
+        leagueAppsUserId: m.leagueAppsUserId ?? null,
+        firstName:        m.firstName || '',
+        lastName:         m.lastName  || '',
+        birthDate:        m.birthDate || null,
+        // No response by default — an admin can manually set this from
+        // the card once the manual-RSVP override lands.
+        rsvpStatus:       '',
+        practice:         [],
+        // Roster-flag from mens_team_assignments (surface the R badge).
+        laOnRoster:       !!m.onRoster,
+        // Jersey / contact enrichment when present.
+        jerseyNumber:     m.jerseyNumber ?? null,
+        // Marker so downstream code can tell these apart from real
+        // roster-players rows.
+        _fromMensRoster:  true,
+      });
+      if (laUid) seenLaUid.add(laUid);
+      if (nk)    seenName.add(nk);
+      added++;
+    }
+
+    if (added > 0) {
+      this._appendLoading?.(`  [${td.team.name}] +${added} from mens roster (assigned, no match RSVP yet)`);
     }
   }
 
@@ -799,6 +998,14 @@ class LineupsScreen extends Screen {
     const cards = persons.map(p => {
       const name = this._escape(`${p.firstName || ''} ${p.lastName || ''}`.trim() || '(unnamed)');
       const dob = this._formatDob(p.birthDate);
+      const age = this._ageFromDob(p.birthDate);
+      const band = this._ageBand(age);
+      // Age color: >= 18 needs SafeSport (amber warning), < 18 is a minor
+      // (soft blue).  Both are legible against the surface color; the
+      // point is to make "will this person need SafeSport?" a glance.
+      const ageColor = age == null
+        ? 'var(--text-muted)'
+        : (age >= 18 ? '#f59e0b' : '#38bdf8');
       const onSet = new Set(p.onRosterOn || []);
       // Edit button — only render for matched persons (need a personId).
       // Opens a dedicated LA-pool modal showing email/phone/payment etc.
@@ -818,29 +1025,49 @@ class LineupsScreen extends Screen {
       ` : '';
       // Unmatched LA users (no local person row) can't be added to a roster
       // until they're married to a person, so suppress pills and show flag.
+      // Layout: 3 rows grouped by team purpose so the eye can scan quickly.
+      //   Row 1 — league teams:     APSL (35), Liga 1 (120), Liga 2 (121)
+      //   Row 2 — pool teams:       Pickup (909), Practice (908)
+      //   Row 3 — internal squads:  U23 (903), Brazil (904), Puerto Rico (905)
+      // Any additional team the club adds later falls into a trailing
+      // "other" row so it still renders (no lost pills).
+      const rowGroups = [
+        [35, 120, 121],
+        [909, 908],
+        [903, 904, 905],
+      ];
+      const groupedIds = new Set(rowGroups.flat());
+      const otherIds = teams.map(t => t.id).filter(id => !groupedIds.has(id));
+      if (otherIds.length) rowGroups.push(otherIds);
+      const teamById = new Map(teams.map(t => [t.id, t]));
+      const renderPill = (t) => {
+        const on = onSet.has(t.id);
+        const bg = on ? '#22c55e' : 'transparent';
+        const fg = on ? '#0b1220' : 'var(--text-muted)';
+        const border = on ? '#22c55e' : 'var(--border-color)';
+        return `
+          <button
+            type="button"
+            data-team-pill="${on ? 'remove' : 'add'}"
+            data-team-id="${t.id}"
+            data-person-id="${p.personId}"
+            title="${this._escape(t.name)} — tap to ${on ? 'remove' : 'add'}"
+            style="
+              background:${bg}; color:${fg}; border:1px solid ${border};
+              padding: 2px 8px; border-radius: 999px;
+              font-size: 0.7em; font-weight: 700; cursor: pointer;
+              line-height: 1.2;
+            "
+          >${this._escape(t.shortLabel || t.name.slice(0, 4).toUpperCase())}</button>
+        `;
+      };
       const pillsHTML = p.unmatched
         ? `<span style="font-size:0.7em;color:#f59e0b;font-weight:700;">⚠ unmatched — needs marrying</span>`
-        : teams.map(t => {
-            const on = onSet.has(t.id);
-            const bg = on ? '#22c55e' : 'transparent';
-            const fg = on ? '#0b1220' : 'var(--text-muted)';
-            const border = on ? '#22c55e' : 'var(--border-color)';
-            return `
-              <button
-                type="button"
-                data-team-pill="${on ? 'remove' : 'add'}"
-                data-team-id="${t.id}"
-                data-person-id="${p.personId}"
-                title="${this._escape(t.name)} — tap to ${on ? 'remove' : 'add'}"
-                style="
-                  background:${bg}; color:${fg}; border:1px solid ${border};
-                  padding: 2px 8px; border-radius: 999px;
-                  font-size: 0.7em; font-weight: 700; cursor: pointer;
-                  line-height: 1.2;
-                "
-              >${this._escape(t.shortLabel || t.name.slice(0, 4).toUpperCase())}</button>
-            `;
-          }).join('');
+        : rowGroups
+            .map(ids => ids.map(id => teamById.get(id)).filter(Boolean))
+            .filter(row => row.length > 0)
+            .map(row => `<div style="display:flex; gap:4px; flex-wrap:wrap;">${row.map(renderPill).join('')}</div>`)
+            .join('');
       const bgRow = p.unmatched
         ? 'rgba(245, 158, 11, 0.08)'
         : 'var(--bg-secondary, rgba(255,255,255,0.04))';
@@ -855,11 +1082,23 @@ class LineupsScreen extends Screen {
           <div style="font-size:0.85em; color: var(--text-primary); display:flex; justify-content:space-between; gap:6px; align-items:baseline;">
             <strong>${name}</strong>
             <div style="display:flex; gap:6px; align-items:center;">
-              ${dob ? `<span style="font-size:0.7em;color:var(--text-muted);font-family:monospace;">${dob}</span>` : ''}
+              ${dob ? `
+                <span style="font-size:0.85em; font-family:monospace; color:var(--text-primary); font-weight:600;"
+                      title="Born ${dob}${age != null ? ` · age ${age}` : ''}${band ? ` · ${band}` : ''}${age != null && age >= 18 ? ' · SafeSport required' : ''}">
+                  ${dob}
+                </span>
+                ${age != null ? `<span style="font-size:0.8em; font-weight:700; color:${ageColor};">${age}</span>` : ''}
+                ${band ? `<span style="
+                  font-size:0.7em; font-weight:700; letter-spacing:0.04em;
+                  padding:1px 6px; border-radius:4px;
+                  background:rgba(56,189,248,0.15); color:#38bdf8;
+                  border:1px solid rgba(56,189,248,0.35);
+                ">${band}</span>` : ''}
+              ` : ''}
               ${editBtnHTML}
             </div>
           </div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap;">${pillsHTML}</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">${pillsHTML}</div>
         </div>
       `;
     }).join('');
@@ -916,17 +1155,53 @@ class LineupsScreen extends Screen {
     btn.disabled = true;
     btn.style.opacity = '0.4';
 
+    // Look up leagueAppsUserId so we can also update mens_team_assignments
+    // (the FH-member gate on /api/matches/:matchId/roster-players).  The
+    // pool always carries this for matched persons; unmatched persons
+    // don't get a pill rendered so we should always have it, but be
+    // defensive in case the pool wasn't loaded yet.
+    const laPerson = this.laPool?.persons?.find(x => x.personId === personId);
+    const laUid = laPerson?.leagueAppsUserId
+      ? String(laPerson.leagueAppsUserId).trim()
+      : '';
+
     try {
-      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/${personId}`, {
+      // Fire both writes in parallel:
+      //   1. /api/teams/:teamId/roster/:personId   → rosters (JOIN target)
+      //   2. /api/mens-roster/assign               → mens_team_assignments
+      //                                              (FH-member gate)
+      // The roster-players SQL requires BOTH for the player to render in
+      // the team column, so previously the pill toggled visibility of
+      // the pill but the player never appeared on the right.
+      const rosterReq = this.auth.fetch(`/api/teams/${teamId}/roster/${personId}`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ action }),
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
+      const assignReq = laUid
+        ? this.auth.fetch('/api/mens-roster/assign', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              leagueAppsUserId: Number(laUid),
+              teamId,
+              action,
+            }),
+          })
+        : Promise.resolve(null);
+
+      const [rosterRes, assignRes] = await Promise.all([rosterReq, assignReq]);
+
+      if (!rosterRes.ok) {
+        const txt = await rosterRes.text();
+        throw new Error(txt.slice(0, 200) || `HTTP ${rosterRes.status}`);
       }
-      // Local update — flip pill state without a full re-fetch.
+      if (assignRes && !assignRes.ok) {
+        const txt = await assignRes.text();
+        throw new Error(txt.slice(0, 200) || `HTTP ${assignRes.status}`);
+      }
+
+      // Local pill-state flip (immediate visual feedback on the LEFT pool).
       if (this.laPool) {
         const p = this.laPool.persons.find(x => x.personId === personId);
         if (p) {
@@ -935,13 +1210,21 @@ class LineupsScreen extends Screen {
           p.onRosterOn = Array.from(set);
         }
       }
-      // Refresh affected team column so the player appears/disappears.
+      // Refetch /api/mens-roster (source of truth for internal assignments)
+      // so the affected team's bucket is authoritative, then re-augment
+      // and re-load the affected team column so the player appears /
+      // disappears on the RIGHT.  _loadMensRoster() also re-augments
+      // every loaded team + re-renders columns if visible, which covers
+      // the case where the same person is on multiple teams.
+      await this._loadMensRoster();
       const td = this.teamData.find(t => t.team.id === teamId);
       if (td) {
         await this._loadTeamPlayers(td);
         this._renderColumn(td);
       }
-      this._renderColumns();
+      // Toolbar counts depend on td.players.length — refresh so the
+      // chip pill count next to the team name updates too.
+      this._renderToolbar();
     } catch (err) {
       btn.disabled = false;
       btn.style.opacity = '';
@@ -1601,8 +1884,20 @@ class LineupsScreen extends Screen {
       benchCount = td.zones.bench.length;
       totalOn = startCount + benchCount;
       matchHeaderBody = `
-        <div style="margin-top: var(--space-1); font-size: 0.9em; color: var(--text-primary);">
+        <div style="margin-top: var(--space-1); font-size: 0.9em; color: var(--text-primary); display:flex; align-items:center; gap:6px;">
           <strong>${matchTitle}</strong>
+          <button
+            type="button"
+            data-edit-match-open="${teamId}"
+            title="Edit this match — opponent, date, or time"
+            style="
+              all:unset; cursor:pointer;
+              font-size:0.72em; font-weight:500;
+              padding:1px 6px; border-radius:4px;
+              background:transparent; color:var(--text-muted);
+              border:1px solid var(--border-color);
+            "
+          >Edit</button>
         </div>
         <div style="margin-top: 2px; font-size: 0.78em; color: var(--text-muted);">
           📅 ${this._escape(dateStr)}${timeStr ? ` &middot; 🕒 ${this._escape(timeStr)}` : ''}
@@ -1634,9 +1929,60 @@ class LineupsScreen extends Screen {
         border-radius: 8px 8px 0 0;
       ">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--space-2);">
-          <strong style="font-size: 1em; color: var(--text-primary);">${teamName}</strong>
+          <strong style="font-size: 1em; color: var(--text-primary); display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+            <a
+              href="#"
+              data-team-hub-open="${teamId}"
+              title="Open ${teamName} team page — roster, schedule, attendance, chat"
+              style="color: var(--text-primary); text-decoration: none; border-bottom: 1px dotted var(--text-muted); cursor: pointer;"
+            >${teamName}</a>
+            ${(() => {
+              const cur = Array.isArray(td.players) ? td.players.length : 0;
+              const cap = td.internalRosterSize || 35;
+              const pct = cap > 0 ? Math.round((cur / cap) * 100) : 0;
+              const need = Math.max(0, cap - cur);
+              // Ratio color: red < 60%, amber < 90%, green ≥ 90%.  Gives a
+              // fast "how full is this team" scan across the columns.
+              const ratioColor = pct >= 90 ? '#22c55e' : (pct >= 60 ? '#f59e0b' : '#ef4444');
+              const needColor  = need === 0  ? 'var(--text-muted)' : '#f59e0b';
+              return `
+                <span style="font-size:0.78em; font-weight:600; color:${ratioColor}; font-family:monospace;"
+                      title="Internal roster size · ${cur} of ${cap} · ${pct}% full · ${need} more to fill">
+                  ${cur}/${cap}
+                </span>
+                <span style="font-size:0.72em; font-weight:500; color:var(--text-muted);"
+                      title="${pct}% of roster filled">
+                  · ${pct}%
+                </span>
+                ${need > 0 ? `
+                  <span style="font-size:0.72em; font-weight:600; color:${needColor};"
+                        title="${need} more player${need === 1 ? '' : 's'} needed to reach ${cap}">
+                    · need ${need}
+                  </span>
+                ` : `
+                  <span style="font-size:0.72em; font-weight:600; color:#22c55e;"
+                        title="Roster full">
+                    · full
+                  </span>
+                `}
+              `;
+            })()}
+          </strong>
+          <button
+            type="button"
+            data-add-match-open="${teamId}"
+            title="Add a match / game for this team"
+            style="
+              all:unset; cursor:pointer;
+              font-size:0.72em; font-weight:600;
+              padding:2px 8px; border-radius:4px;
+              background:#3b82f6; color:#fff;
+              border:1px solid #2563eb;
+            "
+          >+ Match</button>
         </div>
         ${matchHeaderBody}
+        ${td._addMatchOpen ? this._renderAddMatchForm(td) : ''}
       </header>
     `;
 
@@ -1657,6 +2003,217 @@ class LineupsScreen extends Screen {
     }
 
     return header + this._renderReconciliationSections(td);
+  }
+
+  // -------------------------------------------------------------------------
+  // Add-match inline form (per team column) — also serves as the edit form.
+  // -------------------------------------------------------------------------
+  //
+  // Rendered inside the column header when td._addMatchOpen is true.  Three
+  // fields: opponent (free text), date, time.  Submits to
+  // POST /api/lineups/games (create) or PUT /api/lineups/games/:matchId
+  // (edit — when td._matchFormEditId is set).  Both endpoints return
+  // the same match shape so _onAddMatchSave doesn't branch on the response.
+  //
+  // Edit-mode prefill: opponent strips the "vs " prefix (auto-added on
+  // save server-side, so we round-trip cleanly); date and time come from
+  // td.nextMatch.  When _matchFormEditId isn't set, we fall through to
+  // the "new match" defaults (today's date, 19:00).
+  _renderAddMatchForm(td) {
+    const tid = td.team.id;
+    const editId = td._matchFormEditId || null;
+    const isEdit = !!editId;
+
+    // Prefill values.  Only touched in edit mode; add mode keeps the
+    // original "today at 7pm" defaults for a fast common-case create.
+    let defaultOpponent = '';
+    let defaultDate;
+    let defaultTime = '19:00';
+    if (isEdit && td.nextMatch) {
+      // Strip auto-added "vs " prefix so the user sees & edits just the
+      // opponent name — server re-adds it on save if not already there.
+      defaultOpponent = String(td.nextMatch.title || '').replace(/^vs\s+/i, '');
+      defaultDate = td.nextMatch.match_date || '';
+      // match_time may be "HH:MM:SS" from the DB; <input type=time>
+      // accepts "HH:MM" or "HH:MM:SS" so pass through as-is (empty → no
+      // preselected time, same as add mode when time isn't set).
+      defaultTime = td.nextMatch.match_time || '';
+    }
+    if (!defaultDate) {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      defaultDate = `${y}-${m}-${d}`;
+    }
+    const headingLabel = isEdit ? 'Edit match' : 'New match';
+    const saveLabel    = isEdit ? 'Save changes' : 'Save';
+    // Escape prefill to keep an opponent name with quotes (e.g. `"The
+    // Reds"`) from breaking out of the value attribute.
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+    return `
+      <div
+        data-add-match-form="${tid}"
+        data-match-edit-id="${isEdit ? editId : ''}"
+        style="
+          margin-top: var(--space-2);
+          padding: var(--space-2);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          display: flex; flex-direction: column; gap: 6px;
+        "
+      >
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+          <span style="font-size:0.78em; font-weight:600; color:var(--text-primary);">${headingLabel}</span>
+          <button
+            type="button"
+            data-add-match-cancel="${tid}"
+            style="all:unset; cursor:pointer; font-size:0.78em; color:var(--text-muted);"
+          >✕</button>
+        </div>
+        <input
+          type="text"
+          data-add-match-field="opponent"
+          data-team-id="${tid}"
+          placeholder="Opponent (e.g., Real Madrid)"
+          value="${esc(defaultOpponent)}"
+          style="
+            padding: 6px 8px; font-size: 0.85em;
+            background: var(--bg-secondary, rgba(255,255,255,0.04));
+            border: 1px solid var(--border-color);
+            border-radius: 4px; color: var(--text-primary);
+          "
+        />
+        <div style="display:flex; gap:6px;">
+          <input
+            type="date"
+            data-add-match-field="date"
+            data-team-id="${tid}"
+            value="${esc(defaultDate)}"
+            style="
+              flex:1; padding: 6px 8px; font-size: 0.85em;
+              background: var(--bg-secondary, rgba(255,255,255,0.04));
+              border: 1px solid var(--border-color);
+              border-radius: 4px; color: var(--text-primary);
+            "
+          />
+          <input
+            type="time"
+            data-add-match-field="time"
+            data-team-id="${tid}"
+            value="${esc(defaultTime)}"
+            style="
+              width: 100px; padding: 6px 8px; font-size: 0.85em;
+              background: var(--bg-secondary, rgba(255,255,255,0.04));
+              border: 1px solid var(--border-color);
+              border-radius: 4px; color: var(--text-primary);
+            "
+          />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
+          <button
+            type="button"
+            data-add-match-save="${tid}"
+            style="
+              all:unset; cursor:pointer;
+              padding: 4px 12px; border-radius: 4px;
+              font-size: 0.8em; font-weight: 600;
+              background: #22c55e; color: #0b1220;
+              border: 1px solid #16a34a;
+            "
+          >${saveLabel}</button>
+        </div>
+        <div
+          data-add-match-error="${tid}"
+          style="font-size:0.75em; color:#ef4444; display:none;"
+        ></div>
+      </div>
+    `;
+  }
+
+  async _onAddMatchSave(teamId) {
+    const td = (this.teamData || []).find(t => t?.team?.id === teamId);
+    if (!td) return;
+    const root = this.find(`[data-add-match-form="${teamId}"]`);
+    if (!root) return;
+    const err = (msg) => {
+      const el = root.querySelector(`[data-add-match-error="${teamId}"]`);
+      if (el) { el.textContent = msg; el.style.display = 'block'; }
+    };
+    const clearErr = () => {
+      const el = root.querySelector(`[data-add-match-error="${teamId}"]`);
+      if (el) { el.textContent = ''; el.style.display = 'none'; }
+    };
+    clearErr();
+
+    const opponent = (root.querySelector(`[data-add-match-field="opponent"][data-team-id="${teamId}"]`)?.value || '').trim();
+    const date     = (root.querySelector(`[data-add-match-field="date"][data-team-id="${teamId}"]`)?.value || '').trim();
+    const time     = (root.querySelector(`[data-add-match-field="time"][data-team-id="${teamId}"]`)?.value || '').trim();
+    if (!opponent) return err('Opponent required');
+    if (!date)     return err('Date required');
+
+    // Edit vs create — the form's data-match-edit-id attribute is the
+    // source of truth (mirrors td._matchFormEditId at render time so a
+    // stale td state can't cause a wrong-endpoint POST).
+    const editIdRaw = root.getAttribute('data-match-edit-id') || '';
+    const editId = editIdRaw ? parseInt(editIdRaw, 10) : null;
+    const isEdit = Number.isFinite(editId) && editId > 0;
+
+    const saveBtn = root.querySelector(`[data-add-match-save="${teamId}"]`);
+    const savingLabel = isEdit ? 'Saving…' : 'Saving…';
+    const idleLabel   = isEdit ? 'Save changes' : 'Save';
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.6'; saveBtn.textContent = savingLabel; }
+
+    try {
+      const url = isEdit
+        ? `/api/lineups/games/${editId}`
+        : '/api/lineups/games';
+      const method = isEdit ? 'PUT' : 'POST';
+      const body = isEdit
+        ? { opponent, date, time: time || undefined }
+        : { team_id: teamId, opponent, date, time: time || undefined };
+      const res = await this.auth.fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await this._safeJson(res);
+      if (!res.ok || data.error) {
+        err(data.error || `HTTP ${res.status}`);
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.textContent = idleLabel; }
+        return;
+      }
+
+      // Adopt as td.nextMatch immediately so the header shows the new
+      // (or updated) match without waiting for a round-trip.  Match
+      // shape from /api/matches/team/:teamId uses event_date =
+      // "YYYY-MM-DD HH:MM:SS" — build the same combined string so
+      // _splitEventDate is happy.  Both POST (create) and PUT (edit)
+      // return the same shape so this path is shared.
+      const eventDate = data.match_time
+        ? `${data.match_date} ${data.match_time}`
+        : `${data.match_date}`;
+      td.nextMatch = {
+        id:         data.id,
+        title:      data.title,
+        event_date: eventDate,
+        match_date: data.match_date,
+        match_time: data.match_time || null,
+      };
+      td._addMatchOpen = false;
+      td._matchFormEditId = null;
+      this._renderColumn(td);
+      // Reload players against the (possibly-new) match so RSVP buckets
+      // stay in sync.  For an edit that only tweaks the title, this is a
+      // no-op refresh; for a date/time change, it re-computes eligibility.
+      this._scheduleTeamRefresh(teamId);
+    } catch (e) {
+      err(e?.message || 'Network error');
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.textContent = idleLabel; }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -2219,5 +2776,36 @@ class LineupsScreen extends Screen {
     const [y, m, d] = iso.slice(0, 10).split('-');
     if (!y || !m || !d) return '';
     return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+  }
+
+  // Current age (in whole years) from an ISO 'YYYY-MM-DD…' string.
+  // Returns null on bad input so callers can suppress the badge.
+  _ageFromDob(iso) {
+    if (!iso || typeof iso !== 'string' || iso.length < 10) return null;
+    const [ys, ms, ds] = iso.slice(0, 10).split('-');
+    const y = parseInt(ys, 10), m = parseInt(ms, 10), d = parseInt(ds, 10);
+    if (!y || !m || !d) return null;
+    const today = new Date();
+    let age = today.getFullYear() - y;
+    const beforeBirthday =
+      (today.getMonth() + 1) < m ||
+      ((today.getMonth() + 1) === m && today.getDate() < d);
+    if (beforeBirthday) age--;
+    return age >= 0 && age < 130 ? age : null;
+  }
+
+  // Youth-model age band: smallest U-bracket that still contains the
+  // player's current age.  Used for the LA pool card so an admin can
+  // eyeball who could play down into a U21 / U23 slot.  Falls through
+  // to "O40" for anyone over 40 (Open / Over-40 leagues).
+  _ageBand(age) {
+    if (age == null) return '';
+    if (age < 21) return 'U21';
+    if (age < 23) return 'U23';
+    if (age < 25) return 'U25';
+    if (age < 30) return 'U30';
+    if (age < 35) return 'U35';
+    if (age < 40) return 'U40';
+    return 'O40';
   }
 }

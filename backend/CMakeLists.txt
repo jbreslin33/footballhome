@@ -38,6 +38,8 @@ set(SOURCES
     src/models/PersonMerge.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
+    src/models/PersonPayments.cpp
+    src/models/ChargeFlags.cpp
     src/models/YouthAgeGroups.cpp
     src/models/YouthRoster.cpp
     src/models/MensTeamColumns.cpp
@@ -74,6 +76,8 @@ set(SOURCES
     src/controllers/YouthRosterController.cpp
     src/controllers/MensRosterController.cpp
     src/controllers/PersonBillingController.cpp
+    src/controllers/PaymentsController.cpp
+    src/controllers/ChargeFlagsController.cpp
     src/controllers/AdminLaBackfillController.cpp
     src/controllers/LeadsController.cpp
     src/controllers/LeadsWebhookController.cpp

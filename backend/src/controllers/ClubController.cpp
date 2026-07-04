@@ -135,6 +135,7 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             SELECT 
                 t.id,
                 t.name,
+                t.is_pool,
                 d.name as division_name,
                 s.name as season_name,
                 l.name as league_name,
@@ -148,7 +149,7 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             LEFT JOIN rosters r ON r.team_id = t.id
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
             WHERE t.club_id = )" + std::to_string(club_id) + genderFilter + R"(
-            GROUP BY t.id, t.name, d.name, s.name, l.name
+            GROUP BY t.id, t.name, t.is_pool, d.name, s.name, l.name
             ORDER BY l.name, d.name, t.name
         )";
         
@@ -242,6 +243,7 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             teamsJson << "{";
             teamsJson << "\"id\":" << teamId << ",";
             teamsJson << "\"name\":\"" << escapeJson(teamRow["name"].c_str()) << "\",";
+            teamsJson << "\"is_pool\":" << (teamRow["is_pool"].as<bool>(false) ? "true" : "false") << ",";
             teamsJson << "\"division_name\":\"" << escapeJson(teamRow["division_name"].c_str()) << "\",";
             teamsJson << "\"season_name\":\"" << escapeJson(teamRow["season_name"].c_str()) << "\",";
             teamsJson << "\"league_name\":\"" << escapeJson(teamRow["league_name"].c_str()) << "\",";

@@ -19,9 +19,47 @@ class AdminClubScreen extends Screen {
             Admin level: <strong>CLUB</strong>
           </p>
         </div>
-        
-        <h3 style="margin-bottom: var(--space-3); opacity: 0.9;">Manage</h3>
-        <div id="sub-navigation" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Membership</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Who's in the club right now — active members, paused memberships, and lead pipeline.
+        </p>
+        <div id="section-membership" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧩 Team Dashboards</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Aggregated per-team views — grouped by club (Mens · Womens · Boys · Girls).
+        </p>
+
+        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👨 Mens Club</h4>
+        <div id="dash-mens" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
+
+        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👩 Womens Club</h4>
+        <div id="dash-womens" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
+
+        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👦 Boys Club</h4>
+        <div id="dash-boys" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
+
+        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👧 Girls Club</h4>
+        <div id="dash-girls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📲 Media &amp; Socials</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Instagram posts, printable flyers, ad previews, public exhibits, and coach-facing messaging.
+        </p>
+        <div id="section-media" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">💰 Financials</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          LeagueApps payment history — one screen per program, freshly synced on every load.
+        </p>
+        <div id="financials" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Structure</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Events, users, players, teams, venues, tactical boards, and club-wide settings.
+        </p>
+        <div id="section-structure" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
       </div>
     `;
     
@@ -54,46 +92,209 @@ class AdminClubScreen extends Screen {
   }
   
   renderSubNavigation() {
-    const subNav = this.find('#sub-navigation');
-    
-    const sections = [
-      { id: 'events', icon: '📅', label: 'Events', description: 'Club events & RSVPs' },
-      { id: 'users', icon: '👤', label: 'Users', description: 'Manage user accounts' },
-      { id: 'players', icon: '⚽', label: 'Players', description: 'Manage player records' },
-      { id: 'teams', icon: '👥', label: 'Teams', description: 'Manage teams' },
-      { id: 'venues', icon: '🏟️', label: 'Venues', description: 'Manage venues' },
-      { id: 'tactics', icon: '🧠', label: 'Tactics', description: 'Club-wide tactical boards' },
-      { id: 'holiday-posts', icon: '🎉', label: 'Holiday Posts', description: 'Instagram holiday posts' },
-      { id: 'promo-posts', icon: '📢', label: 'Promo Posts', description: 'Instagram promotional posts' },
-      { id: 'content-posts', icon: '📷', label: 'Content Posts', description: 'Upload photos & videos to Instagram' },
-      { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
-      { id: 'leads', icon: '📋', label: 'Leads', description: 'Ad interest form submissions' },
-      { id: 'youth-roster', icon: '⚽', label: 'Youth Roster', description: 'Live Boys/Girls Club roster from LeagueApps' },
-      { id: 'messages', icon: '💬', label: 'Messages', description: 'Canned responses & welcome messages per team' },
-      { id: 'lineups',         icon: '🧩', label: 'Lineups & Rosters',         description: 'One stop shop — assign players to teams (Brazil / PR / U23) and pick starters & bench for every team\'s next match' },
-      { id: 'lineups-womens',  icon: '🧩', label: 'Women\'s Lineups & Rosters', description: 'Same screen, women\'s side — Tri County + any future women\'s teams.  LA pool sourced from the Women\'s LA program.' },
-      { id: 'ad-preview', icon: '📱', label: 'Ad Preview', description: 'See exactly what your ads look like' },
-      { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits', description: 'Publicly shareable poster boards & history pages' },
-      { id: 'exhibit-social', icon: '📲', label: 'Exhibit → Social', description: 'Preview IG carousel / 4:5 single / long poster renders' },
-      { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' }
+    // Helper: render a section of tiles into an element by id.
+    const renderInto = (elId, tiles) => {
+      const el = this.find(elId);
+      if (!el) return;
+      el.innerHTML = tiles.map(section => `
+        <button class="btn btn-lg btn-secondary sub-nav-btn"
+                data-section="${section.id}"
+                style="height: auto; padding: var(--space-3); text-align: left;">
+          <div style="font-size: 2rem; margin-bottom: var(--space-1);">${section.icon}</div>
+          <div style="font-weight: 600; margin-bottom: var(--space-1);">${section.label}</div>
+          <div style="opacity: 0.7; font-size: 0.85rem;">${section.description}</div>
+        </button>
+      `).join('');
+    };
+
+    // ── Membership ─────────────────────────────────────────────────────
+    // One tile per operator concept, not per category.  The members /
+    // paused-members screens now show category chips at the top so a
+    // single tile handles all four sub-programs.
+    const membershipTiles = [
+      { id: 'members',         icon: '👥', label: 'Members',          description: 'Active members across all sub-programs — filter by Men / Women / Boys / Girls inside' },
+      { id: 'paused-members',  icon: '⏸',  label: 'Paused Membership', description: 'Members currently on a paused sub-program' },
+      { id: 'leads',           icon: '📋', label: 'Leads',            description: 'Ad interest form submissions' },
+      { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics',  description: 'What touches actually turn into LA registrations' },
     ];
-    
-    subNav.innerHTML = sections.map(section => `
-      <button class="btn btn-lg btn-secondary sub-nav-btn" 
-              data-section="${section.id}"
-              style="height: auto; padding: var(--space-3); text-align: left;">
-        <div style="font-size: 2rem; margin-bottom: var(--space-1);">${section.icon}</div>
-        <div style="font-weight: 600; margin-bottom: var(--space-1);">${section.label}</div>
-        <div style="opacity: 0.7; font-size: 0.85rem;">${section.description}</div>
-      </button>
-    `).join('');
+    renderInto('#section-membership', membershipTiles);
+
+    // ── Team Dashboards ────────────────────────────────────────────────
+    // Grouped by club (Mens / Womens / Boys / Girls).  Each tile is a
+    // lens on the same underlying data (matches, rosters, RSVPs);
+    // filter params tell the target screen which slice to render.  The
+    // shared `youth-*` screens honor gender / sex filters incrementally
+    // — until then they render the full youth set and ignore the
+    // filter (no error, just unfiltered).
+    const mensDashTiles = [
+      { id: 'mens-lineups',   target: 'mens-lineups',       params: { gender: 'mens',   matchType: 'game'    }, icon: '🧩', label: 'Mens Dashboard',           description: 'Men\'s teams — LA pool, per-team rosters, next match, starters & bench' },
+      { id: 'mens-practice',  target: 'mens-practice-dash', params: { gender: 'mens',   kind: 'practice'     }, icon: '🏃', label: 'Mens Practice',            description: 'Add / edit / delete men\'s practices — shared across all mens teams' },
+      { id: 'mens-pickup',    target: 'mens-pickup-dash',   params: { gender: 'mens',   kind: 'pickup'       }, icon: '⚡', label: 'Mens Pickup',              description: 'Add / edit / delete men\'s pickup sessions — shared across all mens teams' },
+      { id: 'apsl-dash',      target: 'mens-lineups',       params: { gender: 'mens',   division: 'apsl'     }, icon: '🏆', label: 'APSL',                     description: 'APSL teams only — standings, schedule, rosters' },
+      { id: 'liga1-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga1'    }, icon: '🏆', label: 'Liga 1',                   description: 'CASA Liga 1 teams — standings, schedule, rosters' },
+      { id: 'liga2-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga2'    }, icon: '🏆', label: 'Liga 2',                   description: 'CASA Liga 2 teams — standings, schedule, rosters' },
+      { id: 'tricounty-dash', target: 'mens-lineups',       params: { gender: 'mens',   division: 'tricounty'}, icon: '🏆', label: 'Tri County',               description: 'Tri County league teams — standings, schedule, rosters' },
+    ];
+
+    const womensDashTiles = [
+      { id: 'womens-lineups',  target: 'womens-lineups',      params: { gender: 'womens', matchType: 'game' }, icon: '🧩', label: 'Womens Dashboard',       description: 'Women\'s teams — LA pool, per-team rosters, next match, starters & bench' },
+      { id: 'womens-practice', target: 'womens-practice-dash',params: { gender: 'womens', kind: 'practice'  }, icon: '🏃', label: 'Womens Practice',        description: 'Add / edit / delete women\'s practices — shared across all women\'s teams' },
+      { id: 'womens-pickup',   target: 'womens-pickup-dash',  params: { gender: 'womens', kind: 'pickup'    }, icon: '⚡', label: 'Womens Pickup',          description: 'Add / edit / delete women\'s pickup sessions — shared across all women\'s teams' },
+    ];
+
+    // Youth shared screens (practice, pickup, dashboard) appear under
+    // both Boys and Girls because the youth program is one unit
+    // physically — same practices, same pickups, same coaches.  Tile
+    // ids differ (`boys-*` vs `girls-*`) so click routing stays clean
+    // even though target + params are identical.
+    const boysDashTiles = [
+      { id: 'boys-lineups',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', matchType: 'game' }, icon: '🧩', label: 'Boys Dashboard',       description: 'Boys teams — roster, schedule, attendance' },
+      { id: 'boys-practice',  target: 'youth-practice-dash', params: { gender: 'youth', sex: 'boys', kind: 'practice' }, icon: '🏃', label: 'Boys Practice',        description: 'Add / edit / delete boys practices' },
+      { id: 'boys-pickup',    target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'boys', kind: 'pickup'   }, icon: '⚡', label: 'Boys Pickup',          description: 'Add / edit / delete boys pickup sessions' },
+      { id: 'u8-boys-dash',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u8'  }, icon: '👦', label: 'U8 Boys',              description: 'U8 boys teams — roster, schedule, attendance' },
+      { id: 'u10-boys-dash',  target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u10' }, icon: '👦', label: 'U10 Boys',             description: 'U10 boys teams — roster, schedule, attendance' },
+      { id: 'u12-boys-dash',  target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u12' }, icon: '👦', label: 'U12 Boys',             description: 'U12 boys teams — roster, schedule, attendance' },
+    ];
+
+    const girlsDashTiles = [
+      { id: 'girls-lineups',  target: 'youth-roster',        params: { gender: 'youth', sex: 'girls', matchType: 'game' }, icon: '🧩', label: 'Girls Dashboard',    description: 'Girls teams — roster, schedule, attendance' },
+      { id: 'girls-practice', target: 'youth-practice-dash', params: { gender: 'youth', sex: 'girls', kind: 'practice' }, icon: '🏃', label: 'Girls Practice',      description: 'Add / edit / delete girls practices' },
+      { id: 'girls-pickup',   target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'girls', kind: 'pickup'   }, icon: '⚡', label: 'Girls Pickup',        description: 'Add / edit / delete girls pickup sessions' },
+    ];
+
+    const dashTiles = [...mensDashTiles, ...womensDashTiles, ...boysDashTiles, ...girlsDashTiles];
+    // Stash for handleSubNavigation so it can look up the target screen
+    // + params by tile id without a giant switch.
+    this._dashTiles = dashTiles;
+
+    renderInto('#dash-mens',   mensDashTiles);
+    renderInto('#dash-womens', womensDashTiles);
+    renderInto('#dash-boys',   boysDashTiles);
+    renderInto('#dash-girls',  girlsDashTiles);
+
+    // ── Media & Socials ────────────────────────────────────────────────
+    // Everything that ends up in front of a prospect or member — IG
+    // posts (holiday / promo / content), printable flyers, ad preview,
+    // public exhibit pages, and coach-facing canned messages.
+    const mediaTiles = [
+      { id: 'holiday-posts',   icon: '🎉',  label: 'Holiday Posts',     description: 'Instagram holiday posts' },
+      { id: 'promo-posts',     icon: '📢',  label: 'Promo Posts',       description: 'Instagram promotional posts' },
+      { id: 'content-posts',   icon: '📷',  label: 'Content Posts',     description: 'Upload photos & videos to Instagram' },
+      { id: 'flyers',          icon: '🖨️', label: 'Flyers',            description: 'Printable recruitment flyers with QR codes' },
+      { id: 'ad-preview',      icon: '📱',  label: 'Ad Preview',        description: 'See exactly what your ads look like' },
+      { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits',   description: 'Publicly shareable poster boards & history pages' },
+      { id: 'exhibit-social',  icon: '📲',  label: 'Exhibit → Social',  description: 'Preview IG carousel / 4:5 single / long poster renders' },
+      { id: 'messages',        icon: '💬',  label: 'Messages',          description: 'Canned responses & welcome messages per team' },
+    ];
+    renderInto('#section-media', mediaTiles);
+
+    // ── Financials tiles ─────────────────────────────────────────────
+    // Single tile — the payments screen groups members by payment
+    // status (Paid Up / Behind / Overdue / Never Paid) and lets the
+    // operator filter by category (Men / Women / Boys / Girls) inside.
+    const financialTiles = [
+      { id: 'payments', target: 'payments', params: {}, icon: '💳', label: 'Payments', description: 'Members grouped by status: Paid Up · Behind · Overdue · Never Paid' },
+    ];
+    this._dashTiles = (this._dashTiles || []).concat(financialTiles);
+
+    const finNav = this.find('#financials');
+    if (finNav) {
+      finNav.innerHTML = financialTiles.map(t => `
+        <button class="btn btn-lg btn-secondary sub-nav-btn"
+                data-section="${t.id}"
+                style="height: auto; padding: var(--space-3); text-align: left;">
+          <div style="font-size: 2rem; margin-bottom: var(--space-1);">${t.icon}</div>
+          <div style="font-weight: 600; margin-bottom: var(--space-1);">${t.label}</div>
+          <div style="opacity: 0.7; font-size: 0.85rem;">${t.description}</div>
+        </button>
+      `).join('');
+    }
+
+    // ── Structure ──────────────────────────────────────────────────────
+    // Club structural entities — events, users, players, teams,
+    // venues, tactical boards, and club-wide settings.
+    const structureTiles = [
+      { id: 'events',   icon: '📅',  label: 'Events',   description: 'Club events & RSVPs' },
+      { id: 'users',    icon: '👤',  label: 'Users',    description: 'Manage user accounts' },
+      { id: 'players',  icon: '⚽',  label: 'Players',  description: 'Manage player records' },
+      { id: 'teams',    icon: '👥',  label: 'Teams',    description: 'Manage teams' },
+      { id: 'venues',   icon: '🏟️', label: 'Venues',   description: 'Manage venues' },
+      { id: 'tactics',  icon: '🧠',  label: 'Tactics',  description: 'Club-wide tactical boards' },
+      { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' },
+    ];
+    renderInto('#section-structure', structureTiles);
   }
   
   handleSubNavigation(section) {
+    // Team-dashboard tiles: single lookup routes to the right screen
+    // with filter params (gender / matchType / division / ageGroup /
+    // sex).  This handles Mens/Womens/Youth Dashboard, Practice /
+    // Pickup variants, APSL / Liga 1 / Liga 2 / Tri County, and
+    // U8/U10/U12 Boys.  Target screens can honor filters
+    // incrementally.
+    const dashTile = (this._dashTiles || []).find(t => t.id === section);
+    if (dashTile) {
+      this.navigation.goTo(dashTile.target, {
+        clubId:   this.clubId,
+        clubName: this.clubName,
+        ...dashTile.params,
+      });
+      return;
+    }
+
     if (section === 'events') {
       this.navigation.goTo('club-events', {
         clubId: this.clubId,
         clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'teams') {
+      this.navigation.goTo('admin-club-teams', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'paused-members') {
+      this.navigation.goTo('paused-members', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'members') {
+      // Reuses the paused-members screen with variant=active so we
+      // don't maintain two nearly-identical class definitions.
+      this.navigation.goTo('paused-members', {
+        clubId: this.clubId,
+        clubName: this.clubName,
+        variant: 'active',
+      });
+      return;
+    }
+
+    // Per-category deep links.  Same screen, but the screen filters
+    // groups client-side by category and updates the title so bulk
+    // actions (email-all / copy-all) apply to a single sub-program.
+    const catMatch = section.match(/^(paused-members|members)-(mens|womens|boys|girls)$/);
+    if (catMatch) {
+      const [, base, cat] = catMatch;
+      const variant  = base === 'paused-members' ? 'paused' : 'active';
+      // UI category ids map to DB `category` column values:
+      //   mens   → men       womens → women
+      //   boys   → boys      girls  → girls
+      const dbCategory = cat === 'mens' ? 'men'
+                       : cat === 'womens' ? 'women'
+                       : cat;
+      this.navigation.goTo('paused-members', {
+        clubId:   this.clubId,
+        clubName: this.clubName,
+        variant,
+        category: dbCategory,
       });
       return;
     }
@@ -146,8 +347,8 @@ class AdminClubScreen extends Screen {
       return;
     }
 
-    if (section === 'youth-roster') {
-      this.navigation.goTo('youth-roster', {
+    if (section === 'leads-analytics') {
+      this.navigation.goTo('leads-analytics', {
         clubId: this.clubId,
         clubName: this.clubName
       });
@@ -158,23 +359,6 @@ class AdminClubScreen extends Screen {
       this.navigation.goTo('messages', {
         clubId: this.clubId,
         clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'lineups') {
-      this.navigation.goTo('lineups', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'lineups-womens') {
-      this.navigation.goTo('lineups', {
-        clubId:   this.clubId,
-        clubName: this.clubName,
-        gender:   'womens',
       });
       return;
     }

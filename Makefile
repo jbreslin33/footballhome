@@ -513,6 +513,90 @@ audit:
 	@node database/scripts/audit-database.js
 
 # ============================================================
+# Google OAuth / login health
+#
+# `make verify-google-login` is a smoke test for post-deploy sanity.
+# Run it right after any deploy that touches env, the backend
+# container, or the login page.  It answers ONE question:
+# "Can a real user actually click Sign in with Google right now?"
+#
+# Exits 0 on success, non-zero if the config is broken.  Never
+# prints the secret values themselves.
+# ============================================================
+
+verify-google-login:
+	@echo "🔐 Google OAuth health check"
+	@echo ""
+	@echo "1) Startup env visible to backend:"
+	@$(ENGINE) logs footballhome_backend 2>&1 \
+	  | grep -E "OAuthController initialized|Client ID:|Client Secret:|Redirect URI:" \
+	  | tail -4 \
+	  || (echo "   ❌ backend has not logged OAuth init — is it running?" && exit 1)
+	@echo ""
+	@echo "2) /api/auth/google/status probe (what the login page sees):"
+	@STATUS=$$(curl -sS http://localhost:3001/api/auth/google/status); \
+	  echo "   $$STATUS"; \
+	  case "$$STATUS" in \
+	    *'"configured":true'*)  echo "   ✅ configured — Sign in with Google button will render" ;; \
+	    *'"configured":false'*) echo "   ⚠️  NOT configured — button stays hidden (safe, no crash)"; echo "      → paste GOOGLE_OAUTH_CLIENT_ID / _SECRET into env, then: make restart" ;; \
+	    *) echo "   ❌ unexpected response — check backend logs"; exit 1 ;; \
+	  esac
+	@echo ""
+	@echo "3) /api/auth/google/login redirect target:"
+	@LOC=$$(curl -sS -D - -o /dev/null http://localhost:3001/api/auth/google/login | awk '/^[Ll]ocation:/{print $$2}' | tr -d '\r'); \
+	  if [ -n "$$LOC" ]; then \
+	    echo "   ✅ 302 → $$(echo $$LOC | cut -c1-80)..."; \
+	  else \
+	    CODE=$$(curl -sS -o /dev/null -w "%{http_code}" http://localhost:3001/api/auth/google/login); \
+	    echo "   ⚠️  HTTP $$CODE (expected 302).  Fine while unconfigured; fix before go-live."; \
+	  fi
+	@echo ""
+	@echo "Done."
+
+.PHONY: verify-google-login
+
+# ============================================================
+# ENV BACKUP / RESTORE (age passphrase encryption)
+# ============================================================
+# `env` holds every runtime secret (GOOGLE_OAUTH_*, JWT_SECRET,
+# META_ADS_TOKEN, LEAGUEAPPS_*, ...) and is gitignored on purpose.
+# `env.age` is the encrypted mirror we CAN commit / copy off-machine.
+#
+#   make backup-env    prompts twice for a passphrase, writes env.age
+#   make restore-env   prompts once for the passphrase, writes env
+#
+# Never edits `env` in place — writes to a `.new` sibling and moves
+# atomically only if age succeeds, so a bad passphrase or Ctrl-C
+# can't leave you with a truncated file.
+# ============================================================
+
+backup-env:
+	@if [ ! -f env ]; then echo "❌ env not found in $$(pwd)"; exit 1; fi
+	@command -v age >/dev/null 2>&1 || { echo "❌ 'age' not installed. Try: sudo apt install age"; exit 1; }
+	@echo "🔒 Encrypting env → env.age (you'll be prompted for a passphrase twice)"
+	@age -p -o env.age.new env
+	@mv env.age.new env.age
+	@echo "✅ env.age refreshed ($$(stat -c%s env.age) bytes, contains all current secrets)"
+	@echo "   Safe to copy to another machine or a USB drive."
+
+restore-env:
+	@if [ ! -f env.age ]; then echo "❌ env.age not found in $$(pwd)"; exit 1; fi
+	@command -v age >/dev/null 2>&1 || { echo "❌ 'age' not installed. Try: sudo apt install age"; exit 1; }
+	@if [ -f env ]; then \
+	  echo "⚠️  env already exists — backing up to env.backup.$$(date +%s) before overwriting"; \
+	  cp env env.backup.$$(date +%s); \
+	fi
+	@echo "🔓 Decrypting env.age → env (you'll be prompted for the passphrase)"
+	@age -d -o env.new env.age
+	@mv env.new env
+	@chmod 600 env
+	@echo "✅ env restored ($$(stat -c%s env) bytes). Restart the backend to pick up changes:"
+	@echo "   make restart"
+
+.PHONY: backup-env restore-env
+
+
+# ============================================================
 # VPN (WireGuard — for IP-blocked scraping)
 #
 # ALWAYS containerized. WireGuard runs inside an isolated podman

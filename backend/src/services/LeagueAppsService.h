@@ -43,6 +43,35 @@ public:
     // Returns the records as JSON for downstream consumption.
     std::vector<nlohmann::json> fetchProgramRegistrations(int programId);
 
+    // Debug/probe helper: raw GET against `https://public.leagueapps.io/v2/<path>`.
+    // Returns the HTTP status and body verbatim (no JSON parsing).
+    // Attaches the current access token and retries once on 401 with a fresh
+    // token.  Used by AdminLaProbeController to sniff undocumented endpoints.
+    struct RawResponse {
+        long status = 0;
+        std::string body;
+        std::string error;
+    };
+    RawResponse rawGet(const std::string& path);
+
+    // Fetch every transaction record with `lastUpdated > cursorLastUpdatedMs`
+    // OR (`lastUpdated == cursorLastUpdatedMs` AND `id > cursorLastId`).
+    // Advances the returned cursor to the tuple of the last record seen.
+    // NOTE: the transactions-2 endpoint is cross-program — its `program-id`
+    // query filter is silently ignored — so this returns records for every
+    // program under the site and callers must filter by programId themselves.
+    struct TransactionFetchResult {
+        std::vector<nlohmann::json> records;
+        long long newLastUpdatedMs = 0;
+        long long newLastId        = 0;
+    };
+    TransactionFetchResult fetchTransactionsSince(long long cursorLastUpdatedMs,
+                                                  long long cursorLastId);
+
+    // Public accessor so callers can build absolute LA URLs without hard-coding
+    // the site id at every call site.
+    int getSiteId();
+
 private:
     LeagueAppsService();
     ~LeagueAppsService() = default;
