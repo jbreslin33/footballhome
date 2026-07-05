@@ -2,53 +2,55 @@
 
 Running list of known issues and follow-ups. Newest items at the top.
 
-## Google Workspace signup (blocks real password-reset email delivery)
+## Password-reset email delivery — resolved via Gmail App Password (2026-07-05)
 
-Code for the password-reset flow is fully deployed as of 2026-07-05:
-`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`,
-`fh::mail::send()` SMTP helper (libcurl), `/reset-password.html`
-landing page, two-button login redesign, per-IP + per-user rate
-limits, `password_reset_tokens` table (migration 091).  End-to-end
-tested via log-scraping — the token INSERT + reset + login round-trip
-works.  Only blocker left is a real SMTP sender.
+Resolved 2026-07-05: after Workspace checkout kept erroring (payment
+iframe wouldn't accept a card swap after picking bank), we bailed on
+Workspace and used the documented fallback: personal Gmail
+(`jbreslin33@gmail.com`) + 16-char App Password.  Zero code change —
+the SMTP env-var shape in `fh::mail::send()` is identical.
 
-Decision: Google Workspace Business Starter ($6/mo) on
-`footballhome.org`, so automated mail sends from
-`notifications@footballhome.org` instead of a personal Gmail address.
-See `/memories/session/google-workspace-setup.md` for the extended
-notes.  Fallback if Workspace is delayed: personal Gmail +
-16-char App Password — same env-var shape, zero code change.
+End-to-end proof: `POST /api/auth/forgot-password` with
+`soccer@lighthouse1893.org` produced `[mail] delivered ... last SMTP
+resp=250` and the reset link email arrived in the inbox.  Non-Gmail
+delivery still needs a manual spot-check when time permits (Yahoo /
+iCloud address).
 
-Checklist (user to complete in main chat):
+Env block added to `env` (still needs re-encryption — see below):
 
-- [ ] Sign up at https://workspace.google.com/business/signup — Business
-  Starter, domain `footballhome.org`, primary user `jbreslin`.  Use
-  `jbreslin33@gmail.com` only when the form asks for a "current email"
-  (receipts + recovery); the new account is separate from personal Gmail.
-- [ ] Verify domain: paste the `TXT` record Google gives you into the DNS
-  registrar for `footballhome.org`.  Wait 5–30 min.
-- [ ] Add the 5 MX records Google gives you at the same registrar.
-- [ ] Turn on 2FA on the new `jbreslin@footballhome.org` account
-  (myaccount.google.com/security).
-- [ ] Add the 6 free aliases via admin.google.com → Users → jbreslin →
-  Add alternate email addresses:
-    `admin@`, `notifications@`, `noreply@`, `support@`, `coach@`,
-    `signups@`.
-- [ ] Generate an App Password at myaccount.google.com/apppasswords
-  (label "footballhome-app-smtp") and copy the 16-character password.
-- [ ] Add the following to `env` (or send the App Password back to this
-  chat and I'll do it):
-    ```
-    SMTP_HOST=smtp.gmail.com
-    SMTP_PORT=587
-    SMTP_USER=jbreslin@footballhome.org
-    SMTP_PASS=<16-char App Password>
-    MAIL_FROM=notifications@footballhome.org
-    MAIL_FROM_NAME=Football Home
-    ```
-- [ ] Restart backend: `podman-compose up -d backend`.
-- [ ] Trigger a real forgot-password from the login page and confirm the
-  reset email arrives at a non-Google mailbox (Yahoo/iCloud test).
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=jbreslin33@gmail.com
+SMTP_PASS=<16-char Gmail App Password, label "footballhome-smtp">
+MAIL_FROM=jbreslin33@gmail.com
+MAIL_FROM_NAME=Football Home
+```
+
+Note on `MAIL_FROM`: Gmail SMTP silently rewrites From to the
+authenticated address, so `MAIL_FROM` MUST equal `SMTP_USER` here.
+That means reset emails come from `jbreslin33@gmail.com` — ugly
+branding, functionally fine.  Swap to a proper `notifications@` sender
+once Workspace is actually set up (deferred item below).
+
+Follow-ups still open:
+
+- [ ] **Re-encrypt env.age** — plaintext `env` now contains the App
+  Password.  Run `make backup-env` and enter the standard passphrase
+  when prompted twice, then commit the new `env.age`.
+- [ ] **Deliverability spot-check** — trigger forgot-password against a
+  Yahoo/iCloud mailbox you control; confirm the reset email lands
+  (not spam-boxed).  Gmail-to-Gmail always works; the risk is other
+  providers flagging a personal-Gmail sender.
+- [ ] **Google Workspace signup (deferred, not urgent)** — retry the
+  workspace.google.com/business/signup flow when the checkout page
+  cooperates (use Incognito, choose credit card up front, do NOT
+  select bank).  Domain `footballhome.org`, plan Business Starter
+  ($8.40/mo — Google raised the "$6/mo" price the TODO quoted).  Once
+  active, generate a Workspace App Password on
+  `jbreslin@footballhome.org`, add the `notifications@` alias, and
+  swap the SMTP block to use it (`SMTP_USER` and `MAIL_FROM` change,
+  everything else stays).
 
 ## Instagram token auto-refresh cron (preventative)
 
