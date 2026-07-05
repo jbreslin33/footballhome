@@ -10,15 +10,51 @@
 //
 // Columns are DB-driven (mens_team_columns table); to add APSL / Liga 1 /
 // Liga 2 later just insert rows there — no code change required.
+//
+// Dues reporting is baked in (2026-07-04) so selection == dues-awareness:
+//   • Each card carries a color-coded days-overdue pill (1-3 yellow, 4-6
+//     orange, 7+ red) that replaces the old tiny paid-dot.
+//   • Each column header shows "⚠ N OVERDUE" when any current roster member
+//     is behind on dues — the coach sees per-team risk without clicking in.
+//   • A trailing "🚨 Purgatory" column surfaces players the backend has
+//     already soft-removed from every roster (7+ days overdue).  Two action
+//     buttons per delinquent card (lifted from PaymentsScreen):
+//       LA  — opens LA Manager memberDetails for manual pause
+//       ⏸  — copies the canonical pause-warning message to clipboard
+//   • Backend already blocks /assign for purgatory players (HTTP 409); the
+//     UI reflects the same guard by not rendering assignment pills on
+//     purgatory-column cards.
 class MensRosterScreen extends Screen {
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
+      <style>
+        /* Hide the default triangle marker on the CONTACT / ROSTER
+           <summary> popovers so they render as clean buttons.  Scoped
+           to this screen via .mr-move-details / .mr-contact. */
+        .mr-move-details > summary,
+        .mr-contact      > summary { list-style: none; }
+        .mr-move-details > summary::-webkit-details-marker,
+        .mr-contact      > summary::-webkit-details-marker { display: none; }
+        .mr-move-details > summary::marker,
+        .mr-contact      > summary::marker { display: none; content: ''; }
+
+        /* Drag-and-drop cursor + insertion indicator (2026-07-04 pm).
+           Cards on real columns are grabbable; while dragging, a bright
+           border appears on the target edge so the drop point is
+           obvious.  See onDragStart / onDragOver in mens-roster.js. */
+        .mr-card[draggable="true"]        { cursor: grab; }
+        .mr-card[draggable="true"]:active { cursor: grabbing; }
+        .mr-card.mr-dragging              { opacity: 0.35; }
+        .mr-card.mr-drop-before           { box-shadow: 0 -3px 0 0 #10b981 inset; }
+        .mr-card.mr-drop-after            { box-shadow: 0  3px 0 0 #10b981 inset; }
+        .mr-drop-zone.mr-drop-empty       { box-shadow: 0 0 0 2px #10b981 inset; border-radius: 4px; }
+      </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>👨 Men's Roster</h1>
-        <p class="subtitle">Live from LeagueApps — assign Brazil / Puerto Rico / U23</p>
+        <h1>🎽 Roster Board</h1>
+        <p class="subtitle">Live from LeagueApps — dues-aware roster selection with per-team overdue counts</p>
       </div>
 
       <div style="padding: var(--space-4);">
@@ -39,18 +75,37 @@ class MensRosterScreen extends Screen {
   onEnter() {
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
-      if (e.target.closest('#mr-refresh')) return this.load();
+      if (e.target.closest('#mr-refresh')) return this.load({ refreshLa: true });
+      const moveOpt = e.target.closest('.mr-move-option');
+      if (moveOpt) return this.onMoveOptionClick(moveOpt);
       const toggle = e.target.closest('.mr-roster-toggle');
       if (toggle) return this.onRosterToggleClick(toggle);
       const pill = e.target.closest('.mr-pill');
       if (pill) return this.onPillClick(pill);
+      const laBtn = e.target.closest('.mr-la-open');
+      if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
+      const pauseBtn = e.target.closest('.mr-copy-pause');
+      if (pauseBtn) return this._copyPauseMessage(pauseBtn);
     });
+
+    // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
+    // via delegation on the screen element so re-renders don't leak
+    // listeners.  See onDragStart / onDragOver / onDrop below.
+    this.element.addEventListener('dragstart', e => this.onDragStart(e));
+    this.element.addEventListener('dragend',   e => this.onDragEnd(e));
+    this.element.addEventListener('dragover',  e => this.onDragOver(e));
+    this.element.addEventListener('dragleave', e => this.onDragLeave(e));
+    this.element.addEventListener('drop',      e => this.onDrop(e));
+
     // Billing badge click handling (edit + mark-billed) is owned by the
     // shared helper; it re-renders via this.load() on success.
     if (window.BillingBadge) {
       window.BillingBadge.wire(this.element, this.auth.fetch.bind(this.auth), () => this.load());
     }
-    this.load();
+    // Initial load always refreshes LA — the singleton model cache is
+    // empty on backend boot, and this is the moment the operator opens
+    // the board, so we want the truthiest possible snapshot.
+    this.load({ refreshLa: true });
   }
 
   setBanner({ icon, text, showRefresh = false }) {
@@ -62,18 +117,29 @@ class MensRosterScreen extends Screen {
     if (r) r.style.display = showRefresh ? '' : 'none';
   }
 
-  async load() {
+  async load({ refreshLa = false } = {}) {
     const loading = this.find('#mr-loading');
     const errEl   = this.find('#mr-error');
     const list    = this.find('#mr-list');
     if (loading) loading.style.display = '';
     if (errEl)   errEl.style.display   = 'none';
     if (list)    list.style.display    = 'none';
-    this.setBanner({ icon: '⏳', text: 'Pulling latest registrations from LeagueApps…' });
+    this.setBanner({
+      icon: '⏳',
+      text: refreshLa
+        ? 'Pulling latest registrations from LeagueApps…'
+        : 'Reloading roster from cache…',
+    });
 
     try {
       const t0  = performance.now();
-      const res = await this.auth.fetch('/api/mens-roster');
+      // refreshLa=1 → backend does a live LA fetch + payment sync.
+      // Otherwise the backend serves its cached snapshot so mid-session
+      // reloads (e.g. after a move) don't wait on LeagueApps.
+      const url = refreshLa
+        ? '/api/mens-roster?refreshLa=1'
+        : '/api/mens-roster';
+      const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
@@ -85,9 +151,16 @@ class MensRosterScreen extends Screen {
       if (loading) loading.style.display = 'none';
       if (list)    list.style.display    = '';
 
+      // Extend the banner with delinquency headline numbers so the coach
+      // knows the state of the club before scanning columns.  Backend
+      // exposes these under top-level `data.delinquency`.
+      const dq = data.delinquency || {};
+      const dqText = (dq.overdueCount > 0 || dq.purgatoryCount > 0)
+        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.purgatoryCount || 0} purgatory`
+        : '';
       this.setBanner({
         icon: '✓',
-        text: `${data.total} player${data.total === 1 ? '' : 's'} loaded in ${elapsed}s · ${data.unassignedCount} unassigned`,
+        text: `${data.total} player${data.total === 1 ? '' : 's'} loaded in ${elapsed}s · ${data.unassignedCount} unassigned${dqText}`,
         showRefresh: true,
       });
       this.renderRoster(data);
@@ -108,9 +181,18 @@ class MensRosterScreen extends Screen {
   renderRoster(data) {
     const container = this.find('#mr-list');
 
-    // Columns: Unassigned first, then DB-defined columns in sort order.
+    // Purgatory is now a REAL DB column (team_id=910, added via
+    // migration 085) with mutex_group='mens-selection' shared with
+    // APSL(35) and Liga 1(120).  So Unassigned / APSL / Liga 1 /
+    // Purgatory are all mutually exclusive at the DB level — admin
+    // clicks one move button and the row atomically leaves the others.
+    //
+    // Everyone left in data.unassigned is truly on no team (no active
+    // rows in mens_team_assignments for any real column).  The old
+    // delinquencyState filter is gone — dues do not auto-move anyone
+    // per user directive "don't auto manage it".
     const cols = [
-      { teamId: 0, label: '📭 Unassigned', color: '#475569', count: data.unassignedCount, isUnassigned: true },
+      { teamId: 0, label: '📦 Unassigned', color: '#475569', count: (data.unassigned || []).length, isUnassigned: true },
       ...data.columns,
     ];
 
@@ -118,7 +200,8 @@ class MensRosterScreen extends Screen {
       <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Columns:</span>
         ${cols.map(c => {
-          const cap = c.maxRoster != null ? `(${c.count}/${c.maxRoster})` : `(${c.count})`;
+          const count = c.isUnassigned ? c.count : ((data.buckets[String(c.teamId)] || []).length);
+          const cap = c.maxRoster != null ? `(${count}/${c.maxRoster})` : `(${count})`;
           return `
             <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:2px 8px; border-radius:4px; border-left:3px solid ${c.color};">
               ${c.label} <span style="opacity:0.55;">${cap}</span>
@@ -135,16 +218,20 @@ class MensRosterScreen extends Screen {
   }
 
   // Cards get thinner when there are few columns (lots of room per col) and
-  // wider when there are many (so the pills still fit on one row-ish).
+  // wider when there are many (so the big move buttons still fit).
   colMinWidth(n) {
-    if (n <= 4) return '140px';
-    if (n <= 6) return '170px';
-    return '200px';
+    if (n <= 4) return '155px';
+    if (n <= 6) return '145px';
+    return '155px';
   }
 
   renderColumn(col, data) {
+    // Data source: Unassigned pulls from data.unassigned (no active team
+    // rows); every real column (including Purgatory=910) pulls from
+    // data.buckets keyed by teamId.
+    const isPurgatory = col.teamId === 910;
     const players = col.isUnassigned
-      ? data.unassigned
+      ? (data.unassigned || [])
       : (data.buckets[String(col.teamId)] || []);
 
     let countHtml;
@@ -154,41 +241,31 @@ class MensRosterScreen extends Screen {
       const nearFull = !overFull && pct >= 0.85;
       const fc = overFull ? '#ef4444' : nearFull ? '#f59e0b' : '#10b981';
       countHtml = `<span style="font-size:0.85rem; font-weight:600; color:${fc};">${players.length}/${col.maxRoster}${overFull ? ' ⚠' : ''}</span>`;
-    } else if (!col.isUnassigned && col.onRosterCount != null) {
-      const r = col.onRosterCount;
-      countHtml = `<span style="font-size:0.85rem;"><span style="color:#34d399; font-weight:600;">${r}</span><span style="opacity:0.6;"> on roster · ${players.length} total</span></span>`;
     } else {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
-    // Split roster vs not-on-roster.  Backend already returns roster
-    // players first (alpha), then off-roster (alpha) — we just find the
-    // boundary and insert a divider.  Unassigned column has no split.
-    const isOnRoster = (p) => col.isUnassigned ? true : !!p.onRoster;
-    const onRoster   = players.filter(isOnRoster);
-    const offRoster  = players.filter(p => !isOnRoster(p));
-
-    const renderList = (list) => list.map(p => this.renderPlayer(p, data.columns, col)).join('');
+    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, { ...col, isPurgatory }, i + 1)).join('');
 
     let body;
     if (players.length === 0) {
-      body = '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>';
+      body = isPurgatory
+        ? '<div style="opacity:0.6; font-size:0.75rem; text-align:center; padding:8px 4px; color:#10b981;">✓ Nobody parked</div>'
+        : '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>';
     } else {
-      const divider = offRoster.length > 0 ? `
-        <div style="
-          margin: var(--space-2) 0 var(--space-1);
-          padding: 4px 8px;
-          background: #3a1f1f;
-          color: #fca5a5;
-          font-size: 0.7rem;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-align: center;
-          border-radius: 4px;
-          border: 1px dashed #b91c1c;
-        ">⚠ NOT ON ROSTER (${offRoster.length})</div>` : '';
-      body = `${renderList(onRoster)}${divider}${renderList(offRoster)}`;
+      body = renderList(players);
     }
+
+    // Column-level dues risk: how many players in this column are
+    // currently overdue.  Coach uses this to spot at-a-glance which
+    // rosters need attention.  Excluded from Purgatory (already isolated).
+    const overdueInCol = isPurgatory ? 0 : players.filter(p => (p.daysOverdue || 0) >= 1).length;
+    const overdueHtml = overdueInCol > 0
+      ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px solid #7f1d1d; border-radius:3px; font-size:0.65rem; font-weight:700; letter-spacing:0.05em; text-align:center;">⚠ ${overdueInCol} OVERDUE</div>`
+      : '';
+    const purgatoryHint = isPurgatory
+      ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px dashed #b91c1c; border-radius:3px; font-size:0.65rem; letter-spacing:0.03em; text-align:center; line-height:1.35;">Admin-parked: off all rosters.<br>Move card to another column to reinstate.</div>`
+      : '';
 
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color};">
@@ -196,16 +273,23 @@ class MensRosterScreen extends Screen {
           <strong style="font-size:0.85rem;">${col.label}</strong>
           ${countHtml}
         </div>
-        <div style="display:flex; flex-direction:column; gap:6px;">
+        ${overdueHtml}
+        ${purgatoryHint}
+        <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
+             style="display:flex; flex-direction:column; gap:8px; min-height:8px;">
           ${body}
         </div>
       </div>
     `;
   }
 
-  renderPlayer(p, columns, col) {
-    // Dense card: icon-only action buttons, compact pills, single-line meta.
-    const iconBtn = 'width:22px; height:22px; padding:0; font-size:0.7rem; line-height:1; border-radius:4px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;';
+  renderPlayer(p, columns, col, position) {
+    // Card redesign (2026-07-04): the coach's primary action on this
+    // board is "move player X to roster Y".  Everything else (contact,
+    // dues action) is secondary.  So the card leads with a big 3-button
+    // roster-selector row (Unassigned / APSL / Liga 1) and drops the
+    // tiny legacy pills entirely.  Contact + dues actions are still
+    // present but sized so they're readable, not decorative.
 
     const greeting = p.firstName ? `Hi ${p.firstName},` : 'Hi,';
     const subject  = `Lighthouse 1893 Men's`;
@@ -222,12 +306,10 @@ class MensRosterScreen extends Screen {
           body:     emailBody,
         }).toString()}`
       : null;
-    const smsHref = p.phone
-      ? `sms:${p.phone}?&body=${encodeURIComponent(smsBody)}`
-      : null;
+    const smsHref = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(smsBody)}` : null;
     const telHref = p.phone ? `tel:${p.phone}` : null;
 
-    // Full DOB on a separate compact line (e.g. "3/10/2008").
+    // Full DOB (e.g. "3/10/2008").
     let dobShort = '';
     if (p.birthDate) {
       const d = new Date(`${p.birthDate}T00:00:00Z`);
@@ -236,72 +318,275 @@ class MensRosterScreen extends Screen {
         : d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
     }
 
-    // Tiny payment dot — green=paid, amber=balance, hide otherwise.
-    let payDot = '';
-    if (p.paymentStatus) {
-      const dotColor = p.paymentStatus === 'PAID' ? '#34d399' : '#fbbf24';
-      const tip = `${p.paymentStatus}${p.outstandingBalance > 0 ? ` ($${p.outstandingBalance} due)` : ''}`;
-      payDot = `<span title="${tip}" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${dotColor}; flex-shrink:0;"></span>`;
+    // Dues status — consolidated into BillingBadge.renderBalance().
+    // User directive 2026-07-05 pm: "use only 1 section of card for
+    // financial info".  The BAL cell now carries paid/owed/late signal
+    // and its own colour scheme; a separate chip here was duplicative.
+    // rawDays + hasUnpaidBalance are still computed so the delinquency
+    // action buttons (PAY, card border colour) stay tier-aware.
+    const rawDays          = p.daysOverdue || 0;
+    const balanceNum       = Number(p.outstandingBalance) || 0;
+    const paidStatus       = p.paymentStatus === 'PAID' || p.paymentStatus === 'WAIVED';
+    const hasUnpaidBalance = balanceNum > 0 && !paidStatus;
+    const days             = rawDays >= 1 ? rawDays : (hasUnpaidBalance ? 1 : 0);
+    const daysAreExact     = rawDays >= 1;
+
+    // Payment history is rendered exclusively by the shared BillingBadge
+    // component (see billing-badge.js → renderLastPaid).  We used to
+    // render a duplicate "Payments · May – Jul" block here but it was
+    // showing the same data as "RECENT PAYMENTS" — dropped 2026-07-04 pm.
+
+    // ---- Move-to-roster buttons ----------------------------------------
+    //
+    // Four hard-coded targets, all mutually exclusive at the DB level
+    // (mens-selection mutex_group on 35 / 120 / 910 — migration 085).
+    // Only APSL (35), Liga 1 (120), and Purgatory (910) are real teams;
+    // Unassigned (0) means "remove from whichever real team they're on".
+    // Practice + Pickup are all-hands teams derived from Purgatory state
+    // (see MensRoster.cpp backfill) so they never appear as buttons.
+    const assignedSet = new Set(p.teamIds || []);
+    const isOnApsl      = assignedSet.has(35);
+    const isOnLiga1     = assignedSet.has(120);
+    const isOnPurgatory = assignedSet.has(910);
+    const currentTeamId = isOnPurgatory ? 910 : isOnApsl ? 35 : isOnLiga1 ? 120 : 0;
+
+    const targets = [
+      { id: 0,   label: 'Unassigned', color: '#475569' },
+      { id: 35,  label: 'APSL',       color: '#2563eb' },
+      { id: 120, label: 'Liga 1',     color: '#0891b2' },
+      { id: 910, label: 'Purgatory',  color: '#ef4444' },
+    ];
+    // Shared button style — as thin as legible.  Zero vertical padding
+    // plus a tight line-height give ~11-12 px total height while the
+    // sides keep a proper 5 px cushion.  All actions (move, delinq,
+    // contact, payments pill) share this base so they align.
+    const btnBase = 'padding:0 5px; font-size:0.66rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.35; white-space:nowrap;';
+
+    // ── Move-to-roster: <details> popover ─────────────────────────
+    // Same popover pattern as CONTACT below.  Summary shows the
+    // player's current team (color-coded); opening it reveals the
+    // four options as click-to-move buttons.  Mutex enforcement is
+    // still server-side (mens-selection group at the DB layer).
+    const activeTarget = targets.find(t => t.id === currentTeamId) || targets[0];
+    const optBtns = targets.map(t => {
+      const active = t.id === currentTeamId;
+      const style = active
+        ? `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:default; opacity:0.85;`
+        : `background:transparent; color:${t.color}; border:1px dashed ${t.color}88; cursor:pointer;`;
+      return `<button class="mr-move-option" type="button"
+                      data-user-id="${p.leagueAppsUserId}"
+                      data-target-team-id="${t.id}"
+                      data-current-team-id="${currentTeamId}"
+                      ${active ? 'disabled' : ''}
+                      title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"
+                      style="${btnBase} ${style} text-align:left;">
+                ${active ? '✓ ' : ''}${t.label.toUpperCase()}
+              </button>`;
+    }).join('');
+    const moveSelect = `
+      <details class="mr-move-details" style="position:relative; display:inline-block;">
+        <summary style="${btnBase} background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
+                 title="Move ${this.escape(p.firstName || 'player')} to another column">
+          ${this.escape(activeTarget.label.toUpperCase())} ▾
+        </summary>
+        <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155; min-width:100%;">
+          ${optBtns}
+        </div>
+      </details>`;
+
+    // Reserve/On-Roster toggle removed 2026-07-04 (pm) per user directive:
+    // column membership is the whole game.  Match-day roster selection
+    // lives on a separate lineups screen.
+
+    // ---- Delinquency action buttons (LA + Pay + Pause) -----------------
+    // Shortened labels (2026-07-04 pm) so they don't dominate the row.
+    // "LA MANAGER" → "LA"; "⏸ COPY PAUSE" → "⏸ PAUSE".  Tooltip still
+    // carries the full description for anyone hovering.
+    //
+    // 💸 PAY (2026-07-05) — opens native SMS with a pre-filled payment
+    // reminder that includes the outstanding amount + LA dashboard link.
+    // Covers two failure modes the coach can't fix from admin side:
+    //   (a) card on file but charge failed / expired
+    //   (b) no card on file at all (LA only saves on a successful $1)
+    // In both cases the player must log in and either update the card
+    // or add one.  LA's public API doesn't expose card-on-file status
+    // (verified 2026-07-05), so one universal message covers both.
+    //
+    // LA quick-jump button (2026-07-05, per user): always visible for
+    // any player with a leagueAppsUserId — not just overdue ones —
+    // so the coach can eyeball LA payment status for PAID players too.
+    // Hoisted out of the delinq-only block.
+    const laBtn = p.leagueAppsUserId
+      ? `<button class="mr-la-open" type="button" data-la-url="${this.laManagerUrl(p.leagueAppsUserId)}"
+                 title="Open ${this.escape(p.firstName || 'player')} in LA Manager"
+                 style="${btnBase} border:none; cursor:pointer; background:#7c3aed; color:#fff;">
+           LA
+         </button>`
+      : '';
+    let delinqBtns = '';
+    if (days >= 1 && p.leagueAppsUserId) {
+      // Amount preference: LA's outstandingBalance if it's > 0,
+      // otherwise the monthly nextBillAmount (usually $35).  Falls back
+      // to just "dues" if we somehow have neither.
+      const amountNum = (p.outstandingBalance > 0)
+        ? p.outstandingBalance
+        : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
+      const amountStr = amountNum != null ? `$${amountNum}` : 'your dues';
+      // daysStr carries the whole "N days past due" phrase (or the
+      // generic "past due") so we don't have to sprinkle "past due"
+      // into every template.
+      const daysStr   = daysAreExact
+        ? `${days} day${days === 1 ? '' : 's'} past due`
+        : 'past due';
+      const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
+      // Three-tier body scaled to delinquency severity (2026-07-05):
+      //   1–3 days  → nudge; soft warning about disruption to eligibility
+      //   4–6 days  → firm: NOT eligible for practice or games right now
+      //   7+ days   → statement of fact: removed from roster + being replaced
+      // Every tier tells the player LeagueApps has already emailed them
+      // a pay link ("check email if unsure") before pointing at the
+      // dashboard URL as a backup.
+      //
+      // Voice: framed as a "heads-up" from Lighthouse 1893 Financial
+      // Dept.  Keeps the coach out of the collections conversation —
+      // the coach is just delivering a message from the finance side.
+      const firstNameStr = p.firstName ? ` ${p.firstName}` : '';
+      const isPurgatoryState = p.delinquencyState === 'purgatory' || days >= 7;
+      // One-liner explaining where the money actually goes — appended
+      // to every tier so the message doesn't feel purely punitive.
+      const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
+      let payBody;
+      if (isPurgatoryState) {
+        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your membership flagged as paused. Dues (${amountStr}) are ${daysStr}, so you've been removed from all rosters and your spot is being filled by another player. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in and pay / update your card on file here: ${payUrl}  Thanks!`;
+      } else if (days >= 4) {
+        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your dues (${amountStr}) flagged as ${daysStr}, and the LeagueApps charge hasn't gone through. That means you're not eligible for practices or games until it's resolved, and at 7 days past due you'll be removed from the roster and replaced. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in here: ${payUrl}  Thanks!`;
+      } else {
+        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept flagged your monthly dues (${amountStr}) as ${daysStr}. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to your practice / game roster eligibility (and any late fees), log in and pay / update your card on file: ${payUrl}  Thanks!`;
+      }
+      const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
+      const payBtn    = payHref
+        ? `<a href="${payHref}"
+              title="Text ${this.escape(this.formatPhone(p.phone))} a payment reminder with LA link"
+              style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
+             💸 PAY
+           </a>`
+        : '';
+      delinqBtns = `
+        ${payBtn}`;
     }
 
-    const emailBtn = emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(p.email)}" style="${iconBtn} background:#3b82f6; color:#fff;">✉</a>` : '';
-    const smsBtn   = smsHref   ? `<a href="${smsHref}"   title="Text" style="${iconBtn} background:#10b981; color:#fff;">💬</a>` : '';
-    const telBtn   = telHref   ? `<a href="${telHref}"   title="${this.escape(this.formatPhone(p.phone))}" style="${iconBtn} background:#6366f1; color:#fff;">📞</a>` : '';
+    // ---- Contact popover -----------------------------------------------
+    // One CONTACT button collapses EMAIL / SMS / CALL into a native
+    // <details> popover.  Only the methods the player actually has
+    // contact data for are rendered inside.  Uses <details>/<summary>
+    // so there's no JS listener wiring, no click-outside tracking.
+    const contactBase = btnBase + ' border:none; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
+    // 👤 SAVE (2026-07-05) — data-URL vCard so tapping opens the native
+    // "Add Contact" sheet on iOS/Android (or downloads a .vcf on
+    // desktop).  Only rendered if we have at least a phone or email.
+    const vcardHref = (p.phone || p.email)
+      ? this.buildVcardHref({
+          fullName: p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+          firstName: p.firstName,
+          lastName: p.lastName,
+          phone: p.phone,
+          email: p.email,
+          org: `Lighthouse 1893 Men's`,
+        })
+      : null;
+    const vcardFilename = ((p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
+    const contactItems = [
+      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(p.email)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(p.phone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
+      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(p.phone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
+      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(p.firstName || 'player')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+    ].filter(Boolean);
+    const contactBtns = contactItems.length > 0 ? `
+      <details class="mr-contact" style="position:relative; display:inline-block;">
+        <summary style="${btnBase} background:#334155; color:#fff; border:none; cursor:pointer; list-style:none; user-select:none;"
+                 title="Contact ${this.escape(p.firstName || 'player')}">📇 CONTACT</summary>
+        <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155;">
+          ${contactItems.join('')}
+        </div>
+      </details>` : '';
 
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
-    const assignedSet = new Set(p.teamIds || []);
-    const pills = columns.map(c => {
-      const on = assignedSet.has(c.teamId);
-      const style = on
-        ? `background:${c.color}; color:#fff; border:1.5px solid ${c.color}; box-shadow:0 0 0 1px rgba(255,255,255,0.15) inset;`
-        : `background:transparent; color:${c.color}; border:1px dashed ${c.color}; opacity:0.55;`;
-      const short = this.escape(c.shortLabel || c.label || '');
-      return `<button class="mr-pill" type="button"
-                      data-user-id="${p.leagueAppsUserId}"
-                      data-team-id="${c.teamId}"
-                      data-action="${on ? 'remove' : 'add'}"
-                      title="${on ? 'Remove from' : 'Add to'} ${this.escape(c.label)}"
-                      style="padding:1px 6px; border-radius:999px; font-size:0.7rem; font-weight:600; line-height:1.3; cursor:pointer; white-space:nowrap; ${style}">
-                ${on ? '✓ ' : ''}${short}
-              </button>`;
-    }).join('');
-
     const cardId = `mr-card-${p.leagueAppsUserId}`;
 
-    // Per-column on-roster toggle: small, clearly green-filled when on.
-    let rosterToggle = '';
-    if (col && !col.isUnassigned) {
-      const on = !!p.onRoster;
-      const tStyle = on
-        ? `background:#16a34a; color:#fff; border:1px solid #16a34a;`
-        : `background:transparent; color:#fca5a5; border:1px dashed #b91c1c;`;
-      rosterToggle = `
-        <button class="mr-roster-toggle" type="button"
-                data-user-id="${p.leagueAppsUserId}"
-                data-team-id="${col.teamId}"
-                data-on-roster="${on ? '1' : '0'}"
-                title="${on ? 'Remove from roster' : 'Add to roster'}"
-                style="padding:2px 6px; font-size:0.65rem; font-weight:700; border-radius:4px; cursor:pointer; letter-spacing:0.04em; line-height:1.3; ${tStyle}">
-          ${on ? '✓ ROSTER' : '○ NOT ON ROSTER'}
-        </button>`;
-    }
+    // Card border: bright yellow by default for clear separation on the
+    // dark background.  Heavy-overdue (4+ days) cards get a red border
+    // tint so risk states pop from a distance.  Purgatory cards use the
+    // same styling as every other column — the column header + hint
+    // already communicate the parked state (2026-07-04 pm).
+    const baseBorder = '2px solid #facc15';  // yellow-400
+    const cardBorder = days >= 4 ? `2px solid ${this.daysOverdueColor(days)}` : baseBorder;
+    const cardShadow = '';
 
+    // Position number within the column (1-based).  Gives the coach a
+    // running count so they can see "we've got 14 in APSL" while
+    // scrolling, not just at the header.  White + full opacity so it's
+    // legible from a distance (bumped from 0.62rem/0.55 opacity).
+    const posChip = position
+      ? `<span style="font-size:0.72rem; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
+      : '';
+
+    // ONE big flex-wrap row.  Order: [dues chip] [name] [DOB] [move
+    // buttons] [delinq buttons] [contact buttons] [RECENT PAY pill].
+    // Name has a bounded min-width so short names don't hog the row —
+    // buttons pack immediately to the right and wrap only when the
+    // card runs out of horizontal space.
+    //
+    // Drag reorder: real columns only (col.teamId truthy — Unassigned
+    // has no team_id row so it can't store a coach rank).  The card
+    // carries data-user-id + data-team-id so the drop handler can
+    // rebuild the ordered list and POST /api/mens-roster/reorder.
+    const dragAttrs = col && col.teamId
+      ? `draggable="true" data-user-id="${p.leagueAppsUserId}" data-team-id="${col.teamId}"`
+      : '';
     return `
-      <div id="${cardId}" style="background:var(--bg-tertiary, #1f2937); border-radius:4px; padding:5px 6px; font-size:0.75rem; line-height:1.3;">
-        <div style="display:flex; align-items:center; gap:5px; min-width:0;">
-          ${payDot}
-          <strong style="font-size:0.8rem; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escape(p.fullName) || '(no name)'}</strong>
-        </div>
-        ${dobShort ? `<div style="font-size:0.65rem; opacity:0.6; margin-top:1px;">🎂 ${this.escape(dobShort)}</div>` : ''}
-        <div style="display:flex; gap:3px; margin-top:4px; align-items:center; flex-wrap:wrap;">
-          ${emailBtn}${smsBtn}${telBtn}
-          ${rosterToggle}
+      <div id="${cardId}" class="mr-card" ${dragAttrs} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow}">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px; row-gap:3px;">
+          ${posChip}
+          <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>
+          ${dobShort ? `<span style="font-size:0.72rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
+          ${moveSelect}
+          ${laBtn}
+          ${delinqBtns}
+          ${contactBtns}
           ${billingBadge}
         </div>
-        <div style="display:flex; gap:3px; margin-top:3px; flex-wrap:wrap;">${pills}</div>
       </div>
     `;
+  }
+
+  // ── vCard builder (2026-07-05) ───────────────────────────────────
+  //
+  // Builds a `data:text/vcard;charset=utf-8,...` URL that, when opened
+  // via an <a href>, triggers the OS-native "Add Contact" flow on
+  // iOS/Android or downloads a .vcf on desktop.  vCard 3.0 with CRLF
+  // line endings per RFC 2426.  Field values are escaped (backslash,
+  // comma, semicolon, newline) before the whole payload is
+  // URI-encoded for the data URL.
+  buildVcardHref({ fullName, firstName, lastName, phone, email, org, note }) {
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+    const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
+    // N: Family;Given;Additional;Prefix;Suffix
+    if (firstName || lastName) {
+      lines.push(`N:${esc(lastName)};${esc(firstName)};;;`);
+    }
+    if (fullName) lines.push(`FN:${esc(fullName)}`);
+    if (org) lines.push(`ORG:${esc(org)}`);
+    if (phone) lines.push(`TEL;TYPE=CELL:${esc(phone)}`);
+    if (email) lines.push(`EMAIL;TYPE=INTERNET:${esc(email)}`);
+    if (note) lines.push(`NOTE:${esc(note)}`);
+    lines.push('END:VCARD');
+    const body = lines.join('\r\n');
+    return `data:text/vcard;charset=utf-8,${encodeURIComponent(body)}`;
   }
 
   // Pulls the leading emoji + 1 short word from labels like "🇧🇷 Brazil"
@@ -310,6 +595,142 @@ class MensRosterScreen extends Screen {
     if (!label) return '';
     if (label.length <= 14) return this.escape(label);
     return this.escape(label.slice(0, 12)) + '…';
+  }
+
+  // ── Drag-and-drop reorder (2026-07-04 pm) ────────────────────────
+  //
+  // Native HTML5 DnD.  Cards on real columns are draggable (see
+  // renderPlayer); Unassigned cards are not (no team_id row can hold a
+  // coach rank).  Drops must land in the SAME column — cross-column
+  // moves still go through the roster-move popover, which handles the
+  // mutex_group DELETE atomically.
+  //
+  // While dragging, we show a green insertion indicator either above or
+  // below the card the pointer is currently over (based on which half
+  // of it the pointer hit).  Dropping into an empty column body works
+  // via the mr-drop-empty state on the column's mr-drop-zone.
+  //
+  // After a drop, we rearrange the DOM in place, collect the ordered
+  // list of userIds, POST /reorder, then reload the whole board so the
+  // #N chips + coachSortOrder come back from the server.
+
+  _dragClearMarkers() {
+    this.element.querySelectorAll('.mr-drop-before, .mr-drop-after')
+      .forEach(el => el.classList.remove('mr-drop-before', 'mr-drop-after'));
+    this.element.querySelectorAll('.mr-drop-empty')
+      .forEach(el => el.classList.remove('mr-drop-empty'));
+  }
+
+  onDragStart(e) {
+    const card = e.target.closest && e.target.closest('.mr-card[draggable="true"]');
+    if (!card) return;
+    this._dragSourceUserId = card.dataset.userId;
+    this._dragSourceTeamId = card.dataset.teamId;
+    card.classList.add('mr-dragging');
+    // Firefox requires setData() for dragstart to succeed at all.
+    if (e.dataTransfer) {
+      try {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.userId);
+      } catch (_) { /* ignore */ }
+    }
+  }
+
+  onDragEnd(_e) {
+    this.element.querySelectorAll('.mr-card.mr-dragging')
+      .forEach(el => el.classList.remove('mr-dragging'));
+    this._dragClearMarkers();
+    this._dragSourceUserId = null;
+    this._dragSourceTeamId = null;
+  }
+
+  onDragOver(e) {
+    if (!this._dragSourceUserId) return;
+    const zone = e.target.closest && e.target.closest('.mr-drop-zone[data-drop-team-id]');
+    if (!zone) return;
+    const zoneTeamId = zone.dataset.dropTeamId;
+    // Empty string = Unassigned column (no team_id).  Reject.
+    if (!zoneTeamId) return;
+    // Same-column only.  Cross-column drops are ignored — the move
+    // popover is the correct affordance for changing team assignments.
+    if (zoneTeamId !== this._dragSourceTeamId) return;
+
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    this._dragClearMarkers();
+
+    const overCard = e.target.closest && e.target.closest('.mr-card[draggable="true"]');
+    if (!overCard || overCard.classList.contains('mr-dragging')) {
+      // Empty area (or over the currently dragged card) — highlight
+      // the whole zone so the user knows "drop at end".
+      if (zone.children.length === 0) zone.classList.add('mr-drop-empty');
+      return;
+    }
+    const rect = overCard.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < (rect.height / 2);
+    overCard.classList.add(before ? 'mr-drop-before' : 'mr-drop-after');
+  }
+
+  onDragLeave(e) {
+    // Only clear when the pointer leaves the drop zone entirely — not
+    // when it moves between children within the same zone.  We check
+    // relatedTarget: if it's still inside the same zone, do nothing.
+    const zone = e.target.closest && e.target.closest('.mr-drop-zone');
+    if (!zone) return;
+    const to = e.relatedTarget;
+    if (to && zone.contains(to)) return;
+    zone.classList.remove('mr-drop-empty');
+    zone.querySelectorAll('.mr-drop-before, .mr-drop-after')
+      .forEach(el => el.classList.remove('mr-drop-before', 'mr-drop-after'));
+  }
+
+  async onDrop(e) {
+    if (!this._dragSourceUserId) return;
+    const zone = e.target.closest && e.target.closest('.mr-drop-zone[data-drop-team-id]');
+    if (!zone) return;
+    const teamId = parseInt(zone.dataset.dropTeamId, 10);
+    if (!teamId || String(teamId) !== this._dragSourceTeamId) return;
+
+    e.preventDefault();
+    const sourceCard = this.element.querySelector(
+      `.mr-card[draggable="true"][data-user-id="${this._dragSourceUserId}"][data-team-id="${this._dragSourceTeamId}"]`
+    );
+    if (!sourceCard) { this._dragClearMarkers(); return; }
+
+    const overCard = e.target.closest && e.target.closest('.mr-card[draggable="true"]');
+    if (overCard && overCard !== sourceCard) {
+      const rect = overCard.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < (rect.height / 2);
+      overCard.parentNode.insertBefore(sourceCard, before ? overCard : overCard.nextSibling);
+    } else if (!overCard) {
+      // Dropped in empty area of the zone → append at end.
+      zone.appendChild(sourceCard);
+    }
+    this._dragClearMarkers();
+
+    // Collect ordered userIds directly from the DOM (source of truth
+    // after the manual insertBefore above) and persist.
+    const orderedIds = Array.from(
+      zone.querySelectorAll('.mr-card[draggable="true"]')
+    ).map(el => parseInt(el.dataset.userId, 10)).filter(n => Number.isFinite(n));
+    if (orderedIds.length === 0) return;
+
+    try {
+      const res = await this.auth.fetch('/api/mens-roster/reorder', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ teamId, userIds: orderedIds }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      // Reload so #N chips + backend sort come back authoritative.
+      await this.load();
+    } catch (err) {
+      alert(`Could not save order: ${err.message}`);
+      await this.load();
+    }
   }
 
   async onPillClick(btn) {
@@ -336,6 +757,52 @@ class MensRosterScreen extends Screen {
       btn.disabled = false;
       btn.style.opacity = '';
       alert(`Could not save assignment: ${err.message}`);
+    }
+  }
+
+  // Move-to-roster <details> popover option handler (2026-07-04 pm).
+  // Semantics unchanged:
+  //   • target == 0 (Unassigned)  → POST remove on whichever real team
+  //     the player currently sits on (backend mutex guarantees at most
+  //     one).  No-op if already unassigned.
+  //   • target == 35 / 120 / 910   → POST add.  Backend's mutex_group
+  //     handling in MensTeamAssignments::addAssignment auto-removes the
+  //     other division, so we don't need a separate remove call.
+  async onMoveOptionClick(btn) {
+    const userId        = parseInt(btn.dataset.userId, 10);
+    const targetTeamId  = parseInt(btn.dataset.targetTeamId, 10);
+    const currentTeamId = parseInt(btn.dataset.currentTeamId || '0', 10);
+    if (!userId || Number.isNaN(targetTeamId)) return;
+    if (targetTeamId === currentTeamId) return;
+
+    // Close the popover immediately for snappier UX.
+    const details = btn.closest('details');
+    if (details) details.open = false;
+
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    try {
+      let body;
+      if (targetTeamId === 0) {
+        if (currentTeamId <= 0) { await this.load(); return; }
+        body = { leagueAppsUserId: userId, teamId: currentTeamId, action: 'remove' };
+      } else {
+        body = { leagueAppsUserId: userId, teamId: targetTeamId, action: 'add' };
+      }
+      const res = await this.auth.fetch('/api/mens-roster/assign', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      await this.load();
+    } catch (err) {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      alert(`Could not move player: ${err.message}`);
     }
   }
 
@@ -370,6 +837,42 @@ class MensRosterScreen extends Screen {
   }
 
   // ── helpers ─────────────────────────────────────────────────────────
+  // Matches PaymentsScreen's LA deep-link scheme.  Hardcoded site id
+  // mirrors PaymentsScreen.laSiteId (41983) — UI-only value; backend
+  // canonical is LEAGUEAPPS_SITE_ID in env.
+  laManagerUrl(uid) {
+    return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
+  }
+
+  // Color scale (user directive 2026-07-04): 1-3 yellow · 4-6 orange · 7+ red.
+  daysOverdueColor(days) {
+    if (days >= 7) return '#ef4444';
+    if (days >= 4) return '#f97316';
+    if (days >= 1) return '#fbbf24';
+    return null;
+  }
+
+  // Lifted verbatim from PaymentsScreen's [data-copy-pause] handler — the
+  // canonical warning admin pastes into LA's Remind flow before flipping
+  // a player to Paused Membership.
+  async _copyPauseMessage(btn) {
+    const first = btn.dataset.firstName || 'Player';
+    const msg = `${first}, you have not made initial registration payment. We have to move you to a paused membership which makes you ineligible for practice and games until paid.`;
+    try {
+      await navigator.clipboard.writeText(msg);
+      const orig = btn.innerHTML;
+      const origBg = btn.style.background;
+      btn.innerHTML = '✓';
+      btn.style.background = '#10b981';
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.background = origBg || '#f97316';
+      }, 1400);
+    } catch (_e) {
+      alert('Could not copy to clipboard — you can retype the message from Payments → Copy Pause.');
+    }
+  }
+
   formatPhone(raw) {
     if (!raw) return '';
     const digits = String(raw).replace(/\D/g, '');

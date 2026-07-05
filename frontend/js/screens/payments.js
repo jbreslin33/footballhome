@@ -60,6 +60,16 @@ class PaymentsScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
+        <div id="pay-all-programs"
+             style="display:flex; gap:var(--space-3); flex-wrap:wrap;
+                    padding: var(--space-3);
+                    background: linear-gradient(90deg, rgba(14,165,233,0.08), rgba(14,165,233,0.02));
+                    border: 1px solid rgba(14,165,233,0.4);
+                    border-radius: 6px; margin-bottom: var(--space-3);
+                    font-size: 0.85rem;">
+          <div style="opacity:0.7;">🌐 <b>All Programs</b> — loading…</div>
+        </div>
+
         <div id="pay-tabs" role="tablist"
              style="display:flex; gap:var(--space-2); border-bottom:2px solid var(--border-color, #334155); margin-bottom: var(--space-3); flex-wrap:wrap;">
         </div>
@@ -165,6 +175,16 @@ class PaymentsScreen extends Screen {
         this.openFlagModal(uid, name);
         return;
       }
+      const pauseBtn = e.target.closest('[data-copy-pause]');
+      if (pauseBtn) {
+        // Copy the standard "initial-registration not paid" warning to
+        // the clipboard with the player's first name inlined.  Operator
+        // then clicks 🔗 Open in LA and pastes it into LA's Remind flow.
+        const first = pauseBtn.getAttribute('data-copy-pause') || 'Player';
+        const msg = `${first}, you have not made initial registration payment. We have to move you to a paused membership which makes you ineligible for practice and games until paid.`;
+        this._copyToClipboard(msg, `Pause warning for ${first} copied — now click 🔗 Open in LA and paste into Remind.`);
+        return;
+      }
       const ranBtn = e.target.closest('[data-resolve-flag]');
       if (ranBtn) {
         const id     = ranBtn.getAttribute('data-resolve-flag');
@@ -188,6 +208,20 @@ class PaymentsScreen extends Screen {
       });
     }
     this.loadCurrent();
+    // Kick off the other three program tabs in the background so the
+    // "All Programs" roll-up bar at the top can render totals across all
+    // four Mens / Womens / Boys / Girls without the operator having to
+    // click each tab.  Silent = no spinner takeover on the current view.
+    this._loadAllProgramsInBackground();
+  }
+
+  _loadAllProgramsInBackground() {
+    for (const k of ['mens','womens','boys','girls']) {
+      if (this.membersByTab[k] || this.membersLoadingByTab[k]) continue;
+      // loadMembers already re-renders the "All Programs" bar via
+      // renderMembers() → _renderAllProgramsBar() when it lands.
+      this.loadMembers(k);
+    }
   }
 
   // ── Program tabs ────────────────────────────────────────────────────
@@ -308,6 +342,10 @@ class PaymentsScreen extends Screen {
       // Fetch current pending flags in parallel so we can badge cards.
       this.loadFlags(key, /*silent=*/true);
       if (this.tab === key && this.view === 'members') this.renderMembers();
+      // Always refresh the All-Programs roll-up bar — even for tabs
+      // loaded in the background (see _loadAllProgramsInBackground) so
+      // totals accumulate as each program's data lands.
+      this._renderAllProgramsBar();
     } catch (err) {
       this.membersErrorByTab[key] = err.message;
       if (this.tab === key && this.view === 'members') this.showError(err.message);
@@ -337,15 +375,33 @@ class PaymentsScreen extends Screen {
 
     // Summary strip
     const c = data.counts || {};
+    const fin = this._summarize(data);
     this.find('#pay-summary').innerHTML = `
       <div><span style="opacity:0.7;">Members:</span> <span style="font-weight:700;">${data.total ?? 0}</span></div>
       <div><span style="opacity:0.7;">🟢 Current:</span> <span style="font-weight:700; color:#86efac;">${c.current || 0}</span></div>
       <div><span style="opacity:0.7;">🟡 Behind:</span> <span style="font-weight:700; color:#fbbf24;">${c.behind || 0}</span></div>
       <div><span style="opacity:0.7;">🔴 Overdue:</span> <span style="font-weight:700; color:#fca5a5;">${c.overdue || 0}</span></div>
       <div><span style="opacity:0.7;">⚫ Never paid:</span> <span style="font-weight:700; color:#e5e7eb;">${c.never || 0}</span></div>
-      <div style="margin-left:auto;"><span style="opacity:0.7;">Needs attention:</span>
-           <span style="font-weight:700; color:#fca5a5;">${data.needsAttention ?? 0}</span></div>
+      <div style="flex-basis:100%; height:0;"></div>
+      <div><span style="opacity:0.7;">💰 Collected:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.netCollected)}</span></div>
+      <div><span style="opacity:0.7;">This Month:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.thisMonth)}</span></div>
+      <div><span style="opacity:0.7;">Avg / Month:</span> <span style="font-weight:700;">${this.fmtMoney(fin.avgPerMonth)}</span>${fin.monthsElapsed ? `<span style="opacity:0.5; font-size:0.75rem;"> (${fin.monthsElapsed} mo)</span>` : ''}</div>
+      <div style="flex-basis:100%; height:0;"></div>
+      <div><span style="opacity:0.7;">🔴 Outstanding:</span>
+           <span style="font-weight:700; color:#fca5a5;">${fin.outstandingCount} member${fin.outstandingCount === 1 ? '' : 's'}</span></div>
+      <div title="Outstanding × est. per-member fee (median of paid members: ${this.fmtMoney(fin.estFeePerMember)})">
+        <span style="opacity:0.7;">Est. Owed:</span>
+        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(fin.outstandingTotal)}</span></div>
+      <div title="Estimated outstanding ÷ months elapsed">
+        <span style="opacity:0.7;">Est. Owed / Month:</span>
+        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(fin.outstandingPerMonth)}</span></div>
+      <div style="opacity:0.55; font-size:0.72rem; margin-left:auto; align-self:center;">
+        est. fee = median of paid: ${this.fmtMoney(fin.estFeePerMember)}
+      </div>
     `;
+
+    // Refresh the cross-program roll-up whenever a tab finishes loading.
+    this._renderAllProgramsBar();
 
     // Status filter chips.  Same shape as the members-screen category
     // chips: pill buttons with counts, the active one filled with the
@@ -393,12 +449,17 @@ class PaymentsScreen extends Screen {
 
     // Group by status.  Work-queue order first: overdue → never → behind
     // → current.  A chip filter collapses to the single group.
+    // Section headers are full-width bars, colour-coded by status so the
+    // operator can visually chunk the list at a glance.
+    //   • fg      — text/icon colour (readable on the tinted bar)
+    //   • bg      — subtle tinted background for the bar itself
+    //   • border  — accent line on the left edge
     const statusOrder = ['overdue', 'never', 'behind', 'current'];
     const statusMeta = {
-      overdue: { icon:'🔴', label:'Overdue',    color:'#fca5a5' },
-      never:   { icon:'⚫', label:'Never Paid', color:'#e5e7eb' },
-      behind:  { icon:'🟡', label:'Behind',     color:'#fbbf24' },
-      current: { icon:'🟢', label:'Paid Up',    color:'#86efac' },
+      overdue: { icon:'🔴', label:'OVERDUE',    fg:'#7f1d1d', bg:'#fee2e2', border:'#dc2626' },
+      never:   { icon:'⚫', label:'NEVER PAID', fg:'#1f2937', bg:'#e5e7eb', border:'#4b5563' },
+      behind:  { icon:'🟡', label:'BEHIND',     fg:'#78350f', bg:'#fef3c7', border:'#d97706' },
+      current: { icon:'🟢', label:'CURRENT',    fg:'#14532d', bg:'#dcfce7', border:'#16a34a' },
     };
     const byStatus = {};
     for (const st of statusOrder) byStatus[st] = [];
@@ -408,16 +469,39 @@ class PaymentsScreen extends Screen {
       else other.push(row);
     }
 
+    // Full-width section bar — bold status label on the left, count
+    // pill on the right, coloured stripe on the left edge.
+    const sectionBar = (meta, count) => `
+      <div style="
+        display:flex; align-items:center; justify-content:space-between;
+        gap:var(--space-3);
+        background:${meta.bg}; color:${meta.fg};
+        border-left:6px solid ${meta.border};
+        border-radius: var(--radius-md, 8px);
+        padding: var(--space-3) var(--space-4);
+        margin: var(--space-4) 0 var(--space-3);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      ">
+        <div style="display:flex; align-items:center; gap:var(--space-2);
+                    font-weight:800; font-size:1.05rem; letter-spacing:0.06em;">
+          <span style="font-size:1.25rem; line-height:1;">${meta.icon}</span>
+          <span>${meta.label}</span>
+        </div>
+        <span style="
+          background:${meta.border}; color:#fff;
+          padding: 2px 10px; border-radius: 999px;
+          font-weight:700; font-size:0.85rem;
+        ">${count}</span>
+      </div>
+    `;
+
     const groupHtml = (st) => {
       const list = byStatus[st] || [];
       if (list.length === 0) return '';
       const meta = statusMeta[st];
       return `
         <section style="margin-bottom: var(--space-5);">
-          <h3 style="margin:0 0 var(--space-2); color:${meta.color};">
-            ${meta.icon} ${meta.label}
-            <span style="opacity:0.6; font-weight:400; font-size:0.85rem;">(${list.length})</span>
-          </h3>
+          ${sectionBar(meta, list.length)}
           <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
             ${list.map((mm) => this.renderMemberCard(mm)).join('')}
           </div>
@@ -428,10 +512,8 @@ class PaymentsScreen extends Screen {
     const otherHtml = other.length
       ? `
         <section style="margin-bottom: var(--space-5);">
-          <h3 style="margin:0 0 var(--space-2); opacity:0.8;">
-            ❓ Unknown status
-            <span style="opacity:0.6; font-weight:400; font-size:0.85rem;">(${other.length})</span>
-          </h3>
+          ${sectionBar({ icon:'❓', label:'UNKNOWN STATUS',
+                         fg:'#1f2937', bg:'#f3f4f6', border:'#9ca3af' }, other.length)}
           <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
             ${other.map((mm) => this.renderMemberCard(mm)).join('')}
           </div>
@@ -531,6 +613,17 @@ class PaymentsScreen extends Screen {
                             font-size:0.75rem; font-weight:700;">🚩 Flag for Charge</button>`)
       : '';
 
+    // Copy-Pause-Warning button — copies the standard "not paid initial
+    // registration → paused membership" reminder with the player's first
+    // name pre-filled.  Operator flow: click here, then click 🔗 Open in
+    // LA and paste into LA's Remind textarea.  Shown for every card so
+    // the operator can decide when it applies (typically "never paid").
+    const pauseBtn = `<button data-copy-pause="${this.escape(m.firstName || 'Player')}"
+                              title="Copy pause-membership warning with ${this.escape(m.firstName || 'the player')}'s name pre-filled"
+                              style="padding:6px 10px; border-radius:4px; cursor:pointer;
+                                     background:#3a2e05; color:#fde68a; border:1px solid #d97706;
+                                     font-size:0.75rem; font-weight:700;">📋 Copy Pause Warning</button>`;
+
     return `
       <div style="background: var(--bg-secondary, #111827); border:1px solid var(--border-color, #374151);
                   border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
@@ -553,9 +646,61 @@ class PaymentsScreen extends Screen {
           </div>
           ${recentHtml}
         </div>
-        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${flagBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${pauseBtn}${flagBtn}</div>
       </div>
     `;
+  }
+
+  // Copy `text` to the clipboard and show a small toast with `successMsg`.
+  // Falls back to a hidden textarea + execCommand('copy') on older
+  // browsers / non-secure contexts where navigator.clipboard is missing.
+  _copyToClipboard(text, successMsg) {
+    if (!text) return;
+    const done  = () => this._toast(successMsg || 'Copied');
+    const fail  = () => this._fallbackCopy(text, successMsg);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
+  _fallbackCopy(text, successMsg) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      this._toast(successMsg || 'Copied');
+    } catch (e) {
+      alert('Copy failed — the message was:\n\n' + text);
+    } finally {
+      ta.remove();
+    }
+  }
+
+  _toast(msg) {
+    // Cheap, no-dep toast pinned near the top-right.  Self-clears after 3s.
+    if (!msg) return;
+    let host = document.getElementById('pay-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'pay-toast-host';
+      host.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:min(420px, calc(100vw - 32px));';
+      document.body.appendChild(host);
+    }
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'background:#0f172a; color:#e5e7eb; border:1px solid #d97706; border-radius:6px; padding:10px 14px; box-shadow:0 4px 14px rgba(0,0,0,0.35); font-size:0.85rem; line-height:1.35; opacity:0; transition:opacity 0.15s ease-in;';
+    host.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity = '1'; });
+    setTimeout(() => {
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 200);
+    }, 3000);
   }
 
   renderStatusBadge(status) {
@@ -932,6 +1077,177 @@ class PaymentsScreen extends Screen {
     } catch (err) {
       alert('Failed to update flag: ' + err.message);
     }
+  }
+
+  // ── Financial roll-ups ──────────────────────────────────────────────
+  // Given a members-endpoint response, compute the per-tab money numbers
+  // shown in the summary strip.  Kept pure so we can also feed it into
+  // _renderAllProgramsBar() for the cross-program total.
+  //
+  // Billing-cycle definition (mirrors backend PersonPayments.cpp):
+  //   A "monthly payment" for a given cycle counts as any non-refund
+  //   payment of $35 or above whose paidAt falls in
+  //     [cycle_start, cycle_end) = [prev-month-15, this-month-15)
+  //   when today ≤ 14, otherwise
+  //     [this-month-15, next-month-15).
+  //   The "This Month" money total therefore sums the CURRENT cycle,
+  //   not the calendar month.  The $35 floor applies to status only;
+  //   the money total sums every non-refund payment in the window
+  //   (money is money) net of refunds in-window.
+  _summarize(data) {
+    const members = (data && data.members) || [];
+    // Build the current billing cycle window.
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const mo = now.getUTCMonth();
+    const day = now.getUTCDate();
+    // 15th of the "reference" month (prev if day ≤ 14, else this).
+    const cycleStart = (day <= 14)
+      ? new Date(Date.UTC(y, mo - 1, 15))
+      : new Date(Date.UTC(y, mo,     15));
+    const cycleEnd = new Date(Date.UTC(
+      cycleStart.getUTCFullYear(),
+      cycleStart.getUTCMonth() + 1,
+      15
+    ));
+
+    let totalPaid     = 0;
+    let totalRefunded = 0;
+    let thisMonth     = 0;
+    let earliestPaidMs = null;
+    // Collect per-member net-paid amounts (paid – refunded) for paid
+    // members so we can compute a median.  Median is our proxy for the
+    // registration fee per member on this program — we don't have an
+    // explicit price stored anywhere, so this is the best signal we
+    // have from the data itself.
+    const paidAmounts = [];
+    for (const m of members) {
+      const p = Number(m.totalPaid)     || 0;
+      const r = Number(m.totalRefunded) || 0;
+      totalPaid     += p;
+      totalRefunded += r;
+      const netPaid = p - r;
+      if (netPaid > 0) paidAmounts.push(netPaid);
+      if (m.firstPaidAt) {
+        const t = new Date(m.firstPaidAt).getTime();
+        if (isFinite(t) && (earliestPaidMs == null || t < earliestPaidMs)) {
+          earliestPaidMs = t;
+        }
+      }
+      // Sum txns in current billing cycle. The backend returns the
+      // previous cycle too, so filter by [cycleStart, cycleEnd) here.
+      // Refunds subtract; other types (Charge / Bank / Offline) add.
+      for (const t of (m.recentTransactions || [])) {
+        if (!t || !t.paidAt) continue;
+        const d = new Date(t.paidAt);
+        if (isNaN(d.getTime())) continue;
+        if (d < cycleStart || d >= cycleEnd) continue;
+        const amt = Number(t.amount) || 0;
+        if (t.txnType && t.txnType.includes('Refund')) thisMonth -= amt;
+        else                                            thisMonth += amt;
+      }
+    }
+    const netCollected = totalPaid - totalRefunded;
+    // Months elapsed since the earliest payment on this program — used
+    // as the denominator for average monthly collection.  Clamped to a
+    // minimum of 1 so a brand-new program doesn't produce a divide-by-0.
+    let monthsElapsed = 0;
+    if (earliestPaidMs != null) {
+      const first = new Date(earliestPaidMs);
+      monthsElapsed =
+        (y - first.getUTCFullYear()) * 12 +
+        (mo - first.getUTCMonth()) + 1;   // inclusive of both ends
+      if (monthsElapsed < 1) monthsElapsed = 1;
+    }
+    const avgPerMonth = monthsElapsed > 0 ? netCollected / monthsElapsed : 0;
+
+    const counts = data && data.counts ? data.counts : {};
+    const outstandingCount = (counts.never || 0) + (counts.overdue || 0);
+
+    // Estimated per-member fee — median of net-paid amounts among
+    // members who have paid.  Used to translate the outstanding member
+    // count into a dollar estimate.  Falls back to the mean if we have
+    // very few data points.
+    let estFeePerMember = 0;
+    if (paidAmounts.length > 0) {
+      const sorted = paidAmounts.slice().sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      estFeePerMember = sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    const outstandingTotal    = outstandingCount * estFeePerMember;
+    const outstandingPerMonth = monthsElapsed > 0 ? outstandingTotal / monthsElapsed : 0;
+
+    return {
+      totalMembers: (data && data.total) || 0,
+      totalPaid, totalRefunded, netCollected,
+      thisMonth, monthsElapsed, avgPerMonth,
+      outstandingCount, outstandingTotal, outstandingPerMonth,
+      estFeePerMember,
+      counts,
+    };
+  }
+
+  // Sum the per-tab summaries into a cross-program roll-up.  Uses the
+  // earliest firstPaidAt across programs for the avg-per-month
+  // denominator so combined avg is calculated on a common timeline.
+  _combinedSummary() {
+    const tabs = ['mens','womens','boys','girls'];
+    let netCollected     = 0;
+    let thisMonth        = 0;
+    let totalMembers     = 0;
+    let outstandingCount = 0;
+    let outstandingTotal = 0;
+    let earliestMonthsElapsed = 0;   // biggest monthsElapsed = earliest start
+    const loaded = [];
+    for (const k of tabs) {
+      const d = this.membersByTab[k];
+      if (!d) continue;
+      const s = this._summarize(d);
+      netCollected     += s.netCollected;
+      thisMonth        += s.thisMonth;
+      totalMembers     += s.totalMembers;
+      outstandingCount += s.outstandingCount;
+      outstandingTotal += s.outstandingTotal;
+      if (s.monthsElapsed > earliestMonthsElapsed) earliestMonthsElapsed = s.monthsElapsed;
+      loaded.push(k);
+    }
+    const avgPerMonth         = earliestMonthsElapsed > 0 ? netCollected     / earliestMonthsElapsed : 0;
+    const outstandingPerMonth = earliestMonthsElapsed > 0 ? outstandingTotal / earliestMonthsElapsed : 0;
+    return {
+      loaded, loadedCount: loaded.length,
+      totalMembers, netCollected, thisMonth,
+      monthsElapsed: earliestMonthsElapsed, avgPerMonth,
+      outstandingCount, outstandingTotal, outstandingPerMonth,
+    };
+  }
+
+  _renderAllProgramsBar() {
+    const el = this.find('#pay-all-programs');
+    if (!el) return;
+    const s = this._combinedSummary();
+    const tabsTotal = 4;
+    const doneLabel = s.loadedCount === tabsTotal
+      ? '<span style="color:#86efac;">all 4 loaded</span>'
+      : `<span style="opacity:0.6;">${s.loadedCount}/${tabsTotal} loaded\u2026</span>`;
+    el.innerHTML = `
+      <div style="font-weight:700;">🌐 All Programs</div>
+      <div>${doneLabel}</div>
+      <div><span style="opacity:0.7;">Members:</span> <span style="font-weight:700;">${s.totalMembers}</span></div>
+      <div><span style="opacity:0.7;">💰 Collected:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(s.netCollected)}</span></div>
+      <div><span style="opacity:0.7;">This Month:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(s.thisMonth)}</span></div>
+      <div><span style="opacity:0.7;">Avg / Month:</span> <span style="font-weight:700;">${this.fmtMoney(s.avgPerMonth)}</span>${s.monthsElapsed ? `<span style="opacity:0.5; font-size:0.75rem;"> (${s.monthsElapsed} mo)</span>` : ''}</div>
+      <div style="flex-basis:100%; height:0;"></div>
+      <div><span style="opacity:0.7;">🔴 Outstanding:</span>
+           <span style="font-weight:700; color:#fca5a5;">${s.outstandingCount} member${s.outstandingCount === 1 ? '' : 's'}</span></div>
+      <div title="Outstanding × est. per-member fee (median of paid members)">
+        <span style="opacity:0.7;">Est. Owed:</span>
+        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(s.outstandingTotal)}</span></div>
+      <div title="Estimated outstanding ÷ months elapsed">
+        <span style="opacity:0.7;">Est. Owed / Month:</span>
+        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(s.outstandingPerMonth)}</span></div>
+    `;
   }
 
   // ── Formatters ──────────────────────────────────────────────────────

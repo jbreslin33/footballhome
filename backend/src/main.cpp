@@ -37,6 +37,7 @@
 #include "controllers/PersonBillingController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
+#include "controllers/BillingController.h"
 #include "controllers/AdminLaBackfillController.h"
 #include "controllers/LeadsController.h"
 #include "controllers/LeadsWebhookController.h"
@@ -46,6 +47,9 @@
 #include "controllers/SocialController.h"
 #include "controllers/InternalRosterController.h"
 #include "controllers/PublicController.h"
+#include "controllers/MatchSeriesController.h"
+#include "controllers/MyController.h"
+#include "controllers/EventReminderController.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
 
@@ -80,6 +84,7 @@ private:
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
+    std::shared_ptr<BillingController> billing_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<LeadsController> leads_controller_;
     std::shared_ptr<LeadsWebhookController> leads_webhook_controller_;
@@ -89,6 +94,9 @@ private:
     std::shared_ptr<SocialController> social_controller_;
     std::shared_ptr<InternalRosterController> internal_roster_controller_;
     std::shared_ptr<PublicController> public_controller_;
+    std::shared_ptr<MatchSeriesController> match_series_controller_;
+    std::shared_ptr<MyController> my_controller_;
+    std::shared_ptr<EventReminderController> event_reminder_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -116,6 +124,7 @@ public:
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
+        billing_controller_ = std::make_shared<BillingController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         leads_controller_ = std::make_shared<LeadsController>();
         leads_webhook_controller_ = std::make_shared<LeadsWebhookController>();
@@ -125,6 +134,9 @@ public:
         social_controller_ = std::make_shared<SocialController>();
         internal_roster_controller_ = std::make_shared<InternalRosterController>();
         public_controller_ = std::make_shared<PublicController>();
+        match_series_controller_ = std::make_shared<MatchSeriesController>();
+        my_controller_ = std::make_shared<MyController>();
+        event_reminder_controller_ = std::make_shared<EventReminderController>();
     }
     
     bool initialize() {
@@ -241,6 +253,10 @@ private:
         // payments Members view).  LA's payments API is read-only, so
         // this is a flag-and-track table + a queue UI.
         router_.useController("/api/charge-flags", charge_flags_controller_);
+        // Phase 15 — billing_expectations state machine (per-Friday
+        // projected/actual invoice lines).  POST /projector/run kicks the
+        // BillingProjector on-demand; GET /expectations + /queue read.
+        router_.useController("/api/billing", billing_controller_);
         // Phase 10 — admin glue.  POST /api/admin/leagueapps-link/backfill
         // (operator-driven persons sweep).
         router_.useController("/api/admin", admin_la_backfill_controller_);
@@ -259,6 +275,15 @@ private:
         router_.useController("/api/social", social_controller_);
         router_.useController("/api/internal", internal_roster_controller_);
         router_.useController("/api/public", public_controller_);
+        // Recurring event series admin surface (POST /rollover).  Full
+        // CRUD comes in a follow-up commit.
+        router_.useController("/api/match-series", match_series_controller_);
+        // Signed-in-player self-service surface: /week, /rsvp, /recurring.
+        router_.useController("/api/my", my_controller_);
+        // Coach-triggered reminder nudges + magic-link verify.
+        //   POST /api/matches/:id/remind
+        //   GET  /api/reminders/verify
+        router_.useController("/api", event_reminder_controller_);
         
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {

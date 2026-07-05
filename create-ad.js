@@ -27,7 +27,10 @@ const ADS = {
     imageUrl:   'https://footballhome.org/images/posts/u23-ad-mens.png',
     caption:    `Now forming Lighthouse Boys Club U23 team in CASA Men's U23 Premier League.\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
 
-    ctaUrl:     'https://tr.ee/hSxfHUV4jR',
+    // CTA points to the in-house /pickup guest funnel (Todo #13).
+    // The `?ad=` param is preserved as leads.ad_id so we can attribute
+    // signups to a specific creative in the Leads admin UI.
+    ctaUrl:     'https://footballhome.org/pickup?ad=u23-mens',
     ctaType:    'SIGN_UP',
     // U23 Men specific targeting overrides
     defaultBudget: 20,
@@ -49,7 +52,7 @@ const ADS = {
     name:    'U23 Womens Interest Form',
     imageUrl: 'https://footballhome.org/images/posts/u23-ad-womens.png',
     caption:  `⚽ NOW FORMING: LIGHTHOUSE WOMEN'S CLUB U23!\n\nLighthouse Women's Club U23 is forming a team in partnership with CASA Soccer!\n\n📅 First Match: TBD\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
+    ctaUrl:   'https://footballhome.org/pickup?ad=u23-womens',
     ctaType:  'SIGN_UP',
     targeting: {
       geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
@@ -64,7 +67,7 @@ const ADS = {
     name:    'Philly Grassroots Cup — Brazil',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-brazil.png',
     caption:  `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
+    ctaUrl:   'https://footballhome.org/pickup?ad=grassroots-brazil',
     ctaType:  'LEARN_MORE',
     targeting: {
       geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
@@ -79,7 +82,7 @@ const ADS = {
     name:    'Philly Grassroots Cup — Puerto Rico',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-puertorico.png',
     caption:  `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Puerto Rican!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
+    ctaUrl:   'https://footballhome.org/pickup?ad=grassroots-puertorico',
     ctaType:  'LEARN_MORE',
     targeting: {
       geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
@@ -94,7 +97,10 @@ const ADS = {
     name:    'Lighthouse Youth Soccer — Now Enrolling (Grades 1–6)',
     imageUrl: 'https://footballhome.org/images/posts/youth-signup-ad.png',
     caption: `⚽ LIGHTHOUSE YOUTH SOCCER — NOW ENROLLING\n\nBoys & girls, grades 1–6.\nTravel & In-House Leagues.\n\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer`,
-    ctaUrl:  'https://linktr.ee/Lighthouse1893Soccer',
+    // Meta will typically show the attached native leadForm below on
+    // click, but if the ad ever runs without one the CTA should still
+    // land on our own guest funnel (Todo #13) rather than a link tree.
+    ctaUrl:  'https://footballhome.org/pickup?ad=youth-signup',
     ctaType: 'LEARN_MORE',  // softer than SIGN_UP — typically lower CPL on youth/community
     defaultBudget: 8,    // ~$112 for a 14-day learning test
     defaultDays:   14,   // 2-week smoke test; renew with optimizations
@@ -166,7 +172,7 @@ const ADS = {
     name:    'APSL & CASA Select — Summer Trial Pathway',
     imageUrl: 'https://footballhome.org/images/posts/trial-pathway-ad.png',
     caption:  `Join now and compete in meaningful competitions and train with the teams during summer to prepare for APSL season.`,
-    ctaUrl:   'https://linktr.ee/Lighthouse1893Soccer#554813194',
+    ctaUrl:   'https://footballhome.org/pickup?ad=trial-pathway',
     ctaType:  'SIGN_UP',
     targeting: {
       geo_locations: { cities: [{ key: '2511940', radius: 30, distance_unit: 'mile' }] },
@@ -225,6 +231,129 @@ const ADS = {
     targeting: {
       geo_locations: {
         cities: [{ key: '2511940', radius: 10, distance_unit: 'mile' }],  // Philadelphia, explicit
+      },
+      age_min: 18,
+      age_max: 40,
+      genders: [1],  // male
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  // ── Trial-pathway lead-form ads (2026-07-04) ───────────────────────
+  // Two ads, same underlying pool.  Both funnel to the SAME Men's Club
+  // LeagueApps registration ($1 to capture card on file); differentiated
+  // only by:
+  //   • image (apsl-trials-ad.png vs liga1-trials-ad.png)
+  //   • caption framing (semi-pro APSL vs CASA Select Liga 1)
+  //   • utm_content=apsl-trials / liga1-trials  (LA-side attribution)
+  //   • its own Meta lead form (form_id → funnelLabel on the Leads
+  //     screen: 'APSL Trials' / 'LIGA 1 Trials')
+  // Purpose: capture the "I want to earn a spot" crowd separately from
+  // the "come play with us" crowd (mens-club spec) so touch-1 replies
+  // can lead with "That's great that you want to trial with Lighthouse
+  // Men's Soccer Club 1893…" instead of "…play for…".
+  'apsl-trials': {
+    name:    'Lighthouse APSL Trials — Fall 2026',
+    imageUrl: 'https://footballhome.org/images/posts/apsl-trials-ad.png',
+    caption: `⚽ APSL TRIALS — FALL 2026\n\nOpen tryouts this summer for Lighthouse 1893's APSL squad.\nTrain with the group, compete on weekends, earn a fall roster spot.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Trials #PhillySoccer #MensSoccer`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=apsl-trials',
+    ctaType: 'SIGN_UP',
+    defaultBudget: 5,
+    // no defaultDays — runs until manually cancelled
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse APSL Trials — Fall 2026',
+        content: [
+          'Semi-pro adult men — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'Trial this summer, earn your spot for the APSL fall season.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: "A Lighthouse 1893 coach will reach out within 24–48 hours with trial dates and next steps.",
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      geo_locations: {
+        cities: [{ key: '2511940', radius: 10, distance_unit: 'mile' }],  // Philadelphia
+      },
+      age_min: 18,
+      age_max: 40,
+      genders: [1],  // male
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'liga1-trials': {
+    name:    'Lighthouse CASA Select Liga 1 Trials — Fall 2026',
+    imageUrl: 'https://footballhome.org/images/posts/liga1-trials-ad.png',
+    caption: `⚽ CASA SELECT LIGA 1 TRIALS — FALL 2026\n\nOpen tryouts this summer for Lighthouse 1893's Liga 1 select squad.\nTrain with the group, compete on weekends, earn a fall roster spot.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #Liga1 #Trials #PhillySoccer #MensSoccer`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=liga1-trials',
+    ctaType: 'SIGN_UP',
+    defaultBudget: 5,
+    // no defaultDays — runs until manually cancelled
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          type: 'CUSTOM',
+          key: 'best_time',
+          label: 'Best time for a coach to reach you?',
+          options: [
+            { key: 'morning',   value: 'Morning (8am–12pm)' },
+            { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+            { key: 'evening',   value: 'Evening (5pm–9pm)' },
+            { key: 'anytime',   value: 'Anytime' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse CASA Select Liga 1 Trials — Fall 2026',
+        content: [
+          'Competitive adult men — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'Trial this summer, earn your spot for the Liga 1 fall season.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: "A Lighthouse 1893 coach will reach out within 24–48 hours with trial dates and next steps.",
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      geo_locations: {
+        cities: [{ key: '2511940', radius: 10, distance_unit: 'mile' }],  // Philadelphia
       },
       age_min: 18,
       age_max: 40,

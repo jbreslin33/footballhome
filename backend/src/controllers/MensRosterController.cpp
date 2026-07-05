@@ -1,5 +1,7 @@
 #include "MensRosterController.h"
 
+#include <cstdlib>
+#include <ctime>
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -12,6 +14,49 @@
 using nlohmann::json;
 
 namespace {
+
+// Delinquency helpers duplicated locally from MensRoster's namespace —
+// small, self-contained, no need to expose a shared header just for this.
+int envIntFn(const char* name, int fallback) {
+    const char* raw = std::getenv(name);
+    if (!raw || !*raw) return fallback;
+    try { return std::stoi(raw); }
+    catch (const std::exception&) { return fallback; }
+}
+
+int daysBetweenTodayAnd(const std::string& iso) {
+    if (iso.size() < 10) return 0;
+    std::tm tm_bill{};
+    if (sscanf(iso.c_str(), "%4d-%2d-%2d",
+               &tm_bill.tm_year, &tm_bill.tm_mon, &tm_bill.tm_mday) != 3) return 0;
+    tm_bill.tm_year -= 1900;
+    tm_bill.tm_mon  -= 1;
+    tm_bill.tm_hour  = 12;
+    const std::time_t billT = timegm(&tm_bill);
+    if (billT == (std::time_t)-1) return 0;
+    const std::time_t nowT = std::time(nullptr);
+    std::tm tm_now{};
+    if (gmtime_r(&nowT, &tm_now) == nullptr) return 0;
+    tm_now.tm_hour = 12; tm_now.tm_min = 0; tm_now.tm_sec = 0;
+    const std::time_t todayT = timegm(&tm_now);
+    const long long diffSec = static_cast<long long>(todayT) - static_cast<long long>(billT);
+    return static_cast<int>(diffSec / 86400);
+}
+
+// Look up next_bill_date for a single LA user.  Returns empty string on
+// miss (no person_billing row) — caller falls back to PersonBilling
+// DEFAULT_DATE-based delinquency calc.
+std::string lookupNextBillDate(long long userId) {
+    auto db = Database::getInstance();
+    auto rows = db->query(
+        "SELECT TO_CHAR(next_bill_date, 'YYYY-MM-DD') AS next_bill_date "
+        "  FROM person_billing "
+        " WHERE leagueapps_user_id = $1",
+        {std::to_string(userId)}
+    );
+    if (rows.empty() || rows[0]["next_bill_date"].is_null()) return {};
+    return rows[0]["next_bill_date"].c_str();
+}
 
 // Tolerant int extractor: accepts number or numeric string from JSON body.
 bool readInt(const json& j, const char* key, long long& out) {
@@ -61,6 +106,12 @@ Response notFound(const std::string& msg) {
     return Response(HttpStatus::NOT_FOUND, body.str());
 }
 
+Response conflict(const std::string& msg) {
+    std::ostringstream body;
+    body << "{\"error\":" << jsonEscape(msg) << "}";
+    return Response(HttpStatus::CONFLICT, body.str());
+}
+
 Response internalErr(const std::string& msg) {
     std::ostringstream body;
     body << "{\"error\":" << jsonEscape(msg) << "}";
@@ -86,6 +137,9 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     router.post(prefix + "/roster-status", [this](const Request& req) {
         return this->handleRosterStatus(req);
     });
+    router.post(prefix + "/reorder", [this](const Request& req) {
+        return this->handleReorder(req);
+    });
     // Ad-hoc game creation.  Lives outside /api/mens-roster because the
     // matches themselves aren't mens-specific (any team column on the
     // Lineups screen can add one) — mens & womens columns both POST here.
@@ -105,8 +159,12 @@ Response MensRosterController::handleGet(const Request& request) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     const bool includeAll = (request.getQueryParam("includeAll") == "1");
+    // refreshLa=1 forces a live LA fetch + payment sync.  Everything
+    // else (initial cold cache aside) serves the cached snapshot so a
+    // player-move round-trip doesn't get held up on the LeagueApps API.
+    const bool refreshLa = (request.getQueryParam("refreshLa") == "1");
     try {
-        auto result = model_->run(includeAll);
+        auto result = model_->run(includeAll, refreshLa);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";
@@ -180,7 +238,51 @@ Response MensRosterController::handleAssign(const Request& request) {
         if (action == "remove") {
             teamIds = assignments_->removeAssignment(userId, teamId);
         } else {
+            // Delinquency gate REMOVED (2026-07-04 pm).  Admin decides
+            // roster + purgatory placement manually now — the fetch-time
+            // sweep and controller-side dues gate are both disabled per
+            // user directive "don't auto manage it".  The card still
+            // shows an "Nd OVERDUE" chip so admin sees the risk, but the
+            // backend no longer refuses the assignment.
+
             teamIds = assignments_->addAssignment(userId, teamId, mutexGroup);
+
+            // Practice / Pickup auto-membership on APSL / Liga 1 assign
+            // (2026-07-04): immediate mirror of the /api/mens-roster
+            // fetch-time backfill so admin sees Practice + Pickup
+            // populated the instant they select someone for a division
+            // roster.  Redundant with the fetch backfill but zero-cost
+            // (INSERT ON CONFLICT DO NOTHING).
+            constexpr int kApslTeamId      = 35;
+            constexpr int kLiga1TeamId     = 120;
+            constexpr int kPracticeTeamId  = 908;
+            constexpr int kPickupTeamId    = 909;
+            constexpr int kPurgatoryTeamId = 910;
+            if (teamId == kApslTeamId || teamId == kLiga1TeamId) {
+                try {
+                    assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
+                    assignments_->bulkEnsureActive({userId}, kPickupTeamId);
+                    // Refresh returned teamIds so the client sees Practice
+                    // + Pickup without a round-trip.
+                    teamIds = assignments_->teamIdsForUser(userId);
+                } catch (const std::exception& e) {
+                    std::cerr << "[MensRoster] practice/pickup auto-add on APSL/Liga1 failed: "
+                              << e.what() << std::endl;
+                }
+            } else if (teamId == kPurgatoryTeamId) {
+                // Purgatory means "off ALL rosters".  The mens-selection
+                // mutex_group already removed the APSL/Liga 1 row atomically;
+                // here we also strip Practice + Pickup so the player really
+                // is on nothing except team 910 itself.
+                try {
+                    assignments_->removeAssignment(userId, kPracticeTeamId);
+                    assignments_->removeAssignment(userId, kPickupTeamId);
+                    teamIds = assignments_->teamIdsForUser(userId);
+                } catch (const std::exception& e) {
+                    std::cerr << "[MensRoster] practice/pickup strip on Purgatory failed: "
+                              << e.what() << std::endl;
+                }
+            }
         }
 
         json out;
@@ -232,6 +334,69 @@ Response MensRosterController::handleRosterStatus(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "MensRosterController::handleRosterStatus error: " << e.what() << std::endl;
         return internalErr(std::string("Failed to update roster status: ") + e.what());
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/mens-roster/reorder — coach-defined ability ranking.
+//
+// Body: {teamId, userIds:[...]}
+//   userIds is the full ordered list of active players in the column,
+//   top-to-bottom.  Server writes coach_sort_order = 1..N in that order
+//   on the matching mens_team_assignments rows.  Any active row on the
+//   team whose user is NOT in the list is left untouched (its rank
+//   stays whatever it was — or NULL, i.e. alpha fallback).
+//
+// Returns {teamId, touched:N} for logging.
+// ────────────────────────────────────────────────────────────────────────────
+Response MensRosterController::handleReorder(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) {
+        return badRequest("Invalid JSON body");
+    }
+
+    long long teamIdLL = 0;
+    if (!readInt(body, "teamId", teamIdLL) || teamIdLL <= 0) {
+        return badRequest("teamId (positive int) required");
+    }
+    const int teamId = static_cast<int>(teamIdLL);
+
+    auto it = body.find("userIds");
+    if (it == body.end() || !it->is_array()) {
+        return badRequest("userIds (array of ints) required");
+    }
+    std::vector<long long> ordered;
+    ordered.reserve(it->size());
+    for (const auto& e : *it) {
+        long long v = 0;
+        if (e.is_number_integer())          v = e.get<long long>();
+        else if (e.is_number_unsigned())    v = static_cast<long long>(e.get<unsigned long long>());
+        else if (e.is_number_float())       v = static_cast<long long>(e.get<double>());
+        else if (e.is_string()) {
+            try { v = std::stoll(e.get<std::string>()); }
+            catch (const std::exception&) { return badRequest("userIds contains a non-numeric entry"); }
+        } else {
+            return badRequest("userIds entries must be integers");
+        }
+        if (v <= 0) return badRequest("userIds entries must be positive");
+        ordered.push_back(v);
+    }
+
+    try {
+        const long long touched = assignments_->reorderTeam(teamId, ordered);
+        std::ostringstream out;
+        out << "{\"teamId\":" << teamId
+            << ",\"touched\":" << touched
+            << "}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleReorder error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to reorder team: ") + e.what());
     }
 }
 

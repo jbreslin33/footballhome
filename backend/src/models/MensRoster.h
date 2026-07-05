@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 #include "../third_party/json.hpp"
 
 class MensTeamColumns;
@@ -39,7 +41,13 @@ public:
     MensRoster();
     ~MensRoster();
 
-    Result run(bool includeAll);
+    // refreshLa=true forces a live LeagueApps fetch (and payment sync);
+    // otherwise the cached registrant snapshot is reused.  If the cache
+    // is empty (first call ever) the LA fetch happens regardless.  A
+    // failed LA refresh with a warm cache is non-fatal: we log and
+    // serve the stale snapshot so a transient LA outage doesn't wedge
+    // the mens dashboard (see MensRoster.cpp for details).
+    Result run(bool includeAll, bool refreshLa);
 
 private:
     std::unique_ptr<MensTeamColumns>     columns_;
@@ -47,6 +55,13 @@ private:
     std::unique_ptr<PersonBilling>       billing_;
     std::unique_ptr<PersonPayments>      payments_;
     int mensProgramId_;
+
+    // In-memory cache of the LeagueApps registrant list.  Populated on
+    // the first call and refreshed only when the caller opts in via
+    // refreshLa.  Guarded by cacheMutex_ so concurrent GETs don't race.
+    std::mutex                          cacheMutex_;
+    std::vector<nlohmann::json>         cachedRecs_;
+    bool                                cacheValid_ = false;
 
     static int envInt(const char* name, int fallback);
     static nlohmann::json shapeMensPlayer(const nlohmann::json& rec);

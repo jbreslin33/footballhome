@@ -30,6 +30,7 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
         "       c.sort_order, c.color, c.mutex_group, c.max_roster "
         "  FROM mens_team_columns c "
         "  JOIN teams t ON t.id = c.team_id "
+        " WHERE c.archived_at IS NULL "
         " ORDER BY c.sort_order"
     );
     out.reserve(rows.size());
@@ -43,7 +44,8 @@ std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId)
         "       c.sort_order, c.color, c.mutex_group, c.max_roster "
         "  FROM mens_team_columns c "
         "  JOIN teams t ON t.id = c.team_id "
-        " WHERE c.team_id = $1",
+        " WHERE c.team_id = $1 "
+        "   AND c.archived_at IS NULL",
         {std::to_string(teamId)}
     );
     if (rows.empty()) return std::nullopt;

@@ -81,10 +81,10 @@ class PausedMembersScreen extends Screen {
         ? `Active ${catLabel.toLowerCase()} club members`
         : 'Active members across Men / Women / Boys / Girls sub-programs';
     } else {
-      if (titleEl)    titleEl.textContent    = catLabel ? `⏸ ${catLabel} Paused` : '⏸ Paused Membership';
+      if (titleEl)    titleEl.textContent    = catLabel ? `⚽ ${catLabel} Pickup` : '⚽ Pickup Membership';
       if (subtitleEl) subtitleEl.textContent = catLabel
-        ? `${catLabel} members currently on a paused sub-program`
-        : 'Members currently on a paused-membership sub-program';
+        ? `${catLabel} members on the pickup-only roster`
+        : 'Members on the pickup-only roster (eligible for pickup, not team practice/games)';
     }
 
     this.element.addEventListener('click', (e) => {
@@ -159,7 +159,7 @@ class PausedMembersScreen extends Screen {
       if (this._groups.length === 0) {
         emptyEl.style.display = 'block';
         emptyEl.textContent = this.variant === 'paused'
-          ? 'Nobody is on a paused membership right now.'
+          ? 'Nobody is on the pickup roster right now.'
           : 'No active members found.';
         return;
       }
@@ -173,7 +173,7 @@ class PausedMembersScreen extends Screen {
         emptyEl.style.display = 'block';
         const catLabel = { men:'men', women:'women', boys:'boys', girls:'girls' }[this.category] || '';
         emptyEl.textContent = this.variant === 'paused'
-          ? (catLabel ? `No ${catLabel} on paused membership right now.` : 'Nobody is on a paused membership right now.')
+          ? (catLabel ? `No ${catLabel} on the pickup roster right now.` : 'Nobody is on the pickup roster right now.')
           : (catLabel ? `No active ${catLabel} members found.` : 'No active members found.');
         return;
       }
@@ -231,7 +231,7 @@ class PausedMembersScreen extends Screen {
     if (!subtitle) return;
     const groups = this._filteredGroups();
     const total  = groups.reduce((n, g) => n + (g.members?.length || 0), 0);
-    const noun = this.variant === 'paused' ? 'paused' : 'active';
+    const noun = this.variant === 'paused' ? 'pickup' : 'active';
     const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
     const scope = catLabel ? `${catLabel} — ` : '';
     subtitle.textContent = `${scope}${total} ${noun} member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
@@ -380,10 +380,10 @@ class PausedMembersScreen extends Screen {
       return hay.includes(filter);
     };
 
-    // Verb used in the "since" line — "Joined" for active, "Paused since"
-    // for paused.  joined_at reflects when the current membership row
-    // was opened by PersonLinker::recordMembership.
-    const sinceLabel = this.variant === 'paused' ? 'Paused since' : 'Joined';
+    // Verb used in the "since" line — "Joined" for active, "Pickup since"
+    // for pickup-only members.  joined_at reflects when the current
+    // membership row was opened by PersonLinker::recordMembership.
+    const sinceLabel = this.variant === 'paused' ? 'Pickup since' : 'Joined';
 
     const html = this._filteredGroups().map(g => {
       const members = (g.members || []).filter(matches);

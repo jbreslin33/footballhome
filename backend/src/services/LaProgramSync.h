@@ -23,6 +23,19 @@
 // ────────────────────────────────────────────────────────────────────────────
 class LaProgramSync {
 public:
+    // LA's authoritative per-registration payment state pulled straight
+    // from the registration record (fields `amountPaid` + `paymentStatus`
+    // on `/sites/*/export/registrations-2`).  Payments-screen reconciliation
+    // compares our computed status against these values on every load, so
+    // silent divergence (e.g. a schema bug that drops payment rows) surfaces
+    // as a discrepancy tile instead of being invisible.
+    struct LaPayment {
+        double      amountPaid    = 0.0;   // LA `amountPaid` (cumulative for this reg)
+        double      totalDue      = 0.0;   // LA `totalAmountDue`
+        double      outstanding   = 0.0;   // LA `outstandingBalance`
+        std::string paymentStatus;         // "PAID" / "PARTIAL" / "UNPAID" / ""
+    };
+
     struct Result {
         // Stringified LA userIds whose registrationStatus is
         // SPOT_RESERVED or SPOT_PENDING.
@@ -33,6 +46,10 @@ public:
         // Raw LA records (every page, deduped) — JSON objects exactly as
         // returned by LeagueAppsService::fetchProgramRegistrations.
         std::vector<nlohmann::json>                  recs;
+        // LA-side authoritative payment state, keyed by registrationId.
+        // Used by PaymentsController to cross-check against our locally
+        // computed status every time the payments screen loads.
+        std::unordered_map<long long, LaPayment>     paymentByRegistration;
     };
 
     LaProgramSync() = default;

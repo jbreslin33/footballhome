@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="index, follow">
+  <title>Come play — Lighthouse 1893 SC</title>
+  <meta name="description" content="Come play soccer at Lighthouse 1893 SC in Philadelphia. Adult pickup, U23 teams, women's teams, and youth. Drop your info — Coach James will reach out.">
+
+  <!-- Open Graph so shares from Instagram/Facebook get a nice card -->
+  <meta property="og:title"       content="Come play — Lighthouse 1893 SC">
+  <meta property="og:description" content="Adult pickup, U23, women's, and youth. Real pitch, real coaches, real community. Drop your info to get started.">
+  <meta property="og:image"       content="https://footballhome.org/images/lighthouse-complex.png">
+  <meta property="og:url"         content="https://footballhome.org/pickup">
+  <meta property="og:type"        content="website">
+
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+
+  <!--
+    Standalone guest-funnel landing page.  Deliberately NOT part of the
+    SPA: no auth, no service worker, no shared JS bundle.  Meta ad CTAs
+    land here; the form POSTs to the public POST /api/leads/guest-signup
+    endpoint which inserts a row into the `leads` table with form_id =
+    'pickup-funnel' and ad_id = <ad key>.
+  -->
+  <style>
+    :root {
+      --bg:      #0b1c3d;      /* Lighthouse navy */
+      --bg2:     #10285a;
+      --accent:  #ffcc00;      /* Lighthouse gold */
+      --text:    #f6f8fc;
+      --muted:   #b8c4dc;
+      --card:    rgba(255,255,255,0.06);
+      --border:  rgba(255,255,255,0.14);
+      --danger:  #ff6b6b;
+      --success: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--bg) 0%, var(--bg2) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .hero {
+      text-align: center;
+      padding: 12px 8px 24px;
+    }
+    .hero img {
+      width: 96px; height: 96px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .hero .accent {
+      color: var(--accent);
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+      backdrop-filter: blur(4px);
+      margin-top: 20px;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field .req { color: var(--accent); }
+    input[type="text"],
+    input[type="tel"],
+    input[type="email"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 16px;
+      color: var(--text);
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      background: rgba(0,0,0,0.35);
+    }
+    textarea { resize: vertical; min-height: 84px; }
+    select {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23b8c4dc' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 40px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 480px) {
+      .row { grid-template-columns: 1fr; gap: 0; }
+      .hero h1 { font-size: 26px; }
+    }
+    button.submit {
+      width: 100%;
+      padding: 15px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #0b1c3d;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 6px;
+      letter-spacing: 0.3px;
+    }
+    button.submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button.submit:hover:not(:disabled) { filter: brightness(1.08); }
+    .msg {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      display: none;
+    }
+    .msg.err { display: block; background: rgba(255,107,107,0.15); color: var(--danger); border: 1px solid rgba(255,107,107,0.4); }
+    .msg.ok  { display: block; background: rgba(34,197,94,0.15);  color: var(--success); border: 1px solid rgba(34,197,94,0.4); }
+    .foot {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 24px;
+      padding: 0 12px;
+    }
+    .foot a { color: var(--muted); }
+    .badges {
+      display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+      margin: 14px 0 4px;
+    }
+    .badge {
+      background: rgba(255,204,0,0.14);
+      border: 1px solid rgba(255,204,0,0.35);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .success-panel {
+      text-align: center;
+      padding: 32px 12px;
+      display: none;
+    }
+    .success-panel h2 { margin: 0 0 8px; font-size: 26px; }
+    .success-panel p  { color: var(--muted); margin: 6px 0; }
+    .success-panel .check {
+      font-size: 56px; line-height: 1; margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <img src="/images/lighthouse-1893-crest.png" alt="Lighthouse 1893 SC crest">
+      <h1>Come <span class="accent">play</span>.</h1>
+      <p>Lighthouse 1893 SC · Kensington, Philadelphia</p>
+      <div class="badges">
+        <span class="badge">Real Pitch</span>
+        <span class="badge">Real Coaches</span>
+        <span class="badge">All Levels</span>
+      </div>
+    </div>
+
+    <form id="signup" class="card" autocomplete="on" novalidate>
+      <div class="field">
+        <label for="name">Name <span class="req">*</span></label>
+        <input type="text" id="name" name="name" required maxlength="120" autocomplete="name" placeholder="First Last">
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" name="phone" maxlength="20" autocomplete="tel" placeholder="(215) 555-0142" inputmode="tel">
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="age_group">Age group</label>
+          <select id="age_group" name="age_group">
+            <option value="">Choose one…</option>
+            <option value="under_18">Under 18 (Youth)</option>
+            <option value="18_25">18–25 (U23)</option>
+            <option value="25_35">25–35 (Open / League)</option>
+            <option value="35_plus">35+ (Pickup / Over-35)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="gender">Gender</label>
+          <select id="gender" name="gender">
+            <option value="">Choose one…</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other / prefer not to say</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="experience">Experience</label>
+          <select id="experience" name="experience">
+            <option value="">Choose one…</option>
+            <option value="beginner">New to soccer</option>
+            <option value="rec">Recreational / weekend</option>
+            <option value="hs_college">High-school / college</option>
+            <option value="semi_pro">Semi-pro / adult league</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="position">Position</label>
+          <select id="position" name="position">
+            <option value="">Choose one…</option>
+            <option value="any">Wherever needed</option>
+            <option value="gk">Goalkeeper</option>
+            <option value="def">Defender</option>
+            <option value="mid">Midfielder</option>
+            <option value="fwd">Forward</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="notes">Anything else? (optional)</label>
+        <textarea id="notes" name="notes" maxlength="800" placeholder="e.g. Best times to reach you, questions, injuries, etc."></textarea>
+      </div>
+
+      <button type="submit" class="submit" id="submit-btn">Get me connected</button>
+      <div class="msg err" id="err"></div>
+    </form>
+
+    <div class="success-panel card" id="success">
+      <div class="check">⚽</div>
+      <h2>You're in.</h2>
+      <p><strong>Coach James</strong> will reach out shortly to schedule your first session.</p>
+      <p>Meanwhile: <a href="https://www.instagram.com/lighthouse1893sc/" target="_blank" rel="noopener" style="color: var(--accent);">follow us on Instagram</a> for match days &amp; events.</p>
+    </div>
+
+    <div class="foot">
+      199 East Erie Avenue · Philadelphia, PA 19140<br>
+      Est. 1893 · <a href="https://footballhome.org">footballhome.org</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // Reads ?ad=<key> off the URL so the resulting lead row knows which
+      // creative sent it here (matches the ad_id column already used for
+      // Meta-native lead-form submissions).
+      const params = new URLSearchParams(location.search);
+      const adKey  = (params.get('ad') || '').slice(0, 60);
+
+      const form = document.getElementById('signup');
+      const btn  = document.getElementById('submit-btn');
+      const err  = document.getElementById('err');
+      const ok   = document.getElementById('success');
+
+      function showError(msg) {
+        err.textContent = msg;
+        err.className = 'msg err';
+      }
+      function clearError() {
+        err.textContent = '';
+        err.className = 'msg err';
+        err.style.display = 'none';
+      }
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearError();
+
+        const name  = form.name.value.trim();
+        const phone = form.phone.value.trim();
+        const email = form.email.value.trim();
+
+        if (!name) { showError('Please enter your name.'); return; }
+        if (!phone && !email) {
+          showError('Please give us a phone number or email so we can reach you.');
+          return;
+        }
+
+        const payload = {
+          name:       name,
+          phone:      phone,
+          email:      email,
+          ad:         adKey,
+          age_group:  form.age_group.value,
+          gender:     form.gender.value,
+          experience: form.experience.value,
+          position:   form.position.value,
+          notes:      form.notes.value.trim(),
+        };
+
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+
+        try {
+          const res = await fetch('/api/leads/guest-signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            showError(data.error || ('Something went wrong (' + res.status + '). Please try again.'));
+            btn.disabled = false;
+            btn.textContent = 'Get me connected';
+            return;
+          }
+
+          // Success: swap form → success card
+          form.style.display = 'none';
+          ok.style.display   = 'block';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (netErr) {
+          console.error(netErr);
+          showError('Network error. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Get me connected';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

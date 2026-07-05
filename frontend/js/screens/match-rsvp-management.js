@@ -138,6 +138,59 @@ class MatchRSVPManagementScreen extends Screen {
         return;
       }
       
+      // "Remind All" button in the pending section header — bulk generates
+      // magic-links for every non-responder, then opens a queue modal so
+      // the coach can tap Send once per player.  Handled BEFORE .remind-btn
+      // so the more-specific bulk class doesn't fall through to the per-
+      // player handler.
+      const remindAllBtn = e.target.closest('.remind-all-btn');
+      if (remindAllBtn) {
+        e.stopPropagation();
+        const matchId = remindAllBtn.getAttribute('data-match-id');
+        this.remindAllPending(matchId, remindAllBtn);
+        return;
+      }
+
+      // "Remind" button on a pending player card — opens native SMS/email
+      // composer prefilled with a per-player magic-link.  Handled BEFORE the
+      // playerCard branch so the outer card click doesn't also open the
+      // RSVP bottom sheet.
+      const remindBtn = e.target.closest('.remind-btn');
+      if (remindBtn) {
+        e.stopPropagation();
+        const matchId    = remindBtn.getAttribute('data-match-id');
+        const playerId   = remindBtn.getAttribute('data-player-id');
+        const playerName = remindBtn.getAttribute('data-player-name');
+        const channel    = remindBtn.getAttribute('data-channel') || 'sms';
+        this.sendReminder(matchId, playerId, playerName, channel, remindBtn);
+        return;
+      }
+
+      // Bulk-remind modal — "Send" per row hands off to the OS composer.
+      const bulkSendBtn = e.target.closest('.bulk-send-btn');
+      if (bulkSendBtn) {
+        e.stopPropagation();
+        const href = bulkSendBtn.getAttribute('data-href');
+        if (href) {
+          bulkSendBtn.classList.add('bulk-sent');
+          bulkSendBtn.textContent = '✓ Sent';
+          bulkSendBtn.style.background = 'rgba(34,139,34,0.85)';
+          bulkSendBtn.style.color = 'white';
+          this._updateBulkProgress();
+          // Slight delay so the visual change registers before the app
+          // context-switches to Messages/Mail.
+          setTimeout(() => { window.location.href = href; }, 60);
+        }
+        return;
+      }
+
+      // Bulk-remind modal — close.
+      if (e.target.id === 'bulk-remind-close' || e.target.id === 'bulk-remind-backdrop') {
+        e.stopPropagation();
+        this.hideBulkRemindModal();
+        return;
+      }
+
       // Player card clicked - show bottom sheet
       const playerCard = e.target.closest('.player-card');
       if (playerCard) {
@@ -478,7 +531,15 @@ class MatchRSVPManagementScreen extends Screen {
         </div>
         ${pending.length > 0 ? `
           <div style="margin-top: var(--space-3); padding: var(--space-3); background: ${LH_NAVY}; border: 2px solid ${LH_YELLOW}; border-radius: 8px;">
-            <div style="font-weight: bold; margin-bottom: var(--space-2); color: ${LH_YELLOW};">⚠️ Pending Responses (${pending.length})</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap;">
+              <div style="font-weight: bold; color: ${LH_YELLOW};">⚠️ Pending Responses (${pending.length})</div>
+              <button class="btn btn-sm btn-warning remind-all-btn"
+                      data-match-id="${matchId}"
+                      style="padding: 6px 12px; font-size: 0.9em;"
+                      title="Send an SMS magic-link reminder to every pending player">
+                📱 Remind All (${pending.length})
+              </button>
+            </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-2);">
               ${pending.map(p => this.renderPlayerCard(p, null, matchId)).join('')}
             </div>
@@ -501,18 +562,38 @@ class MatchRSVPManagementScreen extends Screen {
       ? `<img src="${photoUrl}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid ${LH_NAVY};" alt="${name}">`
       : `<div style="width: 40px; height: 40px; border-radius: 50%; background: ${LH_NAVY}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em;">${initial}</div>`;
 
+    // "Remind" button appears only for pending players (no RSVP yet).
+    // Tapping it POSTs to /api/matches/:id/remind, which returns an
+    // sms_href — the browser then hands off to the coach's native
+    // Messages/Mail app with the magic-link prefilled.
+    const nameEscaped = String(name).replace(/"/g, '&quot;');
+    const remindBtn = (!currentStatus)
+      ? `<button class="btn btn-sm btn-warning remind-btn"
+                 data-match-id="${matchId}"
+                 data-player-id="${player.id}"
+                 data-player-name="${nameEscaped}"
+                 data-channel="sms"
+                 style="margin-right: 8px; padding: 4px 10px; font-size: 0.85em;"
+                 title="Text ${nameEscaped} a magic-link RSVP reminder">
+           📱 Remind
+         </button>`
+      : '';
+
     return `
       <div class="player-card"
            data-match-id="${matchId}"
            data-player-id="${player.id}"
-           data-player-name="${name}"
+           data-player-name="${nameEscaped}"
            style="padding: var(--space-3); border-bottom: 1px solid rgba(15,31,61,0.12); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; color: ${LH_NAVY};">
         <div style="display: flex; align-items: center; gap: var(--space-2);">
           ${avatarHtml}
           <span style="font-weight: 700; color: ${LH_NAVY}; min-width: 28px; font-size: 1.1em;">#${jersey}</span>
           <span style="font-size: 1.05em; color: ${LH_NAVY}; font-weight: 500;">${name}</span>
         </div>
-        <span style="color: ${LH_NAVY}; font-size: 1.2em; opacity: 0.6;">›</span>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          ${remindBtn}
+          <span style="color: ${LH_NAVY}; font-size: 1.2em; opacity: 0.6;">›</span>
+        </div>
       </div>
     `;
   }
@@ -561,7 +642,213 @@ class MatchRSVPManagementScreen extends Screen {
       alert('Failed to update RSVP. Please try again.');
     });
   }
-  
+
+  // ---------- Reminder magic-link (per player, coach-driven) ----------
+  //
+  // Calls POST /api/matches/:id/remind with player_ids: [playerId].  The
+  // backend generates a one-time magic-link and returns a `sms_href` (or
+  // `mailto_href`).  We set window.location.href to it, which on mobile
+  // hands off to the native Messages/Mail app with the number/email and
+  // body prefilled — the coach reviews and hits Send from their own phone.
+  async sendReminder(matchId, playerId, playerName, channel, btnEl) {
+    if (!matchId || !playerId) return;
+    channel = channel === 'email' ? 'email' : 'sms';
+
+    const original = btnEl ? btnEl.innerHTML : '';
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.innerHTML = '⏳';
+    }
+
+    try {
+      const resp = await this.auth.fetch(`/api/matches/${matchId}/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, player_ids: [Number(playerId)] })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+
+      const rec = (data.recipients || [])[0];
+      if (!rec) {
+        if ((data.skipped_rate_limited || 0) > 0) {
+          alert(`A reminder link for ${playerName} was already generated in the last 5 minutes — check your Messages app.`);
+        } else if ((data.skipped_no_contact || 0) > 0) {
+          alert(`${playerName} has no ${channel === 'sms' ? 'SMS-capable phone' : 'email'} on file.`);
+        } else {
+          alert(`${playerName} isn't on the non-responder list for this match (they may have already RSVP'd, or aren't rostered).`);
+        }
+        return;
+      }
+
+      const href = channel === 'sms' ? rec.sms_href : rec.mailto_href;
+      if (href) {
+        // Hand off to the OS.  On mobile this pops the SMS / Mail app;
+        // on desktop it opens the default handler (or prompts to pick).
+        window.location.href = href;
+      } else {
+        alert(`Link generated but no ${channel} handler available. URL: ${rec.url}`);
+      }
+    } catch (err) {
+      console.error('sendReminder failed:', err);
+      alert(`Failed to send reminder: ${err.message}`);
+    } finally {
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = original;
+      }
+    }
+  }
+
+  // ---------- Bulk reminder queue (coach → "Remind All Pending") ----------
+  //
+  // Calls POST /api/matches/:id/remind with NO player_ids filter, so the
+  // backend targets every non-responder on the home team roster.  The
+  // response includes one recipient row per generated link (with an
+  // sms_href we can hand off to the OS Messages app).  We render those
+  // rows in a modal queue and let the coach fire them one at a time.
+  //
+  // Rate-limit note: the backend rate-limits per-person within a 5-minute
+  // window.  So retapping "Remind All" within that window returns only
+  // recipients who weren't already reminded — which is exactly the
+  // behaviour we want.
+  async remindAllPending(matchId, btnEl) {
+    if (!matchId) return;
+
+    // Count pending on client side for the confirmation prompt.
+    const rsvpMap = this.rsvpCache[matchId] || {};
+    const pending = (this.teamPlayers || []).filter(p => {
+      const s = rsvpMap[p.id];
+      return !s;
+    });
+
+    if (pending.length === 0) {
+      alert('No pending players — everyone has already RSVP\'d.');
+      return;
+    }
+
+    if (!confirm(`Generate SMS reminders for all ${pending.length} pending player(s)?\n\n` +
+                 `You'll get a list with one "Send" button per player. Tap each one to open ` +
+                 `Messages with the RSVP link prefilled.`)) {
+      return;
+    }
+
+    const original = btnEl ? btnEl.innerHTML : '';
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.innerHTML = '⏳ Generating…';
+    }
+
+    try {
+      const resp = await this.auth.fetch(`/api/matches/${matchId}/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'sms' })  // no player_ids = all non-responders
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      const recipients = data.recipients || [];
+      if (recipients.length === 0) {
+        const parts = [];
+        if (data.skipped_rate_limited) parts.push(`${data.skipped_rate_limited} already reminded in the last 5 min`);
+        if (data.skipped_no_contact)   parts.push(`${data.skipped_no_contact} with no SMS phone on file`);
+        alert(parts.length
+          ? `No new reminders generated. Skipped: ${parts.join('; ')}.`
+          : 'No non-responders found to remind.');
+        return;
+      }
+
+      this.showBulkRemindModal(recipients, data);
+    } catch (err) {
+      console.error('remindAllPending failed:', err);
+      alert(`Failed to generate reminders: ${err.message}`);
+    } finally {
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = original;
+      }
+    }
+  }
+
+  showBulkRemindModal(recipients, meta) {
+    // Remove any leftover instance first.
+    this.hideBulkRemindModal();
+
+    const LH_NAVY   = '#0f1f3d';
+    const LH_YELLOW = '#f5c842';
+
+    const rowsHtml = recipients.map((r, i) => {
+      const name    = (r.name || 'Unknown').replace(/"/g, '&quot;');
+      const contact = (r.contact || '').replace(/"/g, '&quot;');
+      const href    = (r.sms_href || r.mailto_href || '').replace(/"/g, '&quot;');
+      return `
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(15,31,61,0.12); background: white;">
+          <div style="width: 24px; text-align: right; color: ${LH_NAVY}; opacity: 0.55; font-size: 0.85em;">${i + 1}.</div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: 700; color: ${LH_NAVY};">${name}</div>
+            <div style="font-size: 0.85em; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${contact}</div>
+          </div>
+          <button class="bulk-send-btn"
+                  data-href="${href}"
+                  style="padding: 8px 14px; background: ${LH_YELLOW}; color: ${LH_NAVY}; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.95em; white-space: nowrap;"
+                  title="Open Messages with the reminder prefilled">
+            📱 Send
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    const skippedParts = [];
+    if (meta && meta.skipped_rate_limited) skippedParts.push(`${meta.skipped_rate_limited} skipped (already reminded in last 5 min)`);
+    if (meta && meta.skipped_no_contact)   skippedParts.push(`${meta.skipped_no_contact} skipped (no SMS phone)`);
+    const skippedNote = skippedParts.length
+      ? `<div style="padding: 8px 12px; background: rgba(245,200,66,0.15); color: ${LH_NAVY}; font-size: 0.85em; border-top: 1px solid rgba(15,31,61,0.12);">${skippedParts.join(' · ')}</div>`
+      : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bulk-remind-overlay';
+    overlay.style.cssText = 'position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-end; justify-content: center;';
+    overlay.innerHTML = `
+      <div id="bulk-remind-backdrop" style="position: absolute; inset: 0; background: rgba(0,0,0,0.55);"></div>
+      <div style="position: relative; width: 100%; max-width: 560px; max-height: 90vh; background: white; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 -8px 24px rgba(0,0,0,0.25);">
+        <div style="padding: 14px 16px; background: ${LH_NAVY}; color: ${LH_YELLOW}; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="min-width: 0;">
+            <div style="font-weight: 700; font-size: 1.05em;">📱 Bulk RSVP Reminders</div>
+            <div id="bulk-remind-progress" style="font-size: 0.8em; opacity: 0.9; margin-top: 2px;">0 of ${recipients.length} sent</div>
+          </div>
+          <button id="bulk-remind-close" style="background: transparent; color: ${LH_YELLOW}; border: 1px solid ${LH_YELLOW}; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 700;">Done</button>
+        </div>
+        <div style="padding: 10px 12px; background: rgba(245,200,66,0.12); color: ${LH_NAVY}; font-size: 0.85em; border-bottom: 1px solid rgba(15,31,61,0.12);">
+          Tap <b>📱 Send</b> next to each player to open Messages. Each link is one-tap RSVP and expires in 48 hours.
+        </div>
+        <div style="flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+          ${rowsHtml}
+        </div>
+        ${skippedNote}
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    this._bulkTotal = recipients.length;
+  }
+
+  hideBulkRemindModal() {
+    const overlay = document.getElementById('bulk-remind-overlay');
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    this._bulkTotal = 0;
+  }
+
+  _updateBulkProgress() {
+    const overlay = document.getElementById('bulk-remind-overlay');
+    if (!overlay) return;
+    const sent = overlay.querySelectorAll('.bulk-send-btn.bulk-sent').length;
+    const total = this._bulkTotal || overlay.querySelectorAll('.bulk-send-btn').length;
+    const label = overlay.querySelector('#bulk-remind-progress');
+    if (label) label.textContent = `${sent} of ${total} sent`;
+  }
+
   // ---------- Attendance (practice + pickup) ----------
 
   async toggleAttendance(matchId) {

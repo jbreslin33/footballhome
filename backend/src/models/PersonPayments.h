@@ -84,19 +84,33 @@ public:
     //
     // One row per person on the program, joined with a "what have you
     // done for me lately?" window: only transactions whose paid_at falls
-    // in the current calendar month + previous calendar month.  Older
-    // history is aggregated into lifetime totals but the raw rows are
-    // hidden — the operator only cares about the recent window when
-    // deciding who to charge / pause.
+    // in the current + previous billing cycle (see cycle definition
+    // below).  Older history is aggregated into lifetime totals but the
+    // raw rows are hidden — the operator only cares about the recent
+    // window when deciding who to charge / pause.
+    //
+    // Billing cycle (updated 2026-07-03):
+    //   A "monthly payment" is due by the 1st Friday of the month.  A
+    //   cycle runs from the 15th of the previous month through the 14th
+    //   of the current month.  When today.day ≤ 14 we are still inside
+    //   the cycle ending on this-month-14; when day ≥ 15 the new cycle
+    //   [this-month-15, next-month-15) has begun.
     //
     // Status semantics (computed server-side to keep the UI dumb):
-    //   • "current"        — at least one positive-money payment in the
-    //                        current calendar month
-    //   • "behind"         — payment in the previous calendar month but
-    //                        nothing in the current one
-    //   • "overdue"        — no positive-money payment in the two-month
-    //                        window at all (but has paid at some point)
-    //   • "never"          — no positive-money payment on record ever
+    //   • "current"        — some non-refund payment of $35 or above
+    //                        has a "coverage window" that includes the
+    //                        current cycle.  Coverage window for a
+    //                        payment of $A paid in cycle C runs from C
+    //                        through C + ROUND($A / $35) - 1 (min 1).
+    //                        So a $35 payment covers 1 cycle, a $99
+    //                        seasonal payment covers 3 cycles, a $140
+    //                        pre-pay covers 4 cycles, etc.
+    //   • "behind"         — not current, but a payment's coverage
+    //                        window includes the PREVIOUS cycle
+    //   • "overdue"        — has paid at some point but nothing whose
+    //                        coverage window reaches the previous or
+    //                        current cycle
+    //   • "never"          — no payment on record ever
     //
     // Sort: overdue/never first (oldest last_paid_at at the top), then
     // behind, then current, so the operator's work queue lands at the
@@ -111,6 +125,7 @@ public:
     struct MemberRow {
         int         personId = 0;
         long long   laUserId = 0;
+        long long   laRegistrationId = 0;  // join key back to LA registration record
         std::string firstName;
         std::string lastName;
         std::string dob;                   // ISO date (YYYY-MM-DD) or empty

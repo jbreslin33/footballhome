@@ -285,6 +285,9 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
     router.get (prefix + "/unjoined-members", [this](const Request& r){ return handleUnjoinedMembers (r); });
     router.get (prefix + "/analytics",        [this](const Request& r){ return handleAnalytics       (r); });
+    // Public (no bearer) — landing form at /pickup posts here.  Must be
+    // registered before the `:id` routes so the literal wins.
+    router.post(prefix + "/guest-signup",     [this](const Request& r){ return handleGuestSignup     (r); });
     // `:id` routes go last so the literal suffixes above win.
     router.post(prefix + "/:id/contact",        [this](const Request& r){ return handleLogContact     (r); });
     router.get (prefix + "/:id/contacts",       [this](const Request& r){ return handleListContacts   (r); });
@@ -1257,7 +1260,7 @@ Response LeadsController::handleAnalytics(const Request& request) {
         // Mens (live LA fetch)
         try {
             MensRoster mr;
-            auto res = mr.run(/*includeAll=*/false);
+            auto res = mr.run(/*includeAll=*/false, /*refreshLa=*/true);
             if (res.error.empty() && res.body.contains("buckets")) {
                 for (auto it = res.body["buckets"].begin();
                      it != res.body["buckets"].end(); ++it) {
@@ -1732,4 +1735,168 @@ bool LeadsController::extractContactId(const std::string& path, int& contactId) 
     try { contactId = std::stoi(m[1].str()); }
     catch (const std::exception&) { return false; }
     return true;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/leads/guest-signup  (PUBLIC — no bearer)
+//
+// Landing page at /pickup posts here.  We synthesize a Meta-shaped lead row
+// so the existing admin Leads UI + LeagueApps reconciliation pipeline treat
+// it identically to a real Meta submission:
+//
+//   leadgen_id = "guest-<epoch_ms>-<8-hex>"  (unique, satisfies UNIQUE NOT NULL)
+//   form_id    = "pickup-funnel"
+//   ad_id      = <ad key from body, e.g. "u23-mens" — or NULL>
+//   raw_fields = JSON array shaped like Meta's field_data so serializeLead()
+//                and the Leads screen render the extra fields with zero
+//                changes required in the UI layer.
+//
+// Rate-limit / spam guard: if the same normalised phone OR email posted in
+// the last 5 min, we short-circuit with the existing lead id (idempotent
+// double-submit protection).  No IP-based limits — sits behind nginx and
+// is low-volume; can be tightened later if spam becomes a problem.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleGuestSignup(const Request& request) {
+    // 1) Parse body
+    json body;
+    try {
+        body = json::parse(request.getBody());
+        if (!body.is_object()) throw std::runtime_error("not an object");
+    } catch (const std::exception& e) {
+        return errJson(HttpStatus::BAD_REQUEST, "invalid JSON body");
+    }
+
+    auto readStr = [&](const std::string& k) -> std::string {
+        if (!body.contains(k) || !body[k].is_string()) return {};
+        return trimStr(body[k].get<std::string>());
+    };
+
+    const std::string name        = readStr("name");
+    const std::string phoneRaw    = readStr("phone");
+    const std::string email       = readStr("email");
+    const std::string ad          = readStr("ad");
+    const std::string ageGroup    = readStr("age_group");
+    const std::string gender      = readStr("gender");
+    const std::string experience  = readStr("experience");
+    const std::string position    = readStr("position");
+    const std::string notes       = readStr("notes");
+
+    // Basic validation: name is required; at least one contact method
+    // is required so the coach can actually follow up.
+    if (name.empty()) {
+        return errJson(HttpStatus::BAD_REQUEST, "name is required");
+    }
+    if (phoneRaw.empty() && email.empty()) {
+        return errJson(HttpStatus::BAD_REQUEST, "phone or email is required");
+    }
+
+    // Reject obviously bogus payloads — the frontend enforces reasonable
+    // lengths but we double-check server-side to blunt scripted spam.
+    if (name.size() > 200 || phoneRaw.size() > 40 || email.size() > 200 ||
+        ad.size() > 60    || ageGroup.size() > 40 || gender.size() > 20 ||
+        experience.size() > 40 || position.size() > 60 || notes.size() > 2000) {
+        return errJson(HttpStatus::BAD_REQUEST, "field too long");
+    }
+
+    // Normalise phone: strip non-digits for the duplicate check but keep
+    // the coach-friendly formatted version in the DB.
+    std::string phoneDigits;
+    for (char c : phoneRaw) if (c >= '0' && c <= '9') phoneDigits.push_back(c);
+
+    try {
+        auto db = Database::getInstance();
+
+        // 2) Idempotent double-submit guard.  We look for a row created in
+        //    the last 5 minutes matching either the phone (by digits) or
+        //    email (case-insensitive), from the pickup funnel.  If found,
+        //    return that id so the client shows the success screen either
+        //    way — no leaked info about whether the row is new.
+        if (!phoneDigits.empty() || !email.empty()) {
+            const std::string phoneParam = phoneDigits.empty() ? std::string{} : phoneDigits;
+            const std::string emailParam = email;
+            auto dup = db->query(
+                "SELECT id FROM leads "
+                " WHERE form_id = 'pickup-funnel' "
+                "   AND created_at > NOW() - INTERVAL '5 minutes' "
+                "   AND ("
+                "        ($1 <> '' AND regexp_replace(COALESCE(phone,''), '[^0-9]', '', 'g') = $1) "
+                "     OR ($2 <> '' AND LOWER(COALESCE(email,'')) = LOWER($2)) "
+                "       ) "
+                " ORDER BY id DESC LIMIT 1",
+                {phoneParam, emailParam});
+            if (!dup.empty()) {
+                const int existingId = dup[0][0].as<int>();
+                std::ostringstream b;
+                b << "{\"ok\":true,\"id\":" << existingId
+                  << ",\"duplicate\":true"
+                  << ",\"message\":\"Already received — we'll be in touch.\"}";
+                return errOk(HttpStatus::OK, b.str());
+            }
+        }
+
+        // 3) Build the synthetic leadgen_id.  Uniqueness is enforced by the
+        //    UNIQUE constraint; collisions here would be a near-impossible
+        //    accident (millisecond timestamp + 32-bit random hex).
+        const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::system_clock::now().time_since_epoch()).count();
+        char randHex[9]; randHex[8] = '\0';
+        std::srand(static_cast<unsigned>(nowMs) ^ static_cast<unsigned>(std::rand()));
+        for (int i = 0; i < 8; ++i) {
+            const int nib = std::rand() & 0xF;
+            randHex[i] = static_cast<char>(nib < 10 ? ('0' + nib) : ('a' + nib - 10));
+        }
+        const std::string leadgenId = "guest-" + std::to_string(nowMs) + "-" + randHex;
+
+        // 4) Build raw_fields as a Meta-shaped array so the admin UI's
+        //    generic field renderer picks up ad/age/gender/experience/
+        //    position/notes without any UI changes.  Each entry is
+        //    {name, values:[value]}.
+        json rawFields = json::array();
+        auto pushField = [&](const char* n, const std::string& v) {
+            if (v.empty()) return;
+            rawFields.push_back({{"name", n}, {"values", json::array({v})}});
+        };
+        pushField("full_name",      name);
+        pushField("phone_number",   phoneRaw);
+        pushField("email",          email);
+        pushField("ad",             ad);
+        pushField("age_group",      ageGroup);
+        pushField("gender",         gender);
+        pushField("experience",     experience);
+        pushField("position",       position);
+        pushField("notes",          notes);
+        const std::string rawFieldsJson = rawFields.dump();
+
+        // 5) Insert.  Same NULLIF pattern as Lead::upsertFromMeta so
+        //    empty-strings become SQL NULL and the row is compatible with
+        //    the listAll() SELECT.
+        db->query(
+            "INSERT INTO leads (leadgen_id, form_id, page_id, ad_id, "
+            "                   name, email, phone, raw_fields, "
+            "                   preferred_channel, created_at) "
+            "VALUES ($1, 'pickup-funnel', NULL, NULLIF($2, ''), "
+            "        NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), "
+            "        $6::jsonb, NULL, NOW())",
+            {leadgenId, ad, name, email, phoneRaw, rawFieldsJson});
+
+        auto idRow = db->query(
+            "SELECT id FROM leads WHERE leadgen_id = $1",
+            {leadgenId});
+        const int newId = idRow.empty() ? 0 : idRow[0][0].as<int>();
+
+        std::cerr << "[leads] guest signup id=" << newId
+                  << " ad=" << (ad.empty() ? "(none)" : ad)
+                  << " name=" << name
+                  << " phone=" << (phoneRaw.empty() ? "-" : phoneRaw)
+                  << " email=" << (email.empty()    ? "-" : email)
+                  << std::endl;
+
+        std::ostringstream b;
+        b << "{\"ok\":true,\"id\":" << newId
+          << ",\"message\":\"Got it — Coach James will reach out shortly.\"}";
+        return errOk(HttpStatus::OK, b.str());
+    } catch (const std::exception& e) {
+        std::cerr << "[leads] guest signup failed: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "signup failed");
+    }
 }

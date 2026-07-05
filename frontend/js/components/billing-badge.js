@@ -179,8 +179,13 @@ window.BillingBadge = (() => {
 
     let body;
     if (list.length === 0) {
-      body = `<div style="padding:4px 0; font-weight:700; opacity:0.9;">No recent payments</div>`;
+      body = `<div style="padding:2px 0; font-weight:700; opacity:0.9;">No recent payments</div>`;
     } else {
+      // Column separators (thin vertical rules) instead of stretching the
+      // 3 cells across the whole card — user directive 2026-07-04 pm:
+      // "only 3 cols so it does not need to use full width of card just
+      // have it segmented with lines".
+      const divCol = `border-left:1px solid ${border};`;
       const rows = list.slice(0, 3).map((lp) => {
         const paidAt = parseIsoUtc(lp && lp.paidAt);
         if (!paidAt) return '';
@@ -190,27 +195,168 @@ window.BillingBadge = (() => {
         const tip  = lp.txnType ? `${lp.txnType}: ${amt} on ${date}` : `${amt} on ${date}`;
         return `
           <tr title="${escapeAttr(tip)}">
-            <td style="padding:2px 8px 2px 0; text-align:left; font-weight:800;">${amt}</td>
-            <td style="padding:2px 8px; text-align:left;">${date}</td>
-            <td style="padding:2px 0 2px 8px; text-align:right; color:${dim};">${ago}</td>
+            <td style="padding:1px 6px 1px 0; font-weight:800; white-space:nowrap;">${amt}</td>
+            <td style="padding:1px 6px; ${divCol} white-space:nowrap;">${date}</td>
+            <td style="padding:1px 0 1px 6px; ${divCol} color:${dim}; white-space:nowrap;">${ago}</td>
           </tr>`;
       }).join('');
+      // width:auto so the table hugs its content instead of spreading
+      // across the card.  font-size drops a hair to keep the block tight.
       body = `
-        <table style="border-collapse:collapse; font-variant-numeric:tabular-nums; width:100%;">
+        <table style="border-collapse:collapse; font-variant-numeric:tabular-nums; width:auto; font-size:0.7rem;">
           <tbody>${rows}</tbody>
         </table>`;
     }
 
     return `
       <div class="bb-last-paid-box"
-           style="flex-basis:100%; width:100%; display:block; box-sizing:border-box;
-                  margin-top:4px; padding:5px 8px;
-                  border:1px solid ${border}; border-radius:4px;
+           style="display:inline-flex; align-items:center; gap:5px; box-sizing:border-box;
+                  padding:0 5px;
+                  border:1px solid ${border}; border-radius:3px;
                   background:${bg}; color:${fg};
-                  font-size:0.75rem; line-height:1.3; letter-spacing:0.02em;">
-        <div style="font-size:0.6rem; font-weight:800; opacity:0.75;
-                    letter-spacing:0.1em; margin-bottom:2px;">RECENT PAYMENTS</div>
+                  font-size:0.66rem; line-height:1.35; letter-spacing:0.02em;
+                  vertical-align:middle;">
+        <span style="font-size:0.55rem; font-weight:800; opacity:0.75;
+                     letter-spacing:0.08em; white-space:nowrap;">RECENT PAY</span>
         ${body}
+      </div>
+    `;
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
+  // ── 3-month calendar bucket table ─────────────────────────────────────
+  // User directive 2026-07-05: "show me always what they paid over the
+  // last 3 months broken into months in a table."
+  //
+  // Data source: p.paymentsWindow — array of {amount, paidAt (ISO UTC),
+  // programId}, already narrowed to a 3-month rolling window by the
+  // server (see MensRoster.cpp).  We re-bucket client-side by
+  // America/NY calendar month so the columns match what a coach sees on
+  // a real-world calendar.
+  //
+  // Column layout (today = July 5 example):
+  //     [ May ] [ Jun ] [ Jul ]
+  //     [ $35 ] [ $35 ] [ $0  ]
+  //
+  // On Aug 1 the columns flip to [Jun][Jul][Aug].  User called out that
+  // Aug 1-6 is a "grace zone" — Aug column will show $0 because the 1st
+  // Friday of Aug (=Aug 7) hasn't billed yet.  We tint that grace-zone
+  // cell gray instead of red so it doesn't scream "past due".
+  //
+  // Cell colouring:
+  //     sum >= $35                     → green      (paid)
+  //     0  <  sum <  $35               → amber      (partial)
+  //     sum == 0  AND 1st-Friday past  → red        (missed)
+  //     sum == 0  AND 1st-Friday future→ gray/grace (not yet due)
+
+  const NY_TZ = 'America/New_York';
+
+  // Return YYYY-MM-DD for `d` in America/NY (using Intl to avoid manual
+  // DST math).  For today's local NY midnight we compare with payment
+  // dates converted the same way.
+  const nyIsoDate = (d) => {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: NY_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    // en-CA formats as "YYYY-MM-DD".
+    return fmt.format(d);
+  };
+
+  // Extract (year, monthIdx0) in America/NY from a Date.
+  const nyYearMonth = (d) => {
+    const iso = nyIsoDate(d);
+    const y = parseInt(iso.slice(0, 4),  10);
+    const m = parseInt(iso.slice(5, 7),  10) - 1;
+    return { y, m };
+  };
+
+  // Short month label ("May", "Jun", …).
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthLabel = (y, m) => MONTH_LABELS[m];
+
+  // First Friday of (year, monthIdx0) as a UTC Date at 00:00Z.
+  // Reuses the same helper as monthlyWindow() above.
+
+  // "Has the 1st Friday of (y,m) already happened, judged in America/NY?"
+  const firstFridayHasPassed = (y, m, nowDate) => {
+    const ff = firstFridayOf(y, m);
+    // Compare in America/NY: convert both to NY iso date strings.
+    const ffIso    = nyIsoDate(ff);
+    const todayIso = nyIsoDate(nowDate);
+    return todayIso >= ffIso;
+  };
+
+  function render3MonthTable(p) {
+    if (!p) return '';
+    const now = new Date();
+
+    // Build the three (y, m) buckets: current month, prev, prev-prev.
+    // We iterate oldest → newest so the visual matches a timeline.
+    const cur = nyYearMonth(now);
+    const buckets = [];
+    for (let back = 2; back >= 0; back--) {
+      const total = cur.m - back;
+      const y = cur.y + Math.floor(total / 12);
+      const m = ((total % 12) + 12) % 12;
+      buckets.push({ y, m, sum: 0, count: 0 });
+    }
+
+    // Sum up payments per (y, m).
+    const list = Array.isArray(p.paymentsWindow) ? p.paymentsWindow : [];
+    for (const lp of list) {
+      const iso = lp && lp.paidAt;
+      if (!iso || typeof iso !== 'string') continue;
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) continue;
+      const { y, m } = nyYearMonth(d);
+      const b = buckets.find((x) => x.y === y && x.m === m);
+      if (!b) continue;
+      const amt = Number(lp.amount);
+      if (isFinite(amt)) { b.sum += amt; b.count++; }
+    }
+
+    // Column styling per state (user directive 2026-07-05):
+    //   sum == 0        → red
+    //   0 < sum < $35   → yellow
+    //   sum >= $35      → green
+    // (Grace-zone gray removed — user prefers the visual scream even in
+    //  the first few days of a month before the 1st Friday.)
+    const cellFor = (b) => {
+      const paid    = b.sum >= EXPECTED_MONTHLY_AMOUNT - 0.01;
+      const partial = b.sum > 0 && !paid;
+      if (paid)    return { bg:'#052e1a', fg:'#bbf7d0', border:'#166534', tag:'paid' };
+      if (partial) return { bg:'#3a2f0f', fg:'#fde68a', border:'#a16207', tag:'partial' };
+      return         { bg:'#3a1f1f', fg:'#fecaca', border:'#b91c1c', tag:'zero' };
+    };
+
+    const fmtSum = (n) => {
+      if (n <= 0)             return '$0';
+      if (Number.isInteger(n)) return `$${n}`;
+      return `$${n.toFixed(2)}`;
+    };
+
+    const cells = buckets.map((b) => {
+      const c = cellFor(b);
+      const label = monthLabel(b.y, b.m);
+      const sum   = fmtSum(b.sum);
+      const tip   = `${label} ${b.y}: ${sum} (${b.count} payment${b.count === 1 ? '' : 's'}) — ${c.tag}`;
+      return `
+        <div title="${escapeAttr(tip)}"
+             style="flex:1 1 0; min-width:42px; padding:3px 7px; text-align:center;
+                    background:${c.bg}; color:${c.fg};
+                    border:1px solid ${c.border}; border-radius:3px;
+                    font-variant-numeric:tabular-nums;">
+          <div style="font-size:0.62rem; font-weight:800; letter-spacing:0.08em; opacity:0.85;">${label}</div>
+          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${sum}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="bb-3mo-box"
+           style="display:inline-flex; align-items:stretch; gap:3px; box-sizing:border-box;
+                  padding:2px; border-radius:4px; vertical-align:middle;">
+        ${cells}
       </div>
     `;
   }
@@ -220,14 +366,84 @@ window.BillingBadge = (() => {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+  // ── Current balance pill ──────────────────────────────────────────────
+  // Data source: p.outstandingBalance — the raw LA registration balance
+  // (see MensRoster.cpp line 233).  User directive 2026-07-05 pm:
+  // "we dont need recent pay now because the 3 latest month cells show
+  // that. what we do need is a current balance right?"
+  //
+  // BAL cell — visually matches the 3-month cells (small label on top,
+  // big value below) so all financial info lives in one strip.
+  //
+  // Colour rule (user directive 2026-07-05 pm — "make it all one pill
+  // for bal due and bal, use bal for both"):
+  //   balance <  0                      → blue   (credit on file)
+  //   balance == 0 AND days == 0        → green  (paid up)
+  //   balance >  0 OR  days  >= 1       → red    (owes / late)
+  //   balance == null AND paymentStatus is unknown → hidden
+  //
+  // When there's any overdue day count (p.daysOverdue >= 1) OR an
+  // unpaid balance, an extra tiny "Nd LATE" (or "UNPAID") line renders
+  // inside the same pill so the coach sees late-status in the same
+  // spot as the balance number.
+  function renderBalance(p) {
+    if (!p) return '';
+    const rawBal = (p.outstandingBalance == null) ? null : Number(p.outstandingBalance);
+    if (rawBal == null || !isFinite(rawBal)) return '';
+    const zero   = Math.abs(rawBal) < 0.005;
+    const credit = !zero && rawBal < 0;
+    const days   = Math.max(0, parseInt(p.daysOverdue, 10) || 0);
+    const paidStatus = p.paymentStatus === 'PAID' || p.paymentStatus === 'WAIVED';
+    const owes   = (!zero && rawBal > 0 && !paidStatus) || days >= 1;
+
+    let bg='#052e1a', fg='#bbf7d0', border='#166534';   // green / paid-up
+    if (owes)        { bg='#3a1f1f'; fg='#fecaca'; border='#b91c1c'; }
+    else if (credit) { bg='#0f223a'; fg='#bfdbfe'; border='#1d4ed8'; }
+
+    const amt   = Math.abs(rawBal);
+    const shown = zero ? '$0'
+                       : (Number.isInteger(amt) ? `$${amt}` : `$${amt.toFixed(2)}`);
+
+    // Third line — only rendered when there's something to say beyond
+    // the amount itself (overdue days, or unpaid balance without a day
+    // count).  Keeps the cell short when everything is fine.
+    let lateLine = '';
+    if (days >= 1) {
+      lateLine = `<div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; line-height:1.1; opacity:0.9;">${days}d LATE</div>`;
+    } else if (owes) {
+      // balance > 0 but our calendar says days = 0 (e.g. mark-billed
+      // advanced next_bill_date before the LA charge cleared).
+      lateLine = `<div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; line-height:1.1; opacity:0.9;">UNPAID</div>`;
+    }
+
+    const tipParts = [];
+    if (zero)        tipParts.push('Current LA balance: $0 (paid up)');
+    else if (credit) tipParts.push(`Current LA balance: ${shown} credit on file`);
+    else             tipParts.push(`Current LA balance: ${shown} owed`);
+    if (days >= 1)   tipParts.push(`${days} day${days === 1 ? '' : 's'} past due`);
+    if (p.nextBillDate) tipParts.push(`next bill ${p.nextBillDate}`);
+    const tip = tipParts.join(' · ');
+
+    return `
+      <div class="bb-balance-box" title="${escapeAttr(tip)}"
+           style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+                  min-width:42px; padding:3px 7px; box-sizing:border-box;
+                  border:1px solid ${border}; background:${bg}; color:${fg};
+                  border-radius:3px; font-variant-numeric:tabular-nums; vertical-align:middle;">
+        <div style="font-size:0.62rem; font-weight:800; letter-spacing:0.08em; opacity:0.85;">BAL</div>
+        <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${shown}</div>
+        ${lateLine}
+      </div>
+    `;
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
   function render(p) {
     if (!p || !p.leagueAppsUserId) return '';
-    // Single financial section on the card — the "Recent payments" box.
-    // The old next-bill pill + mark-billed button were removed
-    // 2026-07-02 (user: "just one financial section").  wire() below
-    // still binds handlers for `.bb-badge` / `.bb-mark-billed` in case
-    // they're re-introduced later, but nothing renders them today.
-    return renderLastPaid(p);
+    // Two compact visuals: 3-month calendar buckets + current LA balance.
+    // (Old RECENT PAY pill dropped 2026-07-05: the 3-month cells now
+    //  carry the same info in a more compact form.)
+    return render3MonthTable(p) + renderBalance(p);
   }
 
   // Bind delegated click handler.  authFetch is the screen's auth.fetch
@@ -323,4 +539,4 @@ window.BillingBadge = (() => {
     }
   }
 
-  return { render, wire, renderLastPaid };})();
+  return { render, wire, renderLastPaid, render3MonthTable, renderBalance };})();

@@ -657,6 +657,11 @@ class LeadsScreen extends Screen {
       // utm_content=*-u11u12-travel to distinguish in funnel reports.
       '966641426206505':  'Boys Club (U11/U12)',
       '1666471931283440': 'Girls Club (U11/U12)',
+      // Trial-pathway lead forms created 2026-07-04 via create-ad.js.
+      // Both ads point at the SAME Men's Club LeagueApps URL and are
+      // differentiated only by utm_content=apsl-trials / liga1-trials.
+      '1452427476902521': 'APSL Trials',
+      '829329860110560':  'LIGA 1 Trials',
     };
     return map[formId] || null;
   }
@@ -692,6 +697,11 @@ class LeadsScreen extends Screen {
     const byForm = this.formLabel(ad.form_id);
     if (byForm) return byForm;
     if (!url) return null;
+    // Trial-pathway ads share the mens-club LeagueApps URL; utm_content
+    // is the only reliable pre-form_id differentiator so it MUST be
+    // matched before the generic `mens-club` fallback below.
+    if (/utm_content=apsl-trials/.test(url))  return 'APSL Trials';
+    if (/utm_content=liga1-trials/.test(url)) return 'LIGA 1 Trials';
     if (/\bmens-club\b/.test(url))   return "Men's Club";
     if (/\bwomens-club\b/.test(url)) return "Women's Club";
     if (/\bboys-club\b/.test(url))   return 'Boys Club (Grades 1–6)';

@@ -26,6 +26,10 @@ private:
     Response handleCoachTeams(const Request& request);
     Response handlePlayerTeams(const Request& request);
     Response handleAdminContexts(const Request& request);
+
+    // Password reset flow.  Public — no bearer required.
+    Response handleForgotPassword(const Request& request);
+    Response handleResetPassword(const Request& request);
     
     // Utility methods
     // Bring the base Controller::createJSONResponse(bool, str, str) into

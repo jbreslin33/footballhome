@@ -70,19 +70,33 @@ class Auth {
     localStorage.removeItem('user');
   }
   
-  // Fetch wrapper that adds auth header
+  // Fetch wrapper that adds auth header + globally recovers from 401.
+  //
+  // Any 401 response to a non-login call is treated as "your session is
+  // dead" (JWT expired, JWT_SECRET rotated, backend restarted with an
+  // ephemeral secret, etc.).  We clear localStorage and route to login
+  // via the hash router so the user re-authenticates cleanly instead
+  // of seeing a raw "Unauthorized" that persists across page reloads.
   fetch(path, options = {}) {
     const headers = {
       ...options.headers
     };
-    
+
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
-    
+
     return fetch(this.apiBase + path, {
       ...options,
       headers
+    }).then((res) => {
+      if (res.status === 401 && !path.startsWith('/api/auth/login')) {
+        this.logout();
+        if (typeof window !== 'undefined' && !location.hash.startsWith('#login')) {
+          location.hash = 'login';
+        }
+      }
+      return res;
     });
   }
 }

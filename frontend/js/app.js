@@ -58,6 +58,9 @@ class App {
       leads: new LeadsScreen(this.navigation, this.auth),
       leadsAnalytics: new LeadsAnalyticsScreen(this.navigation, this.auth),
       pausedMembers: new PausedMembersScreen(this.navigation, this.auth),
+      mensGameEligibility: new MensGameEligibilityScreen(this.navigation, this.auth),
+      mensRoster: new MensRosterScreen(this.navigation, this.auth),
+      mensDelinquent: new MensDelinquentScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
@@ -67,7 +70,9 @@ class App {
       adPreview: new AdPreviewScreen(this.navigation, this.auth),
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
-      publicSchedule: new PublicScheduleScreen(this.navigation, this.auth)
+      publicSchedule: new PublicScheduleScreen(this.navigation, this.auth),
+      my: new MyScreen(this.navigation, this.auth),
+      adminSeriesEditor: new AdminSeriesEditorScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     window.adminSystemScreen = this.screens.adminSystem;
@@ -122,6 +127,9 @@ class App {
     this.screenManager.register('leads', this.screens.leads);
     this.screenManager.register('leads-analytics', this.screens.leadsAnalytics);
     this.screenManager.register('paused-members', this.screens.pausedMembers);
+    this.screenManager.register('mens-game-eligibility', this.screens.mensGameEligibility);
+    this.screenManager.register('mens-roster', this.screens.mensRoster);
+    this.screenManager.register('mens-delinquent', this.screens.mensDelinquent);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     this.screenManager.register('payments', this.screens.payments);
     this.screenManager.register('messages', this.screens.messages);
@@ -143,6 +151,8 @@ class App {
     this.screenManager.register('public-gameday', this.screens.publicGameday);
     this.screenManager.register('public-lineup', this.screens.publicLineup);
     this.screenManager.register('public-schedule', this.screens.publicSchedule);
+    this.screenManager.register('my', this.screens.my);
+    this.screenManager.register('admin-series-editor', this.screens.adminSeriesEditor);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

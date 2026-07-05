@@ -2,6 +2,54 @@
 
 Running list of known issues and follow-ups. Newest items at the top.
 
+## Google Workspace signup (blocks real password-reset email delivery)
+
+Code for the password-reset flow is fully deployed as of 2026-07-05:
+`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`,
+`fh::mail::send()` SMTP helper (libcurl), `/reset-password.html`
+landing page, two-button login redesign, per-IP + per-user rate
+limits, `password_reset_tokens` table (migration 091).  End-to-end
+tested via log-scraping — the token INSERT + reset + login round-trip
+works.  Only blocker left is a real SMTP sender.
+
+Decision: Google Workspace Business Starter ($6/mo) on
+`footballhome.org`, so automated mail sends from
+`notifications@footballhome.org` instead of a personal Gmail address.
+See `/memories/session/google-workspace-setup.md` for the extended
+notes.  Fallback if Workspace is delayed: personal Gmail +
+16-char App Password — same env-var shape, zero code change.
+
+Checklist (user to complete in main chat):
+
+- [ ] Sign up at https://workspace.google.com/business/signup — Business
+  Starter, domain `footballhome.org`, primary user `jbreslin`.  Use
+  `jbreslin33@gmail.com` only when the form asks for a "current email"
+  (receipts + recovery); the new account is separate from personal Gmail.
+- [ ] Verify domain: paste the `TXT` record Google gives you into the DNS
+  registrar for `footballhome.org`.  Wait 5–30 min.
+- [ ] Add the 5 MX records Google gives you at the same registrar.
+- [ ] Turn on 2FA on the new `jbreslin@footballhome.org` account
+  (myaccount.google.com/security).
+- [ ] Add the 6 free aliases via admin.google.com → Users → jbreslin →
+  Add alternate email addresses:
+    `admin@`, `notifications@`, `noreply@`, `support@`, `coach@`,
+    `signups@`.
+- [ ] Generate an App Password at myaccount.google.com/apppasswords
+  (label "footballhome-app-smtp") and copy the 16-character password.
+- [ ] Add the following to `env` (or send the App Password back to this
+  chat and I'll do it):
+    ```
+    SMTP_HOST=smtp.gmail.com
+    SMTP_PORT=587
+    SMTP_USER=jbreslin@footballhome.org
+    SMTP_PASS=<16-char App Password>
+    MAIL_FROM=notifications@footballhome.org
+    MAIL_FROM_NAME=Football Home
+    ```
+- [ ] Restart backend: `podman-compose up -d backend`.
+- [ ] Trigger a real forgot-password from the login page and confirm the
+  reset email arrives at a non-Google mailbox (Yahoo/iCloud test).
+
 ## Instagram token auto-refresh cron (preventative)
 
 Resolved 2026-06-30: regenerated `IGAAl…` long-lived token via

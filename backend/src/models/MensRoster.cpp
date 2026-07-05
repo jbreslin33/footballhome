@@ -8,19 +8,53 @@
 #include <ctime>
 #include <iostream>
 #include <limits>
+#include <pqxx/pqxx>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonBilling.h"
 #include "PersonPayments.h"
+#include "../database/Database.h"
 #include "../services/LeagueAppsService.h"
 
 using nlohmann::json;
 
 namespace {
+
+// Days between two calendar dates (today - billDate).  Positive = billDate
+// is in the past (overdue).  Zero when equal.  Returns 0 on parse failure
+// so a bad date never trips purgatory unfairly.
+int daysBetweenTodayAnd(const std::string& iso) {
+    if (iso.size() < 10) return 0;
+    std::tm tm_bill{};
+    if (sscanf(iso.c_str(), "%4d-%2d-%2d",
+               &tm_bill.tm_year, &tm_bill.tm_mon, &tm_bill.tm_mday) != 3) return 0;
+    tm_bill.tm_year -= 1900;
+    tm_bill.tm_mon  -= 1;
+    tm_bill.tm_hour  = 12;   // noon to avoid DST edge on the diff
+    const std::time_t billT = timegm(&tm_bill);
+    if (billT == (std::time_t)-1) return 0;
+
+    const std::time_t nowT = std::time(nullptr);
+    std::tm tm_now{};
+    if (gmtime_r(&nowT, &tm_now) == nullptr) return 0;
+    tm_now.tm_hour = 12; tm_now.tm_min = 0; tm_now.tm_sec = 0;
+    const std::time_t todayT = timegm(&tm_now);
+
+    const long long diffSec = static_cast<long long>(todayT) - static_cast<long long>(billT);
+    return static_cast<int>(diffSec / 86400);
+}
+
+int envIntFn(const char* name, int fallback) {
+    const char* raw = std::getenv(name);
+    if (!raw || !*raw) return fallback;
+    try { return std::stoi(raw); }
+    catch (const std::exception&) { return fallback; }
+}
 
 std::string trim(const std::string& s) {
     size_t a = 0;
@@ -205,7 +239,7 @@ json MensRoster::shapeMensPlayer(const json& rec) {
     return out;
 }
 
-MensRoster::Result MensRoster::run(bool includeAll) {
+MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     Result out;
 
     auto cols          = columns_->loadAll();
@@ -218,19 +252,111 @@ MensRoster::Result MensRoster::run(bool includeAll) {
         return out;
     }
 
-    auto recs = LeagueAppsService::getInstance().fetchProgramRegistrations(mensProgramId_);
-
-    // Sync new LA transactions into person_payments so lastPaid on each
-    // card reflects reality every time the roster loads (user directive
-    // 2026-07-02).  Sync failure is non-fatal — we fall back to whatever
-    // we already have persisted.
-    try {
-        payments_->syncFromLa();
-    } catch (const std::exception& e) {
-        std::cerr << "[MensRoster] payment sync failed: " << e.what() << std::endl;
+    // ── LA registrant snapshot (cached) ──────────────────────────────
+    //
+    // Historically every GET /api/mens-roster hit LeagueApps twice
+    // (fetchProgramRegistrations + syncFromLa).  A transient LA 5xx
+    // would break the whole page — including the redraw after a
+    // move-player action, which does NOT need fresh LA data.  So we
+    // now keep an in-memory snapshot on the singleton model and only
+    // refetch when the caller explicitly asks for it (initial screen
+    // load or the "Refresh" button in the UI).
+    std::vector<nlohmann::json> recs;
+    {
+        std::lock_guard<std::mutex> lk(cacheMutex_);
+        const bool needFetch = refreshLa || !cacheValid_;
+        if (needFetch) {
+            try {
+                cachedRecs_ = LeagueAppsService::getInstance()
+                                  .fetchProgramRegistrations(mensProgramId_);
+                cacheValid_ = true;
+                // Payment sync piggy-backs on refresh so the cards reflect
+                // the freshest transactions when the operator clicks
+                // Refresh.  Sync failure is non-fatal.
+                try {
+                    payments_->syncFromLa();
+                } catch (const std::exception& e) {
+                    std::cerr << "[MensRoster] payment sync failed: "
+                              << e.what() << std::endl;
+                }
+            } catch (const std::exception& e) {
+                if (cacheValid_) {
+                    // Warm cache — degrade gracefully, log and reuse.
+                    std::cerr << "[MensRoster] LA refresh failed, serving "
+                                 "cached snapshot: " << e.what() << std::endl;
+                } else {
+                    // No cache yet — propagate to the controller which
+                    // will surface a 502 to the browser.
+                    throw;
+                }
+            }
+        }
+        recs = cachedRecs_;
     }
     auto lastPaidByReg = payments_->loadLastPositiveByProgramByRegistration(mensProgramId_);
     auto recentByReg   = payments_->loadRecentByProgramByRegistration(mensProgramId_, 3);
+
+    // ── Cross-program payment view (2026-07-04 pm) ───────────────────
+    //
+    // Business rule (per user directive on Andy Hizdri): a player who
+    // paid a lump sum into a *related* soccer program is current for as
+    // many months as that lump paid for.  Andy's $99 (2026-05-29) to
+    // la_program_id=5005948 (the legacy "Lighthouse 1893 Soccer Club
+    // Membership" umbrella) covers ~3 months at the $35 monthly rate,
+    // so he's paid through late-August 2026.  Ali's $35 into 5039300
+    // (2026-07-04) covers ~1 month.  Programs considered: the current
+    // mens program + the legacy membership umbrella (env-overridable via
+    // LEAGUEAPPS_MENS_PAYMENT_PROGRAM_IDS, comma-separated).
+    struct CrossPay {
+        double      amount = 0.0;
+        std::string paidAt;   // ISO8601 UTC
+        long long   programId = 0;
+    };
+    std::unordered_map<long long, CrossPay> lastPayByUser;      // for coverage check
+    std::unordered_map<long long, std::vector<CrossPay>> allPayByUser;  // for card display
+    {
+        std::vector<std::string> programIds;
+        if (const char* raw = std::getenv("LEAGUEAPPS_MENS_PAYMENT_PROGRAM_IDS"); raw && *raw) {
+            std::stringstream ss(raw);
+            std::string tok;
+            while (std::getline(ss, tok, ',')) if (!tok.empty()) programIds.push_back(tok);
+        }
+        if (programIds.empty()) {
+            programIds.push_back(std::to_string(mensProgramId_));
+            programIds.push_back("5005948");  // legacy "Lighthouse 1893 Soccer Club Membership"
+        }
+        std::string inList;
+        for (size_t i = 0; i < programIds.size(); ++i) {
+            if (i) inList += ",";
+            inList += "$" + std::to_string(i + 1);
+        }
+        try {
+            auto* db = Database::getInstance();
+            pqxx::result rows = db->query(
+                "SELECT la_user_id, amount, la_program_id, "
+                "       TO_CHAR(paid_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS paid_iso "
+                "  FROM person_payments "
+                " WHERE la_program_id IN (" + inList + ") "
+                "   AND txn_type IN ('Charge','Bank','Offline Payment') "
+                "   AND amount > 0 "
+                " ORDER BY la_user_id, paid_at DESC",
+                programIds
+            );
+            for (const auto& r : rows) {
+                if (r["la_user_id"].is_null()) continue;
+                CrossPay cp;
+                cp.amount    = r["amount"].is_null() ? 0.0 : r["amount"].as<double>();
+                cp.paidAt    = r["paid_iso"].is_null() ? std::string{} : r["paid_iso"].c_str();
+                cp.programId = r["la_program_id"].is_null() ? 0 : r["la_program_id"].as<long long>();
+                const long long uid = r["la_user_id"].as<long long>();
+                allPayByUser[uid].push_back(cp);
+                // Row order is paid_at DESC per user → first hit wins.
+                lastPayByUser.emplace(uid, std::move(cp));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[MensRoster] cross-program payment load failed: " << e.what() << std::endl;
+        }
+    }
 
     std::vector<json> all;
     all.reserve(recs.size());
@@ -238,10 +364,240 @@ MensRoster::Result MensRoster::run(bool includeAll) {
         if (isActive(r, includeAll)) all.push_back(shapeMensPlayer(r));
     }
 
+    // ── Delinquency computation (2026-07-04) ─────────────────────────
+    // Reads DELINQUENCY_PURGATORY_DAYS (default 7).  For each active
+    // player: daysOverdue = today - nextBillDate.  purgatory when
+    // daysOverdue >= threshold; ok otherwise.  Auto-purge purgatory
+    // players' active assignments (soft-delete with reason='delinquent')
+    // and auto-restore any previously-delinquent players who are now ok.
+    // Then reload the assignmentMap so the bucket loop sees the
+    // post-sweep state.
+    const int purgatoryDays = envIntFn("DELINQUENCY_PURGATORY_DAYS", 7);
+
+    // Precompute the current calendar month prefix (YYYY-MM) and the
+    // "3-month rolling window start" (first of month-2), both used by
+    // the payment-window override in the delinquency loop and again by
+    // the row-assembly loop further down.
+    std::string thisMonthPrefix;   // e.g. "2026-07"
+    std::string windowStartIso;    // e.g. "2026-05-01"
+    {
+        std::time_t nowT = std::time(nullptr);
+        std::tm tm{};
+        gmtime_r(&nowT, &tm);
+        int y = tm.tm_year + 1900;
+        int m = tm.tm_mon + 1;
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "%04d-%02d", y, m);
+        thisMonthPrefix = buf;
+        int wm = m - 2;
+        int wy = y;
+        while (wm < 1) { wm += 12; --wy; }
+        std::snprintf(buf, sizeof(buf), "%04d-%02d-01", wy, wm);
+        windowStartIso = buf;
+    }
+
+    struct PlayerDelinquency {
+        int  daysOverdue = 0;
+        bool purgatory   = false;
+        std::string nextBillDate;
+        bool   hasBalance = false;
+        double balance    = 0.0;
+    };
+    std::unordered_map<std::string, PlayerDelinquency> delinqByUid;
+    std::unordered_map<long long, MensTeamAssignments::DelinquencyDetail> toPurge;
+    std::vector<long long> toRestore;
+
+    for (auto& p : all) {
+        const std::string uid = userIdString(p.at("leagueAppsUserId"));
+        if (uid.empty()) continue;
+        const auto bill = PersonBilling::resolve(billingMap, uid);
+
+        PlayerDelinquency d;
+        d.daysOverdue  = daysBetweenTodayAnd(bill.nextBillDate);
+        d.nextBillDate = bill.nextBillDate;
+
+        // ── Payment-window override (2026-07-04 pm, revised) ─────────
+        //
+        // Business rule per user directive: the **$99 payment is a
+        // one-time anomaly** (some players pre-paid the May/June/July
+        // triple at $99 through the legacy membership program).  Rules:
+        //   • Any $99 charge on record → covered for May, June, July.
+        //     Next bill is $35 on the 1st Friday of August (2026-08-07).
+        //   • Any $35+ charge in the current calendar month → covered
+        //     for the current month.  Next bill = 1st of next month.
+        //   • Otherwise fall through to person_billing.next_bill_date.
+        //
+        // Payments across ALL related programs count (see the cross-
+        // program load above — mens program + legacy membership umbrella
+        // + anything env-added).
+        long long uidLL0 = 0;
+        try { uidLL0 = std::stoll(uid); } catch (...) { uidLL0 = 0; }
+        if (uidLL0 > 0) {
+            auto ait = allPayByUser.find(uidLL0);
+            if (ait != allPayByUser.end()) {
+                bool has99 = false;
+                bool has35ThisMonth = false;
+                for (const auto& cp : ait->second) {
+                    if (cp.paidAt.size() < 10) continue;
+                    if (cp.amount >= 99.0 - 0.005) has99 = true;
+                    if (cp.amount >= 35.0 - 0.005
+                        && cp.paidAt.substr(0, 7) == thisMonthPrefix) {
+                        has35ThisMonth = true;
+                    }
+                }
+                if (has99) {
+                    d.daysOverdue = 0;
+                    d.nextBillDate = "2026-08-07";  // 1st Friday of Aug 2026
+                } else if (has35ThisMonth) {
+                    d.daysOverdue = 0;
+                    // Next bill = 1st of next month.
+                    int y = std::stoi(thisMonthPrefix.substr(0, 4));
+                    int m = std::stoi(thisMonthPrefix.substr(5, 2)) + 1;
+                    while (m > 12) { m -= 12; ++y; }
+                    char buf[16]; std::snprintf(buf, sizeof(buf), "%04d-%02d-01", y, m);
+                    d.nextBillDate = buf;
+                }
+            }
+        }
+
+        auto obIt = p.find("outstandingBalance");
+        if (obIt != p.end() && !obIt->is_null()) {
+            if (obIt->is_number()) {
+                d.hasBalance = true;
+                d.balance = obIt->get<double>();
+            }
+        }
+
+        // Purgatory triggers on time-past-due alone.  outstandingBalance
+        // is emitted for observability but does NOT gate the flag — LA's
+        // balance number lags after payment and we don't want to hold
+        // players in purgatory after they've paid.  admin bumps
+        // nextBillDate via /api/person-billing/mark-billed → daysOverdue
+        // goes negative → state flips to ok on the next roster fetch.
+        d.purgatory = (d.daysOverdue >= purgatoryDays);
+        delinqByUid.emplace(uid, d);
+
+        long long uidLL = 0;
+        try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
+        if (uidLL <= 0) continue;
+
+        // Does this user currently have any ACTIVE assignments?  If yes
+        // and they're purgatory, queue soft-delete.  Do we have any
+        // stale delinquent-removed rows for a user who's now ok? Queue
+        // restore.  Both queues resolve after the loop.
+        auto amIt = assignmentMap.find(uid);
+        const bool hasActiveAssignment = (amIt != assignmentMap.end() && !amIt->second.empty());
+        if (d.purgatory && hasActiveAssignment) {
+            MensTeamAssignments::DelinquencyDetail det;
+            det.daysOverdue = d.daysOverdue;
+            det.nextBillDate = d.nextBillDate;
+            det.hasBalance = d.hasBalance;
+            det.outstandingBalance = d.balance;
+            toPurge.emplace(uidLL, det);
+        } else if (!d.purgatory) {
+            // Cheap-and-conservative: always queue a restore attempt on
+            // OK players.  bulkRestore is a no-op when there are no
+            // delinquent-removed rows for that user (query returns empty
+            // set).  Keeps the code path simple.
+            toRestore.push_back(uidLL);
+        }
+    }
+
+    // ── Auto-purge sweep DISABLED (2026-07-04) ─────────────────────────
+    //
+    // Original behavior (2026-07-04 morning):
+    //   • Players 7+ days overdue got auto soft-deleted from every team
+    //     assignment (bulkSoftDeleteForDelinquent).
+    //   • When they paid, backfill ran + bulkRestoreForDelinquent brought
+    //     rows back.
+    //
+    // New behavior (user directive same day: "don't auto manage it"):
+    //   • Purgatory is 100 % admin-driven — coach clicks the Purgatory
+    //     move button on a card to park a player.  Backend just tracks
+    //     the mens_team_assignments row on team 910 (Purgatory column).
+    //   • Delinquency data (daysOverdue, nextBillDate, outstandingBalance)
+    //     is still computed + returned so the card can show a red
+    //     "Nd OVERDUE" chip and admin can decide whether to escalate.
+    //   • The sweep is left in place as commented reference in case we
+    //     want to opt back into auto behavior via a feature flag later.
+    //
+    // long long purged = 0, restored = 0;
+    // try {
+    //     if (!toPurge.empty())   purged   = assignments_->bulkSoftDeleteForDelinquent(toPurge);
+    //     if (!toRestore.empty()) restored = assignments_->bulkRestoreForDelinquent(toRestore);
+    // } catch (const std::exception& e) {
+    //     std::cerr << "[MensRoster] delinquency sweep failed: " << e.what() << std::endl;
+    // }
+    (void)toPurge; (void)toRestore;  // still computed above for potential future use
+
+    // ── Practice / Pickup auto-membership backfill (2026-07-04) ────────
+    //
+    // Rule: every LA member NOT parked in Purgatory (team 910) is on
+    // the Practice (908) + Pickup (909) all-hands teams.  Admin puts
+    // problem players in Purgatory via the Roster Board button; the
+    // mutex in mens_team_columns atomically clears their APSL/Liga 1
+    // row.  Here we also make sure their Practice/Pickup rows are gone
+    // (soft-delete) and skip re-adding them.
+    //
+    // Practice + Pickup are not selection columns on the Roster Board
+    // (archived from mens_team_columns), so the coach never has to
+    // manually assign anyone to them.
+    constexpr int kPracticeTeamId  = 908;
+    constexpr int kPickupTeamId    = 909;
+    constexpr int kPurgatoryTeamId = 910;
+
+    // Build the set of UIDs currently parked in Purgatory (active team
+    // 910 row).  These are excluded from the backfill AND their existing
+    // Practice/Pickup rows are soft-deleted below.
+    std::unordered_set<long long> purgatoryUids;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT leagueapps_user_id FROM mens_team_assignments "
+            " WHERE team_id = $1 AND removed_at IS NULL",
+            {std::to_string(kPurgatoryTeamId)}
+        );
+        for (const auto& r : rows) {
+            if (r["leagueapps_user_id"].is_null()) continue;
+            purgatoryUids.insert(r["leagueapps_user_id"].as<long long>());
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] purgatory-UID lookup failed: " << e.what() << std::endl;
+    }
+
+    std::vector<long long> goodStandingUids;
+    goodStandingUids.reserve(all.size());
+    for (const auto& [uid, d] : delinqByUid) {
+        long long uidLL = 0;
+        try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
+        if (uidLL <= 0) continue;
+        if (purgatoryUids.count(uidLL)) continue;  // parked — skip
+        goodStandingUids.push_back(uidLL);
+    }
+    long long backfilledPractice = 0, backfilledPickup = 0;
+    try {
+        backfilledPractice = assignments_->bulkEnsureActive(goodStandingUids, kPracticeTeamId);
+        backfilledPickup   = assignments_->bulkEnsureActive(goodStandingUids, kPickupTeamId);
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] practice/pickup backfill failed: " << e.what() << std::endl;
+    }
+    if (backfilledPractice > 0 || backfilledPickup > 0) {
+        std::cerr << "[MensRoster] practice/pickup backfill: practice=" << backfilledPractice
+                  << " pickup=" << backfilledPickup
+                  << " goodStanding=" << goodStandingUids.size()
+                  << " purgatory=" << purgatoryUids.size() << std::endl;
+        // Reload again — new active rows changed the map.
+        assignmentMap = assignments_->loadAll();
+    }
+
     // Bucket per column (keyed by teamId-as-string).
     std::unordered_map<std::string, std::vector<json>> buckets;
     for (const auto& c : cols) buckets[std::to_string(c.teamId)];
     std::vector<json> unassigned;
+
+    // (`windowStartIso` computed earlier — first day of month N-2 — is
+    // used below to filter each player's payment history to the current
+    // + previous 2 calendar months.)
 
     auto findCellInUser = [](const std::vector<MensTeamAssignments::Cell>& v, int teamId)
         -> const MensTeamAssignments::Cell* {
@@ -282,6 +638,31 @@ MensRoster::Result MensRoster::run(bool includeAll) {
             }
         }
 
+        // 3-month rolling window of every successful payment for this
+        // player across all related programs (sorted newest-first from
+        // the cross-program load).  Card renders line items + total.
+        json paymentsWindow      = json::array();
+        double paymentsWindowSum = 0.0;
+        {
+            long long uidLL = 0;
+            try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
+            if (uidLL > 0) {
+                auto ait = allPayByUser.find(uidLL);
+                if (ait != allPayByUser.end()) {
+                    for (const auto& cp : ait->second) {
+                        if (cp.paidAt.size() < 10) continue;
+                        if (cp.paidAt.substr(0, 10) < windowStartIso) continue;  // outside window
+                        json row = json::object();
+                        row["amount"]    = jsNumber(cp.amount);
+                        row["paidAt"]    = cp.paidAt;
+                        row["programId"] = cp.programId;
+                        paymentsWindow.push_back(std::move(row));
+                        paymentsWindowSum += cp.amount;
+                    }
+                }
+            }
+        }
+
         // Find the user's assignment list; intersect with the configured
         // columns so off-dashboard team_ids never leak into the response.
         const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;
@@ -295,6 +676,16 @@ MensRoster::Result MensRoster::run(bool includeAll) {
             }
         }
 
+        // Delinquency state resolved earlier — attach to every row so the
+        // frontend can render the days-overdue counter + purgatory badge.
+        int         daysOverdueOut = 0;
+        std::string stateOut       = "ok";
+        auto dqIt = delinqByUid.find(uid);
+        if (dqIt != delinqByUid.end()) {
+            daysOverdueOut = dqIt->second.daysOverdue;
+            stateOut       = dqIt->second.purgatory ? "purgatory" : "ok";
+        }
+
         if (relevant.empty()) {
             json row             = p;
             row["teamIds"]       = json::array();
@@ -305,6 +696,11 @@ MensRoster::Result MensRoster::run(bool includeAll) {
             row["lastPaidAt"]     = lastPaidAt;
             row["lastPaidType"]   = lastPaidType;
             row["lastPayments"]   = lastPayments;
+            row["paymentsWindow"]      = paymentsWindow;
+            row["paymentsWindowTotal"] = jsNumber(paymentsWindowSum);
+            row["paymentsWindowStart"] = windowStartIso;
+            row["daysOverdue"]    = daysOverdueOut;
+            row["delinquencyState"] = stateOut;
             unassigned.push_back(std::move(row));
         } else {
             for (int tid : relevant) {
@@ -312,6 +708,9 @@ MensRoster::Result MensRoster::run(bool includeAll) {
                 json row             = p;
                 row["teamIds"]       = relevant;
                 row["onRoster"]      = cell ? cell->onRoster : false;
+                row["coachSortOrder"] = (cell && cell->coachSortOrder)
+                    ? json(*cell->coachSortOrder)
+                    : json(nullptr);
                 row["nextBillDate"]  = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
                 row["nextBillAmount"] = jsNumber(bill.nextBillAmount);
                 row["isDefault"]     = bill.isDefault;
@@ -319,6 +718,11 @@ MensRoster::Result MensRoster::run(bool includeAll) {
                 row["lastPaidAt"]     = lastPaidAt;
                 row["lastPaidType"]   = lastPaidType;
                 row["lastPayments"]   = lastPayments;
+                row["paymentsWindow"]      = paymentsWindow;
+                row["paymentsWindowTotal"] = jsNumber(paymentsWindowSum);
+                row["paymentsWindowStart"] = windowStartIso;
+                row["daysOverdue"]    = daysOverdueOut;
+                row["delinquencyState"] = stateOut;
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }
         }
@@ -343,6 +747,18 @@ MensRoster::Result MensRoster::run(bool includeAll) {
         return af < bf;
     };
     auto sortByRosterThenName = [&](const json& a, const json& b) {
+        // Coach-defined ability rank wins over everything else.  NULL
+        // coachSortOrder falls to INT_MAX so unranked players slide
+        // below every ranked one (2026-07-04 pm, migration 089).
+        auto coachRank = [](const json& x) {
+            if (x.contains("coachSortOrder") && x["coachSortOrder"].is_number()) {
+                return x["coachSortOrder"].get<int>();
+            }
+            return std::numeric_limits<int>::max();
+        };
+        const int ca = coachRank(a);
+        const int cb = coachRank(b);
+        if (ca != cb) return ca < cb;
         const int ar = a.contains("onRoster") && a["onRoster"].get<bool>() ? 0 : 1;
         const int br = b.contains("onRoster") && b["onRoster"].get<bool>() ? 0 : 1;
         if (ar != br) return ar < br;
@@ -391,5 +807,25 @@ MensRoster::Result MensRoster::run(bool includeAll) {
     out.body["unassignedCount"] = static_cast<int>(out.body["unassigned"].size());
     out.body["total"]           = static_cast<int>(all.size());
     out.body["sourceProgram"]   = mensProgramId_;
+
+    // Aggregate delinquency summary (2026-07-04).  Emits threshold days
+    // so the frontend renders the color scale with the same anchor the
+    // backend used, and per-player counts so the delinquent tile can
+    // show a badge count without walking every bucket.
+    int purgatoryCount = 0;
+    int overdueCount   = 0;
+    for (const auto& kv : delinqByUid) {
+        if (kv.second.purgatory) ++purgatoryCount;
+        if (kv.second.daysOverdue > 0) ++overdueCount;
+    }
+    json delinq;
+    delinq["purgatoryDays"]  = purgatoryDays;
+    delinq["purgatoryCount"] = purgatoryCount;
+    delinq["overdueCount"]   = overdueCount;
+    // Auto-sweep disabled 2026-07-04 pm — always 0.  Kept in the response
+    // shape for backward compatibility with any clients still reading it.
+    delinq["purgedThisFetch"]   = 0;
+    delinq["restoredThisFetch"] = 0;
+    out.body["delinquency"] = std::move(delinq);
     return out;
 }

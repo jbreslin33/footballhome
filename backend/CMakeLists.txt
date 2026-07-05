@@ -23,6 +23,7 @@ set(SOURCES
     src/core/HttpClient.cpp
     src/core/JwtRS256.cpp
     src/core/Crypto.cpp
+    src/core/Mail.cpp
     src/core/TeamLabel.cpp
     src/database/Database.cpp
     src/database/Model.cpp
@@ -40,6 +41,7 @@ set(SOURCES
     src/models/PersonBilling.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
+    src/models/BillingExpectations.cpp
     src/models/YouthAgeGroups.cpp
     src/models/YouthRoster.cpp
     src/models/MensTeamColumns.cpp
@@ -55,6 +57,7 @@ set(SOURCES
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp
     src/services/LineupNotificationHub.cpp
+    src/services/BillingProjector.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp
     src/controllers/EventRsvpController.cpp
@@ -78,6 +81,7 @@ set(SOURCES
     src/controllers/PersonBillingController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
+    src/controllers/BillingController.cpp
     src/controllers/AdminLaBackfillController.cpp
     src/controllers/LeadsController.cpp
     src/controllers/LeadsWebhookController.cpp
@@ -86,7 +90,11 @@ set(SOURCES
     src/controllers/EligibilityController.cpp
     src/controllers/SocialController.cpp
     src/controllers/InternalRosterController.cpp
-    src/controllers/PublicController.cpp)
+    src/controllers/PublicController.cpp
+    src/controllers/MatchSeriesController.cpp
+    src/controllers/MyController.cpp
+    src/controllers/EventReminderController.cpp
+    src/services/RsvpMaterialization.cpp)
 
 # Create executable
 add_executable(server ${SOURCES})

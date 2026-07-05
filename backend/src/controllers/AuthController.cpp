@@ -1,9 +1,18 @@
 #include "AuthController.h"
 #include "../core/Crypto.h"
+#include "../core/Mail.h"
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cstdlib>
+#include <deque>
+#include <iostream>
+#include <mutex>
 #include <sstream>
 #include <regex>
 #include <cstdio>
 #include <ctime>
+#include <unordered_map>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -48,6 +57,15 @@ void AuthController::registerRoutes(Router& router, const std::string& prefix) {
     
     router.get(prefix + "/admin/contexts", [this](const Request& request) {
         return this->handleAdminContexts(request);
+    });
+
+    // Password reset flow — both public.  Rate-limiting/enumeration
+    // protection is inside the handlers.
+    router.post(prefix + "/forgot-password", [this](const Request& request) {
+        return this->handleForgotPassword(request);
+    });
+    router.post(prefix + "/reset-password", [this](const Request& request) {
+        return this->handleResetPassword(request);
     });
 }
 
@@ -500,36 +518,82 @@ Response AuthController::handlePlayerTeams(const Request& request) {
         if (user_id.empty()) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
-        
-        std::string sql = "SELECT DISTINCT t.id, t.name, sd.name as division_name, sd.club_id "
-                         "FROM team_players tp "
-                         "JOIN teams t ON tp.team_id = t.id "
-                         "JOIN sport_divisions sd ON t.division_id = sd.id "
-                         "JOIN clubs c ON sd.club_id = c.id "
-                         "JOIN players p ON tp.player_id = p.id "
-                         "WHERE tp.is_active = true "
-                         "AND p.person_id = (SELECT person_id FROM users WHERE id = $1) "
-                         "ORDER BY t.name";
-        
+
+        // Two roster tables are read here:
+        //   (a) `team_division_players` — the canonical youth/adult
+        //       squad view (id, team_id, player_id, is_active, …).
+        //       Legacy queries used `team_players`; that table was
+        //       removed in migration 08x — the view is its shape-
+        //       preserving replacement.
+        //   (b) `mens_team_assignments` — the mens-side roster for
+        //       APSL / pool teams (Practice=908, Pickup=909).  It is
+        //       keyed on `leagueapps_user_id`; we bridge to a
+        //       persons row via `external_person_aliases` (same
+        //       pattern used by RsvpMaterialization).
+        //
+        // Both branches emit `{id, name, club_id, division_name?}`
+        // rows and are UNION-ed so a single caller with entries in
+        // either side gets every team they can RSVP for.  Wrapping
+        // `SELECT DISTINCT ON (id)` collapses cases where the caller
+        // is in both roster tables (typical for pool teams that also
+        // have a team_division_players view row).
+        const std::string sql =
+            "WITH caller AS ( "
+            "  SELECT person_id FROM users WHERE id = $1::int "
+            "), roster AS ( "
+            "  SELECT t.id::text AS id, t.name, "
+            "         t.club_id::text AS club_id, "
+            "         d.name AS division_name, "
+            "         1 AS priority "
+            "    FROM caller "
+            "    JOIN players p ON p.person_id = caller.person_id "
+            "    JOIN team_division_players tdp ON tdp.player_id = p.id "
+            "                                  AND tdp.is_active = true "
+            "    JOIN teams t ON t.id = tdp.team_id "
+            "    LEFT JOIN divisions d ON d.id = t.division_id "
+            "  UNION ALL "
+            "  SELECT t.id::text AS id, t.name, "
+            "         t.club_id::text AS club_id, "
+            "         NULL::varchar AS division_name, "
+            "         2 AS priority "
+            "    FROM caller "
+            "    JOIN external_person_aliases epa "
+            "      ON epa.person_id = caller.person_id "
+            "     AND epa.provider = 'leagueapps' "
+            "    JOIN mens_team_assignments mta "
+            "      ON mta.leagueapps_user_id::text = epa.external_user_id "
+            "     AND mta.removed_at IS NULL "
+            "    JOIN teams t ON t.id = mta.team_id "
+            ") "
+            "SELECT DISTINCT ON (id) id, name, club_id, division_name "
+            "  FROM roster "
+            " ORDER BY id, priority, division_name NULLS LAST";
+
         pqxx::result result = db_->query(sql, {user_id});
-        
+
         std::ostringstream teams_json;
         teams_json << "[";
         bool first = true;
         for (auto row : result) {
             if (!first) teams_json << ",";
             first = false;
+            const std::string clubIdStr =
+                row["club_id"].is_null() ? "null"
+                                         : "\"" + row["club_id"].as<std::string>() + "\"";
+            const std::string divName =
+                row["division_name"].is_null() ? "null"
+                                               : "\"" + escapeJson(row["division_name"].as<std::string>()) + "\"";
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
-                      << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
-                      << "\"name\":\"" << row["name"].as<std::string>() << "\","
-                      << "\"club_id\":\"" << row["club_id"].as<std::string>() << "\","
-                      << "\"division_name\":\"" << row["division_name"].as<std::string>() << "\"}";
+                       << "\"display_name\":\"" << escapeJson(row["name"].as<std::string>()) << "\","
+                       << "\"name\":\"" << escapeJson(row["name"].as<std::string>()) << "\","
+                       << "\"club_id\":" << clubIdStr << ","
+                       << "\"division_name\":" << divName << "}";
         }
         teams_json << "]";
-        
+
         std::string json = createJSONResponse(true, "Player teams retrieved successfully", teams_json.str());
         return Response(HttpStatus::OK, json);
-        
+
     } catch (const std::exception& e) {
         std::cerr << "❌ AuthController::handlePlayerTeams error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve player teams");
@@ -593,6 +657,319 @@ Response AuthController::handleAdminContexts(const Request& request) {
         std::cerr << "❌ AuthController::handleAdminContexts error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve admin contexts");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Password reset flow
+// ─────────────────────────────────────────────────────────────────────
+// POST /api/auth/forgot-password   { "email": "..." }
+//   Always returns 200 { ok: true } to prevent account enumeration.
+//   If the email matches an active user we insert a row in
+//   password_reset_tokens with a hashed token and email a link.
+//
+// POST /api/auth/reset-password    { "token": "...", "password": "..." }
+//   Verifies the token (hash lookup, unused, unexpired), then updates
+//   users.password_hash via pgcrypto's crypt(gen_salt('bf')) — matches
+//   the bcrypt format that authenticate() already verifies.
+// ═════════════════════════════════════════════════════════════════════
+
+namespace {
+
+// In-process per-IP rate-limit for /api/auth/forgot-password.
+//
+// Cap: at most FORGOT_IP_LIMIT requests per FORGOT_IP_WINDOW_SECS from
+// a single source IP.  Keeps a bounded FIFO of request timestamps per
+// IP; old entries fall off as new ones arrive.
+//
+// Deliberately in-process (no Redis) because:
+//   - We only run one backend replica.  Restart-on-deploy clears the
+//     table, which is fine — abuse detection is best-effort here.
+//   - Real safety comes from the DB-side per-user cap below plus the
+//     no-enumeration uniform response.
+constexpr std::size_t FORGOT_IP_LIMIT        = 10;
+constexpr int         FORGOT_IP_WINDOW_SECS  = 60 * 60;   // 1 hour
+constexpr int         FORGOT_USER_LIMIT      =  3;
+constexpr int         FORGOT_USER_WINDOW_MIN = 60;
+
+std::mutex                                              g_forgotIpMx;
+std::unordered_map<std::string, std::deque<long long>>  g_forgotIpHits;
+
+// Records a hit for `ip` and returns true if the caller should be
+// throttled (i.e. limit exceeded within the rolling window).  An empty
+// IP short-circuits to false so we don't lump everyone together.
+bool forgotIpThrottled(const std::string& ip) {
+    if (ip.empty()) return false;
+
+    const long long now = static_cast<long long>(
+        std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+    const long long cutoff = now - FORGOT_IP_WINDOW_SECS;
+
+    std::lock_guard<std::mutex> lk(g_forgotIpMx);
+    auto& q = g_forgotIpHits[ip];
+    while (!q.empty() && q.front() < cutoff) q.pop_front();
+    if (q.size() >= FORGOT_IP_LIMIT) return true;
+    q.push_back(now);
+
+    // Occasional janitorial sweep so g_forgotIpHits doesn't grow
+    // forever from one-off IPs.  Cheap: iterate at most once per ~256
+    // requests thanks to size gate.
+    if (g_forgotIpHits.size() > 4096) {
+        for (auto it = g_forgotIpHits.begin(); it != g_forgotIpHits.end(); ) {
+            while (!it->second.empty() && it->second.front() < cutoff) it->second.pop_front();
+            if (it->second.empty()) it = g_forgotIpHits.erase(it);
+            else ++it;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+Response AuthController::handleForgotPassword(const Request& request) {
+    // Extract client IP first — we need it for both rate-limit and the
+    // audit row later.
+    std::string ip = request.getHeader("X-Forwarded-For");
+    if (ip.empty()) ip = request.getHeader("X-Real-IP");
+    // X-Forwarded-For can be "client, proxy1, proxy2"; take the first.
+    {
+        auto comma = ip.find(',');
+        if (comma != std::string::npos) ip = ip.substr(0, comma);
+        while (!ip.empty() && std::isspace(static_cast<unsigned char>(ip.front()))) ip.erase(ip.begin());
+        while (!ip.empty() && std::isspace(static_cast<unsigned char>(ip.back())))  ip.pop_back();
+    }
+
+    // Standard uniform response regardless of whether email exists.
+    // Also used for any rate-limit early-return so throttling doesn't
+    // leak information about specific emails.
+    auto uniformOk = [] {
+        std::ostringstream b;
+        b << "{\"ok\":true,\"message\":\"If that address is registered, "
+             "we've emailed a reset link. Check your inbox (and spam).\"}";
+        Response r(HttpStatus::OK, b.str());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    };
+
+    // Per-IP rate-limit (short-circuits before any DB work).
+    if (forgotIpThrottled(ip)) {
+        std::cerr << "[password-reset] IP rate-limit hit ip=" << ip << "\n";
+        return uniformOk();
+    }
+
+    // Body: { "email": "..." }.  Bad JSON => still respond 200 with
+    // ok:true so nobody can probe our request handling; log the noise.
+    std::string email = extractField(request.getBody(), "email");
+
+    // Cheap sanity — must look like an email.
+    auto isEmailish = [](const std::string& s) {
+        if (s.empty() || s.size() > 254) return false;
+        auto at = s.find('@');
+        return at != std::string::npos && at > 0 && at < s.size() - 3
+            && s.find(' ') == std::string::npos;
+    };
+
+    if (!isEmailish(email)) {
+        // Same 200 body — no enumeration.  Do log so we can spot abuse.
+        std::cerr << "[password-reset] rejected malformed email in request\n";
+        return uniformOk();
+    }
+
+    // Normalise for lookup: lower-case.  person_emails stores as-typed
+    // so we compare with ILIKE / LOWER().
+    std::string lookupEmail = email;
+    std::transform(lookupEmail.begin(), lookupEmail.end(), lookupEmail.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+
+    try {
+        // Resolve email -> user row.  Prefer primary email; accept any
+        // person_emails match (a person can have multiple).
+        auto res = db_->query(
+            "SELECT u.id AS user_id, p.first_name, p.last_name, pe.email "
+            "  FROM person_emails pe "
+            "  JOIN persons p ON p.id = pe.person_id "
+            "  JOIN users u ON u.person_id = p.id AND COALESCE(u.is_active, true) "
+            " WHERE LOWER(pe.email) = $1 "
+            " ORDER BY pe.is_primary DESC, u.id ASC "
+            " LIMIT 1",
+            {lookupEmail});
+
+        if (res.empty()) {
+            std::cerr << "[password-reset] no active user for " << lookupEmail << "\n";
+            return uniformOk();
+        }
+
+        const std::string userId    = res[0]["user_id"].as<std::string>();
+        const std::string firstName = res[0]["first_name"].is_null()
+                                       ? std::string{}
+                                       : res[0]["first_name"].as<std::string>();
+        const std::string realEmail = res[0]["email"].as<std::string>();
+
+        // Per-user rate-limit.  Bots that guess a valid email
+        // shouldn't be able to generate unlimited token rows (and
+        // reset-emails, once SMTP is on).  Counts recent inserts
+        // regardless of used_at so an attacker can't grind through
+        // fresh tokens by consuming their own.
+        {
+            auto rl = db_->query(
+                "SELECT COUNT(*) AS c FROM password_reset_tokens "
+                " WHERE user_id = $1::int "
+                "   AND created_at > NOW() - ($2::text || ' minutes')::interval",
+                {userId, std::to_string(FORGOT_USER_WINDOW_MIN)});
+            const long recent = rl[0]["c"].as<long>();
+            if (recent >= FORGOT_USER_LIMIT) {
+                std::cerr << "[password-reset] per-user rate-limit hit "
+                          << "user_id=" << userId
+                          << " recent=" << recent
+                          << " window_min=" << FORGOT_USER_WINDOW_MIN << "\n";
+                return uniformOk();
+            }
+        }
+
+        // Fresh single-use token, 60-minute TTL.
+        const std::string raw  = fh::crypto::randomTokenB64Url(32);
+        const std::string hash = fh::crypto::sha256Hex(raw);
+
+        std::string ua = request.getHeader("User-Agent");
+
+        try {
+            db_->query(
+                "INSERT INTO password_reset_tokens "
+                "  (user_id, token_hash, expires_at, requested_ip, requested_ua) "
+                "VALUES ($1::int, $2, NOW() + INTERVAL '60 minutes', "
+                "        NULLIF($3, ''), NULLIF($4, ''))",
+                {userId, hash, ip, ua});
+        } catch (const std::exception& e) {
+            std::cerr << "[password-reset] INSERT failed: " << e.what() << "\n";
+            return uniformOk();  // never leak
+        }
+
+        // Build reset link.  PUBLIC_BASE_URL is the canonical origin (no
+        // trailing slash).  Keep in sync with EventReminderController.
+        std::string baseUrl;
+        {
+            const char* env = std::getenv("PUBLIC_BASE_URL");
+            baseUrl = (env && *env) ? std::string(env) : std::string("https://footballhome.org");
+            while (!baseUrl.empty() && baseUrl.back() == '/') baseUrl.pop_back();
+        }
+        const std::string resetUrl =
+            baseUrl + "/reset-password?token=" + fh::crypto::urlEncode(raw);
+
+        // Compose message.  Plaintext only — HTML MIME would need more
+        // scaffolding and offers no functional win for a link this
+        // short.
+        std::ostringstream body;
+        body << "Hi";
+        if (!firstName.empty()) body << " " << firstName;
+        body << ",\n\n"
+             << "Someone (hopefully you) requested a password reset for your "
+                "Football Home account.  Tap the link below to set a new "
+                "password.  This link expires in 60 minutes and can only be "
+                "used once.\n\n"
+             << resetUrl << "\n\n"
+             << "If you didn't request this, you can safely ignore the email "
+                "— your existing password stays as-is.\n\n"
+             << "— Football Home\n";
+
+        const std::string subject = "Football Home — reset your password";
+
+        // Fire-and-forget.  fh::mail::send() logs errors internally.
+        // We still respond 200 either way; a delivery failure will show
+        // up in the container logs.
+        bool sent = fh::mail::send(realEmail, subject, body.str());
+
+        // Extra observability line for the log — includes the raw URL
+        // so operator can hand-deliver during outages / pre-SMTP builds.
+        std::cerr << "[password-reset] user_id=" << userId
+                  << " email=" << realEmail
+                  << " sent=" << (sent ? "true" : "false")
+                  << " url=" << resetUrl << "\n";
+
+    } catch (const std::exception& e) {
+        std::cerr << "[password-reset] unexpected error: " << e.what() << "\n";
+        // Still respond 200 to preserve uniform semantics.
+    }
+
+    return uniformOk();
+}
+
+Response AuthController::handleResetPassword(const Request& request) {
+    std::string token    = extractField(request.getBody(), "token");
+    std::string password = extractField(request.getBody(), "password");
+
+    auto errJson = [](HttpStatus s, const std::string& msg) {
+        std::ostringstream b;
+        b << "{\"error\":\"" << msg << "\"}";
+        Response r(s, b.str());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    };
+
+    if (token.empty()) {
+        return errJson(HttpStatus::BAD_REQUEST, "token is required");
+    }
+    if (password.size() < 8) {
+        return errJson(HttpStatus::BAD_REQUEST, "password must be at least 8 characters");
+    }
+    if (password.size() > 200) {
+        return errJson(HttpStatus::BAD_REQUEST, "password too long");
+    }
+
+    const std::string hash = fh::crypto::sha256Hex(token);
+
+    try {
+        // Look up unused, unexpired token.  Row lives forever after the
+        // reset; we mark used_at so it can't replay.
+        auto res = db_->query(
+            "SELECT prt.id, prt.user_id "
+            "  FROM password_reset_tokens prt "
+            "  JOIN users u ON u.id = prt.user_id AND COALESCE(u.is_active, true) "
+            " WHERE prt.token_hash = $1 "
+            "   AND prt.used_at IS NULL "
+            "   AND prt.expires_at > NOW() "
+            " LIMIT 1",
+            {hash});
+
+        if (res.empty()) {
+            return errJson(HttpStatus::BAD_REQUEST,
+                           "Reset link is invalid or expired. Request a new one.");
+        }
+
+        const std::string tokenId = res[0]["id"].as<std::string>();
+        const std::string userId  = res[0]["user_id"].as<std::string>();
+
+        // Update password + mark token used in the same round-trip so a
+        // half-way failure can't leave the token consumed with the
+        // password unchanged.  pgcrypto's crypt(gen_salt('bf')) produces
+        // a bcrypt hash matching the format authenticate() verifies.
+        db_->query(
+            "WITH upd_user AS ( "
+            "  UPDATE users SET password_hash = crypt($1, gen_salt('bf')) "
+            "   WHERE id = $2::int "
+            "  RETURNING id "
+            "), upd_token AS ( "
+            "  UPDATE password_reset_tokens SET used_at = NOW() "
+            "   WHERE id = $3::int "
+            "  RETURNING id "
+            ") "
+            "SELECT (SELECT id FROM upd_user) AS uid, "
+            "       (SELECT id FROM upd_token) AS tid",
+            {password, userId, tokenId});
+
+        std::cerr << "[password-reset] user_id=" << userId
+                  << " password reset succeeded (token_id=" << tokenId << ")\n";
+
+        std::ostringstream ok;
+        ok << "{\"ok\":true,\"message\":\"Password updated. You can now log in.\"}";
+        Response r(HttpStatus::OK, ok.str());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+
+    } catch (const std::exception& e) {
+        std::cerr << "[password-reset] reset failed: " << e.what() << "\n";
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR,
+                       "Something went wrong. Please try again.");
     }
 }
 

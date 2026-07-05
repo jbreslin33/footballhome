@@ -22,7 +22,7 @@ class AdminClubScreen extends Screen {
 
         <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Membership</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Who's in the club right now — active members, paused memberships, and lead pipeline.
+          Who's in the club right now — active members, pickup members, and lead pipeline.
         </p>
         <div id="section-membership" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
@@ -113,7 +113,7 @@ class AdminClubScreen extends Screen {
     // single tile handles all four sub-programs.
     const membershipTiles = [
       { id: 'members',         icon: '👥', label: 'Members',          description: 'Active members across all sub-programs — filter by Men / Women / Boys / Girls inside' },
-      { id: 'paused-members',  icon: '⏸',  label: 'Paused Membership', description: 'Members currently on a paused sub-program' },
+      { id: 'paused-members',  icon: '⚽', label: 'Pickup Membership', description: 'Members on the pickup-only roster (eligible for pickup, not team practice/games)' },
       { id: 'leads',           icon: '📋', label: 'Leads',            description: 'Ad interest form submissions' },
       { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics',  description: 'What touches actually turn into LA registrations' },
     ];
@@ -130,10 +130,14 @@ class AdminClubScreen extends Screen {
       { id: 'mens-lineups',   target: 'mens-lineups',       params: { gender: 'mens',   matchType: 'game'    }, icon: '🧩', label: 'Mens Dashboard',           description: 'Men\'s teams — LA pool, per-team rosters, next match, starters & bench' },
       { id: 'mens-practice',  target: 'mens-practice-dash', params: { gender: 'mens',   kind: 'practice'     }, icon: '🏃', label: 'Mens Practice',            description: 'Add / edit / delete men\'s practices — shared across all mens teams' },
       { id: 'mens-pickup',    target: 'mens-pickup-dash',   params: { gender: 'mens',   kind: 'pickup'       }, icon: '⚡', label: 'Mens Pickup',              description: 'Add / edit / delete men\'s pickup sessions — shared across all mens teams' },
+      { id: 'series-editor',  target: 'admin-series-editor',params: {},                                          icon: '🔁', label: 'Recurring Series',         description: 'Weekly templates — every Sunday 8pm the next week\'s matches are auto-materialised' },
       { id: 'apsl-dash',      target: 'mens-lineups',       params: { gender: 'mens',   division: 'apsl'     }, icon: '🏆', label: 'APSL',                     description: 'APSL teams only — standings, schedule, rosters' },
       { id: 'liga1-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga1'    }, icon: '🏆', label: 'Liga 1',                   description: 'CASA Liga 1 teams — standings, schedule, rosters' },
       { id: 'liga2-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga2'    }, icon: '🏆', label: 'Liga 2',                   description: 'CASA Liga 2 teams — standings, schedule, rosters' },
       { id: 'tricounty-dash', target: 'mens-lineups',       params: { gender: 'mens',   division: 'tricounty'}, icon: '🏆', label: 'Tri County',               description: 'Tri County league teams — standings, schedule, rosters' },
+      { id: 'mens-game-elig', target: 'mens-game-eligibility', params: { gender: 'mens' },                        icon: '🎯', label: 'Game Eligibility',         description: 'Projected 35-player APSL & Liga 1 rosters — game-day availability & call-ups' },
+      { id: 'mens-roster-board', target: 'mens-roster',        params: { gender: 'mens' },                        icon: '🎽', label: 'Mens Roster',              description: 'Dues-aware roster selection — assign to teams, see overdue counts, purgatory column, LA pause actions' },
+      { id: 'mens-delinquent', target: 'mens-delinquent',       params: { gender: 'mens' },                        icon: '💰', label: 'Delinquent Members',       description: 'Players overdue on dues — 7+ days = purgatory (off all rosters)' },
     ];
 
     const womensDashTiles = [
@@ -149,6 +153,7 @@ class AdminClubScreen extends Screen {
     // even though target + params are identical.
     const boysDashTiles = [
       { id: 'boys-lineups',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', matchType: 'game' }, icon: '🧩', label: 'Boys Dashboard',       description: 'Boys teams — roster, schedule, attendance' },
+      { id: 'boys-roster',    target: 'youth-roster',        params: { gender: 'youth', sex: 'boys' },                    icon: '🎽', label: 'Boys Roster',          description: 'Live LA roster — boys + girls together (girls play on boys teams for now)' },
       { id: 'boys-practice',  target: 'youth-practice-dash', params: { gender: 'youth', sex: 'boys', kind: 'practice' }, icon: '🏃', label: 'Boys Practice',        description: 'Add / edit / delete boys practices' },
       { id: 'boys-pickup',    target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'boys', kind: 'pickup'   }, icon: '⚡', label: 'Boys Pickup',          description: 'Add / edit / delete boys pickup sessions' },
       { id: 'u8-boys-dash',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u8'  }, icon: '👦', label: 'U8 Boys',              description: 'U8 boys teams — roster, schedule, attendance' },
@@ -158,6 +163,7 @@ class AdminClubScreen extends Screen {
 
     const girlsDashTiles = [
       { id: 'girls-lineups',  target: 'youth-roster',        params: { gender: 'youth', sex: 'girls', matchType: 'game' }, icon: '🧩', label: 'Girls Dashboard',    description: 'Girls teams — roster, schedule, attendance' },
+      { id: 'girls-roster',   target: 'youth-roster',        params: { gender: 'youth', sex: 'girls' },                    icon: '🎽', label: 'Girls Roster',       description: 'Live LA roster — boys + girls together (mirror of Boys Roster while girls play on boys teams)' },
       { id: 'girls-practice', target: 'youth-practice-dash', params: { gender: 'youth', sex: 'girls', kind: 'practice' }, icon: '🏃', label: 'Girls Practice',      description: 'Add / edit / delete girls practices' },
       { id: 'girls-pickup',   target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'girls', kind: 'pickup'   }, icon: '⚡', label: 'Girls Pickup',        description: 'Add / edit / delete girls pickup sessions' },
     ];

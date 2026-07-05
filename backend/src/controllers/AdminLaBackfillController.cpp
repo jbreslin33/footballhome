@@ -329,8 +329,24 @@ Response AdminLaBackfillController::handleBackfill(const Request& request) {
                 // how the club-admin "Paused Membership" viewer and the
                 // roster/pool filters know who is currently paused.
                 if (!dryRun && result.personId > 0) {
+                    // Extract registrationId from the LA record so the
+                    // membership row carries the correct join key back to
+                    // person_payments (critical for youth, where the
+                    // transaction's userId is the parent, not the child).
+                    long long regId = 0;
+                    if (rec.contains("registrationId") && !rec["registrationId"].is_null()) {
+                        const auto& rv = rec["registrationId"];
+                        if (rv.is_number_integer())       regId = rv.get<long long>();
+                        else if (rv.is_number_unsigned()) regId = static_cast<long long>(rv.get<unsigned long long>());
+                        else if (rv.is_number_float())    regId = static_cast<long long>(rv.get<double>());
+                        else if (rv.is_string()) {
+                            try { regId = std::stoll(rv.get<std::string>()); }
+                            catch (...) { regId = 0; }
+                        }
+                    }
                     linker_->recordMembership(result.personId,
-                                              static_cast<long long>(pid));
+                                              static_cast<long long>(pid),
+                                              regId);
                 }
             }
             progRows.push_back(std::move(row));

@@ -112,8 +112,12 @@ class RoleSelectionScreen extends Screen {
       this.loadClubAdmin();
     } else if (role === 'summer-planner') {
       this.navigation.goTo('internal-roster');
-    } else if (role === 'coach' || role === 'player') {
-      // Coach/Player - go to context selection to pick team
+    } else if (role === 'player') {
+      // Player - jump straight to their unified weekly schedule.
+      // (Team-picking is intentionally skipped; MyController resolves
+      //  eligible events via mens_team_assignments internally.)
+      this.navigation.goTo('my');
+    } else if (role === 'coach') {
       this.navigation.goTo('context-selection', { role: role });
     } else {
       this.handleError(new Error('Unknown role: ' + role), 'role-selection');

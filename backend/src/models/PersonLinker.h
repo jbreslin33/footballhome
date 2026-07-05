@@ -42,14 +42,22 @@ public:
 
     // Mark `personId` as a current member of LA sub-program `programId`.
     // Idempotent: if the person already has an open row for this program,
-    // no writes occur.  If they have an open row for a DIFFERENT program,
+    // the row's `la_registration_id` is backfilled if currently NULL but no
+    // other writes occur.  If they have an open row for a DIFFERENT program,
     // that row is closed (ended_at = now()) and a new open row inserted —
     // this is how "active → paused" (or vice-versa) transitions are
     // captured with a preserved audit trail.  Callers must have already
     // resolved `personId` via linkLa (or otherwise) and the referenced
     // `programId` must exist in `leagueapps_programs.program_id`.
+    //
+    // `registrationId` is the LA registration id for this (person, program)
+    // pair — the same id that appears on transactions.  It is the correct
+    // join key from `person_payments` back to a member for youth (whose
+    // payer/`la_user_id` is the parent, not the child).  Pass 0 to skip.
     // Best-effort: logs + swallows on DB errors (does not throw).
-    void recordMembership(int personId, long long programId);
+    void recordMembership(int personId,
+                          long long programId,
+                          long long registrationId = 0);
 
 private:
     Database* db_;

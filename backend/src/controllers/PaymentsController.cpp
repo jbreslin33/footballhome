@@ -1,8 +1,12 @@
 #include "PaymentsController.h"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "../models/PersonPayments.h"
 #include "../services/LaProgramSync.h"
@@ -149,9 +153,20 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     //    for anyone LA has dropped, new rows inserted for fresh regs).
     //    Non-fatal: fall through if LA is unreachable and use whatever we
     //    have in the DB.
+    //
+    //    We ALSO capture LA's authoritative per-registration `amountPaid`
+    //    + `paymentStatus` from the same fetch so step 5 can reconcile
+    //    our locally computed status against LA on every load.  If LA is
+    //    unreachable, `laPayments` stays empty and step 5 no-ops (leaves
+    //    every member with `discrepancy=null`) — we still serve stale
+    //    state rather than 5xx-ing, but we never *silently* misclassify.
+    std::unordered_map<long long, LaProgramSync::LaPayment> laPayments;
+    bool laReachable = false;
     try {
         LaProgramSync sync;
-        sync.run(static_cast<int>(programId));
+        auto syncResult = sync.run(static_cast<int>(programId));
+        laPayments = std::move(syncResult.paymentByRegistration);
+        laReachable = true;
     } catch (const std::exception& e) {
         std::cerr << "[PaymentsController::members] LaProgramSync failed for program "
                   << programId << ": " << e.what() << std::endl;
@@ -175,7 +190,24 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
 
     // 4. Serialise.  Counts per status let the tile badge / summary strip
     //    render "N need attention" without a second query.
+    //
+    // 5. Reconcile against LA (inline with serialisation).  For every
+    //    member we compare:
+    //      • net local paid  = totalPaid − totalRefunded
+    //      • LA authoritative amountPaid
+    //      • our derived status vs LA `paymentStatus` (PAID/PARTIAL/UNPAID)
+    //    Rules:
+    //      • net local paid differs from LA by > $0.01           → mismatch
+    //      • LA says PAID/PARTIAL and our status = 'never'       → mismatch
+    //      • LA says UNPAID and our status = 'current'/'behind'  → mismatch
+    //    Each mismatch is:
+    //      • logged to stderr (so ops sees drift without polling the API)
+    //      • attached to the member row under `discrepancy`
+    //      • counted into a top-level `reconciliation` block with a
+    //        compact `mismatches` list the frontend can render as a
+    //        red-badge warning strip.
     json members = json::array();
+    json mismatches = json::array();
     int cCurrent = 0, cBehind = 0, cOverdue = 0, cNever = 0;
     for (const auto& m : rows) {
         if      (m.status == "current") ++cCurrent;
@@ -184,8 +216,9 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         else if (m.status == "never")   ++cNever;
 
         json row = json::object();
-        row["personId"]      = m.personId;
-        row["laUserId"]      = m.laUserId;
+        row["personId"]         = m.personId;
+        row["laUserId"]         = m.laUserId;
+        row["laRegistrationId"] = m.laRegistrationId ? json(m.laRegistrationId) : json(nullptr);
         row["firstName"]     = m.firstName;
         row["lastName"]      = m.lastName;
         row["dob"]           = m.dob.empty()   ? json(nullptr) : json(m.dob);
@@ -200,6 +233,100 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["firstPaidAt"]   = m.firstPaidAt.empty() ? json(nullptr) : json(m.firstPaidAt);
         row["lastPaidAt"]    = m.lastPaidAt.empty()  ? json(nullptr) : json(m.lastPaidAt);
         row["lastAmount"]    = m.lastAmount;
+
+        // Reconciliation.  Skip entirely if LA was unreachable OR if we
+        // never resolved a registrationId for this membership row (e.g.
+        // an ancient row from before migration 081 that hasn't been
+        // touched by a re-sync yet).
+        json discrepancy = json(nullptr);
+        if (laReachable && m.laRegistrationId != 0) {
+            auto it = laPayments.find(m.laRegistrationId);
+            if (it != laPayments.end()) {
+                const auto& la = it->second;
+                row["laAmountPaid"]         = la.amountPaid;
+                row["laOutstandingBalance"] = la.outstanding;
+                row["laPaymentStatus"]      = la.paymentStatus.empty()
+                                              ? json(nullptr)
+                                              : json(la.paymentStatus);
+
+                const double netLocal = m.totalPaid - m.totalRefunded;
+                const double delta    = netLocal - la.amountPaid;
+                std::vector<std::string> reasons;
+                if (std::fabs(delta) > 0.01) {
+                    reasons.push_back("amount_mismatch");
+                }
+                if ((la.paymentStatus == "PAID" || la.paymentStatus == "PARTIAL")
+                     && la.amountPaid >= 1.0
+                     && m.status == "never") {
+                    reasons.push_back("la_paid_ours_never");
+                }
+                if (la.paymentStatus == "UNPAID" && la.amountPaid < 0.01
+                    && (m.status == "current" || m.status == "behind")) {
+                    reasons.push_back("la_unpaid_ours_current");
+                }
+                if (!reasons.empty()) {
+                    json d = json::object();
+                    d["reasons"]         = reasons;
+                    d["laAmountPaid"]    = la.amountPaid;
+                    d["localNetPaid"]    = netLocal;
+                    d["delta"]           = delta;
+                    d["laPaymentStatus"] = la.paymentStatus.empty()
+                                           ? json(nullptr) : json(la.paymentStatus);
+                    d["ourStatus"]       = m.status;
+                    discrepancy = d;
+
+                    // Compact summary for the top-level `reconciliation`.
+                    json mm = json::object();
+                    mm["personId"]         = m.personId;
+                    mm["laRegistrationId"] = m.laRegistrationId;
+                    mm["firstName"]        = m.firstName;
+                    mm["lastName"]         = m.lastName;
+                    mm["reasons"]          = reasons;
+                    mm["laAmountPaid"]     = la.amountPaid;
+                    mm["localNetPaid"]     = netLocal;
+                    mm["laPaymentStatus"]  = la.paymentStatus.empty()
+                                             ? json(nullptr) : json(la.paymentStatus);
+                    mm["ourStatus"]        = m.status;
+                    mismatches.push_back(std::move(mm));
+
+                    std::cerr << "[reconcile] program=" << programKey
+                              << " reg=" << m.laRegistrationId
+                              << " person=" << m.personId
+                              << " (" << m.firstName << " " << m.lastName << ")"
+                              << " laPaid=" << la.amountPaid
+                              << " ourPaid=" << netLocal
+                              << " laStatus=" << (la.paymentStatus.empty()
+                                                  ? std::string("null")
+                                                  : la.paymentStatus)
+                              << " ourStatus=" << m.status
+                              << " reasons=";
+                    for (size_t i = 0; i < reasons.size(); ++i) {
+                        std::cerr << (i ? "," : "") << reasons[i];
+                    }
+                    std::cerr << std::endl;
+                }
+            } else {
+                // Our membership row references a registrationId LA no
+                // longer returns for this program (deleted / superseded
+                // registration).  Not a payment discrepancy per se, but
+                // worth flagging so the operator knows the local row
+                // needs pruning.
+                json d = json::object();
+                d["reasons"] = json::array({ "la_registration_missing" });
+                d["ourStatus"] = m.status;
+                discrepancy = d;
+
+                json mm = json::object();
+                mm["personId"]         = m.personId;
+                mm["laRegistrationId"] = m.laRegistrationId;
+                mm["firstName"]        = m.firstName;
+                mm["lastName"]         = m.lastName;
+                mm["reasons"]          = json::array({ "la_registration_missing" });
+                mm["ourStatus"]        = m.status;
+                mismatches.push_back(std::move(mm));
+            }
+        }
+        row["discrepancy"] = discrepancy;
 
         json txns = json::array();
         for (const auto& t : m.recentTxns) {
@@ -226,6 +353,11 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         {"never",   cNever},
     };
     out["needsAttention"] = cNever + cOverdue;  // headline number for the badge
+    out["reconciliation"] = {
+        {"laReachable", laReachable},
+        {"checked",     laReachable ? static_cast<int>(rows.size()) : 0},
+        {"mismatches",  std::move(mismatches)},
+    };
     out["members"]     = std::move(members);
     return Response(HttpStatus::OK, out.dump());
 }

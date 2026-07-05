@@ -26,10 +26,21 @@
 //                                          body: {status: 'new'|'responded'|
 //                                                 'signedup'|'dead'|null}
 //                                          null clears the override.
+//   POST   /api/leads/guest-signup        PUBLIC (no auth) — form-post
+//                                          landing at /pickup.  Body:
+//                                          {name, phone?, email?, ad?,
+//                                           age_group?, gender?, experience?,
+//                                           position?, notes?}.  Requires
+//                                          name AND (phone OR email).
+//                                          Inserts a leads row with
+//                                          form_id='pickup-funnel',
+//                                          leadgen_id='guest-<epoch>-<rand>'.
 //
 // All routes are bearer-presence gated.  The contact handler additionally
 // decodes the JWT payload (no signature verify) to extract `userId` so
 // `lead_contacts.contacted_by` matches the Node behavior.
+// The guest-signup route is the sole exception — deliberately public so
+// Meta ads can send unauthenticated traffic straight to the funnel.
 // ────────────────────────────────────────────────────────────────────────────
 class LeadsController : public Controller {
 public:
@@ -54,6 +65,7 @@ private:
     Response handleMarkDead         (const Request& request);
     Response handleUnmarkDead       (const Request& request);
     Response handleSetStatusOverride(const Request& request);
+    Response handleGuestSignup      (const Request& request);
 
     // Auth helpers.
     static std::optional<int>  extractUserIdJwt (const Request& request);

@@ -38,6 +38,11 @@ private:
     Response handleGet(const Request& request);
     Response handleAssign(const Request& request);
     Response handleRosterStatus(const Request& request);
+    // POST /api/mens-roster/reorder — rewrite coach_sort_order for a
+    // team column after the coach drags a card to a new position.
+    // Body: {teamId, userIds:[...]} — dense 1..N rank assigned in list
+    // order.  Added 2026-07-04 pm (migration 089).
+    Response handleReorder(const Request& request);
     // POST /api/lineups/games — create an ad-hoc match/event bound to a
     // team so the lineup column has an "upcoming match" to attach RSVPs
     // to.  Body: {team_id, opponent, date:"YYYY-MM-DD", time?:"HH:MM"}.

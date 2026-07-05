@@ -31,6 +31,15 @@ const VARIANTS = {
   'girls-u11u12': { word: 'GIRLS CLUB', badge: 'U11 / U12', sub: 'GRADES 5 OR 6 AS OF FALL 2026', file: 'girls-u11u12-travel-ad.png' },
   'mens':      { word: 'MENS CLUB',    badge: '16+',          sub: 'APSL \u00b7 CASA LIGA 1 & 2',  file: 'mens-club-ad.png'        },
   'womens':    { word: 'WOMENS CLUB',  badge: 'TRI COUNTY',     file: 'womens-club-ad.png'      },
+  // Trial-pathway ads (2026-07-04) — same navy template, hero text swapped
+  // to signal "summer trials to earn a 2026-2027 roster spot."  Both
+  // funnel to the same Men's Club LeagueApps registration link
+  // (utm_content differentiates which of the two trials the lead is
+  // interested in); see create-ad.js specs `apsl-trials` and
+  // `liga1-trials`.  APSL variant swaps the soccer-ball icon for the
+  // APSL league logo via the optional `logo` field.
+  'apsl-trials':  { word: 'APSL',  wordSize: 160, wordSpacing: 6, brand: 'LIGHTHOUSE 1893 MENS CLUB', badge: '2026-2027 SEASON', sub: 'SEMI-PRO LEAGUE',   logo: 'leagues/apsl.png', soccerText: 'AMERICAN PREMIER SOCCER LEAGUE', soccerSize: 62, soccerSpacing: 4, heroPill: 'SUMMER TRIALS', file: 'apsl-trials-ad.png'  },
+  'liga1-trials': { word: 'CASA SELECT LIGA 1', wordSize: 82, wordSpacing: 2, brand: 'LIGHTHOUSE 1893 MENS CLUB', badge: '2026-2027 SEASON', sub: 'APSL RESERVE TEAM', logo: 'leagues/casa.png', logoChip: true, soccerText: '', heroPill: 'SUMMER TRIALS', file: 'liga1-trials-ad.png' },
 };
 
 if (!VARIANTS[variant]) {
@@ -56,10 +65,36 @@ function dataUri(p) {
 }
 
 const lh1893 = dataUri(LH_1893);
+// Optional secondary logo (e.g. APSL league mark) — replaces the soccer-
+// ball icon in the crest row when the variant provides a `logo` path
+// relative to frontend/images/.
+const SECONDARY_LOGO = V.logo
+  ? dataUri(path.join(ROOT, 'frontend', 'images', V.logo))
+  : '';
 
 const WORD  = V.word;
 const BADGE = V.badge;
 const SUB   = V.sub || '';
+// Small caps header above the hero title.  Defaults to 'LIGHTHOUSE';
+// variants can override (e.g. trial ads use 'LIGHTHOUSE 1893 MENS CLUB'
+// so the club identity reads clearly without extra layout).
+const BRAND = V.brand || 'LIGHTHOUSE';
+// Hero title (`WORD`) sizing.  Longer / two-line words (variants using
+// `\n`) can override the default 160px so they don't overflow.
+const WORD_SIZE    = V.wordSize    || 160;
+const WORD_SPACING = V.wordSpacing != null ? V.wordSpacing : 3;
+// Gold hero band under the club name.  Defaults to 'SOCCER' (huge, wide
+// letter-spacing); variants can override with a longer phrase (e.g. the
+// APSL league name) and dial in their own font size / letter spacing so
+// the line still fits on one row without wrapping.  Explicit empty
+// string means the band is hidden entirely.
+const SOCCER_TEXT    = V.soccerText != null ? V.soccerText : 'SOCCER';
+const SOCCER_SIZE    = V.soccerSize    || 120;
+const SOCCER_SPACING = V.soccerSpacing != null ? V.soccerSpacing : 14;
+// Optional gold callout pill rendered below the SOCCER band (or below
+// the hero title if the band is hidden).  Used by the trial ads to
+// spotlight "SUMMER TRIALS" beneath the league name.
+const HERO_PILL = V.heroPill || '';
 
 const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -95,6 +130,26 @@ const html = `<!DOCTYPE html>
     font-size:78px; line-height:1;
     box-shadow: 0 6px 18px rgba(0,0,0,0.5);
   }
+  .crest .secondary-logo {
+    height:170px; width:auto;
+    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.5));
+  }
+  /* Square league logos (e.g. CASA) get wrapped in a gold-bordered
+     rounded chip so they don't read as a naked white square against
+     the navy background. */
+  .crest .secondary-chip {
+    height:170px; width:170px;
+    display:flex; align-items:center; justify-content:center;
+    background:#ffffff;
+    border:5px solid #f5d442;
+    border-radius:28px;
+    padding:14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  }
+  .crest .secondary-chip img {
+    max-height:100%; max-width:100%; height:auto; width:auto;
+    display:block;
+  }
   .crest .since {
     font-size:18px; letter-spacing:8px; color:#f5d442;
     font-weight:800; opacity:0.95;
@@ -112,13 +167,31 @@ const html = `<!DOCTYPE html>
     text-shadow: 0 4px 14px rgba(0,0,0,0.5);
   }
   .hero h1 {
-    font-size:160px; font-weight:900; letter-spacing:3px;
+    font-size:${WORD_SIZE}px; font-weight:900; letter-spacing:${WORD_SPACING}px;
     line-height:0.95; margin-top:4px;
     color:#ffffff;
     text-shadow: 0 6px 22px rgba(0,0,0,0.6);
   }
+  /* Gold accent inside the hero title — wrap any word/phrase in
+     **double-asterisks** in the variant's word field to highlight it. */
+  .hero h1 .accent { color:#f5d442; }
+  /* Big gold callout pill under the hero (below the SOCCER band). */
+  .hero .hero-pill {
+    display: inline-block;
+    align-self: center;
+    color: #f5d442;
+    background: rgba(245, 212, 66, 0.18);
+    border: 4px solid rgba(245, 212, 66, 0.75);
+    border-radius: 999px;
+    padding: 14px 52px 18px;
+    margin-top: 26px;
+    font-size: 62px; font-weight: 900; letter-spacing: 6px;
+    line-height: 1;
+    text-transform: uppercase;
+    text-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  }
   .hero .soccer {
-    font-size:120px; font-weight:900; letter-spacing:14px;
+    font-size:${SOCCER_SIZE}px; font-weight:900; letter-spacing:${SOCCER_SPACING}px;
     color:#f5d442; line-height:1; margin-top:4px;
     text-shadow: 0 4px 16px rgba(0,0,0,0.55);
   }
@@ -128,6 +201,15 @@ const html = `<!DOCTYPE html>
   }
   .spacer-top { flex:1; }
   .spacer-bot { flex:2; }
+  /* When the gold "SOCCER" hero band is hidden the card has less
+     vertical content, so the flex spacers stretch and the pill/sub
+     drift far from the hero.  .card.compact tightens both spacers
+     and pulls the hero closer to the pill for a denser layout. */
+  .card.compact .hero        { margin-top: 30px; }
+  .card.compact .spacer-top  { flex: 1; }
+  .card.compact .spacer-bot  { flex: 1; }
+  .card.compact .grades .pill { padding: 20px 48px; font-size: 32px; }
+  .card.compact .grades .sub  { margin-top: 22px; font-size: 28px; letter-spacing: 5px; }
   .grades .pill {
     background: rgba(245,212,66,0.18);
     border:2px solid rgba(245,212,66,0.65);
@@ -156,21 +238,26 @@ const html = `<!DOCTYPE html>
 </style>
 </head>
 <body>
-  <div class="card">
+  <div class="card${SOCCER_TEXT ? '' : ' compact'}">
     <div class="gold-bar"></div>
 
     <div class="crest">
       <div class="row">
         <img src="${lh1893}" alt="Lighthouse 1893">
-        <div class="ball">⚽</div>
+        ${SECONDARY_LOGO
+          ? (V.logoChip
+              ? `<div class="secondary-chip"><img src="${SECONDARY_LOGO}" alt="League logo"></div>`
+              : `<img src="${SECONDARY_LOGO}" alt="League logo" class="secondary-logo">`)
+          : `<div class="ball">⚽</div>`}
       </div>
       <div class="since">EST. 1893 · PHILADELPHIA</div>
     </div>
 
     <div class="hero">
-      <div class="lighthouse">LIGHTHOUSE</div>
-      <h1>${WORD}</h1>
-      <div class="soccer">SOCCER</div>
+      <div class="lighthouse">${BRAND}</div>
+      <h1>${WORD.split('\n').map(s => s.trim().replace(/\*\*(.+?)\*\*/g, '<span class="accent">$1</span>')).join('<br>')}</h1>
+      ${SOCCER_TEXT ? `<div class="soccer">${SOCCER_TEXT}</div>` : ''}
+      ${HERO_PILL ? `<div class="hero-pill">${HERO_PILL}</div>` : ''}
     </div>
 
     <div class="spacer-top"></div>

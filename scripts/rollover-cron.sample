@@ -1,0 +1,25 @@
+# Recurring-RSVP rollover — Sunday 20:00 local time
+#
+# Fires once a week to materialize the coming Mon–Sun window of matches
+# (from active match_series templates) and drop in RSVP rows for players
+# who set recurring "yes/maybe/no" preferences.
+#
+# Install:   crontab -l > /tmp/cron.cur && cat scripts/rollover-cron.sample >> /tmp/cron.cur && crontab /tmp/cron.cur
+# Verify:    crontab -l | grep rollover
+# Remove:    crontab -e     (delete the lines below)
+#
+# The host timezone is America/New_York (EDT/EST), so 20:00 here IS
+# 20:00 Eastern — the exact moment RsvpMaterialization considers the
+# next week "open".  If you ever change the host to UTC, adjust the
+# hour or switch to a systemd timer with a `[Timer] Persistent=true`
+# unit and explicit `OnCalendar=Sun *-*-* 20:00 America/New_York`.
+#
+# Idempotent: the rollover service uses ON CONFLICT DO NOTHING, so a
+# manual re-run is safe.
+#
+# stdout/stderr appends to scripts/rollover-cron.log — check it after
+# the first Sunday to confirm the job fired.
+
+PATH=/usr/local/bin:/usr/bin:/bin
+REPO_PATH=/home/jbreslin/sandbox/github/footballhome
+0 20 * * 0 cd $REPO_PATH && ./scripts/rollover.sh >> $REPO_PATH/scripts/rollover-cron.log 2>&1

@@ -324,16 +324,34 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
     }
 }
 
-void PersonLinker::recordMembership(int personId, long long programId) {
+void PersonLinker::recordMembership(int personId,
+                                    long long programId,
+                                    long long registrationId) {
     if (personId <= 0 || programId <= 0) return;
     try {
-        // 1. Person already has an OPEN row for THIS program? — nothing to do.
+        // 1. Person already has an OPEN row for THIS program?
+        //    Backfill `la_registration_id` if we now know it and the row
+        //    doesn't have one yet (also refresh if LA reports a different
+        //    id — a re-registration mid-season replaces the old reg-id).
         auto hit = db_->query(
             "SELECT 1 FROM person_la_memberships "
             " WHERE person_id = $1::int AND la_program_id = $2::bigint AND ended_at IS NULL "
             " LIMIT 1",
             {std::to_string(personId), std::to_string(programId)});
-        if (!hit.empty()) return;
+        if (!hit.empty()) {
+            if (registrationId > 0) {
+                db_->query(
+                    "UPDATE person_la_memberships "
+                    "   SET la_registration_id = $3::bigint, updated_at = now() "
+                    " WHERE person_id = $1::int AND la_program_id = $2::bigint "
+                    "   AND ended_at IS NULL "
+                    "   AND la_registration_id IS DISTINCT FROM $3::bigint",
+                    {std::to_string(personId),
+                     std::to_string(programId),
+                     std::to_string(registrationId)});
+            }
+            return;
+        }
 
         // 2. Close any OTHER open row for this person (active↔paused, or
         //    a category swap).  Preserves history — we UPDATE ended_at,
@@ -344,13 +362,23 @@ void PersonLinker::recordMembership(int personId, long long programId) {
             {std::to_string(personId), std::to_string(programId)});
 
         // 3. Insert the new open row.
-        db_->query(
-            "INSERT INTO person_la_memberships (person_id, la_program_id) "
-            "VALUES ($1::int, $2::bigint)",
-            {std::to_string(personId), std::to_string(programId)});
+        if (registrationId > 0) {
+            db_->query(
+                "INSERT INTO person_la_memberships (person_id, la_program_id, la_registration_id) "
+                "VALUES ($1::int, $2::bigint, $3::bigint)",
+                {std::to_string(personId),
+                 std::to_string(programId),
+                 std::to_string(registrationId)});
+        } else {
+            db_->query(
+                "INSERT INTO person_la_memberships (person_id, la_program_id) "
+                "VALUES ($1::int, $2::bigint)",
+                {std::to_string(personId), std::to_string(programId)});
+        }
     } catch (const std::exception& e) {
         std::cerr << "[PersonLinker::recordMembership] " << e.what()
-                  << " (personId=" << personId << ", programId=" << programId << ")"
+                  << " (personId=" << personId << ", programId=" << programId
+                  << ", registrationId=" << registrationId << ")"
                   << std::endl;
     }
 }

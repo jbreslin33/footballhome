@@ -260,6 +260,59 @@ class YouthRosterScreen extends Screen {
       <a href="${telHref}"
          style="${btn} background:#6366f1; color:#fff;">📞 Call</a>` : '';
 
+    // 👤 Save (2026-07-05) — data-URL vCard so tapping opens the
+    // native "Add Contact" sheet on iOS/Android (or downloads a .vcf
+    // on desktop).  Contact is the PARENT (kids' billing / contact
+    // goes to parents); ORG carries "Lighthouse 1893 — [kid's name]"
+    // so the coach can find them later in their phone.
+    const parentFirst = p.parentFirstName || (p.parentName ? String(p.parentName).split(' ')[0] : '');
+    const parentLast  = p.parentLastName  || (p.parentName ? String(p.parentName).split(' ').slice(1).join(' ') : '');
+    const parentFull  = p.parentName || `${parentFirst} ${parentLast}`.trim();
+    const kidName     = p.fullName || p.firstName || 'youth player';
+    const vcardHref = (p.parentPhone || p.parentEmail)
+      ? this.buildVcardHref({
+          fullName:  parentFull || parentFirst || 'Parent',
+          firstName: parentFirst,
+          lastName:  parentLast,
+          phone:     p.parentPhone,
+          email:     p.parentEmail,
+          org:       `Lighthouse 1893 — ${kidName}`,
+          note:      `Parent of ${kidName}${p.ageGroup ? ` (${p.ageGroup})` : ''}${p.club ? ` · ${p.club}` : ''}`,
+        })
+      : null;
+    const vcardFilename = ((parentFull || parentFirst || 'parent').trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
+    const vcardBtn = vcardHref ? `
+      <a href="${vcardHref}" download="${this.escape(vcardFilename)}"
+         title="Save ${this.escape(parentFull || 'parent')} to your phone contacts"
+         style="${btn} background:#0ea5e9; color:#fff;">👤 Save</a>` : '';
+
+    // 💸 PAY (2026-07-05) — parent SMS with payment reminder + LeagueApps
+    // dashboard link.  Mirrors the mens-roster PAY button but simpler:
+    // youth payload doesn't carry daysOverdue yet, so we can't do the
+    // three-tier (1-3 / 4-6 / 7+) messaging — one universal body,
+    // triggered whenever LA reports an outstanding balance or a non-PAID
+    // paymentStatus.  Message is addressed to the PARENT (parentPhone,
+    // parentFirstName) since kids' billing goes to parents.
+    const isOverdue = (p.outstandingBalance != null && p.outstandingBalance > 0)
+      || (p.paymentStatus && p.paymentStatus !== 'PAID');
+    let payBtn = '';
+    if (isOverdue && p.parentPhone) {
+      const amountNum = (p.outstandingBalance > 0)
+        ? p.outstandingBalance
+        : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
+      const amountStr = amountNum != null ? `$${amountNum}` : 'monthly dues';
+      const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
+      const kidRef    = p.firstName || 'your player';
+      const parentRef = p.parentFirstName ? ` ${p.parentFirstName}` : '';
+      const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
+      const payBody = `Hi${parentRef}, heads up — our Lighthouse 1893 Financial Dept flagged ${kidRef}'s monthly dues (${amountStr}) as past due. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to ${kidRef}'s practice / game roster eligibility (and any late fees), log in and pay / update your card on file: ${payUrl}  Thanks!`;
+      const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(payBody)}`;
+      payBtn = `
+      <a href="${payHref}"
+         title="Text ${this.escape(formattedPhone)} a payment reminder with LeagueApps link"
+         style="${btn} background:#059669; color:#fff;">💸 Pay</a>`;
+    }
+
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
     return `
@@ -276,9 +329,37 @@ class YouthRosterScreen extends Screen {
         ${p.parentEmail ? `<div style="font-size:0.8rem; opacity:0.85;">${this.escape(p.parentEmail)}</div>` : ''}
         ${formattedPhone ? `<div style="font-size:0.85rem; font-weight:500; opacity:0.95;">${formattedPhone}</div>` : ''}
         ${billingBadge ? `<div style="margin-top:6px;">${billingBadge}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px;">${emailBtn}${smsBtn}${telBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${smsBtn}${telBtn}${payBtn}${vcardBtn}</div>
       </div>
     `;
+  }
+
+  // ── vCard builder (2026-07-05) ───────────────────────────────────
+  //
+  // Builds a `data:text/vcard;charset=utf-8,...` URL that, when opened
+  // via an <a href>, triggers the OS-native "Add Contact" flow on
+  // iOS/Android or downloads a .vcf on desktop.  vCard 3.0 with CRLF
+  // line endings per RFC 2426.  Field values are escaped (backslash,
+  // comma, semicolon, newline) before the whole payload is
+  // URI-encoded for the data URL.
+  buildVcardHref({ fullName, firstName, lastName, phone, email, org, note }) {
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+    const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
+    if (firstName || lastName) {
+      lines.push(`N:${esc(lastName)};${esc(firstName)};;;`);
+    }
+    if (fullName) lines.push(`FN:${esc(fullName)}`);
+    if (org) lines.push(`ORG:${esc(org)}`);
+    if (phone) lines.push(`TEL;TYPE=CELL:${esc(phone)}`);
+    if (email) lines.push(`EMAIL;TYPE=INTERNET:${esc(email)}`);
+    if (note) lines.push(`NOTE:${esc(note)}`);
+    lines.push('END:VCARD');
+    const body = lines.join('\r\n');
+    return `data:text/vcard;charset=utf-8,${encodeURIComponent(body)}`;
   }
 
   // ── helpers ──────────────────────────────────────────────────────────
