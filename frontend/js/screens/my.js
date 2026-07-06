@@ -248,8 +248,16 @@ class MyScreen extends Screen {
       : 'Nothing on the schedule right now.';
 
     const banner = this._purgatoryBanner();
+    const pickupCta = this._pickupSignupCta();
 
     if (!events.length) {
+      // No roster row + we have a pickup signup URL → the CTA IS the
+      // whole screen (no "check back after Sunday" copy, since the real
+      // reason they see nothing is that they're not registered).
+      if (pickupCta) {
+        box.innerHTML = banner + pickupCta;
+        return;
+      }
       box.innerHTML = `
         ${banner}
         <div class="empty-state">
@@ -260,6 +268,47 @@ class MyScreen extends Screen {
     }
 
     box.innerHTML = banner + events.map(ev => this._eventCard(ev)).join('');
+  }
+
+  // "Register for Pickup" card shown when the caller has no mens roster
+  // row at all (membership_status === 'none') and the backend told us
+  // where to send them on LeagueApps (pickup_signup_url).  Users with an
+  // active/purgatory row already see their events; paused-only users end
+  // up here too, which is intentional — they can re-enter the club
+  // through the free pickup tier without paying full dues.
+  _pickupSignupCta() {
+    if (!this.week) return '';
+    if (this.week.membership_status !== 'none') return '';
+    const url = this.week.pickup_signup_url;
+    if (!url || typeof url !== 'string') return '';
+    return `
+      <div style="background: rgba(59, 130, 246, 0.08);
+                  border: 1px solid rgba(59, 130, 246, 0.35);
+                  border-radius: 12px;
+                  padding: var(--space-4);
+                  margin-bottom: var(--space-3);
+                  text-align: center;">
+        <div style="font-size: 1.15rem; font-weight: 700;
+                    color: #1d4ed8; margin-bottom: var(--space-2);">
+          You're almost in!
+        </div>
+        <div style="color: var(--color-text-secondary);
+                    margin-bottom: var(--space-3); line-height: 1.5;">
+          Register for free Pickup on LeagueApps to see the weekly schedule
+          and RSVP. Takes about 60 seconds — no payment required.
+        </div>
+        <a href="${this.escapeHtml(url)}" target="_blank" rel="noopener"
+           style="display: inline-block;
+                  background: #2563eb;
+                  color: #fff;
+                  padding: 10px 18px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  text-decoration: none;">
+          Register for Pickup →
+        </a>
+      </div>
+    `;
   }
 
   // Amber banner shown when the caller's mens roster_assignments are all

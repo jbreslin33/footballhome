@@ -361,6 +361,33 @@ Response MyController::handleGetWeek(const Request& request) {
         if (membershipStatus == "purgatory") {
             response["purgatory_days_overdue"] = purgatoryDaysOverdue;
         }
+
+        // Pickup signup CTA — always emit the free-tier pickup program URL
+        // from `leagueapps_programs` so the frontend can render a
+        // "Register for Pickup" card when membership_status == 'none' (no
+        // mens roster row at all).  Sourced from DB (migration 097)
+        // instead of hard-coding so ops can update the URL without a
+        // code push if LA ever renames the program.  Silent fallback to
+        // null when the row is missing (unmigrated dev DB) — frontend
+        // just won't show the button.
+        try {
+            auto pu = db->query(
+                "SELECT registration_url "
+                "  FROM leagueapps_programs "
+                " WHERE category = 'men' AND variant = 'pickup' "
+                "   AND registration_url IS NOT NULL "
+                " LIMIT 1");
+            if (!pu.empty() && !pu[0]["registration_url"].is_null()) {
+                response["pickup_signup_url"] = pu[0]["registration_url"].as<std::string>();
+            } else {
+                response["pickup_signup_url"] = nullptr;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[GET /api/my/week] pickup url lookup failed: "
+                      << e.what() << std::endl;
+            response["pickup_signup_url"] = nullptr;
+        }
+
         return jsonOk(response);
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/my/week] " << e.what() << std::endl;

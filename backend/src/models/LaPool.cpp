@@ -131,8 +131,9 @@ std::string nowIsoMs() {
 LaPool::LaPool()
     : db_(Database::getInstance()),
       sync_(std::make_unique<LaProgramSync>()),
-      mensProgramId_  (envInt("LEAGUEAPPS_MENS_PROGRAM_ID",   5039300)),
-      womensProgramId_(envInt("LEAGUEAPPS_WOMENS_PROGRAM_ID", 5039340)) {}
+      mensProgramId_      (envInt("LEAGUEAPPS_MENS_PROGRAM_ID",        5039300)),
+      womensProgramId_    (envInt("LEAGUEAPPS_WOMENS_PROGRAM_ID",      5039340)),
+      mensPickupProgramId_(envInt("LEAGUEAPPS_MENS_PICKUP_PROGRAM_ID", 5070075)) {}
 
 LaPool::~LaPool() = default;
 
@@ -291,6 +292,46 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
             db_->query(sql, params);
         } catch (const std::exception& e) {
             std::cerr << "la-pool pool-team auto-assign failed: " << e.what() << std::endl;
+        }
+    }
+
+    // 3c. Sync the free-tier "Men's Club Pickup Membership" program
+    //     (LA 5070075) and auto-assign every registrant to the Pickup
+    //     pool team ONLY (not Practice, not any league team).  These
+    //     users pay nothing and are only entitled to RSVP to pickup
+    //     events (matches.match_type_id = 7).  Excluding them from the
+    //     Practice pool team is what keeps them off practice/game
+    //     RSVP screens — the eligibility rules in MyController and
+    //     RsvpMaterialization already require team_id ∈ (35,120,121)
+    //     for practice/games, so a Pickup-only assignment naturally
+    //     restricts them.  Runs only on the Mens pool path (there is
+    //     no womens equivalent yet).  Non-fatal: any LA/DB failure
+    //     just logs and continues so the pool screen still renders.
+    if (gender == Gender::Mens && mensPickupProgramId_ > 0) {
+        try {
+            auto pickupSync = sync_->run(mensPickupProgramId_);
+            std::vector<std::string> pickupUids(pickupSync.activeUserIds.begin(),
+                                                pickupSync.activeUserIds.end());
+            if (!pickupUids.empty()) {
+                const std::string sql =
+                    "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id) "
+                    "SELECT 'mens', ua.uid::bigint, t.id "
+                    "  FROM UNNEST($1::text[]) AS ua(uid) "
+                    "  CROSS JOIN teams t "
+                    " WHERE t.club_id = $2 "
+                    "   AND t.is_pool = true "
+                    "   AND t.name = 'Pickup' "
+                    "   AND (t.gender_category = 'mens' OR t.gender_category IS NULL) "
+                    "ON CONFLICT (domain, leagueapps_user_id, team_id) WHERE removed_at IS NULL DO NOTHING";
+                const std::vector<std::string> params = {
+                    textArrayLiteral(pickupUids),
+                    std::to_string(clubId),
+                };
+                db_->query(sql, params);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "la-pool pickup-tier sync failed (programId="
+                      << mensPickupProgramId_ << "): " << e.what() << std::endl;
         }
     }
 

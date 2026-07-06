@@ -47,6 +47,10 @@ private:
     std::unique_ptr<LaProgramSync>  sync_;
     int                             mensProgramId_;
     int                             womensProgramId_;
+    // Free-tier "Men's Club Pickup Membership" sub-program (LA 5070075).
+    // Registrants here get assigned to the Pickup pool team ONLY (no
+    // Practice, no specific league team).  See LaPool::run().
+    int                             mensPickupProgramId_;
 
     static int envInt(const char* name, int fallback);
 };
