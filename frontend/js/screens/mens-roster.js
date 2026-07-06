@@ -382,13 +382,13 @@ class MensRosterScreen extends Screen {
                       data-current-team-id="${currentTeamId}"
                       ${active ? 'disabled' : ''}
                       title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"
-                      style="${btnBase} ${style} text-align:left;">
+                      style="${btnBase} font-size:0.82rem; padding:2px 7px; ${style} text-align:left;">
                 ${active ? '✓ ' : ''}${t.label.toUpperCase()}
               </button>`;
     }).join('');
     const moveSelect = `
       <details class="mr-move-details" style="position:relative; display:inline-block;">
-        <summary style="${btnBase} background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
+        <summary style="${btnBase} font-size:0.85rem; padding:2px 8px; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
                  title="Move ${this.escape(p.firstName || 'player')} to another column">
           ${this.escape(activeTarget.label.toUpperCase())} ▾
         </summary>
@@ -552,7 +552,7 @@ class MensRosterScreen extends Screen {
         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px; row-gap:3px;">
           ${posChip}
           <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>
-          ${dobShort ? `<span style="font-size:0.72rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
+          ${dobShort ? `<span style="font-size:0.85rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
           ${moveSelect}
           ${laBtn}
           ${delinqBtns}

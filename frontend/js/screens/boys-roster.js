@@ -347,7 +347,7 @@ class BoysRosterScreen extends Screen {
     // is the LA value, defaulted to club-of-record when missing.
     const isBoy      = (p.gender || '').toLowerCase().startsWith('m');
     const ageChip    = p.ageGroup
-      ? `<span style="font-size:0.65rem; font-weight:800; letter-spacing:0.02em; padding:1px 6px; border-radius:10px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(p.ageGroup)}</span>`
+      ? `<span style="font-size:0.85rem; font-weight:800; letter-spacing:0.02em; padding:2px 8px; border-radius:10px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(p.ageGroup)}</span>`
       : '';
     const genderChip = `<span style="font-size:0.65rem; font-weight:800; letter-spacing:0.02em; padding:1px 6px; border-radius:10px; background:${isBoy ? '#1e40af' : '#831843'}; color:${isBoy ? '#dbeafe' : '#fce7f3'}; white-space:nowrap;">${isBoy ? '♂ BOY' : '♀ GIRL'}</span>`;
 
@@ -398,13 +398,13 @@ class BoysRosterScreen extends Screen {
                       data-current-team-id="${currentTeamId}"
                       ${active ? 'disabled' : ''}
                       title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"
-                      style="${btnBase} ${style} text-align:left;">
+                      style="${btnBase} font-size:0.82rem; padding:2px 7px; ${style} text-align:left;">
                 ${active ? '✓ ' : ''}${t.label.toUpperCase()}
               </button>`;
     }).join('');
     const moveSelect = `
       <details class="br-move-details" style="position:relative; display:inline-block;">
-        <summary style="${btnBase} background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
+        <summary style="${btnBase} font-size:0.85rem; padding:2px 8px; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
                  title="Move ${this.escape(p.firstName || 'player')} to another column">
           ${this.escape(activeTarget.label.toUpperCase())} ▾
         </summary>
@@ -601,7 +601,7 @@ class BoysRosterScreen extends Screen {
           <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>
           ${ageChip}
           ${genderChip}
-          ${dobShort ? `<span style="font-size:0.72rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
+          ${dobShort ? `<span style="font-size:0.85rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
           ${moveSelect}
           ${laBtn}
           ${delinqBtns}
