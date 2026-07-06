@@ -13,6 +13,8 @@
 
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
+#include "PersonPayments.h"
+#include "../database/Database.h"
 #include "../services/LeagueAppsService.h"
 
 using nlohmann::json;
@@ -124,6 +126,7 @@ json ageGroupFromDob(const std::string& bdIso, int seasonEndYear) {
 BoysRoster::BoysRoster()
     : columns_    (std::make_unique<MensTeamColumns>("boys")),
       assignments_(std::make_unique<MensTeamAssignments>("boys")),
+      payments_   (std::make_unique<PersonPayments>()),
       boysProgramId_ (envInt("LEAGUEAPPS_BOYS_CLUB_PROGRAM_ID",  5039252)),
       girlsProgramId_(envInt("LEAGUEAPPS_GIRLS_CLUB_PROGRAM_ID", 5039357)) {}
 
@@ -249,6 +252,100 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         girlsRecs = cachedGirls_;
     }
 
+    // ── Payments sync + 3-month window load (2026-07-05) ─────────────
+    //
+    // The frontend BillingBadge component renders a 3-month calendar
+    // table from `p.paymentsWindow`; without this load every cell shows
+    // $0 which caused the user to say "no youth payments picked up at
+    // all lol".  We do a live sync from the LA transactions feed (best-
+    // effort — cursor-based, cheap on the hot path) then load every
+    // positive charge in the current + previous 2 calendar months for
+    // both youth programs.
+    if (refreshLa) {
+        try {
+            payments_->syncFromLa();
+        } catch (const std::exception& e) {
+            std::cerr << "[BoysRoster] payments syncFromLa failed: "
+                      << e.what() << std::endl;
+        }
+    }
+
+    // Precompute the 3-month window start (first day of month N-2 in UTC).
+    std::string windowStartIso;
+    {
+        std::time_t nowT = std::time(nullptr);
+        std::tm tm{};
+        gmtime_r(&nowT, &tm);
+        int y = tm.tm_year + 1900;
+        int m = tm.tm_mon + 1;
+        int wm = m - 2;
+        int wy = y;
+        while (wm < 1) { wm += 12; --wy; }
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "%04d-%02d-01", wy, wm);
+        windowStartIso = buf;
+    }
+
+    // Per-registration payment list (children's LA registrations) for
+    // the current + 2 previous months across BOTH youth programs.  We
+    // key on la_registration_id because parents pay under their own
+    // account — the payment's la_user_id is the parent's, not the
+    // child's, so a user-id join misses every family payment.  The
+    // registration id, in contrast, is the child's registration and
+    // matches shapePlayer's `registrationId`.  Extra program IDs are
+    // env-overridable via LEAGUEAPPS_BOYS_PAYMENT_PROGRAM_IDS.
+    struct BoysPay {
+        double      amount = 0.0;
+        std::string paidAt;   // ISO8601 UTC
+        long long   programId = 0;
+    };
+    std::unordered_map<long long, std::vector<BoysPay>> payByReg;
+    {
+        std::vector<std::string> programIds;
+        if (const char* raw = std::getenv("LEAGUEAPPS_BOYS_PAYMENT_PROGRAM_IDS"); raw && *raw) {
+            std::stringstream ss(raw);
+            std::string tok;
+            while (std::getline(ss, tok, ',')) if (!tok.empty()) programIds.push_back(tok);
+        }
+        if (programIds.empty()) {
+            programIds.push_back(std::to_string(boysProgramId_));
+            programIds.push_back(std::to_string(girlsProgramId_));
+        }
+        std::string inList;
+        for (size_t i = 0; i < programIds.size(); ++i) {
+            if (i) inList += ",";
+            inList += "$" + std::to_string(i + 1);
+        }
+        try {
+            auto* db = Database::getInstance();
+            std::vector<std::string> params = programIds;
+            params.push_back(windowStartIso);
+            pqxx::result rows = db->query(
+                "SELECT la_registration_id, amount, la_program_id, "
+                "       TO_CHAR(paid_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS paid_iso "
+                "  FROM person_payments "
+                " WHERE la_program_id IN (" + inList + ") "
+                "   AND la_registration_id IS NOT NULL "
+                "   AND txn_type IN ('Charge','Bank','Offline Payment') "
+                "   AND amount > 0 "
+                "   AND paid_at >= $" + std::to_string(programIds.size() + 1) + "::timestamptz "
+                " ORDER BY la_registration_id, paid_at DESC",
+                params
+            );
+            for (const auto& r : rows) {
+                if (r["la_registration_id"].is_null()) continue;
+                BoysPay bp;
+                bp.amount    = r["amount"].is_null() ? 0.0 : r["amount"].as<double>();
+                bp.paidAt    = r["paid_iso"].is_null() ? std::string{} : r["paid_iso"].c_str();
+                bp.programId = r["la_program_id"].is_null() ? 0 : r["la_program_id"].as<long long>();
+                const long long regId = r["la_registration_id"].as<long long>();
+                payByReg[regId].push_back(std::move(bp));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[BoysRoster] payments window load failed: " << e.what() << std::endl;
+        }
+    }
+
     const int seasonEndYear = defaultSeasonEndYear();
 
     std::vector<json> all;
@@ -265,6 +362,44 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         -> const MensTeamAssignments::Cell* {
         for (const auto& c : v) if (c.teamId == teamId) return &c;
         return nullptr;
+    };
+
+    // Attach the 3-month rolling window of payments for this player to
+    // `row`.  Frontend (BillingBadge.render3MonthTable) needs
+    // `paymentsWindow` as an array of {amount, paidAt, programId}.
+    // Payments are joined on la_registration_id (child's registration)
+    // because youth transactions are on the parent's LA account.
+    auto attachPayments = [&](json& row) {
+        json paymentsWindow = json::array();
+        double paymentsWindowSum = 0.0;
+        long long regId = 0;
+        {
+            const json& v = row.at("registrationId");
+            if      (v.is_number_integer())          regId = v.get<long long>();
+            else if (v.is_number_unsigned())         regId = static_cast<long long>(v.get<unsigned long long>());
+            else if (v.is_number_float())            regId = static_cast<long long>(v.get<double>());
+            else if (v.is_string()) {
+                try { regId = std::stoll(v.get<std::string>()); }
+                catch (...) { regId = 0; }
+            }
+        }
+        if (regId > 0) {
+            auto pit = payByReg.find(regId);
+            if (pit != payByReg.end()) {
+                for (const auto& bp : pit->second) {
+                    if (bp.paidAt.size() < 10) continue;
+                    if (bp.paidAt.substr(0, 10) < windowStartIso) continue;
+                    json r = json::object();
+                    r["amount"]    = bp.amount;
+                    r["paidAt"]    = bp.paidAt;
+                    r["programId"] = bp.programId;
+                    paymentsWindow.push_back(std::move(r));
+                    paymentsWindowSum += bp.amount;
+                }
+            }
+        }
+        row["paymentsWindow"]    = std::move(paymentsWindow);
+        row["paymentsWindowSum"] = paymentsWindowSum;
     };
 
     for (auto& p : all) {
@@ -284,6 +419,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         if (relevant.empty()) {
             json row       = p;
             row["teamIds"] = json::array();
+            attachPayments(row);
             unassigned.push_back(std::move(row));
         } else {
             for (int tid : relevant) {
@@ -294,6 +430,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
                 row["coachSortOrder"] = (cell && cell->coachSortOrder)
                     ? json(*cell->coachSortOrder)
                     : json(nullptr);
+                attachPayments(row);
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }
         }

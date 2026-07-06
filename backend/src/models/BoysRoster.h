@@ -7,6 +7,7 @@
 
 class MensTeamColumns;
 class MensTeamAssignments;
+class PersonPayments;
 
 // ────────────────────────────────────────────────────────────────────────────
 // BoysRoster — model behind GET /api/boys-roster.
@@ -47,6 +48,7 @@ public:
 private:
     std::unique_ptr<MensTeamColumns>     columns_;      // domain="boys"
     std::unique_ptr<MensTeamAssignments> assignments_;  // domain="boys"
+    std::unique_ptr<PersonPayments>      payments_;
     int boysProgramId_;
     int girlsProgramId_;
 
