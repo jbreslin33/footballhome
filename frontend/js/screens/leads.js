@@ -869,8 +869,8 @@ class LeadsScreen extends Screen {
     const email    = this.fillTemplate(t.email,   previewLead);
     const snippets = this.messageSnippets(funnelLabel);
 
-    const TIER_ORDER = ['followup', 'qualify', 'close', 'soft', 'info'];
-    const TIER_LABEL = { followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
+    const TIER_ORDER = ['broadcast', 'followup', 'qualify', 'close', 'soft', 'info'];
+    const TIER_LABEL = { broadcast: 'Broadcast (paste to GroupMe / LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
     const byTier = {};
     for (const s of snippets) {
       const tt = s.tier || 'info';
