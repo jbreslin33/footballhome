@@ -2093,6 +2093,40 @@ class LeadsScreen extends Screen {
       });
     }
 
+    // ── Broadcast: Men's Club — "set your availability at footballhome.org"
+    // Audience: CURRENT mens registrations (active + behind-on-payment).
+    // Do NOT mention dues, pause tier, or the free pickup registration —
+    // pickup-only members get a separate message via the pickup chat.
+    // "Set availability" wording is deliberate: some guys don't know
+    // "RSVP" as a verb, and "set availability" reads unambiguously on a
+    // phone.  Surfaces on the Men's Club and APSL / Liga 1 funnels so
+    // the coach can paste it into LA Messages once per program.
+    const MENS_BROADCAST_FUNNELS = new Set(["Men's Club", 'APSL / Liga 1']);
+    if (MENS_BROADCAST_FUNNELS.has(funnelLabel)) {
+      const availabilityBody =
+        `Hi guys,\n\n` +
+        `Quick heads-up — we're moving how we track who's playing to footballhome.org. It's one spot for the weekly schedule (games, practice, pickup) where you set your availability for each one.\n\n` +
+        `How to get in:\n` +
+        `1. Open https://footballhome.org on your phone\n` +
+        `2. Tap Sign In\n` +
+        `3. Sign in with Google, OR request a magic-link email — use the same email you're registered with on LeagueApps\n\n` +
+        `Once you're in, you'll see your week under My Schedule. For every game / practice / pickup, just tap:\n` +
+        `• Going\n` +
+        `• Maybe\n` +
+        `• Can't go\n\n` +
+        `Please sign in and set your availability this week — we're using it to plan lineups and know who's showing up.\n\n` +
+        `On your phone? Add it to your Home Screen for a real app icon (Share → Add to Home Screen on iOS, Install app on Android).\n\n` +
+        `If you get stuck signing in, hit me back and I'll sort it out.\n\n` +
+        `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
+      snippets.push({
+        id: 'fh-set-availability',
+        label: "📣 Set availability at footballhome.org (Men's Club)",
+        tier: 'broadcast',
+        subject: 'Lighthouse 1893 — set your availability at footballhome.org',
+        body: this._proBold(availabilityBody),
+      });
+    }
+
     if (c.isLegacyYouth) {
       snippets.push({
         id: 'register-boys',
@@ -2334,6 +2368,8 @@ class LeadsScreen extends Screen {
             `\n` +
             `${linkBlock}\n` +
             `\n` +
+            `Once you're registered, I'll send you a link to set your availability for practices and games.\n` +
+            `\n` +
             `Let me know if you have any questions!\n` +
             `\n` +
             `— {coachFirst}\n` +
@@ -2341,6 +2377,7 @@ class LeadsScreen extends Screen {
             `Lighthouse 1893 SC`,
           smsBody:
             `Great — ${c.closerLine}. Register: ${smsLinkBit}\n` +
+            `Once registered, I'll send a link to set your availability for practices & games.\n` +
             `Let me know if you have any questions!\n` +
             `— {coachFirst}`,
         };

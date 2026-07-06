@@ -69,12 +69,14 @@ public:
     // Helper: the user's full set of team_ids in ascending order.
     std::vector<int> teamIdsForUser(long long userId);
 
-    // ── Delinquency soft-delete (2026-07-04) ─────────────────────────
+    // ── Delinquency soft-delete (2026-07-04, sweep disabled) ─────────
     //
-    // Auto-purgatory removes a delinquent player from every roster while
-    // preserving history in the same table.  Rows get `removed_at=now()`,
-    // `removed_reason='delinquent'`, and a JSONB blob describing the state
-    // at the moment of removal (daysOverdue, nextBillDate, outstanding).
+    // The auto dues-owed sweep would remove a delinquent player from
+    // every roster while preserving history in the same table.  Rows get
+    // `removed_at=now()`, `removed_reason='delinquent'`, and a JSONB
+    // blob describing the state at the moment of removal (daysOverdue,
+    // nextBillDate, outstanding).  The sweep is currently DISABLED (see
+    // MensRoster.cpp); these methods remain callable for admin tools.
     //
     // bulkSoftDeleteForDelinquent(userIds, details):
     //   For every uid in `userIds`, marks every ACTIVE (removed_at IS
@@ -103,7 +105,7 @@ public:
 
     // ── Practice / Pickup auto-membership (2026-07-04) ───────────────
     //
-    // Every LA member in good standing (delinquencyState != 'purgatory')
+    // Every LA member in good standing (delinquencyState != 'dues_owed')
     // is automatically on the Practice (908) + Pickup (909) teams — the
     // Mens Roster Board doesn't render those as selection columns any
     // more; instead, `/api/mens-roster` calls `bulkEnsureActive()` after

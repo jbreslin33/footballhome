@@ -136,7 +136,7 @@ std::string resolveChangedByUserId(long long personId) {
 //   practice (mt=3):        active mens roster to team ∈ (35 APSL, 120 Liga1, 121 Liga2)
 //   game APSL home (mt∈{1,4,6}, home=35):  active mens roster to team ∈ (35, 120)  (play-up)
 //   game other (mt∈{1,4,6}): active mens roster to team = home_team_id
-//   pickup (mt=7):          ANY mens roster (active OR soft-deleted purgatory)
+//   pickup (mt=7):          ANY mens roster (active OR soft-deleted / dues-owed)
 //   other (mt∈{2,5}):       fall back to active roster to team = home_team_id
 bool callerRosteredForMatch(long long personId, long long matchId) {
     auto* db = Database::getInstance();
@@ -322,18 +322,20 @@ Response MyController::handleGetWeek(const Request& request) {
             });
         }
 
-        // Membership status — for the purgatory banner.  'active' means
-        // at least one active mens roster_assignment; 'purgatory' means
-        // every mens row is soft-deleted (delinquent dues); 'none' means
-        // no mens rows at all (shouldn't normally happen for signed-in
-        // players, but guard anyway).
+        // Membership status — drives the amber "dues owed" banner
+        // in the frontend.  'active' means at least one active mens
+        // roster_assignment; 'dues_owed' means every mens row is
+        // soft-deleted (delinquent dues, historically called
+        // 'purgatory' internally); 'none' means no mens rows at all
+        // (shouldn't normally happen for signed-in players, but guard
+        // anyway).
         std::string membershipStatus = "none";
-        long long purgatoryDaysOverdue = 0;
+        long long duesDaysOverdue = 0;
         {
             auto s = db->query(
                 "SELECT "
-                "  COUNT(*) FILTER (WHERE mta.removed_at IS NULL) AS active_ct, "
-                "  COUNT(*) FILTER (WHERE mta.removed_at IS NOT NULL) AS purgatory_ct, "
+                "  COUNT(*) FILTER (WHERE mta.removed_at IS NULL)     AS active_ct, "
+                "  COUNT(*) FILTER (WHERE mta.removed_at IS NOT NULL) AS dues_owed_ct, "
                 "  EXTRACT(DAY FROM (NOW() - MIN(mta.removed_at)))::int AS days_overdue "
                 "  FROM external_person_aliases epa "
                 "  JOIN roster_assignments mta "
@@ -343,12 +345,12 @@ Response MyController::handleGetWeek(const Request& request) {
                 "   AND epa.person_id = $1::int",
                 {std::to_string(personId)});
             if (!s.empty()) {
-                const long long activeCt   = s[0]["active_ct"].as<long long>();
-                const long long purgCt     = s[0]["purgatory_ct"].as<long long>();
-                if (activeCt > 0)       membershipStatus = "active";
-                else if (purgCt > 0)    membershipStatus = "purgatory";
-                if (membershipStatus == "purgatory" && !s[0]["days_overdue"].is_null()) {
-                    purgatoryDaysOverdue = s[0]["days_overdue"].as<long long>();
+                const long long activeCt = s[0]["active_ct"].as<long long>();
+                const long long duesCt   = s[0]["dues_owed_ct"].as<long long>();
+                if (activeCt > 0)     membershipStatus = "active";
+                else if (duesCt > 0)  membershipStatus = "dues_owed";
+                if (membershipStatus == "dues_owed" && !s[0]["days_overdue"].is_null()) {
+                    duesDaysOverdue = s[0]["days_overdue"].as<long long>();
                 }
             }
         }
@@ -358,8 +360,8 @@ Response MyController::handleGetWeek(const Request& request) {
             {"membership_status", membershipStatus},
             {"events",            events},
         };
-        if (membershipStatus == "purgatory") {
-            response["purgatory_days_overdue"] = purgatoryDaysOverdue;
+        if (membershipStatus == "dues_owed") {
+            response["dues_days_overdue"] = duesDaysOverdue;
         }
 
         // Pickup signup CTA — always emit the free-tier pickup program URL

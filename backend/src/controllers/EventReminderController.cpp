@@ -271,7 +271,7 @@ Response EventReminderController::handleSendReminders(const Request& request) {
         //   practice (mt=3):        team ∈ (35, 120, 121)
         //   game APSL home (35):    team ∈ (35, 120)  (play-up)
         //   game other:             team = home_team_id
-        //   pickup (mt=7):          ANY mens roster (active OR purgatory)
+        //   pickup (mt=7):          ANY mens roster (active OR dues-owed / soft-deleted)
         const std::string sql =
             "WITH match_ctx AS ( "
             "  SELECT id AS match_id, match_type_id, home_team_id "

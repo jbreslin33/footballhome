@@ -156,8 +156,8 @@ class BoysRosterScreen extends Screen {
       // knows the state of the club before scanning columns.  Backend
       // exposes these under top-level `data.delinquency`.
       const dq = data.delinquency || {};
-      const dqText = (dq.overdueCount > 0 || dq.purgatoryCount > 0)
-        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.purgatoryCount || 0} purgatory`
+      const dqText = (dq.overdueCount > 0 || dq.duesOwedCount > 0)
+        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.duesOwedCount || 0} dues owed`
         : '';
       this.setBanner({
         icon: '✓',

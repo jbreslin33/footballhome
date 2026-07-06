@@ -28,7 +28,7 @@ namespace {
 
 // Days between two calendar dates (today - billDate).  Positive = billDate
 // is in the past (overdue).  Zero when equal.  Returns 0 on parse failure
-// so a bad date never trips purgatory unfairly.
+// so a bad date never trips the dues-owed flag unfairly.
 int daysBetweenTodayAnd(const std::string& iso) {
     if (iso.size() < 10) return 0;
     std::tm tm_bill{};
@@ -511,14 +511,13 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     }
 
     // ── Delinquency computation (2026-07-04) ─────────────────────────
-    // Reads DELINQUENCY_PURGATORY_DAYS (default 7).  For each active
-    // player: daysOverdue = today - nextBillDate.  purgatory when
-    // daysOverdue >= threshold; ok otherwise.  Auto-purge purgatory
-    // players' active assignments (soft-delete with reason='delinquent')
-    // and auto-restore any previously-delinquent players who are now ok.
-    // Then reload the assignmentMap so the bucket loop sees the
-    // post-sweep state.
-    const int purgatoryDays = envIntFn("DELINQUENCY_PURGATORY_DAYS", 7);
+    // Reads DUES_OWED_HOLD_DAYS (default 7).  For each active player:
+    // daysOverdue = today - nextBillDate.  delinquencyState='dues_owed'
+    // when daysOverdue >= threshold; 'ok' otherwise.  (Historically the
+    // state was named 'purgatory'; renamed 2026-07-06 for player-facing
+    // clarity.)  The auto soft-delete + restore sweep was DISABLED per
+    // user directive same day — see the block further down.
+    const int holdDays = envIntFn("DUES_OWED_HOLD_DAYS", 7);
 
     // Precompute the current calendar month prefix (YYYY-MM) and the
     // "3-month rolling window start" (first of month-2), both used by
@@ -544,7 +543,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
 
     struct PlayerDelinquency {
         int  daysOverdue = 0;
-        bool purgatory   = false;
+        bool duesOwed    = false;
         std::string nextBillDate;
         bool   hasBalance = false;
         double balance    = 0.0;
@@ -614,13 +613,13 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             }
         }
 
-        // Purgatory triggers on time-past-due alone.  outstandingBalance
+        // Dues-owed triggers on time-past-due alone.  outstandingBalance
         // is emitted for observability but does NOT gate the flag — LA's
         // balance number lags after payment and we don't want to hold
-        // players in purgatory after they've paid.  admin bumps
+        // players as dues-owed after they've paid.  admin bumps
         // nextBillDate via /api/person-billing/mark-billed → daysOverdue
         // goes negative → state flips to ok on the next roster fetch.
-        d.purgatory = (d.daysOverdue >= purgatoryDays);
+        d.duesOwed = (d.daysOverdue >= holdDays);
         delinqByUid.emplace(uid, d);
 
         long long uidLL = 0;
@@ -628,19 +627,19 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         if (uidLL <= 0) continue;
 
         // Does this user currently have any ACTIVE assignments?  If yes
-        // and they're purgatory, queue soft-delete.  Do we have any
+        // and they're dues-owed, queue soft-delete.  Do we have any
         // stale delinquent-removed rows for a user who's now ok? Queue
         // restore.  Both queues resolve after the loop.
         auto amIt = assignmentMap.find(uid);
         const bool hasActiveAssignment = (amIt != assignmentMap.end() && !amIt->second.empty());
-        if (d.purgatory && hasActiveAssignment) {
+        if (d.duesOwed && hasActiveAssignment) {
             MensTeamAssignments::DelinquencyDetail det;
             det.daysOverdue = d.daysOverdue;
             det.nextBillDate = d.nextBillDate;
             det.hasBalance = d.hasBalance;
             det.outstandingBalance = d.balance;
             toPurge.emplace(uidLL, det);
-        } else if (!d.purgatory) {
+        } else if (!d.duesOwed) {
             // Cheap-and-conservative: always queue a restore attempt on
             // OK players.  bulkRestore is a no-op when there are no
             // delinquent-removed rows for that user (query returns empty
@@ -658,9 +657,12 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     //     rows back.
     //
     // New behavior (user directive same day: "don't auto manage it"):
-    //   • Purgatory is 100 % admin-driven — coach clicks the Purgatory
-    //     move button on a card to park a player.  Backend just tracks
-    //     the mens_team_assignments row on team 910 (Purgatory column).
+    //   • The Purgatory TEAM (id 910) is 100 % admin-driven — coach
+    //     clicks the Purgatory move button on a card to park a player.
+    //     Backend just tracks the mens_team_assignments row on team 910.
+    //     Not to be confused with the 'dues_owed' delinquencyState
+    //     computed above — the team is a manual sin-bin (any reason),
+    //     the state is auto-flagged by days-past-due.
     //   • Delinquency data (daysOverdue, nextBillDate, outstandingBalance)
     //     is still computed + returned so the card can show a red
     //     "Nd OVERDUE" chip and admin can decide whether to escalate.
@@ -824,13 +826,13 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         }
 
         // Delinquency state resolved earlier — attach to every row so the
-        // frontend can render the days-overdue counter + purgatory badge.
+        // frontend can render the days-overdue counter + dues-owed badge.
         int         daysOverdueOut = 0;
         std::string stateOut       = "ok";
         auto dqIt = delinqByUid.find(uid);
         if (dqIt != delinqByUid.end()) {
             daysOverdueOut = dqIt->second.daysOverdue;
-            stateOut       = dqIt->second.purgatory ? "purgatory" : "ok";
+            stateOut       = dqIt->second.duesOwed ? "dues_owed" : "ok";
         }
 
         if (relevant.empty()) {
@@ -973,19 +975,19 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     // so the frontend renders the color scale with the same anchor the
     // backend used, and per-player counts so the delinquent tile can
     // show a badge count without walking every bucket.
-    int purgatoryCount = 0;
-    int overdueCount   = 0;
+    int duesOwedCount = 0;
+    int overdueCount  = 0;
     for (const auto& kv : delinqByUid) {
-        if (kv.second.purgatory) ++purgatoryCount;
+        if (kv.second.duesOwed) ++duesOwedCount;
         if (kv.second.daysOverdue > 0) ++overdueCount;
     }
     json delinq;
-    delinq["purgatoryDays"]  = purgatoryDays;
-    delinq["purgatoryCount"] = purgatoryCount;
-    delinq["overdueCount"]   = overdueCount;
+    delinq["holdDays"]      = holdDays;
+    delinq["duesOwedCount"] = duesOwedCount;
+    delinq["overdueCount"]  = overdueCount;
     // Auto-sweep disabled 2026-07-04 pm — always 0.  Kept in the response
     // shape for backward compatibility with any clients still reading it.
-    delinq["purgedThisFetch"]   = 0;
+    delinq["heldThisFetch"]     = 0;
     delinq["restoredThisFetch"] = 0;
     out.body["delinquency"] = std::move(delinq);
     return out;

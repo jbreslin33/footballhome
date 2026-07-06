@@ -50,7 +50,7 @@ class MyScreen extends Screen {
       <div style="padding: 0 var(--space-4);">
         <div style="display:flex; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap:wrap;">
           <button class="btn btn-primary tab-btn" data-tab="week">This week</button>
-          <button class="btn btn-outline-secondary tab-btn" data-tab="recurring">Recurring RSVP</button>
+          <button class="btn btn-outline-secondary tab-btn" data-tab="recurring">Weekly availability</button>
           <button class="btn btn-outline-secondary tab-btn" data-tab="chat">Chat<span id="chat-badge" style="display:none; margin-left:6px; background:#dc2626; color:#fff; border-radius:10px; padding:1px 7px; font-size:0.75rem; font-weight:700;"></span></button>
         </div>
         <div id="my-content">
@@ -247,7 +247,7 @@ class MyScreen extends Screen {
       ? `${events.length} event${events.length === 1 ? '' : 's'} this week`
       : 'Nothing on the schedule right now.';
 
-    const banner = this._purgatoryBanner();
+    const banner = this._duesOwedBanner();
     const pickupCta = this._pickupSignupCta();
 
     if (!events.length) {
@@ -273,7 +273,7 @@ class MyScreen extends Screen {
   // "Register for Pickup" card shown when the caller has no mens roster
   // row at all (membership_status === 'none') and the backend told us
   // where to send them on LeagueApps (pickup_signup_url).  Users with an
-  // active/purgatory row already see their events; paused-only users end
+  // active/dues-owed row already see their events; paused-only users end
   // up here too, which is intentional — they can re-enter the club
   // through the free pickup tier without paying full dues.
   _pickupSignupCta() {
@@ -312,11 +312,11 @@ class MyScreen extends Screen {
   }
 
   // Amber banner shown when the caller's mens roster_assignments are all
-  // soft-deleted (delinquent dues).  Pickup RSVPs still work — practice
-  // and games are the ones filtered out on the backend.
-  _purgatoryBanner() {
-    if (!this.week || this.week.membership_status !== 'purgatory') return '';
-    const days = this.week.purgatory_days_overdue || 0;
+  // soft-deleted (delinquent dues).  Pickup availability still works —
+  // practice and games are the ones filtered out on the backend.
+  _duesOwedBanner() {
+    if (!this.week || this.week.membership_status !== 'dues_owed') return '';
+    const days = this.week.dues_days_overdue || 0;
     const daysStr = days > 0 ? ` (${days} day${days === 1 ? '' : 's'} overdue)` : '';
     return `
       <div style="background: rgba(240, 173, 78, 0.15);
@@ -326,10 +326,10 @@ class MyScreen extends Screen {
                   margin-bottom: var(--space-3);
                   color: #f0ad4e;">
         <div style="font-weight: 600; margin-bottom: var(--space-1);">
-          ⚠ Unpaid dues${this.escapeHtml(daysStr)}
+          ⚠ Dues owed${this.escapeHtml(daysStr)}
         </div>
         <div style="opacity: 0.95;">
-          Pay to unlock practice and games. You can still RSVP to pickup below.
+          Pay to unlock practice and games. You can still set availability for pickup below.
         </div>
       </div>
     `;
@@ -392,7 +392,7 @@ class MyScreen extends Screen {
         </div>
         ${desc}
         <div style="margin-top: var(--space-3); font-size:0.8rem; opacity:0.75;">
-          <span style="opacity:0.7;">Your RSVP:</span>
+          <span style="opacity:0.7;">Your availability:</span>
           <strong style="color:${yourStatusColor};">${this.escapeHtml(yourStatusLabel)}</strong>
         </div>
         <div style="display:flex; gap: var(--space-2); margin-top: var(--space-2);">

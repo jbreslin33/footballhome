@@ -6,7 +6,9 @@
 //   0 or negative → not shown here (paid up)
 //   1–3 days      → yellow  · nudge zone
 //   4–6 days      → orange · call-them zone
-//   7+ days       → red    · PURGATORY (auto-removed from every roster)
+//   7+ days       → red    · DUES OWED (past hold threshold; auto-sweep
+//                             disabled 2026-07-04 pm, so state is
+//                             advisory only)
 //
 // Data comes from GET /api/mens-roster which already computes
 // `daysOverdue` + `delinquencyState` server-side and emits a top-level
@@ -26,7 +28,7 @@ class MensDelinquentScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>💰 Delinquent Members</h1>
-        <p class="subtitle">Players overdue on dues — 7+ days = purgatory (off all rosters)</p>
+        <p class="subtitle">Players overdue on dues — 7+ days = dues owed (past hold threshold)</p>
       </div>
 
       <div style="padding: var(--space-4);">
@@ -52,8 +54,8 @@ class MensDelinquentScreen extends Screen {
       if (copyBtn) return this._copyReg(copyBtn);
     });
     // Billing badge (edit / mark-billed) shares its click wiring — mark-billed
-    // is the fastest way for admin to move someone out of purgatory once dues
-    // are collected offline.
+    // is the fastest way for admin to clear a player's dues-owed state once
+    // dues are collected offline.
     if (window.BillingBadge) {
       window.BillingBadge.wire(this.element, this.auth.fetch.bind(this.auth), () => this.load());
     }
@@ -106,10 +108,10 @@ class MensDelinquentScreen extends Screen {
 
       const summary = data.delinquency || {};
       this.setBanner({
-        icon: overdue.length === 0 ? '✓' : (summary.purgatoryCount > 0 ? '🚨' : '⚠'),
+        icon: overdue.length === 0 ? '✓' : (summary.duesOwedCount > 0 ? '🚨' : '⚠'),
         text: overdue.length === 0
           ? 'All members current on dues.'
-          : `${overdue.length} overdue · ${summary.purgatoryCount || 0} in purgatory (7+ days) · threshold ${summary.purgatoryDays || 7} days`,
+          : `${overdue.length} overdue · ${summary.duesOwedCount || 0} dues owed (7+ days) · threshold ${summary.holdDays || 7} days`,
         showRefresh: true,
       });
 
@@ -133,17 +135,17 @@ class MensDelinquentScreen extends Screen {
           <div style="font-size: 2.4rem; margin-bottom: var(--space-3);">🎉</div>
           <div style="font-size: 1.05rem; font-weight:600;">Everyone is current on dues.</div>
           <div style="font-size: 0.9rem; margin-top: var(--space-2); opacity:0.7;">
-            Threshold: ${summary.purgatoryDays || 7} days past nextBillDate = auto-purgatory.
+            Threshold: ${summary.holdDays || 7} days past nextBillDate = dues owed.
           </div>
         </div>
       `;
       return;
     }
 
-    // Bucket by state so purgatory floats above nudge/warning.
-    const purgatory = players.filter(p => p.delinquencyState === 'purgatory');
-    const warning   = players.filter(p => p.delinquencyState !== 'purgatory' && (p.daysOverdue || 0) >= 4);
-    const nudge     = players.filter(p => p.delinquencyState !== 'purgatory' && (p.daysOverdue || 0) < 4);
+    // Bucket by state so dues-owed floats above nudge/warning.
+    const duesOwed = players.filter(p => p.delinquencyState === 'dues_owed');
+    const warning  = players.filter(p => p.delinquencyState !== 'dues_owed' && (p.daysOverdue || 0) >= 4);
+    const nudge    = players.filter(p => p.delinquencyState !== 'dues_owed' && (p.daysOverdue || 0) < 4);
 
     const section = (label, count, color, list) => list.length === 0 ? '' : `
       <div style="margin-bottom: var(--space-4);">
@@ -158,9 +160,9 @@ class MensDelinquentScreen extends Screen {
     `;
 
     container.innerHTML = `
-      ${section('🚨 Purgatory · off all rosters',            purgatory.length, '#ef4444', purgatory)}
-      ${section('⚠ Warning · 4–6 days overdue',              warning.length,   '#f97316', warning)}
-      ${section('· Nudge · 1–3 days overdue',                nudge.length,     '#fbbf24', nudge)}
+      ${section('🚨 Dues owed · 7+ days past due',           duesOwed.length, '#ef4444', duesOwed)}
+      ${section('⚠ Warning · 4–6 days overdue',              warning.length,  '#f97316', warning)}
+      ${section('· Nudge · 1–3 days overdue',                nudge.length,    '#fbbf24', nudge)}
     `;
   }
 
@@ -175,7 +177,7 @@ class MensDelinquentScreen extends Screen {
 
   renderCard(p) {
     const days = p.daysOverdue || 0;
-    const isPurgatory = p.delinquencyState === 'purgatory';
+    const isDuesOwed = p.delinquencyState === 'dues_owed';
     const badgeColor = this.daysOverdueBadgeColor(days);
 
     const iconBtn = 'width:26px; height:26px; padding:0; font-size:0.75rem; line-height:1; border-radius:4px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;';
@@ -217,16 +219,16 @@ class MensDelinquentScreen extends Screen {
       ? `<span style="opacity:0.7;">last paid $${p.lastPaidAmount} · ${new Date(p.lastPaidAt).toLocaleDateString()}</span>`
       : '';
 
-    const cardBorder = isPurgatory
+    const cardBorder = isDuesOwed
       ? 'border: 2px solid #ef4444; box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15) inset;'
       : `border: 1px solid ${badgeColor}55;`;
 
-    const cardBg = isPurgatory
+    const cardBg = isDuesOwed
       ? 'background: linear-gradient(180deg, #431515 0%, #1f2937 60%);'
       : 'background: var(--bg-tertiary, #1f2937);';
 
-    const purgatoryTag = isPurgatory
-      ? `<span style="background:#ef4444; color:#fff; font-size:0.65rem; font-weight:700; letter-spacing:0.06em; padding:2px 6px; border-radius:3px; text-transform:uppercase;">Off rosters</span>`
+    const duesOwedTag = isDuesOwed
+      ? `<span style="background:#ef4444; color:#fff; font-size:0.65rem; font-weight:700; letter-spacing:0.06em; padding:2px 6px; border-radius:3px; text-transform:uppercase;">Dues owed</span>`
       : '';
 
     const regId = p.registrationId;
@@ -241,7 +243,7 @@ class MensDelinquentScreen extends Screen {
             ${days}d
           </span>
           <strong style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.95rem;">${this.escape(p.fullName) || '(no name)'}</strong>
-          ${purgatoryTag}
+          ${duesOwedTag}
         </div>
         <div style="font-size: 0.75rem; opacity: 0.75; margin-bottom: 6px;">
           Bill due <strong>${this.escape(p.nextBillDate) || '—'}</strong>${p.isDefault ? ' <span style="opacity:0.6;">(default)</span>' : ''} · ${outstanding}

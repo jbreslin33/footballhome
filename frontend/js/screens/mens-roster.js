@@ -21,9 +21,9 @@
 //     buttons per delinquent card (lifted from PaymentsScreen):
 //       LA  — opens LA Manager memberDetails for manual pause
 //       ⏸  — copies the canonical pause-warning message to clipboard
-//   • Backend already blocks /assign for purgatory players (HTTP 409); the
-//     UI reflects the same guard by not rendering assignment pills on
-//     purgatory-column cards.
+//   • Backend used to block /assign for delinquent players (HTTP 409);
+//     that gate was REMOVED 2026-07-04 pm per user directive.  Admin
+//     now decides roster + team-910 sin-bin placement manually.
 class MensRosterScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -162,8 +162,8 @@ class MensRosterScreen extends Screen {
       // knows the state of the club before scanning columns.  Backend
       // exposes these under top-level `data.delinquency`.
       const dq = data.delinquency || {};
-      const dqText = (dq.overdueCount > 0 || dq.purgatoryCount > 0)
-        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.purgatoryCount || 0} purgatory`
+      const dqText = (dq.overdueCount > 0 || dq.duesOwedCount > 0)
+        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.duesOwedCount || 0} dues owed`
         : '';
       this.setBanner({
         icon: '✓',
@@ -458,12 +458,12 @@ class MensRosterScreen extends Screen {
       // Dept.  Keeps the coach out of the collections conversation —
       // the coach is just delivering a message from the finance side.
       const firstNameStr = p.firstName ? ` ${p.firstName}` : '';
-      const isPurgatoryState = p.delinquencyState === 'purgatory' || days >= 7;
+      const isDuesOwedState = p.delinquencyState === 'dues_owed' || days >= 7;
       // One-liner explaining where the money actually goes — appended
       // to every tier so the message doesn't feel purely punitive.
       const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
       let payBody;
-      if (isPurgatoryState) {
+      if (isDuesOwedState) {
         payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your membership flagged as paused. Dues (${amountStr}) are ${daysStr}, so you've been removed from all rosters and your spot is being filled by another player. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in and pay here: ${payUrl}  Thanks!`;
       } else if (days >= 4) {
         payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your dues (${amountStr}) flagged as ${daysStr}, and the LeagueApps charge hasn't gone through. That means you're not eligible for practices or games until it's resolved, and at 7 days past due you'll be removed from the roster and replaced. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in here: ${payUrl}  Thanks!`;
@@ -478,7 +478,7 @@ class MensRosterScreen extends Screen {
               data-method="sms"
               data-amount="${amountNum != null ? amountNum : ''}"
               data-days-overdue="${daysAreExact ? days : ''}"
-              data-tier="${daysAreExact ? (isPurgatoryState ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
+              data-tier="${daysAreExact ? (isDuesOwedState ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Text ${this.escape(this.formatPhone(p.phone))} a payment reminder with LA link"
               style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
              💸 PAY

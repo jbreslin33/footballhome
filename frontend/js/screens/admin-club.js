@@ -137,7 +137,7 @@ class AdminClubScreen extends Screen {
       { id: 'tricounty-dash', target: 'mens-lineups',       params: { gender: 'mens',   division: 'tricounty'}, icon: '🏆', label: 'Tri County',               description: 'Tri County league teams — standings, schedule, rosters' },
       { id: 'mens-game-elig', target: 'mens-game-eligibility', params: { gender: 'mens' },                        icon: '🎯', label: 'Game Eligibility',         description: 'Projected 35-player APSL & Liga 1 rosters — game-day availability & call-ups' },
       { id: 'mens-roster-board', target: 'mens-roster',        params: { gender: 'mens' },                        icon: '🎽', label: 'Mens Roster',              description: 'Dues-aware roster selection — assign to teams, see overdue counts, purgatory column, LA pause actions' },
-      { id: 'mens-delinquent', target: 'mens-delinquent',       params: { gender: 'mens' },                        icon: '💰', label: 'Delinquent Members',       description: 'Players overdue on dues — 7+ days = purgatory (off all rosters)' },
+      { id: 'mens-delinquent', target: 'mens-delinquent',       params: { gender: 'mens' },                        icon: '💰', label: 'Delinquent Members',       description: 'Players overdue on dues — 7+ days = dues owed (past hold threshold)' },
     ];
 
     const womensDashTiles = [

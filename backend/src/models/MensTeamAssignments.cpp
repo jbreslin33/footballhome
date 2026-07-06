@@ -132,8 +132,9 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
 
 std::vector<int> MensTeamAssignments::removeAssignment(long long userId, int teamId) {
     // Admin-initiated remove is still a hard DELETE — respects the
-    // admin's intent to purge the assignment entirely.  Auto-purgatory
-    // uses bulkSoftDeleteForDelinquent() which preserves the row.
+    // admin's intent to purge the assignment entirely.  The auto
+    // dues-owed sweep (disabled 2026-07-04) uses
+    // bulkSoftDeleteForDelinquent() which preserves the row.
     db_->query(
         "DELETE FROM roster_assignments "
         " WHERE domain = $1 "
@@ -211,8 +212,8 @@ long long MensTeamAssignments::bulkRestoreForDelinquent(const std::vector<long l
     for (long long uid : userIds) {
         // Restore rows one-by-one so a partial-index collision (an active
         // row already exists on the same (user, team) pair — e.g. admin
-        // re-added them during purgatory) simply skips instead of aborting
-        // the whole transaction.
+        // re-added them while they were dues-owed) simply skips instead
+        // of aborting the whole transaction.
         pqxx::result candidates = tx->exec_params(
             "SELECT id, team_id FROM roster_assignments "
             " WHERE domain = $2 "
