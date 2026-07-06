@@ -39,6 +39,7 @@ set(SOURCES
     src/models/PersonMerge.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
+    src/models/PayReminderLog.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
     src/models/BillingExpectations.cpp
@@ -81,6 +82,7 @@ set(SOURCES
     src/controllers/MensRosterController.cpp
     src/controllers/BoysRosterController.cpp
     src/controllers/PersonBillingController.cpp
+    src/controllers/PayReminderLogController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
     src/controllers/BillingController.cpp

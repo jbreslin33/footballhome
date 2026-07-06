@@ -75,6 +75,15 @@ class BoysRosterScreen extends Screen {
       if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
       const pauseBtn = e.target.closest('.br-copy-pause');
       if (pauseBtn) return this._copyPauseMessage(pauseBtn);
+      // PAY-reminder click log (2026-07-06).  We DO NOT preventDefault
+      // — the <a> still navigates to sms:/mailto: after fire-and-forget
+      // logging.  `keepalive: true` lets the request survive the tab
+      // switch on iOS/Android.  Local optimistic mutation of
+      // p.lastPayReminder means the next render (or the immediate
+      // swap-in below) reflects "just now" without waiting for a
+      // roster refresh.
+      const payLog = e.target.closest('.br-pay-log');
+      if (payLog) this._logPayReminder(payLog);
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -547,6 +556,12 @@ class BoysRosterScreen extends Screen {
 
       const paySmsBtn = paySmsHref
         ? `<a href="${paySmsHref}"
+              class="br-pay-log"
+              data-la-user-id="${p.leagueAppsUserId || ''}"
+              data-method="sms"
+              data-amount="${amountNum != null ? amountNum : ''}"
+              data-days-overdue="${daysAreExact ? days : ''}"
+              data-tier="${daysAreExact ? (days >= 7 ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Text ${this.escape(this.formatPhone(parentPhone))} a polite dues reminder"
               style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
              💬 PAY
@@ -554,12 +569,23 @@ class BoysRosterScreen extends Screen {
         : '';
       const payEmailBtn = payEmailHref
         ? `<a href="${payEmailHref}" target="_blank" rel="noopener noreferrer"
+              class="br-pay-log"
+              data-la-user-id="${p.leagueAppsUserId || ''}"
+              data-method="email"
+              data-amount="${amountNum != null ? amountNum : ''}"
+              data-days-overdue="${daysAreExact ? days : ''}"
+              data-tier="${daysAreExact ? (days >= 7 ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Email ${this.escape(parentEmail)} a polite dues reminder"
               style="${btnBase} border:none; cursor:pointer; background:#0284c7; color:#fff; text-decoration:none;">
              ✉ PAY
            </a>`
         : '';
-      delinqBtns = `${paySmsBtn}${payEmailBtn}`;
+      // Last-reminder pill sits IMMEDIATELY before the PAY buttons so
+      // the admin sees "already texted 2h ago" before tapping again.
+      const lastReminderPill = window.BillingBadge && window.BillingBadge.renderLastPayReminder
+        ? window.BillingBadge.renderLastPayReminder(p)
+        : '';
+      delinqBtns = `${lastReminderPill}${paySmsBtn}${payEmailBtn}`;
     }
 
     // ---- Contact popover -----------------------------------------------
@@ -963,6 +989,50 @@ class BoysRosterScreen extends Screen {
     } catch (_e) {
       alert('Could not copy to clipboard — you can retype the message from Payments → Copy Pause.');
     }
+  }
+
+  // Fire-and-forget POST /api/pay-reminder-log on 💬 PAY / ✉ PAY click.
+  // Does NOT block the sms:/mailto: navigation.  keepalive:true lets
+  // the request complete after the tab switches away.  We also
+  // optimistically swap the "last reminder" pill in place so the admin
+  // sees "📩 SMS · just now" without waiting for a full re-load.
+  _logPayReminder(anchor) {
+    const laUserId = parseInt(anchor.dataset.laUserId, 10);
+    const method   = anchor.dataset.method;
+    if (!laUserId || !method) return;
+    const body = {
+      leagueAppsUserId: laUserId,
+      method,
+      club:  'boys',
+      tier:  anchor.dataset.tier || null,
+      amount: anchor.dataset.amount ? Number(anchor.dataset.amount) : null,
+      daysOverdue: anchor.dataset.daysOverdue !== '' && anchor.dataset.daysOverdue != null
+        ? parseInt(anchor.dataset.daysOverdue, 10)
+        : null,
+    };
+    try {
+      const token = this.auth && this.auth.token ? this.auth.token : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      fetch('/api/pay-reminder-log', {
+        method: 'POST',
+        headers,
+        keepalive: true,
+        body: JSON.stringify(body),
+      }).catch(() => { /* fire-and-forget */ });
+    } catch (_e) { /* ignore */ }
+
+    // Optimistic UI: paint fresh pill in every slot for this uid on the
+    // page (there may be multiple cards if this player is in more than
+    // one column) so the admin gets instant feedback.
+    try {
+      const nowIso = new Date().toISOString();
+      const fresh = window.BillingBadge && window.BillingBadge.renderLastPayReminderInline
+        ? window.BillingBadge.renderLastPayReminderInline({ method, sentAt: nowIso })
+        : '';
+      const slots = this.element.querySelectorAll(`.bb-pay-reminder-slot[data-uid="${laUserId}"]`);
+      slots.forEach(s => { s.innerHTML = fresh; });
+    } catch (_e) { /* non-fatal */ }
   }
 
   formatPhone(raw) {

@@ -86,6 +86,10 @@ class MensRosterScreen extends Screen {
       if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
       const pauseBtn = e.target.closest('.mr-copy-pause');
       if (pauseBtn) return this._copyPauseMessage(pauseBtn);
+      // PAY-reminder click log (2026-07-06).  Fire-and-forget; the sms:
+      // link still navigates.  See _logPayReminder for details.
+      const payLog = e.target.closest('.mr-pay-log');
+      if (payLog) this._logPayReminder(payLog);
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -469,13 +473,23 @@ class MensRosterScreen extends Screen {
       const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
       const payBtn    = payHref
         ? `<a href="${payHref}"
+              class="mr-pay-log"
+              data-la-user-id="${p.leagueAppsUserId || ''}"
+              data-method="sms"
+              data-amount="${amountNum != null ? amountNum : ''}"
+              data-days-overdue="${daysAreExact ? days : ''}"
+              data-tier="${daysAreExact ? (isPurgatoryState ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Text ${this.escape(this.formatPhone(p.phone))} a payment reminder with LA link"
               style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
              💸 PAY
            </a>`
         : '';
+      // Last-reminder pill so admin sees "already texted 2h ago" first.
+      const lastReminderPill = window.BillingBadge && window.BillingBadge.renderLastPayReminder
+        ? window.BillingBadge.renderLastPayReminder(p)
+        : '';
       delinqBtns = `
-        ${payBtn}`;
+        ${lastReminderPill}${payBtn}`;
     }
 
     // ---- Contact popover -----------------------------------------------
@@ -874,6 +888,46 @@ class MensRosterScreen extends Screen {
     } catch (_e) {
       alert('Could not copy to clipboard — you can retype the message from Payments → Copy Pause.');
     }
+  }
+
+  // Fire-and-forget POST /api/pay-reminder-log on 💸 PAY click.  Does
+  // NOT preventDefault — sms: still opens.  keepalive:true lets the
+  // request survive the tab switch on iOS/Android.  Also paints an
+  // optimistic "just now" pill so the admin sees instant confirmation.
+  _logPayReminder(anchor) {
+    const laUserId = parseInt(anchor.dataset.laUserId, 10);
+    const method   = anchor.dataset.method;
+    if (!laUserId || !method) return;
+    const body = {
+      leagueAppsUserId: laUserId,
+      method,
+      club:  'mens',
+      tier:  anchor.dataset.tier || null,
+      amount: anchor.dataset.amount ? Number(anchor.dataset.amount) : null,
+      daysOverdue: anchor.dataset.daysOverdue !== '' && anchor.dataset.daysOverdue != null
+        ? parseInt(anchor.dataset.daysOverdue, 10)
+        : null,
+    };
+    try {
+      const token = this.auth && this.auth.token ? this.auth.token : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      fetch('/api/pay-reminder-log', {
+        method: 'POST',
+        headers,
+        keepalive: true,
+        body: JSON.stringify(body),
+      }).catch(() => { /* fire-and-forget */ });
+    } catch (_e) { /* ignore */ }
+
+    try {
+      const nowIso = new Date().toISOString();
+      const fresh = window.BillingBadge && window.BillingBadge.renderLastPayReminderInline
+        ? window.BillingBadge.renderLastPayReminderInline({ method, sentAt: nowIso })
+        : '';
+      const slots = this.element.querySelectorAll(`.bb-pay-reminder-slot[data-uid="${laUserId}"]`);
+      slots.forEach(s => { s.innerHTML = fresh; });
+    } catch (_e) { /* non-fatal */ }
   }
 
   formatPhone(raw) {

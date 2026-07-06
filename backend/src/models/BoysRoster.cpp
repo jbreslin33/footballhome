@@ -14,6 +14,7 @@
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonPayments.h"
+#include "PayReminderLog.h"
 #include "../database/Database.h"
 #include "../services/LeagueAppsService.h"
 
@@ -387,6 +388,36 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         return json(it->second);
     };
 
+    // ── Last PAY-reminder click per user (2026-07-06) ─────────────────
+    //
+    // Boys roster PAY buttons (💬 SMS + ✉ Email on each parent card)
+    // POST /api/pay-reminder-log on click.  Bulk-load newest row per
+    // parent la_user_id so the frontend can render "📩 SMS · 2h ago"
+    // on the card.  Non-fatal on failure.
+    PayReminderLog::Map lastPayReminderByUid;
+    try {
+        std::vector<long long> uids;
+        uids.reserve(boysRecs.size() + girlsRecs.size());
+        auto pushUid = [&](const json& rec) {
+            auto uidVal = optUserId(rec);
+            if (uidVal.is_number_integer()) uids.push_back(uidVal.get<long long>());
+        };
+        for (const auto& r : boysRecs)  pushUid(r);
+        for (const auto& r : girlsRecs) pushUid(r);
+        PayReminderLog log;
+        lastPayReminderByUid = log.latestFor(uids);
+    } catch (const std::exception& e) {
+        std::cerr << "[BoysRoster] pay_reminder_log load failed: " << e.what() << std::endl;
+    }
+    auto lastPayReminderJson = [&](const std::string& uid) -> json {
+        auto it = lastPayReminderByUid.find(uid);
+        if (it == lastPayReminderByUid.end()) return json(nullptr);
+        json j = json::object();
+        j["method"] = it->second.method;
+        j["sentAt"] = it->second.sentAtIso;
+        return j;
+    };
+
     const int seasonEndYear = defaultSeasonEndYear();
 
     std::vector<json> all;
@@ -462,6 +493,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
             json row       = p;
             row["teamIds"] = json::array();
             attachPayments(row);
+            row["lastPayReminder"] = lastPayReminderJson(uid);
             unassigned.push_back(std::move(row));
         } else {
             for (int tid : relevant) {
@@ -473,6 +505,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
                     ? json(*cell->coachSortOrder)
                     : json(nullptr);
                 attachPayments(row);
+                row["lastPayReminder"] = lastPayReminderJson(uid);
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }
         }

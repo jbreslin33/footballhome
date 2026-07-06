@@ -750,6 +750,79 @@ window.BillingBadge = (() => {
   }
   // ──────────────────────────────────────────────────────────────────────
 
+  // ── Last PAY-reminder pill (2026-07-06) ──────────────────────────────
+  //
+  // Shows the admin the last time we tapped the SMS / Email PAY button
+  // for this player so nobody double-pings a parent or forgets who was
+  // already contacted.  Data source: p.lastPayReminder = { method, sentAt }
+  // — populated by the roster backend from pay_reminder_log.  Renders
+  // an empty slot span (always present) so the roster screen can swap
+  // the pill in place after logging a new click.
+  function renderLastPayReminder(p) {
+    const uid  = p && p.leagueAppsUserId ? p.leagueAppsUserId : '';
+    const html = p && p.lastPayReminder ? renderLastPayReminderInline(p.lastPayReminder) : '';
+    return `<span class="bb-pay-reminder-slot" data-uid="${escapeAttr(String(uid))}">${html}</span>`;
+  }
+
+  function renderLastPayReminderInline(last) {
+    if (!last || !last.method || !last.sentAt) return '';
+    const method = last.method === 'sms' ? 'SMS' : (last.method === 'email' ? 'Email' : '');
+    if (!method) return '';
+    const icon = last.method === 'sms' ? '📩' : '✉';
+    const ago  = timeAgoShort(last.sentAt);
+    if (!ago) return '';
+    const bg     = '#0f172a';
+    const fg     = '#94a3b8';
+    const border = '#334155';
+    let abs = last.sentAt;
+    try {
+      const d = new Date(last.sentAt);
+      if (!isNaN(d.getTime())) {
+        abs = new Intl.DateTimeFormat('en-US', {
+          timeZone: NY_TZ, month: 'short', day: 'numeric',
+          hour: 'numeric', minute: '2-digit',
+        }).format(d);
+      }
+    } catch { /* keep raw iso */ }
+    const tip = `Last ${method} reminder sent ${abs}`;
+    return `
+      <span class="bb-pay-reminder" title="${escapeAttr(tip)}"
+            style="display:inline-flex; align-items:center; gap:3px;
+                   padding:2px 6px; margin-right:3px;
+                   border:1px solid ${border}; background:${bg}; color:${fg};
+                   border-radius:3px; font-size:0.65rem; font-weight:700;
+                   letter-spacing:0.02em; vertical-align:middle;
+                   font-variant-numeric:tabular-nums; white-space:nowrap;">
+        ${icon} ${method} · ${escapeAttr(ago)}
+      </span>
+    `;
+  }
+
+  // Short relative time formatter: "just now" / "5m ago" / "3h ago" /
+  // "yesterday" / "3d ago" / "MMM D".  Used only for the pay-reminder
+  // pill so admin sees at a glance how fresh the last ping is.
+  function timeAgoShort(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 0) return 'just now';
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1)  return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days === 1) return 'yesterday';
+    if (days < 7)   return `${days}d ago`;
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: NY_TZ, month: 'short', day: 'numeric',
+      }).format(d);
+    } catch { return `${days}d ago`; }
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
   function render(p) {
     if (!p || !p.leagueAppsUserId) return '';
     // Compact financial strip:
@@ -878,4 +951,4 @@ window.BillingBadge = (() => {
     }
   }
 
-  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance, renderProrateCell, renderRegistrationDate };})();
+  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance, renderProrateCell, renderRegistrationDate, renderLastPayReminder, renderLastPayReminderInline };})();

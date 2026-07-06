@@ -36,6 +36,7 @@
 #include "controllers/MensRosterController.h"
 #include "controllers/BoysRosterController.h"
 #include "controllers/PersonBillingController.h"
+#include "controllers/PayReminderLogController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
 #include "controllers/BillingController.h"
@@ -84,6 +85,7 @@ private:
     std::shared_ptr<MensRosterController> mens_roster_controller_;
     std::shared_ptr<BoysRosterController> boys_roster_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
+    std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
     std::shared_ptr<BillingController> billing_controller_;
@@ -125,6 +127,7 @@ public:
         mens_roster_controller_ = std::make_shared<MensRosterController>();
         boys_roster_controller_ = std::make_shared<BoysRosterController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
+        pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
         billing_controller_ = std::make_shared<BillingController>();
@@ -253,6 +256,11 @@ private:
         router_.useController("/api/boys-roster", boys_roster_controller_);
         // Phase 9 — person-billing (POST upsert + /mark-billed) ported to C++.
         router_.useController("/api/person-billing", person_billing_controller_);
+
+        // 2026-07-06 — PAY-reminder click logger (records SMS/Email button
+        // clicks fired from the Mens/Boys roster PAY buttons so the coach
+        // can see "last contact + method" on the card).
+        router_.useController("/api/pay-reminder-log", pay_reminder_log_controller_);
         // Payments audit surface (Mens / Boys / Girls tabs on the
         // dedicated payments screen).
         router_.useController("/api/payments", payments_controller_);

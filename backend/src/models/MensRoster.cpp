@@ -18,6 +18,7 @@
 #include "MensTeamColumns.h"
 #include "PersonBilling.h"
 #include "PersonPayments.h"
+#include "PayReminderLog.h"
 #include "../database/Database.h"
 #include "../services/LeagueAppsService.h"
 
@@ -404,6 +405,35 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         return json(it->second);
     };
 
+    // ── Last PAY-reminder click per user (2026-07-06) ─────────────────
+    //
+    // The Mens/Boys roster PAY buttons (💬 SMS + ✉ Email) POST to
+    // /api/pay-reminder-log on click.  For each roster fetch we look up
+    // the newest row per la_user_id so the frontend can render
+    // "📩 SMS · 2h ago" on the card.  Bulk single-query load; failure
+    // is non-fatal (roster still renders, pill just doesn't show).
+    PayReminderLog::Map lastPayReminderByUid;
+    try {
+        std::vector<long long> uids;
+        uids.reserve(recs.size());
+        for (const auto& r : recs) {
+            auto uidVal = optUserId(r);
+            if (uidVal.is_number_integer()) uids.push_back(uidVal.get<long long>());
+        }
+        PayReminderLog log;
+        lastPayReminderByUid = log.latestFor(uids);
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] pay_reminder_log load failed: " << e.what() << std::endl;
+    }
+    auto lastPayReminderJson = [&](const std::string& uid) -> json {
+        auto it = lastPayReminderByUid.find(uid);
+        if (it == lastPayReminderByUid.end()) return json(nullptr);
+        json j = json::object();
+        j["method"] = it->second.method;
+        j["sentAt"] = it->second.sentAtIso;
+        return j;
+    };
+
     std::vector<json> all;
     all.reserve(recs.size());
     for (const auto& r : recs) {
@@ -749,6 +779,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             row["daysOverdue"]    = daysOverdueOut;
             row["delinquencyState"] = stateOut;
             row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
+            row["lastPayReminder"] = lastPayReminderJson(uid);
             unassigned.push_back(std::move(row));
         } else {
             for (int tid : relevant) {
@@ -772,6 +803,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
                 row["daysOverdue"]    = daysOverdueOut;
                 row["delinquencyState"] = stateOut;
                 row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
+                row["lastPayReminder"] = lastPayReminderJson(uid);
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }
         }
