@@ -479,6 +479,8 @@ class BoysRosterScreen extends Screen {
       const duesPurpose    = `Dues help cover ref fees, league & player registration, equipment, uniforms, and field costs — thank you for supporting the club!`;
       const signOff        = `Thank you so much, and please let us know if there's anything we can do to help.`;
 
+      // SMS body — single blob; SMS clients render walls of text fine
+      // and it saves the parent from scrolling a long message.
       let payBody;
       if (days >= 7) {
         payBody = `Hi${parentFirstStr}, so sorry to bother you — this is Lighthouse 1893.  We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.  LeagueApps has emailed you a pay link — please have a look if you can!  You can also log in and update the card on file here: ${payUrl}  If you're experiencing any hardship or the timing isn't great, please just reply to this message — we're happy to work something out.  ${signOff}`;
@@ -486,6 +488,44 @@ class BoysRosterScreen extends Screen {
         payBody = `Hi${parentFirstStr}, hope you're doing well — this is a quick, friendly note from Lighthouse 1893.  We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.  LeagueApps has emailed you a pay link, or you can log in and update the card on file here: ${payUrl}  ${duesPurpose}  ${signOff}`;
       } else {
         payBody = `Hi${parentFirstStr}, hope all is well!  Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.  Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and update the card on file here: ${payUrl}  ${signOff}`;
+      }
+
+      // Email body — same content as SMS but broken into readable
+      // paragraphs with a proper greeting/signature block.  Gmail's
+      // compose window preserves \n line breaks, so paragraph splits
+      // render cleanly.  2026-07-06: user asked for better email
+      // formatting than one wall of text.
+      const greetingLine = `Hi${parentFirstStr},`;
+      const signature    = `Thanks so much,\nLighthouse 1893`;
+      let payEmailBody;
+      if (days >= 7) {
+        payEmailBody = [
+          greetingLine,
+          `So sorry to bother you — this is Lighthouse 1893.`,
+          `We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.`,
+          `LeagueApps has emailed you a pay link — please have a look if you can! You can also log in and update the card on file here:\n${payUrl}`,
+          `If you're experiencing any hardship or the timing isn't great, please just reply to this email — we're happy to work something out.`,
+          signOff,
+          signature,
+        ].join('\n\n');
+      } else if (days >= 4) {
+        payEmailBody = [
+          greetingLine,
+          `Hope you're doing well — this is a quick, friendly note from Lighthouse 1893.`,
+          `We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.`,
+          `LeagueApps has emailed you a pay link, or you can log in and update the card on file here:\n${payUrl}`,
+          duesPurpose,
+          signOff,
+          signature,
+        ].join('\n\n');
+      } else {
+        payEmailBody = [
+          greetingLine,
+          `Hope all is well! Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.`,
+          `Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and update the card on file here:\n${payUrl}`,
+          signOff,
+          signature,
+        ].join('\n\n');
       }
 
       // Two buttons: 💬 PAY (SMS to parent) and ✉ PAY (email to parent).
@@ -501,7 +541,7 @@ class BoysRosterScreen extends Screen {
             authuser: 'soccer@lighthouse1893.org',
             to:       parentEmail,
             su:       `Lighthouse 1893 — quick note about ${kidRefName}'s dues`,
-            body:     payBody,
+            body:     payEmailBody,
           }).toString()}`
         : null;
 
