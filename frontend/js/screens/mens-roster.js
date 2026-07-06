@@ -61,7 +61,7 @@ class MensRosterScreen extends Screen {
         <div id="mr-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="mr-banner-icon" style="font-size: 16px;">⏳</span>
           <span id="mr-banner-text" style="flex:1; min-width: 200px;">Pulling latest registrations from LeagueApps…</span>
-          <button id="mr-refresh" class="btn btn-secondary" style="display:none; padding: 4px 10px; font-size: 13px;">🔄 Refresh</button>
+          <button id="mr-refresh" class="btn btn-secondary" title="Force a fresh pull from LeagueApps (registrations + payments)" style="padding: 4px 10px; font-size: 13px;">🔄 Refresh</button>
         </div>
         <div id="mr-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading…</div>
         <div id="mr-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
@@ -108,7 +108,10 @@ class MensRosterScreen extends Screen {
     this.load({ refreshLa: true });
   }
 
-  setBanner({ icon, text, showRefresh = false }) {
+  setBanner({ icon, text, showRefresh = true }) {
+    // Refresh button is always visible now (user directive 2026-07-06:
+    // "always for boys and men etc").  showRefresh is retained for API
+    // compatibility but defaulted true; callers can pass false to hide.
     const i = this.find('#mr-banner-icon');
     const t = this.find('#mr-banner-text');
     const r = this.find('#mr-refresh');

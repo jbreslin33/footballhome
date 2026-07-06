@@ -287,44 +287,94 @@ window.BillingBadge = (() => {
     return todayIso >= ffIso;
   };
 
-  function render3MonthTable(p) {
-    if (!p) return '';
-    const now = new Date();
+  // ── Shared bucket builder (used by 3-month table + INVOICE pill) ─────
+  //
+  // Late-payment coverage rule (user directive 2026-07-06):
+  //   A payment made on day >= 16 of month M is treated as also covering
+  //   month M+1 (in addition to M itself).  Rationale: parents who paid
+  //   in the back half of June are effectively pre-paying July's dues,
+  //   so we should NOT re-invoice them for July.  Once we move to full
+  //   pro-rate this rule goes away; for now it's the pragmatic bridge.
+  //
+  // Each bucket returns:
+  //   y, m               (year, month index 0..11 in America/NY)
+  //   inMonth            sum of amounts with paidAt IN this calendar month
+  //   inMonthCount       count of those payments
+  //   lateFromPrev       sum of amounts CARRIED IN from a >=16th payment
+  //                      of the previous month (may be empty)
+  //   lateFromPrevLabel  label of the carrying-in month, e.g. "Jun"
+  //   effective          inMonth + lateFromPrev (used for colour + INVOICE
+  //                      shortfall calc)
+  //
+  const LATE_PAY_DAY_THRESHOLD = 16;
 
-    // Build the three (y, m) buckets: current month, prev, prev-prev.
-    // We iterate oldest → newest so the visual matches a timeline.
+  const bucketsFor3Month = (p) => {
+    const now = new Date();
     const cur = nyYearMonth(now);
     const buckets = [];
     for (let back = 2; back >= 0; back--) {
       const total = cur.m - back;
       const y = cur.y + Math.floor(total / 12);
       const m = ((total % 12) + 12) % 12;
-      buckets.push({ y, m, sum: 0, count: 0 });
+      buckets.push({
+        y, m,
+        inMonth:           0,
+        inMonthCount:      0,
+        lateFromPrev:      0,
+        lateFromPrevLabel: '',
+      });
     }
+    const findBucket = (y, m) => buckets.find((x) => x.y === y && x.m === m);
+    const nextYM = (y, m) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 });
 
-    // Sum up payments per (y, m).
-    const list = Array.isArray(p.paymentsWindow) ? p.paymentsWindow : [];
+    const list = Array.isArray(p && p.paymentsWindow) ? p.paymentsWindow : [];
     for (const lp of list) {
       const iso = lp && lp.paidAt;
       if (!iso || typeof iso !== 'string') continue;
       const d = new Date(iso);
       if (isNaN(d.getTime())) continue;
-      const { y, m } = nyYearMonth(d);
-      const b = buckets.find((x) => x.y === y && x.m === m);
-      if (!b) continue;
       const amt = Number(lp.amount);
-      if (isFinite(amt)) { b.sum += amt; b.count++; }
+      if (!isFinite(amt) || amt <= 0) continue;
+
+      // Primary month bucket — where the payment actually landed.
+      const ny = nyYearMonth(d);
+      const b  = findBucket(ny.y, ny.m);
+      if (b) { b.inMonth += amt; b.inMonthCount++; }
+
+      // Day-of-month in America/NY.  Same Intl trick as nyIsoDate.
+      const dayStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: NY_TZ, day: '2-digit',
+      }).format(d);
+      const dayNum = parseInt(dayStr, 10);
+
+      if (dayNum >= LATE_PAY_DAY_THRESHOLD) {
+        const nx = nextYM(ny.y, ny.m);
+        const nb = findBucket(nx.y, nx.m);
+        if (nb) {
+          nb.lateFromPrev      += amt;
+          nb.lateFromPrevLabel  = monthLabel(ny.y, ny.m);
+        }
+      }
     }
 
-    // Column styling per state (user directive 2026-07-05):
-    //   sum == 0        → red
-    //   0 < sum < $35   → yellow
-    //   sum >= $35      → green
-    // (Grace-zone gray removed — user prefers the visual scream even in
-    //  the first few days of a month before the 1st Friday.)
+    for (const b of buckets) {
+      b.effective = b.inMonth + b.lateFromPrev;
+    }
+    return buckets;
+  };
+
+  function render3MonthTable(p) {
+    if (!p) return '';
+    const buckets = bucketsFor3Month(p);
+
+    // Column styling per state — driven by *effective* (in-month +
+    // late-from-prev carry-in) so a Jun-16 payment turns July green.
+    //   effective == 0        → red
+    //   0 < effective < $35   → yellow
+    //   effective >= $35      → green
     const cellFor = (b) => {
-      const paid    = b.sum >= EXPECTED_MONTHLY_AMOUNT - 0.01;
-      const partial = b.sum > 0 && !paid;
+      const paid    = b.effective >= EXPECTED_MONTHLY_AMOUNT - 0.01;
+      const partial = b.effective > 0 && !paid;
       if (paid)    return { bg:'#052e1a', fg:'#bbf7d0', border:'#166534', tag:'paid' };
       if (partial) return { bg:'#3a2f0f', fg:'#fde68a', border:'#a16207', tag:'partial' };
       return         { bg:'#3a1f1f', fg:'#fecaca', border:'#b91c1c', tag:'zero' };
@@ -337,10 +387,36 @@ window.BillingBadge = (() => {
     };
 
     const cells = buckets.map((b) => {
-      const c = cellFor(b);
+      const c     = cellFor(b);
       const label = monthLabel(b.y, b.m);
-      const sum   = fmtSum(b.sum);
-      const tip   = `${label} ${b.y}: ${sum} (${b.count} payment${b.count === 1 ? '' : 's'}) — ${c.tag}`;
+      // Main line — the money that actually landed in this calendar
+      // month.  Even if a carry-in from the prev month brought us into
+      // the green, we still want the coach to see "this month's real
+      // deposit was $0".
+      const mainAmt = fmtSum(b.inMonth);
+
+      // Late-carry sub-line: only rendered when we pulled coverage
+      // forward from a >=16th payment last month.  This is the
+      // "**Late Jun**" tag the user asked for.
+      let carryLine = '';
+      const carryTipParts = [];
+      if (b.lateFromPrev > 0) {
+        const carryAmt = fmtSum(b.lateFromPrev);
+        carryLine = `
+          <div style="font-size:0.5rem; font-weight:800; letter-spacing:0.06em;
+                      line-height:1.05; opacity:0.9; margin-top:1px;">
+            +${carryAmt} Late ${escapeAttr(b.lateFromPrevLabel)}
+          </div>`;
+        carryTipParts.push(`carry-in from ${b.lateFromPrevLabel} (paid on/after day ${LATE_PAY_DAY_THRESHOLD}): ${carryAmt}`);
+      }
+
+      const tipParts = [
+        `${label} ${b.y}: paid ${mainAmt} (${b.inMonthCount} payment${b.inMonthCount === 1 ? '' : 's'})`,
+        ...carryTipParts,
+        `effective ${fmtSum(b.effective)} — ${c.tag}`,
+      ];
+      const tip = tipParts.join(' · ');
+
       return `
         <div title="${escapeAttr(tip)}"
              style="flex:1 1 0; min-width:42px; padding:3px 7px; text-align:center;
@@ -348,7 +424,8 @@ window.BillingBadge = (() => {
                     border:1px solid ${c.border}; border-radius:3px;
                     font-variant-numeric:tabular-nums;">
           <div style="font-size:0.62rem; font-weight:800; letter-spacing:0.08em; opacity:0.85;">${label}</div>
-          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${sum}</div>
+          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${mainAmt}</div>
+          ${carryLine}
         </div>`;
     }).join('');
 
@@ -385,36 +462,20 @@ window.BillingBadge = (() => {
   //   total = 0 → green (nothing to invoice — all months paid)
   function renderUnbilled(p) {
     if (!p) return '';
-    const now = new Date();
-    const cur = nyYearMonth(now);
-    const buckets = [];
-    for (let back = 2; back >= 0; back--) {
-      const total = cur.m - back;
-      const y = cur.y + Math.floor(total / 12);
-      const m = ((total % 12) + 12) % 12;
-      buckets.push({ y, m, sum: 0 });
-    }
-    const list = Array.isArray(p.paymentsWindow) ? p.paymentsWindow : [];
-    for (const lp of list) {
-      const iso = lp && lp.paidAt;
-      if (!iso || typeof iso !== 'string') continue;
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) continue;
-      const { y, m } = nyYearMonth(d);
-      const b = buckets.find((x) => x.y === y && x.m === m);
-      if (!b) continue;
-      const amt = Number(lp.amount);
-      if (isFinite(amt)) b.sum += amt;
-    }
+    // Uses the shared bucket helper so late-payment coverage (>=16th of
+    // prev month) turns the shortfall into $0 for the current month.
+    const buckets = bucketsFor3Month(p);
 
     let total = 0;
     const parts = [];
     for (const b of buckets) {
-      const shortfall = Math.max(0, EXPECTED_MONTHLY_AMOUNT - b.sum);
+      const shortfall = Math.max(0, EXPECTED_MONTHLY_AMOUNT - b.effective);
       const label = monthLabel(b.y, b.m);
       if (shortfall > 0) {
         total += shortfall;
         parts.push(`${label}: needs $${shortfall.toFixed(shortfall % 1 ? 2 : 0)}`);
+      } else if (b.lateFromPrev > 0 && b.inMonth <= 0) {
+        parts.push(`${label}: covered by Late ${b.lateFromPrevLabel}`);
       } else {
         parts.push(`${label}: covered`);
       }
@@ -428,7 +489,7 @@ window.BillingBadge = (() => {
     const shown = Number.isInteger(total) ? `$${total}` : `$${total.toFixed(2)}`;
     const label = owes ? 'INVOICE' : 'BILLED';
     const tip   = (owes
-                    ? `Add $${shown.replace('$','')} to this player's LeagueApps invoice (checks-and-balance total across the last 3 months).`
+                    ? `Add ${shown} to this player's LeagueApps invoice (checks-and-balance total across the last 3 months, with late-payment coverage applied).`
                     : 'All 3 months are covered — no unbilled dues.')
                   + '\n' + parts.join(' · ');
 
