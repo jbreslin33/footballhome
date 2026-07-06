@@ -362,6 +362,89 @@ window.BillingBadge = (() => {
   }
   // ──────────────────────────────────────────────────────────────────────
 
+  // ── TO INVOICE pill ───────────────────────────────────────────────────
+  // User directive 2026-07-05 pm ("checks-and-balance ping-pong"):
+  //   even if the LA invoice hasn't been updated yet, our rules say a
+  //   player owes $35 for every past-or-current month with no matching
+  //   $35+ payment on record.  This pill totals that shortfall so the
+  //   admin sees at a glance how much they still need to add to LA
+  //   invoices for this player — independent of what LA's balance says.
+  //
+  // Computation:
+  //   For each of the same 3 (y, m) buckets shown in the calendar table:
+  //     shortfall = max(0, EXPECTED_MONTHLY_AMOUNT - sum)
+  //   Total = sum of shortfalls across those months.
+  //
+  // Note: the 3rd bucket is the CURRENT month.  Even if today is early
+  //   in the month (before the 1st Friday) we still count it as owed —
+  //   matching the user's "visual scream" preference on the 3-month
+  //   cells.  If they want a grace zone later we can add it in one spot.
+  //
+  // Colour rule:
+  //   total > 0 → red   (needs invoicing)
+  //   total = 0 → green (nothing to invoice — all months paid)
+  function renderUnbilled(p) {
+    if (!p) return '';
+    const now = new Date();
+    const cur = nyYearMonth(now);
+    const buckets = [];
+    for (let back = 2; back >= 0; back--) {
+      const total = cur.m - back;
+      const y = cur.y + Math.floor(total / 12);
+      const m = ((total % 12) + 12) % 12;
+      buckets.push({ y, m, sum: 0 });
+    }
+    const list = Array.isArray(p.paymentsWindow) ? p.paymentsWindow : [];
+    for (const lp of list) {
+      const iso = lp && lp.paidAt;
+      if (!iso || typeof iso !== 'string') continue;
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) continue;
+      const { y, m } = nyYearMonth(d);
+      const b = buckets.find((x) => x.y === y && x.m === m);
+      if (!b) continue;
+      const amt = Number(lp.amount);
+      if (isFinite(amt)) b.sum += amt;
+    }
+
+    let total = 0;
+    const parts = [];
+    for (const b of buckets) {
+      const shortfall = Math.max(0, EXPECTED_MONTHLY_AMOUNT - b.sum);
+      const label = monthLabel(b.y, b.m);
+      if (shortfall > 0) {
+        total += shortfall;
+        parts.push(`${label}: needs $${shortfall.toFixed(shortfall % 1 ? 2 : 0)}`);
+      } else {
+        parts.push(`${label}: covered`);
+      }
+    }
+
+    const owes = total > 0.005;
+    const bg     = owes ? '#3a1f1f' : '#052e1a';
+    const fg     = owes ? '#fecaca' : '#bbf7d0';
+    const border = owes ? '#b91c1c' : '#166534';
+
+    const shown = Number.isInteger(total) ? `$${total}` : `$${total.toFixed(2)}`;
+    const label = owes ? 'INVOICE' : 'BILLED';
+    const tip   = (owes
+                    ? `Add $${shown.replace('$','')} to this player's LeagueApps invoice (checks-and-balance total across the last 3 months).`
+                    : 'All 3 months are covered — no unbilled dues.')
+                  + '\n' + parts.join(' · ');
+
+    return `
+      <div class="bb-unbilled-box" title="${escapeAttr(tip)}"
+           style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+                  min-width:52px; padding:3px 7px; box-sizing:border-box;
+                  border:1px solid ${border}; background:${bg}; color:${fg};
+                  border-radius:3px; font-variant-numeric:tabular-nums; vertical-align:middle;">
+        <div style="font-size:0.55rem; font-weight:800; letter-spacing:0.08em; opacity:0.85;">${label}</div>
+        <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${shown}</div>
+      </div>
+    `;
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
   const escapeAttr = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -440,10 +523,11 @@ window.BillingBadge = (() => {
 
   function render(p) {
     if (!p || !p.leagueAppsUserId) return '';
-    // Two compact visuals: 3-month calendar buckets + current LA balance.
+    // Compact financial strip: 3-month calendar buckets + unbilled/needs-
+    // invoice pill + current LA balance.
     // (Old RECENT PAY pill dropped 2026-07-05: the 3-month cells now
     //  carry the same info in a more compact form.)
-    return render3MonthTable(p) + renderBalance(p);
+    return render3MonthTable(p) + renderUnbilled(p) + renderBalance(p);
   }
 
   // Bind delegated click handler.  authFetch is the screen's auth.fetch
@@ -539,4 +623,4 @@ window.BillingBadge = (() => {
     }
   }
 
-  return { render, wire, renderLastPaid, render3MonthTable, renderBalance };})();
+  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance };})();
