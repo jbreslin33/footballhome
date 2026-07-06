@@ -584,11 +584,18 @@ window.BillingBadge = (() => {
 
   function render(p) {
     if (!p || !p.leagueAppsUserId) return '';
-    // Compact financial strip: 3-month calendar buckets + unbilled/needs-
-    // invoice pill + current LA balance.
+    // Compact financial strip: 3-month calendar buckets + current LA balance.
+    //
+    // 2026-07-06 — INVOICE pill removed per user directive: BAL DUE is
+    // the sole source of truth (LA), and once the user maintains LA
+    // invoices per the $35/mo rule, INVOICE and BAL DUE converge to the
+    // same number.  Rather than show two versions of the same idea we
+    // just show LA's number.  renderUnbilled() is left exported for any
+    // future "reconciliation warning" screen but is no longer on the card.
+    //
     // (Old RECENT PAY pill dropped 2026-07-05: the 3-month cells now
     //  carry the same info in a more compact form.)
-    return render3MonthTable(p) + renderUnbilled(p) + renderBalance(p);
+    return render3MonthTable(p) + renderBalance(p);
   }
 
   // Bind delegated click handler.  authFetch is the screen's auth.fetch
