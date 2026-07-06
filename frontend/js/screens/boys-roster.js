@@ -483,11 +483,11 @@ class BoysRosterScreen extends Screen {
       // and it saves the parent from scrolling a long message.
       let payBody;
       if (days >= 7) {
-        payBody = `Hi${parentFirstStr}, so sorry to bother you — this is Lighthouse 1893.  We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.  LeagueApps has emailed you a pay link — please have a look if you can!  You can also log in and update the card on file here: ${payUrl}  If you're experiencing any hardship or the timing isn't great, please just reply to this message — we're happy to work something out.  ${signOff}`;
+        payBody = `Hi${parentFirstStr}, so sorry to bother you — this is Lighthouse 1893.  We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.  LeagueApps has emailed you a pay link — please have a look if you can!  You can also log in and pay here: ${payUrl}  If you're experiencing any hardship or the timing isn't great, please just reply to this message — we're happy to work something out.  ${signOff}`;
       } else if (days >= 4) {
-        payBody = `Hi${parentFirstStr}, hope you're doing well — this is a quick, friendly note from Lighthouse 1893.  We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.  LeagueApps has emailed you a pay link, or you can log in and update the card on file here: ${payUrl}  ${duesPurpose}  ${signOff}`;
+        payBody = `Hi${parentFirstStr}, hope you're doing well — this is a quick, friendly note from Lighthouse 1893.  We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.  LeagueApps has emailed you a pay link, or you can log in and pay here: ${payUrl}  ${duesPurpose}  ${signOff}`;
       } else {
-        payBody = `Hi${parentFirstStr}, hope all is well!  Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.  Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and update the card on file here: ${payUrl}  ${signOff}`;
+        payBody = `Hi${parentFirstStr}, hope all is well!  Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.  Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and pay here: ${payUrl}  ${signOff}`;
       }
 
       // Email body — same content as SMS but broken into readable
@@ -503,7 +503,7 @@ class BoysRosterScreen extends Screen {
           greetingLine,
           `So sorry to bother you — this is Lighthouse 1893.`,
           `We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.`,
-          `LeagueApps has emailed you a pay link — please have a look if you can! You can also log in and update the card on file here:\n${payUrl}`,
+          `LeagueApps has emailed you a pay link — please have a look if you can! You can also log in and pay here:\n${payUrl}`,
           `If you're experiencing any hardship or the timing isn't great, please just reply to this email — we're happy to work something out.`,
           signOff,
           signature,
@@ -513,7 +513,7 @@ class BoysRosterScreen extends Screen {
           greetingLine,
           `Hope you're doing well — this is a quick, friendly note from Lighthouse 1893.`,
           `We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.`,
-          `LeagueApps has emailed you a pay link, or you can log in and update the card on file here:\n${payUrl}`,
+          `LeagueApps has emailed you a pay link, or you can log in and pay here:\n${payUrl}`,
           duesPurpose,
           signOff,
           signature,
@@ -522,7 +522,7 @@ class BoysRosterScreen extends Screen {
         payEmailBody = [
           greetingLine,
           `Hope all is well! Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.`,
-          `Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and update the card on file here:\n${payUrl}`,
+          `Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and pay here:\n${payUrl}`,
           signOff,
           signature,
         ].join('\n\n');

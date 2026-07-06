@@ -460,11 +460,11 @@ class MensRosterScreen extends Screen {
       const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
       let payBody;
       if (isPurgatoryState) {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your membership flagged as paused. Dues (${amountStr}) are ${daysStr}, so you've been removed from all rosters and your spot is being filled by another player. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in and pay / update your card on file here: ${payUrl}  Thanks!`;
+        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your membership flagged as paused. Dues (${amountStr}) are ${daysStr}, so you've been removed from all rosters and your spot is being filled by another player. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in and pay here: ${payUrl}  Thanks!`;
       } else if (days >= 4) {
         payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your dues (${amountStr}) flagged as ${daysStr}, and the LeagueApps charge hasn't gone through. That means you're not eligible for practices or games until it's resolved, and at 7 days past due you'll be removed from the roster and replaced. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in here: ${payUrl}  Thanks!`;
       } else {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept flagged your monthly dues (${amountStr}) as ${daysStr}. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to your practice / game roster eligibility (and any late fees), log in and pay / update your card on file: ${payUrl}  Thanks!`;
+        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept flagged your monthly dues (${amountStr}) as ${daysStr}. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to your practice / game roster eligibility (and any late fees), log in and pay here: ${payUrl}  Thanks!`;
       }
       const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
       const payBtn    = payHref
