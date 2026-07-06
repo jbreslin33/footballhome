@@ -440,7 +440,8 @@ Response MagicLinkAuthController::handleMe(const Request& request) {
                         auto row = db->query(
                             "SELECT u.id AS user_id, p.id AS person_id, "
                             "       p.first_name, p.last_name, "
-                            "       COALESCE(pe.email, '') AS email "
+                            "       COALESCE(pe.email, '') AS email, "
+                            "       COALESCE(al.name, '') AS admin_level "
                             "  FROM users u "
                             "  JOIN persons p ON p.id = u.person_id "
                             "  LEFT JOIN LATERAL ("
@@ -448,6 +449,8 @@ Response MagicLinkAuthController::handleMe(const Request& request) {
                             "     WHERE person_id = u.person_id "
                             "     ORDER BY is_primary DESC, id ASC LIMIT 1"
                             "  ) pe ON true "
+                            "  LEFT JOIN admins a ON a.user_id = u.id "
+                            "  LEFT JOIN admin_levels al ON al.id = a.admin_level_id "
                             " WHERE u.id = $1::int LIMIT 1",
                             {std::to_string(*userIdOpt)});
                         if (row.empty()) {
@@ -455,6 +458,7 @@ Response MagicLinkAuthController::handleMe(const Request& request) {
                         }
                         const std::string first = row[0]["first_name"].is_null() ? "" : row[0]["first_name"].as<std::string>();
                         const std::string last  = row[0]["last_name"].is_null()  ? "" : row[0]["last_name"].as<std::string>();
+                        const std::string adminLevel = row[0]["admin_level"].is_null() ? "" : row[0]["admin_level"].as<std::string>();
                         std::string full = first;
                         if (!last.empty()) { if (!full.empty()) full += " "; full += last; }
                         json user = {
@@ -463,7 +467,7 @@ Response MagicLinkAuthController::handleMe(const Request& request) {
                             {"first_name", first},
                             {"last_name",  last},
                             {"name",       full},
-                            {"role",       ""},
+                            {"role",       adminLevel},
                         };
                         json out = {
                             {"success", true},
