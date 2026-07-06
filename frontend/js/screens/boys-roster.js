@@ -283,23 +283,37 @@ class BoysRosterScreen extends Screen {
     // dues actions are still present but sized so they're readable,
     // not decorative.
 
-    const greeting = p.firstName ? `Hi ${p.firstName},` : 'Hi,';
-    const subject  = `Lighthouse 1893 Youth`;
-    const emailBody = `${greeting}\n\nThis is your Lighthouse 1893 coach.\n\n`;
-    const smsBody   = `Hi${p.firstName ? ' ' + p.firstName : ''}, this is Lighthouse 1893 coach.`;
+    // For youth, we contact the PARENT, not the player.  LA's parent
+    // fields are the truth; player phone/email are a fallback for the
+    // handful of rare records that omit them.  This applies to CONTACT,
+    // PAY, and SAVE (vCard) buttons — everything the admin can trigger
+    // from a card should route to the parent by default.
+    const parentFirst = p.parentFirstName || '';
+    const parentName  = p.parentName
+      || `${parentFirst} ${p.parentLastName || ''}`.trim()
+      || 'there';
+    const parentPhone = p.parentPhone || p.phone || null;
+    const parentEmail = p.parentEmail || p.email || null;
 
-    const emailHref = p.email
+    // Polite parent-facing bodies for the generic CONTACT popover.
+    // The PAY button below builds its own tier-scaled body.
+    const kidRef       = p.firstName ? ` regarding ${p.firstName}` : '';
+    const emailSubject = `Lighthouse 1893${p.firstName ? ` — ${p.firstName}` : ''}`;
+    const emailBody    = `Hi ${parentFirst || 'there'},\n\nThis is Lighthouse 1893${kidRef}.\n\n`;
+    const smsBody      = `Hi${parentFirst ? ' ' + parentFirst : ''}, this is Lighthouse 1893${kidRef}.`;
+
+    const emailHref = parentEmail
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
           authuser: 'soccer@lighthouse1893.org',
-          to:       p.email,
-          su:       subject,
+          to:       parentEmail,
+          su:       emailSubject,
           body:     emailBody,
         }).toString()}`
       : null;
-    const smsHref = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(smsBody)}` : null;
-    const telHref = p.phone ? `tel:${p.phone}` : null;
+    const smsHref = parentPhone ? `sms:${parentPhone}?&body=${encodeURIComponent(smsBody)}` : null;
+    const telHref = parentPhone ? `tel:${parentPhone}` : null;
 
     // Full DOB (e.g. "3/10/2008").
     let dobShort = '';
@@ -428,53 +442,81 @@ class BoysRosterScreen extends Screen {
     let delinqBtns = '';
     if (days >= 1 && p.leagueAppsUserId) {
       // Amount preference: LA's outstandingBalance if it's > 0,
-      // otherwise the monthly nextBillAmount (usually $35).  Falls back
-      // to just "dues" if we somehow have neither.
+      // otherwise the monthly nextBillAmount.  Falls back to just
+      // "the outstanding balance" if we somehow have neither.
       const amountNum = (p.outstandingBalance > 0)
         ? p.outstandingBalance
         : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
-      const amountStr = amountNum != null ? `$${amountNum}` : 'your dues';
-      // daysStr carries the whole "N days past due" phrase (or the
-      // generic "past due") so we don't have to sprinkle "past due"
-      // into every template.
+      const amountStr = amountNum != null ? `$${amountNum}` : 'the outstanding balance';
       const daysStr   = daysAreExact
-        ? `${days} day${days === 1 ? '' : 's'} past due`
-        : 'past due';
+        ? `${days} day${days === 1 ? '' : 's'}`
+        : 'a few days';
       const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
-      // Three-tier body scaled to delinquency severity (2026-07-05):
-      //   1–3 days  → nudge; soft warning about disruption to eligibility
-      //   4–6 days  → firm: NOT eligible for practice or games right now
-      //   7+ days   → statement of fact: removed from roster + being replaced
-      // Every tier tells the player LeagueApps has already emailed them
-      // a pay link ("check email if unsure") before pointing at the
-      // dashboard URL as a backup.
+
+      // ── Parent-facing PAY reminder ──────────────────────────────
       //
-      // Voice: framed as a "heads-up" from Lighthouse 1893 Financial
-      // Dept.  Keeps the coach out of the collections conversation —
-      // the coach is just delivering a message from the finance side.
-      const firstNameStr = p.firstName ? ` ${p.firstName}` : '';
-      const isPurgatoryState = p.delinquencyState === 'purgatory' || days >= 7;
-      // One-liner explaining where the money actually goes — appended
-      // to every tier so the message doesn't feel purely punitive.
-      const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
+      // Youth board voice: extremely polite, apologetic, addressed to
+      // the parent by first name and referring to the child by first
+      // name.  We do NOT threaten roster removal — youth is different
+      // from mens; kids don't get parked for late dues.  Tone is
+      // "sorry to bother you, quick heads-up from the office".
+      //
+      // Three tiers scaled to lateness:
+      //   1–3 days  → gentle nudge, "charge didn't go through"
+      //   4–6 days  → slightly firmer, note that dues fund the program
+      //   7+ days   → still polite, but ask them to reach out if there
+      //               is a hardship so we can work something out
+      //
+      // Every tier tells the parent LeagueApps has already emailed a
+      // pay link and points to the dashboard URL as a fallback so they
+      // can update card-on-file.
+      const parentFirstStr = parentFirst ? ` ${parentFirst}` : '';
+      const kidStr         = p.firstName ? ` ${p.firstName}'s` : ' your child\'s';
+      const kidRefName     = p.firstName || 'your child';
+      const duesPurpose    = `Dues help cover ref fees, league & player registration, equipment, uniforms, and field costs — thank you for supporting the club!`;
+      const signOff        = `Thank you so much, and please let us know if there's anything we can do to help.`;
+
       let payBody;
-      if (isPurgatoryState) {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your membership flagged as paused. Dues (${amountStr}) are ${daysStr}, so you've been removed from all rosters and your spot is being filled by another player. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in and pay / update your card on file here: ${payUrl}  Thanks!`;
+      if (days >= 7) {
+        payBody = `Hi${parentFirstStr}, so sorry to bother you — this is Lighthouse 1893.  We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.  LeagueApps has emailed you a pay link — please have a look if you can!  You can also log in and update the card on file here: ${payUrl}  If you're experiencing any hardship or the timing isn't great, please just reply to this message — we're happy to work something out.  ${signOff}`;
       } else if (days >= 4) {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your dues (${amountStr}) flagged as ${daysStr}, and the LeagueApps charge hasn't gone through. That means you're not eligible for practices or games until it's resolved, and at 7 days past due you'll be removed from the roster and replaced. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in here: ${payUrl}  Thanks!`;
+        payBody = `Hi${parentFirstStr}, hope you're doing well — this is a quick, friendly note from Lighthouse 1893.  We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.  LeagueApps has emailed you a pay link, or you can log in and update the card on file here: ${payUrl}  ${duesPurpose}  ${signOff}`;
       } else {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept flagged your monthly dues (${amountStr}) as ${daysStr}. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to your practice / game roster eligibility (and any late fees), log in and pay / update your card on file: ${payUrl}  Thanks!`;
+        payBody = `Hi${parentFirstStr}, hope all is well!  Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.  Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and update the card on file here: ${payUrl}  ${signOff}`;
       }
-      const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
-      const payBtn    = payHref
-        ? `<a href="${payHref}"
-              title="Text ${this.escape(this.formatPhone(p.phone))} a payment reminder with LA link"
+
+      // Two buttons: 💬 PAY (SMS to parent) and ✉ PAY (email to parent).
+      // Whichever channel the parent uses, one tap gets there.  If we
+      // only have one of the two, only that button renders.
+      const paySmsHref = parentPhone
+        ? `sms:${parentPhone}?&body=${encodeURIComponent(payBody)}`
+        : null;
+      const payEmailHref = parentEmail
+        ? `https://mail.google.com/mail/?${new URLSearchParams({
+            view:     'cm',
+            fs:       '1',
+            authuser: 'soccer@lighthouse1893.org',
+            to:       parentEmail,
+            su:       `Lighthouse 1893 — quick note about ${kidRefName}'s dues`,
+            body:     payBody,
+          }).toString()}`
+        : null;
+
+      const paySmsBtn = paySmsHref
+        ? `<a href="${paySmsHref}"
+              title="Text ${this.escape(this.formatPhone(parentPhone))} a polite dues reminder"
               style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
-             💸 PAY
+             💬 PAY
            </a>`
         : '';
-      delinqBtns = `
-        ${payBtn}`;
+      const payEmailBtn = payEmailHref
+        ? `<a href="${payEmailHref}" target="_blank" rel="noopener noreferrer"
+              title="Email ${this.escape(parentEmail)} a polite dues reminder"
+              style="${btnBase} border:none; cursor:pointer; background:#0284c7; color:#fff; text-decoration:none;">
+             ✉ PAY
+           </a>`
+        : '';
+      delinqBtns = `${paySmsBtn}${payEmailBtn}`;
     }
 
     // ---- Contact popover -----------------------------------------------
@@ -486,27 +528,30 @@ class BoysRosterScreen extends Screen {
     // 👤 SAVE (2026-07-05) — data-URL vCard so tapping opens the native
     // "Add Contact" sheet on iOS/Android (or downloads a .vcf on
     // desktop).  Only rendered if we have at least a phone or email.
-    const vcardHref = (p.phone || p.email)
+    // For youth, we save the PARENT to contacts (with the kid's name
+    // in the org/note) so the coach ends up with a usable entry.
+    const vcardHref = (parentPhone || parentEmail)
       ? this.buildVcardHref({
-          fullName: p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-          firstName: p.firstName,
-          lastName: p.lastName,
-          phone: p.phone,
-          email: p.email,
-          org: `Lighthouse 1893 Men's`,
+          fullName:  parentName && parentName !== 'there' ? parentName : (p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()),
+          firstName: parentFirst || p.firstName,
+          lastName:  p.parentLastName || p.lastName,
+          phone:     parentPhone,
+          email:     parentEmail,
+          org:       `Lighthouse 1893 Youth`,
+          note:      p.firstName ? `Parent of ${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '',
         })
       : null;
-    const vcardFilename = ((p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
+    const vcardFilename = ((parentName && parentName !== 'there' ? parentName : (p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`)).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
     const contactItems = [
-      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(p.email)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(p.phone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
-      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(p.phone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
-      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(p.firstName || 'player')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(parentEmail)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(parentPhone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
+      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(parentPhone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
+      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(parentFirst || p.firstName || 'contact')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="br-contact" style="position:relative; display:inline-block;">
         <summary style="${btnBase} background:#334155; color:#fff; border:none; cursor:pointer; list-style:none; user-select:none;"
-                 title="Contact ${this.escape(p.firstName || 'player')}">📇 CONTACT</summary>
+                 title="Contact ${this.escape(parentFirst || 'parent')}${p.firstName ? ` (${this.escape(p.firstName)}'s parent)` : ''}">📇 CONTACT</summary>
         <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155;">
           ${contactItems.join('')}
         </div>
