@@ -14,6 +14,7 @@
 #include "PersonPayments.h"
 #include "YouthAgeGroups.h"
 #include "../services/LeagueAppsService.h"
+#include "../database/Database.h"
 
 using nlohmann::json;
 
@@ -235,12 +236,51 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
 
     auto billingMap = billing_->loadAll();
 
+    // ── LA registration timestamp load (2026-07-06) ──────────────────
+    // Emitted as `laRegisteredAt` on every row so the frontend can show
+    // "Reg: MMM D, YYYY" on the roster card, and gate the projected-
+    // prorate cell on the 2026-07-06 cutoff.  Keyed by la_registration_id.
+    std::unordered_map<long long, std::string> laRegisteredAtByRegId;
+    {
+        try {
+            auto* db = Database::getInstance();
+            pqxx::result rows = db->query(
+                "SELECT la_registration_id, "
+                "       TO_CHAR(la_registered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
+                "  FROM person_la_memberships "
+                " WHERE la_registration_id IS NOT NULL "
+                "   AND la_registered_at IS NOT NULL "
+            );
+            for (const auto& r : rows) {
+                if (r["la_registration_id"].is_null() || r["reg_iso"].is_null()) continue;
+                laRegisteredAtByRegId[r["la_registration_id"].as<long long>()] = r["reg_iso"].c_str();
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[YouthRoster] la_registered_at load failed: " << e.what() << std::endl;
+        }
+    }
+    auto laRegIsoFor = [&](const json& regJson) -> json {
+        long long id = 0;
+        if      (regJson.is_number_integer())  id = regJson.get<long long>();
+        else if (regJson.is_number_unsigned()) id = static_cast<long long>(regJson.get<unsigned long long>());
+        else if (regJson.is_number_float())    id = static_cast<long long>(regJson.get<double>());
+        else if (regJson.is_string()) {
+            try { id = std::stoll(regJson.get<std::string>()); }
+            catch (...) { id = 0; }
+        }
+        if (id <= 0) return json(nullptr);
+        auto it = laRegisteredAtByRegId.find(id);
+        if (it == laRegisteredAtByRegId.end()) return json(nullptr);
+        return json(it->second);
+    };
+
     for (auto& p : shapedAll) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
         const auto bill = PersonBilling::resolve(billingMap, uid);
         p["nextBillDate"]   = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
         p["nextBillAmount"] = bill.nextBillAmount;
         p["isDefault"]      = bill.isDefault;
+        p["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
 
         // lastPaid pill data.  Join by registrationId (parent pays for
         // child on youth, so la_user_id on transactions ≠ player uid).

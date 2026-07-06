@@ -346,6 +346,47 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         }
     }
 
+    // ── LA registration timestamp load (2026-07-06) ──────────────────
+    //
+    // Emitted as `laRegisteredAt` on every row.  The frontend uses it to:
+    //   1) Show "Reg: MMM D, YYYY" on the roster card (all clubs).
+    //   2) Decide whether to render the projected-prorate cell — only
+    //      players registered on/after 2026-07-06 get the new
+    //      single-invoice prorate model.
+    std::unordered_map<long long, std::string> laRegisteredAtByRegId;
+    {
+        try {
+            auto* db = Database::getInstance();
+            pqxx::result rows = db->query(
+                "SELECT la_registration_id, "
+                "       TO_CHAR(la_registered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
+                "  FROM person_la_memberships "
+                " WHERE la_registration_id IS NOT NULL "
+                "   AND la_registered_at IS NOT NULL "
+            );
+            for (const auto& r : rows) {
+                if (r["la_registration_id"].is_null() || r["reg_iso"].is_null()) continue;
+                laRegisteredAtByRegId[r["la_registration_id"].as<long long>()] = r["reg_iso"].c_str();
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[BoysRoster] la_registered_at load failed: " << e.what() << std::endl;
+        }
+    }
+    auto laRegIsoFor = [&](const json& regJson) -> json {
+        long long id = 0;
+        if      (regJson.is_number_integer())  id = regJson.get<long long>();
+        else if (regJson.is_number_unsigned()) id = static_cast<long long>(regJson.get<unsigned long long>());
+        else if (regJson.is_number_float())    id = static_cast<long long>(regJson.get<double>());
+        else if (regJson.is_string()) {
+            try { id = std::stoll(regJson.get<std::string>()); }
+            catch (...) { id = 0; }
+        }
+        if (id <= 0) return json(nullptr);
+        auto it = laRegisteredAtByRegId.find(id);
+        if (it == laRegisteredAtByRegId.end()) return json(nullptr);
+        return json(it->second);
+    };
+
     const int seasonEndYear = defaultSeasonEndYear();
 
     std::vector<json> all;
@@ -400,6 +441,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         }
         row["paymentsWindow"]    = std::move(paymentsWindow);
         row["paymentsWindowSum"] = paymentsWindowSum;
+        row["laRegisteredAt"]    = laRegIsoFor(row.at("registrationId"));
     };
 
     for (auto& p : all) {

@@ -1333,9 +1333,10 @@ class LeadsScreen extends Screen {
   //   • $1 to register (card capture)
   //   • Youth / Men → $35/month
   //   • Women       → $10/month
-  //   • Mid-month signups prorate weekly ($8.75/wk youth+men, $2.50/wk
-  //     women) until the first Friday of the following month, when the
-  //     monthly cadence begins.  See the LA Program Description snippet.
+  //   • Mid-month signups get a single prorated invoice for the rest of
+  //     the current month (calendar-day prorate on $35/mo), then normal
+  //     $35 on the first Friday of each following month.  See the LA
+  //     Program Description snippet for the full customer-facing copy.
   //
   // Per-program LeagueApps registration URLs and qualifying questions live in
   // funnelContext() below — single source of truth used by both the initial
@@ -1899,7 +1900,6 @@ class LeadsScreen extends Screen {
     let laDescText;
     {
       const monthly = c.isWomensClub ? '10'   : '35';
-      const weekly  = c.isWomensClub ? '2.50' : '8.75';
       const membership = c.isYouth
         ? "Your player's membership"
         : "Your membership";
@@ -1963,8 +1963,8 @@ class LeadsScreen extends Screen {
         `<li><strong>Home Indoor Facility:</strong> ${this.escapeHtml(indoorLine)}</li>` +
         `</ul>` +
         `<h3>Billing</h3>` +
-        `<p>Registration is $1 at signup. Membership is $${monthly}/month, charged on the first Friday of each month.</p>` +
-        `<p>If you sign up mid-month, your first partial month is prorated at <strong>$${weekly} per week</strong>, charged each Friday until the first Friday of the following month, when the $${monthly}/month cadence begins.</p>` +
+        `<p>Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.</p>` +
+        `<p>From then on, the normal $${monthly}/month membership is invoiced on the <strong>first Friday of each month</strong>.</p>` +
         `<p>Payment cards saved at registration are charged automatically through LeagueApps. A receipt is emailed for each charge. Members can pause or cancel anytime.</p>` +
         `<h3>Changes &amp; questions</h3>` +
         `<p>To pause or cancel a membership, or ask a question, email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`;
@@ -1984,8 +1984,8 @@ class LeadsScreen extends Screen {
         `  • Home Outdoor Facility: ${outdoorLine}\n` +
         `  • Home Indoor Facility: ${indoorLine}\n\n` +
         `BILLING:\n` +
-        `Registration is $1 at signup. Membership is $${monthly}/month, charged on the first Friday of each month.\n\n` +
-        `If you sign up mid-month, your first partial month is prorated at $${weekly} per week, charged each Friday until the first Friday of the following month, when the $${monthly}/month cadence begins.\n\n` +
+        `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
+        `From then on, the normal $${monthly}/month membership is invoiced on the first Friday of each month.\n\n` +
         `Payment cards saved at registration are charged automatically through LeagueApps. A receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
         `CHANGES & QUESTIONS:\n` +
         `To pause or cancel a membership, or ask a question, email soccer@lighthouse1893.org.`;
