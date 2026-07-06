@@ -120,19 +120,38 @@ std::string resolveChangedByUserId(long long personId) {
 // false if the match doesn't exist, is cancelled, or the caller is
 // not currently assigned to home_team.  Uses the same
 // external_person_aliases bridge as RsvpMaterialization.
+// Eligibility rules (see repo memory: footballhome.md § RSVP eligibility):
+//   practice (mt=3):        active mens roster to team ∈ (35 APSL, 120 Liga1, 121 Liga2)
+//   game APSL home (mt∈{1,4,6}, home=35):  active mens roster to team ∈ (35, 120)  (play-up)
+//   game other (mt∈{1,4,6}): active mens roster to team = home_team_id
+//   pickup (mt=7):          ANY mens roster (active OR soft-deleted purgatory)
+//   other (mt∈{2,5}):       fall back to active roster to team = home_team_id
 bool callerRosteredForMatch(long long personId, long long matchId) {
     auto* db = Database::getInstance();
     auto r = db->query(
         "SELECT 1 "
         "  FROM matches m "
-        "  JOIN mens_team_assignments mta ON mta.team_id = m.home_team_id "
-        "                                AND mta.removed_at IS NULL "
         "  JOIN external_person_aliases epa "
         "    ON epa.provider = 'leagueapps' "
-        "   AND epa.external_user_id = mta.leagueapps_user_id::text "
+        "   AND epa.person_id = $2::int "
+        "  JOIN roster_assignments mta "
+        "    ON mta.domain = 'mens' "
+        "   AND mta.leagueapps_user_id::text = epa.external_user_id "
+        "   AND ( "
+        "     m.match_type_id = 7 "
+        "     OR ( "
+        "       mta.removed_at IS NULL "
+        "       AND mta.team_id = ANY( "
+        "         CASE "
+        "           WHEN m.match_type_id = 3 THEN ARRAY[35, 120, 121] "
+        "           WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 35 THEN ARRAY[35, 120] "
+        "           ELSE ARRAY[m.home_team_id] "
+        "         END "
+        "       ) "
+        "     ) "
+        "   ) "
         " WHERE m.id = $1::int "
         "   AND m.cancelled_at IS NULL "
-        "   AND epa.person_id = $2::int "
         " LIMIT 1",
         {std::to_string(matchId), std::to_string(personId)});
     return !r.empty();
@@ -194,21 +213,36 @@ Response MyController::handleGetWeek(const Request& request) {
         const long long playerId = resolvePlayerId(personId);
 
         auto rows = db->query(
+            // Eligibility rules — keep in sync with callerRosteredForMatch()
+            // above and services/RsvpMaterialization.cpp kApplyRecurringSql.
             "WITH eligible_matches AS ( "
-            "  SELECT m.id, m.match_type_id, m.home_team_id, m.match_date, "
+            "  SELECT DISTINCT m.id, m.match_type_id, m.home_team_id, m.match_date, "
             "         m.match_time, m.end_time, m.venue_id, m.title, "
             "         m.description, m.rsvp_opens_at, m.series_id "
             "    FROM matches m "
-            "    JOIN mens_team_assignments mta ON mta.team_id = m.home_team_id "
-            "                                  AND mta.removed_at IS NULL "
             "    JOIN external_person_aliases epa "
             "      ON epa.provider = 'leagueapps' "
-            "     AND epa.external_user_id = mta.leagueapps_user_id::text "
+            "     AND epa.person_id = $1::int "
+            "    JOIN roster_assignments mta "
+            "      ON mta.domain = 'mens' "
+            "     AND mta.leagueapps_user_id::text = epa.external_user_id "
+            "     AND ( "
+            "       m.match_type_id = 7 "
+            "       OR ( "
+            "         mta.removed_at IS NULL "
+            "         AND mta.team_id = ANY( "
+            "           CASE "
+            "             WHEN m.match_type_id = 3 THEN ARRAY[35, 120, 121] "
+            "             WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 35 THEN ARRAY[35, 120] "
+            "             ELSE ARRAY[m.home_team_id] "
+            "           END "
+            "         ) "
+            "       ) "
+            "     ) "
             "   WHERE m.cancelled_at IS NULL "
             "     AND m.rsvp_opens_at IS NOT NULL "
             "     AND m.rsvp_opens_at <= NOW() "
             "     AND m.match_date >= (NOW() AT TIME ZONE 'America/New_York')::date "
-            "     AND epa.person_id = $1::int "
             ") "
             "SELECT em.id AS match_id, em.match_type_id, mt.name AS match_type, "
             "       em.home_team_id, em.match_date::text AS match_date, "
@@ -273,10 +307,46 @@ Response MyController::handleGetWeek(const Request& request) {
             });
         }
 
-        return jsonOk({
-            {"player_id", playerId == 0 ? json(nullptr) : json(playerId)},
-            {"events",    events},
-        });
+        // Membership status — for the purgatory banner.  'active' means
+        // at least one active mens roster_assignment; 'purgatory' means
+        // every mens row is soft-deleted (delinquent dues); 'none' means
+        // no mens rows at all (shouldn't normally happen for signed-in
+        // players, but guard anyway).
+        std::string membershipStatus = "none";
+        long long purgatoryDaysOverdue = 0;
+        {
+            auto s = db->query(
+                "SELECT "
+                "  COUNT(*) FILTER (WHERE mta.removed_at IS NULL) AS active_ct, "
+                "  COUNT(*) FILTER (WHERE mta.removed_at IS NOT NULL) AS purgatory_ct, "
+                "  EXTRACT(DAY FROM (NOW() - MIN(mta.removed_at)))::int AS days_overdue "
+                "  FROM external_person_aliases epa "
+                "  JOIN roster_assignments mta "
+                "    ON mta.domain = 'mens' "
+                "   AND mta.leagueapps_user_id::text = epa.external_user_id "
+                " WHERE epa.provider = 'leagueapps' "
+                "   AND epa.person_id = $1::int",
+                {std::to_string(personId)});
+            if (!s.empty()) {
+                const long long activeCt   = s[0]["active_ct"].as<long long>();
+                const long long purgCt     = s[0]["purgatory_ct"].as<long long>();
+                if (activeCt > 0)       membershipStatus = "active";
+                else if (purgCt > 0)    membershipStatus = "purgatory";
+                if (membershipStatus == "purgatory" && !s[0]["days_overdue"].is_null()) {
+                    purgatoryDaysOverdue = s[0]["days_overdue"].as<long long>();
+                }
+            }
+        }
+
+        json response = {
+            {"player_id",         playerId == 0 ? json(nullptr) : json(playerId)},
+            {"membership_status", membershipStatus},
+            {"events",            events},
+        };
+        if (membershipStatus == "purgatory") {
+            response["purgatory_days_overdue"] = purgatoryDaysOverdue;
+        }
+        return jsonOk(response);
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/my/week] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

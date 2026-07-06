@@ -163,8 +163,11 @@ class MyScreen extends Screen {
       ? `${events.length} event${events.length === 1 ? '' : 's'} this week`
       : 'Nothing on the schedule right now.';
 
+    const banner = this._purgatoryBanner();
+
     if (!events.length) {
       box.innerHTML = `
+        ${banner}
         <div class="empty-state">
           <p>No upcoming events. Check back after Sunday 8pm — the week rolls over then.</p>
         </div>
@@ -172,7 +175,31 @@ class MyScreen extends Screen {
       return;
     }
 
-    box.innerHTML = events.map(ev => this._eventCard(ev)).join('');
+    box.innerHTML = banner + events.map(ev => this._eventCard(ev)).join('');
+  }
+
+  // Amber banner shown when the caller's mens roster_assignments are all
+  // soft-deleted (delinquent dues).  Pickup RSVPs still work — practice
+  // and games are the ones filtered out on the backend.
+  _purgatoryBanner() {
+    if (!this.week || this.week.membership_status !== 'purgatory') return '';
+    const days = this.week.purgatory_days_overdue || 0;
+    const daysStr = days > 0 ? ` (${days} day${days === 1 ? '' : 's'} overdue)` : '';
+    return `
+      <div style="background: rgba(240, 173, 78, 0.15);
+                  border: 1px solid rgba(240, 173, 78, 0.5);
+                  border-radius: 8px;
+                  padding: var(--space-3);
+                  margin-bottom: var(--space-3);
+                  color: #f0ad4e;">
+        <div style="font-weight: 600; margin-bottom: var(--space-1);">
+          ⚠ Unpaid dues${this.escapeHtml(daysStr)}
+        </div>
+        <div style="opacity: 0.95;">
+          Pay to unlock practice and games. You can still RSVP to pickup below.
+        </div>
+      </div>
+    `;
   }
 
   _eventCard(ev) {
