@@ -2334,11 +2334,14 @@ class LeadsScreen extends Screen {
             `\n` +
             `${linkBlock}\n` +
             `\n` +
+            `Let me know if you have any questions!\n` +
+            `\n` +
             `— {coachFirst}\n` +
             `Soccer Director\n` +
             `Lighthouse 1893 SC`,
           smsBody:
             `Great — ${c.closerLine}. Register: ${smsLinkBit}\n` +
+            `Let me know if you have any questions!\n` +
             `— {coachFirst}`,
         };
       })(),
