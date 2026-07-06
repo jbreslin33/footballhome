@@ -43,6 +43,9 @@ public:
     using ByUser = std::unordered_map<std::string, std::vector<Cell>>;
 
     MensTeamAssignments();
+    // domain param scopes every SQL statement.  Default 'mens' keeps
+    // existing call-sites working; boys/girls pass their own domain.
+    explicit MensTeamAssignments(std::string domain);
 
     ByUser loadAll();
 
@@ -129,6 +132,9 @@ public:
     // number of rows touched for logging.
     long long reorderTeam(int teamId, const std::vector<long long>& userIdsInOrder);
 
+    const std::string& domain() const { return domain_; }
+
 private:
-    Database* db_;
+    Database*   db_;
+    std::string domain_;
 };

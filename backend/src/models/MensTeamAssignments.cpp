@@ -3,17 +3,28 @@
 #include <algorithm>
 #include <pqxx/pqxx>
 #include <sstream>
+#include <utility>
 #include "../database/Database.h"
 
 MensTeamAssignments::MensTeamAssignments()
-    : db_(Database::getInstance()) {}
+    : db_(Database::getInstance()),
+      domain_("mens") {}
+
+MensTeamAssignments::MensTeamAssignments(std::string domain)
+    : db_(Database::getInstance()),
+      domain_(std::move(domain)) {}
 
 MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     ByUser out;
+    // roster_assignments (renamed from mens_team_assignments in migration
+    // 092) is shared across roster domains via the `domain` column; every
+    // statement in this model filters by domain_ (default 'mens').
     const auto rows = db_->query(
         "SELECT leagueapps_user_id, team_id, on_roster, coach_sort_order "
-        "  FROM mens_team_assignments "
-        " WHERE removed_at IS NULL"
+        "  FROM roster_assignments "
+        " WHERE domain = $1 "
+        "   AND removed_at IS NULL",
+        {domain_}
     );
     for (const auto& row : rows) {
         if (row["leagueapps_user_id"].is_null() || row["team_id"].is_null()) continue;
@@ -35,11 +46,12 @@ std::vector<int> MensTeamAssignments::teamIdsForUser(long long userId) {
     // insertion order, equivalent to the serial PK ascending.  Required
     // for byte-equivalent JSON output (teamIds array order).
     const auto rows = db_->query(
-        "SELECT team_id FROM mens_team_assignments "
-        " WHERE leagueapps_user_id = $1 "
+        "SELECT team_id FROM roster_assignments "
+        " WHERE domain = $1 "
+        "   AND leagueapps_user_id = $2 "
         "   AND removed_at IS NULL "
         " ORDER BY id",
-        {std::to_string(userId)}
+        {domain_, std::to_string(userId)}
     );
     out.reserve(rows.size());
     for (const auto& row : rows) {
@@ -58,14 +70,16 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
 
     if (!mutexGroup.empty()) {
         tx->exec_params(
-            "DELETE FROM mens_team_assignments a "
-            "  USING mens_team_columns c "
-            "  WHERE a.team_id = c.team_id "
+            "DELETE FROM roster_assignments a "
+            "  USING roster_columns c "
+            "  WHERE a.domain = $4 "
+            "    AND c.domain = $4 "
+            "    AND a.team_id = c.team_id "
             "    AND a.leagueapps_user_id = $1 "
             "    AND c.mutex_group = $2 "
             "    AND a.team_id <> $3 "
             "    AND a.removed_at IS NULL",
-            userId, mutexGroup, teamId
+            userId, mutexGroup, teamId, domain_
         );
     }
 
@@ -74,34 +88,36 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
     // are preserved.  Only touches 'delinquent' removals; other reasons
     // (manual removal etc.) are left alone.
     pqxx::result restored = tx->exec_params(
-        "UPDATE mens_team_assignments "
+        "UPDATE roster_assignments "
         "   SET removed_at = NULL, "
         "       removed_reason = NULL, "
         "       removed_details = NULL "
-        " WHERE leagueapps_user_id = $1 "
+        " WHERE domain = $3 "
+        "   AND leagueapps_user_id = $1 "
         "   AND team_id = $2 "
         "   AND removed_at IS NOT NULL "
         "   AND removed_reason = 'delinquent' "
         " RETURNING id",
-        userId, teamId
+        userId, teamId, domain_
     );
 
     if (restored.empty()) {
         tx->exec_params(
-            "INSERT INTO mens_team_assignments (leagueapps_user_id, team_id, assigned_by_user_id) "
-            "VALUES ($1, $2, NULL) "
-            "ON CONFLICT (leagueapps_user_id, team_id) "
+            "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id, assigned_by_user_id) "
+            "VALUES ($3, $1, $2, NULL) "
+            "ON CONFLICT (domain, leagueapps_user_id, team_id) "
             "  WHERE removed_at IS NULL DO NOTHING",
-            userId, teamId
+            userId, teamId, domain_
         );
     }
 
     pqxx::result after = tx->exec_params(
-        "SELECT team_id FROM mens_team_assignments "
-        " WHERE leagueapps_user_id = $1 "
+        "SELECT team_id FROM roster_assignments "
+        " WHERE domain = $2 "
+        "   AND leagueapps_user_id = $1 "
         "   AND removed_at IS NULL "
         " ORDER BY id",
-        userId
+        userId, domain_
     );
 
     std::vector<int> out;
@@ -119,10 +135,11 @@ std::vector<int> MensTeamAssignments::removeAssignment(long long userId, int tea
     // admin's intent to purge the assignment entirely.  Auto-purgatory
     // uses bulkSoftDeleteForDelinquent() which preserves the row.
     db_->query(
-        "DELETE FROM mens_team_assignments "
-        " WHERE leagueapps_user_id = $1 AND team_id = $2 "
+        "DELETE FROM roster_assignments "
+        " WHERE domain = $1 "
+        "   AND leagueapps_user_id = $2 AND team_id = $3 "
         "   AND removed_at IS NULL",
-        {std::to_string(userId), std::to_string(teamId)}
+        {domain_, std::to_string(userId), std::to_string(teamId)}
     );
     return teamIdsForUser(userId);
 }
@@ -131,12 +148,13 @@ std::optional<bool> MensTeamAssignments::setRosterStatus(long long userId,
                                                           int teamId,
                                                           bool onRoster) {
     const auto rows = db_->query(
-        "UPDATE mens_team_assignments "
-        "   SET on_roster = $3 "
-        " WHERE leagueapps_user_id = $1 AND team_id = $2 "
+        "UPDATE roster_assignments "
+        "   SET on_roster = $4 "
+        " WHERE domain = $1 "
+        "   AND leagueapps_user_id = $2 AND team_id = $3 "
         "   AND removed_at IS NULL "
         " RETURNING on_roster",
-        {std::to_string(userId), std::to_string(teamId), onRoster ? "true" : "false"}
+        {domain_, std::to_string(userId), std::to_string(teamId), onRoster ? "true" : "false"}
     );
     if (rows.empty()) return std::nullopt;
     return rows[0]["on_roster"].is_null() ? false : rows[0]["on_roster"].as<bool>();
@@ -168,14 +186,15 @@ long long MensTeamAssignments::bulkSoftDeleteForDelinquent(
         j << "}";
 
         pqxx::result r = tx->exec_params(
-            "UPDATE mens_team_assignments "
+            "UPDATE roster_assignments "
             "   SET removed_at      = NOW(), "
             "       removed_reason  = 'delinquent', "
             "       removed_details = $2::jsonb "
-            " WHERE leagueapps_user_id = $1 "
+            " WHERE domain = $3 "
+            "   AND leagueapps_user_id = $1 "
             "   AND removed_at IS NULL "
             " RETURNING id",
-            uid, j.str()
+            uid, j.str(), domain_
         );
         touched += static_cast<long long>(r.size());
     }
@@ -195,12 +214,13 @@ long long MensTeamAssignments::bulkRestoreForDelinquent(const std::vector<long l
         // re-added them during purgatory) simply skips instead of aborting
         // the whole transaction.
         pqxx::result candidates = tx->exec_params(
-            "SELECT id, team_id FROM mens_team_assignments "
-            " WHERE leagueapps_user_id = $1 "
+            "SELECT id, team_id FROM roster_assignments "
+            " WHERE domain = $2 "
+            "   AND leagueapps_user_id = $1 "
             "   AND removed_at IS NOT NULL "
             "   AND removed_reason = 'delinquent' "
             " ORDER BY id",
-            uid
+            uid, domain_
         );
 
         for (const auto& row : candidates) {
@@ -210,17 +230,18 @@ long long MensTeamAssignments::bulkRestoreForDelinquent(const std::vector<long l
 
             // Check no active row would collide.
             pqxx::result active = tx->exec_params(
-                "SELECT 1 FROM mens_team_assignments "
-                " WHERE leagueapps_user_id = $1 "
+                "SELECT 1 FROM roster_assignments "
+                " WHERE domain = $3 "
+                "   AND leagueapps_user_id = $1 "
                 "   AND team_id = $2 "
                 "   AND removed_at IS NULL "
                 " LIMIT 1",
-                uid, teamId
+                uid, teamId, domain_
             );
             if (!active.empty()) continue;
 
             pqxx::result upd = tx->exec_params(
-                "UPDATE mens_team_assignments "
+                "UPDATE roster_assignments "
                 "   SET removed_at      = NULL, "
                 "       removed_reason  = NULL, "
                 "       removed_details = NULL "
@@ -257,12 +278,12 @@ long long MensTeamAssignments::bulkEnsureActive(const std::vector<long long>& us
         // caller is expected to have already run bulkRestoreForDelinquent
         // so the row is active and the ON CONFLICT fires cleanly.
         pqxx::result r = tx->exec_params(
-            "INSERT INTO mens_team_assignments (leagueapps_user_id, team_id, assigned_by_user_id) "
-            "VALUES ($1, $2, NULL) "
-            "ON CONFLICT (leagueapps_user_id, team_id) "
+            "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id, assigned_by_user_id) "
+            "VALUES ($3, $1, $2, NULL) "
+            "ON CONFLICT (domain, leagueapps_user_id, team_id) "
             "  WHERE removed_at IS NULL DO NOTHING "
             "RETURNING id",
-            uid, teamId
+            uid, teamId, domain_
         );
         inserted += static_cast<long long>(r.size());
     }
@@ -289,13 +310,14 @@ long long MensTeamAssignments::reorderTeam(int teamId,
     int rank = 1;
     for (long long uid : userIdsInOrder) {
         pqxx::result r = tx->exec_params(
-            "UPDATE mens_team_assignments "
+            "UPDATE roster_assignments "
             "   SET coach_sort_order = $3 "
-            " WHERE leagueapps_user_id = $1 "
+            " WHERE domain = $4 "
+            "   AND leagueapps_user_id = $1 "
             "   AND team_id = $2 "
             "   AND removed_at IS NULL "
             " RETURNING id",
-            uid, teamId, rank
+            uid, teamId, rank, domain_
         );
         touched += static_cast<long long>(r.size());
         ++rank;

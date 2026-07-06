@@ -1,5 +1,7 @@
 #include "MensTeamColumns.h"
 
+#include <utility>
+
 #include "../database/Database.h"
 
 namespace {
@@ -20,18 +22,25 @@ MensTeamColumns::Column rowToColumn(const pqxx::row& row) {
 
 } // namespace
 
-MensTeamColumns::MensTeamColumns()
-    : db_(Database::getInstance()) {}
+MensTeamColumns::MensTeamColumns(std::string domain)
+    : db_(Database::getInstance()),
+      domain_(std::move(domain)) {}
 
 std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
     std::vector<Column> out;
+    // roster_columns (renamed from mens_team_columns in migration 092) is
+    // shared across roster domains via the `domain` column; this model
+    // filters by domain_ (default 'mens') so each caller sees only its
+    // own scoped view.
     const auto rows = db_->query(
         "SELECT c.id, c.team_id, COALESCE(c.label, t.name) AS label, c.short_label, "
         "       c.sort_order, c.color, c.mutex_group, c.max_roster "
-        "  FROM mens_team_columns c "
+        "  FROM roster_columns c "
         "  JOIN teams t ON t.id = c.team_id "
-        " WHERE c.archived_at IS NULL "
-        " ORDER BY c.sort_order"
+        " WHERE c.domain = $1 "
+        "   AND c.archived_at IS NULL "
+        " ORDER BY c.sort_order",
+        {domain_}
     );
     out.reserve(rows.size());
     for (const auto& row : rows) out.push_back(rowToColumn(row));
@@ -42,11 +51,12 @@ std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId)
     const auto rows = db_->query(
         "SELECT c.id, c.team_id, COALESCE(c.label, t.name) AS label, c.short_label, "
         "       c.sort_order, c.color, c.mutex_group, c.max_roster "
-        "  FROM mens_team_columns c "
+        "  FROM roster_columns c "
         "  JOIN teams t ON t.id = c.team_id "
-        " WHERE c.team_id = $1 "
+        " WHERE c.domain = $1 "
+        "   AND c.team_id = $2 "
         "   AND c.archived_at IS NULL",
-        {std::to_string(teamId)}
+        {domain_, std::to_string(teamId)}
     );
     if (rows.empty()) return std::nullopt;
     return rowToColumn(rows[0]);

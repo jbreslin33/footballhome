@@ -266,16 +266,36 @@ Response EventReminderController::handleSendReminders(const Request& request) {
         // Non-responder = no player_rsvp_history row for this match
         // (any status).  A row with status "yes"/"no"/"maybe" counts
         // as responded — same rule as the /my/week UI.
+        //
+        // Eligibility rule mirrors MyController + RsvpMaterialization:
+        //   practice (mt=3):        team ∈ (35, 120, 121)
+        //   game APSL home (35):    team ∈ (35, 120)  (play-up)
+        //   game other:             team = home_team_id
+        //   pickup (mt=7):          ANY mens roster (active OR purgatory)
         const std::string sql =
             "WITH match_ctx AS ( "
-            "  SELECT id AS match_id, home_team_id FROM matches WHERE id = $1::int "
+            "  SELECT id AS match_id, match_type_id, home_team_id "
+            "    FROM matches WHERE id = $1::int "
             ") "
-            "SELECT p.id AS person_id, pl.id AS player_id, "
+            "SELECT DISTINCT p.id AS person_id, pl.id AS player_id, "
             "       p.first_name, p.last_name, "
             + contactSql +
             "  FROM match_ctx mc "
-            "  JOIN mens_team_assignments mta ON mta.team_id = mc.home_team_id "
-            "                                AND mta.removed_at IS NULL "
+            "  JOIN roster_assignments mta "
+            "    ON mta.domain = 'mens' "
+            "   AND ( "
+            "     mc.match_type_id = 7 "
+            "     OR ( "
+            "       mta.removed_at IS NULL "
+            "       AND mta.team_id = ANY( "
+            "         CASE "
+            "           WHEN mc.match_type_id = 3 THEN ARRAY[35, 120, 121] "
+            "           WHEN mc.match_type_id IN (1,4,6) AND mc.home_team_id = 35 THEN ARRAY[35, 120] "
+            "           ELSE ARRAY[mc.home_team_id] "
+            "         END "
+            "       ) "
+            "     ) "
+            "   ) "
             "  JOIN external_person_aliases epa "
             "    ON epa.provider = 'leagueapps' "
             "   AND epa.external_user_id = mta.leagueapps_user_id::text "

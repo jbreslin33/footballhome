@@ -33,12 +33,17 @@ public:
         bool        hasMaxRoster = false;
     };
 
-    MensTeamColumns();
+    // domain param scopes every query.  Default 'mens' keeps existing
+    // call-sites working; boys/girls pass their own domain string.
+    explicit MensTeamColumns(std::string domain = "mens");
 
     std::vector<Column> loadAll();
 
     std::optional<Column> findByTeamId(int teamId);
 
+    const std::string& domain() const { return domain_; }
+
 private:
-    Database* db_;
+    Database*   db_;
+    std::string domain_;
 };

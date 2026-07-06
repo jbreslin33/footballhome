@@ -1,0 +1,376 @@
+#include "BoysRoster.h"
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
+#include <limits>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
+
+#include "MensTeamAssignments.h"
+#include "MensTeamColumns.h"
+#include "../services/LeagueAppsService.h"
+
+using nlohmann::json;
+
+namespace {
+
+std::string trim(const std::string& s) {
+    size_t a = 0;
+    while (a < s.size() && std::isspace(static_cast<unsigned char>(s[a]))) ++a;
+    size_t b = s.size();
+    while (b > a && std::isspace(static_cast<unsigned char>(s[b - 1]))) --b;
+    return s.substr(a, b - a);
+}
+
+std::string optStr(const json& j, const char* key) {
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null() || !it->is_string()) return {};
+    return it->get<std::string>();
+}
+
+json optAny(const json& j, const char* key) {
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null()) return nullptr;
+    return *it;
+}
+
+// LA `birthDate` → "YYYY-MM-DD" (UTC).  Handles both number (epoch ms) and
+// ISO string.  Mirrors YouthRoster::birthDateIso.
+std::string birthDateIso(const json& rec) {
+    auto it = rec.find("birthDate");
+    if (it == rec.end() || it->is_null()) return {};
+    if (it->is_number()) {
+        const long long ms = static_cast<long long>(it->get<double>());
+        const std::time_t secs = static_cast<std::time_t>(ms / 1000);
+        std::tm tm_utc{};
+        if (gmtime_r(&secs, &tm_utc) == nullptr) return {};
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d",
+                      tm_utc.tm_year + 1900, tm_utc.tm_mon + 1, tm_utc.tm_mday);
+        return std::string(buf);
+    }
+    if (it->is_string()) {
+        const std::string s = it->get<std::string>();
+        if (s.size() >= 10) return s.substr(0, 10);
+    }
+    return {};
+}
+
+json optUserId(const json& rec) {
+    auto it = rec.find("userId");
+    if (it == rec.end() || it->is_null()) return nullptr;
+    return *it;
+}
+
+std::string userIdString(const json& v) {
+    if (v.is_null()) return {};
+    if (v.is_string()) return v.get<std::string>();
+    if (v.is_number_integer())  return std::to_string(v.get<long long>());
+    if (v.is_number_unsigned()) return std::to_string(v.get<unsigned long long>());
+    if (v.is_number_float())    return std::to_string(static_cast<long long>(v.get<double>()));
+    return {};
+}
+
+std::string nowIsoMs() {
+    using namespace std::chrono;
+    const auto now = system_clock::now();
+    const auto t   = system_clock::to_time_t(now);
+    const auto ms  = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+    std::tm tm_utc{};
+    gmtime_r(&t, &tm_utc);
+    char buf[40];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d.%03lldZ",
+                  tm_utc.tm_year + 1900, tm_utc.tm_mon + 1, tm_utc.tm_mday,
+                  tm_utc.tm_hour, tm_utc.tm_min, tm_utc.tm_sec,
+                  static_cast<long long>(ms.count()));
+    return std::string(buf);
+}
+
+std::string upperAscii(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (char c : s) out.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+    return out;
+}
+
+bool isActive(const json& rec, bool includeAll) {
+    if (includeAll) return true;
+    const std::string s = upperAscii(optStr(rec, "registrationStatus"));
+    return s == "SPOT_RESERVED" || s == "SPOT_PENDING";
+}
+
+// School-year age group from DOB.  Aug 1 cutover: month >= 8 → cohort = yy+1,
+// else cohort = yy.  ageGroup = "U" + (seasonEndYear - cohort).
+// Returns json(nullptr) when the DOB can't be parsed.
+json ageGroupFromDob(const std::string& bdIso, int seasonEndYear) {
+    if (bdIso.size() < 10) return nullptr;
+    try {
+        const int yy = std::stoi(bdIso.substr(0, 4));
+        const int mm = std::stoi(bdIso.substr(5, 2));
+        const int cohort = (mm >= 8) ? yy + 1 : yy;
+        return std::string("U") + std::to_string(seasonEndYear - cohort);
+    } catch (const std::exception&) {
+        return nullptr;
+    }
+}
+
+} // namespace
+
+BoysRoster::BoysRoster()
+    : columns_    (std::make_unique<MensTeamColumns>("boys")),
+      assignments_(std::make_unique<MensTeamAssignments>("boys")),
+      boysProgramId_ (envInt("LEAGUEAPPS_BOYS_CLUB_PROGRAM_ID",  5039252)),
+      girlsProgramId_(envInt("LEAGUEAPPS_GIRLS_CLUB_PROGRAM_ID", 5039357)) {}
+
+BoysRoster::~BoysRoster() = default;
+
+int BoysRoster::envInt(const char* name, int fallback) {
+    const char* raw = std::getenv(name);
+    if (!raw || !*raw) return fallback;
+    try { return std::stoi(raw); }
+    catch (const std::exception&) { return fallback; }
+}
+
+int BoysRoster::defaultSeasonEndYear() {
+    // June 1 cutover mirrors YouthAgeGroups::defaultSeasonEndYear so the
+    // ageGroup we surface matches the mens-side / youth-side dashboard's
+    // notion of the current season.
+    std::time_t nowT = std::time(nullptr);
+    std::tm tm{};
+    localtime_r(&nowT, &tm);
+    const int y = tm.tm_year + 1900;
+    const int m = tm.tm_mon + 1;
+    return (m >= 6) ? (y + 1) : y;
+}
+
+json BoysRoster::shapePlayer(const json& rec, const std::string& club, int seasonEndYear) {
+    const std::string first = trim(optStr(rec, "firstName"));
+    const std::string last  = trim(optStr(rec, "lastName"));
+    const std::string bd    = birthDateIso(rec);
+
+    json out;
+    json regId = nullptr;
+    if (auto it = rec.find("registrationId"); it != rec.end() && !it->is_null()) regId = *it;
+    else if (auto it = rec.find("id");         it != rec.end() && !it->is_null()) regId = *it;
+    out["registrationId"]   = regId;
+
+    const json uid = optUserId(rec);
+    out["userId"]           = uid;
+    out["leagueAppsUserId"] = uid;
+
+    out["firstName"]        = first;
+    out["lastName"]         = last;
+    out["fullName"]         = trim(first + " " + last);
+    out["birthDate"]        = bd.empty() ? json(nullptr) : json(bd);
+    if (!bd.empty()) {
+        try { out["birthYear"] = std::stoi(bd.substr(0, 4)); }
+        catch (const std::exception&) { out["birthYear"] = nullptr; }
+    } else {
+        out["birthYear"] = nullptr;
+    }
+
+    // Gender: LA-supplied wins; club default fills gaps.
+    const std::string g = optStr(rec, "gender");
+    if (!g.empty()) out["gender"] = g;
+    else            out["gender"] = (club == "boys") ? "Male" : "Female";
+
+    out["club"] = (club == "boys") ? "Boys Club" : "Girls Club";
+
+    // Real school-year age group (U8/U10/U12/...) — the user-visible chip
+    // that lets admin see the kid's actual age category regardless of
+    // which selection column they're dropped into.
+    out["ageGroup"] = ageGroupFromDob(bd, seasonEndYear);
+
+    auto strOrNull = [&](const char* k) -> json {
+        const std::string v = optStr(rec, k);
+        return v.empty() ? json(nullptr) : json(v);
+    };
+    out["email"]              = strOrNull("email");
+    out["phone"]              = strOrNull("phone");
+    out["playerEmail"]        = strOrNull("email");
+    out["parentFirstName"]    = strOrNull("parentFirstName");
+    out["parentLastName"]     = strOrNull("parentLastName");
+    const std::string pFirst = optStr(rec, "parentFirstName");
+    const std::string pLast  = optStr(rec, "parentLastName");
+    std::string parentName;
+    if (!pFirst.empty()) parentName = pFirst;
+    if (!pLast.empty()) {
+        if (!parentName.empty()) parentName += ' ';
+        parentName += pLast;
+    }
+    out["parentName"]         = parentName.empty() ? json(nullptr) : json(parentName);
+    out["parentEmail"]        = strOrNull("parentEmail");
+    out["parentPhone"]        = strOrNull("parentPhone");
+    out["paymentStatus"]      = strOrNull("paymentStatus");
+    out["outstandingBalance"] = optAny(rec, "outstandingBalance");
+    out["registrationStatus"] = strOrNull("registrationStatus");
+    out["programName"]        = strOrNull("programName");
+    return out;
+}
+
+BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
+    Result out;
+
+    auto cols          = columns_->loadAll();
+    auto assignmentMap = assignments_->loadAll();
+    if (cols.empty()) {
+        out.noColumns = true;
+        out.error = "No roster_columns configured for domain='boys'.  Seed the table to enable bucketing.";
+        return out;
+    }
+
+    // ── LA registrant snapshots (boys + girls, cached) ───────────────
+    std::vector<json> boysRecs, girlsRecs;
+    {
+        std::lock_guard<std::mutex> lk(cacheMutex_);
+        const bool needFetch = refreshLa || !cacheValid_;
+        if (needFetch) {
+            try {
+                cachedBoys_ = LeagueAppsService::getInstance()
+                                  .fetchProgramRegistrations(boysProgramId_);
+                cachedGirls_ = LeagueAppsService::getInstance()
+                                   .fetchProgramRegistrations(girlsProgramId_);
+                cacheValid_ = true;
+            } catch (const std::exception& e) {
+                if (cacheValid_) {
+                    std::cerr << "[BoysRoster] LA refresh failed, serving cached snapshot: "
+                              << e.what() << std::endl;
+                } else {
+                    throw;
+                }
+            }
+        }
+        boysRecs  = cachedBoys_;
+        girlsRecs = cachedGirls_;
+    }
+
+    const int seasonEndYear = defaultSeasonEndYear();
+
+    std::vector<json> all;
+    all.reserve(boysRecs.size() + girlsRecs.size());
+    for (const auto& r : boysRecs)  if (isActive(r, includeAll)) all.push_back(shapePlayer(r, "boys",  seasonEndYear));
+    for (const auto& r : girlsRecs) if (isActive(r, includeAll)) all.push_back(shapePlayer(r, "girls", seasonEndYear));
+
+    // ── Bucket per column (keyed by teamId-as-string) ────────────────
+    std::unordered_map<std::string, std::vector<json>> buckets;
+    for (const auto& c : cols) buckets[std::to_string(c.teamId)];
+    std::vector<json> unassigned;
+
+    auto findCellInUser = [](const std::vector<MensTeamAssignments::Cell>& v, int teamId)
+        -> const MensTeamAssignments::Cell* {
+        for (const auto& c : v) if (c.teamId == teamId) return &c;
+        return nullptr;
+    };
+
+    for (auto& p : all) {
+        const std::string uid = userIdString(p.at("leagueAppsUserId"));
+
+        const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;
+        auto it = assignmentMap.find(uid);
+        if (it != assignmentMap.end()) userCells = &it->second;
+
+        std::vector<int> relevant;
+        if (userCells) {
+            for (const auto& c : cols) {
+                if (findCellInUser(*userCells, c.teamId)) relevant.push_back(c.teamId);
+            }
+        }
+
+        if (relevant.empty()) {
+            json row       = p;
+            row["teamIds"] = json::array();
+            unassigned.push_back(std::move(row));
+        } else {
+            for (int tid : relevant) {
+                const auto* cell = findCellInUser(*userCells, tid);
+                json row              = p;
+                row["teamIds"]        = relevant;
+                row["onRoster"]       = cell ? cell->onRoster : false;
+                row["coachSortOrder"] = (cell && cell->coachSortOrder)
+                    ? json(*cell->coachSortOrder)
+                    : json(nullptr);
+                buckets[std::to_string(tid)].push_back(std::move(row));
+            }
+        }
+    }
+
+    // ── Sort: coach rank first, then on-roster, then alpha lastName ──
+    auto lowerAscii = [](const std::string& s) {
+        std::string o; o.reserve(s.size());
+        for (char c : s) o.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        return o;
+    };
+    auto alpha = [&](const json& a, const json& b) {
+        const std::string al = a.at("lastName").is_string()  ? lowerAscii(a.at("lastName").get<std::string>())  : std::string{};
+        const std::string bl = b.at("lastName").is_string()  ? lowerAscii(b.at("lastName").get<std::string>())  : std::string{};
+        if (al != bl) return al < bl;
+        const std::string af = a.at("firstName").is_string() ? lowerAscii(a.at("firstName").get<std::string>()) : std::string{};
+        const std::string bf = b.at("firstName").is_string() ? lowerAscii(b.at("firstName").get<std::string>()) : std::string{};
+        return af < bf;
+    };
+    auto sortByRosterThenName = [&](const json& a, const json& b) {
+        auto coachRank = [](const json& x) {
+            if (x.contains("coachSortOrder") && x["coachSortOrder"].is_number()) {
+                return x["coachSortOrder"].get<int>();
+            }
+            return std::numeric_limits<int>::max();
+        };
+        const int ca = coachRank(a);
+        const int cb = coachRank(b);
+        if (ca != cb) return ca < cb;
+        const int ar = a.contains("onRoster") && a["onRoster"].get<bool>() ? 0 : 1;
+        const int br = b.contains("onRoster") && b["onRoster"].get<bool>() ? 0 : 1;
+        if (ar != br) return ar < br;
+        return alpha(a, b);
+    };
+
+    for (auto& kv : buckets) std::stable_sort(kv.second.begin(), kv.second.end(), sortByRosterThenName);
+    std::stable_sort(unassigned.begin(), unassigned.end(), alpha);
+
+    // ── Emit columns array + buckets object ──────────────────────────
+    json columnsArr = json::array();
+    for (const auto& c : cols) {
+        const auto& list = buckets[std::to_string(c.teamId)];
+        int onRosterCount = 0;
+        for (const auto& row : list) if (row.value("onRoster", false)) ++onRosterCount;
+
+        json col;
+        col["teamId"]        = c.teamId;
+        col["label"]         = c.label;
+        col["shortLabel"]    = c.shortLabel;
+        col["color"]         = c.color.empty() ? json(nullptr) : json(c.color);
+        col["mutexGroup"]    = c.mutexGroup.empty() ? json(nullptr) : json(c.mutexGroup);
+        col["maxRoster"]     = c.hasMaxRoster ? json(c.maxRoster) : json(nullptr);
+        col["sortOrder"]     = c.sortOrder;
+        col["count"]         = static_cast<int>(list.size());
+        col["onRosterCount"] = onRosterCount;
+        columnsArr.push_back(std::move(col));
+    }
+
+    json bucketsJson = json::object();
+    for (const auto& c : cols) {
+        const std::string k = std::to_string(c.teamId);
+        auto it2 = buckets.find(k);
+        json arr = json::array();
+        if (it2 != buckets.end()) {
+            for (auto& row : it2->second) arr.push_back(std::move(row));
+        }
+        bucketsJson[k] = std::move(arr);
+    }
+
+    out.body["fetchedAt"]        = nowIsoMs();
+    out.body["seasonEndYear"]    = seasonEndYear;
+    out.body["columns"]          = std::move(columnsArr);
+    out.body["buckets"]          = std::move(bucketsJson);
+    out.body["unassigned"]       = std::move(unassigned);
+    out.body["unassignedCount"]  = static_cast<int>(out.body["unassigned"].size());
+    out.body["total"]            = static_cast<int>(all.size());
+    out.body["boysProgramId"]    = boysProgramId_;
+    out.body["girlsProgramId"]   = girlsProgramId_;
+    return out;
+}

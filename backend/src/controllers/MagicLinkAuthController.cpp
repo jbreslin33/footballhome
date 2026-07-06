@@ -415,10 +415,71 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
 }
 
 Response MagicLinkAuthController::handleMe(const Request& request) {
-    const std::string cookie = request.getHeader("Cookie");
+    const std::string cookie  = request.getHeader("Cookie");
     const std::string sessVal = SessionService::parseCookieValue(cookie, SessionService::kCookieName);
     auto resolved = SessionService::getInstance().requireSession(sessVal);
+
+    // Bearer JWT fallback path — OAuth callback (Google Sign-In) mints a
+    // JWT and stores it in localStorage; the frontend's oauth-success
+    // screen then calls GET /api/auth/me with `Authorization: Bearer <jwt>`
+    // (no cookie).  Without this fallback the request would 401 because
+    // this handler shadows the legacy AuthController::handleCurrentUser
+    // registration.  If both flows are present (cookie + Bearer) the
+    // cookie session wins — matches the pre-Phase-4 behaviour.
     if (!resolved) {
+        const std::string auth = request.getHeader("Authorization");
+        if (auth.size() > 7 && auth.compare(0, 7, "Bearer ") == 0) {
+            const std::string token = auth.substr(7);
+            std::string payloadJson;
+            if (fh::crypto::verifyJwtHS256(token, &payloadJson)) {
+                try {
+                    json payload = json::parse(payloadJson);
+                    auto userIdOpt = jsonInt(payload, "userId");
+                    if (userIdOpt) {
+                        auto* db = Database::getInstance();
+                        auto row = db->query(
+                            "SELECT u.id AS user_id, p.id AS person_id, "
+                            "       p.first_name, p.last_name, "
+                            "       COALESCE(pe.email, '') AS email "
+                            "  FROM users u "
+                            "  JOIN persons p ON p.id = u.person_id "
+                            "  LEFT JOIN LATERAL ("
+                            "    SELECT email FROM person_emails "
+                            "     WHERE person_id = u.person_id "
+                            "     ORDER BY is_primary DESC, id ASC LIMIT 1"
+                            "  ) pe ON true "
+                            " WHERE u.id = $1::int LIMIT 1",
+                            {std::to_string(*userIdOpt)});
+                        if (row.empty()) {
+                            return jsonError(HttpStatus::NOT_FOUND, "User not found");
+                        }
+                        const std::string first = row[0]["first_name"].is_null() ? "" : row[0]["first_name"].as<std::string>();
+                        const std::string last  = row[0]["last_name"].is_null()  ? "" : row[0]["last_name"].as<std::string>();
+                        std::string full = first;
+                        if (!last.empty()) { if (!full.empty()) full += " "; full += last; }
+                        json user = {
+                            {"id",         row[0]["user_id"].as<std::string>()},
+                            {"email",      row[0]["email"].as<std::string>()},
+                            {"first_name", first},
+                            {"last_name",  last},
+                            {"name",       full},
+                            {"role",       ""},
+                        };
+                        json out = {
+                            {"success", true},
+                            {"message", "Current user retrieved successfully"},
+                            {"data",    {{"user", user}}},
+                        };
+                        Response r(HttpStatus::OK, out.dump());
+                        r.setHeader("Content-Type", "application/json; charset=utf-8");
+                        return r;
+                    }
+                } catch (const std::exception& e) {
+                    std::cerr << "[GET /api/auth/me] Bearer fallback: " << e.what() << std::endl;
+                    // fall through to 401 below
+                }
+            }
+        }
         return jsonError(HttpStatus::UNAUTHORIZED,
                          sessVal.empty() ? "Not signed in" : "Session expired");
     }

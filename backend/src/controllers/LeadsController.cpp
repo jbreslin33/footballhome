@@ -924,7 +924,7 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
                 "       p.first_name, p.last_name, m.leagueapps_user_id, "
                 "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
                 "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails "
-                "  FROM mens_team_assignments m "
+                "  FROM roster_assignments m "
                 "  JOIN teams t ON t.id = m.team_id "
                 "  JOIN external_person_aliases epa "
                 "    ON epa.provider = 'leagueapps' "

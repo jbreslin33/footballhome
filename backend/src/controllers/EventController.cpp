@@ -2215,8 +2215,9 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 EXISTS (
                   SELECT 1
                     FROM external_person_aliases epa
-                    JOIN mens_team_assignments mta
+                    JOIN roster_assignments mta
                       ON mta.leagueapps_user_id::text = epa.external_user_id
+                     AND mta.domain = 'mens'
                    WHERE epa.person_id = pe.id
                      AND epa.provider = 'leagueapps'
                      AND (mta.team_id = r.team_id OR t.is_pool)

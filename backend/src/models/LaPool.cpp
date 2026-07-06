@@ -276,14 +276,14 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
     if (gender == Gender::Mens && !nonPausedLaIds.empty()) {
         try {
             const std::string sql =
-                "INSERT INTO mens_team_assignments (leagueapps_user_id, team_id) "
-                "SELECT ua.uid::bigint, t.id "
+                "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id) "
+                "SELECT 'mens', ua.uid::bigint, t.id "
                 "  FROM UNNEST($1::text[]) AS ua(uid) "
                 "  CROSS JOIN teams t "
                 " WHERE t.club_id = $2 "
                 "   AND t.is_pool = true "
                 "   AND (t.gender_category = 'mens' OR t.gender_category IS NULL) "
-                "ON CONFLICT (leagueapps_user_id, team_id) DO NOTHING";
+                "ON CONFLICT (domain, leagueapps_user_id, team_id) WHERE removed_at IS NULL DO NOTHING";
             const std::vector<std::string> params = {
                 textArrayLiteral(nonPausedLaIds),
                 std::to_string(clubId),
@@ -313,8 +313,9 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
 
         const std::string sql =
             "SELECT mta.leagueapps_user_id::text AS lauid, mta.team_id "
-            "  FROM mens_team_assignments mta "
-            " WHERE mta.leagueapps_user_id::text = ANY($1::text[])";
+            "  FROM roster_assignments mta "
+            " WHERE mta.domain = 'mens' "
+            "   AND mta.leagueapps_user_id::text = ANY($1::text[])";
         const std::vector<std::string> params = { textArrayLiteral(laIds) };
         const auto rows = db_->query(sql, params);
         for (const auto& row : rows) {

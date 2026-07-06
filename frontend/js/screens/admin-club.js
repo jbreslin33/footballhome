@@ -153,7 +153,7 @@ class AdminClubScreen extends Screen {
     // even though target + params are identical.
     const boysDashTiles = [
       { id: 'boys-lineups',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', matchType: 'game' }, icon: '🧩', label: 'Boys Dashboard',       description: 'Boys teams — roster, schedule, attendance' },
-      { id: 'boys-roster',    target: 'youth-roster',        params: { gender: 'youth', sex: 'boys' },                    icon: '🎽', label: 'Boys Roster',          description: 'Live LA roster — boys + girls together (girls play on boys teams for now)' },
+      { id: 'boys-roster',    target: 'boys-roster',         params: { gender: 'youth', sex: 'boys' },                    icon: '🎽', label: 'Boys Roster',          description: 'Live LA roster — boys + girls together (girls play on boys teams for now)' },
       { id: 'boys-practice',  target: 'youth-practice-dash', params: { gender: 'youth', sex: 'boys', kind: 'practice' }, icon: '🏃', label: 'Boys Practice',        description: 'Add / edit / delete boys practices' },
       { id: 'boys-pickup',    target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'boys', kind: 'pickup'   }, icon: '⚡', label: 'Boys Pickup',          description: 'Add / edit / delete boys pickup sessions' },
       { id: 'u8-boys-dash',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u8'  }, icon: '👦', label: 'U8 Boys',              description: 'U8 boys teams — roster, schedule, attendance' },

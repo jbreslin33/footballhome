@@ -60,6 +60,7 @@ class App {
       pausedMembers: new PausedMembersScreen(this.navigation, this.auth),
       mensGameEligibility: new MensGameEligibilityScreen(this.navigation, this.auth),
       mensRoster: new MensRosterScreen(this.navigation, this.auth),
+      boysRoster: new BoysRosterScreen(this.navigation, this.auth),
       mensDelinquent: new MensDelinquentScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
@@ -129,6 +130,7 @@ class App {
     this.screenManager.register('paused-members', this.screens.pausedMembers);
     this.screenManager.register('mens-game-eligibility', this.screens.mensGameEligibility);
     this.screenManager.register('mens-roster', this.screens.mensRoster);
+    this.screenManager.register('boys-roster', this.screens.boysRoster);
     this.screenManager.register('mens-delinquent', this.screens.mensDelinquent);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     this.screenManager.register('payments', this.screens.payments);

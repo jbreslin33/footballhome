@@ -34,6 +34,7 @@
 #include "controllers/ClubLaPoolController.h"
 #include "controllers/YouthRosterController.h"
 #include "controllers/MensRosterController.h"
+#include "controllers/BoysRosterController.h"
 #include "controllers/PersonBillingController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
@@ -81,6 +82,7 @@ private:
     std::shared_ptr<ClubLaPoolController> club_la_pool_controller_;
     std::shared_ptr<YouthRosterController> youth_roster_controller_;
     std::shared_ptr<MensRosterController> mens_roster_controller_;
+    std::shared_ptr<BoysRosterController> boys_roster_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
@@ -121,6 +123,7 @@ public:
         club_la_pool_controller_ = std::make_shared<ClubLaPoolController>();
         youth_roster_controller_ = std::make_shared<YouthRosterController>();
         mens_roster_controller_ = std::make_shared<MensRosterController>();
+        boys_roster_controller_ = std::make_shared<BoysRosterController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
@@ -244,6 +247,10 @@ private:
         router_.useController("/api/youth-roster", youth_roster_controller_);
         // Phase 8 — mens-roster (GET + /assign + /roster-status) ported to C++.
         router_.useController("/api/mens-roster", mens_roster_controller_);
+        // Phase 2 boys-roster (2026-07-05) — same shape as mens, backed by
+        // roster_columns / roster_assignments filtered to domain='boys'.
+        // Pulls registrants from both Boys Club and Girls Club LA programs.
+        router_.useController("/api/boys-roster", boys_roster_controller_);
         // Phase 9 — person-billing (POST upsert + /mark-billed) ported to C++.
         router_.useController("/api/person-billing", person_billing_controller_);
         // Payments audit surface (Mens / Boys / Girls tabs on the

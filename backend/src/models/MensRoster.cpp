@@ -248,7 +248,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
 
     if (cols.empty()) {
         out.noColumns = true;
-        out.error = "No mens_team_columns configured.  Seed the table to enable bucketing.";
+        out.error = "No roster_columns configured for domain='mens'.  Seed the table to enable bucketing.";
         return out;
     }
 
@@ -540,7 +540,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     // (soft-delete) and skip re-adding them.
     //
     // Practice + Pickup are not selection columns on the Roster Board
-    // (archived from mens_team_columns), so the coach never has to
+    // (archived from roster_columns), so the coach never has to
     // manually assign anyone to them.
     constexpr int kPracticeTeamId  = 908;
     constexpr int kPickupTeamId    = 909;
@@ -553,8 +553,9 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     try {
         auto* db = Database::getInstance();
         pqxx::result rows = db->query(
-            "SELECT leagueapps_user_id FROM mens_team_assignments "
-            " WHERE team_id = $1 AND removed_at IS NULL",
+            "SELECT leagueapps_user_id FROM roster_assignments "
+            " WHERE domain = 'mens' "
+            "   AND team_id = $1 AND removed_at IS NULL",
             {std::to_string(kPurgatoryTeamId)}
         );
         for (const auto& r : rows) {

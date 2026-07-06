@@ -47,6 +47,7 @@ set(SOURCES
     src/models/MensTeamColumns.cpp
     src/models/MensTeamAssignments.cpp
     src/models/MensRoster.cpp
+    src/models/BoysRoster.cpp
     src/models/Lead.cpp
     src/models/LeadContact.cpp
     src/services/UserService.cpp
@@ -78,6 +79,7 @@ set(SOURCES
     src/controllers/ClubLaPoolController.cpp
     src/controllers/YouthRosterController.cpp
     src/controllers/MensRosterController.cpp
+    src/controllers/BoysRosterController.cpp
     src/controllers/PersonBillingController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
