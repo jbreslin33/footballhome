@@ -513,10 +513,9 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     // ── Delinquency computation (2026-07-04) ─────────────────────────
     // Reads DUES_OWED_HOLD_DAYS (default 7).  For each active player:
     // daysOverdue = today - nextBillDate.  delinquencyState='dues_owed'
-    // when daysOverdue >= threshold; 'ok' otherwise.  (Historically the
-    // state was named 'purgatory'; renamed 2026-07-06 for player-facing
-    // clarity.)  The auto soft-delete + restore sweep was DISABLED per
-    // user directive same day — see the block further down.
+    // when daysOverdue >= threshold; 'ok' otherwise.  The auto
+    // soft-delete + restore sweep was DISABLED per user directive
+    // 2026-07-04 pm — see the block further down.
     const int holdDays = envIntFn("DUES_OWED_HOLD_DAYS", 7);
 
     // Precompute the current calendar month prefix (YYYY-MM) and the
@@ -657,12 +656,13 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     //     rows back.
     //
     // New behavior (user directive same day: "don't auto manage it"):
-    //   • The Purgatory TEAM (id 910) is 100 % admin-driven — coach
-    //     clicks the Purgatory move button on a card to park a player.
+    //   • The Dues Owed TEAM (id 910) is 100 % admin-driven — coach
+    //     clicks the Dues Owed move button on a card to park a player.
     //     Backend just tracks the mens_team_assignments row on team 910.
-    //     Not to be confused with the 'dues_owed' delinquencyState
-    //     computed above — the team is a manual sin-bin (any reason),
-    //     the state is auto-flagged by days-past-due.
+    //     Both the auto 'dues_owed' delinquencyState (above) AND this
+    //     admin team share the label "Dues Owed" — the state is
+    //     auto-flagged by days-past-due, the team is a manual sin-bin
+    //     for any reason the coach chooses.
     //   • Delinquency data (daysOverdue, nextBillDate, outstandingBalance)
     //     is still computed + returned so the card can show a red
     //     "Nd OVERDUE" chip and admin can decide whether to escalate.
@@ -680,38 +680,38 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
 
     // ── Practice / Pickup auto-membership backfill (2026-07-04) ────────
     //
-    // Rule: every LA member NOT parked in Purgatory (team 910) is on
+    // Rule: every LA member NOT parked in Dues Owed (team 910) is on
     // the Practice (908) + Pickup (909) all-hands teams.  Admin puts
-    // problem players in Purgatory via the Roster Board button; the
-    // mutex in mens_team_columns atomically clears their APSL/Liga 1
-    // row.  Here we also make sure their Practice/Pickup rows are gone
-    // (soft-delete) and skip re-adding them.
+    // problem players in the Dues Owed column via the Roster Board
+    // button; the mutex in roster_columns atomically clears their
+    // APSL/Liga 1 row.  Here we also make sure their Practice/Pickup
+    // rows are gone (soft-delete) and skip re-adding them.
     //
     // Practice + Pickup are not selection columns on the Roster Board
     // (archived from roster_columns), so the coach never has to
     // manually assign anyone to them.
-    constexpr int kPracticeTeamId  = 908;
-    constexpr int kPickupTeamId    = 909;
-    constexpr int kPurgatoryTeamId = 910;
+    constexpr int kPracticeTeamId = 908;
+    constexpr int kPickupTeamId   = 909;
+    constexpr int kDuesOwedTeamId = 910;
 
-    // Build the set of UIDs currently parked in Purgatory (active team
+    // Build the set of UIDs currently parked in Dues Owed (active team
     // 910 row).  These are excluded from the backfill AND their existing
     // Practice/Pickup rows are soft-deleted below.
-    std::unordered_set<long long> purgatoryUids;
+    std::unordered_set<long long> duesOwedUids;
     try {
         auto* db = Database::getInstance();
         pqxx::result rows = db->query(
             "SELECT leagueapps_user_id FROM roster_assignments "
             " WHERE domain = 'mens' "
             "   AND team_id = $1 AND removed_at IS NULL",
-            {std::to_string(kPurgatoryTeamId)}
+            {std::to_string(kDuesOwedTeamId)}
         );
         for (const auto& r : rows) {
             if (r["leagueapps_user_id"].is_null()) continue;
-            purgatoryUids.insert(r["leagueapps_user_id"].as<long long>());
+            duesOwedUids.insert(r["leagueapps_user_id"].as<long long>());
         }
     } catch (const std::exception& e) {
-        std::cerr << "[MensRoster] purgatory-UID lookup failed: " << e.what() << std::endl;
+        std::cerr << "[MensRoster] dues-owed-UID lookup failed: " << e.what() << std::endl;
     }
 
     std::vector<long long> goodStandingUids;
@@ -720,7 +720,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         long long uidLL = 0;
         try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
         if (uidLL <= 0) continue;
-        if (purgatoryUids.count(uidLL)) continue;  // parked — skip
+        if (duesOwedUids.count(uidLL)) continue;  // parked — skip
         goodStandingUids.push_back(uidLL);
     }
     long long backfilledPractice = 0, backfilledPickup = 0;
@@ -734,7 +734,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         std::cerr << "[MensRoster] practice/pickup backfill: practice=" << backfilledPractice
                   << " pickup=" << backfilledPickup
                   << " goodStanding=" << goodStandingUids.size()
-                  << " purgatory=" << purgatoryUids.size() << std::endl;
+                  << " duesOwed=" << duesOwedUids.size() << std::endl;
         // Reload again — new active rows changed the map.
         assignmentMap = assignments_->loadAll();
     }

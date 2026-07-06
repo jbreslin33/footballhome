@@ -16,14 +16,15 @@
 //     orange, 7+ red) that replaces the old tiny paid-dot.
 //   • Each column header shows "⚠ N OVERDUE" when any current roster member
 //     is behind on dues — the coach sees per-team risk without clicking in.
-//   • A trailing "🚨 Purgatory" column surfaces players the backend has
-//     already soft-removed from every roster (7+ days overdue).  Two action
-//     buttons per delinquent card (lifted from PaymentsScreen):
+//   • A trailing "🚨 Dues Owed" column surfaces players the admin has
+//     parked as delinquent — the column strips them off every other
+//     roster (mens-selection mutex).  Two action buttons per card
+//     (lifted from PaymentsScreen):
 //       LA  — opens LA Manager memberDetails for manual pause
 //       ⏸  — copies the canonical pause-warning message to clipboard
 //   • Backend used to block /assign for delinquent players (HTTP 409);
 //     that gate was REMOVED 2026-07-04 pm per user directive.  Admin
-//     now decides roster + team-910 sin-bin placement manually.
+//     now decides roster + Dues Owed column placement manually.
 class MensRosterScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -188,11 +189,12 @@ class MensRosterScreen extends Screen {
   renderRoster(data) {
     const container = this.find('#mr-list');
 
-    // Purgatory is now a REAL DB column (team_id=910, added via
-    // migration 085) with mutex_group='mens-selection' shared with
-    // APSL(35) and Liga 1(120).  So Unassigned / APSL / Liga 1 /
-    // Purgatory are all mutually exclusive at the DB level — admin
-    // clicks one move button and the row atomically leaves the others.
+    // The Dues Owed column is a REAL DB team (id=910, added via
+    // migration 085; label updated to "🚨 Dues Owed" in migration 098)
+    // with mutex_group='mens-selection' shared with APSL(35) and
+    // Liga 1(120).  So Unassigned / APSL / Liga 1 / Dues Owed are all
+    // mutually exclusive at the DB level — admin clicks one move
+    // button and the row atomically leaves the others.
     //
     // Everyone left in data.unassigned is truly on no team (no active
     // rows in mens_team_assignments for any real column).  The old
@@ -234,9 +236,9 @@ class MensRosterScreen extends Screen {
 
   renderColumn(col, data) {
     // Data source: Unassigned pulls from data.unassigned (no active team
-    // rows); every real column (including Purgatory=910) pulls from
+    // rows); every real column (including Dues Owed=910) pulls from
     // data.buckets keyed by teamId.
-    const isPurgatory = col.teamId === 910;
+    const isDuesOwed = col.teamId === 910;
     const players = col.isUnassigned
       ? (data.unassigned || [])
       : (data.buckets[String(col.teamId)] || []);
@@ -252,11 +254,11 @@ class MensRosterScreen extends Screen {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
-    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, { ...col, isPurgatory }, i + 1)).join('');
+    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, { ...col, isDuesOwed }, i + 1)).join('');
 
     let body;
     if (players.length === 0) {
-      body = isPurgatory
+      body = isDuesOwed
         ? '<div style="opacity:0.6; font-size:0.75rem; text-align:center; padding:8px 4px; color:#10b981;">✓ Nobody parked</div>'
         : '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>';
     } else {
@@ -265,12 +267,12 @@ class MensRosterScreen extends Screen {
 
     // Column-level dues risk: how many players in this column are
     // currently overdue.  Coach uses this to spot at-a-glance which
-    // rosters need attention.  Excluded from Purgatory (already isolated).
-    const overdueInCol = isPurgatory ? 0 : players.filter(p => (p.daysOverdue || 0) >= 1).length;
+    // rosters need attention.  Excluded from Dues Owed (already isolated).
+    const overdueInCol = isDuesOwed ? 0 : players.filter(p => (p.daysOverdue || 0) >= 1).length;
     const overdueHtml = overdueInCol > 0
       ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px solid #7f1d1d; border-radius:3px; font-size:0.65rem; font-weight:700; letter-spacing:0.05em; text-align:center;">⚠ ${overdueInCol} OVERDUE</div>`
       : '';
-    const purgatoryHint = isPurgatory
+    const duesOwedHint = isDuesOwed
       ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px dashed #b91c1c; border-radius:3px; font-size:0.65rem; letter-spacing:0.03em; text-align:center; line-height:1.35;">Admin-parked: off all rosters.<br>Move card to another column to reinstate.</div>`
       : '';
 
@@ -281,7 +283,7 @@ class MensRosterScreen extends Screen {
           ${countHtml}
         </div>
         ${overdueHtml}
-        ${purgatoryHint}
+        ${duesOwedHint}
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px;">
           ${body}
@@ -347,21 +349,21 @@ class MensRosterScreen extends Screen {
     //
     // Four hard-coded targets, all mutually exclusive at the DB level
     // (mens-selection mutex_group on 35 / 120 / 910 — migration 085).
-    // Only APSL (35), Liga 1 (120), and Purgatory (910) are real teams;
+    // Only APSL (35), Liga 1 (120), and Dues Owed (910) are real teams;
     // Unassigned (0) means "remove from whichever real team they're on".
-    // Practice + Pickup are all-hands teams derived from Purgatory state
+    // Practice + Pickup are all-hands teams derived from Dues Owed state
     // (see MensRoster.cpp backfill) so they never appear as buttons.
     const assignedSet = new Set(p.teamIds || []);
-    const isOnApsl      = assignedSet.has(35);
-    const isOnLiga1     = assignedSet.has(120);
-    const isOnPurgatory = assignedSet.has(910);
-    const currentTeamId = isOnPurgatory ? 910 : isOnApsl ? 35 : isOnLiga1 ? 120 : 0;
+    const isOnApsl     = assignedSet.has(35);
+    const isOnLiga1    = assignedSet.has(120);
+    const isOnDuesOwed = assignedSet.has(910);
+    const currentTeamId = isOnDuesOwed ? 910 : isOnApsl ? 35 : isOnLiga1 ? 120 : 0;
 
     const targets = [
       { id: 0,   label: 'Unassigned', color: '#475569' },
       { id: 35,  label: 'APSL',       color: '#2563eb' },
       { id: 120, label: 'Liga 1',     color: '#0891b2' },
-      { id: 910, label: 'Purgatory',  color: '#ef4444' },
+      { id: 910, label: 'Dues Owed',  color: '#ef4444' },
     ];
     // Shared button style — as thin as legible.  Zero vertical padding
     // plus a tight line-height give ~11-12 px total height while the
@@ -605,7 +607,7 @@ class MensRosterScreen extends Screen {
 
     // Card border: bright yellow by default for clear separation on the
     // dark background.  Heavy-overdue (4+ days) cards get a red border
-    // tint so risk states pop from a distance.  Purgatory cards use the
+    // tint so risk states pop from a distance.  Dues Owed cards use the
     // same styling as every other column — the column header + hint
     // already communicate the parked state (2026-07-04 pm).
     const baseBorder = '2px solid #facc15';  // yellow-400

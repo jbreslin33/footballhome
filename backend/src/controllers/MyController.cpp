@@ -325,10 +325,9 @@ Response MyController::handleGetWeek(const Request& request) {
         // Membership status — drives the amber "dues owed" banner
         // in the frontend.  'active' means at least one active mens
         // roster_assignment; 'dues_owed' means every mens row is
-        // soft-deleted (delinquent dues, historically called
-        // 'purgatory' internally); 'none' means no mens rows at all
-        // (shouldn't normally happen for signed-in players, but guard
-        // anyway).
+        // soft-deleted (delinquent dues); 'none' means no mens rows at
+        // all (shouldn't normally happen for signed-in players, but
+        // guard anyway).
         std::string membershipStatus = "none";
         long long duesDaysOverdue = 0;
         {

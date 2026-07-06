@@ -239,7 +239,7 @@ Response MensRosterController::handleAssign(const Request& request) {
             teamIds = assignments_->removeAssignment(userId, teamId);
         } else {
             // Delinquency gate REMOVED (2026-07-04 pm).  Admin decides
-            // roster + purgatory placement manually now — the fetch-time
+            // roster + Dues Owed placement manually now — the fetch-time
             // sweep and controller-side dues gate are both disabled per
             // user directive "don't auto manage it".  The card still
             // shows an "Nd OVERDUE" chip so admin sees the risk, but the
@@ -253,11 +253,11 @@ Response MensRosterController::handleAssign(const Request& request) {
             // populated the instant they select someone for a division
             // roster.  Redundant with the fetch backfill but zero-cost
             // (INSERT ON CONFLICT DO NOTHING).
-            constexpr int kApslTeamId      = 35;
-            constexpr int kLiga1TeamId     = 120;
-            constexpr int kPracticeTeamId  = 908;
-            constexpr int kPickupTeamId    = 909;
-            constexpr int kPurgatoryTeamId = 910;
+            constexpr int kApslTeamId     = 35;
+            constexpr int kLiga1TeamId    = 120;
+            constexpr int kPracticeTeamId = 908;
+            constexpr int kPickupTeamId   = 909;
+            constexpr int kDuesOwedTeamId = 910;
             if (teamId == kApslTeamId || teamId == kLiga1TeamId) {
                 try {
                     assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
@@ -269,17 +269,18 @@ Response MensRosterController::handleAssign(const Request& request) {
                     std::cerr << "[MensRoster] practice/pickup auto-add on APSL/Liga1 failed: "
                               << e.what() << std::endl;
                 }
-            } else if (teamId == kPurgatoryTeamId) {
-                // Purgatory means "off ALL rosters".  The mens-selection
-                // mutex_group already removed the APSL/Liga 1 row atomically;
-                // here we also strip Practice + Pickup so the player really
-                // is on nothing except team 910 itself.
+            } else if (teamId == kDuesOwedTeamId) {
+                // Dues Owed column means "off ALL rosters".  The
+                // mens-selection mutex_group already removed the
+                // APSL/Liga 1 row atomically; here we also strip
+                // Practice + Pickup so the player really is on nothing
+                // except team 910 itself.
                 try {
                     assignments_->removeAssignment(userId, kPracticeTeamId);
                     assignments_->removeAssignment(userId, kPickupTeamId);
                     teamIds = assignments_->teamIdsForUser(userId);
                 } catch (const std::exception& e) {
-                    std::cerr << "[MensRoster] practice/pickup strip on Purgatory failed: "
+                    std::cerr << "[MensRoster] practice/pickup strip on Dues Owed failed: "
                               << e.what() << std::endl;
                 }
             }
