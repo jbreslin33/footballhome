@@ -492,11 +492,47 @@ class MensRosterScreen extends Screen {
         ${lastReminderPill}${payBtn}`;
     }
 
+    // ── Football Home invite copy (2026-07-06) ─────────────────────
+    //
+    // Plain sms:/mailto: deep-links pre-filled with a short onboarding
+    // message pointing at https://footballhome.org.  No magic-link
+    // token is minted — the player logs in with Google (same email as
+    // LeagueApps) or sets a password.  Magic-link is reserved for
+    // event-specific "tap to RSVP for Tue" nudges.
+    //
+    // Built unconditionally so the CONTACT popover can always offer
+    // an INVITE action, even for players who've already signed in
+    // (useful for re-nudging lapsed users).  The outer JOIN cluster
+    // next to the FH pill stays gated on "never signed in" so the
+    // roster still visually flags who hasn't onboarded.
+    const firstNameForJoin = p.firstName || 'there';
+    const inviteUrl = 'https://footballhome.org';
+    const inviteSmsBody = `Hey ${firstNameForJoin} — Lighthouse 1893 is using ${inviteUrl} for weekly RSVPs. Log in with the Google account you use for LeagueApps (or set a password) to see this week's practices, games and pickups and RSVP YES / NO / MAYBE to all of them. Thanks!`;
+    const inviteEmailSubject = 'Football Home — Lighthouse 1893 weekly RSVPs';
+    const inviteEmailBody = [
+      `Hi ${firstNameForJoin},`,
+      '',
+      `Lighthouse 1893 is rolling out ${inviteUrl} so we have a clearer picture of who's coming each week.`,
+      '',
+      `Head to ${inviteUrl} and sign in with the same Google account you use for LeagueApps (or set a password on the sign-in page). From your home screen you'll see this week's practices, games and pickups and can RSVP YES / NO / MAYBE to all of them in one tap.`,
+      '',
+      'You can also set default availability by day-of-week + event type so the page auto-fills going forward.',
+      '',
+      '— Lighthouse Soccer',
+    ].join('\n');
+    const inviteSmsHref = p.phone
+      ? `sms:${this.escape(p.phone)}?&body=${encodeURIComponent(inviteSmsBody)}`
+      : null;
+    const inviteEmailHref = p.email
+      ? `mailto:${this.escape(p.email)}?subject=${encodeURIComponent(inviteEmailSubject)}&body=${encodeURIComponent(inviteEmailBody)}`
+      : null;
+
     // ---- Contact popover -----------------------------------------------
-    // One CONTACT button collapses EMAIL / SMS / CALL into a native
-    // <details> popover.  Only the methods the player actually has
-    // contact data for are rendered inside.  Uses <details>/<summary>
-    // so there's no JS listener wiring, no click-outside tracking.
+    // One CONTACT button collapses EMAIL / SMS / CALL / SAVE and the
+    // two INVITE actions into a native <details> popover.  Only the
+    // methods the player actually has contact data for are rendered
+    // inside.  Uses <details>/<summary> so there's no JS listener
+    // wiring, no click-outside tracking.
     const contactBase = btnBase + ' border:none; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
     // 👤 SAVE (2026-07-05) — data-URL vCard so tapping opens the native
     // "Add Contact" sheet on iOS/Android (or downloads a .vcf on
@@ -513,10 +549,12 @@ class MensRosterScreen extends Screen {
       : null;
     const vcardFilename = ((p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
     const contactItems = [
-      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(p.email)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(p.phone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
-      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(p.phone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
-      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(p.firstName || 'player')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+      emailHref       ? `<a href="${emailHref}"       target="_blank" rel="noopener noreferrer" title="${this.escape(p.email)}"                                            style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref         ? `<a href="${smsHref}"                                                   title="Text ${this.escape(this.formatPhone(p.phone))}"                    style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
+      telHref         ? `<a href="${telHref}"                                                   title="Call ${this.escape(this.formatPhone(p.phone))}"                    style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
+      vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(p.firstName || 'player')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+      inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(p.phone))} an invite to footballhome.org" style="${contactBase} background:#0d9488; color:#fff;">💬 INVITE (SMS)</a>` : '',
+      inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(p.email)} an invite to footballhome.org"      style="${contactBase} background:#14b8a6; color:#fff;">✉ INVITE (email)</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="mr-contact" style="position:relative; display:inline-block;">
@@ -526,6 +564,40 @@ class MensRosterScreen extends Screen {
           ${contactItems.join('')}
         </div>
       </details>` : '';
+
+    // ── Football Home outer JOIN cluster (2026-07-06) ──────────────
+    //
+    // FH pill = "last footballhome.org activity" (see billing-badge
+    // renderFhLastActivity).  Always visible.
+    //
+    // JOIN buttons here mirror the INVITE items in the CONTACT
+    // popover but are promoted to the top-of-card level so the
+    // roster loudly flags who still needs to onboard.  Gated on
+    // fhLastActivityAt == null; once they've signed in once, the
+    // CONTACT popover is enough for manual re-nudges.
+    const fhPill = window.BillingBadge && window.BillingBadge.renderFhLastActivity
+      ? window.BillingBadge.renderFhLastActivity(p)
+      : '';
+    let joinCluster = fhPill;
+    if (!p.fhLastActivityAt) {
+      const joinBase = btnBase + ' border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
+      const joinSmsBtn = inviteSmsHref
+        ? `<a href="${inviteSmsHref}"
+              title="Text ${this.escape(this.formatPhone(p.phone))} an invite to footballhome.org"
+              style="${joinBase} background:#0d9488; color:#fff;">
+             💬 JOIN
+           </a>`
+        : '';
+      const joinEmailBtn = inviteEmailHref
+        ? `<a href="${inviteEmailHref}"
+              target="_blank" rel="noopener noreferrer"
+              title="Email ${this.escape(p.email)} an invite to footballhome.org"
+              style="${joinBase} background:#0ea5e9; color:#fff;">
+             ✉ JOIN
+           </a>`
+        : '';
+      joinCluster = `${fhPill}${joinSmsBtn}${joinEmailBtn}`;
+    }
 
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
@@ -571,6 +643,7 @@ class MensRosterScreen extends Screen {
           ${laBtn}
           ${delinqBtns}
           ${contactBtns}
+          ${joinCluster}
           ${billingBadge}
         </div>
       </div>

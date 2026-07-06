@@ -1,0 +1,18 @@
+-- 095-users-password-hash-nullable.sql
+--
+-- Google OAuth users don't have a password — the OAuth provider is
+-- the source of truth for their identity.  Prior to this migration the
+-- `users.password_hash` column was NOT NULL, which forced the OAuth
+-- callback (OAuthController::findOrCreateUser) to either invent a
+-- fake hash or fail outright.  We hit the latter today when Luke
+-- Breslin tried to sign in via Google:
+--
+--   Database error in findOrCreateUser: ERROR:  null value in column
+--   "password_hash" of relation "users" violates not-null constraint
+--
+-- Dropping NOT NULL is the semantically correct fix.  Password login
+-- (User::authenticate → verifyPassword) tolerates the change: pqxx
+-- will throw pqxx::conversion_error when reading a NULL string, the
+-- outer try/catch in `authenticate` sets `userData.valid = false`, and
+-- the login just fails cleanly — same UX as a wrong password.
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;

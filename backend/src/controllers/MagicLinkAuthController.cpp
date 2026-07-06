@@ -289,9 +289,14 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
         // Body / subject — identical templates to Node.  Built once
         // because both the mailto: URI and the gmail compose URL need
         // the exact same encoded form.
+        //
+        // 2026-07-06: no-event branch reworked from a terse
+        // "Tap to sign in" into a proper personal invite for roster
+        // onboarding — coach clicks JOIN on a card and this becomes
+        // the SMS / email body they see pre-filled.
         const std::string subject = hasEvent && !eventTitle.empty()
             ? "Football Home \u2014 RSVP for " + eventTitle
-            : "Football Home \u2014 sign in";
+            : "Football Home \u2014 you're invited";
 
         std::ostringstream bodyOss;
         bodyOss << "Hi " << firstName << ",\n\n";
@@ -302,13 +307,25 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
             if (hasWhen) bodyOss << " (" << eventWhen;
             if (hasLoc)  bodyOss << (hasWhen ? ", " : " (") << eventLocation;
             if (hasWhen || hasLoc) bodyOss << ")";
-            bodyOss << ":\n";
+            bodyOss << ":\n"
+                    << verifyUrl << "\n\n"
+                    << "This link signs you in automatically and expires in 24 hours.\n\n"
+                    << "\u2014 Lighthouse Soccer";
         } else {
-            bodyOss << "Tap to sign in to Football Home:\n";
+            bodyOss << "Lighthouse 1893 is rolling out a lightweight scheduling page "
+                       "at footballhome.org so we have a clearer picture of who's coming each week.\n\n"
+                    << "Tap the link below on your phone \u2014 no password needed \u2014 and "
+                       "you'll land on your weekly schedule:\n"
+                    << verifyUrl << "\n\n"
+                    << "On the page you can:\n"
+                    << "  \u2022 RSVP YES / NO / MAYBE for this week's games, practices, scrimmages and pickups\n"
+                    << "  \u2022 Set default availability by day of week + event type so the page auto-fills\n"
+                    << "  \u2022 Bookmark to your home screen (it works like an app)\n\n"
+                    << "This link signs you in automatically and expires in 24 hours. "
+                       "If you'd rather set a password for future visits, just tap "
+                       "\"Forgot / set password\" on the sign-in screen.\n\n"
+                    << "\u2014 Lighthouse Soccer";
         }
-        bodyOss << verifyUrl << "\n\n"
-                << "This link signs you in automatically and expires in 24 hours.\n\n"
-                << "\u2014 Lighthouse Soccer";
         const std::string bodyText = bodyOss.str();
 
         const std::string smsBody = (hasEvent && !eventTitle.empty())
@@ -316,7 +333,10 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
                 + (eventWhen.empty()  ? std::string{} : (" " + eventWhen))
                 + (eventTitle.empty() ? std::string{} : (" \u2014 " + eventTitle))
                 + ": " + verifyUrl
-            : std::string("Football Home sign-in: ") + verifyUrl;
+            : std::string("Hey ") + firstName
+                + " \u2014 Lighthouse 1893 is trying out a simple weekly RSVP page. "
+                  "Tap here to see this week's games and let us know if you're in "
+                  "(no password needed): " + verifyUrl;
 
         json out = {
             {"url",               verifyUrl},
@@ -395,7 +415,7 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
 
         const std::string target = hasEvent
             ? (publicBaseUrl() + "/#rsvp/" + std::to_string(chatEventId))
-            : (publicBaseUrl() + "/dashboard");
+            : (publicBaseUrl() + "/#my");
 
         Response r(HttpStatus::FOUND);
         r.setHeader("Location",   target);
@@ -415,75 +435,79 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
 }
 
 Response MagicLinkAuthController::handleMe(const Request& request) {
+    // SECURITY: Bearer JWT wins over cookie when both are present — see
+    // MyController::requireSession comment for the full rationale.  The
+    // pre-2026-07-06 order (cookie first) allowed a stale magic-link
+    // cookie for user B to override a freshly-minted OAuth JWT for user
+    // A on shared devices, silently returning B's identity + data.
+    const std::string authHeader = request.getHeader("Authorization");
+    if (authHeader.size() > 7 && authHeader.compare(0, 7, "Bearer ") == 0) {
+        const std::string token = authHeader.substr(7);
+        std::string payloadJson;
+        if (fh::crypto::verifyJwtHS256(token, &payloadJson)) {
+            try {
+                json payload = json::parse(payloadJson);
+                auto userIdOpt = jsonInt(payload, "userId");
+                if (userIdOpt) {
+                    auto* db = Database::getInstance();
+                    auto row = db->query(
+                        "SELECT u.id AS user_id, p.id AS person_id, "
+                        "       p.first_name, p.last_name, "
+                        "       COALESCE(pe.email, '') AS email, "
+                        "       COALESCE(al.name, '') AS admin_level "
+                        "  FROM users u "
+                        "  JOIN persons p ON p.id = u.person_id "
+                        "  LEFT JOIN LATERAL ("
+                        "    SELECT email FROM person_emails "
+                        "     WHERE person_id = u.person_id "
+                        "     ORDER BY is_primary DESC, id ASC LIMIT 1"
+                        "  ) pe ON true "
+                        "  LEFT JOIN admins a ON a.user_id = u.id "
+                        "  LEFT JOIN admin_levels al ON al.id = a.admin_level_id "
+                        " WHERE u.id = $1::int LIMIT 1",
+                        {std::to_string(*userIdOpt)});
+                    if (row.empty()) {
+                        return jsonError(HttpStatus::NOT_FOUND, "User not found");
+                    }
+                    const std::string first = row[0]["first_name"].is_null() ? "" : row[0]["first_name"].as<std::string>();
+                    const std::string last  = row[0]["last_name"].is_null()  ? "" : row[0]["last_name"].as<std::string>();
+                    const std::string adminLevel = row[0]["admin_level"].is_null() ? "" : row[0]["admin_level"].as<std::string>();
+                    std::string full = first;
+                    if (!last.empty()) { if (!full.empty()) full += " "; full += last; }
+                    json user = {
+                        {"id",         row[0]["user_id"].as<std::string>()},
+                        {"email",      row[0]["email"].as<std::string>()},
+                        {"first_name", first},
+                        {"last_name",  last},
+                        {"name",       full},
+                        {"role",       adminLevel},
+                    };
+                    json out = {
+                        {"success", true},
+                        {"message", "Current user retrieved successfully"},
+                        {"data",    {{"user", user}}},
+                    };
+                    Response r(HttpStatus::OK, out.dump());
+                    r.setHeader("Content-Type", "application/json; charset=utf-8");
+                    // Defense in depth: also clear any stale fh_sess
+                    // cookie hitting this endpoint, so subsequent calls
+                    // don't get silently re-attached to the wrong user.
+                    r.setHeader("Set-Cookie",
+                                "fh_sess=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly");
+                    return r;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[GET /api/auth/me] Bearer fallback: " << e.what() << std::endl;
+                // fall through to cookie path
+            }
+        }
+    }
+
     const std::string cookie  = request.getHeader("Cookie");
     const std::string sessVal = SessionService::parseCookieValue(cookie, SessionService::kCookieName);
     auto resolved = SessionService::getInstance().requireSession(sessVal);
 
-    // Bearer JWT fallback path — OAuth callback (Google Sign-In) mints a
-    // JWT and stores it in localStorage; the frontend's oauth-success
-    // screen then calls GET /api/auth/me with `Authorization: Bearer <jwt>`
-    // (no cookie).  Without this fallback the request would 401 because
-    // this handler shadows the legacy AuthController::handleCurrentUser
-    // registration.  If both flows are present (cookie + Bearer) the
-    // cookie session wins — matches the pre-Phase-4 behaviour.
     if (!resolved) {
-        const std::string auth = request.getHeader("Authorization");
-        if (auth.size() > 7 && auth.compare(0, 7, "Bearer ") == 0) {
-            const std::string token = auth.substr(7);
-            std::string payloadJson;
-            if (fh::crypto::verifyJwtHS256(token, &payloadJson)) {
-                try {
-                    json payload = json::parse(payloadJson);
-                    auto userIdOpt = jsonInt(payload, "userId");
-                    if (userIdOpt) {
-                        auto* db = Database::getInstance();
-                        auto row = db->query(
-                            "SELECT u.id AS user_id, p.id AS person_id, "
-                            "       p.first_name, p.last_name, "
-                            "       COALESCE(pe.email, '') AS email, "
-                            "       COALESCE(al.name, '') AS admin_level "
-                            "  FROM users u "
-                            "  JOIN persons p ON p.id = u.person_id "
-                            "  LEFT JOIN LATERAL ("
-                            "    SELECT email FROM person_emails "
-                            "     WHERE person_id = u.person_id "
-                            "     ORDER BY is_primary DESC, id ASC LIMIT 1"
-                            "  ) pe ON true "
-                            "  LEFT JOIN admins a ON a.user_id = u.id "
-                            "  LEFT JOIN admin_levels al ON al.id = a.admin_level_id "
-                            " WHERE u.id = $1::int LIMIT 1",
-                            {std::to_string(*userIdOpt)});
-                        if (row.empty()) {
-                            return jsonError(HttpStatus::NOT_FOUND, "User not found");
-                        }
-                        const std::string first = row[0]["first_name"].is_null() ? "" : row[0]["first_name"].as<std::string>();
-                        const std::string last  = row[0]["last_name"].is_null()  ? "" : row[0]["last_name"].as<std::string>();
-                        const std::string adminLevel = row[0]["admin_level"].is_null() ? "" : row[0]["admin_level"].as<std::string>();
-                        std::string full = first;
-                        if (!last.empty()) { if (!full.empty()) full += " "; full += last; }
-                        json user = {
-                            {"id",         row[0]["user_id"].as<std::string>()},
-                            {"email",      row[0]["email"].as<std::string>()},
-                            {"first_name", first},
-                            {"last_name",  last},
-                            {"name",       full},
-                            {"role",       adminLevel},
-                        };
-                        json out = {
-                            {"success", true},
-                            {"message", "Current user retrieved successfully"},
-                            {"data",    {{"user", user}}},
-                        };
-                        Response r(HttpStatus::OK, out.dump());
-                        r.setHeader("Content-Type", "application/json; charset=utf-8");
-                        return r;
-                    }
-                } catch (const std::exception& e) {
-                    std::cerr << "[GET /api/auth/me] Bearer fallback: " << e.what() << std::endl;
-                    // fall through to 401 below
-                }
-            }
-        }
         return jsonError(HttpStatus::UNAUTHORIZED,
                          sessVal.empty() ? "Not signed in" : "Session expired");
     }

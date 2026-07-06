@@ -68,6 +68,18 @@ class RoleSelectionScreen extends Screen {
   }
   
   onEnter(params) {
+    // ── Player-only auto-skip (2026-07-06) ─────────────────────────
+    //
+    // If the user is a plain player (no coach affiliation, no admin
+    // claim, no admin-level `user.role`) there's nothing to pick from
+    // here — force them straight to their weekly RSVP view.  This is
+    // the natural landing page for the vast majority of accounts and
+    // saves them from a meaningless button-tap on every visit.
+    //
+    // Coaches and admins keep the picker because they routinely
+    // switch context (coach ↔ player, admin ↔ club-admin, etc).
+    this._maybeAutoSkipToMy();
+
     // Handle role selection via event delegation
     this.element.addEventListener('click', (e) => {
       const roleBtn = e.target.closest('[data-role]');
@@ -137,6 +149,41 @@ class RoleSelectionScreen extends Screen {
     this.navigation.context = { user: null, role: null, team: null }; // Clear context
     this.navigation.updateContextHeader();
     this.navigation.goTo('login');
+  }
+
+  // Fetches /api/auth/me/roles and, if the user has NO coach or admin
+  // affiliation, immediately redirects to the weekly RSVP view.  Pure
+  // players never need to see the picker.
+  //
+  // Also treats admin-level `user.role` (club / sport_division / team
+  // / super / system / league) as "keep the picker" so admins retain
+  // the ability to switch modes even if the DB has no matching
+  // `admins` / `team_coaches` rows yet.
+  async _maybeAutoSkipToMy() {
+    try {
+      const user = this.navigation.context.user || {};
+      const isAdmin = user.role && (
+        user.role === 'club' || user.role === 'sport_division' ||
+        user.role === 'team' || user.role === 'super' ||
+        user.role === 'system' || user.role === 'league'
+      );
+      if (isAdmin) return;
+
+      const res = await this.auth.fetch('/api/auth/me/roles');
+      if (!res.ok) return;
+      const body = await res.json();
+      const roles = (body && body.data && Array.isArray(body.data.roles))
+        ? body.data.roles
+        : [];
+      const hasCoach = roles.some(r => r && r.type === 'coach');
+      const hasAdmin = roles.some(r => r && r.type === 'admin');
+      if (!hasCoach && !hasAdmin) {
+        this.navigation.context.role = 'player';
+        this.navigation.goTo('my');
+      }
+    } catch (_e) {
+      // Non-fatal — fall back to the manual picker.
+    }
   }
   
   // Helper to escape HTML

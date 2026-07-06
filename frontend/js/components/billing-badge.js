@@ -821,6 +821,71 @@ window.BillingBadge = (() => {
       }).format(d);
     } catch { return `${days}d ago`; }
   }
+
+  // ── FH last activity pill (2026-07-06) ──────────────────────────────
+  //
+  // Shows "when did this player last do anything on footballhome.org"
+  // sourced from MAX(sessions.last_used_at) per person (see
+  // MensRoster.cpp).  Colours:
+  //   • never   → grey "FH · Never" (player has never signed in)
+  //   • <7d ago → slate "FH · <ago>" (healthy)
+  //   • ≥7d ago → red   "FH · <ago>" (dormant; per user directive)
+  //
+  // The value is bulk-emitted on every row as p.fhLastActivityAt
+  // (ISO 8601 UTC string) or null.
+  function renderFhLastActivity(p) {
+    if (!p) return '';
+    const iso = p.fhLastActivityAt || null;
+
+    if (!iso) {
+      const bg     = '#0f172a';
+      const fg     = '#64748b';
+      const border = '#334155';
+      const tip    = 'This player has never signed in to footballhome.org';
+      return `
+        <span class="bb-fh-activity bb-fh-activity--never" title="${escapeAttr(tip)}"
+              style="display:inline-flex; align-items:center; gap:3px;
+                     padding:2px 6px; border:1px solid ${border};
+                     background:${bg}; color:${fg};
+                     border-radius:3px; font-size:0.65rem; font-weight:700;
+                     letter-spacing:0.02em; vertical-align:middle;
+                     font-variant-numeric:tabular-nums; white-space:nowrap;">
+          FH · Never
+        </span>
+      `;
+    }
+
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const days   = (Date.now() - d.getTime()) / 86400000;
+    const stale  = days >= 7;
+    const ago    = timeAgoShort(iso);
+
+    // Slate (fresh) vs red (stale ≥7d) per user directive.
+    const bg     = stale ? '#7f1d1d' : '#0f172a';
+    const fg     = stale ? '#fecaca' : '#cbd5e1';
+    const border = stale ? '#dc2626' : '#334155';
+    let abs = iso;
+    try {
+      abs = new Intl.DateTimeFormat('en-US', {
+        timeZone: NY_TZ, month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+      }).format(d);
+    } catch { /* keep raw iso */ }
+    const tip = `Last footballhome.org activity ${abs}`;
+    return `
+      <span class="bb-fh-activity ${stale ? 'bb-fh-activity--stale' : 'bb-fh-activity--fresh'}"
+            title="${escapeAttr(tip)}"
+            style="display:inline-flex; align-items:center; gap:3px;
+                   padding:2px 6px; border:1px solid ${border};
+                   background:${bg}; color:${fg};
+                   border-radius:3px; font-size:0.65rem; font-weight:700;
+                   letter-spacing:0.02em; vertical-align:middle;
+                   font-variant-numeric:tabular-nums; white-space:nowrap;">
+        FH · ${escapeAttr(ago)}
+      </span>
+    `;
+  }
   // ──────────────────────────────────────────────────────────────────────
 
   function render(p) {
@@ -951,4 +1016,4 @@ window.BillingBadge = (() => {
     }
   }
 
-  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance, renderProrateCell, renderRegistrationDate, renderLastPayReminder, renderLastPayReminderInline };})();
+  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance, renderProrateCell, renderRegistrationDate, renderLastPayReminder, renderLastPayReminderInline, renderFhLastActivity };})();

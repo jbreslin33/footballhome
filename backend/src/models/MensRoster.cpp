@@ -405,6 +405,76 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         return json(it->second);
     };
 
+    // ── person_id per la_registration_id (2026-07-06) ─────────────────
+    //
+    // Needed so each roster row carries the FH `persons.id` — the
+    // frontend JOIN buttons POST that to /api/auth/magic-link/mint, and
+    // the FH-activity pill looks up `sessions.last_used_at` against it.
+    //
+    // Single query; failure is non-fatal (rows just get personId=null).
+    std::unordered_map<long long, long long> personIdByRegId;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT la_registration_id, person_id "
+            "  FROM person_la_memberships "
+            " WHERE ended_at IS NULL "
+            "   AND la_registration_id IS NOT NULL");
+        for (const auto& r : rows) {
+            personIdByRegId[r["la_registration_id"].as<long long>()] =
+                r["person_id"].as<long long>();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] person_id load failed: " << e.what() << std::endl;
+    }
+    auto personIdFor = [&](const json& regJson) -> long long {
+        long long id = 0;
+        if      (regJson.is_number_integer())  id = regJson.get<long long>();
+        else if (regJson.is_number_unsigned()) id = static_cast<long long>(regJson.get<unsigned long long>());
+        else if (regJson.is_number_float())    id = static_cast<long long>(regJson.get<double>());
+        else if (regJson.is_string()) {
+            try { id = std::stoll(regJson.get<std::string>()); }
+            catch (...) { id = 0; }
+        }
+        if (id <= 0) return 0;
+        auto it = personIdByRegId.find(id);
+        return it == personIdByRegId.end() ? 0 : it->second;
+    };
+
+    // ── FH last activity per person (sessions.last_used_at, 2026-07-06) ─
+    //
+    // SessionService bumps `sessions.last_used_at` on every
+    // authenticated request (see SessionService::requireSession),
+    // so MAX(last_used_at) per person is the natural signal for
+    // "when did this player last do anything on footballhome.org".
+    //
+    // Bulk-load once for the whole roster and emit as `fhLastActivityAt`
+    // (ISO string) or null when the player has never signed in.
+    std::unordered_map<long long, std::string> fhLastActivityByPerson;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT person_id, "
+            "       TO_CHAR(MAX(last_used_at) AT TIME ZONE 'UTC', "
+            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS last_iso "
+            "  FROM sessions "
+            " WHERE revoked_at IS NULL "
+            " GROUP BY person_id");
+        for (const auto& r : rows) {
+            if (r["last_iso"].is_null()) continue;
+            fhLastActivityByPerson[r["person_id"].as<long long>()] =
+                r["last_iso"].c_str();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] fh_last_activity load failed: " << e.what() << std::endl;
+    }
+    auto fhLastActivityFor = [&](long long personId) -> json {
+        if (personId <= 0) return json(nullptr);
+        auto it = fhLastActivityByPerson.find(personId);
+        if (it == fhLastActivityByPerson.end()) return json(nullptr);
+        return json(it->second);
+    };
+
     // ── Last PAY-reminder click per user (2026-07-06) ─────────────────
     //
     // The Mens/Boys roster PAY buttons (💬 SMS + ✉ Email) POST to
@@ -780,6 +850,11 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             row["delinquencyState"] = stateOut;
             row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
             row["lastPayReminder"] = lastPayReminderJson(uid);
+            {
+                long long pid = personIdFor(p.at("registrationId"));
+                row["personId"] = pid > 0 ? json(pid) : json(nullptr);
+                row["fhLastActivityAt"] = fhLastActivityFor(pid);
+            }
             unassigned.push_back(std::move(row));
         } else {
             for (int tid : relevant) {
@@ -804,6 +879,11 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
                 row["delinquencyState"] = stateOut;
                 row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
                 row["lastPayReminder"] = lastPayReminderJson(uid);
+                {
+                    long long pid = personIdFor(p.at("registrationId"));
+                    row["personId"] = pid > 0 ? json(pid) : json(nullptr);
+                    row["fhLastActivityAt"] = fhLastActivityFor(pid);
+                }
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }
         }

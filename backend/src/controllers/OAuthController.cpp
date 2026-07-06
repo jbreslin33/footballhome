@@ -12,7 +12,38 @@
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
 #include <ctime>
+#include <chrono>
+#include <mutex>
+#include <unordered_map>
 #include <iomanip>
+
+// Mobile browsers (Android Chrome, iOS Safari) sometimes fire the OAuth
+// callback URL twice back-to-back — prefetch, navigation retry, or a
+// concurrent tab.  Google OAuth codes are single-use, so the second
+// request fails with `invalid_grant` and the user sees an error page
+// even though the first attempt actually logged them in.
+//
+// Cache successful (or in-flight) exchanges by code for a short TTL
+// and return the same 302 for repeat hits.  Purely in-process — fine
+// for a single-node deployment; if we ever scale horizontally this
+// should move to Redis.
+namespace {
+struct CodeCacheEntry {
+    std::string redirectUrl;
+    std::chrono::steady_clock::time_point expiresAt;
+};
+std::mutex           g_codeCacheMu;
+std::unordered_map<std::string, CodeCacheEntry> g_codeCache;
+constexpr auto kCodeCacheTtl = std::chrono::seconds(120);
+
+void purgeExpiredCodesLocked() {
+    const auto now = std::chrono::steady_clock::now();
+    for (auto it = g_codeCache.begin(); it != g_codeCache.end();) {
+        if (it->second.expiresAt <= now) it = g_codeCache.erase(it);
+        else ++it;
+    }
+}
+} // namespace
 
 // Helper function for CURL write callback
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
@@ -295,7 +326,8 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
     try {
         auto db = Database::getInstance();
         
-        // Check if email exists in person_emails table, join to users
+        // Fast path — email is already in person_emails AND a users row
+        // exists for that person.  Return the user id straight away.
         std::string checkEmailSql = "SELECT u.id AS user_id FROM person_emails pe "
                                    "JOIN users u ON u.person_id = pe.person_id "
                                    "WHERE pe.email = " + db->escape(email);
@@ -307,25 +339,44 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
             return userId;
         }
         
-        // Create new person + user for Google OAuth users who don't exist yet
-        std::string insertPersonSql = "INSERT INTO persons (first_name, last_name) "
-                                     "VALUES (" + db->escape(firstName) + ", " + db->escape(lastName) + ") "
-                                     "RETURNING id";
-        pqxx::result newPerson = db->query(insertPersonSql);
-        std::string personId = newPerson[0]["id"].as<std::string>();
+        // Slower path — the email belongs to an existing person (very
+        // common: player was scraped from LeagueApps into persons +
+        // person_emails but never logged in, so no `users` row exists
+        // yet).  Attach a fresh users row to that person instead of
+        // creating a duplicate person.  This is how Luke Breslin and
+        // every other never-logged-in roster player will hit their
+        // FIRST successful Google-OAuth login.
+        std::string checkPersonSql = "SELECT person_id FROM person_emails "
+                                     "WHERE email = " + db->escape(email) + " LIMIT 1";
+        pqxx::result existingPerson = db->query(checkPersonSql);
         
+        std::string personId;
+        if (!existingPerson.empty()) {
+            personId = existingPerson[0]["person_id"].as<std::string>();
+            std::cout << "Found existing person (no user row yet), attaching users row: person=" << personId << std::endl;
+        } else {
+            // Brand-new person — create person + person_emails row.
+            std::string insertPersonSql = "INSERT INTO persons (first_name, last_name) "
+                                         "VALUES (" + db->escape(firstName) + ", " + db->escape(lastName) + ") "
+                                         "RETURNING id";
+            pqxx::result newPerson = db->query(insertPersonSql);
+            personId = newPerson[0]["id"].as<std::string>();
+            
+            std::string insertEmailSql = "INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified) "
+                                        "VALUES (" + db->escape(personId) + ", " + db->escape(email) + ", 1, true, true)";
+            db->query(insertEmailSql);
+            std::cout << "Created new person via Google OAuth: person=" << personId << " email=" << email << std::endl;
+        }
+        
+        // Create the users row.  password_hash is left NULL (see
+        // migration 095) — OAuth-only accounts have no local password.
         std::string insertUserSql = "INSERT INTO users (person_id, is_active) "
                                    "VALUES (" + db->escape(personId) + ", true) "
                                    "RETURNING id";
         pqxx::result newUser = db->query(insertUserSql);
         std::string userId = newUser[0]["id"].as<std::string>();
         
-        // Add email to person_emails table
-        std::string insertEmailSql = "INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified) "
-                                    "VALUES (" + db->escape(personId) + ", " + db->escape(email) + ", 1, true, true)";
-        db->query(insertEmailSql);
-        
-        std::cout << "Created new user via Google OAuth: " << userId << " (person: " << personId << ") with email: " << email << std::endl;
+        std::cout << "Attached users row via Google OAuth: user=" << userId << " person=" << personId << " email=" << email << std::endl;
         return userId;
         
     } catch (const std::exception& e) {
@@ -372,12 +423,44 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     std::string code = urlDecode(encodedCode);
     
     std::cout << "Received OAuth code (length=" << code.length() << "): " << code.substr(0, 20) << "..." << std::endl;
+
+    // Idempotency: mobile browsers (Android Chrome, iOS Safari) sometimes
+    // fire the callback URL twice in rapid succession.  Google OAuth
+    // codes are single-use, so the second exchange fails with
+    // `invalid_grant` and the user sees a spurious "Failed to exchange
+    // authorization code" error even though the first attempt succeeded
+    // and set their JWT.  Cache the resulting redirect for a short TTL
+    // and return it on repeat hits.
+    {
+        std::lock_guard<std::mutex> lk(g_codeCacheMu);
+        purgeExpiredCodesLocked();
+        auto it = g_codeCache.find(code);
+        if (it != g_codeCache.end() && !it->second.redirectUrl.empty()) {
+            std::cout << "OAuth code replay (idempotent hit) — reusing prior redirect" << std::endl;
+            Response cached = Response::ok();
+            cached.setStatus(HttpStatus::FOUND);
+            cached.setHeader("Location", it->second.redirectUrl);
+            return cached;
+        }
+    }
+
     std::cout << "Exchanging for token..." << std::endl;
     
     // Exchange code for access token
     auto tokenData = exchangeCodeForToken(code);
     if (tokenData.empty() || tokenData.count("access_token") == 0) {
         std::cerr << "Failed to exchange code for token" << std::endl;
+        // If a concurrent request already succeeded for this code, use
+        // that redirect instead of surfacing invalid_grant to the user.
+        std::lock_guard<std::mutex> lk(g_codeCacheMu);
+        auto it = g_codeCache.find(code);
+        if (it != g_codeCache.end() && !it->second.redirectUrl.empty()) {
+            std::cout << "OAuth code exchange raced — using cached redirect" << std::endl;
+            Response cached = Response::ok();
+            cached.setStatus(HttpStatus::FOUND);
+            cached.setHeader("Location", it->second.redirectUrl);
+            return cached;
+        }
         return Response::internalError("Failed to exchange authorization code");
     }
     
@@ -440,9 +523,27 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     const char* feEnv = std::getenv("FRONTEND_URL");
     std::string frontendBase = (feEnv && *feEnv) ? feEnv : "http://localhost:3000";
     std::string frontendUrl = frontendBase + "/oauth-success?token=" + urlEncode(jwt);
-    
+
     Response response = Response::ok();
     response.setStatus(HttpStatus::FOUND);
     response.setHeader("Location", frontendUrl);
+    // CRITICAL: nuke any stale magic-link `fh_sess` cookie left over
+    // from a previous different-user session on this device.  Without
+    // this, the frontend sends both the old cookie AND the new JWT on
+    // every subsequent API call, and requireSession() picks the cookie
+    // first — silently authenticating the user as whoever last held a
+    // magic-link session on the device.  Root cause of the 2026-07-06
+    // "logged in as soccer@ but seeing Luke's RSVP" incident.
+    response.setHeader("Set-Cookie",
+                       "fh_sess=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly");
+
+    // Cache the successful redirect for a short TTL so the mobile
+    // browser's duplicate callback (Chrome/Safari sometimes fire the
+    // callback URL twice) does not fail with invalid_grant.
+    {
+        std::lock_guard<std::mutex> lk(g_codeCacheMu);
+        g_codeCache[code] = CodeCacheEntry{frontendUrl,
+                                           std::chrono::steady_clock::now() + kCodeCacheTtl};
+    }
     return response;
 }

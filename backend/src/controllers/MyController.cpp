@@ -61,16 +61,18 @@ struct SessionGate {
 // Accepts either the fh_sess cookie session OR a JWT bearer.  MyController
 // endpoints are called from both the magic-link flow (cookie) and the
 // regular password/OAuth flow (JWT), so we transparently support both.
+//
+// SECURITY: When BOTH a Bearer JWT and an fh_sess cookie are present we
+// prefer the Bearer JWT.  The JWT is scoped to localStorage of the
+// specific browser/tab that just logged in via OAuth, while the cookie
+// can bleed across users on shared devices (e.g. someone clicked a
+// different user's magic-link email on this phone earlier).  Preferring
+// the JWT prevents the "logged in as A but seeing B's data" class of
+// bug — the 2026-07-06 incident that motivated this comment.
 SessionGate requireSession(const Request& request) {
-    const std::string cookie  = request.getHeader("Cookie");
-    const std::string sessVal = SessionService::parseCookieValue(
-        cookie, SessionService::kCookieName);
-    auto resolved = SessionService::getInstance().requireSession(sessVal);
-    if (resolved) {
-        return {std::move(resolved), std::nullopt};
-    }
-
-    // Cookie missing / expired → fall back to JWT bearer if present.
+    // Try Bearer JWT first — it's the explicit "I just logged in as X"
+    // signal from the frontend and always represents the current tab's
+    // intent, unlike cookies which persist across users.
     const std::string authHeader = request.getHeader("Authorization");
     if (authHeader.size() > 7 && authHeader.substr(0, 7) == "Bearer ") {
         const std::string token = authHeader.substr(7);
@@ -84,6 +86,16 @@ SessionGate requireSession(const Request& request) {
                 return {std::move(synth), std::nullopt};
             }
         }
+    }
+
+    // No Bearer (or Bearer invalid) → fall back to the fh_sess cookie
+    // used by the magic-link flow.
+    const std::string cookie  = request.getHeader("Cookie");
+    const std::string sessVal = SessionService::parseCookieValue(
+        cookie, SessionService::kCookieName);
+    auto resolved = SessionService::getInstance().requireSession(sessVal);
+    if (resolved) {
+        return {std::move(resolved), std::nullopt};
     }
 
     return {std::nullopt,
@@ -176,10 +188,13 @@ MyController::~MyController() = default;
 
 void MyController::registerRoutes(Router& router, const std::string& prefix) {
     // prefix is "/api/my".
-    router.get (prefix + "/week",      [this](const Request& r) { return handleGetWeek(r); });
-    router.post(prefix + "/rsvp",      [this](const Request& r) { return handlePostRsvp(r); });
-    router.get (prefix + "/recurring", [this](const Request& r) { return handleGetRecurring(r); });
-    router.put (prefix + "/recurring", [this](const Request& r) { return handlePutRecurring(r); });
+    router.get (prefix + "/week",           [this](const Request& r) { return handleGetWeek(r); });
+    router.post(prefix + "/rsvp",           [this](const Request& r) { return handlePostRsvp(r); });
+    router.get (prefix + "/recurring",      [this](const Request& r) { return handleGetRecurring(r); });
+    router.put (prefix + "/recurring",      [this](const Request& r) { return handlePutRecurring(r); });
+    router.get (prefix + "/chat/messages",  [this](const Request& r) { return handleGetChatMessages(r); });
+    router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
+    router.get (prefix + "/event-rsvps",    [this](const Request& r) { return handleGetEventRsvps(r); });
 }
 
 // GET /api/my/week
@@ -521,6 +536,413 @@ Response MyController::handlePutRecurring(const Request& request) {
         return jsonOk({{"success", true}, {"count", static_cast<int>(rows.size())}});
     } catch (const std::exception& e) {
         std::cerr << "[PUT /api/my/recurring] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// ─── Men's chat ───────────────────────────────────────────────────────
+// The single "Chat" tab on /#my.  Practical stuff — cancellations,
+// weather, running late, anything schedule-adjacent.  Membership is
+// implicit: caller must be on the men's roster (any un-removed
+// roster_assignments row with domain='mens') OR carry any admins row.
+// No pins, no moderation, no image upload for v1.
+//
+// Message table: `chat_messages(chat_id, user_id, message, created_at)`.
+// The men's chat id is looked up once by slug ('mens') from `chats`.
+
+namespace {
+
+// Return the chat.id for slug='mens', or 0 if not seeded.
+long long mensChatId() {
+    static long long cached = 0;
+    if (cached > 0) return cached;
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query("SELECT id FROM chats WHERE slug = 'mens' LIMIT 1", {});
+        if (!r.empty() && !r[0]["id"].is_null()) {
+            cached = r[0]["id"].as<long long>();
+        }
+    } catch (...) {}
+    return cached;
+}
+
+// Return true if the caller is allowed to read/post in the men's chat.
+// Rule: any un-removed men's roster row, OR any admins row.
+bool isMensChatMember(long long personId) {
+    if (personId <= 0) return false;
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT 1 FROM roster_assignments ra "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.provider = 'leagueapps' "
+            "   AND epa.external_user_id = ra.leagueapps_user_id::text "
+            " WHERE ra.domain = 'mens' "
+            "   AND ra.removed_at IS NULL "
+            "   AND epa.person_id = $1::int "
+            " UNION ALL "
+            "SELECT 1 FROM admins a "
+            "  JOIN users u ON u.id = a.user_id "
+            " WHERE u.person_id = $1::int "
+            " LIMIT 1",
+            {std::to_string(personId)});
+        return !r.empty();
+    } catch (const std::exception& e) {
+        std::cerr << "[isMensChatMember] " << e.what() << std::endl;
+        return false;
+    }
+}
+
+// users.id for caller.  chat_messages.user_id is NOT NULL, so a
+// missing users row means "cannot post" (403).
+std::string usersIdForPerson(long long personId) {
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT id FROM users WHERE person_id = $1::int LIMIT 1",
+            {std::to_string(personId)});
+        if (!r.empty() && !r[0]["id"].is_null()) {
+            return std::to_string(r[0]["id"].as<long long>());
+        }
+    } catch (...) {}
+    return {};
+}
+
+std::string trimCopy(const std::string& s) {
+    auto b = s.find_first_not_of(" \t\r\n");
+    if (b == std::string::npos) return {};
+    auto e = s.find_last_not_of(" \t\r\n");
+    return s.substr(b, e - b + 1);
+}
+
+}  // namespace
+
+// GET /api/my/chat/messages?since_id=<int>
+// Returns:
+//   {
+//     "chat_id": int,
+//     "messages": [
+//       { "id": int, "user_id": int, "person_id": int,
+//         "author_first_name": str, "author_last_name": str,
+//         "message": str, "created_at": iso }, ...
+//     ]
+//   }
+// Oldest-first order.  Hard cap of 200 rows.  since_id lets pollers
+// fetch only new rows.
+Response MyController::handleGetChatMessages(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.session->personId;
+
+    if (!isMensChatMember(personId)) {
+        return jsonError(HttpStatus::FORBIDDEN, "Not a member of the men's chat");
+    }
+
+    const long long chatId = mensChatId();
+    if (chatId <= 0) {
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "men's chat not configured");
+    }
+
+    // Optional since_id: clients pass their newest seen id to get
+    // deltas only.  Missing / non-numeric → 0 (return all recent).
+    long long sinceId = 0;
+    const std::string sinceStr = request.getQueryParam("since_id");
+    if (!sinceStr.empty()) {
+        try { sinceId = std::stoll(sinceStr); } catch (...) { sinceId = 0; }
+    }
+
+    try {
+        auto* db = Database::getInstance();
+        // Order DESC + LIMIT 200 so we cap history, then reverse below
+        // to send oldest-first.  since_id filter allows efficient polls.
+        auto r = db->query(
+            "SELECT cm.id, cm.user_id, u.person_id, "
+            "       p.first_name, p.last_name, cm.message, "
+            "       TO_CHAR(cm.created_at AT TIME ZONE 'UTC', "
+            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
+            "       cm.created_at AS created_at_raw "
+            "  FROM chat_messages cm "
+            "  JOIN users   u ON u.id = cm.user_id "
+            "  JOIN persons p ON p.id = u.person_id "
+            " WHERE cm.chat_id = $1::int "
+            "   AND cm.id > $2::int "
+            " ORDER BY cm.created_at DESC, cm.id DESC "
+            " LIMIT 200",
+            {std::to_string(chatId), std::to_string(sinceId)});
+
+        // Reverse to oldest-first for display.
+        std::vector<json> messages;
+        messages.reserve(r.size());
+        for (auto it = r.rbegin(); it != r.rend(); ++it) {
+            const auto& row = *it;
+            messages.push_back({
+                {"id",                row["id"].as<long long>()},
+                {"user_id",           row["user_id"].as<long long>()},
+                {"person_id",         row["person_id"].as<long long>()},
+                {"author_first_name", row["first_name"].is_null() ? std::string{} : row["first_name"].as<std::string>()},
+                {"author_last_name",  row["last_name"].is_null()  ? std::string{} : row["last_name"].as<std::string>()},
+                {"message",           row["message"].as<std::string>()},
+                {"created_at",        row["created_at"].as<std::string>()},
+            });
+        }
+        // Include the viewer's own users.id so the client can style
+        // their own bubbles ("mine" vs "theirs") without a second RTT.
+        const std::string viewerIdStr = usersIdForPerson(personId);
+        const long long   viewerId    = viewerIdStr.empty() ? 0 : std::stoll(viewerIdStr);
+
+        return jsonOk({
+            {"chat_id",        chatId},
+            {"viewer_user_id", viewerId},
+            {"messages",       messages},
+        });
+    } catch (const std::exception& e) {
+        std::cerr << "[GET /api/my/chat/messages] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /api/my/chat/messages
+// Body: { message: string }
+// Rate limit: 3 messages per 10 sec per user.
+// Body length: 1..2000 chars after trim.
+Response MyController::handlePostChatMessage(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.session->personId;
+
+    if (!isMensChatMember(personId)) {
+        return jsonError(HttpStatus::FORBIDDEN, "Not a member of the men's chat");
+    }
+
+    const long long chatId = mensChatId();
+    if (chatId <= 0) {
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "men's chat not configured");
+    }
+
+    const std::string userIdStr = usersIdForPerson(personId);
+    if (userIdStr.empty()) {
+        return jsonError(HttpStatus::FORBIDDEN, "no users row for caller");
+    }
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON"); }
+
+    if (!body.contains("message") || !body["message"].is_string()) {
+        return jsonError(HttpStatus::BAD_REQUEST, "message string required");
+    }
+    const std::string trimmed = trimCopy(body["message"].get<std::string>());
+    if (trimmed.empty()) {
+        return jsonError(HttpStatus::BAD_REQUEST, "message cannot be blank");
+    }
+    if (trimmed.size() > 2000) {
+        return jsonError(HttpStatus::BAD_REQUEST, "message too long (max 2000 chars)");
+    }
+
+    try {
+        auto* db = Database::getInstance();
+
+        // Rate limit: caller has posted <3 rows to this chat in the
+        // last 10 seconds.  Cheap query — chat_messages is indexed
+        // by (chat_id) and (user_id).
+        auto rl = db->query(
+            "SELECT COUNT(*) AS n FROM chat_messages "
+            " WHERE chat_id = $1::int "
+            "   AND user_id = $2::int "
+            "   AND created_at > NOW() - INTERVAL '10 seconds'",
+            {std::to_string(chatId), userIdStr});
+        const long long recent = rl.empty() ? 0 : rl[0]["n"].as<long long>();
+        if (recent >= 3) {
+            return jsonError(HttpStatus::BAD_REQUEST,
+                             "slow down — 3 messages / 10 sec limit");
+        }
+
+        auto ins = db->query(
+            "INSERT INTO chat_messages (chat_id, user_id, message) "
+            "VALUES ($1::int, $2::int, $3) "
+            "RETURNING id, "
+            "  TO_CHAR(created_at AT TIME ZONE 'UTC', "
+            "          'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at",
+            {std::to_string(chatId), userIdStr, trimmed});
+
+        if (ins.empty()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "insert failed");
+        }
+
+        // Pull author name for the echo — client can insert straight
+        // into its list without waiting for the next poll.
+        auto meta = db->query(
+            "SELECT p.first_name, p.last_name, u.person_id "
+            "  FROM users u JOIN persons p ON p.id = u.person_id "
+            " WHERE u.id = $1::int LIMIT 1",
+            {userIdStr});
+
+        json out = {
+            {"id",         ins[0]["id"].as<long long>()},
+            {"user_id",    std::stoll(userIdStr)},
+            {"message",    trimmed},
+            {"created_at", ins[0]["created_at"].as<std::string>()},
+        };
+        if (!meta.empty()) {
+            out["author_first_name"] = meta[0]["first_name"].is_null() ? std::string{} : meta[0]["first_name"].as<std::string>();
+            out["author_last_name"]  = meta[0]["last_name"].is_null()  ? std::string{} : meta[0]["last_name"].as<std::string>();
+            out["person_id"]         = meta[0]["person_id"].as<long long>();
+        }
+        return jsonOk(out);
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/my/chat/messages] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /api/my/event-rsvps?match_id=<int>
+// ─────────────────────────────────────────────────────────────────────
+// Return the full eligible roster for a single match, bucketed by
+// RSVP status.  Eligibility rules mirror `handleGetWeek` / the
+// eligible_matches CTE:
+//   pickup   (mt=7):        ANY mens roster row (active OR removed)
+//   practice (mt=3):        active roster to team ∈ (35, 120, 121)
+//   APSL game (mt∈{1,4,6}, home=35):
+//                           active roster to team ∈ (35, 120)
+//   other game (mt∈{1,4,6}):
+//                           active roster to home_team_id
+//   other (mt∈{2,5}):       active roster to home_team_id
+//
+// Response payload:
+//   {
+//     "match_id":    <int>,
+//     "counts":      {"going":N, "maybe":N, "not_going":N, "no_response":N, "total":N},
+//     "going":       [{"person_id":X, "first_name":"Luke", "last_name":"Breslin"}, ...],
+//     "maybe":       [...],
+//     "not_going":   [...],
+//     "no_response": [...]
+//   }
+Response MyController::handleGetEventRsvps(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.session->personId;
+
+    const std::string midParam = request.getQueryParam("match_id");
+    if (midParam.empty()) {
+        return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    }
+    long long matchId = 0;
+    try { matchId = std::stoll(midParam); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "match_id must be an integer"); }
+    if (matchId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "match_id must be positive");
+    }
+
+    auto* db = Database::getInstance();
+    try {
+        // Verify the match exists and grab its type/home_team for eligibility.
+        auto m = db->query(
+            "SELECT id, match_type_id, home_team_id FROM matches "
+            " WHERE id = $1::int AND cancelled_at IS NULL",
+            {std::to_string(matchId)});
+        if (m.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "match not found");
+        }
+
+        // Caller must be an admin OR themselves be a mens roster member
+        // — we don't leak rosters to arbitrary logged-in users.
+        auto membership = db->query(
+            "SELECT 1 "
+            "  FROM roster_assignments ra "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.provider = 'leagueapps' "
+            "   AND epa.external_user_id = ra.leagueapps_user_id::text "
+            " WHERE ra.domain = 'mens' "
+            "   AND epa.person_id = $1::int "
+            " UNION ALL "
+            " SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+            "  WHERE u.person_id = $1::int "
+            " LIMIT 1",
+            {std::to_string(personId)});
+        if (membership.empty()) {
+            return jsonError(HttpStatus::FORBIDDEN, "not a mens roster member");
+        }
+
+        // Eligible roster + latest RSVP status per person.
+        auto rows = db->query(
+            "WITH m AS ( "
+            "  SELECT id, match_type_id, home_team_id FROM matches WHERE id = $1::int "
+            "), "
+            "eligible AS ( "
+            "  SELECT DISTINCT epa.person_id "
+            "    FROM m "
+            "    JOIN roster_assignments ra "
+            "      ON ra.domain = 'mens' "
+            "     AND ( "
+            "       m.match_type_id = 7 "
+            "       OR ( "
+            "         ra.removed_at IS NULL "
+            "         AND ra.team_id = ANY( "
+            "           CASE "
+            "             WHEN m.match_type_id = 3 THEN ARRAY[35, 120, 121] "
+            "             WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 35 THEN ARRAY[35, 120] "
+            "             ELSE ARRAY[m.home_team_id] "
+            "           END "
+            "         ) "
+            "       ) "
+            "     ) "
+            "    JOIN external_person_aliases epa "
+            "      ON epa.provider = 'leagueapps' "
+            "     AND epa.external_user_id = ra.leagueapps_user_id::text "
+            ") "
+            "SELECT e.person_id, p.first_name, p.last_name, "
+            "       COALESCE(h.rsvp_status_id, 0) AS status_id "
+            "  FROM eligible e "
+            "  JOIN persons p ON p.id = e.person_id "
+            "  LEFT JOIN players pl ON pl.person_id = e.person_id "
+            "  LEFT JOIN LATERAL ( "
+            "    SELECT rsvp_status_id "
+            "      FROM player_rsvp_history hh "
+            "     WHERE hh.event_id = $1::int "
+            "       AND hh.player_id = pl.id "
+            "     ORDER BY hh.changed_at DESC "
+            "     LIMIT 1 "
+            "  ) h ON true "
+            " ORDER BY p.last_name NULLS LAST, p.first_name NULLS LAST",
+            {std::to_string(matchId)});
+
+        json going       = json::array();
+        json maybe       = json::array();
+        json notGoing    = json::array();
+        json noResponse  = json::array();
+        for (const auto& r : rows) {
+            const int statusId = r["status_id"].is_null() ? 0 : r["status_id"].as<int>();
+            json entry = {
+                {"person_id",  r["person_id"].as<long long>()},
+                {"first_name", r["first_name"].is_null() ? std::string{} : r["first_name"].as<std::string>()},
+                {"last_name",  r["last_name"].is_null()  ? std::string{} : r["last_name"].as<std::string>()},
+            };
+            switch (statusId) {
+                case 1: going.push_back(entry);      break;
+                case 2: notGoing.push_back(entry);   break;
+                case 3: maybe.push_back(entry);      break;
+                default: noResponse.push_back(entry); break;
+            }
+        }
+
+        json counts = {
+            {"going",       (long long)going.size()},
+            {"maybe",       (long long)maybe.size()},
+            {"not_going",   (long long)notGoing.size()},
+            {"no_response", (long long)noResponse.size()},
+            {"total",       (long long)(going.size() + maybe.size() + notGoing.size() + noResponse.size())},
+        };
+
+        return jsonOk({
+            {"match_id",    matchId},
+            {"counts",      counts},
+            {"going",       going},
+            {"maybe",       maybe},
+            {"not_going",   notGoing},
+            {"no_response", noResponse},
+        });
+    } catch (const std::exception& e) {
+        std::cerr << "[GET /api/my/event-rsvps] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

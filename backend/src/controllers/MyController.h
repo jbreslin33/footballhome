@@ -24,7 +24,28 @@
 //        Replace the caller's entire preference set (delete-then-insert
 //        inside a single transaction).
 //
-// All four endpoints are cookie-session gated (see SessionService::
+//   GET  /api/my/chat/messages?since_id=<int>
+//        Return up to 200 most recent messages from the men's club
+//        chat (chats.slug='mens'), oldest first.  If since_id is
+//        supplied, only rows with id > since_id are returned (poll
+//        delta).  Membership: caller must have an un-removed row in
+//        `roster_assignments` (domain='mens') OR any row in `admins`.
+//
+//   POST /api/my/chat/messages
+//        Body: {message:string}
+//        Insert a `chat_messages` row for the men's chat as the caller.
+//        Same membership rule as GET.  Rate-limit 3 msgs / 10 sec /
+//        user.  Message body is trimmed, must be 1..2000 chars.
+//
+//   GET  /api/my/event-rsvps?match_id=<int>
+//        Return the full eligible roster for the given match, bucketed
+//        into `going` / `maybe` / `not_going` / `no_response`, plus
+//        aggregate counts.  Same eligibility rules as /api/my/week
+//        (pickup=any mens; practice=team ∈ {35,120,121}; APSL-home
+//        games=team ∈ {35,120}; other games=home_team).  Caller must
+//        themselves be eligible OR be an admin.
+//
+// All endpoints are cookie-session gated (see SessionService::
 // requireSession).  No bearer / no CSRF token required — the cookie
 // is HttpOnly + SameSite=Lax and the routes are same-origin only.
 class MyController : public Controller {
@@ -39,4 +60,7 @@ private:
     Response handlePostRsvp(const Request& request);
     Response handleGetRecurring(const Request& request);
     Response handlePutRecurring(const Request& request);
+    Response handleGetChatMessages(const Request& request);
+    Response handlePostChatMessage(const Request& request);
+    Response handleGetEventRsvps(const Request& request);
 };
