@@ -137,34 +137,26 @@ std::string resolveChangedByUserId(long long personId) {
 //   game APSL home (mt∈{1,4,6}, home=35):  active mens roster to team ∈ (35, 120)  (play-up)
 //   game other (mt∈{1,4,6}): active mens roster to team = home_team_id
 //   pickup (mt=7):          ANY mens roster (active OR soft-deleted / dues-owed)
-//   other (mt∈{2,5}):       fall back to active roster to team = home_team_id
+// Pure roster model (2026-07-07):  a person is eligible for a match
+// iff they hold an active `roster_assignments` row on the match's
+// home_team.  Play-up is expressed by putting the same person on
+// multiple team rosters; pool events (practice/pickup) work because
+// their home_team_id points at a pool team and every eligible person
+// is on that pool team's roster.
 bool callerRosteredForMatch(long long personId, long long matchId) {
     auto* db = Database::getInstance();
     auto r = db->query(
         "SELECT 1 "
         "  FROM matches m "
+        "  JOIN roster_assignments ra "
+        "    ON ra.team_id = m.home_team_id "
+        "   AND ra.removed_at IS NULL "
         "  JOIN external_person_aliases epa "
         "    ON epa.provider = 'leagueapps' "
-        "   AND epa.person_id = $2::int "
-        "  JOIN roster_assignments mta "
-        "    ON mta.domain = 'mens' "
-        "   AND mta.leagueapps_user_id::text = epa.external_user_id "
-        "   AND ( "
-        "     m.match_type_id = 7 "
-        "     OR ( "
-        "       mta.removed_at IS NULL "
-        "       AND mta.team_id = ANY( "
-        "         CASE "
-        "           WHEN m.match_type_id = 3 THEN ARRAY[35, 120, 121] "
-        "           WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 35  THEN ARRAY[35, 120, 121] "
-        "           WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 120 THEN ARRAY[120, 121] "
-        "           ELSE ARRAY[m.home_team_id] "
-        "         END "
-        "       ) "
-        "     ) "
-        "   ) "
+        "   AND epa.external_user_id = ra.leagueapps_user_id::text "
         " WHERE m.id = $1::int "
         "   AND m.cancelled_at IS NULL "
+        "   AND epa.person_id = $2::int "
         " LIMIT 1",
         {std::to_string(matchId), std::to_string(personId)});
     return !r.empty();
@@ -229,33 +221,23 @@ Response MyController::handleGetWeek(const Request& request) {
         const long long playerId = resolvePlayerId(personId);
 
         auto rows = db->query(
-            // Eligibility rules — keep in sync with callerRosteredForMatch()
-            // above and services/RsvpMaterialization.cpp kApplyRecurringSql.
+            // Pure roster eligibility (2026-07-07): match visible iff
+            // caller has an active roster_assignments row on the
+            // match's home_team.  Keep in sync with
+            // callerRosteredForMatch() and
+            // services/RsvpMaterialization.cpp kApplyRecurringSql.
             "WITH eligible_matches AS ( "
             "  SELECT DISTINCT m.id, m.match_type_id, m.home_team_id, m.match_date, "
             "         m.match_time, m.end_time, m.venue_id, m.title, "
             "         m.description, m.rsvp_opens_at, m.series_id "
             "    FROM matches m "
+            "    JOIN roster_assignments ra "
+            "      ON ra.team_id = m.home_team_id "
+            "     AND ra.removed_at IS NULL "
             "    JOIN external_person_aliases epa "
             "      ON epa.provider = 'leagueapps' "
+            "     AND epa.external_user_id = ra.leagueapps_user_id::text "
             "     AND epa.person_id = $1::int "
-            "    JOIN roster_assignments mta "
-            "      ON mta.domain = 'mens' "
-            "     AND mta.leagueapps_user_id::text = epa.external_user_id "
-            "     AND ( "
-            "       m.match_type_id = 7 "
-            "       OR ( "
-            "         mta.removed_at IS NULL "
-            "         AND mta.team_id = ANY( "
-            "           CASE "
-            "             WHEN m.match_type_id = 3 THEN ARRAY[35, 120, 121] "
-            "             WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 35  THEN ARRAY[35, 120, 121] "
-            "             WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 120 THEN ARRAY[120, 121] "
-            "             ELSE ARRAY[m.home_team_id] "
-            "           END "
-            "         ) "
-            "       ) "
-            "     ) "
             "   WHERE m.cancelled_at IS NULL "
             "     AND m.rsvp_opens_at IS NOT NULL "
             "     AND m.rsvp_opens_at <= NOW() "
@@ -324,24 +306,23 @@ Response MyController::handleGetWeek(const Request& request) {
             });
         }
 
-        // Membership status — drives the amber "dues owed" banner
-        // in the frontend.  'active' means at least one active mens
-        // roster_assignment; 'dues_owed' means every mens row is
-        // soft-deleted (delinquent dues); 'none' means no mens rows at
-        // all (shouldn't normally happen for signed-in players, but
-        // guard anyway).
+        // Membership status — drives the amber "dues owed" banner in
+        // the frontend.  Pure roster model (2026-07-07): any club
+        // membership counts.  'active' = at least one active
+        // roster_assignments row; 'dues_owed' = only soft-deleted rows;
+        // 'none' = no rows at all (e.g. a person who was never rostered
+        // or fully cleared out).
         std::string membershipStatus = "none";
         long long duesDaysOverdue = 0;
         {
             auto s = db->query(
                 "SELECT "
-                "  COUNT(*) FILTER (WHERE mta.removed_at IS NULL)     AS active_ct, "
-                "  COUNT(*) FILTER (WHERE mta.removed_at IS NOT NULL) AS dues_owed_ct, "
-                "  EXTRACT(DAY FROM (NOW() - MIN(mta.removed_at)))::int AS days_overdue "
+                "  COUNT(*) FILTER (WHERE ra.removed_at IS NULL)     AS active_ct, "
+                "  COUNT(*) FILTER (WHERE ra.removed_at IS NOT NULL) AS dues_owed_ct, "
+                "  EXTRACT(DAY FROM (NOW() - MIN(ra.removed_at)))::int AS days_overdue "
                 "  FROM external_person_aliases epa "
-                "  JOIN roster_assignments mta "
-                "    ON mta.domain = 'mens' "
-                "   AND mta.leagueapps_user_id::text = epa.external_user_id "
+                "  JOIN roster_assignments ra "
+                "    ON ra.leagueapps_user_id::text = epa.external_user_id "
                 " WHERE epa.provider = 'leagueapps' "
                 "   AND epa.person_id = $1::int",
                 {std::to_string(personId)});
@@ -874,23 +855,26 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "match not found");
         }
 
-        // Caller must be an admin OR themselves be a mens roster member
-        // — we don't leak rosters to arbitrary logged-in users.
+        // Caller must be on this match's roster themselves, OR carry
+        // an admins row — we don't leak rosters to arbitrary logged-in
+        // users.  Same eligibility rule as callerRosteredForMatch().
         auto membership = db->query(
             "SELECT 1 "
             "  FROM roster_assignments ra "
+            "  JOIN matches m ON m.id = $2::int "
             "  JOIN external_person_aliases epa "
             "    ON epa.provider = 'leagueapps' "
             "   AND epa.external_user_id = ra.leagueapps_user_id::text "
-            " WHERE ra.domain = 'mens' "
+            " WHERE ra.team_id = m.home_team_id "
+            "   AND ra.removed_at IS NULL "
             "   AND epa.person_id = $1::int "
             " UNION ALL "
             " SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
             "  WHERE u.person_id = $1::int "
             " LIMIT 1",
-            {std::to_string(personId)});
+            {std::to_string(personId), std::to_string(matchId)});
         if (membership.empty()) {
-            return jsonError(HttpStatus::FORBIDDEN, "not a mens roster member");
+            return jsonError(HttpStatus::FORBIDDEN, "not on this event's roster");
         }
 
         // Eligible roster + latest RSVP status per person.
@@ -902,21 +886,8 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "  SELECT DISTINCT epa.person_id "
             "    FROM m "
             "    JOIN roster_assignments ra "
-            "      ON ra.domain = 'mens' "
-            "     AND ( "
-            "       m.match_type_id = 7 "
-            "       OR ( "
-            "         ra.removed_at IS NULL "
-            "         AND ra.team_id = ANY( "
-            "           CASE "
-            "             WHEN m.match_type_id = 3 THEN ARRAY[35, 120, 121] "
-            "             WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 35  THEN ARRAY[35, 120, 121] "
-            "             WHEN m.match_type_id IN (1,4,6) AND m.home_team_id = 120 THEN ARRAY[120, 121] "
-            "             ELSE ARRAY[m.home_team_id] "
-            "           END "
-            "         ) "
-            "       ) "
-            "     ) "
+            "      ON ra.team_id = m.home_team_id "
+            "     AND ra.removed_at IS NULL "
             "    JOIN external_person_aliases epa "
             "      ON epa.provider = 'leagueapps' "
             "     AND epa.external_user_id = ra.leagueapps_user_id::text "
