@@ -1995,7 +1995,8 @@ class LeadsScreen extends Screen {
       }
 
       const laDescHtml =
-        `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game <strong>affordable, accessible, local, and high-quality</strong> for every family in our community. We use modern coaching and player-development methodology with every player, from first-time beginners to advanced competitors.</p>` +
+        `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game <strong>affordable, accessible, local, and high-quality</strong> for every family in our community.</p>` +
+        `<p>Our history speaks to that quality: Lighthouse has produced <strong>7 U.S. Soccer Hall of Famers, 5 U-19 national championships, 2 FIFA World Cup players, and 4 U.S. Olympians</strong>. Today, we bring modern coaching and player-development methodology to every player, from first-time beginners to advanced competitors.</p>` +
         `<h3>Membership</h3>` +
         `<p>${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>` +
         teamsBlockHtml +
@@ -2019,7 +2020,8 @@ class LeadsScreen extends Screen {
       // outer-scope `laDescText` so the More info snippet can reuse it
       // verbatim below.
       laDescText =
-        `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community. We use modern coaching and player-development methodology with every player, from first-time beginners to advanced competitors.\n\n` +
+        `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community.\n\n` +
+        `Our history speaks to that quality: Lighthouse has produced 7 U.S. Soccer Hall of Famers, 5 U-19 national championships, 2 FIFA World Cup players, and 4 U.S. Olympians. Today, we bring modern coaching and player-development methodology to every player, from first-time beginners to advanced competitors.\n\n` +
         `MEMBERSHIP:\n` +
         `${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
         teamsBlockText +
