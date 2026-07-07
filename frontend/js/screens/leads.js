@@ -1951,10 +1951,42 @@ class LeadsScreen extends Screen {
       const indoorLine =
         'Lighthouse Community Center, 141 W Somerset Street, Philadelphia PA 19133';
 
+      // ── Teams block (youth only) ──
+      // Up-front explanation of which travel squads currently exist +
+      // what happens for age bands that don't (yet) have one.  The
+      // travel teams we've entered for Fall 2026 are U8, U10 and U12,
+      // all in a boys-division travel league; girls are welcome on
+      // those squads until we have the numbers for a dedicated girls
+      // travel program.  Every player outside those bands (and every
+      // player not selected for a travel squad) plays in Lighthouse
+      // League — our in-house games — while we grow.  Same copy for
+      // Boys Club and Girls Club LA pages: parents on both sides need
+      // the same policy up front so nobody signs up expecting a girls-
+      // only travel team that doesn't exist yet.
+      let teamsBlockHtml = '';
+      let teamsBlockText = '';
+      if (c.isYouth) {
+        teamsBlockHtml =
+          `<h3>Teams</h3>` +
+          `<p>Our current travel-team lineup (Fall 2026):</p>` +
+          `<ul>` +
+            `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. Girls are welcome to play on these squads while we grow the girls program.</li>` +
+            `<li><strong>All other ages</strong> &mdash; play in <strong>Lighthouse League</strong>, our in-house games, until we have enough players to enter a travel team for that age band.</li>` +
+          `</ul>` +
+          `<p>We add travel teams for additional age bands as soon as we have the numbers.</p>`;
+        teamsBlockText =
+          `TEAMS:\n` +
+          `Our current travel-team lineup (Fall 2026):\n` +
+          `  • U8, U10, U12 — competing in a boys-division travel league. Girls are welcome to play on these squads while we grow the girls program.\n` +
+          `  • All other ages — play in Lighthouse League, our in-house games, until we have enough players to enter a travel team for that age band.\n` +
+          `We add travel teams for additional age bands as soon as we have the numbers.\n\n`;
+      }
+
       const laDescHtml =
         `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years.</p>` +
         `<h3>Membership</h3>` +
         `<p>${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>` +
+        teamsBlockHtml +
         `<h3>Schedule</h3>` +
         `<ul>` +
         practiceBlockHtml +
@@ -1978,6 +2010,7 @@ class LeadsScreen extends Screen {
         `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years.\n\n` +
         `MEMBERSHIP:\n` +
         `${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
+        teamsBlockText +
         `SCHEDULE:\n` +
         practiceBlockText +
         `  • Games: ${gamesLine}\n` +
