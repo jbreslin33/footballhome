@@ -1990,7 +1990,7 @@ class LeadsScreen extends Screen {
       }
 
       const laDescHtml =
-        `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years.</p>` +
+        `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game <strong>affordable, accessible, and local</strong> for every family in our community.</p>` +
         `<h3>Membership</h3>` +
         `<p>${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>` +
         teamsBlockHtml +
@@ -2014,7 +2014,7 @@ class LeadsScreen extends Screen {
       // outer-scope `laDescText` so the More info snippet can reuse it
       // verbatim below.
       laDescText =
-        `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years.\n\n` +
+        `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, and local for every family in our community.\n\n` +
         `MEMBERSHIP:\n` +
         `${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
         teamsBlockText +
