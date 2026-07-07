@@ -2105,18 +2105,26 @@ class LeadsScreen extends Screen {
     if (MENS_BROADCAST_FUNNELS.has(funnelLabel)) {
       const availabilityBody =
         `Hi guys,\n\n` +
-        `Quick heads-up — we're moving how we track who's playing to footballhome.org. It's one spot for the weekly schedule (games, practice, pickup) where you set your availability for each one.\n\n` +
+        `We're moving how we track availability for games, practice and pickup to footballhome.org — which works on your phone or computer, and also installs as an app on your phone.\n\n` +
+        `Heads-up: from now on we won't be posting games / practice / pickup in GroupMe. All of that lives on footballhome.org. GroupMe stays as a chat only for now.\n\n` +
         `How to get in:\n` +
-        `1. Open https://footballhome.org on your phone\n` +
-        `2. Tap Sign In\n` +
-        `3. Sign in with Google, OR request a magic-link email — use the same email you're registered with on LeagueApps\n\n` +
+        `1. Open https://footballhome.org on your phone or computer\n` +
+        `2. On your phone? Tap Share → Add to Home Screen (iOS) or Install app (Android) so it lives on your home screen like a real app.\n` +
+        `3. Tap Sign In\n` +
+        `4. Tap "Continue with Google" — use the same email you're registered with on LeagueApps\n\n` +
+        `No Google account? No problem:\n` +
+        `• Tap "Sign in with email & password"\n` +
+        `• Tap "Forgot / set password"\n` +
+        `• Enter your LeagueApps email — we'll send you a link to set a password. Set it, then sign in.\n\n` +
         `Once you're in, you'll see your week under My Schedule. For every game / practice / pickup, just tap:\n` +
         `• Going\n` +
         `• Maybe\n` +
         `• Can't go\n\n` +
-        `Please sign in and set your availability this week — we're using it to plan lineups and know who's showing up.\n\n` +
-        `On your phone? Add it to your Home Screen for a real app icon (Share → Add to Home Screen on iOS, Install app on Android).\n\n` +
-        `If you get stuck signing in, hit me back and I'll sort it out.\n\n` +
+        `You must set availability for EVERY event on your weekly schedule. "Maybe" is only a placeholder — update it to Going or Can't go before the event starts.\n\n` +
+        `Please sign in and set your availability for this week. There's also a button to set your **recurring** availability — everyone should commit to 2 recurring practice/pickups if you can. Then you only need to change it the week of if you CANNOT make it.\n\n` +
+        `Only use recurring if your schedule actually allows it — we don't want no-shows. If your week is unpredictable, just set availability week-by-week.\n\n` +
+        `Going forward we'll be fining no-shows AND anyone who shows up without setting their availability — it hurts the teams and the club when we can't plan.\n\n` +
+        `Any questions, DM me — let's keep the chat clear so everyone can see this message.\n\n` +
         `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
       snippets.push({
         id: 'fh-set-availability',
