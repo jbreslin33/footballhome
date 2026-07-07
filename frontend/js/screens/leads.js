@@ -1992,6 +1992,30 @@ class LeadsScreen extends Screen {
           `For players who want to travel to games as part of their season, we also field select travel squads (Fall 2026):\n` +
           `  • U8, U10, U12 — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n\n` +
           `We add travel teams for additional age bands as interest and readiness grow.\n\n`;
+      } else if (funnelLabel === "Men's Club") {
+        // Men's Club: lead with competitive squads (APSL / Liga 1 / Liga 2),
+        // frame Lighthouse League as (a) the option for members who want a
+        // local, low-to-no-travel experience AND (b) where anyone not
+        // selected to a competitive squad plays.  "We don't cut members" is
+        // the mission tagline — nobody who signs up gets sent home.  U23 /
+        // PR / Brazil are advertised via their own funnels and are
+        // intentionally omitted from this list.
+        teamsBlockHtml =
+          `<h3>Teams</h3>` +
+          `<p>Our competitive squads (Fall 2026):</p>` +
+          `<ul>` +
+            `<li><strong>APSL</strong></li>` +
+            `<li><strong>Liga 1</strong></li>` +
+            `<li><strong>Liga 2</strong></li>` +
+          `</ul>` +
+          `<p><strong>Lighthouse League</strong> is our in-house program at the Lighthouse fields &mdash; for members who want a <strong>local, low-to-no-travel soccer experience</strong>, and for anyone not selected to a competitive squad. <strong>We don't cut members.</strong></p>`;
+        teamsBlockText =
+          `TEAMS:\n` +
+          `Our competitive squads (Fall 2026):\n` +
+          `  • APSL\n` +
+          `  • Liga 1\n` +
+          `  • Liga 2\n\n` +
+          `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n`;
       }
 
       const laDescHtml =
