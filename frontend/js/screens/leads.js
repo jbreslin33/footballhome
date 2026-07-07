@@ -1970,15 +1970,15 @@ class LeadsScreen extends Screen {
           `<h3>Teams</h3>` +
           `<p>Our current travel-team lineup (Fall 2026):</p>` +
           `<ul>` +
-            `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. Girls are welcome to play on these squads while we grow the girls program.</li>` +
-            `<li><strong>All other ages</strong> &mdash; play in <strong>Lighthouse League</strong>, our in-house games, until we have enough players to enter a travel team for that age band.</li>` +
+            `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.</li>` +
+            `<li><strong>All other ages</strong> &mdash; play in <strong>Lighthouse League</strong>, our in-house games, until there are enough players ready for a travel team for that age band.</li>` +
           `</ul>` +
           `<p>We add travel teams for additional age bands as soon as we have the numbers.</p>`;
         teamsBlockText =
           `TEAMS:\n` +
           `Our current travel-team lineup (Fall 2026):\n` +
-          `  • U8, U10, U12 — competing in a boys-division travel league. Girls are welcome to play on these squads while we grow the girls program.\n` +
-          `  • All other ages — play in Lighthouse League, our in-house games, until we have enough players to enter a travel team for that age band.\n` +
+          `  • U8, U10, U12 — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n` +
+          `  • All other ages — play in Lighthouse League, our in-house games, until there are enough players ready for a travel team for that age band.\n` +
           `We add travel teams for additional age bands as soon as we have the numbers.\n\n`;
       }
 
