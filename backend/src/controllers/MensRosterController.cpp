@@ -247,18 +247,18 @@ Response MensRosterController::handleAssign(const Request& request) {
 
             teamIds = assignments_->addAssignment(userId, teamId, mutexGroup);
 
-            // Practice / Pickup auto-membership on APSL / Liga 1 assign
-            // (2026-07-04): immediate mirror of the /api/mens-roster
-            // fetch-time backfill so admin sees Practice + Pickup
-            // populated the instant they select someone for a division
-            // roster.  Redundant with the fetch backfill but zero-cost
-            // (INSERT ON CONFLICT DO NOTHING).
+            // Practice / Pickup auto-membership on APSL / Liga 1 / Liga 2
+            // assign (2026-07-04, extended 2026-07-07): immediate mirror
+            // of the /api/mens-roster fetch-time backfill so admin sees
+            // Practice + Pickup populated the instant they select someone
+            // for a division roster.  Redundant with the fetch backfill
+            // but zero-cost (INSERT ON CONFLICT DO NOTHING).
             constexpr int kApslTeamId     = 35;
             constexpr int kLiga1TeamId    = 120;
+            constexpr int kLiga2TeamId    = 121;
             constexpr int kPracticeTeamId = 908;
             constexpr int kPickupTeamId   = 909;
-            constexpr int kDuesOwedTeamId = 910;
-            if (teamId == kApslTeamId || teamId == kLiga1TeamId) {
+            if (teamId == kApslTeamId || teamId == kLiga1TeamId || teamId == kLiga2TeamId) {
                 try {
                     assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
                     assignments_->bulkEnsureActive({userId}, kPickupTeamId);
@@ -266,21 +266,7 @@ Response MensRosterController::handleAssign(const Request& request) {
                     // + Pickup without a round-trip.
                     teamIds = assignments_->teamIdsForUser(userId);
                 } catch (const std::exception& e) {
-                    std::cerr << "[MensRoster] practice/pickup auto-add on APSL/Liga1 failed: "
-                              << e.what() << std::endl;
-                }
-            } else if (teamId == kDuesOwedTeamId) {
-                // Dues Owed column means "off ALL rosters".  The
-                // mens-selection mutex_group already removed the
-                // APSL/Liga 1 row atomically; here we also strip
-                // Practice + Pickup so the player really is on nothing
-                // except team 910 itself.
-                try {
-                    assignments_->removeAssignment(userId, kPracticeTeamId);
-                    assignments_->removeAssignment(userId, kPickupTeamId);
-                    teamIds = assignments_->teamIdsForUser(userId);
-                } catch (const std::exception& e) {
-                    std::cerr << "[MensRoster] practice/pickup strip on Dues Owed failed: "
+                    std::cerr << "[MensRoster] practice/pickup auto-add on APSL/Liga1/Liga2 failed: "
                               << e.what() << std::endl;
                 }
             }

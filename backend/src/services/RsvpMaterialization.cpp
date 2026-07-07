@@ -138,7 +138,8 @@ eligible AS (
        AND mta.team_id = ANY(
          CASE
            WHEN om.match_type_id = 3 THEN ARRAY[35, 120, 121]
-           WHEN om.match_type_id IN (1,4,6) AND om.home_team_id = 35 THEN ARRAY[35, 120]
+           WHEN om.match_type_id IN (1,4,6) AND om.home_team_id = 35  THEN ARRAY[35, 120, 121]
+           WHEN om.match_type_id IN (1,4,6) AND om.home_team_id = 120 THEN ARRAY[120, 121]
            ELSE ARRAY[om.home_team_id]
          END
        )

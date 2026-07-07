@@ -1965,7 +1965,7 @@ class LeadsScreen extends Screen {
         `<h3>Billing</h3>` +
         `<p>Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.</p>` +
         `<p>From then on, the normal $${monthly}/month membership is invoiced on the <strong>first Friday of each month</strong>.</p>` +
-        `<p>Payment cards saved at registration are charged automatically through LeagueApps. A receipt is emailed for each charge. Members can pause or cancel anytime.</p>` +
+        `<p><strong>Membership requires a valid card on file with sufficient funds</strong> so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.</p>` +
         `<h3>Changes &amp; questions</h3>` +
         `<p>To pause or cancel a membership, or ask a question, email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`;
       // Plain-text fallback used when the clipboard API can't write
@@ -1986,7 +1986,7 @@ class LeadsScreen extends Screen {
         `BILLING:\n` +
         `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
         `From then on, the normal $${monthly}/month membership is invoiced on the first Friday of each month.\n\n` +
-        `Payment cards saved at registration are charged automatically through LeagueApps. A receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
+        `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
         `CHANGES & QUESTIONS:\n` +
         `To pause or cancel a membership, or ask a question, email soccer@lighthouse1893.org.`;
       snippets.push({
@@ -2447,12 +2447,15 @@ class LeadsScreen extends Screen {
             `\n` +
             `Reply with any other questions — or if it's easier, let me know a good time to call.`,
           // SMS variant — compressed to a couple of segments.  Ditches
-          // the full description; keeps field address, cost, register
-          // link (the three questions leads actually ask via text).
+          // the full description; keeps field address, cost, card-on-
+          // file requirement, and register link (the four questions
+          // leads actually ask via text — and the one policy line that
+          // sets billing expectation before checkout).
           smsBody:
             `Hi {first} — quick details on ${c.program}:\n` +
             `• Field: 199 E Erie Ave, Philadelphia PA\n` +
             `• Cost: ${c.initialFee} to register, then ${c.pricing}\n` +
+            `• Card on file with sufficient funds required (auto-charged monthly)\n` +
             `Register: ${c.isLegacyYouth ? (c.linkBoys + ' (boys) · ' + c.linkGirls + ' (girls)') : c.link}\n` +
             `Reply w/ any Qs — {coachFirst}`,
         };

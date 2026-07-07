@@ -189,17 +189,17 @@ class MensRosterScreen extends Screen {
   renderRoster(data) {
     const container = this.find('#mr-list');
 
-    // The Dues Owed column is a REAL DB team (id=910, added via
-    // migration 085; label updated to "🚨 Dues Owed" in migration 098)
-    // with mutex_group='mens-selection' shared with APSL(35) and
-    // Liga 1(120).  So Unassigned / APSL / Liga 1 / Dues Owed are all
-    // mutually exclusive at the DB level — admin clicks one move
-    // button and the row atomically leaves the others.
+    // Columns are data-driven from `data.columns` (roster_columns with
+    // domain='mens', not archived).  All non-Unassigned columns share
+    // mutex_group='mens-selection' at the DB layer, so admin clicks
+    // one move button and the row atomically leaves the others.
     //
-    // Everyone left in data.unassigned is truly on no team (no active
-    // rows in mens_team_assignments for any real column).  The old
-    // delinquencyState filter is gone — dues do not auto-move anyone
-    // per user directive "don't auto manage it".
+    // The old "Dues Owed" column (team 910) was retired 2026-07-07 via
+    // migration 100 — the OVERDUE chip on each card + the dedicated
+    // /mens-delinquent screen already surface who owes dues, and
+    // parking warm bodies in a sin-bin cost playable spots.  The
+    // `daysOverdue` + `delinquencyState='dues_owed'` fields are still
+    // emitted per-player so the chip + banner keep working.
     const cols = [
       { teamId: 0, label: '📦 Unassigned', color: '#475569', count: (data.unassigned || []).length, isUnassigned: true },
       ...data.columns,
@@ -236,9 +236,7 @@ class MensRosterScreen extends Screen {
 
   renderColumn(col, data) {
     // Data source: Unassigned pulls from data.unassigned (no active team
-    // rows); every real column (including Dues Owed=910) pulls from
-    // data.buckets keyed by teamId.
-    const isDuesOwed = col.teamId === 910;
+    // rows); every real column pulls from data.buckets keyed by teamId.
     const players = col.isUnassigned
       ? (data.unassigned || [])
       : (data.buckets[String(col.teamId)] || []);
@@ -254,26 +252,18 @@ class MensRosterScreen extends Screen {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
-    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, { ...col, isDuesOwed }, i + 1)).join('');
+    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, col, i + 1)).join('');
 
-    let body;
-    if (players.length === 0) {
-      body = isDuesOwed
-        ? '<div style="opacity:0.6; font-size:0.75rem; text-align:center; padding:8px 4px; color:#10b981;">✓ Nobody parked</div>'
-        : '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>';
-    } else {
-      body = renderList(players);
-    }
+    const body = players.length === 0
+      ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
+      : renderList(players);
 
     // Column-level dues risk: how many players in this column are
     // currently overdue.  Coach uses this to spot at-a-glance which
-    // rosters need attention.  Excluded from Dues Owed (already isolated).
-    const overdueInCol = isDuesOwed ? 0 : players.filter(p => (p.daysOverdue || 0) >= 1).length;
+    // rosters need attention.
+    const overdueInCol = players.filter(p => (p.daysOverdue || 0) >= 1).length;
     const overdueHtml = overdueInCol > 0
       ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px solid #7f1d1d; border-radius:3px; font-size:0.65rem; font-weight:700; letter-spacing:0.05em; text-align:center;">⚠ ${overdueInCol} OVERDUE</div>`
-      : '';
-    const duesOwedHint = isDuesOwed
-      ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px dashed #b91c1c; border-radius:3px; font-size:0.65rem; letter-spacing:0.03em; text-align:center; line-height:1.35;">Admin-parked: off all rosters.<br>Move card to another column to reinstate.</div>`
       : '';
 
     return `
@@ -283,7 +273,6 @@ class MensRosterScreen extends Screen {
           ${countHtml}
         </div>
         ${overdueHtml}
-        ${duesOwedHint}
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px;">
           ${body}
@@ -348,22 +337,22 @@ class MensRosterScreen extends Screen {
     // ---- Move-to-roster buttons ----------------------------------------
     //
     // Four hard-coded targets, all mutually exclusive at the DB level
-    // (mens-selection mutex_group on 35 / 120 / 910 — migration 085).
-    // Only APSL (35), Liga 1 (120), and Dues Owed (910) are real teams;
-    // Unassigned (0) means "remove from whichever real team they're on".
-    // Practice + Pickup are all-hands teams derived from Dues Owed state
-    // (see MensRoster.cpp backfill) so they never appear as buttons.
+    // (mens-selection mutex_group on 35 / 120 / 121 — migrations 085 +
+    // 101).  APSL (35), Liga 1 (120), Liga 2 (121) are the real
+    // division teams; Unassigned (0) means "remove from whichever real
+    // team they're on".  Practice + Pickup are all-hands teams
+    // (backfilled server-side) so they never appear as buttons.
     const assignedSet = new Set(p.teamIds || []);
     const isOnApsl     = assignedSet.has(35);
     const isOnLiga1    = assignedSet.has(120);
-    const isOnDuesOwed = assignedSet.has(910);
-    const currentTeamId = isOnDuesOwed ? 910 : isOnApsl ? 35 : isOnLiga1 ? 120 : 0;
+    const isOnLiga2    = assignedSet.has(121);
+    const currentTeamId = isOnApsl ? 35 : isOnLiga1 ? 120 : isOnLiga2 ? 121 : 0;
 
     const targets = [
       { id: 0,   label: 'Unassigned', color: '#475569' },
       { id: 35,  label: 'APSL',       color: '#2563eb' },
       { id: 120, label: 'Liga 1',     color: '#0891b2' },
-      { id: 910, label: 'Dues Owed',  color: '#ef4444' },
+      { id: 121, label: 'Liga 2',     color: '#14b8a6' },
     ];
     // Shared button style — as thin as legible.  Zero vertical padding
     // plus a tight line-height give ~11-12 px total height while the
@@ -857,7 +846,7 @@ class MensRosterScreen extends Screen {
   //   • target == 0 (Unassigned)  → POST remove on whichever real team
   //     the player currently sits on (backend mutex guarantees at most
   //     one).  No-op if already unassigned.
-  //   • target == 35 / 120 / 910   → POST add.  Backend's mutex_group
+  //   • target == 35 / 120 / 121   → POST add.  Backend's mutex_group
   //     handling in MensTeamAssignments::addAssignment auto-removes the
   //     other division, so we don't need a separate remove call.
   async onMoveOptionClick(btn) {

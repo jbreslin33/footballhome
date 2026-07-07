@@ -548,8 +548,6 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         double balance    = 0.0;
     };
     std::unordered_map<std::string, PlayerDelinquency> delinqByUid;
-    std::unordered_map<long long, MensTeamAssignments::DelinquencyDetail> toPurge;
-    std::vector<long long> toRestore;
 
     for (auto& p : all) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
@@ -620,107 +618,44 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         // goes negative → state flips to ok on the next roster fetch.
         d.duesOwed = (d.daysOverdue >= holdDays);
         delinqByUid.emplace(uid, d);
-
-        long long uidLL = 0;
-        try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
-        if (uidLL <= 0) continue;
-
-        // Does this user currently have any ACTIVE assignments?  If yes
-        // and they're dues-owed, queue soft-delete.  Do we have any
-        // stale delinquent-removed rows for a user who's now ok? Queue
-        // restore.  Both queues resolve after the loop.
-        auto amIt = assignmentMap.find(uid);
-        const bool hasActiveAssignment = (amIt != assignmentMap.end() && !amIt->second.empty());
-        if (d.duesOwed && hasActiveAssignment) {
-            MensTeamAssignments::DelinquencyDetail det;
-            det.daysOverdue = d.daysOverdue;
-            det.nextBillDate = d.nextBillDate;
-            det.hasBalance = d.hasBalance;
-            det.outstandingBalance = d.balance;
-            toPurge.emplace(uidLL, det);
-        } else if (!d.duesOwed) {
-            // Cheap-and-conservative: always queue a restore attempt on
-            // OK players.  bulkRestore is a no-op when there are no
-            // delinquent-removed rows for that user (query returns empty
-            // set).  Keeps the code path simple.
-            toRestore.push_back(uidLL);
-        }
     }
 
-    // ── Auto-purge sweep DISABLED (2026-07-04) ─────────────────────────
+    // ── Auto-purge sweep + Dues Owed sin-bin RETIRED (2026-07-07) ─────
     //
-    // Original behavior (2026-07-04 morning):
-    //   • Players 7+ days overdue got auto soft-deleted from every team
-    //     assignment (bulkSoftDeleteForDelinquent).
-    //   • When they paid, backfill ran + bulkRestoreForDelinquent brought
-    //     rows back.
+    // History:
+    //   • 2026-07-04 am: 7+ days overdue → auto soft-delete from every
+    //     team; auto-restore on payment.
+    //   • 2026-07-04 pm ("don't auto manage it"): sweep disabled, admin
+    //     drove placement via a Dues Owed column (team 910).
+    //   • 2026-07-07 (migration 100): Dues Owed column archived entirely.
+    //     OVERDUE chip on cards + /mens-delinquent screen surface who
+    //     owes dues without parking bodies in a sin-bin.
     //
-    // New behavior (user directive same day: "don't auto manage it"):
-    //   • The Dues Owed TEAM (id 910) is 100 % admin-driven — coach
-    //     clicks the Dues Owed move button on a card to park a player.
-    //     Backend just tracks the mens_team_assignments row on team 910.
-    //     Both the auto 'dues_owed' delinquencyState (above) AND this
-    //     admin team share the label "Dues Owed" — the state is
-    //     auto-flagged by days-past-due, the team is a manual sin-bin
-    //     for any reason the coach chooses.
-    //   • Delinquency data (daysOverdue, nextBillDate, outstandingBalance)
-    //     is still computed + returned so the card can show a red
-    //     "Nd OVERDUE" chip and admin can decide whether to escalate.
-    //   • The sweep is left in place as commented reference in case we
-    //     want to opt back into auto behavior via a feature flag later.
-    //
-    // long long purged = 0, restored = 0;
-    // try {
-    //     if (!toPurge.empty())   purged   = assignments_->bulkSoftDeleteForDelinquent(toPurge);
-    //     if (!toRestore.empty()) restored = assignments_->bulkRestoreForDelinquent(toRestore);
-    // } catch (const std::exception& e) {
-    //     std::cerr << "[MensRoster] delinquency sweep failed: " << e.what() << std::endl;
-    // }
-    (void)toPurge; (void)toRestore;  // still computed above for potential future use
+    // delinquencyState + daysOverdue are still emitted per-player below
+    // (via delinqByUid) so the chip + /#my banner + delinquent screen
+    // keep working.  If we ever want auto-management back, resurrect
+    // MensTeamAssignments::bulk{SoftDeleteForDelinquent,RestoreForDelinquent}
+    // behind a feature flag.
 
     // ── Practice / Pickup auto-membership backfill (2026-07-04) ────────
     //
-    // Rule: every LA member NOT parked in Dues Owed (team 910) is on
-    // the Practice (908) + Pickup (909) all-hands teams.  Admin puts
-    // problem players in the Dues Owed column via the Roster Board
-    // button; the mutex in roster_columns atomically clears their
-    // APSL/Liga 1 row.  Here we also make sure their Practice/Pickup
-    // rows are gone (soft-delete) and skip re-adding them.
-    //
-    // Practice + Pickup are not selection columns on the Roster Board
+    // Every LA member is on the Practice (908) + Pickup (909) all-hands
+    // teams.  These are not selection columns on the Roster Board
     // (archived from roster_columns), so the coach never has to
     // manually assign anyone to them.
     constexpr int kPracticeTeamId = 908;
     constexpr int kPickupTeamId   = 909;
-    constexpr int kDuesOwedTeamId = 910;
 
-    // Build the set of UIDs currently parked in Dues Owed (active team
-    // 910 row).  These are excluded from the backfill AND their existing
-    // Practice/Pickup rows are soft-deleted below.
-    std::unordered_set<long long> duesOwedUids;
-    try {
-        auto* db = Database::getInstance();
-        pqxx::result rows = db->query(
-            "SELECT leagueapps_user_id FROM roster_assignments "
-            " WHERE domain = 'mens' "
-            "   AND team_id = $1 AND removed_at IS NULL",
-            {std::to_string(kDuesOwedTeamId)}
-        );
-        for (const auto& r : rows) {
-            if (r["leagueapps_user_id"].is_null()) continue;
-            duesOwedUids.insert(r["leagueapps_user_id"].as<long long>());
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "[MensRoster] dues-owed-UID lookup failed: " << e.what() << std::endl;
-    }
-
+    // Every LA member with a resolvable uid is a candidate for
+    // Practice + Pickup backfill (all-hands teams).  bulkEnsureActive
+    // is an INSERT ON CONFLICT DO NOTHING against the partial-unique
+    // index, so idempotent and cheap.
     std::vector<long long> goodStandingUids;
     goodStandingUids.reserve(all.size());
     for (const auto& [uid, d] : delinqByUid) {
         long long uidLL = 0;
         try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
         if (uidLL <= 0) continue;
-        if (duesOwedUids.count(uidLL)) continue;  // parked — skip
         goodStandingUids.push_back(uidLL);
     }
     long long backfilledPractice = 0, backfilledPickup = 0;
@@ -733,8 +668,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     if (backfilledPractice > 0 || backfilledPickup > 0) {
         std::cerr << "[MensRoster] practice/pickup backfill: practice=" << backfilledPractice
                   << " pickup=" << backfilledPickup
-                  << " goodStanding=" << goodStandingUids.size()
-                  << " duesOwed=" << duesOwedUids.size() << std::endl;
+                  << " members=" << goodStandingUids.size() << std::endl;
         // Reload again — new active rows changed the map.
         assignmentMap = assignments_->loadAll();
     }

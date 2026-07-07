@@ -1,24 +1,31 @@
-// MensEventsRemindersScreen — one place to see every upcoming men's
-// event (games + practice + pickup) and fire off "please RSVP" nudges
-// to non-responders.  Backed by:
+// MensEventsRemindersScreen — coach's "who hasn't RSVP'd yet?" board.
 //
-//   GET  /api/mens/upcoming-events        — flat, date-sorted list of
-//     every non-cancelled match on a mens home team (game teams +
-//     pool teams 908/909).
-//   POST /api/matches/:id/remind          — reuses the existing bulk
-//     reminder pipeline (same eligibility rules, rate-limit, magic
-//     link generation) that Match RSVP Management uses.
+// Layout (v2, 2026-07-06):
+//   Horizontal-scrolling row of EVENT COLUMNS, ordered left-to-right
+//   by time.  Next event is leftmost.  Only shows events in the next
+//   7 days.  Each column contains four stacked sections:
+//     ✅ Going       ❌ Can't go      🟡 Maybe      ⚪ No response
+//   Every roster-eligible player for that event lands in exactly one
+//   section based on their most recent player_rsvp_history row.
 //
-// The reply modal is a clone of the one in match-rsvp-management —
-// coach taps ONE row's "Send" and the OS composer opens with the
-// prefilled SMS body + magic RSVP link.  We keep the modal self-
-// contained here so the two screens stay independent.
+// Per-player row has FOUR contact buttons:
+//   📧  plain mailto:  (generic body, links to /#rsvp/<chat_event_id>)
+//   💬  plain sms:     (generic body, same URL)
+//   🔗📧 magic-link mailto:  (POST /api/matches/:id/remind{channel:email,
+//                             person_ids:[id]} → open returned mailto_href)
+//   🔗💬 magic-link sms:     (same but channel:sms → sms_href)
+//
+// Data source: GET /api/mens/week-availability?days=7
+// Magic-link source: POST /api/matches/:id/remind
+//
+// The magic-link buttons hit a rate-limit (one nudge per player per
+// event per 5 min) — we surface any 429-like message inline on the
+// clicked button and disable it briefly.
 class MensEventsRemindersScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
-    this.events = [];
-    this._filter = 'upcoming'; // 'upcoming' (>= today) is the only option for now
-    this._bulkTotal = 0;
+    this.data = null;         // full /api/mens/week-availability payload
+    this._colWidthPx = 320;   // per-event column width
   }
 
   render() {
@@ -29,27 +36,30 @@ class MensEventsRemindersScreen extends Screen {
         <button class="btn btn-secondary btn-sm back-btn">← Back</button>
         <h1 style="margin:0;font-size:1.5rem;">📢 Mens Reminders</h1>
         <span style="flex:1"></span>
-        <span id="mer-count" style="font-size:0.95rem;color:var(--text-muted);"></span>
+        <span id="mer-range" style="font-size:0.85rem;color:var(--text-muted);"></span>
       </div>
 
-      <div style="padding:0 var(--space-3) var(--space-3);max-width:1000px;margin:0 auto;">
-        <p style="opacity:0.8;font-size:1rem;margin:0 0 var(--space-3);line-height:1.4;">
-          Every upcoming men's event — games, practice, pickup — across all mens teams.
-          Tap <b>📢 Remind non-responders</b> on any row to generate SMS deep-links for
-          each player who hasn't RSVP'd yet.  Rate-limited to one nudge per player per
-          event every 5 minutes.
+      <div style="padding:0 var(--space-3) var(--space-2);max-width:1400px;margin:0 auto;">
+        <p style="opacity:0.75;font-size:0.9rem;margin:0 0 var(--space-2);line-height:1.4;">
+          Every mens event in the next 7 days, left-to-right in time order.  Each
+          column shows every eligible player bucketed by their current RSVP.
+          Tap a player's 📧 / 💬 buttons to open your Mail / Messages app with
+          a reminder pre-filled — magic-link (🔗) variants one-tap-sign-in the
+          player and drop them on the RSVP page.
         </p>
+      </div>
 
-        <div id="mer-loading" style="text-align:center;padding:var(--space-4);color:var(--text-muted);">
-          Loading events…
-        </div>
+      <div id="mer-loading" style="text-align:center;padding:var(--space-4);color:var(--text-muted);">
+        Loading week…
+      </div>
 
-        <div id="mer-list" style="display:none;flex-direction:column;gap:10px;"></div>
+      <div id="mer-empty" style="display:none;text-align:center;padding:var(--space-4);color:var(--text-muted);">
+        <div style="font-size:2rem;margin-bottom:8px;">📭</div>
+        <div>No mens events scheduled in the next 7 days.</div>
+      </div>
 
-        <div id="mer-empty" style="display:none;text-align:center;padding:var(--space-4);color:var(--text-muted);">
-          <div style="font-size:2rem;margin-bottom:8px;">📭</div>
-          <div>No upcoming men's events on the schedule.</div>
-        </div>
+      <div id="mer-board-scroll" style="display:none;overflow-x:auto;padding:0 var(--space-3) var(--space-4);-webkit-overflow-scrolling:touch;">
+        <div id="mer-board" style="display:flex;gap:12px;align-items:flex-start;min-height:200px;"></div>
       </div>
     `;
     this.element = div;
@@ -62,35 +72,10 @@ class MensEventsRemindersScreen extends Screen {
         this.navigation.goBack();
         return;
       }
-
-      const remindBtn = e.target.closest('.mer-remind-btn');
-      if (remindBtn) {
-        const matchId = remindBtn.getAttribute('data-match-id');
-        const channel = remindBtn.getAttribute('data-channel') || 'sms';
-        this.sendReminders(matchId, channel, remindBtn);
-        return;
-      }
-
-      // Bulk-remind modal — per-row Send.
-      const bulkSendBtn = e.target.closest('.bulk-send-btn');
-      if (bulkSendBtn) {
-        e.stopPropagation();
-        const href = bulkSendBtn.getAttribute('data-href');
-        if (href) {
-          bulkSendBtn.classList.add('bulk-sent');
-          bulkSendBtn.textContent = '✓ Sent';
-          bulkSendBtn.style.background = 'rgba(34,139,34,0.85)';
-          bulkSendBtn.style.color = 'white';
-          this._updateBulkProgress();
-          setTimeout(() => { window.location.href = href; }, 60);
-        }
-        return;
-      }
-
-      if (e.target.id === 'bulk-remind-close' || e.target.id === 'bulk-remind-backdrop') {
-        e.stopPropagation();
-        this.hideBulkRemindModal();
-        return;
+      const magicBtn = e.target.closest('.mer-magic-btn');
+      if (magicBtn) {
+        e.preventDefault();
+        this.handleMagicClick(magicBtn);
       }
     });
 
@@ -99,88 +84,267 @@ class MensEventsRemindersScreen extends Screen {
 
   async load() {
     try {
-      const resp = await this.auth.fetch('/api/mens/upcoming-events', {
+      const resp = await this.auth.fetch('/api/mens/week-availability?days=7', {
         headers: { 'Cache-Control': 'no-cache' }
       });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const payload = await resp.json();
-      const arr = (payload && payload.data) ? payload.data : (Array.isArray(payload) ? payload : []);
-      this.events = arr;
+      this.data = payload;
 
       this.find('#mer-loading').style.display = 'none';
-      if (this.events.length === 0) {
+
+      const events = (this.data && this.data.events) || [];
+      if (events.length === 0) {
         this.find('#mer-empty').style.display = 'block';
-      } else {
-        this.find('#mer-count').textContent =
-          `${this.events.length} event${this.events.length === 1 ? '' : 's'}`;
-        this.renderList();
+        this.find('#mer-range').textContent = '';
+        return;
       }
+
+      if (this.data.week_start && this.data.week_end) {
+        this.find('#mer-range').textContent =
+          `${this._fmtDate(this.data.week_start)} – ${this._fmtDate(this.data.week_end)}`;
+      }
+
+      this.find('#mer-board-scroll').style.display = 'block';
+      this.renderBoard();
     } catch (err) {
-      console.error('Failed to load mens events:', err);
+      console.error('mens week-availability load failed:', err);
       this.find('#mer-loading').innerHTML =
-        `<p style="color:#f87171;">❌ Failed to load: ${err.message || err}</p>`;
+        `<p style="color:#f87171;">❌ Failed to load: ${this._escape(String(err.message || err))}</p>`;
     }
   }
 
-  renderList() {
-    const list = this.find('#mer-list');
-    list.style.display = 'flex';
-
-    // Group by ISO date so the coach sees "Tue Jul 7 ─── …" separators.
-    let lastDate = null;
-    const parts = [];
-
-    this.events.forEach((ev) => {
-      if (ev.date !== lastDate) {
-        lastDate = ev.date;
-        parts.push(`
-          <div style="margin-top:14px;font-size:0.85rem;font-weight:700;color:var(--text-muted);
-                      text-transform:uppercase;letter-spacing:0.05em;padding:6px 4px;">
-            ${this._escape(ev.date_str || ev.date)}
-          </div>
-        `);
-      }
-      parts.push(this._renderRow(ev));
-    });
-
-    list.innerHTML = parts.join('');
+  renderBoard() {
+    const board = this.find('#mer-board');
+    board.innerHTML = this.data.events.map((ev) => this.renderColumn(ev)).join('');
   }
 
-  _renderRow(ev) {
+  renderColumn(ev) {
     const badge = this._typeBadge(ev.type, ev.match_type_id);
-    const time = ev.time_str ? `<span style="color:var(--text-muted);">${this._escape(ev.time_str)}</span>` : '';
-    const title = this._escape(ev.title || 'Untitled');
-    const home = this._escape(ev.home_team_name || '');
-    const away = ev.away_team_name ? ` <span style="color:var(--text-muted);">vs ${this._escape(ev.away_team_name)}</span>` : '';
-    const venue = ev.venue_name ? ` · ${this._escape(ev.venue_name)}` : '';
+    const away = ev.away_team_name
+      ? ` vs <span style="color:var(--text-muted);">${this._escape(ev.away_team_name)}</span>`
+      : '';
+    const venue = ev.venue_name
+      ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">📍 ${this._escape(ev.venue_name)}</div>`
+      : '';
+
+    // Bucket by RSVP status.  Null = "no response" (has never RSVP'd).
+    const buckets = { yes: [], no: [], maybe: [], none: [] };
+    (ev.players || []).forEach((p) => {
+      const key = p.rsvp_status === 'yes'   ? 'yes'
+                : p.rsvp_status === 'no'    ? 'no'
+                : p.rsvp_status === 'maybe' ? 'maybe'
+                :                             'none';
+      buckets[key].push(p);
+    });
+
+    // Section order per user directive: Going → Can't → Maybe → No response.
+    // "No response" is the highlighted one (that's the whole reason
+    // the coach is on this screen), so it gets the loudest border.
+    const sections = [
+      { key: 'yes',   label: '✅ Going',       color: '#10b981', muted: true  },
+      { key: 'no',    label: '❌ Can\'t go',   color: '#94a3b8', muted: true  },
+      { key: 'maybe', label: '🟡 Maybe',       color: '#f59e0b', muted: false },
+      { key: 'none',  label: '⚪ No response', color: '#ef4444', muted: false },
+    ];
+
+    const totalMissing = buckets.maybe.length + buckets.none.length;
+    const totalPlayers = (ev.players || []).length;
+
+    const sectionsHtml = sections.map((s) => this.renderSection(s, buckets[s.key], ev)).join('');
 
     return `
-      <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;
-                  border-radius:10px;background:rgba(15,23,42,0.55);
-                  border:1px solid rgba(148,163,184,0.25);">
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+      <div class="mer-column" style="flex:0 0 ${this._colWidthPx}px;background:var(--bg-secondary);
+                                     border-radius:12px;border-top:4px solid ${this._typeColor(ev.type, ev.match_type_id)};
+                                     overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:10px 12px;background:rgba(15,23,42,0.35);border-bottom:1px solid rgba(148,163,184,0.15);">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
             ${badge}
-            <div style="font-weight:700;font-size:1.05rem;">${title}</div>
-            ${time}
+            <span style="font-size:0.78rem;color:var(--text-muted);">${this._escape(ev.date_str || ev.match_date || '')}</span>
+            ${ev.time_str ? `<span style="font-size:0.78rem;color:var(--text-muted);">· ${this._escape(ev.time_str)}</span>` : ''}
           </div>
-          <div style="font-size:0.9rem;color:var(--text-muted);">
-            ${home}${away}${venue}
+          <div style="font-weight:700;font-size:0.98rem;line-height:1.25;">
+            ${this._escape(ev.home_team_name || ev.title)}${away}
+          </div>
+          ${venue}
+          <div style="margin-top:6px;font-size:0.72rem;color:var(--text-muted);">
+            <b style="color:${totalMissing > 0 ? '#fca5a5' : '#86efac'};">${totalMissing}</b>
+            missing of ${totalPlayers}
           </div>
         </div>
-        <button class="mer-remind-btn"
-                data-match-id="${ev.id}"
-                data-channel="sms"
-                style="all:unset;cursor:pointer;padding:10px 14px;border-radius:8px;
-                       background:rgba(245,200,66,0.18);color:#f5c842;font-weight:700;
-                       border:1px solid rgba(245,200,66,0.5);white-space:nowrap;">
-          📢 Remind
-        </button>
+        <div style="padding:8px;display:flex;flex-direction:column;gap:8px;">
+          ${sectionsHtml}
+        </div>
       </div>
     `;
   }
 
+  renderSection(section, players, ev) {
+    if (players.length === 0) return '';   // hide empty sections to save vertical space
+
+    const rows = players.map((p) => this.renderPlayerRow(p, ev)).join('');
+
+    return `
+      <div style="border-left:3px solid ${section.color};padding-left:8px;opacity:${section.muted ? 0.85 : 1};">
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.03em;color:${section.color};
+                    margin-bottom:4px;text-transform:uppercase;">
+          ${section.label} (${players.length})
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${rows}
+        </div>
+      </div>
+    `;
+  }
+
+  renderPlayerRow(p, ev) {
+    const name = `${this._escape(p.first_name || '')} ${this._escape(p.last_name || '')}`.trim() || 'Unknown';
+
+    // Plain-URL RSVP links point at #rsvp/<chat_event_id> when we
+    // have one; fall back to /#my (weekly schedule) otherwise.
+    const rsvpUrl = ev.chat_event_id
+      ? `https://footballhome.org/#rsvp/${ev.chat_event_id}`
+      : `https://footballhome.org/#my`;
+
+    // Plain body — no server round-trip; player has to sign in.
+    // 2026-07-06 pm — spell out that RSVPing every event is mandatory
+    // so coaches can plan (mirrors the same policy line in the magic-
+    // link body served by EventReminderController::handleSendReminders
+    // and the /#my week-schedule page).
+    const eventWhen = [ev.date_str, ev.time_str].filter(Boolean).join(' ');
+    const eventTitle = ev.title || ev.home_team_name || 'the next event';
+    const bodyLines = [
+      `Hi ${p.first_name || 'there'} — heads up, we don't have your RSVP yet for ${eventTitle}${eventWhen ? ' on ' + eventWhen : ''}${ev.venue_name ? ' at ' + ev.venue_name : ''}.`,
+      '',
+      `RSVPing to every event on your schedule is required — it's how we plan rosters, subs, and cancellations.`,
+      '',
+      `Tap here to set Going / Can't go / Maybe: ${rsvpUrl}`,
+      '',
+      'Thanks — Lighthouse 1893',
+    ];
+    const plainBody = bodyLines.join('\n');
+    const plainSmsBody = bodyLines.join('\n');
+    const plainSubject = `Football Home — RSVP for ${eventTitle}`;
+
+    const hasEmail = !!p.email;
+    const hasSms   = !!(p.phone && p.sms_capable);
+
+    // Base button style — thin & tight, room for four side-by-side.
+    const btnBase = 'display:inline-flex;align-items:center;justify-content:center;'
+                  + 'padding:4px 6px;border-radius:5px;font-size:0.72rem;font-weight:700;'
+                  + 'text-decoration:none;line-height:1;white-space:nowrap;border:none;cursor:pointer;';
+
+    // Plain (no magic link).
+    const emailPlainBtn = hasEmail
+      ? `<a href="${this._plainMailtoHref(p.email, plainSubject, plainBody)}"
+             target="_blank" rel="noopener noreferrer"
+             title="Email ${this._escape(p.email)} a plain RSVP reminder"
+             style="${btnBase}background:#3b82f6;color:#fff;">📧</a>`
+      : this._disabledBtn(btnBase, '📧', 'No email on file');
+
+    const smsPlainBtn = hasSms
+      ? `<a href="sms:${this._escape(p.phone)}?body=${encodeURIComponent(plainSmsBody)}"
+             title="Text ${this._escape(this._fmtPhone(p.phone))} a plain RSVP reminder"
+             style="${btnBase}background:#10b981;color:#fff;">💬</a>`
+      : this._disabledBtn(btnBase, '💬', 'No SMS phone on file');
+
+    // Magic-link — deferred, hits /api/matches/:id/remind on click.
+    const magicAttrs = `data-match-id="${ev.match_id}" data-person-id="${p.person_id}"`;
+    const emailMagicBtn = hasEmail
+      ? `<button type="button" class="mer-magic-btn" ${magicAttrs} data-channel="email"
+                 title="Email ${this._escape(p.email)} a one-tap magic-link RSVP"
+                 style="${btnBase}background:#0d9488;color:#fff;">🔗📧</button>`
+      : this._disabledBtn(btnBase, '🔗📧', 'No email on file');
+
+    const smsMagicBtn = hasSms
+      ? `<button type="button" class="mer-magic-btn" ${magicAttrs} data-channel="sms"
+                 title="Text ${this._escape(this._fmtPhone(p.phone))} a one-tap magic-link RSVP"
+                 style="${btnBase}background:#0ea5e9;color:#fff;">🔗💬</button>`
+      : this._disabledBtn(btnBase, '🔗💬', 'No SMS phone on file');
+
+    return `
+      <div style="display:flex;flex-direction:column;gap:3px;padding:5px 6px;background:rgba(15,23,42,0.35);border-radius:6px;">
+        <div style="font-size:0.82rem;font-weight:600;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          ${name}
+        </div>
+        <div style="display:flex;gap:3px;flex-wrap:nowrap;">
+          ${emailPlainBtn}${smsPlainBtn}${emailMagicBtn}${smsMagicBtn}
+        </div>
+      </div>
+    `;
+  }
+
+  _disabledBtn(btnBase, icon, tooltip) {
+    return `<span title="${this._escape(tooltip)}"
+                  style="${btnBase}background:rgba(148,163,184,0.15);color:rgba(148,163,184,0.5);cursor:not-allowed;">${icon}</span>`;
+  }
+
+  async handleMagicClick(btn) {
+    const matchId  = btn.getAttribute('data-match-id');
+    const personId = btn.getAttribute('data-person-id');
+    const channel  = btn.getAttribute('data-channel') || 'sms';
+
+    if (!matchId || !personId) return;
+
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳';
+
+    try {
+      const resp = await this.auth.fetch(`/api/matches/${matchId}/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, person_ids: [Number(personId)] })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      const rec = (data.recipients || [])[0];
+      if (!rec) {
+        // Every skip path (rate-limit, no contact) collapses to no
+        // recipient — surface the specific reason if the server gave us
+        // one, otherwise a generic hint.
+        const bits = [];
+        if (data.skipped_rate_limited) bits.push('rate-limited (5-min cooldown)');
+        if (data.skipped_no_contact)   bits.push(`no ${channel === 'sms' ? 'SMS phone' : 'email'} on file`);
+        alert(bits.length
+          ? `No link generated — ${bits.join('; ')}.`
+          : 'No link generated (already RSVP\'d, no contact, or rate-limited).');
+        return;
+      }
+
+      const href = channel === 'sms' ? rec.sms_href : rec.mailto_href;
+      if (!href) {
+        alert('Server returned a recipient with no launchable link.');
+        return;
+      }
+      window.location.href = href;
+    } catch (err) {
+      console.error('magic link failed:', err);
+      alert(`Failed: ${err.message || err}`);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  }
+
+  _plainMailtoHref(email, subject, body) {
+    // Gmail compose URL is a lot friendlier on desktop than a raw
+    // mailto:; mens-roster.js does the same thing.  authuser= pins the
+    // sender so the coach doesn't accidentally send from a personal
+    // Google account.
+    const params = new URLSearchParams({
+      view: 'cm',
+      fs: '1',
+      authuser: 'soccer@lighthouse1893.org',
+      to: email,
+      su: subject,
+      body: body,
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
+  }
+
   _typeBadge(type, mtId) {
-    // Fall back to match_type_id → label if `type` string is missing.
     const t = (type || '').toLowerCase() || (
       mtId === 3 ? 'practice' :
       mtId === 7 ? 'pickup'   :
@@ -191,151 +355,53 @@ class MensEventsRemindersScreen extends Screen {
       mtId === 5 ? 'tournament' : ''
     );
     const styles = {
-      practice:  { bg:'rgba(59,130,246,0.18)',  fg:'#93c5fd', label:'🏃 Practice' },
-      pickup:    { bg:'rgba(168,85,247,0.18)',  fg:'#c4b5fd', label:'⚡ Pickup'   },
-      league:    { bg:'rgba(34,197,94,0.18)',   fg:'#86efac', label:'⚽ Game'     },
-      cup:       { bg:'rgba(34,197,94,0.18)',   fg:'#86efac', label:'🏆 Cup'      },
-      scrimmage: { bg:'rgba(148,163,184,0.20)', fg:'#cbd5e1', label:'⚔️ Scrimmage'},
-      tournament:{ bg:'rgba(234,179,8,0.18)',   fg:'#fde68a', label:'🏆 Tournament'},
-      custom:    { bg:'rgba(148,163,184,0.20)', fg:'#cbd5e1', label:'📅 Event'    },
-      game:      { bg:'rgba(34,197,94,0.18)',   fg:'#86efac', label:'⚽ Game'     },
+      practice:  { bg:'rgba(59,130,246,0.22)',  fg:'#93c5fd', label:'🏃 Practice' },
+      pickup:    { bg:'rgba(168,85,247,0.22)',  fg:'#c4b5fd', label:'⚡ Pickup'   },
+      league:    { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'⚽ Game'     },
+      cup:       { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'🏆 Cup'      },
+      scrimmage: { bg:'rgba(148,163,184,0.22)', fg:'#cbd5e1', label:'⚔️ Scrimmage'},
+      tournament:{ bg:'rgba(234,179,8,0.22)',   fg:'#fde68a', label:'🏆 Tournament'},
+      custom:    { bg:'rgba(148,163,184,0.22)', fg:'#cbd5e1', label:'📅 Event'    },
+      game:      { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'⚽ Game'     },
     };
     const s = styles[t] || styles.custom;
-    return `<span style="padding:3px 9px;border-radius:9999px;font-size:0.78rem;
+    return `<span style="padding:2px 8px;border-radius:9999px;font-size:0.72rem;
                           background:${s.bg};color:${s.fg};font-weight:700;
                           white-space:nowrap;">${s.label}</span>`;
   }
 
-  async sendReminders(matchId, channel, btnEl) {
-    if (!matchId) return;
-
-    if (!confirm(`Generate ${channel.toUpperCase()} reminders for every non-responder on this event?\n\n` +
-                 `You'll get a modal with one Send button per player — tap each to open your ` +
-                 `Messages app with the RSVP link prefilled.  Rate-limit: 5 minutes.`)) {
-      return;
-    }
-
-    const original = btnEl ? btnEl.innerHTML : '';
-    if (btnEl) {
-      btnEl.disabled = true;
-      btnEl.innerHTML = '⏳ Generating…';
-    }
-
-    try {
-      const resp = await this.auth.fetch(`/api/matches/${matchId}/remind`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel })
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
-
-      const recipients = data.recipients || [];
-      if (recipients.length === 0) {
-        const parts = [];
-        if (data.skipped_rate_limited) parts.push(`${data.skipped_rate_limited} already reminded in the last 5 min`);
-        if (data.skipped_no_contact)   parts.push(`${data.skipped_no_contact} with no ${channel === 'sms' ? 'SMS phone' : 'email'} on file`);
-        alert(parts.length
-          ? `No new reminders generated. Skipped: ${parts.join('; ')}.`
-          : 'No non-responders found to remind (everyone has already RSVP\'d).');
-        return;
-      }
-
-      this.showBulkRemindModal(recipients, data);
-    } catch (err) {
-      console.error('sendReminders failed:', err);
-      alert(`Failed: ${err.message || err}`);
-    } finally {
-      if (btnEl) {
-        btnEl.disabled = false;
-        btnEl.innerHTML = original;
-      }
-    }
+  _typeColor(type, mtId) {
+    const t = (type || '').toLowerCase() || (
+      mtId === 3 ? 'practice' : mtId === 7 ? 'pickup' :
+      mtId === 1 ? 'game'     : 'custom'
+    );
+    return { practice:'#3b82f6', pickup:'#a855f7', game:'#22c55e', league:'#22c55e',
+             cup:'#22c55e', scrimmage:'#94a3b8', tournament:'#eab308', custom:'#94a3b8'
+           }[t] || '#94a3b8';
   }
 
-  showBulkRemindModal(recipients, meta) {
-    this.hideBulkRemindModal();
-
-    const LH_NAVY   = '#0f1f3d';
-    const LH_YELLOW = '#f5c842';
-
-    const rowsHtml = recipients.map((r, i) => {
-      const name    = this._escape(r.name || 'Unknown');
-      const contact = this._escape(r.contact || '');
-      const href    = this._escape(r.sms_href || r.mailto_href || '');
-      return `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
-                    border-bottom:1px solid rgba(15,31,61,0.12);background:white;">
-          <div style="width:24px;text-align:right;color:${LH_NAVY};opacity:0.55;font-size:0.85em;">${i + 1}.</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;color:${LH_NAVY};">${name}</div>
-            <div style="font-size:0.85em;color:#4b5563;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${contact}</div>
-          </div>
-          <button class="bulk-send-btn"
-                  data-href="${href}"
-                  style="padding:8px 14px;background:${LH_YELLOW};color:${LH_NAVY};
-                         border:none;border-radius:6px;font-weight:700;cursor:pointer;
-                         font-size:0.95em;white-space:nowrap;"
-                  title="Open Messages with the reminder prefilled">
-            📱 Send
-          </button>
-        </div>
-      `;
-    }).join('');
-
-    const skippedParts = [];
-    if (meta && meta.skipped_rate_limited) skippedParts.push(`${meta.skipped_rate_limited} skipped (already reminded in last 5 min)`);
-    if (meta && meta.skipped_no_contact)   skippedParts.push(`${meta.skipped_no_contact} skipped (no contact on file)`);
-    const skippedNote = skippedParts.length
-      ? `<div style="padding:8px 12px;background:rgba(245,200,66,0.15);color:${LH_NAVY};
-                     font-size:0.85em;border-top:1px solid rgba(15,31,61,0.12);">${skippedParts.join(' · ')}</div>`
-      : '';
-
-    const overlay = document.createElement('div');
-    overlay.id = 'bulk-remind-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;justify-content:center;';
-    overlay.innerHTML = `
-      <div id="bulk-remind-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.55);"></div>
-      <div style="position:relative;width:100%;max-width:560px;max-height:90vh;background:white;
-                  border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden;
-                  box-shadow:0 -8px 24px rgba(0,0,0,0.25);">
-        <div style="padding:14px 16px;background:${LH_NAVY};color:${LH_YELLOW};
-                    display:flex;align-items:center;justify-content:space-between;gap:10px;">
-          <div style="min-width:0;">
-            <div style="font-weight:700;font-size:1.05em;">📱 Bulk RSVP Reminders</div>
-            <div id="bulk-remind-progress" style="font-size:0.8em;opacity:0.9;margin-top:2px;">0 of ${recipients.length} sent</div>
-          </div>
-          <button id="bulk-remind-close"
-                  style="background:transparent;color:${LH_YELLOW};border:1px solid ${LH_YELLOW};
-                         border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:700;">Done</button>
-        </div>
-        <div style="padding:10px 12px;background:rgba(245,200,66,0.12);color:${LH_NAVY};
-                    font-size:0.85em;border-bottom:1px solid rgba(15,31,61,0.12);">
-          Tap <b>📱 Send</b> next to each player to open Messages.  Each link is one-tap RSVP and expires in 48 hours.
-        </div>
-        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-          ${rowsHtml}
-        </div>
-        ${skippedNote}
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    this._bulkTotal = recipients.length;
+  _fmtDate(iso) {
+    // "2026-07-06" → "Mon, Jul 6" — no timezone conversion since
+    // the server already gave us America/New_York local dates.
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+    if (!y || !m || !d) return iso;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
+    });
   }
 
-  hideBulkRemindModal() {
-    const overlay = document.getElementById('bulk-remind-overlay');
-    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    this._bulkTotal = 0;
-  }
-
-  _updateBulkProgress() {
-    const overlay = document.getElementById('bulk-remind-overlay');
-    if (!overlay) return;
-    const sent = overlay.querySelectorAll('.bulk-send-btn.bulk-sent').length;
-    const total = this._bulkTotal || overlay.querySelectorAll('.bulk-send-btn').length;
-    const label = overlay.querySelector('#bulk-remind-progress');
-    if (label) label.textContent = `${sent} of ${total} sent`;
+  _fmtPhone(p) {
+    if (!p) return '';
+    const digits = String(p).replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    }
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return p;
   }
 
   _escape(s) {

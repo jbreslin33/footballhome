@@ -182,10 +182,41 @@ class MensDelinquentScreen extends Screen {
 
     const iconBtn = 'width:26px; height:26px; padding:0; font-size:0.75rem; line-height:1; border-radius:4px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;';
 
-    const greeting = p.firstName ? `Hi ${p.firstName},` : 'Hi,';
-    const subject  = `Lighthouse 1893 — dues past due`;
-    const emailBody = `${greeting}\n\nYour dues are ${days} day${days === 1 ? '' : 's'} past due.  Please pay via LeagueApps at your earliest convenience — thanks!\n\n— Lighthouse 1893`;
-    const smsBody   = `Hi${p.firstName ? ' ' + p.firstName : ''}, your Lighthouse 1893 dues are ${days} day${days === 1 ? '' : 's'} past due.  Please pay via LA — thanks!`;
+    // 2026-07-06 — past-due always means one of two failure modes:
+    //   (a) card on file expired / declined / insufficient funds, or
+    //   (b) no card ever saved (older registration flow before we
+    //       required autopay).
+    // Either way the ask is the same: log in, add or update a working
+    // card, and pay the outstanding balance.  Once a good card is on
+    // file autopay handles every future month silently.
+    //
+    // Tone note (2026-07-06 pm): we're a 19140 community club.  Card
+    // failures here are the norm, not the exception — prepaid debit
+    // depletion, gig-work paycycle timing, closed accounts.  Dunning
+    // copy is deliberately soft and non-shaming ("happens to
+    // everyone") but the ONLY accepted payment path is card-on-file
+    // via LeagueApps — no cash, no checks, no scholarships (dues are
+    // already $35/mo, effectively subsidized).  Do NOT re-introduce
+    // cash or alternative-payment offers without talking to the
+    // coach first.
+    const greeting = p.firstName ? `Hey ${p.firstName} —` : 'Hey —';
+    const subject  = `Lighthouse 1893 — card didn't go through this month`;
+    const laPortal = 'https://lighthouse1893.leagueapps.com/user/';
+    const emailBody =
+      `${greeting} quick heads-up:\n\n` +
+      `Your card didn't go through this month for Lighthouse 1893 dues ` +
+      `(${days} day${days === 1 ? '' : 's'} past due).  Happens to everyone, no worries.\n\n` +
+      `Whenever you can, log in and update your card + pay the balance:\n` +
+      `${laPortal}\n\n` +
+      `Membership stays $35/month with a card on file.  Once it's saved ` +
+      `and working, everything runs quietly in the background — no more reminders.\n\n` +
+      `Reply here if you're stuck or have any questions.\n\n` +
+      `Thanks!\n— Lighthouse 1893`;
+    const smsBody =
+      `Hey${p.firstName ? ' ' + p.firstName : ''} — quick heads-up, your ` +
+      `Lighthouse 1893 card didn't go through this month (${days}d past due). ` +
+      `Happens to everyone. Log in + update whenever you can: ${laPortal} — ` +
+      `reply here if you're stuck. Thanks!`;
 
     const emailHref = p.email
       ? `https://mail.google.com/mail/?${new URLSearchParams({

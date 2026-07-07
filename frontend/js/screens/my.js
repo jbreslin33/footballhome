@@ -248,6 +248,7 @@ class MyScreen extends Screen {
       : 'Nothing on the schedule right now.';
 
     const banner = this._duesOwedBanner();
+    const rsvpBanner = this._rsvpMandatoryBanner();
     const pickupCta = this._pickupSignupCta();
 
     if (!events.length) {
@@ -267,7 +268,7 @@ class MyScreen extends Screen {
       return;
     }
 
-    box.innerHTML = banner + events.map(ev => this._eventCard(ev)).join('');
+    box.innerHTML = banner + rsvpBanner + events.map(ev => this._eventCard(ev)).join('');
   }
 
   // "Register for Pickup" card shown when the caller has no mens roster
@@ -330,6 +331,32 @@ class MyScreen extends Screen {
         </div>
         <div style="opacity: 0.95;">
           Pay to unlock practice and games. You can still set availability for pickup below.
+        </div>
+      </div>
+    `;
+  }
+
+  // 2026-07-06 pm — persistent policy banner shown above the weekly
+  // event list.  Mirrors the RSVP-mandatory language in the reminder
+  // messages (mens-events-reminders.js plain body + EventReminderController
+  // magic-link body) so members see the same policy whether they land
+  // here via a reminder link or navigate on their own.  Hidden when the
+  // schedule is empty (no events = nothing to RSVP to = the banner
+  // would just be noise).
+  _rsvpMandatoryBanner() {
+    return `
+      <div style="background: rgba(59, 130, 246, 0.10);
+                  border: 1px solid rgba(59, 130, 246, 0.40);
+                  border-radius: 8px;
+                  padding: var(--space-3);
+                  margin-bottom: var(--space-3);
+                  color: #93c5fd;">
+        <div style="font-weight: 600; margin-bottom: var(--space-1);">
+          📋 RSVP to every event on your schedule
+        </div>
+        <div style="opacity: 0.95;">
+          Set <strong>Going</strong>, <strong>Can't go</strong>, or <strong>Maybe</strong> for each row below.
+          It's how we plan rosters, subs, and cancellations — please keep it up to date.
         </div>
       </div>
     `;

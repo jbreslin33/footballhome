@@ -35,4 +35,15 @@ public:
 private:
     Response handleSendReminders(const Request& request);
     Response handleVerify(const Request& request);
+
+    // GET /api/mens/week-availability?days=7
+    //   Bearer JWT required.
+    //   Returns every mens event (games + practices + pickups) in the
+    //   next `days` (default 7) with every roster-eligible player and
+    //   their current RSVP status.  Powers the "Mens Reminders"
+    //   left-to-right event-columns board so the coach can nudge any
+    //   individual "no response" / "maybe" player one-off.
+    //
+    //   Response shape — see cpp for the full JSON.
+    Response handleGetMensWeek(const Request& request);
 };
