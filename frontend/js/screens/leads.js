@@ -2016,6 +2016,25 @@ class LeadsScreen extends Screen {
           `  • Liga 1\n` +
           `  • Liga 2\n\n` +
           `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n`;
+      } else if (c.isWomensClub) {
+        // Women's Club: same theme as Men's Club — lead with competitive
+        // squads, frame Lighthouse League as low-to-no-travel option AND
+        // as the home for anyone not selected to a competitive squad.
+        // "We don't cut members" mirrors mens copy.
+        teamsBlockHtml =
+          `<h3>Teams</h3>` +
+          `<p>Our competitive squads (Fall 2026):</p>` +
+          `<ul>` +
+            `<li><strong>U23 Women</strong> (USASA)</li>` +
+            `<li><strong>Tri County Women</strong></li>` +
+          `</ul>` +
+          `<p><strong>Lighthouse League</strong> is our in-house program at the Lighthouse fields &mdash; for members who want a <strong>local, low-to-no-travel soccer experience</strong>, and for anyone not selected to a competitive squad. <strong>We don't cut members.</strong></p>`;
+        teamsBlockText =
+          `TEAMS:\n` +
+          `Our competitive squads (Fall 2026):\n` +
+          `  • U23 Women (USASA)\n` +
+          `  • Tri County Women\n\n` +
+          `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n`;
       }
 
       const laDescHtml =
