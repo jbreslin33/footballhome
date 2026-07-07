@@ -1964,34 +1964,34 @@ class LeadsScreen extends Screen {
       // the same policy up front so nobody signs up expecting a girls-
       // only travel team that doesn't exist yet.
       //
-      // Framing (2026-07-07): lead with Lighthouse League as the
-      // default / majority experience and describe travel as the
-      // exception.  We avoid claiming a headcount ("most players
-      // play in Lighthouse League") because we're still filling
-      // rosters — both travel and in-house — so a count-based claim
-      // would be inaccurate today.  Instead we describe Lighthouse
-      // League by ROLE: it's the club's home base, open to every
-      // member, and it's the default team for anyone not on a
-      // travel squad.  Travel is presented as a select add-on for
-      // specific age bands and players ready for the extra
-      // commitment.
+      // Framing (2026-07-07): describe Lighthouse League and travel
+      // as two DIFFERENT options for different family preferences,
+      // not as tiers.  Travel is not framed as prestige, elite, or
+      // a "step up" — that undercuts the club's affordable /
+      // accessible / local mission and pressures families into
+      // signing up for something they didn't actually come for.
+      // Lighthouse League is described as the option for people who
+      // want a local, no-travel experience; travel is described as
+      // the option for people who want to travel to games.  Neither
+      // sits above the other.  Headcount claims are avoided (both
+      // rosters are still filling).
       let teamsBlockHtml = '';
       let teamsBlockText = '';
       if (c.isYouth) {
         teamsBlockHtml =
           `<h3>Teams</h3>` +
-          `<p><strong>Lighthouse League</strong> is the heart of the club &mdash; our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected or not ready for a travel squad.</p>` +
-          `<p>For select age bands and players ready for the extra commitment, we also field travel squads (Fall 2026):</p>` +
+          `<p><strong>Lighthouse League</strong> is our in-house program &mdash; games played primarily at the Lighthouse fields, with occasional events elsewhere. It's for players and families looking for a <strong>local, low-to-no-travel soccer experience</strong>, and it's open to every member regardless of skill level, age, or experience.</p>` +
+          `<p>For players who want to travel to games as part of their season, we also field select travel squads (Fall 2026):</p>` +
           `<ul>` +
             `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.</li>` +
           `</ul>` +
-          `<p>We add travel teams for additional age bands as soon as there are enough players ready for that step.</p>`;
+          `<p>We add travel teams for additional age bands as interest and readiness grow.</p>`;
         teamsBlockText =
           `TEAMS:\n` +
-          `Lighthouse League is the heart of the club — our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected or not ready for a travel squad.\n\n` +
-          `For select age bands and players ready for the extra commitment, we also field travel squads (Fall 2026):\n` +
+          `Lighthouse League is our in-house program — games played primarily at the Lighthouse fields, with occasional events elsewhere. It's for players and families looking for a local, low-to-no-travel soccer experience, and it's open to every member regardless of skill level, age, or experience.\n\n` +
+          `For players who want to travel to games as part of their season, we also field select travel squads (Fall 2026):\n` +
           `  • U8, U10, U12 — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n\n` +
-          `We add travel teams for additional age bands as soon as there are enough players ready for that step.\n\n`;
+          `We add travel teams for additional age bands as interest and readiness grow.\n\n`;
       }
 
       const laDescHtml =
