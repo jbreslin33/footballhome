@@ -78,8 +78,15 @@ class Auth {
   // via the hash router so the user re-authenticates cleanly instead
   // of seeing a raw "Unauthorized" that persists across page reloads.
   fetch(path, options = {}) {
+    // Global no-cache policy (2026-07-07):  every API request must
+    // hit the network fresh — no browser HTTP cache, no
+    // conditional-GET revalidation, no bfcache reuse.  Callers can
+    // still override by passing an explicit `cache` in options if a
+    // specific endpoint ever needs otherwise (none do today).
     const headers = {
-      ...options.headers
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma':        'no-cache',
+      ...options.headers,
     };
 
     if (this.token) {
@@ -87,8 +94,9 @@ class Auth {
     }
 
     return fetch(this.apiBase + path, {
+      cache: 'no-store',
       ...options,
-      headers
+      headers,
     }).then((res) => {
       if (res.status === 401 && !path.startsWith('/api/auth/login')) {
         this.logout();

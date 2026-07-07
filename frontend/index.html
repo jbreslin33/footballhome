@@ -5,7 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Football Home - Coach</title>
 
-    <!-- PWA: installable to home screen (Android/Chrome/Edge + iOS Safari). -->
+    <!-- ── HARD NO-CACHE POLICY (2026-07-07) ──────────────────────────
+         Default behaviour across the entire site is *no caching of any
+         kind* for any server response.  Rationale from the project
+         owner:
+           "the only thing that should be saved is login on user
+            browser. not other data"
+         Login state = localStorage `token` + `user` (see auth.js).
+         Everything else — HTML, JS, CSS, JSON — must be fetched fresh
+         on every navigation.  This is enforced at three layers:
+           1) Container nginx (frontend/nginx.conf) sends
+              `Cache-Control: no-store, no-cache, must-revalidate` for
+              every asset it serves.
+           2) These `<meta http-equiv>` tags below tell the browser the
+              same thing at document level (belt-and-suspenders for
+              HTML file:// / offline / bfcache edge cases).
+           3) `auth.js` sets `cache: 'no-store'` on every fetch().
+         `?v=xxx` version stamps have been removed from every <script>
+         and <link>: with `no-store` in effect they served no purpose
+         and made dev cycles brittle (edit-without-bumping = stale JS
+         for users).  If we ever re-enable caching for a specific
+         static asset later, add explicit `Cache-Control: max-age=…`
+         to only that asset — NOT globally. -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- PWA manifest is still linked so the install prompt can surface
+         once we re-enable a proper service worker.  It's tiny and its
+         nginx location block also sends no-store, so it can't go
+         stale. -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0b1220">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,12 +44,12 @@
     <link rel="icon" type="image/png" href="/images/lighthouse-1893-crest.png">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="css/main.css?v=5">
+    <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/admin-system.css">
-  <link rel="stylesheet" href="css/game-day-lineup.css?v=17">
+  <link rel="stylesheet" href="css/game-day-lineup.css">
   <link rel="stylesheet" href="css/game-day-roster.css">
   <link rel="stylesheet" href="css/social-post-card.css">
-  <link rel="stylesheet" href="css/public.css?v=1">
+  <link rel="stylesheet" href="css/public.css">
     
     <!-- vis.js for network diagrams (local copy) -->
     <link rel="stylesheet" href="vendor/vis-network.min.css">
@@ -41,7 +70,7 @@
     <!-- Core Infrastructure -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="vendor/vis-network.min.js"></script>
-    <script src="js/auth.js?v=20260705a"></script>
+    <script src="js/auth.js"></script>
     <script src="js/screen-base.js"></script>
     <script src="js/screen-manager.js"></script>
     <script src="js/navigation.js"></script>
@@ -56,16 +85,16 @@
   <script src="js/entities/Arrow.js"></script>
   
   <!-- Screens -->
-  <script src="js/screens/login.js?v=20260705-nodefault"></script>
-  <script src="js/screens/oauth-success.js?v=20260706a"></script>
-  <script src="js/screens/role-selection.js?v=20260706a"></script>
+  <script src="js/screens/login.js"></script>
+  <script src="js/screens/oauth-success.js"></script>
+  <script src="js/screens/role-selection.js"></script>
   <script src="js/screens/context-selection.js"></script>
   <script src="js/screens/DivisionSelectionScreen.js"></script>
   <script src="js/screens/DivisionMenuScreen.js"></script>
   <script src="js/screens/DivisionManagementScreen.js"></script>
   <script src="js/screens/DivisionRosterScreen.js"></script>
   <script src="js/screens/team-selection.js"></script>
-  <script src="js/screens/team-dashboard.js?v=2"></script>
+  <script src="js/screens/team-dashboard.js"></script>
   <script src="js/screens/roster-management.js"></script>
   <script src="js/screens/roster-dashboard.js"></script>
   <script src="js/screens/roster-category.js"></script>
@@ -77,44 +106,45 @@
   <script src="js/screens/practice-attendance.js"></script>
   <script src="js/screens/match-options.js"></script>
   <script src="js/screens/match-management.js"></script>
-  <script src="js/components/SocialPostCard.js?v=20260406"></script>
-  <script src="js/components/billing-badge.js?v=20260706f"></script>
+  <script src="js/components/SocialPostCard.js"></script>
+  <script src="js/components/billing-badge.js"></script>
   <script src="js/screens/match-form.js"></script>
   <script src="js/screens/match-list.js"></script>
-  <script src="js/screens/match-rsvp-management.js?v=9-bulkremind"></script>
+  <script src="js/screens/match-rsvp-management.js"></script>
   <script src="js/screens/match-detail.js"></script>
   <script src="js/screens/game-day-roster.js"></script>
-  <script src="js/screens/game-day-lineup.js?v=19"></script>
-  <script src="js/screens/team-hub.js?v=11"></script>
+  <script src="js/screens/game-day-lineup.js"></script>
+  <script src="js/screens/team-hub.js"></script>
   <script src="js/screens/MatchShareScreen.js"></script>
   <script src="js/screens/MatchSocialScreen.js"></script>
   <script src="js/screens/SocialScheduleScreen.js"></script>
   <script src="js/screens/holiday-posts.js"></script>
   <script src="js/screens/promotional-posts.js"></script>
-  <script src="js/screens/content-posts.js?v=20260511c"></script>
+  <script src="js/screens/content-posts.js"></script>
   <script src="js/screens/internal-roster.js"></script>
   <script src="js/screens/flyers.js"></script>
-  <script src="js/screens/leads.js?v=20260707t"></script>
+  <script src="js/screens/leads.js"></script>
   <script src="js/screens/leads-analytics.js"></script>
-  <script src="js/screens/youth-roster.js?v=20260705b"></script>
-  <script src="js/screens/payments.js?v=20260703l"></script>
+  <script src="js/screens/youth-roster.js"></script>
+  <script src="js/screens/payments.js"></script>
 
   <script src="js/screens/messages.js"></script>
-  <script src="js/screens/lineups.js?v=20260703a"></script>
-  <script src="js/screens/practice-dashboard.js?v=6"></script>
-  <script src="js/screens/rsvp.js?v=20260625b"></script>
+  <script src="js/screens/lineups.js"></script>
+  <script src="js/screens/practice-dashboard.js"></script>
+  <script src="js/screens/rsvp.js"></script>
   <script src="js/screens/ad-preview.js"></script>
   <script src="js/screens/admin-level-selection.js"></script>
   <script src="js/screens/admin-entity-list.js"></script>
-  <script src="js/screens/admin-system.js?v=20260407"></script>
-  <script src="js/screens/admin-club.js?v=20260706p"></script>
-  <script src="js/screens/paused-members.js?v=7"></script>
-  <script src="js/screens/mens-game-eligibility.js?v=15"></script>
-  <script src="js/screens/mens-roster.js?v=46"></script>
-  <script src="js/screens/boys-roster.js?v=14"></script>
-  <script src="js/screens/mens-delinquent.js?v=20260706f"></script>
-  <script src="js/screens/mens-events-reminders.js?v=20260706c"></script>
-  <script src="js/screens/admin-club-teams.js?v=1"></script>
+  <script src="js/screens/admin-system.js"></script>
+  <script src="js/screens/admin-club.js"></script>
+  <script src="js/screens/paused-members.js"></script>
+  <script src="js/screens/mens-game-eligibility.js"></script>
+  <script src="js/screens/mens-roster.js"></script>
+  <script src="js/screens/boys-roster.js"></script>
+  <script src="js/screens/club-rosters.js"></script>
+  <script src="js/screens/mens-delinquent.js"></script>
+  <script src="js/screens/mens-events-reminders.js"></script>
+  <script src="js/screens/admin-club-teams.js"></script>
   <script src="js/screens/club-events.js"></script>
   <script src="js/screens/admin-sport-division.js"></script>
   <script src="js/screens/admin-team.js"></script>
@@ -136,21 +166,35 @@
   <script src="js/tactical-board/TacticalBoardScreen.js"></script>
   <script src="js/screens/club-directory.js"></script>
   <script src="js/screens/club-detail.js"></script>
-  <script src="js/screens/public-team.js?v=1"></script>
-  <script src="js/screens/my.js?v=20260706o"></script>
-  <script src="js/screens/admin-series-editor.js?v=20260705a"></script>
+  <script src="js/screens/public-team.js"></script>
+  <script src="js/screens/my.js"></script>
+  <script src="js/screens/admin-series-editor.js"></script>
     <!-- App Bootstrap -->
-    <script src="js/app.js?v=20260705b"></script>
+    <script src="js/app.js"></script>
 
-    <!-- Service worker: enables "Add to Home Screen" / install prompt.
-         Pure network passthrough, no caching (per project policy). -->
+    <!-- ── Service worker cleanup (2026-07-07) ─────────────────────────
+         PWA install-prompt SW disabled per project owner directive
+         ("get rid of all cache").  Any browser that installed a
+         previous SW (2026-07-03a or earlier) still has it registered
+         and can serve stale-ish responses via bfcache /
+         cache-storage.  This block actively unregisters every SW and
+         deletes every Cache Storage bucket the first time a user
+         opens the page after this deploy.  Once unregistered the
+         browser goes back to a plain network path.
+         When we re-introduce PWA install, revert this block to the
+         previous `navigator.serviceWorker.register('/sw.js')` call
+         AFTER re-adding a proper `sw.js` — and make sure the new SW
+         does not implement `cache.put()` unless the user opts in. -->
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch((err) => {
-            console.warn('[pwa] service worker registration failed:', err);
-          });
-        });
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => r.unregister().catch(() => {}));
+        }).catch(() => {});
+      }
+      if (window.caches && caches.keys) {
+        caches.keys().then((names) => {
+          names.forEach((n) => caches.delete(n).catch(() => {}));
+        }).catch(() => {});
       }
     </script>
 </body>
