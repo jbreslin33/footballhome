@@ -247,7 +247,12 @@ class MensRosterScreen extends Screen {
       const pct      = col.maxRoster ? players.length / col.maxRoster : 0;
       const nearFull = !overFull && pct >= 0.85;
       const fc = overFull ? '#ef4444' : nearFull ? '#f59e0b' : '#10b981';
-      countHtml = `<span style="font-size:0.85rem; font-weight:600; color:${fc};">${players.length}/${col.maxRoster}${overFull ? ' ⚠' : ''}</span>`;
+      const pctText  = `${Math.round(pct * 100)}%`;
+      const left     = col.maxRoster - players.length;
+      const detail   = overFull
+        ? `${pctText} ⚠`
+        : `${left} left · ${pctText}`;
+      countHtml = `<span style="font-size:0.85rem; font-weight:600; color:${fc}; white-space:nowrap;">${players.length}/${col.maxRoster} · ${detail}</span>`;
     } else {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
