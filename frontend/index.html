@@ -67,6 +67,45 @@
         <!-- App will be rendered here by JavaScript -->
     </div>
 
+    <!-- ── Auto-reload on new deploy (2026-07-07) ──────────────────────
+         Server-driven page refresh.  On every deploy, nginx serves
+         `index.html` with a fresh `Last-Modified` header (auto-derived
+         from the file's mtime on the bind-mount host).  This IIFE:
+           1) Captures the Last-Modified of `/` on page load as the
+              baseline.
+           2) Polls HEAD / every 30 s (also on tab-visibility change).
+           3) If the returned Last-Modified differs from the baseline,
+              calls `location.reload()`.
+         Result: within ~30 s of any deploy, every open tab reloads
+         itself — no manual hard-reload, no "did I clear cache?" ever
+         again.  Cost: one tiny HEAD request per tab per 30 s.
+         Loaded BEFORE the rest of the app so the reload can happen
+         even if a bug in the newest code would otherwise break the
+         page and strand the user on the last-good version. -->
+    <script>
+      (function () {
+        var baseline = null;
+        function poll() {
+          fetch('/', { method: 'HEAD', cache: 'no-store' })
+            .then(function (r) {
+              var lm = r.headers.get('Last-Modified');
+              if (!lm) return;
+              if (baseline === null) { baseline = lm; return; }
+              if (lm !== baseline) {
+                console.log('[auto-reload] new deploy detected (' + baseline + ' → ' + lm + '), reloading');
+                location.reload();
+              }
+            })
+            .catch(function () { /* offline; try again next tick */ });
+        }
+        poll();                          // capture baseline
+        setInterval(poll, 30000);        // recheck every 30 s
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) poll();  // instant recheck when tab regains focus
+        });
+      })();
+    </script>
+
     <!-- Core Infrastructure -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="vendor/vis-network.min.js"></script>
