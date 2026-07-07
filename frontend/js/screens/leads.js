@@ -1966,27 +1966,32 @@ class LeadsScreen extends Screen {
       //
       // Framing (2026-07-07): lead with Lighthouse League as the
       // default / majority experience and describe travel as the
-      // exception.  Most players compete in Lighthouse League; a
-      // select subset in the U8/U10/U12 bands compete on travel
-      // squads.  This avoids the earlier misread that travel was
-      // the primary offering and everyone else was a runner-up.
+      // exception.  We avoid claiming a headcount ("most players
+      // play in Lighthouse League") because we're still filling
+      // rosters — both travel and in-house — so a count-based claim
+      // would be inaccurate today.  Instead we describe Lighthouse
+      // League by ROLE: it's the club's home base, open to every
+      // member, and it's the default team for anyone not on a
+      // travel squad.  Travel is presented as a select add-on for
+      // specific age bands and players ready for the extra
+      // commitment.
       let teamsBlockHtml = '';
       let teamsBlockText = '';
       if (c.isYouth) {
         teamsBlockHtml =
           `<h3>Teams</h3>` +
-          `<p>Most of our players compete in <strong>Lighthouse League</strong> &mdash; our in-house games, played right at the Lighthouse fields. It's where the majority of the club plays.</p>` +
+          `<p><strong>Lighthouse League</strong> is the heart of the club &mdash; our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected for a travel squad.</p>` +
           `<p>For select age bands and players ready for the extra commitment, we also field travel squads (Fall 2026):</p>` +
           `<ul>` +
             `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.</li>` +
           `</ul>` +
-          `<p>We add travel teams for additional age bands as soon as there are enough players ready for that step. Everyone else &mdash; including players in the U8/U10/U12 age bands who aren't on a travel squad &mdash; plays in Lighthouse League.</p>`;
+          `<p>We add travel teams for additional age bands as soon as there are enough players ready for that step.</p>`;
         teamsBlockText =
           `TEAMS:\n` +
-          `Most of our players compete in Lighthouse League — our in-house games, played right at the Lighthouse fields. It's where the majority of the club plays.\n\n` +
+          `Lighthouse League is the heart of the club — our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected for a travel squad.\n\n` +
           `For select age bands and players ready for the extra commitment, we also field travel squads (Fall 2026):\n` +
           `  • U8, U10, U12 — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n\n` +
-          `We add travel teams for additional age bands as soon as there are enough players ready for that step. Everyone else — including players in the U8/U10/U12 age bands who aren't on a travel squad — plays in Lighthouse League.\n\n`;
+          `We add travel teams for additional age bands as soon as there are enough players ready for that step.\n\n`;
       }
 
       const laDescHtml =
