@@ -439,92 +439,95 @@ window.BillingBadge = (() => {
   }
   // ──────────────────────────────────────────────────────────────────────
 
-  // ── Projected prorate cell (new signups) ─────────────────────────────
+  // ── Projected prorate cell (mid-cycle signups) ───────────────────────
   //
-  // User directive 2026-07-06: for a player who just registered this
-  // calendar month, the coach owes them a single prorated invoice on LA
-  // covering the rest of the current month.  Show that projected number
-  // as a cell on the roster card so the coach knows what to type into
-  // LA's Add Charge form.
+  // User directive 2026-07-07: any member who registered "between"
+  // 1st Fridays (i.e. mid-cycle, not on a 1st Friday itself) and has
+  // only paid the $1 registration fee owes a prorated invoice covering
+  // the rest of THEIR signup cycle.  Show that projected number as a
+  // cell on the roster card so the coach can add the charge in LA
+  // right away — the player then goes on the normal $35/mo cadence
+  // starting the NEXT 1st Friday after their signup.
   //
-  // Detection (authoritative, 2026-07-06 pm — was heuristic, is now
-  // server-provided):
-  //   • Backend emits `p.laRegisteredAt` as an ISO UTC timestamp from
-  //     `person_la_memberships.la_registered_at` on Mens / Boys / Youth
-  //     roster rows.
-  //   • Only players whose `laRegisteredAt` is on/after
-  //     NEW_SIGNUP_CUTOFF_ISO get the new single-invoice prorate model.
-  //     Existing players (registered before the cutoff) fall under the
-  //     old model — the coach handles their late-month invoicing
-  //     manually against LA's existing weekly-prorate charges.  This
-  //     avoids "why does Kaiyeer show a prorate cell?" false positives.
-  //   • Registration date must also be in the CURRENT America/NY
-  //     calendar month (a July signup shouldn't still show the cell
-  //     in August; by then the normal $35 monthly cadence kicks in).
+  // Cycle math (anchored to the player's OWN reg date, not today):
+  //   • lastFri = last 1st Friday on or before reg date
+  //   • nextFri = next 1st Friday strictly after reg date
+  //   • cycleDays  = round((nextFri - lastFri) / 1 day)     (28–35)
+  //   • daysRemain = ceil((nextFri - reg) / 1 day)
+  //   • prorate    = $35 × (daysRemain / cycleDays)
   //
-  // Formula (calendar-day prorate on $35 monthly):
-  //   remainingDays = daysInMonth - regDay + 1
-  //   amount        = round( 35 * remainingDays / daysInMonth , 2 )
-  //
-  // Rendering: an amber cell that sits BEFORE the 3-month row, tagged
-  // "PRORATE  M/D" with the amount below.  Once the coach adds the
-  // charge in LA and the payment lands, the current-month cell in the
-  // 3-month row goes green.  Cell auto-hides once $35 has been
-  // collected for the month.
-  //
-  // Cutoff bumped forward on 2026-07-06 pm per user: only prorate
-  // registrations "from here on" — i.e. today and later.
-  const NEW_SIGNUP_CUTOFF_ISO = '2026-07-06';
-
+  // Gates (all must hold):
+  //   1. p.laRegisteredAt is present and parseable.
+  //   2. Reg date is NOT itself a 1st Friday (a 1st-Friday signup pays
+  //      a full $35 for their fresh cycle — no prorate needed).
+  //   3. Total payments SINCE reg date are < $35.  The $1 registration
+  //      fee keeps brand-new signups under the threshold; once a real
+  //      monthly payment lands, the cell auto-hides.
   const projectedProrate = (p) => {
     const iso = p && p.laRegisteredAt;
     if (!iso || typeof iso !== 'string') return null;
 
     const regDate = new Date(iso);
     if (isNaN(regDate.getTime())) return null;
+    // Normalize registration to local midnight (LA timestamps carry a
+    // UTC hh:mm we don't need for whole-day cycle math).
+    const reg = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
 
-    // Cutoff gate: only NEW registrations (from 2026-07-06 forward) get
-    // the projected prorate cell.  Existing players fall under the old
-    // model.  Compare in America/NY calendar terms so a UTC timestamp
-    // just past midnight NY on the cutoff day still counts.
-    const regIsoNy = nyIsoDate(regDate);
-    if (regIsoNy < NEW_SIGNUP_CUTOFF_ISO) return null;
+    // 1st Friday of (year, monthIdx).  monthIdx may be -1 or 12 —
+    // Date normalizes the rollover.
+    const firstFridayOf = (y, m) => {
+      const d = new Date(y, m, 1);
+      const off = (5 - d.getDay() + 7) % 7;   // Fri = 5
+      return new Date(y, m, 1 + off);
+    };
 
-    // Registration must be in the current NY calendar month (cell
-    // auto-retires next month when the normal $35 cadence starts).
-    const now = new Date();
-    const nyNow = nyYearMonth(now);
-    const nyReg = nyYearMonth(regDate);
-    if (nyReg.y !== nyNow.y || nyReg.m !== nyNow.m) return null;
+    // Cycle boundaries around the player's OWN reg date:
+    //   • reg BEFORE this month's 1st Fri → last was prev month's Fri, next is this
+    //   • reg ON this month's 1st Fri     → no prorate (they pay full $35 for the fresh cycle)
+    //   • reg AFTER this month's 1st Fri  → last was this Fri, next is next month's
+    const regFri = firstFridayOf(reg.getFullYear(), reg.getMonth());
+    let lastFri, nextFri;
+    if (reg < regFri) {
+      lastFri = firstFridayOf(reg.getFullYear(), reg.getMonth() - 1);
+      nextFri = regFri;
+    } else if (reg.getTime() === regFri.getTime()) {
+      return null;
+    } else {
+      lastFri = regFri;
+      nextFri = firstFridayOf(reg.getFullYear(), reg.getMonth() + 1);
+    }
 
-    // Day-of-month in America/NY.
-    const dayStr = new Intl.DateTimeFormat('en-CA', {
-      timeZone: NY_TZ, day: '2-digit',
-    }).format(regDate);
-    const regDay = parseInt(dayStr, 10);
-    if (!(regDay >= 1 && regDay <= 31)) return null;
+    const DAY = 86400000;
+    const cycleDays  = Math.round((nextFri - lastFri) / DAY);
+    const daysRemain = Math.max(0, Math.ceil((nextFri - reg) / DAY));
+    if (daysRemain === 0 || cycleDays === 0) return null;
 
-    // Days in current NY month.  Use JS Date on last-day-of-month.
-    const daysInMonth = new Date(Date.UTC(nyNow.y, nyNow.m + 1, 0)).getUTCDate();
-    const remainingDays = Math.max(0, daysInMonth - regDay + 1);
-    if (remainingDays === 0) return null;
+    // Suppress once the player has paid ≥ $35 since reg.  Only counts
+    // positive, valid payments landing on or after reg date — historical
+    // pre-reg payments (family alias, credit balances) don't apply.
+    const list = Array.isArray(p && p.paymentsWindow) ? p.paymentsWindow : [];
+    let paidSinceReg = 0;
+    for (const lp of list) {
+      const at = lp && lp.paidAt;
+      if (!at || typeof at !== 'string') continue;
+      const d = new Date(at);
+      if (isNaN(d.getTime())) continue;
+      if (d < reg) continue;
+      const amt = Number(lp.amount);
+      if (!isFinite(amt) || amt <= 0) continue;
+      paidSinceReg += amt;
+    }
+    if (paidSinceReg >= EXPECTED_MONTHLY_AMOUNT - 0.01) return null;
 
-    // If the coach's already invoiced + collected $35 for the month,
-    // suppress the projection.  (Uses the same "effective" number the
-    // 3-month cell uses so late-carry counts.)
-    const buckets = bucketsFor3Month(p);
-    const curBucket = buckets[buckets.length - 1];
-    const alreadyPaid = curBucket ? curBucket.effective : 0;
-    if (alreadyPaid >= EXPECTED_MONTHLY_AMOUNT - 0.01) return null;
-
-    const amount = Math.round(EXPECTED_MONTHLY_AMOUNT * remainingDays / daysInMonth * 100) / 100;
+    const amount = Math.round(EXPECTED_MONTHLY_AMOUNT * daysRemain / cycleDays * 100) / 100;
 
     return {
       amount,
-      regDay,
-      daysInMonth,
-      remainingDays,
-      regMonthLabel: monthLabel(nyReg.y, nyReg.m),
+      regDate: reg,
+      lastFri,
+      nextFri,
+      cycleDays,
+      daysRemain,
     };
   };
 
@@ -535,12 +538,15 @@ window.BillingBadge = (() => {
 
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
     const shown  = fmtAmt(pr.amount);
+    const nextFriShort = pr.nextFri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const regShort     = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     const tip =
-      `Projected prorate: signed up ${pr.regMonthLabel} ${pr.regDay}, ` +
-      `${pr.remainingDays}/${pr.daysInMonth} days remaining · ` +
-      `$${EXPECTED_MONTHLY_AMOUNT}/mo × ${pr.remainingDays}/${pr.daysInMonth} = ${shown}. ` +
-      `Add this as a manual charge on the player's LA registration.`;
+      `Projected prorate: signed up ${regShort}, ` +
+      `${pr.daysRemain}/${pr.cycleDays} days remaining until next 1st Friday (${nextFriShort}) · ` +
+      `$${EXPECTED_MONTHLY_AMOUNT} × ${pr.daysRemain}/${pr.cycleDays} = ${shown}. ` +
+      `Add this as a manual charge on the player's LA registration NOW; ` +
+      `their normal $${EXPECTED_MONTHLY_AMOUNT}/mo bills begin on ${nextFriShort}.`;
 
     // Amber styling — matches the "partial" state used by the 3-month cells.
     const bg     = '#3a2f0f';
@@ -557,7 +563,7 @@ window.BillingBadge = (() => {
                   vertical-align:middle;">
         <div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; opacity:0.9;">PRORATE</div>
         <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${shown}</div>
-        <div style="font-size:0.5rem; font-weight:700; opacity:0.8; letter-spacing:0.04em;">${escapeAttr(pr.regMonthLabel)} ${pr.regDay}</div>
+        <div style="font-size:0.5rem; font-weight:700; opacity:0.8; letter-spacing:0.04em;">thru ${escapeAttr(nextFriShort)}</div>
       </div>
     `;
   }

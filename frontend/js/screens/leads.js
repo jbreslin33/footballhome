@@ -1297,16 +1297,6 @@ class LeadsScreen extends Screen {
          title="Send full program description — text"
          style="${btnStyle} background:#0891b2; color:#fff;">Info · Text</a>` : '';
 
-    // ── Projected prorate cell ──────────────────────────────────────
-    // Billing cycle runs 1st-Friday → 1st-Friday.  A new signup today
-    // owes: fullMonthlyFee × (days_until_next_1st_Friday / days_in_cycle).
-    // Rendered for un-signed-up leads so the coach can quote the exact
-    // dollar amount in the closing message without doing mental math.
-    // Hidden for `signedup` and `dead` cards (past decision point).
-    const prorateBadge = (visualStatus !== 'signedup' && visualStatus !== 'dead')
-      ? this.renderProrateCell(label)
-      : '';
-
     return `
       <div class="lead-card" data-lead-id="${lead.id}"
            style="background:linear-gradient(90deg, ${c.tint} 0%, var(--bg-secondary) 65%);
@@ -1319,79 +1309,12 @@ class LeadsScreen extends Screen {
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
-        ${prorateBadge}
         ${lastContactBadge}
         ${touchesLine}
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${editBtn}</div>
         <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">${closeMailBtn}${closeSmsBtn}${moreInfoMailBtn}${moreInfoSmsBtn}</div>
       </div>
     `;
-  }
-
-  // ── Prorate helper ──────────────────────────────────────────────────
-  // Computes the projected mid-cycle prorate for a lead in the given
-  // funnel, based on today's date and the 1st-Friday-of-month billing
-  // cycle.  Returns an HTML fragment (one bold line) suitable for
-  // inlining into the lead card.  Empty string if we can't classify
-  // the funnel (defaults to men's $35/mo pricing otherwise).
-  //
-  // Cycle math (matches PersonPayments.cpp coverage window):
-  //   • last1stFri = 1st Friday of {this month if today ≥ that Friday
-  //                  else previous month}
-  //   • next1stFri = 1st Friday of the following calendar month
-  //   • daysLeft   = ceil((next1stFri - today) / 1 day)
-  //   • cycleDays  = round((next1stFri - last1stFri) / 1 day)   (28–35)
-  //   • prorate    = fullMonthlyFee × (daysLeft / cycleDays)
-  //
-  // Full monthly fees (source of truth: LA Program Description snippet):
-  //   • Women's Club   → $10
-  //   • Everyone else  → $35
-  //
-  // On the exact 1st Friday itself, daysLeft = cycleDays → prorate =
-  // fullFee (you're paying for the full upcoming cycle, no proration).
-  // The day AFTER the 1st Friday rolls forward: daysLeft resets to the
-  // full 28-35 day count for the new cycle.
-  renderProrateCell(funnelLabel) {
-    const label = String(funnelLabel || '');
-    const isWomensClub = /women/i.test(label);
-    const fullFee = isWomensClub ? 10 : 35;
-
-    // 1st Friday of the given (year, monthIdx).  monthIdx may be -1
-    // or 12 — Date handles the rollover.
-    const firstFridayOf = (year, monthIdx) => {
-      const first = new Date(year, monthIdx, 1);
-      const offset = (5 - first.getDay() + 7) % 7;   // Fri = 5
-      return new Date(year, monthIdx, 1 + offset);
-    };
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const thisFirstFri = firstFridayOf(today.getFullYear(), today.getMonth());
-    let lastFirstFri, nextFirstFri;
-    if (today < thisFirstFri) {
-      lastFirstFri = firstFridayOf(today.getFullYear(), today.getMonth() - 1);
-      nextFirstFri = thisFirstFri;
-    } else {
-      lastFirstFri = thisFirstFri;
-      nextFirstFri = firstFridayOf(today.getFullYear(), today.getMonth() + 1);
-    }
-
-    const DAY = 86400000;
-    const cycleDays = Math.round((nextFirstFri - lastFirstFri) / DAY);
-    const daysLeft  = Math.max(0, Math.ceil((nextFirstFri - today) / DAY));
-    // Guard against cycleDays = 0 (impossible in practice — always 28-35).
-    const prorate = cycleDays > 0 ? (fullFee * daysLeft / cycleDays) : fullFee;
-    const prorateStr = prorate.toFixed(2);
-    const nextFriStr = nextFirstFri.toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-    });
-
-    return `
-      <div style="font-size:0.78rem; font-weight:600; margin-top:6px;
-                  color:#059669; font-variant-numeric:tabular-nums;"
-           title="Projected prorate for a signup today. Cycle: ${lastFirstFri.toLocaleDateString('en-US',{month:'short',day:'numeric'})} → ${nextFriStr} (${cycleDays}d). Full monthly fee: $${fullFee}.">
-        Prorate today: $${prorateStr} through ${nextFriStr} ($${fullFee}/mo)
-      </div>`;
   }
 
   // ── Message templates ────────────────────────────────────────────────
