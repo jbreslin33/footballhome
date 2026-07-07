@@ -1980,7 +1980,7 @@ class LeadsScreen extends Screen {
       if (c.isYouth) {
         teamsBlockHtml =
           `<h3>Teams</h3>` +
-          `<p><strong>Lighthouse League</strong> is the heart of the club &mdash; our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected for a travel squad.</p>` +
+          `<p><strong>Lighthouse League</strong> is the heart of the club &mdash; our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected or not ready for a travel squad.</p>` +
           `<p>For select age bands and players ready for the extra commitment, we also field travel squads (Fall 2026):</p>` +
           `<ul>` +
             `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.</li>` +
@@ -1988,7 +1988,7 @@ class LeadsScreen extends Screen {
           `<p>We add travel teams for additional age bands as soon as there are enough players ready for that step.</p>`;
         teamsBlockText =
           `TEAMS:\n` +
-          `Lighthouse League is the heart of the club — our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected for a travel squad.\n\n` +
+          `Lighthouse League is the heart of the club — our in-house games, played right at the Lighthouse fields. It's open to every member regardless of skill level or experience, and it's the default team for anyone not selected or not ready for a travel squad.\n\n` +
           `For select age bands and players ready for the extra commitment, we also field travel squads (Fall 2026):\n` +
           `  • U8, U10, U12 — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n\n` +
           `We add travel teams for additional age bands as soon as there are enough players ready for that step.\n\n`;
