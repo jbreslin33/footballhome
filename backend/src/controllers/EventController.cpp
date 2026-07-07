@@ -31,6 +31,14 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleGetMatches(request);
     });
 
+    // GET /api/mens/upcoming-events - All upcoming mens events (games,
+    // practices, pickup) across every team with gender_category='mens'.
+    // Feeds the Mens Reminders screen so the coach can send RSVP nudges
+    // for anything on the horizon without hopping between dashboards.
+    router.get("/api/mens/upcoming-events", [this](const Request& request) {
+        return this->handleGetMensUpcomingEvents(request);
+    });
+
     // POST /api/matches/team/:teamId/sync-league - Sync match scores from league website
     router.post("/api/matches/team/:teamId/sync-league", [this](const Request& request) {
         return this->handleSyncLeague(request);
@@ -581,6 +589,71 @@ Response EventController::handleGetMatches(const Request& request) {
         std::cerr << "❌ EventController::handleGetMatches error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve matches");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+// GET /api/mens/upcoming-events
+// Returns a flat, date-sorted list of every upcoming, non-cancelled
+// event where the home team has gender_category='mens' — covering the
+// game teams (APSL / Liga 1 / Liga 2 / U23 / friendlies) as well as
+// the pool teams for shared practices (908) and pickup (909).  Feeds
+// the "Mens Reminders" admin screen so the coach sees one list and
+// can trigger POST /api/matches/:id/remind row-by-row.
+Response EventController::handleGetMensUpcomingEvents(const Request& request) {
+    (void)request;
+    try {
+        pqxx::result rows = db_->query(
+            "SELECT m.id, "
+            "       COALESCE(NULLIF(m.title,''), "
+            "                CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) AS title, "
+            "       COALESCE(mt.name, '') AS type, "
+            "       COALESCE(m.match_type_id, 0) AS match_type_id, "
+            "       m.match_date::text AS date, "
+            "       COALESCE(TO_CHAR(m.match_time, 'HH24:MI'), '') AS time, "
+            "       TO_CHAR(m.match_date, 'Dy, Mon FMDD') AS date_str, "
+            "       COALESCE(TO_CHAR(m.match_time, 'FMHH12:MI AM'), '') AS time_str, "
+            "       m.home_team_id, "
+            "       COALESCE(ht.name,'') AS home_team_name, "
+            "       COALESCE(awt.name,'') AS away_team_name, "
+            "       COALESCE(v.name, '') AS venue_name "
+            "  FROM matches m "
+            "  JOIN teams ht ON ht.id = m.home_team_id "
+            "  LEFT JOIN teams awt ON awt.id = m.away_team_id "
+            "  LEFT JOIN match_types mt ON mt.id = m.match_type_id "
+            "  LEFT JOIN venues v ON v.id = m.venue_id "
+            " WHERE ht.gender_category = 'mens' "
+            "   AND m.cancelled_at IS NULL "
+            "   AND m.match_date >= CURRENT_DATE "
+            " ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST "
+            " LIMIT 200");
+
+        std::ostringstream out;
+        out << "[";
+        for (size_t i = 0; i < rows.size(); ++i) {
+            if (i > 0) out << ",";
+            out << "{";
+            out << "\"id\":"             << rows[i][0].c_str() << ",";
+            out << "\"title\":\""        << escapeJSON(rows[i][1].c_str())          << "\",";
+            out << "\"type\":\""         << escapeJSON(rows[i][2].c_str())          << "\",";
+            out << "\"match_type_id\":"  << rows[i][3].c_str() << ",";
+            out << "\"date\":\""         << rows[i][4].c_str() << "\",";
+            out << "\"time\":\""         << rows[i][5].c_str() << "\",";
+            out << "\"date_str\":\""     << escapeJSON(rows[i][6].c_str())          << "\",";
+            out << "\"time_str\":\""     << escapeJSON(rows[i][7].c_str())          << "\",";
+            out << "\"home_team_id\":"   << rows[i][8].c_str() << ",";
+            out << "\"home_team_name\":\""<< escapeJSON(rows[i][9].c_str())         << "\",";
+            out << "\"away_team_name\":\""<< escapeJSON(rows[i][10].c_str())        << "\",";
+            out << "\"venue_name\":\""   << escapeJSON(rows[i][11].c_str())         << "\"";
+            out << "}";
+        }
+        out << "]";
+
+        std::string body = createJSONResponse(true, "Mens upcoming events", out.str());
+        return Response(HttpStatus::OK, body);
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetMensUpcomingEvents error: " << e.what() << std::endl;
+        std::string body = createJSONResponse(false, "Failed to retrieve mens events");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, body);
     }
 }
 

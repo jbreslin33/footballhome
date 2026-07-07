@@ -59,6 +59,10 @@ private:
     // Compact RSVP + attendance counts for a single match — used by
     // Practice/Pickup Dashboard row badges.
     Response handleGetMatchRsvpSummary(const Request& request);
+
+    // Aggregated upcoming events across all mens teams (for the Mens
+    // Reminders admin screen).
+    Response handleGetMensUpcomingEvents(const Request& request);
     
     // Helper methods
     std::string extractUserIdFromToken(const Request& request);

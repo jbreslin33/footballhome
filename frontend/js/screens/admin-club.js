@@ -138,6 +138,7 @@ class AdminClubScreen extends Screen {
       { id: 'mens-game-elig', target: 'mens-game-eligibility', params: { gender: 'mens' },                        icon: '🎯', label: 'Game Eligibility',         description: 'Projected 35-player APSL & Liga 1 rosters — game-day availability & call-ups' },
       { id: 'mens-roster-board', target: 'mens-roster',        params: { gender: 'mens' },                        icon: '🎽', label: 'Mens Roster',              description: 'Dues-aware roster selection — assign to teams, see overdue counts, Dues Owed column, LA pause actions' },
       { id: 'mens-delinquent', target: 'mens-delinquent',       params: { gender: 'mens' },                        icon: '💰', label: 'Delinquent Members',       description: 'Players overdue on dues — 7+ days = dues owed (past hold threshold)' },
+      { id: 'mens-events-reminders', target: 'mens-events-reminders', params: {},                                    icon: '📢', label: 'Mens Reminders',           description: 'All upcoming men\'s events (games · practice · pickup) — one tap to nudge non-responders' },
     ];
 
     const womensDashTiles = [

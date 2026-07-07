@@ -62,6 +62,7 @@ class App {
       mensRoster: new MensRosterScreen(this.navigation, this.auth),
       boysRoster: new BoysRosterScreen(this.navigation, this.auth),
       mensDelinquent: new MensDelinquentScreen(this.navigation, this.auth),
+      mensEventsReminders: new MensEventsRemindersScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
@@ -132,6 +133,7 @@ class App {
     this.screenManager.register('mens-roster', this.screens.mensRoster);
     this.screenManager.register('boys-roster', this.screens.boysRoster);
     this.screenManager.register('mens-delinquent', this.screens.mensDelinquent);
+    this.screenManager.register('mens-events-reminders', this.screens.mensEventsReminders);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     this.screenManager.register('payments', this.screens.payments);
     this.screenManager.register('messages', this.screens.messages);
