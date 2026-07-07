@@ -534,9 +534,65 @@ window.BillingBadge = (() => {
   function renderProrateCell(p) {
     if (!p) return '';
     const pr = projectedProrate(p);
-    if (!pr) return '';
 
+    // Always-visible cell (2026-07-07 per owner directive: "just put
+    // prorate on everyone and if not supposed to be pro rated then
+    // show $0").  This also serves as a self-diagnostic — if the cell
+    // ever fails to appear on a card, we know instantly the roster
+    // JS is stale, rather than debugging silent-null gates.
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
+
+    if (!pr) {
+      // Not eligible — muted slate cell showing $0.  Tooltip explains
+      // WHY prorate is $0 so the coach can distinguish "already paid",
+      // "reg date missing", and "reg was on 1st Friday" without
+      // hunting.
+      let reason = 'no prorate owed';
+      const iso  = p && p.laRegisteredAt;
+      if (!iso || typeof iso !== 'string') {
+        reason = 'no LA registration date on record';
+      } else {
+        const regDate = new Date(iso);
+        if (isNaN(regDate.getTime())) {
+          reason = 'LA registration date unparseable';
+        } else {
+          const list = Array.isArray(p.paymentsWindow) ? p.paymentsWindow : [];
+          const paidSinceReg = list.reduce((s, lp) => {
+            if (!lp || !lp.paidAt) return s;
+            const d = new Date(lp.paidAt);
+            if (isNaN(d.getTime()) || d < regDate) return s;
+            const amt = Number(lp.amount);
+            return s + (isFinite(amt) && amt > 0 ? amt : 0);
+          }, 0);
+          if (paidSinceReg >= EXPECTED_MONTHLY_AMOUNT - 0.01) {
+            reason = `full $${EXPECTED_MONTHLY_AMOUNT}+ already paid since reg (${fmtAmt(paidSinceReg)})`;
+          } else {
+            // Only other reason projectedProrate returns null: reg
+            // date falls exactly on a 1st Friday.
+            reason = 'signed up on the 1st Friday — full $' + EXPECTED_MONTHLY_AMOUNT + ' cycle, no prorate';
+          }
+        }
+      }
+
+      const tip = `Projected prorate: $0 — ${reason}.`;
+      const bg     = '#1e293b';   // slate-800
+      const fg     = '#94a3b8';   // slate-400
+      const border = '#334155';   // slate-700
+      return `
+        <div class="bb-prorate-cell" title="${escapeAttr(tip)}"
+             style="display:inline-flex; flex-direction:column; align-items:center;
+                    justify-content:center; min-width:52px; padding:3px 7px;
+                    margin-right:3px; box-sizing:border-box;
+                    border:1px solid ${border}; background:${bg}; color:${fg};
+                    border-radius:3px; font-variant-numeric:tabular-nums;
+                    vertical-align:middle;">
+          <div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; opacity:0.85;">PRORATE</div>
+          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">$0</div>
+          <div style="font-size:0.5rem; font-weight:700; opacity:0.7; letter-spacing:0.04em;">n/a</div>
+        </div>
+      `;
+    }
+
     const shown  = fmtAmt(pr.amount);
     const nextFriShort = pr.nextFri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const regShort     = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
