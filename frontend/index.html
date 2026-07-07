@@ -213,28 +213,44 @@
 
     <!-- ── Service worker cleanup (2026-07-07) ─────────────────────────
          PWA install-prompt SW disabled per project owner directive
-         ("get rid of all cache").  Any browser that installed a
-         previous SW (2026-07-03a or earlier) still has it registered
-         and can serve stale-ish responses via bfcache /
-         cache-storage.  This block actively unregisters every SW and
-         deletes every Cache Storage bucket the first time a user
-         opens the page after this deploy.  Once unregistered the
-         browser goes back to a plain network path.
-         When we re-introduce PWA install, revert this block to the
-         previous `navigator.serviceWorker.register('/sw.js')` call
-         AFTER re-adding a proper `sw.js` — and make sure the new SW
-         does not implement `cache.put()` unless the user opts in. -->
+         ("get rid of all cache").  This block runs on EVERY page load
+         and forces cleanup of any lingering SW:
+           1) getRegistrations() finds every SW registered for this
+              origin (there should be 0-1).
+           2) For each: call .update() first.  This bypasses the
+              browser's default 24 h SW-update cache and forces an
+              immediate byte-comparison against /sw.js on the server.
+              If sw.js changed, the new one installs → activates →
+              runs its own cleanup handler → unregisters itself.
+           3) Then call .unregister() as a belt-and-suspenders in case
+              step 2 didn't finish.
+           4) Delete every Cache Storage bucket regardless.
+         Note: localStorage is a *different* API and is NEVER touched
+         by any of this.  The user's login (`token` + `user` keys in
+         localStorage, set by auth.js) survives all of it.
+         When we re-introduce PWA install, revert this block to a
+         `navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })`
+         call — `updateViaCache: 'none'` is important: it tells the
+         browser to never cache /sw.js in HTTP cache, so future
+         updates always propagate on the next navigation. -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((regs) => {
-          regs.forEach((r) => r.unregister().catch(() => {}));
-        }).catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) {
+            // Force byte-check against server's /sw.js NOW (don't
+            // wait 24 h for the browser's default check).  If sw.js
+            // has changed, this triggers install→activate→cleanup.
+            try { r.update(); } catch (_) {}
+            // Then unregister regardless — we don't want any SW.
+            r.unregister().catch(function () {});
+          });
+        }).catch(function () {});
       }
       if (window.caches && caches.keys) {
-        caches.keys().then((names) => {
-          names.forEach((n) => caches.delete(n).catch(() => {}));
-        }).catch(() => {});
+        caches.keys().then(function (names) {
+          names.forEach(function (n) { caches.delete(n).catch(function () {}); });
+        }).catch(function () {});
       }
     </script>
-</body>
+  </body>
 </html>
