@@ -55,5 +55,17 @@ private:
     // this endpoint — real events/matches route through EventController's
     // heavier PUT /api/matches/:matchId which owns the full event schema.
     Response handleUpdateGame(const Request& request);
+    // GET  /api/mens-roster/rsvp-eligibility?leagueAppsUserId=<uid>
+    // PUT  /api/mens-roster/rsvp-eligibility  body: {leagueAppsUserId, teamIds:[...]}
+    //
+    // Read + write the per-player `player_rsvp_eligibility` grants
+    // (migration 107).  The GET returns the set of team_ids the player
+    // is currently allowed to RSVP for; PUT replaces that set (delta
+    // insert/delete against the existing rows).  Powers the player-card
+    // "RSVP" popup on the mens Roster Board so admin can add someone
+    // to just Pickup, or grant an Adult League member access to a
+    // one-off APSL game, etc.
+    Response handleGetRsvpEligibility(const Request& request);
+    Response handlePutRsvpEligibility(const Request& request);
 
 };

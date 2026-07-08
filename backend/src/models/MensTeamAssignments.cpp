@@ -16,14 +16,25 @@ MensTeamAssignments::MensTeamAssignments(std::string domain)
 
 MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     ByUser out;
-    // roster_assignments (renamed from mens_team_assignments in migration
-    // 092) is shared across roster domains via the `domain` column; every
-    // statement in this model filters by domain_ (default 'mens').
+    // Reads from `v_team_members` (migration 107) so union teams
+    // (Practice 908 + Pickup 909, membership = APSL ∪ Liga1 ∪ Liga2 ∪
+    // Adult) surface without any stored duplicate rows.  Filtered to
+    // the current domain by `teams.gender_category`.
+    //
+    // coach_sort_order is only meaningful on direct assignments, so it
+    // is LEFT JOIN'd from roster_assignments and null for derived
+    // (union) memberships.
     const auto rows = db_->query(
-        "SELECT leagueapps_user_id, team_id, on_roster, coach_sort_order "
-        "  FROM roster_assignments "
-        " WHERE domain = $1 "
-        "   AND removed_at IS NULL",
+        "SELECT vtm.leagueapps_user_id, vtm.team_id, vtm.on_roster, "
+        "       ra.coach_sort_order "
+        "  FROM v_team_members vtm "
+        "  JOIN teams t ON t.id = vtm.team_id "
+        "  LEFT JOIN roster_assignments ra "
+        "    ON ra.leagueapps_user_id = vtm.leagueapps_user_id "
+        "   AND ra.team_id            = vtm.team_id "
+        "   AND ra.domain             = $1 "
+        "   AND ra.removed_at IS NULL "
+        " WHERE t.gender_category = $1",
         {domain_}
     );
     for (const auto& row : rows) {

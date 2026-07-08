@@ -270,12 +270,10 @@ Response EventReminderController::handleSendReminders(const Request& request) {
         // (any status).  A row with status "yes"/"no"/"maybe" counts
         // as responded — same rule as the /my/week UI.
         //
-        // Eligibility rule mirrors MyController + RsvpMaterialization:
-        //   practice (mt=3):        team ∈ (35, 120, 121)
-        //   game APSL home (35):    team ∈ (35, 120, 121)   (Liga 1 + Liga 2 play up)
-        //   game Liga 1 home (120): team ∈ (120, 121)       (Liga 2 plays up)
-        //   game other:             team = home_team_id
-        //   pickup (mt=7):          ANY mens roster (active OR dues-owed / soft-deleted)
+        // Eligibility (migration 107): the responder has a
+        // player_rsvp_eligibility grant for the match's home_team_id.
+        // Practice → home_team_id=908, Pickup → 909, games → physical
+        // home team.  Mirrors MyController + RsvpMaterialization.
         const std::string sql =
             "WITH match_ctx AS ( "
             "  SELECT id AS match_id, match_type_id, home_team_id "
@@ -285,25 +283,11 @@ Response EventReminderController::handleSendReminders(const Request& request) {
             "       p.first_name, p.last_name, "
             + contactSql +
             "  FROM match_ctx mc "
-            "  JOIN roster_assignments mta "
-            "    ON mta.domain = 'mens' "
-            "   AND ( "
-            "     mc.match_type_id = 7 "
-            "     OR ( "
-            "       mta.removed_at IS NULL "
-            "       AND mta.team_id = ANY( "
-            "         CASE "
-            "           WHEN mc.match_type_id = 3 THEN ARRAY[35, 120, 121] "
-            "           WHEN mc.match_type_id IN (1,4,6) AND mc.home_team_id = 35  THEN ARRAY[35, 120, 121] "
-            "           WHEN mc.match_type_id IN (1,4,6) AND mc.home_team_id = 120 THEN ARRAY[120, 121] "
-            "           ELSE ARRAY[mc.home_team_id] "
-            "         END "
-            "       ) "
-            "     ) "
-            "   ) "
+            "  JOIN player_rsvp_eligibility ple "
+            "    ON ple.team_id = mc.home_team_id "
             "  JOIN external_person_aliases epa "
             "    ON epa.provider = 'leagueapps' "
-            "   AND epa.external_user_id = mta.leagueapps_user_id::text "
+            "   AND epa.external_user_id = ple.leagueapps_user_id::text "
             "  JOIN persons p ON p.id = epa.person_id "
             "  LEFT JOIN players pl ON pl.person_id = p.id "
             "  LEFT JOIN player_rsvp_history h "
@@ -671,13 +655,49 @@ Response EventReminderController::handleGetMensWeek(const Request& request) {
                 "       (SELECT phone_number FROM person_phones "
                 "         WHERE person_id = p.id AND can_receive_sms = true "
                 "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone_sms, "
-                "       rs.name AS rsvp_status "
-                "  FROM roster_assignments mta "
+                "       rs.name AS rsvp_status, "
+                // is_pickup_only: TRUE when this person has NO active
+                // roster_assignments row on any mens-selection team
+                // (APSL 35, Liga 1 120, Liga 2 121, LL 122).  Powers the frontend
+                // split for pickup events: regular members render in the
+                // main Going/Can't/Maybe/No-response sections, pickup-only
+                // members render in a collapsed "PICKUP ONLY" section at
+                // the bottom of the column so they don't clutter the
+                // coach's "who to nudge" view (user directive 2026-07-07).
+                "       NOT EXISTS ( "
+                "         SELECT 1 FROM roster_assignments ra_sel "
+                "          WHERE ra_sel.domain              = 'mens' "
+                "            AND ra_sel.removed_at          IS NULL "
+                "            AND ra_sel.leagueapps_user_id  = ple.leagueapps_user_id "
+                "            AND ra_sel.team_id             IN (35, 120, 121, 122) "
+                "       ) AS is_pickup_only, "
+                // home_team_id + short label (user directive 2026-07-07)
+                // — powers the "RSVP breakdown" chips on each event card
+                // ("APSL 5 · L1 3 · L2 6 · Adult 2").  Prefer the lowest
+                // team_id when a player is on more than one (in practice
+                // the mutex partial index prevents that anyway).
+                "       ht.team_id AS home_team_id, "
+                "       CASE ht.team_id "
+                "         WHEN 35  THEN 'APSL' "
+                "         WHEN 120 THEN 'L1' "
+                "         WHEN 121 THEN 'L2' "
+                "         WHEN 122 THEN 'Adult' "
+                "         ELSE NULL END AS home_team_short "
+                "  FROM player_rsvp_eligibility ple "
                 "  JOIN external_person_aliases epa "
                 "    ON epa.provider = 'leagueapps' "
-                "   AND epa.external_user_id = mta.leagueapps_user_id::text "
+                "   AND epa.external_user_id = ple.leagueapps_user_id::text "
                 "  JOIN persons p ON p.id = epa.person_id "
                 "  LEFT JOIN players pl ON pl.person_id = p.id "
+                "  LEFT JOIN LATERAL ( "
+                "     SELECT ra.team_id "
+                "       FROM roster_assignments ra "
+                "      WHERE ra.leagueapps_user_id = ple.leagueapps_user_id "
+                "        AND ra.domain = 'mens' "
+                "        AND ra.removed_at IS NULL "
+                "        AND ra.team_id IN (35, 120, 121, 122) "
+                "      ORDER BY ra.team_id LIMIT 1 "
+                "  ) ht ON true "
                 "  LEFT JOIN LATERAL ( "
                 "     SELECT h.rsvp_status_id "
                 "       FROM player_rsvp_history h "
@@ -686,21 +706,10 @@ Response EventReminderController::handleGetMensWeek(const Request& request) {
                 "      ORDER BY h.changed_at DESC LIMIT 1 "
                 "  ) latest ON true "
                 "  LEFT JOIN rsvp_statuses rs ON rs.id = latest.rsvp_status_id "
-                " WHERE mta.domain = 'mens' "
-                "   AND ( "
-                "     $2::int = 7 "
-                "     OR ( "
-                "       mta.removed_at IS NULL "
-                "       AND mta.team_id = ANY( "
-                "         CASE "
-                "           WHEN $2::int = 3 THEN ARRAY[35, 120, 121] "
-                "           WHEN $2::int IN (1,4,6) AND $3::int = 35  THEN ARRAY[35, 120, 121] "
-                "           WHEN $2::int IN (1,4,6) AND $3::int = 120 THEN ARRAY[120, 121] "
-                "           ELSE ARRAY[$3::int] "
-                "         END "
-                "       ) "
-                "     ) "
-                "   ) "
+                // Eligibility (migration 107): the responder has a
+                // player_rsvp_eligibility grant for the match's
+                // home_team_id.  $2 is the match's home_team_id.
+                " WHERE ple.team_id = $2::int "
                 // Paused-membership filter (user directive 2026-07-06):
                 // hide members-in-name-only from the coach reminders
                 // board.  They can still self-serve at /#my; we just
@@ -714,7 +723,6 @@ Response EventReminderController::handleGetMensWeek(const Request& request) {
                 "   ) "
                 " ORDER BY p.last_name, p.first_name",
                 {std::to_string(matchId),
-                 std::to_string(matchTypeId),
                  e["home_team_id"].is_null() ? std::string("0")
                                              : std::to_string(e["home_team_id"].as<long long>())});
 
@@ -729,8 +737,11 @@ Response EventReminderController::handleGetMensWeek(const Request& request) {
                     {"email",      r["email"].is_null()      ? "" : r["email"].as<std::string>()},
                     {"phone",      r["phone_any"].is_null()  ? "" : r["phone_any"].as<std::string>()},
                     {"sms_capable",!r["phone_sms"].is_null() && !r["phone_sms"].as<std::string>().empty()},
+                    {"home_team_id",    r["home_team_id"].is_null()    ? json(nullptr) : json(r["home_team_id"].as<long long>())},
+                    {"home_team_short", r["home_team_short"].is_null() ? json(nullptr) : json(r["home_team_short"].as<std::string>())},
                     {"rsvp_status",r["rsvp_status"].is_null() ? json(nullptr)
                                                               : json(r["rsvp_status"].as<std::string>())},
+                    {"is_pickup_only", !r["is_pickup_only"].is_null() && r["is_pickup_only"].as<bool>()},
                 };
                 plist.push_back(std::move(rec));
             }

@@ -128,9 +128,27 @@ class MensEventsRemindersScreen extends Screen {
       ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">📍 ${this._escape(ev.venue_name)}</div>`
       : '';
 
-    // Bucket by RSVP status.  Null = "no response" (has never RSVP'd).
+    // Pickup-only split (user directive 2026-07-07):
+    // On pickup event columns (match_type_id === 7) we push players who
+    // have NO active roster_assignments on APSL/Liga 1/Liga 2 into a
+    // separate "PICKUP ONLY" section that renders at the bottom of the
+    // column under its own banner.  Rationale: we don't want pickup-
+    // only members cluttering the "who to nudge" view — we're only
+    // reminding actual league members to RSVP — but the coach still
+    // needs the option to nudge pickup-only guys, so they remain
+    // visible with all contact buttons intact.
+    //
+    // For non-pickup events (games/practice) is_pickup_only players
+    // shouldn't appear anyway because the eligibility rules filter to
+    // teams 35/120/121; treating everyone as "regular" here is safe.
+    const isPickupEvent = ev.match_type_id === 7;
+    const allPlayers = ev.players || [];
+    const regularPlayers    = isPickupEvent ? allPlayers.filter(p => !p.is_pickup_only) : allPlayers;
+    const pickupOnlyPlayers = isPickupEvent ? allPlayers.filter(p =>  p.is_pickup_only) : [];
+
+    // Bucket regular players by RSVP status.  Null = "no response".
     const buckets = { yes: [], no: [], maybe: [], none: [] };
-    (ev.players || []).forEach((p) => {
+    regularPlayers.forEach((p) => {
       const key = p.rsvp_status === 'yes'   ? 'yes'
                 : p.rsvp_status === 'no'    ? 'no'
                 : p.rsvp_status === 'maybe' ? 'maybe'
@@ -149,9 +167,81 @@ class MensEventsRemindersScreen extends Screen {
     ];
 
     const totalMissing = buckets.maybe.length + buckets.none.length;
-    const totalPlayers = (ev.players || []).length;
+    const totalPlayers = regularPlayers.length;
 
     const sectionsHtml = sections.map((s) => this.renderSection(s, buckets[s.key], ev)).join('');
+
+    // RSVP breakdown chips by home team (user directive 2026-07-07 —
+    // "show where the rsvp came from so it shows on apsl game for
+    // example that lets say 5 apsl guys, 3 liga 1 guys 6 liga 2 guys").
+    // Groups the "yes" (Going) bucket by each player's home team using
+    // the `home_team_short` field added to /api/mens/week-availability
+    // in the same edit.  Order: APSL → L1 → L2 → Adult, hiding zeros.
+    // Pickup-only responders (no home team) roll into a "Pickup" chip.
+    const breakdownChips = (() => {
+      const going = buckets.yes.concat(
+        pickupOnlyPlayers.filter((p) => p.rsvp_status === 'yes')
+      );
+      if (going.length === 0) return '';
+      const teamOrder = [
+        { key: 'APSL',  label: 'APSL',  color: '#fbbf24' },  // gold
+        { key: 'L1',    label: 'L1',    color: '#60a5fa' },  // blue
+        { key: 'L2',    label: 'L2',    color: '#818cf8' },  // indigo
+        { key: 'Adult', label: 'Adult', color: '#a78bfa' },  // violet
+        { key: null,    label: 'Pickup',color: '#94a3b8' },  // gray (no home team)
+      ];
+      const counts = new Map();
+      going.forEach((p) => {
+        const k = p.home_team_short || null;
+        counts.set(k, (counts.get(k) || 0) + 1);
+      });
+      const chips = teamOrder
+        .filter((t) => (counts.get(t.key) || 0) > 0)
+        .map((t) => `
+          <span style="display:inline-flex;align-items:center;gap:3px;
+                       background:${t.color}22;color:${t.color};
+                       font-size:0.68rem;font-weight:700;
+                       padding:2px 6px;border-radius:6px;
+                       border:1px solid ${t.color}55;">
+            ${t.label} <b style="font-weight:800;">${counts.get(t.key)}</b>
+          </span>`).join('');
+      if (!chips) return '';
+      return `
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+          <span style="font-size:0.68rem;color:var(--text-muted);margin-right:2px;">Going:</span>
+          ${chips}
+        </div>`;
+    })();
+
+    // "PICKUP ONLY" section (pickup events only; hidden if empty).
+    // Sub-buckets so the coach can still see who has/hasn't RSVPed
+    // among the pickup-only crowd — but visually de-emphasized so
+    // the eye lands on the main sections first.
+    let pickupOnlyHtml = '';
+    if (pickupOnlyPlayers.length > 0) {
+      const pBuckets = { yes: [], no: [], maybe: [], none: [] };
+      pickupOnlyPlayers.forEach((p) => {
+        const key = p.rsvp_status === 'yes'   ? 'yes'
+                  : p.rsvp_status === 'no'    ? 'no'
+                  : p.rsvp_status === 'maybe' ? 'maybe'
+                  :                             'none';
+        pBuckets[key].push(p);
+      });
+      const pSectionsHtml = sections.map((s) => this.renderSection(
+        { ...s, muted: true }, pBuckets[s.key], ev)).join('');
+      pickupOnlyHtml = `
+        <div style="margin-top:10px;border-top:1px dashed rgba(148,163,184,0.35);padding-top:8px;opacity:0.85;">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+                      color:#a78bfa;background:rgba(167,139,250,0.12);padding:4px 8px;border-radius:4px;
+                      margin-bottom:6px;text-align:center;">
+            ⚽ Pickup Only <span style="opacity:0.65;">(${pickupOnlyPlayers.length}) — optional nudge</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${pSectionsHtml}
+          </div>
+        </div>
+      `;
+    }
 
     return `
       <div class="mer-column" style="flex:0 0 ${this._colWidthPx}px;background:var(--bg-secondary);
@@ -171,9 +261,11 @@ class MensEventsRemindersScreen extends Screen {
             <b style="color:${totalMissing > 0 ? '#fca5a5' : '#86efac'};">${totalMissing}</b>
             missing of ${totalPlayers}
           </div>
+          ${breakdownChips}
         </div>
         <div style="padding:8px;display:flex;flex-direction:column;gap:8px;">
           ${sectionsHtml}
+          ${pickupOnlyHtml}
         </div>
       </div>
     `;

@@ -128,32 +128,27 @@ std::string resolveChangedByUserId(long long personId) {
     return std::to_string(r[0]["id"].as<long long>());
 }
 
-// Verify the caller is on the match's home_team roster.  Returns
-// false if the match doesn't exist, is cancelled, or the caller is
-// not currently assigned to home_team.  Uses the same
-// external_person_aliases bridge as RsvpMaterialization.
-// Eligibility rules (see repo memory: footballhome.md § RSVP eligibility):
-//   practice (mt=3):        active mens roster to team ∈ (35 APSL, 120 Liga1, 121 Liga2)
-//   game APSL home (mt∈{1,4,6}, home=35):  active mens roster to team ∈ (35, 120)  (play-up)
-//   game other (mt∈{1,4,6}): active mens roster to team = home_team_id
-//   pickup (mt=7):          ANY mens roster (active OR soft-deleted / dues-owed)
-// Pure roster model (2026-07-07):  a person is eligible for a match
-// iff they hold an active `roster_assignments` row on the match's
-// home_team.  Play-up is expressed by putting the same person on
-// multiple team rosters; pool events (practice/pickup) work because
-// their home_team_id points at a pool team and every eligible person
-// is on that pool team's roster.
+// Verify the caller is eligible to RSVP to `matchId`.  Returns false
+// if the match doesn't exist, is cancelled, or the caller has no
+// player_rsvp_eligibility grant for the match's home_team_id.
+//
+// Eligibility model (migration 107): every mens home-team member is
+// seeded with grants for {home_team, 908 Practice, 909 Pickup}.
+// APSL preseason grants Liga1 / Liga2 / Adult members access to
+// team 35.  Admins can add/remove grants via the player-card popup.
+// A match's `home_team_id` IS the team the RSVP applies to — see
+// scheduled matches in production: practice(mt=3).home=908,
+// pickup(mt=7).home=909, APSL game(mt in 1,4,6).home=35, etc.
 bool callerRosteredForMatch(long long personId, long long matchId) {
     auto* db = Database::getInstance();
     auto r = db->query(
         "SELECT 1 "
         "  FROM matches m "
-        "  JOIN roster_assignments ra "
-        "    ON ra.team_id = m.home_team_id "
-        "   AND ra.removed_at IS NULL "
+        "  JOIN player_rsvp_eligibility ple "
+        "    ON ple.team_id = m.home_team_id "
         "  JOIN external_person_aliases epa "
         "    ON epa.provider = 'leagueapps' "
-        "   AND epa.external_user_id = ra.leagueapps_user_id::text "
+        "   AND epa.external_user_id = ple.leagueapps_user_id::text "
         " WHERE m.id = $1::int "
         "   AND m.cancelled_at IS NULL "
         "   AND epa.person_id = $2::int "
@@ -221,28 +216,26 @@ Response MyController::handleGetWeek(const Request& request) {
         const long long playerId = resolvePlayerId(personId);
 
         auto rows = db->query(
-            // Pure roster eligibility (2026-07-07): match visible iff
-            // caller has an active roster_assignments row on the
-            // match's home_team.  Keep in sync with
-            // callerRosteredForMatch() and
-            // services/RsvpMaterialization.cpp kApplyRecurringSql.
+            // Eligibility (migration 107): the caller has
+            // player_rsvp_eligibility for m.home_team_id.  Team 908
+            // = Practice, 909 = Pickup, others = physical home teams.
             "WITH eligible_matches AS ( "
             "  SELECT DISTINCT m.id, m.match_type_id, m.home_team_id, m.match_date, "
             "         m.match_time, m.end_time, m.venue_id, m.title, "
             "         m.description, m.rsvp_opens_at, m.series_id "
             "    FROM matches m "
-            "    JOIN roster_assignments ra "
-            "      ON ra.team_id = m.home_team_id "
-            "     AND ra.removed_at IS NULL "
+            "    JOIN player_rsvp_eligibility ple "
+            "      ON ple.team_id = m.home_team_id "
             "    JOIN external_person_aliases epa "
             "      ON epa.provider = 'leagueapps' "
-            "     AND epa.external_user_id = ra.leagueapps_user_id::text "
+            "     AND epa.external_user_id = ple.leagueapps_user_id::text "
             "     AND epa.person_id = $1::int "
             "   WHERE m.cancelled_at IS NULL "
             "     AND m.rsvp_opens_at IS NOT NULL "
             "     AND m.rsvp_opens_at <= NOW() "
             "     AND m.match_date >= (NOW() AT TIME ZONE 'America/New_York')::date "
             ") "
+
             "SELECT em.id AS match_id, em.match_type_id, mt.name AS match_type, "
             "       em.home_team_id, em.match_date::text AS match_date, "
             "       to_char(em.match_time, 'HH24:MI:SS') AS match_time, "
@@ -812,9 +805,11 @@ Response MyController::handlePostChatMessage(const Request& request) {
 // RSVP status.  Eligibility rules mirror `handleGetWeek` / the
 // eligible_matches CTE:
 //   pickup   (mt=7):        ANY mens roster row (active OR removed)
-//   practice (mt=3):        active roster to team ∈ (35, 120, 121)
+//   practice (mt=3):        active roster to team ∈ (35, 120, 121, 122)
+//                              (LL 122 joins practice via pool-team
+//                               auto-assignment in LaPool.cpp)
 //   APSL game (mt∈{1,4,6}, home=35):
-//                           active roster to team ∈ (35, 120)
+//                           active roster to team ∈ (35, 120)  (LL does NOT play up)
 //   other game (mt∈{1,4,6}):
 //                           active roster to home_team_id
 //   other (mt∈{2,5}):       active roster to home_team_id

@@ -120,31 +120,19 @@ open_matches AS (
     AND m.home_team_id IS NOT NULL
 ),
 eligible AS (
-  -- Eligibility rules — keep in sync with
-  -- controllers/MyController.cpp (handleGetWeek + callerRosteredForMatch).
+  -- Eligibility (migration 107) — the responder has a
+  -- player_rsvp_eligibility grant for the match's home_team_id.
+  -- Practice matches home to team 908, Pickup to 909, games to the
+  -- physical home team.  Keep in sync with MyController.cpp.
   SELECT DISTINCT om.match_id,
          p.id AS player_id,
          prr.rsvp_status_id
   FROM open_matches om
+  JOIN player_rsvp_eligibility ple
+    ON ple.team_id = om.home_team_id
   JOIN external_person_aliases epa
     ON epa.provider = 'leagueapps'
-  JOIN roster_assignments mta
-    ON mta.domain = 'mens'
-   AND mta.leagueapps_user_id::text = epa.external_user_id
-   AND (
-     om.match_type_id = 7
-     OR (
-       mta.removed_at IS NULL
-       AND mta.team_id = ANY(
-         CASE
-           WHEN om.match_type_id = 3 THEN ARRAY[35, 120, 121]
-           WHEN om.match_type_id IN (1,4,6) AND om.home_team_id = 35  THEN ARRAY[35, 120, 121]
-           WHEN om.match_type_id IN (1,4,6) AND om.home_team_id = 120 THEN ARRAY[120, 121]
-           ELSE ARRAY[om.home_team_id]
-         END
-       )
-     )
-   )
+   AND epa.external_user_id = ple.leagueapps_user_id::text
   JOIN players p ON p.person_id = epa.person_id
   JOIN player_recurring_rsvps prr
     ON prr.person_id = epa.person_id

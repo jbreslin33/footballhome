@@ -85,6 +85,8 @@ class MensRosterScreen extends Screen {
       if (pill) return this.onPillClick(pill);
       const laBtn = e.target.closest('.mr-la-open');
       if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
+      const rsvpBtn = e.target.closest('.mr-rsvp-elig');
+      if (rsvpBtn) return this.openRsvpEligibilityModal(rsvpBtn);
       const pauseBtn = e.target.closest('.mr-copy-pause');
       if (pauseBtn) return this._copyPauseMessage(pauseBtn);
       // PAY-reminder click log (2026-07-06).  Fire-and-forget; the sms:
@@ -163,8 +165,11 @@ class MensRosterScreen extends Screen {
       // knows the state of the club before scanning columns.  Backend
       // exposes these under top-level `data.delinquency`.
       const dq = data.delinquency || {};
+      const overduePct = data.total > 0
+        ? Math.round(((dq.overdueCount || 0) / data.total) * 100)
+        : 0;
       const dqText = (dq.overdueCount > 0 || dq.duesOwedCount > 0)
-        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.duesOwedCount || 0} dues owed`
+        ? ` · ⚠ ${dq.overdueCount || 0}/${data.total} overdue (${overduePct}%) · 🚨 ${dq.duesOwedCount || 0} dues owed`
         : '';
       this.setBanner({
         icon: '✓',
@@ -426,6 +431,20 @@ class MensRosterScreen extends Screen {
            LA
          </button>`
       : '';
+    // RSVP-eligibility popup trigger (2026-07-07).  Small button next
+    // to LA — opens a modal with 6 checkboxes (APSL / Liga 1 / Liga 2 /
+    // Adult / Practice / Pickup).  Reads from GET /rsvp-eligibility
+    // on open, writes via PUT on save.  Server-side is the source of
+    // truth; the button carries no state itself.
+    const rsvpEligBtn = p.leagueAppsUserId
+      ? `<button class="mr-rsvp-elig" type="button"
+                 data-user-id="${p.leagueAppsUserId}"
+                 data-name="${this.escape(p.fullName || '')}"
+                 title="Configure which teams ${this.escape(p.firstName || 'this player')} can RSVP for"
+                 style="${btnBase} border:none; cursor:pointer; background:#0ea5e9; color:#fff;">
+           RSVP
+         </button>`
+      : '';
     let delinqBtns = '';
     if (days >= 1 && p.leagueAppsUserId) {
       // Amount preference: LA's outstandingBalance if it's > 0,
@@ -637,6 +656,7 @@ class MensRosterScreen extends Screen {
           ${dobShort ? `<span style="font-size:0.85rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
           ${moveSelect}
           ${laBtn}
+          ${rsvpEligBtn}
           ${delinqBtns}
           ${contactBtns}
           ${joinCluster}
@@ -928,6 +948,127 @@ class MensRosterScreen extends Screen {
   // canonical is LEAGUEAPPS_SITE_ID in env.
   laManagerUrl(uid) {
     return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
+  }
+
+  // ── RSVP-eligibility modal (2026-07-07) ─────────────────────────
+  //
+  // Per user directive "i think in the player card we can just have
+  // popup to allow us to check off what they can rsvp to".  Six
+  // checkboxes covering the mens teams the player can RSVP for:
+  //   35  APSL
+  //   120 Liga 1
+  //   121 Liga 2
+  //   122 Adult
+  //   908 Practice
+  //   909 Pickup
+  // Server list must stay in sync — see
+  // MensRosterController.cpp `kEligibilityTeams`.
+  //
+  // Read on open (GET), diff+write on save (PUT).  Modal is a
+  // fixed-position overlay dropped straight into <body> so it's not
+  // constrained by the card's stacking context.  Removed via close().
+  async openRsvpEligibilityModal(btn) {
+    const uid  = Number(btn.dataset.userId);
+    const name = btn.dataset.name || 'this player';
+    if (!uid) return;
+    const teams = [
+      { id: 35,  label: 'APSL',     color: '#2563eb' },
+      { id: 120, label: 'Liga 1',   color: '#0891b2' },
+      { id: 121, label: 'Liga 2',   color: '#14b8a6' },
+      { id: 122, label: 'Adult',    color: '#a78bfa' },
+      { id: 908, label: 'Practice', color: '#f59e0b' },
+      { id: 909, label: 'Pickup',   color: '#10b981' },
+    ];
+
+    // Fetch current set first so we can pre-check the boxes.
+    let currentIds = new Set();
+    try {
+      const r = await this.auth.fetch(
+        `/api/mens-roster/rsvp-eligibility?leagueAppsUserId=${uid}`
+      );
+      if (r.ok) {
+        const body = await r.json();
+        currentIds = new Set(body.teamIds || []);
+      }
+    } catch (_e) { /* modal still opens with all unchecked */ }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed; inset:0; z-index:9999;
+      background:rgba(0,0,0,0.55);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px;
+    `;
+    const cbs = teams.map(t => {
+      const checked = currentIds.has(t.id) ? 'checked' : '';
+      return `
+        <label style="display:flex; align-items:center; gap:10px;
+                      padding:10px 12px; border-radius:6px;
+                      background:${t.color}22; color:#fff;
+                      border:1px solid ${t.color}88; cursor:pointer;
+                      font-size:0.95rem; font-weight:600;">
+          <input type="checkbox" data-team-id="${t.id}" ${checked}
+                 style="width:18px; height:18px; accent-color:${t.color}; cursor:pointer;">
+          <span style="flex:1;">${t.label}</span>
+          <span style="font-size:0.7rem; opacity:0.6;">#${t.id}</span>
+        </label>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div style="background:#0f172a; border-radius:10px; padding:16px 18px;
+                  min-width:min(360px, 96vw); max-width:420px;
+                  border:1px solid #334155;
+                  box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="font-size:1.05rem; font-weight:800; color:#fff; margin-bottom:2px;">
+          RSVP Eligibility
+        </div>
+        <div style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px;">
+          ${this.escape(name)} — choose which teams they can RSVP for.
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
+          ${cbs}
+        </div>
+        <div id="mr-rsvp-elig-msg" style="min-height:1em; font-size:0.8rem; color:#fca5a5; margin-bottom:8px;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button id="mr-rsvp-elig-cancel" type="button"
+                  style="padding:6px 14px; border-radius:5px; border:1px solid #475569;
+                         background:transparent; color:#cbd5e1; font-weight:700; cursor:pointer;">
+            Cancel
+          </button>
+          <button id="mr-rsvp-elig-save" type="button"
+                  style="padding:6px 14px; border-radius:5px; border:none;
+                         background:#0ea5e9; color:#fff; font-weight:800; cursor:pointer;">
+            Save
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#mr-rsvp-elig-cancel').addEventListener('click', close);
+    overlay.querySelector('#mr-rsvp-elig-save').addEventListener('click', async () => {
+      const checked = Array.from(overlay.querySelectorAll('input[type=checkbox]:checked'))
+        .map(el => Number(el.dataset.teamId));
+      const msg = overlay.querySelector('#mr-rsvp-elig-msg');
+      msg.textContent = '';
+      try {
+        const r = await this.auth.fetch('/api/mens-roster/rsvp-eligibility', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leagueAppsUserId: uid, teamIds: checked }),
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          msg.textContent = `Save failed: ${t.slice(0, 200)}`;
+          return;
+        }
+        close();
+      } catch (err) {
+        msg.textContent = `Save failed: ${err.message || err}`;
+      }
+    });
   }
 
   // Color scale (user directive 2026-07-04): 1-3 yellow · 4-6 orange · 7+ red.

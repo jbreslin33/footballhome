@@ -510,6 +510,106 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         if (isActive(r, includeAll)) all.push_back(shapeMensPlayer(r));
     }
 
+    // ── Union in mens-team members NOT in the mens LA program (2026-07-07) ─
+    //
+    // Adult League (team 122) and pickup-only members are registered
+    // only in OTHER LA programs (e.g. 5039252 "1897 Membership" or
+    // 5070075 "Men's Club Pickup Membership"), so they never appear in
+    // `recs` (the mens program 5039300 registrations).  Before
+    // migration 107 they were invisible on the mens board — the Adult
+    // column was permanently empty.  Now that assignmentMap comes from
+    // v_team_members, we synthesize minimal shapeMensPlayer rows from
+    // persons + external_person_aliases for any assigned uid missing
+    // from `all`.  LA-only fields (paymentStatus, outstandingBalance,
+    // registrationStatus, jersey*) are null on these rows; they render
+    // as no-payment-badge cards on the board.
+    std::unordered_map<std::string, long long> personIdByUid;  // fallback for personIdFor
+    {
+        std::unordered_set<std::string> haveUid;
+        haveUid.reserve(all.size());
+        for (const auto& p : all) {
+            const std::string u = userIdString(p.at("leagueAppsUserId"));
+            if (!u.empty()) haveUid.insert(u);
+        }
+        std::vector<std::string> missingUids;
+        missingUids.reserve(assignmentMap.size());
+        for (const auto& kv : assignmentMap) {
+            const std::string& uid = kv.first;
+            if (uid.empty() || haveUid.count(uid)) continue;
+            // Guard: uid must be all digits (comes from bigint column, but
+            // belt-and-suspenders since we splice it into a text[] literal).
+            bool ok = !uid.empty();
+            for (char c : uid) { if (c < '0' || c > '9') { ok = false; break; } }
+            if (ok) missingUids.push_back(uid);
+        }
+        if (!missingUids.empty()) {
+            try {
+                std::string arrLit = "{";
+                for (size_t i = 0; i < missingUids.size(); ++i) {
+                    if (i) arrLit += ",";
+                    arrLit += missingUids[i];
+                }
+                arrLit += "}";
+                auto* db = Database::getInstance();
+                pqxx::result rows = db->query(
+                    "SELECT epa.external_user_id AS uid, "
+                    "       p.id                 AS person_id, "
+                    "       p.first_name, p.last_name, "
+                    "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date_iso, "
+                    "       (SELECT email FROM person_emails "
+                    "         WHERE person_id = p.id "
+                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS email, "
+                    "       (SELECT phone_number FROM person_phones "
+                    "         WHERE person_id = p.id "
+                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone "
+                    "  FROM external_person_aliases epa "
+                    "  JOIN persons p ON p.id = epa.person_id "
+                    " WHERE epa.provider = 'leagueapps' "
+                    "   AND epa.external_user_id = ANY($1::text[])",
+                    {arrLit});
+                for (const auto& r : rows) {
+                    if (r["uid"].is_null()) continue;
+                    const std::string uid = r["uid"].c_str();
+                    json p = json::object();
+                    p["registrationId"] = nullptr;
+                    try { p["leagueAppsUserId"] = std::stoll(uid); }
+                    catch (...) { p["leagueAppsUserId"] = uid; }
+                    const std::string fn = r["first_name"].is_null() ? "" : r["first_name"].as<std::string>();
+                    const std::string ln = r["last_name"].is_null()  ? "" : r["last_name"].as<std::string>();
+                    p["firstName"] = fn;
+                    p["lastName"]  = ln;
+                    p["fullName"]  = trim(fn + " " + ln);
+                    if (!r["birth_date_iso"].is_null()) {
+                        const std::string bd = r["birth_date_iso"].as<std::string>();
+                        p["birthDate"] = bd;
+                        try { p["birthYear"] = std::stoi(bd.substr(0, 4)); }
+                        catch (...) { p["birthYear"] = nullptr; }
+                    } else {
+                        p["birthDate"] = nullptr;
+                        p["birthYear"] = nullptr;
+                    }
+                    p["gender"]             = "Male";
+                    p["email"]              = r["email"].is_null() ? json(nullptr) : json(r["email"].as<std::string>());
+                    p["phone"]              = r["phone"].is_null() ? json(nullptr) : json(r["phone"].as<std::string>());
+                    p["paymentStatus"]      = nullptr;
+                    p["outstandingBalance"] = 0;
+                    p["registrationStatus"] = nullptr;
+                    p["role"]               = nullptr;
+                    p["season"]             = nullptr;
+                    p["jerseyNumber"]       = nullptr;
+                    p["jerseySize"]         = nullptr;
+                    if (!r["person_id"].is_null()) {
+                        personIdByUid[uid] = r["person_id"].as<long long>();
+                    }
+                    all.push_back(std::move(p));
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[MensRoster] union-in v_team_members query failed: "
+                          << e.what() << std::endl;
+            }
+        }
+    }
+
     // ── Delinquency computation (2026-07-04) ─────────────────────────
     // Reads DUES_OWED_HOLD_DAYS (default 7).  For each active player:
     // daysOverdue = today - nextBillDate.  delinquencyState='dues_owed'
@@ -637,41 +737,17 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     // MensTeamAssignments::bulk{SoftDeleteForDelinquent,RestoreForDelinquent}
     // behind a feature flag.
 
-    // ── Practice / Pickup auto-membership backfill (2026-07-04) ────────
+    // ── Practice / Pickup membership (2026-07-07, migration 107) ───────
     //
-    // Every LA member is on the Practice (908) + Pickup (909) all-hands
-    // teams.  These are not selection columns on the Roster Board
-    // (archived from roster_columns), so the coach never has to
-    // manually assign anyone to them.
-    constexpr int kPracticeTeamId = 908;
-    constexpr int kPickupTeamId   = 909;
-
-    // Every LA member with a resolvable uid is a candidate for
-    // Practice + Pickup backfill (all-hands teams).  bulkEnsureActive
-    // is an INSERT ON CONFLICT DO NOTHING against the partial-unique
-    // index, so idempotent and cheap.
-    std::vector<long long> goodStandingUids;
-    goodStandingUids.reserve(all.size());
-    for (const auto& [uid, d] : delinqByUid) {
-        long long uidLL = 0;
-        try { uidLL = std::stoll(uid); } catch (...) { uidLL = 0; }
-        if (uidLL <= 0) continue;
-        goodStandingUids.push_back(uidLL);
-    }
-    long long backfilledPractice = 0, backfilledPickup = 0;
-    try {
-        backfilledPractice = assignments_->bulkEnsureActive(goodStandingUids, kPracticeTeamId);
-        backfilledPickup   = assignments_->bulkEnsureActive(goodStandingUids, kPickupTeamId);
-    } catch (const std::exception& e) {
-        std::cerr << "[MensRoster] practice/pickup backfill failed: " << e.what() << std::endl;
-    }
-    if (backfilledPractice > 0 || backfilledPickup > 0) {
-        std::cerr << "[MensRoster] practice/pickup backfill: practice=" << backfilledPractice
-                  << " pickup=" << backfilledPickup
-                  << " members=" << goodStandingUids.size() << std::endl;
-        // Reload again — new active rows changed the map.
-        assignmentMap = assignments_->loadAll();
-    }
+    // Practice (908) and Pickup (909) are UNION teams: their membership
+    // is derived from APSL + Liga 1 + Liga 2 + Adult League via
+    // team_roster_sources + the v_team_members view.  No backfill runs
+    // here anymore.  MensTeamAssignments::loadAll() already reads from
+    // v_team_members, so 908/909 cells surface on every user with a
+    // home-team assignment without any stored duplicate rows.
+    //
+    // Pickup-only members (LA program 5070075) still live as direct
+    // roster_assignments rows on team 909; the view aggregates both.
 
     // Bucket per column (keyed by teamId-as-string).
     std::unordered_map<std::string, std::vector<json>> buckets;
@@ -788,6 +864,13 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             row["lastPayReminder"] = lastPayReminderJson(uid);
             {
                 long long pid = personIdFor(p.at("registrationId"));
+                if (pid <= 0) {
+                    // Synthesized union row (not in mens LA program) —
+                    // fall back to the uid→person_id map built during
+                    // the union-in step above.
+                    auto pit = personIdByUid.find(uid);
+                    if (pit != personIdByUid.end()) pid = pit->second;
+                }
                 row["personId"] = pid > 0 ? json(pid) : json(nullptr);
                 row["fhLastActivityAt"] = fhLastActivityFor(pid);
             }
@@ -817,6 +900,10 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
                 row["lastPayReminder"] = lastPayReminderJson(uid);
                 {
                     long long pid = personIdFor(p.at("registrationId"));
+                    if (pid <= 0) {
+                        auto pit = personIdByUid.find(uid);
+                        if (pit != personIdByUid.end()) pid = pit->second;
+                    }
                     row["personId"] = pid > 0 ? json(pid) : json(nullptr);
                     row["fhLastActivityAt"] = fhLastActivityFor(pid);
                 }

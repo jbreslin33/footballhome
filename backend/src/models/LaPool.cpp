@@ -165,15 +165,18 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
     std::unordered_set<int> clubTeamIds;
     std::unordered_map<int, std::string> teamNameById;
     {
+        // Eligibility is driven by team_eligible_genders (migration 105).
+        // A team is in the mens (or womens) pool iff it has a matching
+        // row in that lookup — coed teams have multiple rows and appear
+        // in every gender bucket they accept.
         const std::string sql =
-            "SELECT id, name "
-            "  FROM teams "
-            " WHERE club_id = $1 "
-            "   AND ( "
-            "       ($2 = 'mens'   AND (gender_category = 'mens'   OR gender_category IS NULL)) "
-            "    OR ($2 = 'womens' AND  gender_category = 'womens') "
-            "   ) "
-            " ORDER BY name";
+            "SELECT t.id, t.name "
+            "  FROM teams t "
+            "  JOIN team_eligible_genders teg "
+            "    ON teg.team_id = t.id "
+            "   AND teg.gender  = $2 "
+            " WHERE t.club_id = $1 "
+            " ORDER BY t.name";
         const std::vector<std::string> params = {std::to_string(clubId), genderStr};
         const auto rows = db_->query(sql, params);
         for (const auto& row : rows) {
@@ -259,54 +262,19 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         }
     }
 
-    // 3b. Auto-assign every active mens registrant to every POOL team
-    // (Practice / Pickup / etc — teams.is_pool = true) in this club.
-    // Pool teams have no cutoff; everyone in the mens program is on them
-    // by default.  Idempotent: `ON CONFLICT DO NOTHING` skips existing
-    // assignments so this is safe to run on every pool load.  Only for
-    // mens (mens_team_assignments is a mens-only table by design).
-    // Paused-membership persons are excluded (see step 3a).
-    std::vector<std::string> nonPausedLaIds;
-    nonPausedLaIds.reserve(laUserIdList.size());
-    for (const auto& lauid : laUserIdList) {
-        auto it = personIdByLaId.find(lauid);
-        if (it != personIdByLaId.end() && pausedPersonIds.count(it->second)) continue;
-        nonPausedLaIds.push_back(lauid);
-    }
+    // 3b. Pool-team auto-assign RETIRED (2026-07-07, migration 107).
+    //
+    // Practice (908) + Pickup (909) are now UNION teams — their
+    // membership is derived from APSL + Liga 1 + Liga 2 + Adult League
+    // via team_roster_sources + the v_team_members view.  Writing rows
+    // into roster_assignments here would create duplicates the view
+    // aggregates against (harmless but wasteful).
+    //
+    // 3c below still runs, because pickup-only members (LA 5070075) do
+    // NOT have a mens home-team assignment — they exist only as direct
+    // rows on team 909, which the view surfaces alongside union
+    // members.
 
-    if (gender == Gender::Mens && !nonPausedLaIds.empty()) {
-        try {
-            const std::string sql =
-                "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id) "
-                "SELECT 'mens', ua.uid::bigint, t.id "
-                "  FROM UNNEST($1::text[]) AS ua(uid) "
-                "  CROSS JOIN teams t "
-                " WHERE t.club_id = $2 "
-                "   AND t.is_pool = true "
-                "   AND (t.gender_category = 'mens' OR t.gender_category IS NULL) "
-                "ON CONFLICT (domain, leagueapps_user_id, team_id) WHERE removed_at IS NULL DO NOTHING";
-            const std::vector<std::string> params = {
-                textArrayLiteral(nonPausedLaIds),
-                std::to_string(clubId),
-            };
-            db_->query(sql, params);
-        } catch (const std::exception& e) {
-            std::cerr << "la-pool pool-team auto-assign failed: " << e.what() << std::endl;
-        }
-    }
-
-    // 3c. Sync the free-tier "Men's Club Pickup Membership" program
-    //     (LA 5070075) and auto-assign every registrant to the Pickup
-    //     pool team ONLY (not Practice, not any league team).  These
-    //     users pay nothing and are only entitled to RSVP to pickup
-    //     events (matches.match_type_id = 7).  Excluding them from the
-    //     Practice pool team is what keeps them off practice/game
-    //     RSVP screens — the eligibility rules in MyController and
-    //     RsvpMaterialization already require team_id ∈ (35,120,121)
-    //     for practice/games, so a Pickup-only assignment naturally
-    //     restricts them.  Runs only on the Mens pool path (there is
-    //     no womens equivalent yet).  Non-fatal: any LA/DB failure
-    //     just logs and continues so the pool screen still renders.
     if (gender == Gender::Mens && mensPickupProgramId_ > 0) {
         try {
             auto pickupSync = sync_->run(mensPickupProgramId_);
@@ -318,16 +286,25 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
                     "SELECT 'mens', ua.uid::bigint, t.id "
                     "  FROM UNNEST($1::text[]) AS ua(uid) "
                     "  CROSS JOIN teams t "
+                    "  JOIN team_eligible_genders teg "
+                    "    ON teg.team_id = t.id AND teg.gender = 'mens' "
                     " WHERE t.club_id = $2 "
                     "   AND t.is_pool = true "
                     "   AND t.name = 'Pickup' "
-                    "   AND (t.gender_category = 'mens' OR t.gender_category IS NULL) "
                     "ON CONFLICT (domain, leagueapps_user_id, team_id) WHERE removed_at IS NULL DO NOTHING";
                 const std::vector<std::string> params = {
                     textArrayLiteral(pickupUids),
                     std::to_string(clubId),
                 };
                 db_->query(sql, params);
+                // Grant them Pickup-only RSVP eligibility (migration 107).
+                // ON CONFLICT DO NOTHING keeps admin overrides intact.
+                const std::string elig =
+                    "INSERT INTO player_rsvp_eligibility (leagueapps_user_id, team_id) "
+                    "SELECT ua.uid::bigint, 909 "
+                    "  FROM UNNEST($1::text[]) AS ua(uid) "
+                    "ON CONFLICT DO NOTHING";
+                db_->query(elig, { textArrayLiteral(pickupUids) });
             }
         } catch (const std::exception& e) {
             std::cerr << "la-pool pickup-tier sync failed (programId="

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <unordered_set>
 
 #include "../database/Database.h"
 #include "../models/MensTeamAssignments.h"
@@ -151,6 +152,15 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     // are editable — see handleUpdateGame for the safety check.
     router.put("/api/lineups/games/:matchId", [this](const Request& req) {
         return this->handleUpdateGame(req);
+    });
+    // RSVP-eligibility endpoints (migration 107, 2026-07-07).  Read
+    // uses a query param so the frontend can populate the popup on
+    // open; write takes a full teamIds[] set and diffs vs. current.
+    router.get(prefix + "/rsvp-eligibility", [this](const Request& req) {
+        return this->handleGetRsvpEligibility(req);
+    });
+    router.put(prefix + "/rsvp-eligibility", [this](const Request& req) {
+        return this->handlePutRsvpEligibility(req);
     });
 }
 
@@ -687,3 +697,163 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
     }
 }
 
+
+// ────────────────────────────────────────────────────────────────────────────
+// RSVP eligibility (migration 107, 2026-07-07)
+//
+// Reads/writes `player_rsvp_eligibility` for one player.  Keyed by
+// leagueapps_user_id because the table stores it directly; the frontend
+// player card already carries `leagueAppsUserId` so no ID resolution is
+// needed on either side.
+//
+// Team catalog is the four mens selection teams (35/120/121/122) plus
+// the two pool teams (908/909).  Grants for other teams are ignored on
+// write and hidden on read (defensive — an admin could add rows via SQL
+// but the UI is not designed for arbitrary team_ids).
+// ────────────────────────────────────────────────────────────────────────────
+
+namespace {
+
+// The full set of teams the player-card popup exposes as checkboxes.
+// Order matches the display order in the popup: home teams first, then
+// pool teams.  Changes here MUST be mirrored in the frontend
+// mens-roster.js RSVP_ELIGIBILITY_TEAMS constant.
+const int kEligibilityTeams[] = { 35, 120, 121, 122, 908, 909 };
+
+bool isEligibilityTeamId(int teamId) {
+    for (int t : kEligibilityTeams) if (t == teamId) return true;
+    return false;
+}
+
+}  // namespace
+
+Response MensRosterController::handleGetRsvpEligibility(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    long long userId = 0;
+    const std::string q = request.getQueryParam("leagueAppsUserId");
+    if (!q.empty()) {
+        try { userId = std::stoll(q); }
+        catch (const std::exception&) { userId = 0; }
+    }
+    if (userId <= 0) {
+        return badRequest("leagueAppsUserId query param required");
+    }
+    try {
+        auto db = Database::getInstance();
+        auto rows = db->query(
+            "SELECT team_id "
+            "  FROM player_rsvp_eligibility "
+            " WHERE leagueapps_user_id = $1 "
+            " ORDER BY team_id",
+            {std::to_string(userId)}
+        );
+        std::vector<int> teamIds;
+        teamIds.reserve(rows.size());
+        for (const auto& r : rows) {
+            if (r["team_id"].is_null()) continue;
+            const int tid = r["team_id"].as<int>();
+            if (isEligibilityTeamId(tid)) teamIds.push_back(tid);
+        }
+        json out = json::object();
+        out["leagueAppsUserId"] = userId;
+        out["teamIds"]          = teamIds;
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleGetRsvpEligibility error: "
+                  << e.what() << std::endl;
+        return internalErr(std::string("Failed to load RSVP eligibility: ") + e.what());
+    }
+}
+
+Response MensRosterController::handlePutRsvpEligibility(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) {
+        return badRequest("Invalid JSON body");
+    }
+    long long userId = 0;
+    if (!readInt(body, "leagueAppsUserId", userId) || userId <= 0) {
+        return badRequest("leagueAppsUserId required");
+    }
+    auto tidsIt = body.find("teamIds");
+    if (tidsIt == body.end() || !tidsIt->is_array()) {
+        return badRequest("teamIds array required");
+    }
+    // Dedupe + validate against the eligibility catalog.  Silently
+    // drops any team_id not in kEligibilityTeams so an out-of-date
+    // client can't grant access to arbitrary teams.
+    std::vector<int> desired;
+    desired.reserve(tidsIt->size());
+    {
+        std::unordered_set<int> seen;
+        for (const auto& j : *tidsIt) {
+            int tid = 0;
+            if      (j.is_number_integer())  tid = static_cast<int>(j.get<long long>());
+            else if (j.is_number_unsigned()) tid = static_cast<int>(j.get<unsigned long long>());
+            else if (j.is_number_float())    tid = static_cast<int>(j.get<double>());
+            else if (j.is_string()) {
+                try { tid = std::stoi(j.get<std::string>()); }
+                catch (const std::exception&) { continue; }
+            } else { continue; }
+            if (!isEligibilityTeamId(tid)) continue;
+            if (seen.insert(tid).second) desired.push_back(tid);
+        }
+    }
+
+    try {
+        auto db = Database::getInstance();
+
+        // Load current grants for this user (filtered to the catalog).
+        std::unordered_set<int> current;
+        {
+            auto rows = db->query(
+                "SELECT team_id FROM player_rsvp_eligibility "
+                " WHERE leagueapps_user_id = $1",
+                {std::to_string(userId)}
+            );
+            for (const auto& r : rows) {
+                if (r["team_id"].is_null()) continue;
+                const int tid = r["team_id"].as<int>();
+                if (isEligibilityTeamId(tid)) current.insert(tid);
+            }
+        }
+
+        std::unordered_set<int> want(desired.begin(), desired.end());
+        std::vector<int> toInsert, toDelete;
+        for (int t : desired) if (!current.count(t))         toInsert.push_back(t);
+        for (int t : current) if (!want.count(t))            toDelete.push_back(t);
+
+        auto tx = db->beginTransaction();
+        for (int t : toInsert) {
+            tx->exec_params(
+                "INSERT INTO player_rsvp_eligibility (leagueapps_user_id, team_id) "
+                "VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                userId, t
+            );
+        }
+        for (int t : toDelete) {
+            tx->exec_params(
+                "DELETE FROM player_rsvp_eligibility "
+                " WHERE leagueapps_user_id = $1 AND team_id = $2",
+                userId, t
+            );
+        }
+        db->commit(tx);
+
+        json out = json::object();
+        out["leagueAppsUserId"] = userId;
+        out["teamIds"]          = desired;
+        out["inserted"]         = toInsert;
+        out["deleted"]          = toDelete;
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handlePutRsvpEligibility error: "
+                  << e.what() << std::endl;
+        return internalErr(std::string("Failed to save RSVP eligibility: ") + e.what());
+    }
+}
