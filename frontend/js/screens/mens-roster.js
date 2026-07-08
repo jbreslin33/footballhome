@@ -462,28 +462,57 @@ class MensRosterScreen extends Screen {
         : 'past due';
       const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
       // Three-tier body scaled to delinquency severity (2026-07-05):
-      //   1–3 days  → nudge; soft warning about disruption to eligibility
-      //   4–6 days  → firm: NOT eligible for practice or games right now
-      //   7+ days   → statement of fact: removed from roster + being replaced
-      // Every tier tells the player LeagueApps has already emailed them
-      // a pay link ("check email if unsure") before pointing at the
-      // dashboard URL as a backup.
+      //   1–3 days  → gentle nudge; assume card-on-file issue
+      //   4–6 days  → firmer, team-aware: mention *temporary* demotion
+      //               one tier down (APSL→Liga 1, Liga 1→Liga 2)
+      //   7+ days   → same tone; state the demotion is what has to happen
+      //               to keep the higher-tier spot open for paid members
       //
-      // Voice: framed as a "heads-up" from Lighthouse 1893 Financial
-      // Dept.  Keeps the coach out of the collections conversation —
-      // the coach is just delivering a message from the finance side.
+      // Rewritten 2026-07-08 per user directive:
+      //   • Drop "removed from all rosters / replaced" language — we do
+      //     NOT have a Lighthouse League feeder yet, so those threats
+      //     were fiction.  We're recruiting to fill APSL / Liga 1 /
+      //     Liga 2 and don't want to cut anyone.
+      //   • Lead with "check your card on file" — most overdue accounts
+      //     are just declined/expired cards, not bad-faith non-payers.
+      //   • Every tier ties back to the club goal: fill three teams.
+      //   • Liga 2 + Lighthouse Adult → no demotion, collect only.
+      //   • Voice: warm, signed from "Lighthouse 1893" (dropped the
+      //     Financial Dept framing — felt collections-bot).
       const firstNameStr = p.firstName ? ` ${p.firstName}` : '';
       const isDuesOwedState = p.delinquencyState === 'dues_owed' || days >= 7;
-      // One-liner explaining where the money actually goes — appended
-      // to every tier so the message doesn't feel purely punitive.
-      const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
+
+      // Determine the player's top selection-team tier for demotion
+      // wording.  Mens selection teams are mutex-grouped, so a player
+      // should be on at most one of {APSL, Liga 1, Liga 2, LL Adult}.
+      //   35  = APSL             → demote to Liga 1
+      //   120 = Liga 1           → demote to Liga 2
+      //   121 = Liga 2           → collect only
+      //   122 = Lighthouse Adult → collect only
+      //   (unassigned)           → collect only (no team spot to lose)
+      const tids = Array.isArray(p.teamIds) ? p.teamIds : [];
+      let demotionTarget = null;  // "Liga 1" | "Liga 2" | null
+      let currentTierName = null; // "APSL"   | "Liga 1" | null
+      if (tids.includes(35))        { currentTierName = 'APSL';   demotionTarget = 'Liga 1'; }
+      else if (tids.includes(120))  { currentTierName = 'Liga 1'; demotionTarget = 'Liga 2'; }
+
       let payBody;
-      if (isDuesOwedState) {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your membership flagged as paused. Dues (${amountStr}) are ${daysStr}, so you've been removed from all rosters and your spot is being filled by another player. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in and pay here: ${payUrl}  Thanks!`;
-      } else if (days >= 4) {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept has your dues (${amountStr}) flagged as ${daysStr}, and the LeagueApps charge hasn't gone through. That means you're not eligible for practices or games until it's resolved, and at 7 days past due you'll be removed from the roster and replaced. Late fees are also accruing. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. You can also log in here: ${payUrl}  Thanks!`;
+      if (days <= 3) {
+        // Tier 1 — all teams.  No demotion mention, just card nudge.
+        payBody = `Hi${firstNameStr}, quick heads-up from Lighthouse 1893 — this month's dues charge (${amountStr}) didn't go through on LeagueApps (${daysStr}). Usually means the card on file expired, was declined, or the account was short — please log in and make sure a valid card is on file with funds to cover the monthly dues: ${payUrl}. Every paid membership funds refs, registration, uniforms and gear as we build toward filling APSL, Liga 1 and Liga 2. Thanks!`;
+      } else if (!isDuesOwedState && demotionTarget) {
+        // Tier 2 (4–6d) with demotion path — concrete about what
+        // "demotion" actually means (practices, pickup, games,
+        // intra-squads with the lower group).
+        payBody = `Hi${firstNameStr}, following up from Lighthouse 1893 — your dues (${amountStr}) are ${daysStr} and the LeagueApps charge hasn't cleared. Please log in and confirm a valid card is on file with enough funds for monthly dues — that's usually the culprit: ${payUrl}. Would love to keep your ${currentTierName} spot — if dues stay behind we may need to temporarily move you in with the ${demotionTarget} group for practices, pickup, games and intra-squads until it's sorted. If timing's rough, just reply — happy to work something out. Thanks!`;
+      } else if (isDuesOwedState && demotionTarget) {
+        // Tier 3 (7+) with demotion path.
+        payBody = `Hi${firstNameStr}, checking in from Lighthouse 1893 — dues (${amountStr}) are now ${daysStr}. Please log in and make sure a valid card is on file with sufficient funds — most overdue accounts are just a declined or expired card: ${payUrl}. To keep ${currentTierName} spots for members who are current on dues, we'll need to slot you in with the ${demotionTarget} group for practices, pickup, games and intra-squads until this is resolved — you're welcome back with ${currentTierName} the moment dues are current. If something's up, please reply and we'll work it out. Thanks!`;
       } else {
-        payBody = `Hi${firstNameStr}, heads up — our Lighthouse 1893 Financial Dept flagged your monthly dues (${amountStr}) as ${daysStr}. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to your practice / game roster eligibility (and any late fees), log in and pay here: ${payUrl}  Thanks!`;
+        // Tier 2 & 3 for Liga 2 / Lighthouse Adult / Unassigned —
+        // collect only, no demotion.  Same body for both severities;
+        // days count in daysStr already communicates urgency.
+        payBody = `Hi${firstNameStr}, following up from Lighthouse 1893 — your dues (${amountStr}) are ${daysStr} and the LeagueApps charge hasn't cleared. Please log in and confirm a valid card is on file with enough available to cover the monthly dues — most overdue accounts are just a declined or expired card: ${payUrl}. Dues keep refs, registration, uniforms and gear moving, and every paid membership gets us closer to filling APSL, Liga 1 and Liga 2. If life's throwing something at you, please just reply — we'd rather work it out than lose you. Thanks!`;
       }
       const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
       const payBtn    = payHref
