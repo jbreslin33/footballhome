@@ -174,6 +174,17 @@ Response MensRosterController::handleGet(const Request& request) {
     // player-move round-trip doesn't get held up on the LeagueApps API.
     const bool refreshLa = (request.getQueryParam("refreshLa") == "1");
     try {
+        // Per-load enforcement (migration 108): LA membership is source
+        // of truth for roster composition.  Sweep out any rows whose
+        // backing membership has lapsed so the response is always in
+        // sync with the truth.
+        try {
+            auto* db = Database::getInstance();
+            db->query("SELECT fn_sweep_invalid_rosters()");
+        } catch (const std::exception& e) {
+            std::cerr << "[mens-roster] roster sweep failed: " << e.what() << std::endl;
+        }
+
         auto result = model_->run(includeAll, refreshLa);
         if (result.noColumns) {
             std::ostringstream body;

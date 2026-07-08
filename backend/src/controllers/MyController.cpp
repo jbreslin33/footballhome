@@ -213,6 +213,16 @@ Response MyController::handleGetWeek(const Request& request) {
 
     auto* db = Database::getInstance();
     try {
+        // Per-load enforcement (migration 108): LA membership is source
+        // of truth.  Any roster_assignments row whose user no longer
+        // has a matching active LA membership gets soft-deleted here
+        // before we read any rosters below.  Cheap when compliant —
+        // the sweep query short-circuits when nothing is invalid.
+        try { db->query("SELECT fn_sweep_invalid_rosters()"); }
+        catch (const std::exception& e) {
+            std::cerr << "[my/week] roster sweep failed: " << e.what() << std::endl;
+        }
+
         const long long playerId = resolvePlayerId(personId);
 
         auto rows = db->query(
@@ -841,6 +851,13 @@ Response MyController::handleGetEventRsvps(const Request& request) {
 
     auto* db = Database::getInstance();
     try {
+        // Per-load enforcement (migration 108): sweep before reading
+        // rosters so freshly-lapsed memberships propagate immediately.
+        try { db->query("SELECT fn_sweep_invalid_rosters()"); }
+        catch (const std::exception& e) {
+            std::cerr << "[my/event-rsvps] roster sweep failed: " << e.what() << std::endl;
+        }
+
         // Verify the match exists and grab its type/home_team for eligibility.
         auto m = db->query(
             "SELECT id, match_type_id, home_team_id FROM matches "

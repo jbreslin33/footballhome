@@ -97,6 +97,15 @@ Response BoysRosterController::handleGet(const Request& request) {
     const bool includeAll = (request.getQueryParam("includeAll") == "1");
     const bool refreshLa  = (request.getQueryParam("refreshLa")  == "1");
     try {
+        // Per-load enforcement (migration 108): LA membership is source
+        // of truth.  Sweep out non-compliant roster rows before serving.
+        try {
+            auto* db = Database::getInstance();
+            db->query("SELECT fn_sweep_invalid_rosters()");
+        } catch (const std::exception& e) {
+            std::cerr << "[boys-roster] roster sweep failed: " << e.what() << std::endl;
+        }
+
         auto result = model_->run(includeAll, refreshLa);
         if (result.noColumns) {
             std::ostringstream body;
