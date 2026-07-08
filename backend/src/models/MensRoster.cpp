@@ -846,6 +846,15 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         }
 
         if (relevant.empty()) {
+            // 2026-07-08: Suppress from Unassigned when the user is
+            // already on some mens team, just not one with a visible
+            // roster_column (e.g. Pickup 909, Practice 908, or a
+            // sunset selection team).  Otherwise pickup-only members
+            // clutter the selection-team draft view.  If the user has
+            // zero mens assignments at all, they stay in Unassigned so
+            // admin can drag them onto a selection team.
+            if (userCells && !userCells->empty()) continue;
+
             json row             = p;
             row["teamIds"]       = json::array();
             row["nextBillDate"]  = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
