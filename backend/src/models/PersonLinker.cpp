@@ -353,13 +353,22 @@ void PersonLinker::recordMembership(int personId,
             return;
         }
 
-        // 2. Close any OTHER open row for this person (active↔paused, or
-        //    a category swap).  Preserves history — we UPDATE ended_at,
-        //    we do not DELETE.
-        db_->query(
-            "UPDATE person_la_memberships SET ended_at = now(), updated_at = now() "
-            " WHERE person_id = $1::int AND ended_at IS NULL AND la_program_id <> $2::bigint",
-            {std::to_string(personId), std::to_string(programId)});
+        // 2. Multiple open memberships in DIFFERENT programs are LEGAL
+        //    and expected (2026-07-08).  A person can be a full Mens
+        //    Club member (program 5039300, variant='active') AND also
+        //    show up on the Mens Pickup roster (program 5070075,
+        //    variant='pickup') simultaneously.  Historically this step
+        //    auto-closed any other open row here on the (long since
+        //    obsolete) assumption that active↔paused was the only
+        //    transition.  That was wrong the moment pickup got its own
+        //    program_id — the sync then closed the club membership
+        //    the instant it saw the pickup registration, breaking
+        //    Liga-1/Liga-2 team-membership-requirements gates for
+        //    anyone LA classified as both.  Only step 1 (update the
+        //    same-program row) and step 3 (insert if missing) remain.
+        //    Genuine end-of-membership must be reported by LA and
+        //    handled explicitly (currently: not done — the sync only
+        //    opens; deprovisioning is a manual admin task).
 
         // 3. Insert the new open row.
         if (registrationId > 0) {
