@@ -538,8 +538,20 @@ class MensRosterScreen extends Screen {
     const inviteSmsHref = p.phone
       ? `sms:${this.escape(p.phone)}?&body=${encodeURIComponent(inviteSmsBody)}`
       : null;
+    // INVITE email uses Gmail compose (same authuser pattern as the
+    // regular EMAIL button above) so clicking it lands on
+    // mail.google.com pre-filled from soccer@lighthouse1893.org rather
+    // than firing an OS mailto: handler (which on desktop typically
+    // does nothing useful).  Matches the leads page.
     const inviteEmailHref = p.email
-      ? `mailto:${this.escape(p.email)}?subject=${encodeURIComponent(inviteEmailSubject)}&body=${encodeURIComponent(inviteEmailBody)}`
+      ? `https://mail.google.com/mail/?${new URLSearchParams({
+          view:     'cm',
+          fs:       '1',
+          authuser: 'soccer@lighthouse1893.org',
+          to:       p.email,
+          su:       inviteEmailSubject,
+          body:     inviteEmailBody,
+        }).toString()}`
       : null;
 
     // ---- Contact popover -----------------------------------------------
