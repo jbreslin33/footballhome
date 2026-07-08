@@ -665,8 +665,10 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         // triple at $99 through the legacy membership program).  Rules:
         //   • Any $99 charge on record → covered for May, June, July.
         //     Next bill is $35 on the 1st Friday of August (2026-08-07).
-        //   • Any $35+ charge in the current calendar month → covered
-        //     for the current month.  Next bill = 1st of next month.
+        //   • Total ≥ $35 charged in the current calendar month →
+        //     covered for the current month.  Split payments count
+        //     (e.g. $1 card verification + $34 dues on same day —
+        //     Kay Asante 2026-07-08).  Next bill = 1st of next month.
         //   • Otherwise fall through to person_billing.next_bill_date.
         //
         // Payments across ALL related programs count (see the cross-
@@ -677,16 +679,16 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         if (uidLL0 > 0) {
             auto ait = allPayByUser.find(uidLL0);
             if (ait != allPayByUser.end()) {
-                bool has99 = false;
-                bool has35ThisMonth = false;
+                bool   has99 = false;
+                double thisMonthSum = 0.0;
                 for (const auto& cp : ait->second) {
                     if (cp.paidAt.size() < 10) continue;
                     if (cp.amount >= 99.0 - 0.005) has99 = true;
-                    if (cp.amount >= 35.0 - 0.005
-                        && cp.paidAt.substr(0, 7) == thisMonthPrefix) {
-                        has35ThisMonth = true;
+                    if (cp.paidAt.substr(0, 7) == thisMonthPrefix) {
+                        thisMonthSum += cp.amount;
                     }
                 }
+                const bool has35ThisMonth = (thisMonthSum >= 35.0 - 0.005);
                 if (has99) {
                     d.daysOverdue = 0;
                     d.nextBillDate = "2026-08-07";  // 1st Friday of Aug 2026
