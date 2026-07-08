@@ -852,16 +852,17 @@ Response MyController::handleGetEventRsvps(const Request& request) {
 
         // Caller must be on this match's roster themselves, OR carry
         // an admins row — we don't leak rosters to arbitrary logged-in
-        // users.  Same eligibility rule as callerRosteredForMatch().
+        // users.  Same eligibility rule as callerRosteredForMatch() —
+        // uses the materialized player_rsvp_eligibility table so pool
+        // teams (908 Practice / 909 Pickup) resolve correctly.
         auto membership = db->query(
             "SELECT 1 "
-            "  FROM roster_assignments ra "
+            "  FROM player_rsvp_eligibility ple "
             "  JOIN matches m ON m.id = $2::int "
             "  JOIN external_person_aliases epa "
             "    ON epa.provider = 'leagueapps' "
-            "   AND epa.external_user_id = ra.leagueapps_user_id::text "
-            " WHERE ra.team_id = m.home_team_id "
-            "   AND ra.removed_at IS NULL "
+            "   AND epa.external_user_id = ple.leagueapps_user_id::text "
+            " WHERE ple.team_id = m.home_team_id "
             "   AND epa.person_id = $1::int "
             " UNION ALL "
             " SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
@@ -880,12 +881,11 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "eligible AS ( "
             "  SELECT DISTINCT epa.person_id "
             "    FROM m "
-            "    JOIN roster_assignments ra "
-            "      ON ra.team_id = m.home_team_id "
-            "     AND ra.removed_at IS NULL "
+            "    JOIN player_rsvp_eligibility ple "
+            "      ON ple.team_id = m.home_team_id "
             "    JOIN external_person_aliases epa "
             "      ON epa.provider = 'leagueapps' "
-            "     AND epa.external_user_id = ra.leagueapps_user_id::text "
+            "     AND epa.external_user_id = ple.leagueapps_user_id::text "
             ") "
             "SELECT e.person_id, p.first_name, p.last_name, "
             "       COALESCE(h.rsvp_status_id, 0) AS status_id "
