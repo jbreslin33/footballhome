@@ -80,3 +80,6 @@ footballhome-git-crypt.key.env
 sync.log
 .env
 scripts/__pycache__/
+
+env.bak-*
+*.bak-20*

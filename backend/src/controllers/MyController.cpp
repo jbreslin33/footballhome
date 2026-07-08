@@ -874,6 +874,12 @@ Response MyController::handleGetEventRsvps(const Request& request) {
         }
 
         // Eligible roster + latest RSVP status per person.
+        //
+        // `pickup_only` = TRUE if this person's ONLY active roster
+        // assignments are pool teams (908 Practice / 909 Pickup) —
+        // i.e. they aren't on any numbered team.  Used by the UI to
+        // badge them as "Pickup" members so team members can tell
+        // them apart from the regular roster at a glance.
         auto rows = db->query(
             "WITH m AS ( "
             "  SELECT id, match_type_id, home_team_id FROM matches WHERE id = $1::int "
@@ -888,7 +894,16 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "     AND epa.external_user_id = ple.leagueapps_user_id::text "
             ") "
             "SELECT e.person_id, p.first_name, p.last_name, "
-            "       COALESCE(h.rsvp_status_id, 0) AS status_id "
+            "       COALESCE(h.rsvp_status_id, 0) AS status_id, "
+            "       NOT EXISTS ( "
+            "         SELECT 1 FROM roster_assignments ra2 "
+            "          JOIN external_person_aliases epa2 "
+            "            ON epa2.provider = 'leagueapps' "
+            "           AND epa2.external_user_id = ra2.leagueapps_user_id::text "
+            "         WHERE epa2.person_id = e.person_id "
+            "           AND ra2.removed_at IS NULL "
+            "           AND ra2.team_id NOT IN (908, 909) "
+            "       ) AS pickup_only "
             "  FROM eligible e "
             "  JOIN persons p ON p.id = e.person_id "
             "  LEFT JOIN players pl ON pl.person_id = e.person_id "
@@ -909,10 +924,12 @@ Response MyController::handleGetEventRsvps(const Request& request) {
         json noResponse  = json::array();
         for (const auto& r : rows) {
             const int statusId = r["status_id"].is_null() ? 0 : r["status_id"].as<int>();
+            const bool pickupOnly = !r["pickup_only"].is_null() && r["pickup_only"].as<bool>();
             json entry = {
-                {"person_id",  r["person_id"].as<long long>()},
-                {"first_name", r["first_name"].is_null() ? std::string{} : r["first_name"].as<std::string>()},
-                {"last_name",  r["last_name"].is_null()  ? std::string{} : r["last_name"].as<std::string>()},
+                {"person_id",   r["person_id"].as<long long>()},
+                {"first_name",  r["first_name"].is_null() ? std::string{} : r["first_name"].as<std::string>()},
+                {"last_name",   r["last_name"].is_null()  ? std::string{} : r["last_name"].as<std::string>()},
+                {"pickup_only", pickupOnly},
             };
             switch (statusId) {
                 case 1: going.push_back(entry);      break;

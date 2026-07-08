@@ -512,13 +512,29 @@ class MyScreen extends Screen {
         </div>
       `;
     }
-    const rows = items.map(p => {
+    // Pickup-only members sink to the bottom of each bucket and get a
+    // visible pill so the roster is easy to scan.
+    const sorted = items.slice().sort((a, b) => {
+      const pa = a.pickup_only ? 1 : 0;
+      const pb = b.pickup_only ? 1 : 0;
+      if (pa !== pb) return pa - pb;
+      const la = (a.last_name || '').toLowerCase();
+      const lb = (b.last_name || '').toLowerCase();
+      return la.localeCompare(lb);
+    });
+    const rows = sorted.map(p => {
       const first = (p.first_name || '').trim();
       const last  = (p.last_name  || '').trim();
       const name  = first || last
         ? this.escapeHtml(first + (last ? ' ' + last : ''))
         : `Person #${p.person_id}`;
-      return `<div style="font-size:0.85rem; padding:1px 0;">${name}</div>`;
+      const pill = p.pickup_only
+        ? ` <span style="display:inline-block; margin-left:6px; padding:1px 6px;
+                         border-radius:8px; background:rgba(147,197,253,0.15);
+                         color:#93c5fd; font-size:0.7rem; font-weight:600;
+                         letter-spacing:0.02em; vertical-align:middle;">Pickup</span>`
+        : '';
+      return `<div style="font-size:0.85rem; padding:1px 0;">${name}${pill}</div>`;
     }).join('');
     return `
       <div>
