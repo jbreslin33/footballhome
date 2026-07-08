@@ -144,6 +144,7 @@ Response EventRsvpController::handleGetEvent(const Request& request) {
             "       to_char(ce.start_at  AT TIME ZONE 'UTC', "
             "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')                     AS start_at, "
             "       ce.match_id, ce.chat_id, c.team_id, t.name AS team_name, "
+            "       t.gender_category AS gender_category, "
             "       to_char( "
             "         COALESCE(ce.start_at, "
             "                  (ce.event_date::timestamp + ce.event_time))::timestamptz "
@@ -169,6 +170,7 @@ Response EventRsvpController::handleGetEvent(const Request& request) {
             {"event_time", strOrNull("event_time")},
             {"start_at",   strOrNull("start_at")},
             {"team_name",  strOrNull("team_name")},
+            {"gender_category", strOrNull("gender_category")},
             {"when",       ev["when_str"].is_null() ? json(nullptr)
                                                     : json(ev["when_str"].as<std::string>())},
         };

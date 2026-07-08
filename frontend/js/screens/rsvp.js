@@ -135,7 +135,35 @@ class RsvpScreen extends Screen {
       ? `<div style="opacity:0.7; font-size: 0.9em;">${this.escapeHtml(ev.team_name)}</div>`
       : '';
 
+    // Club-brand banner derived from the team's gender_category so a Boys
+    // event shows "Lighthouse Boys Club 1897", a Womens event shows
+    // "Lighthouse Womens Club 1895", etc.  If category is unknown we skip
+    // the banner rather than guess.
+    const CLUB_BRAND = {
+      mens:   'Lighthouse Mens Club 1893',
+      womens: 'Lighthouse Womens Club 1895',
+      boys:   'Lighthouse Boys Club 1897',
+      girls:  'Lighthouse Girls Club 1898',
+    };
+    const brand = CLUB_BRAND[(ev.gender_category || '').toLowerCase()];
+    const brandBanner = brand
+      ? `<div style="
+           text-align:center;
+           font-family: Georgia, 'Times New Roman', serif;
+           font-size: 0.95em;
+           letter-spacing: 2px;
+           text-transform: uppercase;
+           color: #f5d442;
+           font-weight: 700;
+           padding: 10px 8px;
+           background: #12233f;
+           border-radius: 8px;
+           margin-bottom: 16px;
+         ">${this.escapeHtml(brand)}</div>`
+      : '';
+
     shell.innerHTML = `
+      ${brandBanner}
       <div style="margin-bottom: 20px;">
         <div style="font-size: 1.1em;">Hi ${this.escapeHtml(me.first_name || 'there')} 👋</div>
         <div style="margin-top: 4px; opacity: 0.7;">Tap a button — your RSVP is saved instantly.</div>

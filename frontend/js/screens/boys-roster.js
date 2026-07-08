@@ -156,8 +156,32 @@ class BoysRosterScreen extends Screen {
       // knows the state of the club before scanning columns.  Backend
       // exposes these under top-level `data.delinquency`.
       const dq = data.delinquency || {};
-      const dqText = (dq.overdueCount > 0 || dq.duesOwedCount > 0)
-        ? ` · ⚠ ${dq.overdueCount || 0} overdue · 🚨 ${dq.duesOwedCount || 0} dues owed`
+      // Fallback (2026-07-07): youth backend doesn't populate a delinquency
+      // summary yet, so compute a proxy client-side from `outstandingBalance`
+      // + `paymentStatus` on each player row.  Marks a player as "overdue"
+      // when either LA reports an open balance OR paymentStatus is UNPAID.
+      let overdueCount = dq.overdueCount || 0;
+      let duesOwedCount = dq.duesOwedCount || 0;
+      if (!dq.overdueCount && !dq.duesOwedCount) {
+        const seen = new Set();
+        const walk = (arr) => {
+          for (const p of arr || []) {
+            const uid = p.leagueAppsUserId;
+            if (uid == null || seen.has(uid)) continue;
+            seen.add(uid);
+            const bal = Number(p.outstandingBalance || 0);
+            const unpaid = String(p.paymentStatus || '').toUpperCase() === 'UNPAID';
+            if (bal > 0 || unpaid) overdueCount++;
+          }
+        };
+        walk(data.unassigned);
+        for (const b of Object.values(data.buckets || {})) walk(b);
+      }
+      const overduePct = data.total > 0
+        ? Math.round((overdueCount / data.total) * 100)
+        : 0;
+      const dqText = (overdueCount > 0 || duesOwedCount > 0)
+        ? ` · ⚠ ${overdueCount}/${data.total} overdue (${overduePct}%) · 🚨 ${duesOwedCount} dues owed`
         : '';
       this.setBanner({
         icon: '✓',

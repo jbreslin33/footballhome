@@ -107,11 +107,15 @@ class MensDelinquentScreen extends Screen {
       if (body)    body.style.display    = '';
 
       const summary = data.delinquency || {};
+      const totalMembers = all.length;
+      const overduePct = totalMembers > 0
+        ? Math.round((overdue.length / totalMembers) * 100)
+        : 0;
       this.setBanner({
         icon: overdue.length === 0 ? '✓' : (summary.duesOwedCount > 0 ? '🚨' : '⚠'),
         text: overdue.length === 0
           ? 'All members current on dues.'
-          : `${overdue.length} overdue · ${summary.duesOwedCount || 0} dues owed (7+ days) · threshold ${summary.holdDays || 7} days`,
+          : `${overdue.length}/${totalMembers} overdue (${overduePct}%) · ${summary.duesOwedCount || 0} dues owed (7+ days) · threshold ${summary.holdDays || 7} days`,
         showRefresh: true,
       });
 

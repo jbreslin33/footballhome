@@ -81,6 +81,7 @@ set(SOURCES
     src/controllers/YouthRosterController.cpp
     src/controllers/MensRosterController.cpp
     src/controllers/BoysRosterController.cpp
+    src/controllers/ClubRostersController.cpp
     src/controllers/PersonBillingController.cpp
     src/controllers/PayReminderLogController.cpp
     src/controllers/PaymentsController.cpp

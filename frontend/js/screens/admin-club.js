@@ -112,6 +112,7 @@ class AdminClubScreen extends Screen {
     // paused-members screens now show category chips at the top so a
     // single tile handles all four sub-programs.
     const membershipTiles = [
+      { id: 'club-rosters',    icon: '🗂️', label: 'Club Rosters',     description: 'Cross-domain master board — every FH member with color-coded team chips across Mens / Womens / Boys / Girls' },
       { id: 'members',         icon: '👥', label: 'Members',          description: 'Active members across all sub-programs — filter by Men / Women / Boys / Girls inside' },
       { id: 'paused-members',  icon: '⚽', label: 'Pickup Membership', description: 'Members on the pickup-only roster (eligible for pickup, not team practice/games)' },
       { id: 'leads',           icon: '📋', label: 'Leads',            description: 'Ad interest form submissions' },
@@ -164,7 +165,7 @@ class AdminClubScreen extends Screen {
 
     const girlsDashTiles = [
       { id: 'girls-lineups',  target: 'youth-roster',        params: { gender: 'youth', sex: 'girls', matchType: 'game' }, icon: '🧩', label: 'Girls Dashboard',    description: 'Girls teams — roster, schedule, attendance' },
-      { id: 'girls-roster',   target: 'youth-roster',        params: { gender: 'youth', sex: 'girls' },                    icon: '🎽', label: 'Girls Roster',       description: 'Live LA roster — boys + girls together (mirror of Boys Roster while girls play on boys teams)' },
+      { id: 'girls-roster',   target: 'girls-roster',        params: { gender: 'youth', sex: 'girls' },                    icon: '🎽', label: 'Girls Roster',       description: 'Live LA roster — girls + boys together (mirror of Boys Roster while girls play on boys teams)' },
       { id: 'girls-practice', target: 'youth-practice-dash', params: { gender: 'youth', sex: 'girls', kind: 'practice' }, icon: '🏃', label: 'Girls Practice',      description: 'Add / edit / delete girls practices' },
       { id: 'girls-pickup',   target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'girls', kind: 'pickup'   }, icon: '⚡', label: 'Girls Pickup',        description: 'Add / edit / delete girls pickup sessions' },
     ];
@@ -356,6 +357,14 @@ class AdminClubScreen extends Screen {
 
     if (section === 'leads-analytics') {
       this.navigation.goTo('leads-analytics', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'club-rosters') {
+      this.navigation.goTo('club-rosters', {
         clubId: this.clubId,
         clubName: this.clubName
       });
