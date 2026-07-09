@@ -390,7 +390,40 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             std::cerr << "[MensRoster] la_registered_at load failed: " << e.what() << std::endl;
         }
     }
-    auto laRegIsoFor = [&](const json& regJson) -> json {
+
+    // ── LA-user-id fallback map (2026-07-09) ─────────────────────────
+    //
+    // Some players surface on the mens roster with no mens LA
+    // registrationId (e.g. Nelson Cruz was manually added to a mens
+    // team but his only LA registration is Boys 1897).  Without a
+    // fallback the reg-date pill + prorate cell would stay blank.
+    // Build a secondary map keyed by LA user_id → earliest known
+    // la_registered_at across ANY of the player's memberships so the
+    // frontend can render a reg date no matter which club actually
+    // billed them.
+    std::unordered_map<std::string, std::string> laRegisteredAtByUid;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT epa.external_user_id AS la_user_id, "
+            "       TO_CHAR(MIN(plm.la_registered_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
+            "  FROM person_la_memberships plm "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = plm.person_id "
+            "   AND epa.provider  = 'leagueapps' "
+            " WHERE plm.la_registered_at IS NOT NULL "
+            "   AND epa.external_user_id IS NOT NULL "
+            " GROUP BY epa.external_user_id "
+        );
+        for (const auto& r : rows) {
+            if (r["la_user_id"].is_null() || r["reg_iso"].is_null()) continue;
+            laRegisteredAtByUid[r["la_user_id"].c_str()] = r["reg_iso"].c_str();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] la_registered_at (by uid) load failed: " << e.what() << std::endl;
+    }
+
+    auto laRegIsoFor = [&](const json& regJson, const std::string& uidFallback = std::string{}) -> json {
         long long id = 0;
         if      (regJson.is_number_integer())  id = regJson.get<long long>();
         else if (regJson.is_number_unsigned()) id = static_cast<long long>(regJson.get<unsigned long long>());
@@ -399,10 +432,15 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             try { id = std::stoll(regJson.get<std::string>()); }
             catch (...) { id = 0; }
         }
-        if (id <= 0) return json(nullptr);
-        auto it = laRegisteredAtByRegId.find(id);
-        if (it == laRegisteredAtByRegId.end()) return json(nullptr);
-        return json(it->second);
+        if (id > 0) {
+            auto it = laRegisteredAtByRegId.find(id);
+            if (it != laRegisteredAtByRegId.end()) return json(it->second);
+        }
+        if (!uidFallback.empty()) {
+            auto it = laRegisteredAtByUid.find(uidFallback);
+            if (it != laRegisteredAtByUid.end()) return json(it->second);
+        }
+        return json(nullptr);
     };
 
     // ── person_id per la_registration_id (2026-07-06) ─────────────────
@@ -871,7 +909,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
             row["paymentsWindowStart"] = windowStartIso;
             row["daysOverdue"]    = daysOverdueOut;
             row["delinquencyState"] = stateOut;
-            row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
+            row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"), uid);
             row["lastPayReminder"] = lastPayReminderJson(uid);
             {
                 long long pid = personIdFor(p.at("registrationId"));
@@ -907,7 +945,7 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
                 row["paymentsWindowStart"] = windowStartIso;
                 row["daysOverdue"]    = daysOverdueOut;
                 row["delinquencyState"] = stateOut;
-                row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
+                row["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"), uid);
                 row["lastPayReminder"] = lastPayReminderJson(uid);
                 {
                     long long pid = personIdFor(p.at("registrationId"));

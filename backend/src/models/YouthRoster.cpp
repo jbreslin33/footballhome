@@ -241,6 +241,11 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
     // "Reg: MMM D, YYYY" on the roster card, and gate the projected-
     // prorate cell on the 2026-07-06 cutoff.  Keyed by la_registration_id.
     std::unordered_map<long long, std::string> laRegisteredAtByRegId;
+    // See MensRoster / BoysRoster for rationale — LA user_id fallback
+    // so cards with no matching registration in the current club still
+    // surface a reg date from a companion program (pickup, paused,
+    // sibling club).  Added 2026-07-09.
+    std::unordered_map<std::string, std::string> laRegisteredAtByUid;
     {
         try {
             auto* db = Database::getInstance();
@@ -259,7 +264,27 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
             std::cerr << "[YouthRoster] la_registered_at load failed: " << e.what() << std::endl;
         }
     }
-    auto laRegIsoFor = [&](const json& regJson) -> json {
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT epa.external_user_id AS la_user_id, "
+            "       TO_CHAR(MIN(plm.la_registered_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
+            "  FROM person_la_memberships plm "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = plm.person_id "
+            "   AND epa.provider  = 'leagueapps' "
+            " WHERE plm.la_registered_at IS NOT NULL "
+            "   AND epa.external_user_id IS NOT NULL "
+            " GROUP BY epa.external_user_id "
+        );
+        for (const auto& r : rows) {
+            if (r["la_user_id"].is_null() || r["reg_iso"].is_null()) continue;
+            laRegisteredAtByUid[r["la_user_id"].c_str()] = r["reg_iso"].c_str();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[YouthRoster] la_registered_at (by uid) load failed: " << e.what() << std::endl;
+    }
+    auto laRegIsoFor = [&](const json& regJson, const std::string& uidFallback = std::string{}) -> json {
         long long id = 0;
         if      (regJson.is_number_integer())  id = regJson.get<long long>();
         else if (regJson.is_number_unsigned()) id = static_cast<long long>(regJson.get<unsigned long long>());
@@ -268,10 +293,15 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
             try { id = std::stoll(regJson.get<std::string>()); }
             catch (...) { id = 0; }
         }
-        if (id <= 0) return json(nullptr);
-        auto it = laRegisteredAtByRegId.find(id);
-        if (it == laRegisteredAtByRegId.end()) return json(nullptr);
-        return json(it->second);
+        if (id > 0) {
+            auto it = laRegisteredAtByRegId.find(id);
+            if (it != laRegisteredAtByRegId.end()) return json(it->second);
+        }
+        if (!uidFallback.empty()) {
+            auto it = laRegisteredAtByUid.find(uidFallback);
+            if (it != laRegisteredAtByUid.end()) return json(it->second);
+        }
+        return json(nullptr);
     };
 
     for (auto& p : shapedAll) {
@@ -280,7 +310,7 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
         p["nextBillDate"]   = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
         p["nextBillAmount"] = bill.nextBillAmount;
         p["isDefault"]      = bill.isDefault;
-        p["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"));
+        p["laRegisteredAt"] = laRegIsoFor(p.at("registrationId"), uid);
 
         // lastPaid pill data.  Join by registrationId (parent pays for
         // child on youth, so la_user_id on transactions ≠ player uid).
