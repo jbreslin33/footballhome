@@ -532,11 +532,11 @@ class BoysRosterScreen extends Screen {
           signature,
         ].join('\n\n');
       } else {
-        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment, please log in and pay: ${payUrl}. Thanks so much!`;
+        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file: ${payUrl}. Thanks so much!`;
         payEmailBody = [
           greetingLine,
           `Gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps.`,
-          `When you get a moment, please log in and pay:\n${payUrl}`,
+          `When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file:\n${payUrl}`,
           signature,
         ].join('\n\n');
       }
