@@ -423,6 +423,37 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         std::cerr << "[MensRoster] la_registered_at (by uid) load failed: " << e.what() << std::endl;
     }
 
+    // ── person_payments fallback (2026-07-09) ────────────────────────
+    //
+    // Some players (e.g. Nicholson Pennant, LA user 57699485, mens
+    // signup today) surface on the mens roster with a $1 signup
+    // charge in person_payments but NO row in person_la_memberships
+    // yet — the membership-linker sync hasn't caught up.  Without a
+    // fallback the prorate cell reads $0 and the coach can't manually
+    // set the LA balance before running the card.  Use the earliest
+    // known LA transaction date for that la_user_id as a reasonable
+    // registration-date proxy so BillingBadge.projectedProrate has
+    // something to work with.  Keyed by la_user_id; scanned across
+    // all programs so a boys-then-mens signup still gets a date.
+    std::unordered_map<std::string, std::string> laRegisteredAtByUidFromPayments;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT la_user_id::text AS la_user_id, "
+            "       TO_CHAR(MIN(paid_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
+            "  FROM person_payments "
+            " WHERE la_user_id IS NOT NULL "
+            "   AND paid_at    IS NOT NULL "
+            " GROUP BY la_user_id "
+        );
+        for (const auto& r : rows) {
+            if (r["la_user_id"].is_null() || r["reg_iso"].is_null()) continue;
+            laRegisteredAtByUidFromPayments[r["la_user_id"].c_str()] = r["reg_iso"].c_str();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] la_registered_at (payments fallback) load failed: " << e.what() << std::endl;
+    }
+
     auto laRegIsoFor = [&](const json& regJson, const std::string& uidFallback = std::string{}) -> json {
         long long id = 0;
         if      (regJson.is_number_integer())  id = regJson.get<long long>();
@@ -439,6 +470,9 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         if (!uidFallback.empty()) {
             auto it = laRegisteredAtByUid.find(uidFallback);
             if (it != laRegisteredAtByUid.end()) return json(it->second);
+            // Final fallback: earliest LA transaction date for this user.
+            auto pit = laRegisteredAtByUidFromPayments.find(uidFallback);
+            if (pit != laRegisteredAtByUidFromPayments.end()) return json(pit->second);
         }
         return json(nullptr);
     };
