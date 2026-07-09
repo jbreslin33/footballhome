@@ -533,22 +533,30 @@ class BoysRosterScreen extends Screen {
       let payBody, payEmailBody;
       const greetingLine = `Hi${parentFirstStr},`;
       const signature    = `Thanks so much,\nLighthouse 1893`;
+      // Aug 7 auto-charge heads-up (owner directive 2026-07-09):
+      // "starting Aug 7 League Apps will auto charge $35 monthly dues.
+      // But right now as a courtesy we are asking parents to pay
+      // manually so the payment does not come as a surprise."  Goes
+      // on ALL youth PAY messages (prorate + normal, SMS + email).
+      const autoChargeNote = `Heads-up: starting Aug 7 LeagueApps will auto-charge the $35 monthly dues to the card on file. Right now as a courtesy we're asking parents to pay manually so the charge doesn't come as a surprise.`;
       if (prorateOwed) {
         const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment: ${payUrl}. Thanks so much!`;
+        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment: ${payUrl}. ${autoChargeNote} Thanks so much!`;
         payEmailBody = [
           greetingLine,
           `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
           `Balance for July:  ${amountStr}.`,
           `Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment:\n${payUrl}`,
+          autoChargeNote,
           signature,
         ].join('\n\n');
       } else {
-        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file: ${payUrl}. Thanks so much!`;
+        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file: ${payUrl}. ${autoChargeNote} Thanks so much!`;
         payEmailBody = [
           greetingLine,
           `Gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps.`,
           `When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file:\n${payUrl}`,
+          autoChargeNote,
           signature,
         ].join('\n\n');
       }
