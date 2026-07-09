@@ -1094,4 +1094,4 @@ window.BillingBadge = (() => {
     }
   }
 
-  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance, renderProrateCell, renderRegistrationDate, renderLastPayReminder, renderLastPayReminderInline, renderFhLastActivity };})();
+  return { render, wire, renderLastPaid, render3MonthTable, renderUnbilled, renderBalance, renderProrateCell, projectedProrate, renderRegistrationDate, renderLastPayReminder, renderLastPayReminderInline, renderFhLastActivity };})();

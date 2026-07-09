@@ -446,7 +446,18 @@ class MensRosterScreen extends Screen {
          </button>`
       : '';
     let delinqBtns = '';
-    if (days >= 1 && p.leagueAppsUserId) {
+    // Prorate context (2026-07-09) — if the player is a mid-cycle
+    // signup who hasn't yet paid the full $35 for the partial cycle,
+    // the PAY reminder should explain the prorate math instead of
+    // parroting a generic "$35 dues past due" line.  Also opens the
+    // PAY button for fresh signups (days=0) so the coach can nudge
+    // them BEFORE the invoice fails — the whole point of the prorate
+    // cell is to prompt the coach to add the LA charge NOW.
+    const pr = (window.BillingBadge && window.BillingBadge.projectedProrate)
+      ? window.BillingBadge.projectedProrate(p)
+      : null;
+    const prorateOwed = !!(pr && pr.amount > 0);
+    if ((days >= 1 || prorateOwed) && p.leagueAppsUserId) {
       // Amount preference: LA's outstandingBalance if it's > 0,
       // otherwise the monthly nextBillAmount (usually $35).  Falls back
       // to just "dues" if we somehow have neither.
@@ -497,7 +508,23 @@ class MensRosterScreen extends Screen {
       else if (tids.includes(120))  { currentTierName = 'Liga 1'; demotionTarget = 'Liga 2'; }
 
       let payBody;
-      if (days <= 3) {
+      if (prorateOwed) {
+        // Prorate-first message (2026-07-09) — override the tier copy
+        // when the player is a mid-cycle signup who hasn't yet paid the
+        // full $35 for their partial cycle.  Explains the arithmetic
+        // so the player knows exactly what the manual charge will be
+        // and when normal $35/mo billing kicks in.
+        const nextFriShort = pr.nextFri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const regShort     = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const rawStr       = pr.rawAmount != null
+          ? (Number.isInteger(pr.rawAmount) ? `$${pr.rawAmount}` : `$${pr.rawAmount.toFixed(2)}`)
+          : `$${(35 * pr.daysRemain / pr.cycleDays).toFixed(2)}`;
+        const netStr       = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
+        const paidNote     = (pr.paidSinceReg && pr.paidSinceReg > 0)
+          ? ` minus the $${pr.paidSinceReg} you paid at signup =`
+          : ' =';
+        payBody = `Hi${firstNameStr}, quick note from Lighthouse 1893 — welcome to the club! Since you registered on ${regShort} (mid-cycle), your first month is prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining until the next billing date: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} due now. Please log in and confirm a valid card is on file — LeagueApps will bill the ${netStr}, and normal $35/month billing starts ${nextFriShort}: ${payUrl}. Thanks!`;
+      } else if (days <= 3) {
         // Tier 1 — all teams.  No demotion mention, just card nudge.
         payBody = `Hi${firstNameStr}, quick heads-up from Lighthouse 1893 — this month's dues charge (${amountStr}) didn't go through on LeagueApps (${daysStr}). Usually means the card on file expired, was declined, or the account was short — please log in and make sure a valid card is on file with funds to cover the monthly dues: ${payUrl}. Every paid membership funds refs, registration, uniforms and gear as we build toward filling APSL, Liga 1 and Liga 2. Thanks!`;
       } else if (!isDuesOwedState && demotionTarget) {
