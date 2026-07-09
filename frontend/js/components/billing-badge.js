@@ -795,8 +795,13 @@ window.BillingBadge = (() => {
     const zero   = Math.abs(rawBal) < 0.005;
     const credit = !zero && rawBal < 0;
     const days   = Math.max(0, parseInt(p.daysOverdue, 10) || 0);
-    const paidStatus = p.paymentStatus === 'PAID' || p.paymentStatus === 'WAIVED';
-    const owes   = (!zero && rawBal > 0 && !paidStatus) || days >= 1;
+    // 2026-07-09 owner directive ("bal due of greater than 0 showing up
+    // as green" for Raynel Hernandez / Jamauri Bradham): a positive LA
+    // balance always means red, even when paymentStatus === 'PAID'.
+    // The old rule gated on !paidStatus, which masked coach-edited
+    // balances on already-paid registrations.  LA's Balance Due column
+    // is now the authoritative "does this player owe money" signal.
+    const owes   = (!zero && rawBal > 0) || days >= 1;
 
     let bg='#052e1a', fg='#bbf7d0', border='#166534';   // green / paid-up
     if (owes)        { bg='#3a1f1f'; fg='#fecaca'; border='#b91c1c'; }
