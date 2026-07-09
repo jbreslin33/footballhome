@@ -1941,9 +1941,23 @@ class LeadsScreen extends Screen {
         practiceBlockText = '';
         gamesLine = 'Sundays, starting in September';
       } else {
-        const adultPractice = 'Tuesday through Friday 7:00–8:30pm, Saturday 11:00am–12:30pm. Players are expected to attend 2 sessions per week.';
-        practiceBlockHtml = `<li><strong>Practice:</strong> ${this.escapeHtml(adultPractice)}</li>`;
-        practiceBlockText = `  • Practice: ${adultPractice}\n`;
+        // Men's Club: 5 weekly sessions split into 2 structured
+        // practices (Wed, Fri) + 3 pickups (Tue, Thu, Sat).  We list
+        // them as separate schedule items so the audience sees the
+        // structure, then follow with a "Purpose of 5 weekly sessions"
+        // bullet that explains why 5 (fits work schedules → aim for
+        // any 2), how practice and pickup differ, and how together
+        // they cover the four pillars of player development.
+        const adultPurpose =
+          "Five sessions a week fit real work schedules \u2014 aim for any 2 of the 5 and you're a regular \u2014 and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments \u2014 not around a cone that can't defend. Together they cover the four pillars of player development: technical, tactical, physical, and psychological.";
+        practiceBlockHtml =
+          `<li><strong>Practice:</strong> Wednesday &amp; Friday, 7:00&ndash;8:30pm</li>` +
+          `<li><strong>Pickup:</strong> Tuesday &amp; Thursday, 7:00&ndash;8:30pm; Saturday, 11:00am&ndash;12:30pm</li>` +
+          `<li><strong>Purpose of 5 weekly sessions:</strong> Five sessions a week fit real work schedules &mdash; aim for any 2 of the 5 and you're a regular &mdash; and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments &mdash; not around a cone that can't defend. Together they cover the four pillars of player development: <strong>technical, tactical, physical, and psychological.</strong></li>`;
+        practiceBlockText =
+          `  • Practice: Wednesday & Friday, 7:00–8:30pm\n` +
+          `  • Pickup: Tuesday & Thursday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n` +
+          `  • Purpose of 5 weekly sessions: ${adultPurpose}\n`;
         gamesLine = 'Sundays';
       }
       const outdoorLine =
