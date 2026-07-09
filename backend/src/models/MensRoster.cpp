@@ -682,6 +682,121 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         }
     }
 
+    // ── Union in mens-program payers NOT yet in `all` (2026-07-09) ─
+    //
+    // Owner directive 2026-07-09: "we need to always grab all members
+    // from LA and show them in rosters at least in unassigned
+    // initially ... we need to always on all loads do a check we have
+    // accounted for in roster page all la members".
+    //
+    // Belt-and-suspenders pass.  The two prior sources of players are:
+    //   (a) LA API registrations for the mens program → `recs` → `all`
+    //   (b) v_team_members mens-team assignments not in (a)      → `all`
+    //
+    // Both can miss someone.  Case (a) misses if the LA registrations
+    // endpoint is stale, paginated wrong, or the player registered in
+    // a related mens-payment program (5070075 pickup / 5005948 legacy
+    // umbrella / …) but not the primary program.  Case (b) misses if
+    // no coach has dragged them onto any mens team yet.  Anyone with
+    // a real mens-program payment (already loaded into `allPayByUser`
+    // above) is unambiguously a mens member and must render at least
+    // in Unassigned so the coach can see + place them.
+    //
+    // Synthesize a minimal row from persons + external_person_aliases,
+    // same shape as the v_team_members union.  If the LA user id has
+    // no FH alias yet, use the first_name/last_name captured on the
+    // person_payments row itself so the card still labels correctly.
+    {
+        std::unordered_set<std::string> haveUid;
+        haveUid.reserve(all.size());
+        for (const auto& p : all) {
+            const std::string u = userIdString(p.at("leagueAppsUserId"));
+            if (!u.empty()) haveUid.insert(u);
+        }
+        std::vector<std::string> missingUids;
+        missingUids.reserve(allPayByUser.size());
+        for (const auto& kv : allPayByUser) {
+            const std::string uid = std::to_string(kv.first);
+            if (uid.empty() || haveUid.count(uid)) continue;
+            missingUids.push_back(uid);
+        }
+        if (!missingUids.empty()) {
+            try {
+                std::string arrLit = "{";
+                for (size_t i = 0; i < missingUids.size(); ++i) {
+                    if (i) arrLit += ",";
+                    arrLit += missingUids[i];
+                }
+                arrLit += "}";
+                auto* db = Database::getInstance();
+                // Left-join persons via alias so we still get a row for
+                // LA users with no FH alias yet (fall back to name /
+                // email captured on person_payments itself).
+                pqxx::result rows = db->query(
+                    "SELECT pp.la_user_id::text AS uid, "
+                    "       p.id                AS person_id, "
+                    "       COALESCE(p.first_name, pp.first_name) AS first_name, "
+                    "       COALESCE(p.last_name,  pp.last_name)  AS last_name, "
+                    "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date_iso, "
+                    "       (SELECT email FROM person_emails "
+                    "         WHERE person_id = p.id "
+                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS email, "
+                    "       (SELECT phone_number FROM person_phones "
+                    "         WHERE person_id = p.id "
+                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone "
+                    "  FROM (SELECT DISTINCT ON (la_user_id) "
+                    "               la_user_id, first_name, last_name "
+                    "          FROM person_payments "
+                    "         WHERE la_user_id::text = ANY($1::text[]) "
+                    "         ORDER BY la_user_id, paid_at DESC) pp "
+                    "  LEFT JOIN external_person_aliases epa "
+                    "    ON epa.provider = 'leagueapps' "
+                    "   AND epa.external_user_id = pp.la_user_id::text "
+                    "  LEFT JOIN persons p ON p.id = epa.person_id",
+                    {arrLit});
+                for (const auto& r : rows) {
+                    if (r["uid"].is_null()) continue;
+                    const std::string uid = r["uid"].c_str();
+                    json p = json::object();
+                    p["registrationId"] = nullptr;
+                    try { p["leagueAppsUserId"] = std::stoll(uid); }
+                    catch (...) { p["leagueAppsUserId"] = uid; }
+                    const std::string fn = r["first_name"].is_null() ? "" : r["first_name"].as<std::string>();
+                    const std::string ln = r["last_name"].is_null()  ? "" : r["last_name"].as<std::string>();
+                    p["firstName"] = fn;
+                    p["lastName"]  = ln;
+                    p["fullName"]  = trim(fn + " " + ln);
+                    if (!r["birth_date_iso"].is_null()) {
+                        const std::string bd = r["birth_date_iso"].as<std::string>();
+                        p["birthDate"] = bd;
+                        try { p["birthYear"] = std::stoi(bd.substr(0, 4)); }
+                        catch (...) { p["birthYear"] = nullptr; }
+                    } else {
+                        p["birthDate"] = nullptr;
+                        p["birthYear"] = nullptr;
+                    }
+                    p["gender"]             = "Male";
+                    p["email"]              = r["email"].is_null() ? json(nullptr) : json(r["email"].as<std::string>());
+                    p["phone"]              = r["phone"].is_null() ? json(nullptr) : json(r["phone"].as<std::string>());
+                    p["paymentStatus"]      = nullptr;
+                    p["outstandingBalance"] = 0;
+                    p["registrationStatus"] = nullptr;
+                    p["role"]               = nullptr;
+                    p["season"]             = nullptr;
+                    p["jerseyNumber"]       = nullptr;
+                    p["jerseySize"]         = nullptr;
+                    if (!r["person_id"].is_null()) {
+                        personIdByUid[uid] = r["person_id"].as<long long>();
+                    }
+                    all.push_back(std::move(p));
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[MensRoster] union-in person_payments query failed: "
+                          << e.what() << std::endl;
+            }
+        }
+    }
+
     // ── Delinquency computation (2026-07-04) ─────────────────────────
     // Reads DUES_OWED_HOLD_DAYS (default 7).  For each active player:
     // daysOverdue = today - nextBillDate.  delinquencyState='dues_owed'
