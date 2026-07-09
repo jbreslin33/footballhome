@@ -75,15 +75,19 @@ class BoysRosterScreen extends Screen {
       if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
       const pauseBtn = e.target.closest('.br-copy-pause');
       if (pauseBtn) return this._copyPauseMessage(pauseBtn);
-      // PAY-reminder click log (2026-07-06).  We DO NOT preventDefault
-      // — the <a> still navigates to sms:/mailto: after fire-and-forget
-      // logging.  `keepalive: true` lets the request survive the tab
-      // switch on iOS/Android.  Local optimistic mutation of
-      // p.lastPayReminder means the next render (or the immediate
-      // swap-in below) reflects "just now" without waiting for a
-      // roster refresh.
+      // PAY-reminder click (2026-07-09 rewrite).  Owner directive:
+      // "we need to make those buttons generate 'message' on the fly
+      // and hit db after button".  Instead of navigating the stale
+      // href immediately, we preventDefault, refetch the roster with
+      // refreshLa=1 (forces a live LeagueApps sync), then find the
+      // freshly-rendered anchor for this player + method and open
+      // that href.  Guarantees the SMS/email body reflects the LA
+      // outstandingBalance the coach just edited.
       const payLog = e.target.closest('.br-pay-log');
-      if (payLog) this._logPayReminder(payLog);
+      if (payLog) {
+        this._handlePayClickRefresh(payLog, e);
+        return;
+      }
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -972,6 +976,70 @@ class BoysRosterScreen extends Screen {
   // canonical is LEAGUEAPPS_SITE_ID in env.
   laManagerUrl(uid) {
     return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
+  }
+
+  // PAY-button per-click refresh (2026-07-09).  When the coach taps
+  // 💬 PAY or ✉ PAY, refetch the full roster with refreshLa=1 first
+  // so the message body reflects the balance the coach just edited
+  // in LA — no more sending yesterday's numbers because the tab
+  // hasn't been refreshed.  Then find the freshly-rendered anchor
+  // (which has a rebuilt sms:/https: href with fresh amount) and
+  // navigate to that href.
+  //
+  // Popup-blocker note: for the email variant we synchronously open
+  // about:blank in a new tab BEFORE awaiting the refresh, so the tab
+  // survives the async gap.  After the refresh completes we point
+  // that tab at the fresh Gmail compose URL.
+  async _handlePayClickRefresh(payLog, e) {
+    e.preventDefault();
+    const uid    = payLog.dataset.laUserId;
+    const method = payLog.dataset.method;
+    const fallbackHref = payLog.getAttribute('href');
+
+    // Reserve the tab now so popup blockers accept it — must be
+    // synchronous inside the click handler, before any await.
+    const emailTab = method === 'email'
+      ? window.open('about:blank', '_blank', 'noopener,noreferrer')
+      : null;
+
+    // Optimistic visual feedback — the anchor is about to be re-rendered
+    // out of existence by this.load() but the loader banner will take over.
+    payLog.style.opacity = '0.55';
+
+    try {
+      // Full-roster refetch.  Slow (2-5s while LA responds) but the
+      // correct source of truth.  A single-player refresh endpoint
+      // could optimize this later.
+      await this.load({ refreshLa: true });
+
+      // Find the freshly-rendered anchor for this uid + method.  The
+      // href on this new node has the up-to-date amount baked in.
+      const selector = `.br-pay-log[data-la-user-id="${uid}"][data-method="${method}"]`;
+      const freshAnchor = this.element.querySelector(selector);
+      const targetHref  = freshAnchor ? freshAnchor.getAttribute('href') : fallbackHref;
+
+      // Log the reminder (fire and forget) using the fresh anchor if
+      // it exists so data-attributes are the current amount/tier.
+      this._logPayReminder(freshAnchor || payLog);
+
+      if (!targetHref) return;
+      if (method === 'email' && emailTab) {
+        emailTab.location.href = targetHref;
+      } else {
+        window.location.href = targetHref;
+      }
+    } catch (err) {
+      // Refresh failed — fall back to the stale href so the coach
+      // still gets some message rather than nothing.
+      console.warn('[boys] PAY refresh failed, using stale href:', err);
+      this._logPayReminder(payLog);
+      if (fallbackHref) {
+        if (emailTab) emailTab.location.href = fallbackHref;
+        else window.location.href = fallbackHref;
+      } else if (emailTab) {
+        emailTab.close();
+      }
+    }
   }
 
   // Color scale (user directive 2026-07-04): 1-3 yellow · 4-6 orange · 7+ red.

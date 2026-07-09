@@ -89,10 +89,19 @@ class MensRosterScreen extends Screen {
       if (rsvpBtn) return this.openRsvpEligibilityModal(rsvpBtn);
       const pauseBtn = e.target.closest('.mr-copy-pause');
       if (pauseBtn) return this._copyPauseMessage(pauseBtn);
-      // PAY-reminder click log (2026-07-06).  Fire-and-forget; the sms:
-      // link still navigates.  See _logPayReminder for details.
+      // PAY-reminder click (2026-07-09 rewrite).  Owner directive:
+      // "we need to make those buttons generate 'message' on the fly
+      // and hit db after button".  Instead of navigating the stale
+      // sms: href immediately, we preventDefault, refetch the roster
+      // with refreshLa=1 (forces a live LeagueApps sync), then find
+      // the freshly-rendered anchor for this player and navigate to
+      // its fresh href.  Guarantees the SMS body reflects the LA
+      // outstandingBalance the coach just edited.
       const payLog = e.target.closest('.mr-pay-log');
-      if (payLog) this._logPayReminder(payLog);
+      if (payLog) {
+        this._handlePayClickRefresh(payLog, e);
+        return;
+      }
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -1011,6 +1020,36 @@ class MensRosterScreen extends Screen {
   // canonical is LEAGUEAPPS_SITE_ID in env.
   laManagerUrl(uid) {
     return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
+  }
+
+  // PAY-button per-click refresh (2026-07-09).  When the coach taps
+  // 💸 PAY, refetch the full mens roster with refreshLa=1 first so
+  // the message body reflects the balance the coach just edited in
+  // LA.  Then find the freshly-rendered anchor and navigate to its
+  // fresh href.  Mens is SMS-only (no Gmail-compose variant) so no
+  // popup-blocker workaround needed.
+  async _handlePayClickRefresh(payLog, e) {
+    e.preventDefault();
+    const uid          = payLog.dataset.laUserId;
+    const method       = payLog.dataset.method;
+    const fallbackHref = payLog.getAttribute('href');
+
+    payLog.style.opacity = '0.55';
+
+    try {
+      await this.load({ refreshLa: true });
+      const selector = `.mr-pay-log[data-la-user-id="${uid}"][data-method="${method || 'sms'}"]`;
+      const freshAnchor = this.element.querySelector(selector);
+      const targetHref  = freshAnchor ? freshAnchor.getAttribute('href') : fallbackHref;
+
+      this._logPayReminder(freshAnchor || payLog);
+
+      if (targetHref) window.location.href = targetHref;
+    } catch (err) {
+      console.warn('[mens] PAY refresh failed, using stale href:', err);
+      this._logPayReminder(payLog);
+      if (fallbackHref) window.location.href = fallbackHref;
+    }
   }
 
   // ── RSVP-eligibility modal (2026-07-07) ─────────────────────────
