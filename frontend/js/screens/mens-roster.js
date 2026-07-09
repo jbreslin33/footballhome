@@ -507,20 +507,20 @@ class MensRosterScreen extends Screen {
       if (tids.includes(35))        { currentTierName = 'APSL';   demotionTarget = 'Liga 1'; }
       else if (tids.includes(120))  { currentTierName = 'Liga 1'; demotionTarget = 'Liga 2'; }
 
-      // Copy rewritten 2026-07-09 per user directive: "i am not
-      // running cards right now as i don't want to shock parents ...
-      // right now i need them to pay July and i don't want to run
-      // their cards and surprise them. so gentle reminders."
+      // Copy rewritten 2026-07-09 per user directive: "for Men we will
+      // run the card. for parents we are not running cards until aug 7.
+      // we are asking them to pay. if mens card don't run we are
+      // asking them same as parents."
       //
-      // → Three-tier demotion voice retired.  Any auto-charge / card-
-      //   on-file language retired for the current pass — we do NOT
-      //   want the July reminder to look like a heads-up that Aug 7
-      //   will hit the card automatically (owner will send a separate
-      //   pre-Aug-7 reminder for that).  Just a gentle nudge to log
-      //   in and pay July.  Two variants:
-      //     (a) prorate — explain the July partial-cycle math so the
-      //         player knows why it's not a full $35.
-      //     (b) normal  — July $35 outstanding, please pay.
+      // → Mens IS running cards.  A PAY button on a mens card means
+      //   the charge on the card on file didn't clear — so the copy
+      //   leads with "card didn't clear, please pay or update card".
+      //   Two variants:
+      //     (a) prorate — mid-cycle signup: explain the July partial-
+      //         cycle math so they see why it's not a full $35, then
+      //         nudge to log in and pay / update card.
+      //     (b) normal  — July $35 didn't clear on card, please pay
+      //         / update card.
       //   Both point to the LA dashboard.
       let payBody;
       if (prorateOwed) {
@@ -532,9 +532,9 @@ class MensRosterScreen extends Screen {
         const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
           ? ` minus the $${pr.paidSinceReg} you paid at signup =`
           : ' =';
-        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. When you get a moment, please log in and pay the ${netStr} on LeagueApps: ${payUrl}. Thanks!`;
+        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. When you get a moment, please log in and pay the ${netStr} or update your card on file: ${payUrl}. Thanks!`;
       } else {
-        payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment, please log in and pay: ${payUrl}. Thanks!`;
+        payBody = `Hi${firstNameStr}, quick note from Lighthouse 1893 — your July dues (${amountStr}) didn't clear on the card on file. Usually just an expired or declined card. When you get a moment, please log in and pay or update your card: ${payUrl}. Thanks!`;
       }
       const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
       const payBtn    = payHref
