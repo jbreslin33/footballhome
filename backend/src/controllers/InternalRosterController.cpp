@@ -112,22 +112,58 @@ Response InternalRosterController::handleGetRoster(const Request& request) {
         }
 
         std::string query = R"(
-            WITH lighthouse_pool AS (
-                -- Official roster players on any active Lighthouse-named team
-                SELECT DISTINCT r.player_id
-                FROM rosters r
-                JOIN teams t  ON t.id  = r.team_id
-                JOIN divisions d ON d.id = t.division_id
-                JOIN seasons s ON s.id = d.season_id
-                WHERE r.left_at IS NULL
-                  AND s.name = '2025/2026'
-                  AND t.name ILIKE 'Lighthouse%'
+            WITH
+            -- Universal exclusion: anyone with ANY active 'pickup' LA
+            -- membership is a pickup-only player and MUST NOT appear on
+            -- any roster page (mens, boys, girls, womens).  Applied here
+            -- for the mens roster; the same rule is enforced on the youth
+            -- roster pages via the same JOIN pattern.
+            pickup_people AS (
+                SELECT DISTINCT plm.person_id
+                FROM person_la_memberships plm
+                JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id
+                WHERE plm.ended_at IS NULL
+                  AND lp.variant = 'pickup'
+            ),
+            -- People with at least one active NON-pickup LA membership in
+            -- ANY category (mens/boys/girls/womens active).  Required for
+            -- the "manually moved over" branch: a boys/girls/womens
+            -- member manually assigned to a mens working roster still
+            -- counts, but only while they hold an active membership
+            -- somewhere.  A person with zero active memberships (or
+            -- pickup-only) never shows.
+            active_members AS (
+                SELECT DISTINCT plm.person_id
+                FROM person_la_memberships plm
+                JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id
+                WHERE plm.ended_at IS NULL
+                  AND lp.variant = 'active'
+            ),
+            lighthouse_pool AS (
+                -- (A) Active Lighthouse Men's Club LA members
+                --     (program_id 5039300 = Lighthouse Men's Club 1893
+                --     Soccer Membership, category='men', variant='active').
+                --     Pickup members are excluded via the NOT EXISTS below.
+                SELECT DISTINCT pl.id AS player_id
+                FROM players pl
+                JOIN person_la_memberships plm
+                  ON plm.person_id = pl.person_id
+                 AND plm.la_program_id = 5039300
+                 AND plm.ended_at IS NULL
+                WHERE pl.person_id NOT IN (SELECT person_id FROM pickup_people)
                 UNION
-                -- Anyone already placed in a working roster
-                SELECT DISTINCT player_id
-                FROM working_rosters
-                WHERE team_id IN ()" + teamIdList + R"()
-                  AND removed_at IS NULL
+                -- (B) Manually moved into a mens working roster (teams
+                --     901-909).  Must currently hold an active NON-pickup
+                --     LA membership in some category (boys/girls/womens/
+                --     mens) — i.e. an actual member of the club, not a
+                --     stale roster row or a pickup-only person.
+                SELECT DISTINCT wr.player_id
+                FROM working_rosters wr
+                JOIN players pl ON pl.id = wr.player_id
+                WHERE wr.team_id IN ()" + teamIdList + R"()
+                  AND wr.removed_at IS NULL
+                  AND pl.person_id IN (SELECT person_id FROM active_members)
+                  AND pl.person_id NOT IN (SELECT person_id FROM pickup_people)
             )
             SELECT
                 p.id                                                    AS player_id,

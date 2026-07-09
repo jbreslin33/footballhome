@@ -1006,8 +1006,16 @@ class BoysRosterScreen extends Screen {
 
     // Reserve the tab now so popup blockers accept it — must be
     // synchronous inside the click handler, before any await.
+    //
+    // IMPORTANT: do NOT pass 'noopener' in the features string.  Per
+    // HTML spec, when noopener is requested window.open() returns
+    // null, so `emailTab.location.href = ...` below would throw, the
+    // catch block would fall through to `window.location.href` and
+    // Gmail would open in the CURRENT tab (2026-07-09 regression).
+    // We null out `opener` after the handoff instead — same security
+    // guarantee, without losing the window handle.
     const emailTab = method === 'email'
-      ? window.open('about:blank', '_blank', 'noopener,noreferrer')
+      ? window.open('about:blank', '_blank')
       : null;
 
     // Optimistic visual feedback — the anchor is about to be re-rendered
@@ -1032,6 +1040,7 @@ class BoysRosterScreen extends Screen {
 
       if (!targetHref) return;
       if (method === 'email' && emailTab) {
+        try { emailTab.opener = null; } catch (_) { /* cross-origin after nav */ }
         emailTab.location.href = targetHref;
       } else {
         window.location.href = targetHref;
@@ -1042,8 +1051,12 @@ class BoysRosterScreen extends Screen {
       console.warn('[boys] PAY refresh failed, using stale href:', err);
       this._logPayReminder(payLog);
       if (fallbackHref) {
-        if (emailTab) emailTab.location.href = fallbackHref;
-        else window.location.href = fallbackHref;
+        if (emailTab) {
+          try { emailTab.opener = null; } catch (_) { /* cross-origin after nav */ }
+          emailTab.location.href = fallbackHref;
+        } else {
+          window.location.href = fallbackHref;
+        }
       } else if (emailTab) {
         emailTab.close();
       }
