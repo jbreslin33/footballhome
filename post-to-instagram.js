@@ -526,6 +526,9 @@ if (command === 'photo') {
     }
 
     // Mode parsing: 'single' = 1-tile 4:5 post; 'preview' alone = carousel preview.
+    // 'nofull' drops the squashed full-poster slide 1 so the carousel opens
+    // directly on the band + breakdown slides (used when the whole-poster
+    // slide is too dense to read on a phone).
     // (For `exhibit-next`, positionals[0] is the first non-flag arg, which is
     // a mode keyword, not a number — start at index 0. For `exhibit <N>`, the
     // mode keywords come after the number — start at index 1.)
@@ -533,6 +536,7 @@ if (command === 'photo') {
       .map(a => (a || '').toLowerCase());
     const mode = modeArgs.includes('single') ? 'single' : 'carousel';
     const previewOnly = modeArgs.includes('preview');
+    const skipFull = modeArgs.includes('nofull');
 
     const pad = String(posterNum).padStart(2, '0');
 
@@ -540,7 +544,7 @@ if (command === 'photo') {
     // slideshow preview can flip between them).
     console.log(`\n🎨 Rendering exhibit poster ${posterNum} from source...`);
     const { renderPoster } = require('./scripts/render-poster-from-source.js');
-    const { meta, slideCount } = await renderPoster(posterNum, new Set(['long', 'single', 'slides']));
+    const { meta, slideCount } = await renderPoster(posterNum, new Set(['long', 'single', 'slides']), { skipFull });
 
     // Caption: one recurring series header. We deliberately do NOT echo the
     // poster's title/sub here — the slides already say all that. The first

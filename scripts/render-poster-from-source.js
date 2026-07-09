@@ -527,9 +527,16 @@ async function renderSingleTile(page, posterNum, outPath) {
 //             indicated by data-photo-with-para on <article class="poster">
 //             (1-based, defaults to 1).
 //   K+3..end. Each blockquote in turn.
+//
+// opts.skipFull:  if true, omit SLIDE 1 (full poster). The band becomes
+//                 slide 1 and everything else shifts down.  Used when the
+//                 squashed 4:5 whole-poster view is too dense to read on a
+//                 phone and we want viewers to land straight on the band +
+//                 breakdown slides.
 // ---------------------------------------------------------------------------
 
-async function renderCarouselSlides(page, posterNum, pad) {
+async function renderCarouselSlides(page, posterNum, pad, opts = {}) {
+  const skipFull = !!opts.skipFull;
   // Discover paragraph and blockquote count from the live DOM, plus which
   // paragraph the .poster-photo should ride with on its own slide.
   const counts = await page.evaluate((n) => {
@@ -782,10 +789,16 @@ async function renderCarouselSlides(page, posterNum, pad) {
   }
 
   // SLIDE 1: full poster, everything visible — same view as the 4:5 single.
-  await compose({ band: true, photo: true, paras: 'all', quotes: 'all', mode: 'full' });
-  await snap('full poster');
+  // Optionally skipped (opts.skipFull) when the squashed full view is too
+  // dense to read on a phone; the band then becomes slide 1.
+  if (!skipFull) {
+    await compose({ band: true, photo: true, paras: 'all', quotes: 'all', mode: 'full' });
+    await snap('full poster');
+  } else {
+    console.log('  · skipFull: omitting full-poster slide 1');
+  }
 
-  // SLIDE 2: band only — the hero header.
+  // SLIDE 2 (or 1 when skipFull): band only — the hero header.
   await compose({ band: true, photo: false, paras: 'none', quotes: 'none', mode: 'band' });
   await snap('band');
 
@@ -859,7 +872,7 @@ async function readPosterMeta(page, posterNum) {
 // Public entry point: render one or all output kinds for poster N.
 // ---------------------------------------------------------------------------
 
-async function renderPoster(posterNum, kinds) {
+async function renderPoster(posterNum, kinds, opts = {}) {
   await ensureDir(POSTS_DIR);
   const pad = String(posterNum).padStart(2, '0');
 
@@ -894,7 +907,7 @@ async function renderPoster(posterNum, kinds) {
       await renderSingleTile(page, posterNum, out);
     }
     if (kinds.has('slides')) {
-      const slides = await renderCarouselSlides(page, posterNum, pad);
+      const slides = await renderCarouselSlides(page, posterNum, pad, { skipFull: !!opts.skipFull });
       slideCount = slides.length;
     }
 
