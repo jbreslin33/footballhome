@@ -563,7 +563,7 @@ if (command === 'photo') {
     const defaultCaption = [
       'We are in awe of the countless members of Lighthouse whose story is not told in this series — but on the streets and fields of Philadelphia and beyond.',
       '',
-      'Some highlights, daily through the World Cup.',
+      'Some highlights of Lighthouse history, daily through the World Cup.',
       '',
       'Sources in link tree.',
       '',
