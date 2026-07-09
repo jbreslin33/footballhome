@@ -406,6 +406,36 @@ class MyScreen extends Screen {
       ? `<div style="opacity:0.75; font-size:0.9rem; margin-top: var(--space-1);">${this.escapeHtml(ev.description)}</div>`
       : '';
 
+    // Venue line — name + optional address, wrapped in a maps link so
+    // players can tap to open Google Maps.  Falls back gracefully when
+    // the match has no venue attached (venue_id NULL).
+    let venueBlock = '';
+    if (ev.venue_name || ev.venue_address) {
+      const parts = [];
+      if (ev.venue_address) parts.push(ev.venue_address);
+      if (ev.venue_city)    parts.push(ev.venue_city);
+      if (ev.venue_state)   parts.push(ev.venue_state);
+      const fullAddr = parts.join(', ');
+      const mapsQ = encodeURIComponent(
+        ev.venue_name && fullAddr ? `${ev.venue_name}, ${fullAddr}`
+        : (ev.venue_name || fullAddr)
+      );
+      const mapsHref = `https://www.google.com/maps/search/?api=1&query=${mapsQ}`;
+      const label = ev.venue_name || fullAddr;
+      const subLine = (ev.venue_name && fullAddr)
+        ? `<div style="opacity:0.6; font-size:0.8rem;">${this.escapeHtml(fullAddr)}</div>`
+        : '';
+      venueBlock = `
+        <div style="margin-top: var(--space-1); font-size:0.9rem;">
+          <a href="${mapsHref}" target="_blank" rel="noopener"
+             style="color:#93c5fd; text-decoration:none;">
+            📍 ${this.escapeHtml(label)}
+          </a>
+          ${subLine}
+        </div>
+      `;
+    }
+
     const rsvpBlock = this._renderEventRsvpBlock(ev.match_id);
 
     return `
@@ -417,6 +447,7 @@ class MyScreen extends Screen {
           <div style="font-weight: 600;">${this.escapeHtml(title)}</div>
           <div style="opacity:0.7; font-size: 0.9rem;">${this.escapeHtml(day)} · ${this.escapeHtml(time)}</div>
         </div>
+        ${venueBlock}
         ${desc}
         <div style="margin-top: var(--space-3); font-size:0.8rem; opacity:0.75;">
           <span style="opacity:0.7;">Your availability:</span>

@@ -250,7 +250,9 @@ Response MyController::handleGetWeek(const Request& request) {
             "       em.home_team_id, em.match_date::text AS match_date, "
             "       to_char(em.match_time, 'HH24:MI:SS') AS match_time, "
             "       to_char(em.end_time,   'HH24:MI:SS') AS end_time, "
-            "       em.venue_id, em.title, em.description, "
+            "       em.venue_id, v.name AS venue_name, v.address AS venue_address, "
+            "       v.city AS venue_city, v.state AS venue_state, "
+            "       em.title, em.description, "
             "       to_char(em.rsvp_opens_at AT TIME ZONE 'UTC', "
             "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS rsvp_opens_at, "
             "       em.series_id, "
@@ -273,6 +275,7 @@ Response MyController::handleGetWeek(const Request& request) {
             "       ) AS my_rsvp "
             "  FROM eligible_matches em "
             "  JOIN match_types mt ON mt.id = em.match_type_id "
+            "  LEFT JOIN venues v  ON v.id  = em.venue_id "
             " ORDER BY em.match_date, em.match_time",
             {std::to_string(personId), std::to_string(playerId)});
 
@@ -301,6 +304,10 @@ Response MyController::handleGetWeek(const Request& request) {
                 {"match_time",    strOrNull("match_time")},
                 {"end_time",      strOrNull("end_time")},
                 {"venue_id",      intOrNull("venue_id")},
+                {"venue_name",    strOrNull("venue_name")},
+                {"venue_address", strOrNull("venue_address")},
+                {"venue_city",    strOrNull("venue_city")},
+                {"venue_state",   strOrNull("venue_state")},
                 {"title",         strOrNull("title")},
                 {"description",   strOrNull("description")},
                 {"rsvp_opens_at", strOrNull("rsvp_opens_at")},
