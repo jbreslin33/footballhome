@@ -499,6 +499,17 @@ Response MensRosterController::handleCreateGame(const Request& request) {
         if (endTimeStr.size() == 5) endTimeStr += ":00";
     }
 
+    // venue_id — optional; if present and positive, pins the match to
+    // that venue.  Empty / null / 0 → NULL venue.  Same convention as
+    // handleUpdateGame so create + edit round-trip cleanly.
+    std::string venueIdParam;  // "" → NULL via NULLIF
+    if (body.contains("venue_id") && !body["venue_id"].is_null()) {
+        long long vId = 0;
+        if (readInt(body, "venue_id", vId) && vId > 0) {
+            venueIdParam = std::to_string(vId);
+        }
+    }
+
     // Build the stored title.  Games auto-prefix "vs " unless the coach
     // already typed "vs "/"@" or supplied a direct title.  Practices &
     // pickups use titleRaw verbatim.
@@ -534,13 +545,17 @@ Response MensRosterController::handleCreateGame(const Request& request) {
         auto rows = db->query(
             "INSERT INTO matches "
             "  (match_type_id, match_status_id, home_team_id, away_team_id, "
-            "   title, match_date, match_time, end_time) "
-            "VALUES ($1, 1, $2, NULL, $3, $4::date, NULLIF($5, '')::time, NULLIF($6, '')::time) "
+            "   title, match_date, match_time, end_time, venue_id) "
+            "VALUES ($1, 1, $2, NULL, $3, $4::date, NULLIF($5, '')::time, "
+            "        NULLIF($6, '')::time, NULLIF($7, '')::int) "
             "RETURNING id, home_team_id, title, match_type_id, "
             "          match_date::text AS match_date, "
             "          COALESCE(match_time::text, '') AS match_time, "
-            "          COALESCE(end_time::text, '')   AS end_time",
-            { std::to_string(matchTypeId), std::to_string(teamId), title, dateStr, timeStr, endTimeStr }
+            "          COALESCE(end_time::text, '')   AS end_time, "
+            "          COALESCE(venue_id::text, '')   AS venue_id, "
+            "          COALESCE((SELECT name FROM venues WHERE id = matches.venue_id), '') AS venue_name",
+            { std::to_string(matchTypeId), std::to_string(teamId), title,
+              dateStr, timeStr, endTimeStr, venueIdParam }
         );
         if (rows.empty()) return internalErr("Failed to create match");
 
@@ -552,7 +567,14 @@ Response MensRosterController::handleCreateGame(const Request& request) {
             << ",\"title\":"         << json(std::string(r["title"].c_str())).dump()
             << ",\"match_date\":"    << json(std::string(r["match_date"].c_str())).dump()
             << ",\"match_time\":"    << json(std::string(r["match_time"].c_str())).dump()
-            << ",\"end_time\":"      << json(std::string(r["end_time"].c_str())).dump()
+            << ",\"end_time\":"      << json(std::string(r["end_time"].c_str())).dump();
+        const std::string vIdCol = r["venue_id"].c_str();
+        if (!vIdCol.empty()) {
+            out << ",\"venue_id\":" << vIdCol;
+        } else {
+            out << ",\"venue_id\":null";
+        }
+        out << ",\"venue_name\":" << json(std::string(r["venue_name"].c_str())).dump()
             << "}";
         return Response(HttpStatus::CREATED, out.str());
     } catch (const std::exception& e) {
@@ -647,6 +669,22 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
         if (endTimeStr.size() == 5) endTimeStr += ":00";
     }
 
+    // venue_id — TRI-STATE optional:
+    //   • key missing        → leave venue untouched (SQL branch omits column)
+    //   • key present, null  → clear venue (SET venue_id = NULL)
+    //   • key present, int>0 → set venue to that id
+    // Practice/pickup dashboard sends venue_id explicitly (0/null = clear).
+    // Callers that never touch venues (older clients) still work fine.
+    const bool hasVenueId = body.contains("venue_id");
+    std::string venueIdParam;  // "" → treated as NULL by NULLIF
+    if (hasVenueId && !body["venue_id"].is_null()) {
+        long long vId = 0;
+        if (readInt(body, "venue_id", vId) && vId > 0) {
+            venueIdParam = std::to_string(vId);
+        }
+        // else: venueIdParam stays "" → NULL (explicit clear)
+    }
+
     // If a direct title was supplied, use it verbatim.  Otherwise
     // reconstruct "vs opponent" for games (matches handleCreateGame).
     std::string title;
@@ -678,17 +716,23 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
         }
 
         auto rows = db->query(
-            "UPDATE matches SET "
-            "  title      = $1, "
-            "  match_date = $2::date, "
-            "  match_time = NULLIF($3, '')::time, "
-            "  end_time   = NULLIF($4, '')::time "
+            std::string(
+                "UPDATE matches SET "
+                "  title      = $1, "
+                "  match_date = $2::date, "
+                "  match_time = NULLIF($3, '')::time, "
+                "  end_time   = NULLIF($4, '')::time"
+            ) + (hasVenueId ? ", venue_id = NULLIF($6, '')::int " : " ") +
             "WHERE id = $5 "
             "RETURNING id, home_team_id, title, "
             "          match_date::text AS match_date, "
             "          COALESCE(match_time::text, '') AS match_time, "
-            "          COALESCE(end_time::text, '')   AS end_time",
-            { title, dateStr, timeStr, endTimeStr, matchIdStr }
+            "          COALESCE(end_time::text, '')   AS end_time, "
+            "          COALESCE(venue_id::text, '')   AS venue_id, "
+            "          COALESCE((SELECT name FROM venues WHERE id = matches.venue_id), '') AS venue_name",
+            hasVenueId
+                ? std::vector<std::string>{ title, dateStr, timeStr, endTimeStr, matchIdStr, venueIdParam }
+                : std::vector<std::string>{ title, dateStr, timeStr, endTimeStr, matchIdStr }
         );
         if (rows.empty()) return internalErr("Failed to update match");
 
@@ -699,7 +743,14 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
             << ",\"title\":"        << json(std::string(r["title"].c_str())).dump()
             << ",\"match_date\":"   << json(std::string(r["match_date"].c_str())).dump()
             << ",\"match_time\":"   << json(std::string(r["match_time"].c_str())).dump()
-            << ",\"end_time\":"     << json(std::string(r["end_time"].c_str())).dump()
+            << ",\"end_time\":"     << json(std::string(r["end_time"].c_str())).dump();
+        const std::string vIdCol = r["venue_id"].c_str();
+        if (!vIdCol.empty()) {
+            out << ",\"venue_id\":" << vIdCol;
+        } else {
+            out << ",\"venue_id\":null";
+        }
+        out << ",\"venue_name\":" << json(std::string(r["venue_name"].c_str())).dump()
             << "}";
         return Response(HttpStatus::OK, out.str());
     } catch (const std::exception& e) {

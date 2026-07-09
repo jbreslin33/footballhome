@@ -493,7 +493,7 @@ class BoysRosterScreen extends Screen {
       const kidStr         = p.firstName ? ` ${p.firstName}'s` : ' your child\'s';
 
       // SMS body — single blob; SMS clients render walls of text fine.
-      const payBody = `Hi${parentFirstStr}, gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.  To cut down on admin work on our end, we really need a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
+      const payBody = `Hi${parentFirstStr}, gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.  To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
 
       // Email body — same content, paragraph-broken.  Gmail's compose
       // window preserves \n line breaks, so splits render cleanly.
@@ -502,7 +502,7 @@ class BoysRosterScreen extends Screen {
       const payEmailBody = [
         greetingLine,
         `Gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.`,
-        `To cut down on admin work on our end, we really need a valid card on file so LeagueApps can auto-charge each month.`,
+        `To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.`,
         `LeagueApps has emailed you a pay link, or you can log in and pay / update your card here:\n${payUrl}`,
         signature,
       ].join('\n\n');

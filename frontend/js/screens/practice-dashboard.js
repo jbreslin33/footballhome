@@ -144,6 +144,18 @@ class PracticeDashboardScreen extends Screen {
               </button>
             </div>
           </div>
+          <!-- Venue row (2026-07-09) — dropdown of every venue in the club's book, -->
+          <!-- plus a "no venue" option.  Editing here writes matches.venue_id via -->
+          <!-- PUT /api/lineups/games/:id, which now accepts the field. -->
+          <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:0.85rem;color:var(--text-muted);">
+              Venue
+              <select id="pd-f-venue"
+                      style="font-size:1rem;padding:8px 10px;border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);">
+                <option value="">— No venue —</option>
+              </select>
+            </label>
+          </div>
           <div id="pd-f-error" style="display:none;font-size:0.85rem;color:#fca5a5;margin-top:8px;"></div>
         </div>
 
@@ -186,6 +198,11 @@ class PracticeDashboardScreen extends Screen {
     // Wire on every entry — screen-manager calls render() on each
     // show(), so this.element is a fresh DOM node with no listeners.
     this._wire();
+
+    // Load venues so the form's <select> is populated by the time the
+    // user hits ➕ / ✏️.  Non-blocking — the list load can start in
+    // parallel.
+    this._loadVenues();
 
     this._loadAll();
   }
@@ -266,6 +283,36 @@ class PracticeDashboardScreen extends Screen {
       console.error('Practice dashboard load failed:', err);
       this.find('#pd-loading').innerHTML =
         `<p style="color:#fca5a5;">❌ ${this.escapeHtml(err?.message || 'Failed to load')}</p>`;
+    }
+  }
+
+  // Fetches the venues list once per screen visit so the form dropdown
+  // has options.  Cached on `this._venues`; failure is non-fatal —
+  // form still opens, just with "— No venue —" as the only option.
+  async _loadVenues() {
+    try {
+      const res = await this.auth.fetch('/api/venues');
+      const data = await res.json();
+      const arr = Array.isArray(data?.data) ? data.data
+                : Array.isArray(data)       ? data
+                : [];
+      // Sort by name, case-insensitive — the DB has mixed-case entries.
+      arr.sort((a, b) => String(a.name || '').toLowerCase()
+                          .localeCompare(String(b.name || '').toLowerCase()));
+      this._venues = arr;
+      // Populate the select right away so a fast "Add" click already sees options.
+      const sel = this.find('#pd-f-venue');
+      if (sel) {
+        const opts = ['<option value="">— No venue —</option>'];
+        for (const v of arr) {
+          const label = v.city ? `${v.name} — ${v.city}` : v.name;
+          opts.push(`<option value="${v.id}">${this.escapeHtml(label)}</option>`);
+        }
+        sel.innerHTML = opts.join('');
+      }
+    } catch (err) {
+      console.warn('Practice dashboard: venue list load failed:', err);
+      this._venues = [];
     }
   }
 
@@ -450,6 +497,7 @@ class PracticeDashboardScreen extends Screen {
     const dateEl = this.find('#pd-f-date');
     const timeEl = this.find('#pd-f-time');
     const endEl  = this.find('#pd-f-end-time');
+    const venueEl = this.find('#pd-f-venue');
     this.find('#pd-f-error').style.display = 'none';
     if (matchId) {
       const m = this.matches.find(x => String(x.id) === String(matchId));
@@ -459,12 +507,14 @@ class PracticeDashboardScreen extends Screen {
       const t = String(m?.event_date || '').slice(11, 16) || (m?.match_time ? String(m.match_time).slice(0, 5) : '');
       timeEl.value = t;
       endEl.value  = m?.end_time ? String(m.end_time).slice(0, 5) : '';
+      if (venueEl) venueEl.value = m?.venue_id != null ? String(m.venue_id) : '';
       this.find('#pd-form-title').textContent = `Edit ${this.kind}`;
     } else {
       titleEl.value = this.kind === 'pickup' ? 'Pickup' : 'Practice';
       dateEl.value = new Date().toISOString().slice(0, 10);
       timeEl.value = '';
       endEl.value  = '';
+      if (venueEl) venueEl.value = '';
       this.find('#pd-form-title').textContent = `Add ${this.kind}`;
     }
     wrap.style.display = 'block';
@@ -485,6 +535,9 @@ class PracticeDashboardScreen extends Screen {
     const date  = (this.find('#pd-f-date').value  || '').trim();
     const time  = (this.find('#pd-f-time').value  || '').trim();
     const endTime = (this.find('#pd-f-end-time').value || '').trim();
+    const venueRaw = (this.find('#pd-f-venue')?.value || '').trim();
+    // "" → null (backend interprets as "clear venue"); numeric → int
+    const venueId = venueRaw === '' ? null : parseInt(venueRaw, 10);
     if (!title) { err.textContent = 'Title required'; err.style.display = 'block'; return; }
     if (!date)  { err.textContent = 'Date required';  err.style.display = 'block'; return; }
     if (endTime && !time) {
@@ -515,6 +568,7 @@ class PracticeDashboardScreen extends Screen {
             title, date,
             time: time || undefined,
             end_time: endTime || undefined,
+            venue_id: venueId,   // null = clear, int = set
           }),
         });
       } else {
@@ -527,6 +581,7 @@ class PracticeDashboardScreen extends Screen {
             title, date,
             time: time || undefined,
             end_time: endTime || undefined,
+            venue_id: venueId,   // null = no venue, int = set
           }),
         });
       }

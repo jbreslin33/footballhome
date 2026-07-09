@@ -309,7 +309,7 @@ class YouthRosterScreen extends Screen {
       const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
       const kidRef    = p.firstName || 'your player';
       const parentRef = p.parentFirstName ? ` ${p.parentFirstName}` : '';
-      const payBody = `Hi${parentRef}, gentle reminder — ${kidRef}'s dues (${amountStr}) are showing as past due on LeagueApps.  To cut down on admin work on our end, we really need a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
+      const payBody = `Hi${parentRef}, gentle reminder — ${kidRef}'s dues (${amountStr}) are showing as past due on LeagueApps.  To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
       const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(payBody)}`;
       payBtn = `
       <a href="${payHref}"

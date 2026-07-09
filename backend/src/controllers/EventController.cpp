@@ -501,7 +501,8 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "m.source_system_id, ";
         query << "COALESCE(NULLIF(v.address,''), NULLIF(ce.location_address,'')) AS venue_address, ";
         query << "m.match_type_id, ";
-        query << "COALESCE(m.end_time::text, '') AS end_time ";
+        query << "COALESCE(m.end_time::text, '') AS end_time, ";
+        query << "COALESCE(m.venue_id::text, '') AS venue_id ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
@@ -575,6 +576,9 @@ Response EventController::handleGetMatches(const Request& request) {
             }
             if (result.columns() > 20 && !result[i][20].is_null() && result[i][20].c_str()[0] != '\0') {
                 matches_json << ",\"end_time\":\"" << result[i][20].c_str() << "\"";
+            }
+            if (result.columns() > 21 && !result[i][21].is_null() && result[i][21].c_str()[0] != '\0') {
+                matches_json << ",\"venue_id\":" << result[i][21].c_str();
             }
             
             matches_json << "}";
@@ -1116,13 +1120,20 @@ Response EventController::handleGetVenues(const Request& request) {
     try {
         std::cout << "🔍 Getting venues list" << std::endl;
         
-        // Query active venues
+        // 2026-07-09: rewritten to match the ACTUAL venues schema.
+        // Prior version referenced columns that never existed
+        // (formatted_address, venue_type, surface_type, rating,
+        // is_active) so the endpoint was throwing on every request.
+        // Real columns: id, name, address, city, state, zip, ...
         std::string query = 
-            "SELECT id, name, formatted_address, city, state, venue_type, surface_type, rating "
+            "SELECT id, name, "
+            "       COALESCE(address, '') AS address, "
+            "       COALESCE(city, '')    AS city, "
+            "       COALESCE(state, '')   AS state, "
+            "       COALESCE(zip, '')     AS zip "
             "FROM venues "
-            "WHERE is_active = true "
             "ORDER BY name ASC "
-            "LIMIT 200";
+            "LIMIT 500";
         
         pqxx::result result = db_->query(query);
         
@@ -1132,16 +1143,12 @@ Response EventController::handleGetVenues(const Request& request) {
         for (size_t i = 0; i < result.size(); i++) {
             if (i > 0) venues_json << ",";
             venues_json << "{";
-            venues_json << "\"id\":\"" << result[i][0].c_str() << "\",";
-            venues_json << "\"name\":\"" << escapeJSON(result[i][1].c_str()) << "\",";
-            venues_json << "\"address\":\"" << (result[i][2].is_null() ? "" : escapeJSON(result[i][2].c_str())) << "\",";
-            venues_json << "\"city\":\"" << (result[i][3].is_null() ? "" : escapeJSON(result[i][3].c_str())) << "\",";
-            venues_json << "\"state\":\"" << (result[i][4].is_null() ? "" : result[i][4].c_str()) << "\",";
-            venues_json << "\"type\":\"" << (result[i][5].is_null() ? "" : result[i][5].c_str()) << "\",";
-            venues_json << "\"surface\":\"" << (result[i][6].is_null() ? "" : result[i][6].c_str()) << "\"";
-            if (!result[i][7].is_null()) {
-                venues_json << ",\"rating\":\"" << result[i][7].c_str() << "\"";
-            }
+            venues_json << "\"id\":"        << result[i][0].c_str() << ",";
+            venues_json << "\"name\":\""    << escapeJSON(result[i][1].c_str()) << "\",";
+            venues_json << "\"address\":\"" << escapeJSON(result[i][2].c_str()) << "\",";
+            venues_json << "\"city\":\""    << escapeJSON(result[i][3].c_str()) << "\",";
+            venues_json << "\"state\":\""   << result[i][4].c_str() << "\",";
+            venues_json << "\"zip\":\""     << result[i][5].c_str() << "\"";
             venues_json << "}";
         }
         
