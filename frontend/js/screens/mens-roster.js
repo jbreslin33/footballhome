@@ -532,7 +532,7 @@ class MensRosterScreen extends Screen {
         const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
           ? ` minus the $${pr.paidSinceReg} you paid at signup =`
           : ' =';
-        payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — welcome to the club! Since you registered on ${regShort} (mid-cycle), your July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. When you get a moment, please log in and pay the ${netStr} or update your card on file: ${payUrl}. Thanks!`;
+        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. Gentle reminder to log in and pay the ${netStr} or update your card on file when you get a moment: ${payUrl}. Thanks!`;
       } else {
         payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) didn't clear on the card on file. Usually just an expired or declined card. When you get a moment, please log in and pay or update your card: ${payUrl}. Thanks!`;
       }

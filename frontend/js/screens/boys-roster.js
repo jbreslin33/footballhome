@@ -522,12 +522,12 @@ class BoysRosterScreen extends Screen {
         const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
           ? ` minus the $${pr.paidSinceReg} you paid at signup =`
           : ' =';
-        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 — welcome to the club! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. When you get a moment, please log in and pay the ${netStr} on LeagueApps: ${payUrl}. Thanks so much!`;
+        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. Gentle reminder to log in and pay the ${netStr} on LeagueApps when you get a moment: ${payUrl}. Thanks so much!`;
         payEmailBody = [
           greetingLine,
-          `Gentle reminder from Lighthouse 1893 — welcome to the club! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
+          `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
           `The math:  $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July.`,
-          `When you get a moment, please log in and pay the ${netStr} on LeagueApps:\n${payUrl}`,
+          `Gentle reminder to log in and pay the ${netStr} on LeagueApps when you get a moment:\n${payUrl}`,
           signature,
         ].join('\n\n');
       } else {
