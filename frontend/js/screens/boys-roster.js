@@ -503,45 +503,39 @@ class BoysRosterScreen extends Screen {
       const parentFirstStr = parentFirst ? ` ${parentFirst}` : '';
       const kidStr         = p.firstName ? ` ${p.firstName}'s` : ' your child\'s';
 
-      // Prorate-first copy (2026-07-09) — override the standard gentle
-      // reminder when the kid is a mid-cycle signup who hasn't paid the
-      // full $35 for the partial cycle.  Same math as the mens board;
-      // wording adjusted for parent voice.
+      // Copy rewritten 2026-07-09 per user directive: "right now i
+      // need them to pay July and i don't want to run their cards and
+      // surprise them. so gentle reminders."  Any auto-charge / "card
+      // on file so LeagueApps can bill" language pulled — owner will
+      // send a separate pre-Aug-7 heads-up before enabling auto-pay.
+      // Two variants: prorate (mid-cycle signup, explains the July
+      // partial-cycle math) and normal (July $35 outstanding).
       let payBody, payEmailBody;
+      const greetingLine = `Hi${parentFirstStr},`;
+      const signature    = `Thanks so much,\nLighthouse 1893`;
       if (prorateOwed) {
-        const nextFriShort = pr.nextFri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const regShort     = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const rawStr       = pr.rawAmount != null
+        const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const rawStr   = pr.rawAmount != null
           ? (Number.isInteger(pr.rawAmount) ? `$${pr.rawAmount}` : `$${pr.rawAmount.toFixed(2)}`)
           : `$${(35 * pr.daysRemain / pr.cycleDays).toFixed(2)}`;
-        const netStr       = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
-        const paidNote     = (pr.paidSinceReg && pr.paidSinceReg > 0)
+        const netStr   = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
+        const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
           ? ` minus the $${pr.paidSinceReg} you paid at signup =`
           : ' =';
-        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), the first month is prorated for the ${pr.daysRemain} of ${pr.cycleDays} days left until the next billing date: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} due now. Please log in and confirm a valid card is on file — LeagueApps will bill the ${netStr}, and normal $35/month billing starts ${nextFriShort}: ${payUrl}. Thanks so much!`;
-
-        const greetingLine = `Hi${parentFirstStr},`;
-        const signature    = `Thanks so much,\nLighthouse 1893`;
+        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. When you get a moment, please log in and pay the ${netStr} on LeagueApps: ${payUrl}. Thanks so much!`;
         payEmailBody = [
           greetingLine,
-          `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), the first month is prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining until the next billing date.`,
-          `The math:  $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} due now.`,
-          `Please log in and confirm a valid card is on file — LeagueApps will bill the ${netStr}, and normal $35/month billing starts ${nextFriShort}:\n${payUrl}`,
+          `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
+          `The math:  $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July.`,
+          `When you get a moment, please log in and pay the ${netStr} on LeagueApps:\n${payUrl}`,
           signature,
         ].join('\n\n');
       } else {
-        // SMS body — single blob; SMS clients render walls of text fine.
-        payBody = `Hi${parentFirstStr}, gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.  To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
-
-        // Email body — same content, paragraph-broken.  Gmail's compose
-        // window preserves \n line breaks, so splits render cleanly.
-        const greetingLine = `Hi${parentFirstStr},`;
-        const signature    = `Thanks so much,\nLighthouse 1893`;
+        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment, please log in and pay: ${payUrl}. Thanks so much!`;
         payEmailBody = [
           greetingLine,
-          `Gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.`,
-          `To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.`,
-          `LeagueApps has emailed you a pay link, or you can log in and pay / update your card here:\n${payUrl}`,
+          `Gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps.`,
+          `When you get a moment, please log in and pay:\n${payUrl}`,
           signature,
         ].join('\n\n');
       }

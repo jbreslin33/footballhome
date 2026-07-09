@@ -507,39 +507,34 @@ class MensRosterScreen extends Screen {
       if (tids.includes(35))        { currentTierName = 'APSL';   demotionTarget = 'Liga 1'; }
       else if (tids.includes(120))  { currentTierName = 'Liga 1'; demotionTarget = 'Liga 2'; }
 
+      // Copy rewritten 2026-07-09 per user directive: "i am not
+      // running cards right now as i don't want to shock parents ...
+      // right now i need them to pay July and i don't want to run
+      // their cards and surprise them. so gentle reminders."
+      //
+      // → Three-tier demotion voice retired.  Any auto-charge / card-
+      //   on-file language retired for the current pass — we do NOT
+      //   want the July reminder to look like a heads-up that Aug 7
+      //   will hit the card automatically (owner will send a separate
+      //   pre-Aug-7 reminder for that).  Just a gentle nudge to log
+      //   in and pay July.  Two variants:
+      //     (a) prorate — explain the July partial-cycle math so the
+      //         player knows why it's not a full $35.
+      //     (b) normal  — July $35 outstanding, please pay.
+      //   Both point to the LA dashboard.
       let payBody;
       if (prorateOwed) {
-        // Prorate-first message (2026-07-09) — override the tier copy
-        // when the player is a mid-cycle signup who hasn't yet paid the
-        // full $35 for their partial cycle.  Explains the arithmetic
-        // so the player knows exactly what the manual charge will be
-        // and when normal $35/mo billing kicks in.
-        const nextFriShort = pr.nextFri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const regShort     = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const rawStr       = pr.rawAmount != null
+        const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const rawStr   = pr.rawAmount != null
           ? (Number.isInteger(pr.rawAmount) ? `$${pr.rawAmount}` : `$${pr.rawAmount.toFixed(2)}`)
           : `$${(35 * pr.daysRemain / pr.cycleDays).toFixed(2)}`;
-        const netStr       = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
-        const paidNote     = (pr.paidSinceReg && pr.paidSinceReg > 0)
+        const netStr   = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
+        const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
           ? ` minus the $${pr.paidSinceReg} you paid at signup =`
           : ' =';
-        payBody = `Hi${firstNameStr}, quick note from Lighthouse 1893 — welcome to the club! Since you registered on ${regShort} (mid-cycle), your first month is prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining until the next billing date: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} due now. Please log in and confirm a valid card is on file — LeagueApps will bill the ${netStr}, and normal $35/month billing starts ${nextFriShort}: ${payUrl}. Thanks!`;
-      } else if (days <= 3) {
-        // Tier 1 — all teams.  No demotion mention, just card nudge.
-        payBody = `Hi${firstNameStr}, quick heads-up from Lighthouse 1893 — this month's dues charge (${amountStr}) didn't go through on LeagueApps (${daysStr}). Usually means the card on file expired, was declined, or the account was short — please log in and make sure a valid card is on file with funds to cover the monthly dues: ${payUrl}. Every paid membership funds refs, registration, uniforms and gear as we build toward filling APSL, Liga 1 and Liga 2. Thanks!`;
-      } else if (!isDuesOwedState && demotionTarget) {
-        // Tier 2 (4–6d) with demotion path — concrete about what
-        // "demotion" actually means (practices, pickup, games,
-        // intra-squads with the lower group).
-        payBody = `Hi${firstNameStr}, following up from Lighthouse 1893 — your dues (${amountStr}) are ${daysStr} and the LeagueApps charge hasn't cleared. Please log in and confirm a valid card is on file with enough funds for monthly dues — that's usually the culprit: ${payUrl}. Would love to keep your ${currentTierName} spot — if dues stay behind we may need to temporarily move you in with the ${demotionTarget} group for practices, pickup, games and intra-squads until it's sorted. Thanks!`;
-      } else if (isDuesOwedState && demotionTarget) {
-        // Tier 3 (7+) with demotion path.
-        payBody = `Hi${firstNameStr}, checking in from Lighthouse 1893 — dues (${amountStr}) are now ${daysStr}. Please log in and make sure a valid card is on file with sufficient funds — most overdue accounts are just a declined or expired card: ${payUrl}. To keep ${currentTierName} spots for members who are current on dues, we'll need to slot you in with the ${demotionTarget} group for practices, pickup, games and intra-squads until this is resolved — you're welcome back with ${currentTierName} the moment dues are current. Thanks!`;
+        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. When you get a moment, please log in and pay the ${netStr} on LeagueApps: ${payUrl}. Thanks!`;
       } else {
-        // Tier 2 & 3 for Liga 2 / Lighthouse Adult / Unassigned —
-        // collect only, no demotion.  Same body for both severities;
-        // days count in daysStr already communicates urgency.
-        payBody = `Hi${firstNameStr}, following up from Lighthouse 1893 — your dues (${amountStr}) are ${daysStr} and the LeagueApps charge hasn't cleared. Please log in and confirm a valid card is on file with enough available to cover the monthly dues — most overdue accounts are just a declined or expired card: ${payUrl}. Dues keep refs, registration, uniforms and gear moving, and every paid membership gets us closer to filling APSL, Liga 1 and Liga 2. Thanks!`;
+        payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment, please log in and pay: ${payUrl}. Thanks!`;
       }
       const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
       const payBtn    = payHref
