@@ -293,6 +293,11 @@ class YouthRosterScreen extends Screen {
     // triggered whenever LA reports an outstanding balance or a non-PAID
     // paymentStatus.  Message is addressed to the PARENT (parentPhone,
     // parentFirstName) since kids' billing goes to parents.
+    //
+    // 2026-07-09 revision — user asked to soften copy to a "Gentle
+    // reminder" opener that just explains we really need a valid card
+    // on file so LeagueApps can auto-charge each month (cuts down
+    // admin work).  Same shape as the boys-roster board.
     const isOverdue = (p.outstandingBalance != null && p.outstandingBalance > 0)
       || (p.paymentStatus && p.paymentStatus !== 'PAID');
     let payBtn = '';
@@ -304,8 +309,7 @@ class YouthRosterScreen extends Screen {
       const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
       const kidRef    = p.firstName || 'your player';
       const parentRef = p.parentFirstName ? ` ${p.parentFirstName}` : '';
-      const duesPurpose = `Dues cover ref fees, league & player registration, equipment, uniforms and more — without them the club can't function properly.`;
-      const payBody = `Hi${parentRef}, heads up — our Lighthouse 1893 Financial Dept flagged ${kidRef}'s monthly dues (${amountStr}) as past due. Looks like the LeagueApps charge didn't go through. ${duesPurpose} LeagueApps has emailed you a pay link — please check your inbox if unsure. To avoid any disruption to ${kidRef}'s practice / game roster eligibility (and any late fees), log in and pay / update your card on file: ${payUrl}  Thanks!`;
+      const payBody = `Hi${parentRef}, gentle reminder — ${kidRef}'s dues (${amountStr}) are showing as past due on LeagueApps.  To cut down on admin work on our end, we really need a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
       const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(payBody)}`;
       payBtn = `
       <a href="${payHref}"

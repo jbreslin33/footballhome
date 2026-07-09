@@ -482,75 +482,30 @@ class BoysRosterScreen extends Screen {
 
       // ── Parent-facing PAY reminder ──────────────────────────────
       //
-      // Youth board voice: extremely polite, apologetic, addressed to
-      // the parent by first name and referring to the child by first
-      // name.  We do NOT threaten roster removal — youth is different
-      // from mens; kids don't get parked for late dues.  Tone is
-      // "sorry to bother you, quick heads-up from the office".
-      //
-      // Three tiers scaled to lateness:
-      //   1–3 days  → gentle nudge, "charge didn't go through"
-      //   4–6 days  → slightly firmer, note that dues fund the program
-      //   7+ days   → still polite, but ask them to reach out if there
-      //               is a hardship so we can work something out
-      //
-      // Every tier tells the parent LeagueApps has already emailed a
-      // pay link and points to the dashboard URL as a fallback so they
-      // can update card-on-file.
+      // Youth board voice: light, one gentle template for all tiers.
+      // 2026-07-09 revision — user asked to drop the sliding-scale
+      // apology copy in favor of a single "Gentle reminder" opener
+      // that just explains we really need a valid card on file so
+      // LeagueApps can auto-charge each month (cuts down admin work).
+      // No more "hardship / work something out" escape hatches, no
+      // more three-tier voice.
       const parentFirstStr = parentFirst ? ` ${parentFirst}` : '';
       const kidStr         = p.firstName ? ` ${p.firstName}'s` : ' your child\'s';
-      const kidRefName     = p.firstName || 'your child';
-      const duesPurpose    = `Dues help cover ref fees, league & player registration, equipment, uniforms, and field costs — thank you for supporting the club!`;
-      const signOff        = `Thank you so much, and please let us know if there's anything we can do to help.`;
 
-      // SMS body — single blob; SMS clients render walls of text fine
-      // and it saves the parent from scrolling a long message.
-      let payBody;
-      if (days >= 7) {
-        payBody = `Hi${parentFirstStr}, so sorry to bother you — this is Lighthouse 1893.  We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.  LeagueApps has emailed you a pay link — please have a look if you can!  You can also log in and pay here: ${payUrl}  If you're experiencing any hardship or the timing isn't great, please just reply to this message — we're happy to work something out.  ${signOff}`;
-      } else if (days >= 4) {
-        payBody = `Hi${parentFirstStr}, hope you're doing well — this is a quick, friendly note from Lighthouse 1893.  We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.  LeagueApps has emailed you a pay link, or you can log in and pay here: ${payUrl}  ${duesPurpose}  ${signOff}`;
-      } else {
-        payBody = `Hi${parentFirstStr}, hope all is well!  Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.  Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and pay here: ${payUrl}  ${signOff}`;
-      }
+      // SMS body — single blob; SMS clients render walls of text fine.
+      const payBody = `Hi${parentFirstStr}, gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.  To cut down on admin work on our end, we really need a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
 
-      // Email body — same content as SMS but broken into readable
-      // paragraphs with a proper greeting/signature block.  Gmail's
-      // compose window preserves \n line breaks, so paragraph splits
-      // render cleanly.  2026-07-06: user asked for better email
-      // formatting than one wall of text.
+      // Email body — same content, paragraph-broken.  Gmail's compose
+      // window preserves \n line breaks, so splits render cleanly.
       const greetingLine = `Hi${parentFirstStr},`;
       const signature    = `Thanks so much,\nLighthouse 1893`;
-      let payEmailBody;
-      if (days >= 7) {
-        payEmailBody = [
-          greetingLine,
-          `So sorry to bother you — this is Lighthouse 1893.`,
-          `We wanted to gently follow up on${kidStr} membership dues (${amountStr}), which are showing about ${daysStr} past due in our system.`,
-          `LeagueApps has emailed you a pay link — please have a look if you can! You can also log in and pay here:\n${payUrl}`,
-          `If you're experiencing any hardship or the timing isn't great, please just reply to this email — we're happy to work something out.`,
-          signOff,
-          signature,
-        ].join('\n\n');
-      } else if (days >= 4) {
-        payEmailBody = [
-          greetingLine,
-          `Hope you're doing well — this is a quick, friendly note from Lighthouse 1893.`,
-          `We noticed${kidStr} dues (${amountStr}) are about ${daysStr} past due; it looks like the LeagueApps charge didn't go through.`,
-          `LeagueApps has emailed you a pay link, or you can log in and pay here:\n${payUrl}`,
-          duesPurpose,
-          signOff,
-          signature,
-        ].join('\n\n');
-      } else {
-        payEmailBody = [
-          greetingLine,
-          `Hope all is well! Quick heads-up from Lighthouse 1893 — it looks like${kidStr} most recent dues charge (${amountStr}) didn't go through on LeagueApps.`,
-          `Whenever you get a chance, LeagueApps has emailed you a pay link, or you can log in and pay here:\n${payUrl}`,
-          signOff,
-          signature,
-        ].join('\n\n');
-      }
+      const payEmailBody = [
+        greetingLine,
+        `Gentle reminder —${kidStr} dues (${amountStr}) are showing about ${daysStr} past due on LeagueApps.`,
+        `To cut down on admin work on our end, we really need a valid card on file so LeagueApps can auto-charge each month.`,
+        `LeagueApps has emailed you a pay link, or you can log in and pay / update your card here:\n${payUrl}`,
+        signature,
+      ].join('\n\n');
 
       // Two buttons: 💬 PAY (SMS to parent) and ✉ PAY (email to parent).
       // Whichever channel the parent uses, one tap gets there.  If we
@@ -564,7 +519,7 @@ class BoysRosterScreen extends Screen {
             fs:       '1',
             authuser: 'soccer@lighthouse1893.org',
             to:       parentEmail,
-            su:       `Lighthouse 1893 — quick note about ${kidRefName}'s dues`,
+            su:       `Lighthouse 1893 — quick note about ${p.firstName || 'your child'}'s dues`,
             body:     payEmailBody,
           }).toString()}`
         : null;
