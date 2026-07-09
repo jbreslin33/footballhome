@@ -505,29 +505,30 @@ class BoysRosterScreen extends Screen {
 
       // Copy rewritten 2026-07-09 per user directive: "right now i
       // need them to pay July and i don't want to run their cards and
-      // surprise them. so gentle reminders."  Any auto-charge / "card
-      // on file so LeagueApps can bill" language pulled — owner will
-      // send a separate pre-Aug-7 heads-up before enabling auto-pay.
-      // Two variants: prorate (mid-cycle signup, explains the July
-      // partial-cycle math) and normal (July $35 outstanding).
+      // surprise them. so gentle reminders."  Plus: "You can change
+      // the emails by reading Balance Due from la which i am manually
+      // editing before each email so you should read to construct
+      // message on the fly".
+      //
+      // → Auto-charge language dropped (Aug 7 heads-up is separate).
+      //   LA outstandingBalance is the authoritative amount (owner
+      //   manually edits per player), so we render `amountStr` in the
+      //   ask instead of computing on-the-fly $ math that could
+      //   contradict LA.  Two variants:
+      //     (a) prorate — mid-current-cycle signup, explains the
+      //         partial-cycle context and points to the LA balance.
+      //     (b) normal  — July dues outstanding, please pay.
       let payBody, payEmailBody;
       const greetingLine = `Hi${parentFirstStr},`;
       const signature    = `Thanks so much,\nLighthouse 1893`;
       if (prorateOwed) {
         const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const rawStr   = pr.rawAmount != null
-          ? (Number.isInteger(pr.rawAmount) ? `$${pr.rawAmount}` : `$${pr.rawAmount.toFixed(2)}`)
-          : `$${(35 * pr.daysRemain / pr.cycleDays).toFixed(2)}`;
-        const netStr   = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
-        const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
-          ? ` minus the $${pr.paidSinceReg} you paid at signup =`
-          : ' =';
-        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. Gentle reminder to log in and pay the ${netStr} on LeagueApps when you get a moment: ${payUrl}. Thanks so much!`;
+        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Gentle reminder to log in and pay the ${amountStr} on LeagueApps when you get a moment: ${payUrl}. Thanks so much!`;
         payEmailBody = [
           greetingLine,
           `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
-          `The math:  $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July.`,
-          `Gentle reminder to log in and pay the ${netStr} on LeagueApps when you get a moment:\n${payUrl}`,
+          `Balance for July:  ${amountStr}.`,
+          `Gentle reminder to log in and pay the ${amountStr} on LeagueApps when you get a moment:\n${payUrl}`,
           signature,
         ].join('\n\n');
       } else {

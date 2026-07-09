@@ -502,6 +502,18 @@ window.BillingBadge = (() => {
     const daysRemain = Math.max(0, Math.ceil((nextFri - reg) / DAY));
     if (daysRemain === 0 || cycleDays === 0) return null;
 
+    // Current-cycle gate (2026-07-09 per owner directive: "Eren Cedeno
+    // and others in this situation don't need pro rate for July
+    // remember if they never paid more than $1 or $0 and they
+    // registered before July 3rd. they just get billed straight $35").
+    // Prorate anchored to the player's reg date is only meaningful
+    // when nextFri (the boundary that ends *their* partial cycle) is
+    // still in the future.  A player who registered in a prior cycle
+    // is now on the full-cycle plan and owes the standard $35, so
+    // return null here to suppress the stale prorate badge/message.
+    const nowMs = Date.now();
+    if (nextFri.getTime() < nowMs) return null;
+
     // Suppress once the player has paid ≥ $35 since reg.  Only counts
     // positive, valid payments landing on or after reg date — historical
     // pre-reg payments (family alias, credit balances) don't apply.

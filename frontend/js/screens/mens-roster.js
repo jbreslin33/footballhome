@@ -516,23 +516,18 @@ class MensRosterScreen extends Screen {
       //   the charge on the card on file didn't clear — so the copy
       //   leads with "card didn't clear, please pay or update card".
       //   Two variants:
-      //     (a) prorate — mid-cycle signup: explain the July partial-
-      //         cycle math so they see why it's not a full $35, then
-      //         nudge to log in and pay / update card.
+      //     (a) prorate — mid-current-cycle signup: explain that July
+      //         dues are prorated and use the LA outstandingBalance
+      //         (which the owner manually edits per player) as the
+      //         authoritative amount to pay — no on-the-fly $ math
+      //         that could contradict what LA shows.
       //     (b) normal  — July $35 didn't clear on card, please pay
       //         / update card.
       //   Both point to the LA dashboard.
       let payBody;
       if (prorateOwed) {
         const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const rawStr   = pr.rawAmount != null
-          ? (Number.isInteger(pr.rawAmount) ? `$${pr.rawAmount}` : `$${pr.rawAmount.toFixed(2)}`)
-          : `$${(35 * pr.daysRemain / pr.cycleDays).toFixed(2)}`;
-        const netStr   = Number.isInteger(pr.amount) ? `$${pr.amount}` : `$${pr.amount.toFixed(2)}`;
-        const paidNote = (pr.paidSinceReg && pr.paidSinceReg > 0)
-          ? ` minus the $${pr.paidSinceReg} you paid at signup =`
-          : ' =';
-        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues prorate for the ${pr.daysRemain} of ${pr.cycleDays} days remaining: $35 × ${pr.daysRemain}/${pr.cycleDays} = ${rawStr}${paidNote} ${netStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. Gentle reminder to log in and pay the ${netStr} or update your card on file when you get a moment: ${payUrl}. Thanks!`;
+        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. Gentle reminder to log in and pay the ${amountStr} or update your card on file when you get a moment: ${payUrl}. Thanks!`;
       } else {
         payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) didn't clear on the card on file. Usually just an expired or declined card. When you get a moment, please log in and pay or update your card: ${payUrl}. Thanks!`;
       }
