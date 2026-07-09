@@ -519,10 +519,19 @@ window.BillingBadge = (() => {
     }
     if (paidSinceReg >= EXPECTED_MONTHLY_AMOUNT - 0.01) return null;
 
-    const amount = Math.round(EXPECTED_MONTHLY_AMOUNT * daysRemain / cycleDays * 100) / 100;
+    // Anything already paid since reg (typically the $1 card-capture
+    // fee) counts toward this cycle's dues per owner directive
+    // 2026-07-09 ("it should be counted as part of the $35").  Subtract
+    // it from the raw prorate so the manual LA charge equals what the
+    // player still owes for the partial cycle — not the full window.
+    const rawAmount = EXPECTED_MONTHLY_AMOUNT * daysRemain / cycleDays;
+    const netAmount = Math.max(0, rawAmount - paidSinceReg);
+    const amount    = Math.round(netAmount * 100) / 100;
 
     return {
       amount,
+      rawAmount:   Math.round(rawAmount * 100) / 100,
+      paidSinceReg: Math.round(paidSinceReg * 100) / 100,
       regDate: reg,
       lastFri,
       nextFri,
@@ -597,10 +606,17 @@ window.BillingBadge = (() => {
     const nextFriShort = pr.nextFri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const regShort     = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+    // Tip explains: raw prorate = $35 × daysRemain/cycleDays, then
+    // subtract anything already paid since reg (typically $1 signup
+    // fee) so the net = what the coach still needs to add on LA.
+    const rawShown  = fmtAmt(pr.rawAmount);
+    const paidNote  = pr.paidSinceReg > 0
+      ? ` − ${fmtAmt(pr.paidSinceReg)} already paid since reg = ${shown}`
+      : '';
     const tip =
       `Projected prorate: signed up ${regShort}, ` +
       `${pr.daysRemain}/${pr.cycleDays} days remaining until next 1st Friday (${nextFriShort}) · ` +
-      `$${EXPECTED_MONTHLY_AMOUNT} × ${pr.daysRemain}/${pr.cycleDays} = ${shown}. ` +
+      `$${EXPECTED_MONTHLY_AMOUNT} × ${pr.daysRemain}/${pr.cycleDays} = ${rawShown}${paidNote}. ` +
       `Add this as a manual charge on the player's LA registration NOW; ` +
       `their normal $${EXPECTED_MONTHLY_AMOUNT}/mo bills begin on ${nextFriShort}.`;
 
