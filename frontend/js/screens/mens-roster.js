@@ -458,13 +458,18 @@ class MensRosterScreen extends Screen {
       : null;
     const prorateOwed = !!(pr && pr.amount > 0);
     if ((days >= 1 || prorateOwed) && p.leagueAppsUserId) {
-      // Amount preference: LA's outstandingBalance if it's > 0,
-      // otherwise the monthly nextBillAmount (usually $35).  Falls back
-      // to just "dues" if we somehow have neither.
+      // Amount preference order (2026-07-09 owner directive on LA
+      // Balance Due being manually edited):
+      //   1. LA outstandingBalance   (authoritative when set)
+      //   2. computed prorate amount (mid-cycle signup fallback)
+      //   3. nextBillAmount          (monthly expectation)
+      //   4. EXPECTED_MONTHLY_AMOUNT (final fallback)
+      const proAmt   = prorateOwed && pr && pr.amount > 0 ? pr.amount : null;
+      const nbAmt    = p.nextBillAmount > 0 ? p.nextBillAmount : null;
       const amountNum = (p.outstandingBalance > 0)
         ? p.outstandingBalance
-        : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
-      const amountStr = amountNum != null ? `$${amountNum}` : 'your dues';
+        : (proAmt != null ? proAmt : (nbAmt != null ? nbAmt : 35));
+      const amountStr = Number.isInteger(amountNum) ? `$${amountNum}` : `$${amountNum.toFixed(2)}`;
       // daysStr carries the whole "N days past due" phrase (or the
       // generic "past due") so we don't have to sprinkle "past due"
       // into every template.
@@ -527,7 +532,7 @@ class MensRosterScreen extends Screen {
       let payBody;
       if (prorateOwed) {
         const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. Gentle reminder to log in and pay the ${amountStr} or update your card on file when you get a moment: ${payUrl}. Thanks!`;
+        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. Gentle reminder to log in and pay ${amountStr} or update your card on file when you get a moment: ${payUrl}. Thanks!`;
       } else {
         payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) didn't clear on the card on file. Usually just an expired or declined card. When you get a moment, please log in and pay or update your card: ${payUrl}. Thanks!`;
       }

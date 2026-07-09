@@ -479,13 +479,21 @@ class BoysRosterScreen extends Screen {
       : null;
     const prorateOwed = !!(pr && pr.amount > 0);
     if ((days >= 1 || prorateOwed) && p.leagueAppsUserId) {
-      // Amount preference: LA's outstandingBalance if it's > 0,
-      // otherwise the monthly nextBillAmount.  Falls back to just
-      // "the outstanding balance" if we somehow have neither.
+      // Amount preference order (2026-07-09 owner directive: "You can
+      // change the emails by reading Balance Due from la which i am
+      // manually editing before each email"):
+      //   1. LA outstandingBalance   (authoritative when coach has set it)
+      //   2. computed prorate amount (for mid-cycle signups where LA
+      //      balance not yet edited)
+      //   3. nextBillAmount          (backend monthly expectation)
+      //   4. EXPECTED_MONTHLY_AMOUNT (final fallback so message never
+      //      reads with an English phrase where a dollar figure belongs)
+      const proAmt   = prorateOwed && pr && pr.amount > 0 ? pr.amount : null;
+      const nbAmt    = p.nextBillAmount > 0 ? p.nextBillAmount : null;
       const amountNum = (p.outstandingBalance > 0)
         ? p.outstandingBalance
-        : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
-      const amountStr = amountNum != null ? `$${amountNum}` : 'the outstanding balance';
+        : (proAmt != null ? proAmt : (nbAmt != null ? nbAmt : 35));
+      const amountStr = Number.isInteger(amountNum) ? `$${amountNum}` : `$${amountNum.toFixed(2)}`;
       const daysStr   = daysAreExact
         ? `${days} day${days === 1 ? '' : 's'}`
         : 'a few days';
@@ -523,12 +531,12 @@ class BoysRosterScreen extends Screen {
       const signature    = `Thanks so much,\nLighthouse 1893`;
       if (prorateOwed) {
         const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Gentle reminder to log in and pay the ${amountStr} on LeagueApps when you get a moment: ${payUrl}. Thanks so much!`;
+        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment: ${payUrl}. Thanks so much!`;
         payEmailBody = [
           greetingLine,
           `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
           `Balance for July:  ${amountStr}.`,
-          `Gentle reminder to log in and pay the ${amountStr} on LeagueApps when you get a moment:\n${payUrl}`,
+          `Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment:\n${payUrl}`,
           signature,
         ].join('\n\n');
       } else {
