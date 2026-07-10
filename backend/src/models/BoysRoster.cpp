@@ -9,6 +9,7 @@
 #include <limits>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "MensTeamAssignments.h"
@@ -232,7 +233,11 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
     std::vector<json> boysRecs, girlsRecs;
     {
         std::lock_guard<std::mutex> lk(cacheMutex_);
-        const bool needFetch = refreshLa || !cacheValid_;
+        // Source-of-truth rule (2026-07-09): LA is authoritative for
+        // membership — every load hits LA live so a brand-new signup
+        // shows in Unassigned immediately.  Cache is fallback on error.
+        (void)refreshLa;
+        const bool needFetch = true;
         if (needFetch) {
             try {
                 cachedBoys_ = LeagueAppsService::getInstance()
@@ -453,10 +458,47 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
 
     const int seasonEndYear = defaultSeasonEndYear();
 
+    // ── Pickup exclusion (2026-07-09, universal rule) ────────────────
+    //
+    // Owner directive: "DO NOT SHOW ANYONE NOT IN LA member(not pickup)
+    // for boys girls women or men IN THE ROSSTERS IN ANY CATEGORY".
+    // Applied here on /api/boys-roster.  Same filter lives on the mens
+    // and youth (women) endpoints.
+    std::unordered_set<std::string> pickupUids;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT DISTINCT epa.external_user_id AS uid "
+            "  FROM person_la_memberships plm "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = plm.person_id "
+            "   AND epa.provider  = 'leagueapps' "
+            "  JOIN leagueapps_programs lp "
+            "    ON lp.program_id = plm.la_program_id "
+            " WHERE plm.ended_at IS NULL "
+            "   AND lp.variant   = 'pickup' "
+            "   AND epa.external_user_id IS NOT NULL"
+        );
+        for (const auto& r : rows) {
+            if (!r["uid"].is_null()) pickupUids.insert(r["uid"].c_str());
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[BoysRoster] pickup exclusion load failed: "
+                  << e.what() << std::endl;
+    }
+    auto notPickup = [&](const json& rec) -> bool {
+        const std::string u = userIdString(optUserId(rec));
+        return u.empty() || !pickupUids.count(u);
+    };
+
     std::vector<json> all;
     all.reserve(boysRecs.size() + girlsRecs.size());
-    for (const auto& r : boysRecs)  if (isActive(r, includeAll)) all.push_back(shapePlayer(r, "boys",  seasonEndYear));
-    for (const auto& r : girlsRecs) if (isActive(r, includeAll)) all.push_back(shapePlayer(r, "girls", seasonEndYear));
+    for (const auto& r : boysRecs)
+        if (isActive(r, includeAll) && notPickup(r))
+            all.push_back(shapePlayer(r, "boys",  seasonEndYear));
+    for (const auto& r : girlsRecs)
+        if (isActive(r, includeAll) && notPickup(r))
+            all.push_back(shapePlayer(r, "girls", seasonEndYear));
 
     // ── Bucket per column (keyed by teamId-as-string) ────────────────
     std::unordered_map<std::string, std::vector<json>> buckets;

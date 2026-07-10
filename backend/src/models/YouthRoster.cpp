@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "PersonBilling.h"
@@ -229,10 +230,45 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
     auto boysRecent    = payments_->loadRecentByProgramByRegistration(boysProgramId_, 3);
     auto girlsRecent   = payments_->loadRecentByProgramByRegistration(girlsProgramId_, 3);
 
+    // ── Pickup exclusion (2026-07-09, universal rule) ────────────────
+    // Owner directive: pickup-variant LA members never appear on any
+    // roster page.  Set of LA user ids that hold an active pickup
+    // membership in any category (boys/girls/mens/womens).
+    std::unordered_set<std::string> pickupUids;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT DISTINCT epa.external_user_id AS uid "
+            "  FROM person_la_memberships plm "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = plm.person_id "
+            "   AND epa.provider  = 'leagueapps' "
+            "  JOIN leagueapps_programs lp "
+            "    ON lp.program_id = plm.la_program_id "
+            " WHERE plm.ended_at IS NULL "
+            "   AND lp.variant   = 'pickup' "
+            "   AND epa.external_user_id IS NOT NULL"
+        );
+        for (const auto& r : rows) {
+            if (!r["uid"].is_null()) pickupUids.insert(r["uid"].c_str());
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[YouthRoster] pickup exclusion load failed: "
+                  << e.what() << std::endl;
+    }
+    auto notPickup = [&](const json& rec) -> bool {
+        const std::string u = userIdString(optUserId(rec));
+        return u.empty() || !pickupUids.count(u);
+    };
+
     std::vector<json> shapedAll;
     shapedAll.reserve(boysRecs.size() + girlsRecs.size());
-    for (const auto& r : boysRecs)  if (isActive(r, includeAll)) shapedAll.push_back(shapeYouthPlayer(r, "boys"));
-    for (const auto& r : girlsRecs) if (isActive(r, includeAll)) shapedAll.push_back(shapeYouthPlayer(r, "girls"));
+    for (const auto& r : boysRecs)
+        if (isActive(r, includeAll) && notPickup(r))
+            shapedAll.push_back(shapeYouthPlayer(r, "boys"));
+    for (const auto& r : girlsRecs)
+        if (isActive(r, includeAll) && notPickup(r))
+            shapedAll.push_back(shapeYouthPlayer(r, "girls"));
 
     auto billingMap = billing_->loadAll();
 

@@ -265,7 +265,13 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     std::vector<nlohmann::json> recs;
     {
         std::lock_guard<std::mutex> lk(cacheMutex_);
-        const bool needFetch = refreshLa || !cacheValid_;
+        // Source-of-truth rule (2026-07-09): LeagueApps is authoritative
+        // for membership.  Every /api/mens-roster load MUST hit LA live
+        // so a fresh signup (e.g. Mars Milligan today) shows up in
+        // Unassigned without waiting for the background LA-sync job.
+        // If LA errors out we degrade to the cached snapshot below.
+        (void)refreshLa;
+        const bool needFetch = true;
         if (needFetch) {
             try {
                 cachedRecs_ = LeagueAppsService::getInstance()
@@ -576,10 +582,50 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         return j;
     };
 
+    // ── Pickup exclusion (2026-07-09, universal rule) ────────────────
+    //
+    // Owner directive 2026-07-09: "DO NOT SHOW ANYONE NOT IN LA
+    // member(not pickup) for boys girls women or men IN THE ROSSTERS IN
+    // ANY CATEGORY".  A person holding an active pickup-variant LA
+    // membership (5064618 boys / 5064662 girls / 5070075 mens /
+    // 5064686 womens) MUST NOT appear on any roster page — even if they
+    // ALSO hold an active non-pickup membership in the same category.
+    // Applied here for /api/mens-roster; the same filter is applied on
+    // /api/boys-roster and /api/youth-roster.
+    std::unordered_set<std::string> pickupUids;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT DISTINCT epa.external_user_id AS uid "
+            "  FROM person_la_memberships plm "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = plm.person_id "
+            "   AND epa.provider  = 'leagueapps' "
+            "  JOIN leagueapps_programs lp "
+            "    ON lp.program_id = plm.la_program_id "
+            " WHERE plm.ended_at IS NULL "
+            "   AND lp.variant   = 'pickup' "
+            "   AND epa.external_user_id IS NOT NULL"
+        );
+        for (const auto& r : rows) {
+            if (!r["uid"].is_null()) pickupUids.insert(r["uid"].c_str());
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] pickup exclusion load failed: "
+                  << e.what() << std::endl;
+    }
+
     std::vector<json> all;
     all.reserve(recs.size());
     for (const auto& r : recs) {
-        if (isActive(r, includeAll)) all.push_back(shapeMensPlayer(r));
+        if (!isActive(r, includeAll)) continue;
+        json p = shapeMensPlayer(r);
+        const std::string u = userIdString(p.at("leagueAppsUserId"));
+        if (!u.empty() && pickupUids.count(u)) {
+            // Active pickup member — excluded universally.
+            continue;
+        }
+        all.push_back(std::move(p));
     }
 
     // ── Union in mens-team members NOT in the mens LA program (2026-07-07) ─
@@ -608,6 +654,8 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         for (const auto& kv : assignmentMap) {
             const std::string& uid = kv.first;
             if (uid.empty() || haveUid.count(uid)) continue;
+            // Universal pickup exclusion — see rule above.
+            if (pickupUids.count(uid)) continue;
             // Guard: uid must be all digits (comes from bigint column, but
             // belt-and-suspenders since we splice it into a text[] literal).
             bool ok = !uid.empty();
@@ -718,6 +766,8 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         for (const auto& kv : allPayByUser) {
             const std::string uid = std::to_string(kv.first);
             if (uid.empty() || haveUid.count(uid)) continue;
+            // Universal pickup exclusion — see rule above.
+            if (pickupUids.count(uid)) continue;
             missingUids.push_back(uid);
         }
         if (!missingUids.empty()) {
