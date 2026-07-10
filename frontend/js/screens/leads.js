@@ -2014,8 +2014,22 @@ class LeadsScreen extends Screen {
         // the mission tagline — nobody who signs up gets sent home.  U23 /
         // PR / Brazil are advertised via their own funnels and are
         // intentionally omitted from this list.
+        //
+        // 2026-07-09: Prepend a summer-trials heads-up covering the three
+        // competitions that Lighthouse's 1st team enters this year
+        // (U.S. Open Cup, APSL 1st Team, U.S. National Amateur Cup),
+        // with a short factual description of each so leads landing on
+        // the LA page know what they're playing for.  Applies to the
+        // Men's Club LA description only — the other men funnels (PR /
+        // Brazil / U23) don't render a Teams block.
         teamsBlockHtml =
           `<h3>Teams</h3>` +
+          `<p><strong>Trials have begun</strong> for the <strong>U.S. Open Cup</strong>, <strong>APSL 1st Team</strong>, and <strong>U.S. National Amateur Cup</strong>. Join the Men's Club to be considered.</p>` +
+          `<ul>` +
+            `<li><strong>U.S. Open Cup</strong> &mdash; the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination &mdash; MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.</li>` +
+            `<li><strong>U.S. National Amateur Cup</strong> &mdash; U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.</li>` +
+            `<li><strong>APSL (American Premier Soccer League)</strong> &mdash; a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.</li>` +
+          `</ul>` +
           `<p>Our competitive squads (Fall 2026):</p>` +
           `<ul>` +
             `<li><strong>APSL</strong></li>` +
@@ -2025,6 +2039,10 @@ class LeadsScreen extends Screen {
           `<p><strong>Lighthouse League</strong> is our in-house program at the Lighthouse fields &mdash; for members who want a <strong>local, low-to-no-travel soccer experience</strong>, and for anyone not selected to a competitive squad. <strong>We don't cut members.</strong></p>`;
         teamsBlockText =
           `TEAMS:\n` +
+          `Trials have begun for the U.S. Open Cup, APSL 1st Team, and U.S. National Amateur Cup. Join the Men's Club to be considered.\n` +
+          `  • U.S. Open Cup — the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination — MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.\n` +
+          `  • U.S. National Amateur Cup — U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.\n` +
+          `  • APSL (American Premier Soccer League) — a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.\n\n` +
           `Our competitive squads (Fall 2026):\n` +
           `  • APSL\n` +
           `  • Liga 1\n` +
