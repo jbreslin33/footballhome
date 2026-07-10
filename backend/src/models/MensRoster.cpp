@@ -1085,14 +1085,16 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         }
 
         if (relevant.empty()) {
-            // 2026-07-08: Suppress from Unassigned when the user is
-            // already on some mens team, just not one with a visible
-            // roster_column (e.g. Pickup 909, Practice 908, or a
-            // sunset selection team).  Otherwise pickup-only members
-            // clutter the selection-team draft view.  If the user has
-            // zero mens assignments at all, they stay in Unassigned so
+            // Previously (2026-07-08) we suppressed the row here when
+            // the user was assigned to a non-column mens team (Practice
+            // 908 / Pickup 909 / a sunset selection team) so pickup-only
+            // members wouldn't clutter the selection draft view.  That
+            // suppression is now redundant: the universal pickup-uid
+            // filter above already removes every active pickup holder
+            // from `all` before we get here.  A brand-new mens member
+            // who happens to have Practice/Pickup rows (e.g. Mars
+            // Milligan 2026-07-09) MUST stay visible in Unassigned so
             // admin can drag them onto a selection team.
-            if (userCells && !userCells->empty()) continue;
 
             json row             = p;
             row["teamIds"]       = json::array();
