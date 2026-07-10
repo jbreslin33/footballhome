@@ -1486,15 +1486,14 @@ Response EventController::handleCreateRSVP(const Request& request) {
         }
         
         // Map frontend status values to database values
+        // ("maybe" was deprecated 2026-07-10 — rejected here.)
         std::string db_status;
         if (status == "attending") {
             db_status = "yes";
         } else if (status == "not_attending") {
             db_status = "no";
-        } else if (status == "maybe") {
-            db_status = "maybe";
         } else {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending, not_attending, or maybe"));
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending or not_attending"));
         }
         
         // Use history table (append-only) based on role_type
@@ -1615,6 +1614,8 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 std::string avatar_url = result[i]["avatar_url"].is_null() ? "" : result[i]["avatar_url"].c_str();
                 
                 // Map database status values back to frontend values
+                // ("maybe" was deprecated 2026-07-10; historic rows still
+                // read but nobody can create new ones)
                 std::string db_status = result[i]["status"].c_str();
                 std::string frontend_status;
                 if (db_status == "yes") {
@@ -1622,7 +1623,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 } else if (db_status == "no") {
                     frontend_status = "not_attending";
                 } else {
-                    frontend_status = db_status; // "maybe" stays as is
+                    frontend_status = db_status; // historic "maybe" passes through as-is
                 }
                 
                 json_array << "{"
@@ -2669,8 +2670,6 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
                     AND r.rsvp_status_id = 1) as going_count,
                    (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
                     AND r.rsvp_status_id = 2) as not_going_count,
-                   (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
-                    AND r.rsvp_status_id = 3) as maybe_count,
                    m.match_date, mt.name as match_type_name,
                    ht.name as home_team, at2.name as away_team,
                    m.home_score, m.away_score
@@ -2711,8 +2710,7 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
                  << "\"home_score\":" << (events[i]["home_score"].is_null() ? "null" : events[i]["home_score"].c_str()) << ","
                  << "\"away_score\":" << (events[i]["away_score"].is_null() ? "null" : events[i]["away_score"].c_str()) << ","
                  << "\"going\":" << events[i]["going_count"].c_str() << ","
-                 << "\"not_going\":" << events[i]["not_going_count"].c_str() << ","
-                 << "\"maybe\":" << events[i]["maybe_count"].c_str()
+                 << "\"not_going\":" << events[i]["not_going_count"].c_str()
                  << "}";
         }
         json << "],";
@@ -3207,7 +3205,7 @@ Response EventController::handleSyncLeague(const Request& request) {
 //   {
 //     "success": true,
 //     "match_id": 9218,
-//     "rsvp":       {"yes": 12, "maybe": 3, "no": 1},
+//     "rsvp":       {"yes": 12, "no": 1},
 //     "attendance": {"present": 8, "absent": 1}
 //   }
 //
@@ -3239,7 +3237,6 @@ Response EventController::handleGetMatchRsvpSummary(const Request& request) {
             "SELECT "
             "  (SELECT COUNT(*) FROM r WHERE rsvp_status_id = 1) AS yes,"
             "  (SELECT COUNT(*) FROM r WHERE rsvp_status_id = 2) AS no,"
-            "  (SELECT COUNT(*) FROM r WHERE rsvp_status_id = 3) AS maybe,"
             "  (SELECT COUNT(*) FROM a WHERE attended = true)    AS present,"
             "  (SELECT COUNT(*) FROM a WHERE attended = false)   AS absent";
         auto rows = db_->query(q, {matchIdStr});
@@ -3248,7 +3245,7 @@ Response EventController::handleGetMatchRsvpSummary(const Request& request) {
             // return zeros anyway so the frontend contract is stable.
             std::ostringstream out;
             out << "{\"success\":true,\"match_id\":" << matchIdStr
-                << ",\"rsvp\":{\"yes\":0,\"maybe\":0,\"no\":0}"
+                << ",\"rsvp\":{\"yes\":0,\"no\":0}"
                 << ",\"attendance\":{\"present\":0,\"absent\":0}}";
             return Response(HttpStatus::OK, out.str());
         }
@@ -3257,7 +3254,6 @@ Response EventController::handleGetMatchRsvpSummary(const Request& request) {
         out << "{\"success\":true,\"match_id\":" << matchIdStr
             << ",\"rsvp\":{"
             << "\"yes\":"   << r["yes"].c_str()   << ","
-            << "\"maybe\":" << r["maybe"].c_str() << ","
             << "\"no\":"    << r["no"].c_str()
             << "},\"attendance\":{"
             << "\"present\":" << r["present"].c_str() << ","

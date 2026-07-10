@@ -318,7 +318,7 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
                        "you'll land on your weekly schedule:\n"
                     << verifyUrl << "\n\n"
                     << "On the page you can:\n"
-                    << "  \u2022 RSVP YES / NO / MAYBE for this week's games, practices, scrimmages and pickups\n"
+                    << "  \u2022 RSVP YES / NO for this week's games, practices, scrimmages and pickups\n"
                     << "  \u2022 Set default availability by day of week + event type so the page auto-fills\n"
                     << "  \u2022 Bookmark to your home screen (it works like an app)\n\n"
                     << "This link signs you in automatically and expires in 24 hours. "

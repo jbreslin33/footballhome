@@ -39,7 +39,7 @@
 //
 //   GET  /api/my/event-rsvps?match_id=<int>
 //        Return the full eligible roster for the given match, bucketed
-//        into `going` / `maybe` / `not_going` / `no_response`, plus
+//        into `going` / `not_going` / `no_response`, plus
 //        aggregate counts.  Same eligibility rules as /api/my/week
 //        (pickup=any mens; practice=team ∈ {35,120,121}; APSL-home
 //        games=team ∈ {35,120}; other games=home_team).  Caller must

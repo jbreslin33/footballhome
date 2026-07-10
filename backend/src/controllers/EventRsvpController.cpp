@@ -221,8 +221,7 @@ Response EventRsvpController::handlePostRsvp(const Request& request) {
     int statusId = 0;
     if      (statusName == "yes")   statusId = 1;
     else if (statusName == "no")    statusId = 2;
-    else if (statusName == "maybe") statusId = 3;
-    else return jsonError(HttpStatus::BAD_REQUEST, "status must be 'yes' | 'no' | 'maybe'");
+    else return jsonError(HttpStatus::BAD_REQUEST, "status must be 'yes' or 'no' (maybe deprecated 2026-07-10)");
 
     // Node truncates to 1000 chars and treats empty as null.  We send
     // empty string to PG and let NULLIF in the SQL coerce it to NULL

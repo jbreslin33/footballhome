@@ -956,9 +956,8 @@ Response MyController::handlePostChatMessage(const Request& request) {
 // Response payload:
 //   {
 //     "match_id":    <int>,
-//     "counts":      {"going":N, "maybe":N, "not_going":N, "no_response":N, "total":N},
+//     "counts":      {"going":N, "not_going":N, "no_response":N, "total":N},
 //     "going":       [{"person_id":X, "first_name":"Luke", "last_name":"Breslin"}, ...],
-//     "maybe":       [...],
 //     "not_going":   [...],
 //     "no_response": [...]
 //   }
@@ -1087,7 +1086,6 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             {std::to_string(matchId)});
 
         json going       = json::array();
-        json maybe       = json::array();
         json notGoing    = json::array();
         json noResponse  = json::array();
         for (const auto& r : rows) {
@@ -1099,10 +1097,12 @@ Response MyController::handleGetEventRsvps(const Request& request) {
                 {"last_name",   r["last_name"].is_null()  ? std::string{} : r["last_name"].as<std::string>()},
                 {"pickup_only", pickupOnly},
             };
+            // ("maybe" (status_id=3) was deprecated 2026-07-10 — any
+            //  historic rows still on maybe fall through into noResponse
+            //  since the frontend no longer renders a maybe bucket.)
             switch (statusId) {
                 case 1: going.push_back(entry);      break;
                 case 2: notGoing.push_back(entry);   break;
-                case 3: maybe.push_back(entry);      break;
                 default: noResponse.push_back(entry); break;
             }
         }
@@ -1138,7 +1138,6 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             {std::to_string(matchId)});
 
         json coachGoing      = json::array();
-        json coachMaybe      = json::array();
         json coachNotGoing   = json::array();
         json coachNoResponse = json::array();
         for (const auto& r : coachRows) {
@@ -1150,35 +1149,33 @@ Response MyController::handleGetEventRsvps(const Request& request) {
                 {"last_name",  r["last_name"].is_null()  ? std::string{} : r["last_name"].as<std::string>()},
                 {"is_coach",   true},
             };
+            // Same policy as player buckets: historic maybes fall
+            // through to noResponse; no maybe bucket is emitted.
             switch (statusId) {
                 case 1: coachGoing.push_back(entry);      break;
                 case 2: coachNotGoing.push_back(entry);   break;
-                case 3: coachMaybe.push_back(entry);      break;
                 default: coachNoResponse.push_back(entry); break;
             }
         }
         json coaches = {
             {"going",       coachGoing},
-            {"maybe",       coachMaybe},
             {"not_going",   coachNotGoing},
             {"no_response", coachNoResponse},
-            {"total",       (long long)(coachGoing.size() + coachMaybe.size()
+            {"total",       (long long)(coachGoing.size()
                                          + coachNotGoing.size() + coachNoResponse.size())},
         };
 
         json counts = {
             {"going",       (long long)going.size()},
-            {"maybe",       (long long)maybe.size()},
             {"not_going",   (long long)notGoing.size()},
             {"no_response", (long long)noResponse.size()},
-            {"total",       (long long)(going.size() + maybe.size() + notGoing.size() + noResponse.size())},
+            {"total",       (long long)(going.size() + notGoing.size() + noResponse.size())},
         };
 
         return jsonOk({
             {"match_id",    matchId},
             {"counts",      counts},
             {"going",       going},
-            {"maybe",       maybe},
             {"not_going",   notGoing},
             {"no_response", noResponse},
             {"coaches",     coaches},

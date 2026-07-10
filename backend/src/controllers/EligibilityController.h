@@ -55,7 +55,7 @@ struct PlayerEligibility {
     int effective_min_sessions;    // After family discount
     EligibilityStatus status;
     EligibilityStatus projected_status;  // Status if player attends future RSVP'd sessions
-    std::string match_rsvp;       // "yes", "no", "maybe", or ""
+    std::string match_rsvp;       // "yes", "no", or ""
     bool on_lineup;
     bool is_starter;
     std::string lineup_zone;       // "starter", "bench", "alternate", or ""
