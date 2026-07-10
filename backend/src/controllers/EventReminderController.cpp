@@ -266,9 +266,11 @@ Response EventReminderController::handleSendReminders(const Request& request) {
                 "   LIMIT 1) AS contact ";
         }
 
-        // Non-responder = no player_rsvp_history row for this match
-        // (any status).  A row with status "yes"/"no"/"maybe" counts
-        // as responded — same rule as the /my/week UI.
+        // Non-responder = no player_rsvp_history row for this match.
+        // Maybe-responder = latest player_rsvp_history row has
+        // rsvp_status_id = 3 ('maybe').  Both get a reminder, but
+        // with different message copy (the maybe branch nudges them
+        // to commit to going or not going).
         //
         // Eligibility (migration 107): the responder has a
         // player_rsvp_eligibility grant for the match's home_team_id.
@@ -281,6 +283,7 @@ Response EventReminderController::handleSendReminders(const Request& request) {
             ") "
             "SELECT DISTINCT p.id AS person_id, pl.id AS player_id, "
             "       p.first_name, p.last_name, "
+            "       h.rsvp_status_id AS current_status_id, "
             + contactSql +
             "  FROM match_ctx mc "
             "  JOIN player_rsvp_eligibility ple "
@@ -290,10 +293,15 @@ Response EventReminderController::handleSendReminders(const Request& request) {
             "   AND epa.external_user_id = ple.leagueapps_user_id::text "
             "  JOIN persons p ON p.id = epa.person_id "
             "  LEFT JOIN players pl ON pl.person_id = p.id "
-            "  LEFT JOIN player_rsvp_history h "
-            "    ON h.event_id  = mc.match_id "
-            "   AND h.player_id = pl.id "
-            " WHERE h.id IS NULL "
+            "  LEFT JOIN LATERAL ( "
+            "    SELECT rsvp_status_id "
+            "      FROM player_rsvp_history hh "
+            "     WHERE hh.event_id  = mc.match_id "
+            "       AND hh.player_id = pl.id "
+            "     ORDER BY hh.changed_at DESC "
+            "     LIMIT 1 "
+            "  ) h ON true "
+            " WHERE (h.rsvp_status_id IS NULL OR h.rsvp_status_id = 3) "
             // Paused-membership filter (user directive 2026-07-06): people
             // whose ONLY active LA membership is in a `variant='paused'`
             // program are members-in-name-only — they can still RSVP via
@@ -352,6 +360,8 @@ Response EventReminderController::handleSendReminders(const Request& request) {
             const std::string firstName = r["first_name"].as<std::string>();
             const std::string lastName  = r["last_name"].as<std::string>();
             const std::string contact   = r["contact"].as<std::string>();
+            const bool isMaybe = !r["current_status_id"].is_null()
+                              && r["current_status_id"].as<int>() == 3;
 
             // Random 32-byte token, stored as SHA-256 hex.  Raw token
             // goes only into the URL.  UNIQUE constraint on magic_token
@@ -382,38 +392,74 @@ Response EventReminderController::handleSendReminders(const Request& request) {
                                         + fh::crypto::urlEncode(raw);
 
             // Message copy — kept short enough to stay in a single SMS
-            // segment for the common case ("Hi X, RSVP for <title>
-            // <date> <time>: <url>").  RSVP is club policy for every
-            // event; both the plain body (mens-events-reminders.js)
-            // and this magic-link body call it out so the tone is
-            // consistent no matter which of the four buttons the coach
-            // taps.
+            // segment for the common case.  Two variants:
+            //   * non-responder: "Hi X, RSVP for <title> <date> <time>: <url>"
+            //   * maybe:         "Hi X, you're marked MAYBE for <title>
+            //                    <date> <time>. Please update to Going
+            //                    or Not Going ASAP (at latest before
+            //                    event start): <url>"
+            // RSVP is club policy for every event; both the plain body
+            // (mens-events-reminders.js) and this magic-link body call
+            // it out so the tone is consistent no matter which of the
+            // four buttons the coach taps.
             std::ostringstream smsBody;
-            smsBody << "Hi " << firstName << ", RSVP for ";
-            if (!matchTitle.empty()) smsBody << matchTitle << " ";
-            if (!dateStr.empty())    smsBody << dateStr;
-            if (!timeStr.empty())    smsBody << " " << timeStr;
-            smsBody << ": " << verifyUrl
-                    << " (RSVP required for every event so we can plan)";
+            if (isMaybe) {
+                smsBody << "Hi " << firstName
+                        << ", you're marked MAYBE for ";
+                if (!matchTitle.empty()) smsBody << matchTitle << " ";
+                if (!dateStr.empty())    smsBody << dateStr;
+                if (!timeStr.empty())    smsBody << " " << timeStr;
+                smsBody << ". Please update to Going or Not Going ASAP "
+                           "(at latest before event start): " << verifyUrl;
+            } else {
+                smsBody << "Hi " << firstName << ", RSVP for ";
+                if (!matchTitle.empty()) smsBody << matchTitle << " ";
+                if (!dateStr.empty())    smsBody << dateStr;
+                if (!timeStr.empty())    smsBody << " " << timeStr;
+                smsBody << ": " << verifyUrl
+                        << " (RSVP required for every event so we can plan)";
+            }
 
             std::ostringstream emailBody;
-            emailBody << "Hi " << firstName << ",\n\n"
-                      << "Please RSVP for ";
-            if (!matchTitle.empty()) emailBody << matchTitle;
-            if (!dateStr.empty() || !timeStr.empty()) {
-                emailBody << " (";
-                if (!dateStr.empty()) emailBody << dateStr;
-                if (!timeStr.empty()) emailBody << (dateStr.empty() ? "" : " ") << timeStr;
-                emailBody << ")";
+            if (isMaybe) {
+                emailBody << "Hi " << firstName << ",\n\n"
+                          << "You\u2019re currently marked MAYBE for ";
+                if (!matchTitle.empty()) emailBody << matchTitle;
+                if (!dateStr.empty() || !timeStr.empty()) {
+                    emailBody << " (";
+                    if (!dateStr.empty()) emailBody << dateStr;
+                    if (!timeStr.empty()) emailBody << (dateStr.empty() ? "" : " ") << timeStr;
+                    emailBody << ")";
+                }
+                emailBody << ".\n\n"
+                          << "Please update your RSVP to Going or Not Going as "
+                          << "soon as possible \u2014 at bare minimum before the "
+                          << "event starts. Maybes don\u2019t give us enough to "
+                          << "plan rosters, subs, and cancellations.\n\n"
+                          << verifyUrl << "\n\n"
+                          << "This link signs you in automatically and expires "
+                          << "in 48 hours.\n\n"
+                          << "\u2014 Lighthouse Soccer";
+            } else {
+                emailBody << "Hi " << firstName << ",\n\n"
+                          << "Please RSVP for ";
+                if (!matchTitle.empty()) emailBody << matchTitle;
+                if (!dateStr.empty() || !timeStr.empty()) {
+                    emailBody << " (";
+                    if (!dateStr.empty()) emailBody << dateStr;
+                    if (!timeStr.empty()) emailBody << (dateStr.empty() ? "" : " ") << timeStr;
+                    emailBody << ")";
+                }
+                emailBody << ":\n" << verifyUrl << "\n\n"
+                          << "RSVPing to every event on your schedule is required "
+                          << "\u2014 it\u2019s how we plan rosters, subs, and cancellations. "
+                          << "This link signs you in automatically and expires in 48 hours.\n\n"
+                          << "\u2014 Lighthouse Soccer";
             }
-            emailBody << ":\n" << verifyUrl << "\n\n"
-                      << "RSVPing to every event on your schedule is required "
-                      << "\u2014 it\u2019s how we plan rosters, subs, and cancellations. "
-                      << "This link signs you in automatically and expires in 48 hours.\n\n"
-                      << "\u2014 Lighthouse Soccer";
 
             const std::string subject =
-                std::string("Football Home \u2014 RSVP")
+                std::string("Football Home \u2014 ")
+                + (isMaybe ? "Confirm your RSVP" : "RSVP")
                 + (matchTitle.empty() ? "" : (" for " + matchTitle));
 
             json rec = {
