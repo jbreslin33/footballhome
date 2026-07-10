@@ -120,6 +120,14 @@ class PausedMembersScreen extends Screen {
         this._handleBulk(bulkBtn.getAttribute('data-bulk'));
         return;
       }
+      // Manual re-sync: same code path as sync-on-load — brings the
+      // boot screen back, hits POST /membership/sync, then reloads
+      // the list.  Also used as the "Try again" button when the
+      // initial sync fails and blocks the screen.
+      if (e.target.closest('.sync-now-btn') || e.target.closest('.sync-retry-btn')) {
+        this._load();
+        return;
+      }
       const chip = e.target.closest('[data-category-chip]');
       if (chip) {
         const cat = chip.getAttribute('data-category-chip');
@@ -185,11 +193,27 @@ class PausedMembersScreen extends Screen {
       // Brief pause so both checkmarks don't flash at once — vibes.
       await this._sleep(180);
       this._markBoot(2, 'ok', this._bootDbLine(syncInfo));
+      // Record the moment for the on-screen "Last sync" strip.
+      this._lastSyncAt = new Date();
     } catch (err) {
       console.error('membership sync failed', err);
       this._markBoot(1, 'fail', err.message);
-      this._markBoot(2, 'fail', 'Skipped — using last known DB state');
-      // Non-fatal: still try to read.  syncInfo stays null.
+      this._markBoot(2, 'fail', 'Skipped');
+      // Hard-fail: don't render a stale list.  The operator needs to
+      // know sync broke *before* they act on the data.
+      errorEl.style.display = 'block';
+      errorEl.innerHTML = `
+        <div style="max-width: 520px; margin: 0 auto; padding: var(--space-3); text-align:left;
+                    background: #fee2e2; color: #7f1d1d; border: 1px solid #fca5a5;
+                    border-radius: var(--radius-md);">
+          <div style="font-weight:600; margin-bottom: var(--space-2);">Sync with LeagueApps failed</div>
+          <div style="font-size: 0.9rem; margin-bottom: var(--space-3); opacity: 0.85;">
+            ${this._escapeHtml(err.message)}
+          </div>
+          <button class="btn btn-primary sync-retry-btn">🔄 Try again</button>
+        </div>
+      `;
+      return;
     }
 
     // ── Step 3: load members from DB (fresh) ────────────────────────
@@ -296,9 +320,9 @@ class PausedMembersScreen extends Screen {
     return fails > 0 ? `${fails} program${fails === 1 ? '' : 's'} failed` : 'ok';
   }
   _renderSyncStrip(info) {
-    // Small strip below the header showing when the data was refreshed
-    // — amber if any programs failed.  Placed inline in the loading
-    // slot's parent so it survives the loading-hide toggle.
+    // Strip below the header: timestamped last-sync label + a manual
+    // "Sync now" button so the operator can force a fresh pull without
+    // leaving the screen.  Amber if any LA programs failed during sync.
     const anchor = this.find('#members-groups');
     if (!anchor) return;
     // Remove any prior strip so re-renders don't stack.
@@ -307,6 +331,8 @@ class PausedMembersScreen extends Screen {
     if (!info) return;
     const failed = info.programsFailed || 0;
     const secs = ((info.elapsedMs || 0) / 1000).toFixed(1);
+    const when = this._lastSyncAt || new Date();
+    const timeStr = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const strip = document.createElement('div');
     strip.className = 'members-sync-strip';
     strip.style.cssText = `
@@ -317,11 +343,24 @@ class PausedMembersScreen extends Screen {
       background: ${failed ? '#fef3c7' : 'var(--bg-secondary)'};
       color: ${failed ? '#92400e' : 'var(--text-secondary)'};
       border: 1px solid ${failed ? '#f59e0b' : 'var(--color-border)'};
+      display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
     `;
-    strip.textContent = failed
-      ? `⚠ Refreshed from LeagueApps with ${failed} program failure${failed === 1 ? '' : 's'} — some data may be stale.`
-      : `🔄 Synced from LeagueApps just now · ${secs}s`;
+    const label = failed
+      ? `⚠ Last sync ${timeStr} · ${failed} program${failed === 1 ? '' : 's'} failed — data may be stale`
+      : `🔄 Last sync: <strong>${timeStr}</strong> · ${secs}s`;
+    strip.innerHTML = `
+      <span style="flex: 1 1 auto; min-width: 0;">${label}</span>
+      <button class="btn btn-secondary sync-now-btn" style="font-size: 0.8rem; padding: 4px 10px; white-space: nowrap;">
+        🔄 Sync now
+      </button>
+    `;
     anchor.parentNode.insertBefore(strip, anchor);
+  }
+
+  _escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
