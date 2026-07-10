@@ -112,7 +112,6 @@ class GameDayRosterScreen extends Screen {
             <select id="rsvp-filter" class="gdr-filter-select">
               <option value="all">All RSVP</option>
               <option value="yes">Attending</option>
-              <option value="maybe">Maybe</option>
               <option value="none">No Response</option>
               <option value="no">Not Attending</option>
             </select>
@@ -219,7 +218,7 @@ class GameDayRosterScreen extends Screen {
         return;
       }
 
-      // Practice cell click — cycle through yes → no → maybe → release
+      // Practice cell click — toggle yes → no → release ("maybe" removed 2026-07-10)
       const pracCell = e.target.closest('.gdr-prac-cell');
       if (pracCell) {
         e.stopPropagation();
@@ -230,8 +229,8 @@ class GameDayRosterScreen extends Screen {
         const isOverride = pracCell.classList.contains('gdr-prac-override');
 
         if (isOverride) {
-          // Override cell: yes → no → maybe → release
-          const cycle = { 'yes': 'no', 'no': 'maybe', 'maybe': null };
+          // Override cell: yes → no → release
+          const cycle = { 'yes': 'no', 'no': null };
           const next = current in cycle ? cycle[current] : 'no';
           if (next === null) {
             this.releasePracticeRSVP(personId, eventId, eventIdx);
@@ -239,8 +238,8 @@ class GameDayRosterScreen extends Screen {
             this.setPracticeRSVP(personId, eventId, eventIdx, next);
           }
         } else {
-          // Non-override cell: empty → yes (sets override), or cycle yes → no → maybe → yes
-          const cycle = { '': 'yes', 'yes': 'no', 'no': 'maybe', 'maybe': 'yes' };
+          // Non-override cell: empty → yes (sets override), or cycle yes → no → yes
+          const cycle = { '': 'yes', 'yes': 'no', 'no': 'yes' };
           const next = cycle[current] || 'yes';
           this.setPracticeRSVP(personId, eventId, eventIdx, next);
         }
@@ -400,14 +399,14 @@ class GameDayRosterScreen extends Screen {
       const badges = [];
       if (p.isKeeper) badges.push('<span class="gdr-badge gdr-badge-keeper">GK</span>');
       if (p.hasFamilyDiscount) badges.push('<span class="gdr-badge gdr-badge-family">FAM</span>');
-      const rsvpClass = p.rsvpStatus === 'yes' ? 'gdr-rsvp-yes' : p.rsvpStatus === 'no' ? 'gdr-rsvp-no' : p.rsvpStatus === 'maybe' ? 'gdr-rsvp-maybe' : 'gdr-rsvp-none';
+      const rsvpClass = p.rsvpStatus === 'yes' ? 'gdr-rsvp-yes' : p.rsvpStatus === 'no' ? 'gdr-rsvp-no' : 'gdr-rsvp-none';
       const rsvpLabel = p.rsvpStatus || 'none';
 
       // Mini practice dots
       const pracDots = (this.trainingEvents || []).map((te, i) => {
         const entry = p.practice ? p.practice[i] : null;
         const v = entry ? (typeof entry === 'object' ? entry.v : entry) : null;
-        const cls = v === 'yes' ? 'gdr-dot-yes' : v === 'no' ? 'gdr-dot-no' : v === 'maybe' ? 'gdr-dot-maybe' : 'gdr-dot-none';
+        const cls = v === 'yes' ? 'gdr-dot-yes' : v === 'no' ? 'gdr-dot-no' : 'gdr-dot-none';
         return `<span class="gdr-prac-dot ${cls}"></span>`;
       }).join('');
 
@@ -524,9 +523,9 @@ class GameDayRosterScreen extends Screen {
       const entry = practice[i];
       const v = entry ? (typeof entry === 'object' ? entry.v : entry) : null;
       const isOverride = entry && typeof entry === 'object' ? entry.o : false;
-      const cls = v === 'yes' ? 'gdr-prac-yes' : v === 'no' ? 'gdr-prac-no' : v === 'maybe' ? 'gdr-prac-maybe' : 'gdr-prac-none';
+      const cls = v === 'yes' ? 'gdr-prac-yes' : v === 'no' ? 'gdr-prac-no' : 'gdr-prac-none';
       const ovrCls = isOverride ? ' gdr-prac-override' : '';
-      const sym = v === 'yes' ? '&check;' : v === 'no' ? '&cross;' : v === 'maybe' ? '?' : '&mdash;';
+      const sym = v === 'yes' ? '&check;' : v === 'no' ? '&cross;' : '&mdash;';
       return `<td class="gdr-cell-center gdr-prac-cell ${cls}${ovrCls}" data-person-id="${p.personId}" data-event-id="${te.id}" data-event-idx="${i}" data-current="${v || ''}" title="${isOverride ? 'Admin override' : 'Synced'}">${sym}</td>`;
     }).join('');
 
@@ -546,7 +545,6 @@ class GameDayRosterScreen extends Screen {
         <td class="gdr-rsvp-cell">
           <div class="gdr-rsvp-group">
             <button class="gdr-rsvp-btn ${rsvpValue === 'yes' ? 'gdr-rsvp-active-yes' : ''}" data-player-id="${p.playerId}" data-rsvp="yes" title="Going">Y</button>
-            <button class="gdr-rsvp-btn ${rsvpValue === 'maybe' ? 'gdr-rsvp-active-maybe' : ''}" data-player-id="${p.playerId}" data-rsvp="maybe" title="Maybe">M</button>
             <button class="gdr-rsvp-btn ${rsvpValue === 'no' ? 'gdr-rsvp-active-no' : ''}" data-player-id="${p.playerId}" data-rsvp="no" title="Not going">N</button>
           </div>
           ${rsvpSource === 'admin' ? '<span class="gdr-rsvp-src gdr-src-admin" title="Admin override">\u270e</span>' : ''}

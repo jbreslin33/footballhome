@@ -4,7 +4,7 @@
 //   Horizontal-scrolling row of EVENT COLUMNS, ordered left-to-right
 //   by time.  Next event is leftmost.  Only shows events in the next
 //   7 days.  Each column contains four stacked sections:
-//     ✅ Going       ❌ Can't go      🟡 Maybe      ⚪ No response
+//     ✅ Going       ❌ Can't go      ⚪ No response
 //   Every roster-eligible player for that event lands in exactly one
 //   section based on their most recent player_rsvp_history row.
 //
@@ -147,26 +147,25 @@ class MensEventsRemindersScreen extends Screen {
     const pickupOnlyPlayers = isPickupEvent ? allPlayers.filter(p =>  p.is_pickup_only) : [];
 
     // Bucket regular players by RSVP status.  Null = "no response".
-    const buckets = { yes: [], no: [], maybe: [], none: [] };
+    // ("maybe" was deprecated 2026-07-10; buckets/rendering removed.)
+    const buckets = { yes: [], no: [], none: [] };
     regularPlayers.forEach((p) => {
       const key = p.rsvp_status === 'yes'   ? 'yes'
                 : p.rsvp_status === 'no'    ? 'no'
-                : p.rsvp_status === 'maybe' ? 'maybe'
                 :                             'none';
       buckets[key].push(p);
     });
 
-    // Section order per user directive: Going → Can't → Maybe → No response.
+    // Section order per user directive: Going → Can't → No response.
     // "No response" is the highlighted one (that's the whole reason
     // the coach is on this screen), so it gets the loudest border.
     const sections = [
       { key: 'yes',   label: '✅ Going',       color: '#10b981', muted: true  },
       { key: 'no',    label: '❌ Can\'t go',   color: '#94a3b8', muted: true  },
-      { key: 'maybe', label: '🟡 Maybe',       color: '#f59e0b', muted: false },
       { key: 'none',  label: '⚪ No response', color: '#ef4444', muted: false },
     ];
 
-    const totalMissing = buckets.maybe.length + buckets.none.length;
+    const totalMissing = buckets.none.length;
     const totalPlayers = regularPlayers.length;
 
     const sectionsHtml = sections.map((s) => this.renderSection(s, buckets[s.key], ev)).join('');
@@ -219,11 +218,10 @@ class MensEventsRemindersScreen extends Screen {
     // the eye lands on the main sections first.
     let pickupOnlyHtml = '';
     if (pickupOnlyPlayers.length > 0) {
-      const pBuckets = { yes: [], no: [], maybe: [], none: [] };
+      const pBuckets = { yes: [], no: [], none: [] };
       pickupOnlyPlayers.forEach((p) => {
         const key = p.rsvp_status === 'yes'   ? 'yes'
                   : p.rsvp_status === 'no'    ? 'no'
-                  : p.rsvp_status === 'maybe' ? 'maybe'
                   :                             'none';
         pBuckets[key].push(p);
       });
@@ -310,7 +308,9 @@ class MensEventsRemindersScreen extends Screen {
       '',
       `RSVPing to every event on your schedule is required — it's how we plan rosters, subs, and cancellations.`,
       '',
-      `Tap here to set Going / Can't go / Maybe: ${rsvpUrl}`,
+      `Not sure? Tap Not Going — you can always change it later if plans free up.`,
+      '',
+      `Tap here to RSVP: ${rsvpUrl}`,
       '',
       'Thanks — Lighthouse 1893',
     ];

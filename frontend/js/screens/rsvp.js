@@ -6,7 +6,7 @@
 //
 // Lifecycle:
 //   1. onEnter   → fetch /api/auth/me → fetch /api/events/:id → render
-//   2. user taps [Going] / [Maybe] / [Not going] (+ optional note)
+//   2. user taps [Going] / [Not going] (+ optional note)
 //   3. submit    → POST /api/rsvp → show confirmation card
 //
 // All fetches use plain `fetch(..., { credentials: 'include' })` because
@@ -19,7 +19,7 @@ class RsvpScreen extends Screen {
     this.me           = null;
     this.event        = null;
     this.myRsvp       = null;
-    this.selected     = null; // 'yes' | 'maybe' | 'no'
+    this.selected     = null; // 'yes' | 'no'
     this.note         = '';
     this.busy         = false;
     this.errorMessage = null;
@@ -182,8 +182,10 @@ class RsvpScreen extends Screen {
 
       <div style="display: flex; gap: 8px; margin-bottom: 8px;">
         ${optionBtn('yes',   '✅ Going',     '#22c55e')}
-        ${optionBtn('maybe', '🤔 Maybe',     '#eab308')}
         ${optionBtn('no',    '❌ Not going', '#ef4444')}
+      </div>
+      <div style="font-size:0.82em; opacity:0.75; text-align:center; margin: -2px 0 12px;">
+        <em>Not sure? Tap <strong>Not going</strong>. You can always change it later if plans free up.</em>
       </div>
 
       <div id="rsvp-result" style="text-align:center; min-height: 22px; font-size:0.9em; margin-bottom: 8px;"></div>
@@ -287,7 +289,6 @@ class RsvpScreen extends Screen {
       if (source === 'status') {
         const okMsg = {
           yes:   '✅ Saved — see you there!',
-          maybe: '🤔 Saved — we’ll keep a spot.',
           no:    '👍 Saved — thanks for letting us know.',
         }[this.selected] || '✅ Saved.';
         this._renderForm();

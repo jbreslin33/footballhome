@@ -2240,9 +2240,8 @@ class LeadsScreen extends Screen {
         `• Enter your LeagueApps email — we'll send you a link to set a password. Set it, then sign in.\n\n` +
         `Once you're in, you'll see your week under My Schedule. For every game / practice / pickup, just tap:\n` +
         `• Going\n` +
-        `• Maybe\n` +
         `• Can't go\n\n` +
-        `You must set availability for EVERY event on your weekly schedule. "Maybe" is only a placeholder — update it to Going or Can't go before the event starts.\n\n` +
+        `You must set availability for EVERY event on your weekly schedule. Not sure? Tap Can't go — you can always change it later if plans free up.\n\n` +
         `Please sign in and set your availability for this week. There's also a button to set your **recurring** availability — everyone should commit to 2 recurring practice/pickups if you can. Then you only need to change it the week of if you CANNOT make it.\n\n` +
         `Only use recurring if your schedule actually allows it — we don't want no-shows. If your week is unpredictable, just set availability week-by-week.\n\n` +
         `Going forward we'll be fining no-shows AND anyone who shows up without setting their availability — it hurts the teams and the club when we can't plan.\n\n` +

@@ -39,7 +39,6 @@ class PracticeRSVPManagementScreen extends Screen {
           <div id="sheet-player-name" style="font-size: 1.2em; font-weight: bold; margin-bottom: var(--space-3); text-align: center;"></div>
           <div style="display: flex; flex-direction: column; gap: var(--space-2);">
             <button id="sheet-yes" class="btn btn-lg btn-success" style="width: 100%; justify-content: center;">✓ Attending</button>
-            <button id="sheet-maybe" class="btn btn-lg btn-warning" style="width: 100%; justify-content: center;">? Maybe</button>
             <button id="sheet-no" class="btn btn-lg btn-danger" style="width: 100%; justify-content: center;">✗ Not Attending</button>
             <button id="sheet-cancel" class="btn btn-lg btn-secondary" style="width: 100%; justify-content: center; margin-top: var(--space-2);">Cancel</button>
           </div>
@@ -99,14 +98,13 @@ class PracticeRSVPManagementScreen extends Screen {
       }
       
       // Bottom sheet button clicked
-      const sheetBtn = e.target.closest('#sheet-yes, #sheet-maybe, #sheet-no, #sheet-cancel');
+      const sheetBtn = e.target.closest('#sheet-yes, #sheet-no, #sheet-cancel');
       if (sheetBtn) {
         if (sheetBtn.id === 'sheet-cancel') {
           this.hideBottomSheet();
         } else {
           const status = {
             'sheet-yes': 'attending',
-            'sheet-maybe': 'maybe',
             'sheet-no': 'not_attending'
           }[sheetBtn.id];
           
@@ -308,24 +306,21 @@ class PracticeRSVPManagementScreen extends Screen {
       return `<div style="padding: var(--space-3); text-align: center; color: var(--color-text-secondary);">No players on roster</div>`;
     }
     
-    // Categorize players by status
+    // Categorize players by status ("maybe" deprecated 2026-07-10).
     const attending = [];
     const notAttending = [];
-    const maybe = [];
     const pending = [];
     
     this.teamPlayers.forEach(p => {
       const status = rsvpMap[p.id];
       if (status === 'attending') attending.push(p);
       else if (status === 'not_attending') notAttending.push(p);
-      else if (status === 'maybe') maybe.push(p);
       else pending.push(p);
     });
     
     // Sort each category alphabetically
     const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '');
     attending.sort(sortByName);
-    maybe.sort(sortByName);
     notAttending.sort(sortByName);
     pending.sort(sortByName);
     
@@ -353,7 +348,6 @@ class PracticeRSVPManagementScreen extends Screen {
         </div>
         <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
           ${renderColumn(attending, 'attending', 'Yes', '✓', '#16a34a')}
-          ${renderColumn(maybe, 'maybe', 'Maybe', '?', '#d97706')}
           ${renderColumn(notAttending, 'not_attending', 'No', '✗', '#dc2626')}
         </div>
         ${pending.length > 0 ? `

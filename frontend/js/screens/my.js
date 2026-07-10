@@ -21,7 +21,7 @@ class MyScreen extends Screen {
     this.savingId      = null;          // match_id currently being written
     this.errorMsg      = null;
     // RSVP roster expansion — per-event bucketed lists fetched lazily.
-    this.rsvpsByMatch    = {};          // { matchId: {counts, going, maybe, not_going, no_response} }
+    this.rsvpsByMatch    = {};          // { matchId: {counts, going, not_going, no_response} }
     this.rsvpsLoadingIds = new Set();   // matchIds currently in flight
     this.expandedMatchIds = new Set();  // matchIds whose "who's going" panel is open
     // Chat state.
@@ -355,8 +355,11 @@ class MyScreen extends Screen {
           📋 RSVP to every event on your schedule
         </div>
         <div style="opacity: 0.95;">
-          Set <strong>Going</strong>, <strong>Can't go</strong>, or <strong>Maybe</strong> for each row below.
+          Set <strong>Going</strong> or <strong>Can't go</strong> for each row below.
           It's how we plan rosters, subs, and cancellations — please keep it up to date.
+          <div style="margin-top: var(--space-1); opacity: 0.85;">
+            <em>Not sure? Tap <strong>Can't go</strong>. You can always change it later if plans free up.</em>
+          </div>
         </div>
       </div>
     `;
@@ -374,11 +377,9 @@ class MyScreen extends Screen {
     // caller's own RSVP because both used the same green.
     const yourStatusLabel = currentId === 1 ? 'Going'
                           : currentId === 2 ? "Can't go"
-                          : currentId === 3 ? 'Maybe'
                           : 'Not set';
     const yourStatusColor = currentId === 1 ? '#16a34a'
                           : currentId === 2 ? '#dc2626'
-                          : currentId === 3 ? '#f59e0b'
                           : '#9ca3af';
 
     const btn = (statusId, label, activeBg) => {
@@ -459,7 +460,6 @@ class MyScreen extends Screen {
         </div>
         <div style="display:flex; gap: var(--space-2); margin-top: var(--space-2);">
           ${btn(1, 'Going',     '#16a34a')}
-          ${btn(3, 'Maybe',     '#f59e0b')}
           ${btn(2, "Can't go",  '#dc2626')}
         </div>
         ${rsvpBlock}
@@ -484,7 +484,7 @@ class MyScreen extends Screen {
     let summary;
     if (data) {
       const c = data.counts || {};
-      const responded = (c.going || 0) + (c.maybe || 0) + (c.not_going || 0);
+      const responded = (c.going || 0) + (c.not_going || 0);
       const total     = c.total || (responded + (c.no_response || 0));
       summary = `
         <span style="opacity:0.65; font-size:0.8rem;">
@@ -506,7 +506,6 @@ class MyScreen extends Screen {
         ${this._renderCoachRsvpsBlock(data.coaches)}
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           ${this._renderRsvpBucket('Going',     data.going,       '#16a34a', '✓')}
-          ${this._renderRsvpBucket('Maybe',     data.maybe,       '#f59e0b', '?')}
           ${this._renderRsvpBucket("Can't go",  data.not_going,   '#dc2626', '✕')}
           ${this._renderRsvpBucket('No reply',  data.no_response, '#6b7280', '—')}
         </div>
@@ -561,7 +560,6 @@ class MyScreen extends Screen {
     };
     const rows =
         line('Going',    coaches.going,       '#16a34a', '✓')
-      + line('Maybe',    coaches.maybe,       '#f59e0b', '?')
       + line("Can't go", coaches.not_going,   '#dc2626', '✕')
       + line('No reply', coaches.no_response, '#6b7280', '—');
     return `
@@ -713,7 +711,6 @@ class MyScreen extends Screen {
           </div>
           <div style="display:flex; gap: 6px;">
             ${cell(1, 'Yes',          '#16a34a')}
-            ${cell(3, 'Maybe',        '#f59e0b')}
             ${cell(2, 'No',           '#dc2626')}
             ${cell(0, 'Not Selected', '#4b5563')}
           </div>
@@ -733,7 +730,7 @@ class MyScreen extends Screen {
         </p>
         <p style="margin-top:0; opacity:0.85;">
           Your default RSVP is auto-applied every Sunday at 8&nbsp;PM when the week rolls over.
-          If something comes up and you can't make one of your committed days that week, just flip it to <strong>No</strong> or <strong>Maybe</strong> on the
+          If something comes up and you can't make one of your committed days that week, just flip it to <strong>No</strong> on the
           <a href="#" data-tab="week">This week</a> tab — the auto-RSVP only kicks in for future weeks, not the current one after you've overridden it.
         </p>
         <p style="margin-top:0; opacity:0.75; font-size:0.9rem;">
@@ -819,7 +816,6 @@ class MyScreen extends Screen {
     switch (id) {
       case 1: return 'yes';
       case 2: return 'no';
-      case 3: return 'maybe';
       default: return '';
     }
   }

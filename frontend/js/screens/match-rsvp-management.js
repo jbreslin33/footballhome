@@ -41,7 +41,6 @@ class MatchRSVPManagementScreen extends Screen {
           <div id="sheet-player-name" style="font-size: 1.2em; font-weight: bold; margin-bottom: var(--space-3); text-align: center;"></div>
           <div style="display: flex; flex-direction: column; gap: var(--space-2);">
             <button id="sheet-yes" class="btn btn-lg btn-success" style="width: 100%; justify-content: center;">✓ Attending</button>
-            <button id="sheet-maybe" class="btn btn-lg btn-warning" style="width: 100%; justify-content: center;">? Maybe</button>
             <button id="sheet-no" class="btn btn-lg btn-danger" style="width: 100%; justify-content: center;">✗ Not Attending</button>
             <button id="sheet-cancel" class="btn btn-lg btn-secondary" style="width: 100%; justify-content: center; margin-top: var(--space-2);">Cancel</button>
           </div>
@@ -208,14 +207,13 @@ class MatchRSVPManagementScreen extends Screen {
       }
       
       // Bottom sheet button clicked
-      const sheetBtn = e.target.closest('#sheet-yes, #sheet-maybe, #sheet-no, #sheet-cancel');
+      const sheetBtn = e.target.closest('#sheet-yes, #sheet-no, #sheet-cancel');
       if (sheetBtn) {
         if (sheetBtn.id === 'sheet-cancel') {
           this.hideBottomSheet();
         } else {
           const status = {
             'sheet-yes': 'attending',
-            'sheet-maybe': 'maybe',
             'sheet-no': 'not_attending'
           }[sheetBtn.id];
           
@@ -445,24 +443,21 @@ class MatchRSVPManagementScreen extends Screen {
       ? this.teamPlayers.filter(p => (p.name || '').toLowerCase().includes(filter))
       : this.teamPlayers;
 
-    // Categorize players by status
+    // Categorize players by status ("maybe" deprecated 2026-07-10).
     const attending = [];
     const notAttending = [];
-    const maybe = [];
     const pending = [];
 
     players.forEach(p => {
       const status = rsvpMap[p.id];
       if (status === 'attending') attending.push(p);
       else if (status === 'not_attending') notAttending.push(p);
-      else if (status === 'maybe') maybe.push(p);
       else pending.push(p);
     });
     
     // Sort each category alphabetically
     const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '');
     attending.sort(sortByName);
-    maybe.sort(sortByName);
     notAttending.sort(sortByName);
     pending.sort(sortByName);
     
@@ -509,7 +504,7 @@ class MatchRSVPManagementScreen extends Screen {
 
     // Escape once for the search value attribute.
     const filterAttr = filterRaw.replace(/"/g, '&quot;');
-    const totalMatched = attending.length + maybe.length + notAttending.length + pending.length;
+    const totalMatched = attending.length + notAttending.length + pending.length;
 
     return `
       <div style="padding: var(--space-3); background: transparent;">
@@ -524,9 +519,8 @@ class MatchRSVPManagementScreen extends Screen {
                  style="flex: 1; min-width: 160px; padding: 6px 10px; border-radius: 6px; border: 1px solid ${LH_YELLOW}; background: white; color: ${LH_NAVY}; font-size: 0.95em;" />
           <span style="opacity: 0.85; font-size: 0.9em;">${totalMatched} / ${this.teamPlayers.length}</span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3);">
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3);">
           ${renderColumn(attending, 'attending',    'Yes',   '✓', LH_NAVY,   'white')}
-          ${renderColumn(maybe,     'maybe',        'Maybe', '?', LH_YELLOW, LH_NAVY)}
           ${renderColumn(notAttending,'not_attending','No',  '✗', LH_MUTED,  'white')}
         </div>
         ${pending.length > 0 ? `

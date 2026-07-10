@@ -1277,7 +1277,6 @@ class GameDayLineupScreen extends Screen {
     wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;padding-left:2px;';
     const rOpts = [
       { v:'yes',   label:'Going',     dot:'🟢' },
-      { v:'maybe', label:'Maybe',     dot:'🟡' },
       { v:'no',    label:'Not Going', dot:'🔴' },
     ];
     const aOpts = [
@@ -1446,8 +1445,8 @@ class GameDayLineupScreen extends Screen {
     const prac = `${player.sessionsAttended || 0}/${player.requiredSessions ?? this.policy?.lookbackCount ?? '?'}`;
     const jersey = player.jerseyNumber || '';
 
-    const rsvpOptions = ['yes','no','maybe'].map(v => {
-      const label = v === 'yes' ? '🟢 Going' : v === 'no' ? '🔴 Not Going' : '🟡 Maybe';
+    const rsvpOptions = ['yes','no'].map(v => {
+      const label = v === 'yes' ? '🟢 Going' : '🔴 Not Going';
       const sel = player.matchRsvp === v ? 'font-weight:700;' : '';
       return `<button class="pitch-popover-item" data-action="rsvp" data-rsvp="${v}" data-player-id="${playerId}"
         style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${sel}">${label}</button>`;
@@ -1615,8 +1614,8 @@ class GameDayLineupScreen extends Screen {
     const startFull = this.zones.starting.length >= 11;
     const benchFull = this.zones.bench.length >= maxBench;
 
-    const rsvpOptions = ['yes', 'no', 'maybe'].map(v => {
-      const label = v === 'yes' ? '🟢 Going' : v === 'no' ? '🔴 Not Going' : '🟡 Maybe';
+    const rsvpOptions = ['yes', 'no'].map(v => {
+      const label = v === 'yes' ? '🟢 Going' : '🔴 Not Going';
       const sel   = player.matchRsvp === v ? 'font-weight:700;' : '';
       return `<button class="pitch-popover-item" data-action="rsvp" data-rsvp="${v}" data-player-id="${playerId}"
         style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;${sel}">${label}</button>`;
@@ -1929,8 +1928,8 @@ class GameDayLineupScreen extends Screen {
           <div style="border-top:1px solid var(--border-color);padding:12px 0;">
             <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;letter-spacing:0.06em;margin-bottom:8px;">MATCH RSVP</div>
             <div style="display:flex;gap:6px;">
-              ${['yes','maybe','no'].map(v => {
-                const icons = {yes:'🟢 Going', maybe:'🟡 Maybe', no:'🔴 No'};
+              ${['yes','no'].map(v => {
+                const icons = {yes:'🟢 Going', no:'🔴 No'};
                 const sel = player.matchRsvp === v;
                 return `<button data-rsvp="${v}" style="flex:1;padding:6px 4px;border-radius:8px;border:2px solid ${sel ? '#2563eb' : 'var(--border-color)'};background:${sel ? 'rgba(37,99,235,0.2)' : 'var(--bg-surface)'};color:inherit;cursor:pointer;font-size:0.8rem;font-weight:${sel?'700':'400'};">${icons[v]}</button>`;
               }).join('')}

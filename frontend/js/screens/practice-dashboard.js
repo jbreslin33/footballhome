@@ -344,7 +344,7 @@ class PracticeDashboardScreen extends Screen {
     this.matches.sort((a, b) =>
       String(a.event_date || a.match_date || '').localeCompare(String(b.event_date || b.match_date || ''))
     );
-    // Cache of matchId → {rsvp:{yes,maybe,no}, attendance:{present,absent}}.
+    // Cache of matchId → {rsvp:{yes,no}, attendance:{present,absent}}.
     // Populated lazily per row — kept keyed by id so re-renders reuse data.
     if (!this._summaries) this._summaries = {};
   }
@@ -465,7 +465,6 @@ class PracticeDashboardScreen extends Screen {
         `<span style="padding:4px 10px;border-radius:9999px;background:${bg};color:${color};border:1px solid ${border};font-weight:600;">${txt}</span>`;
       const rsvpParts = [
         pill('rgba(34,197,94,0.15)',  '#86efac', 'rgba(34,197,94,0.35)',  `👍 ${r.yes|0}`),
-        pill('rgba(234,179,8,0.15)',  '#fde047', 'rgba(234,179,8,0.35)',  `🤷 ${r.maybe|0}`),
         pill('rgba(239,68,68,0.15)',  '#fca5a5', 'rgba(239,68,68,0.35)',  `👎 ${r.no|0}`),
       ].join('');
       const attParts = (a.present || a.absent) ? [

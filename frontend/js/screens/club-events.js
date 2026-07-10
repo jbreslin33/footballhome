@@ -112,7 +112,6 @@ class ClubEventsScreen extends Screen {
     const eventRsvps = this.rsvpsByEvent[evt.id] || [];
     const going = eventRsvps.filter(r => r.effective_status_id === 1);
     const notGoing = eventRsvps.filter(r => r.effective_status_id === 2);
-    const maybe = eventRsvps.filter(r => r.effective_status_id === 3);
 
     const startDate = evt.start_at ? new Date(evt.start_at) : null;
     const dateStr = startDate
@@ -142,7 +141,6 @@ class ClubEventsScreen extends Screen {
           <div style="text-align: right; white-space: nowrap;">
             <span style="color: var(--success); font-weight: bold;">✓${evt.going}</span>
             <span style="color: var(--danger); margin-left: 8px;">✗${evt.not_going}</span>
-            <span style="color: var(--warning); margin-left: 8px;">?${evt.maybe}</span>
           </div>
         </div>
 
@@ -151,7 +149,6 @@ class ClubEventsScreen extends Screen {
           <div style="margin-top: var(--space-2);">
             ${going.length > 0 ? `<div style="margin-bottom: var(--space-2);"><strong style="color: var(--success);">Going (${going.length}):</strong><div>${this.renderRsvpList(going, '#28a745')}</div></div>` : ''}
             ${notGoing.length > 0 ? `<div style="margin-bottom: var(--space-2);"><strong style="color: var(--danger);">Not Going (${notGoing.length}):</strong><div>${this.renderRsvpList(notGoing, '#dc3545')}</div></div>` : ''}
-            ${maybe.length > 0 ? `<div style="margin-bottom: var(--space-2);"><strong style="color: var(--warning);">Maybe (${maybe.length}):</strong><div>${this.renderRsvpList(maybe, '#ffc107')}</div></div>` : ''}
             ${eventRsvps.length === 0 ? '<p style="color: var(--text-secondary);">No RSVPs recorded</p>' : ''}
           </div>
         </details>
@@ -197,7 +194,6 @@ class ClubEventsScreen extends Screen {
         <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-3);">
           <button class="btn modal-status-btn ${currentStatusId == 1 ? 'btn-primary' : 'btn-secondary'}" data-status="1" style="flex:1;">✓ Going</button>
           <button class="btn modal-status-btn ${currentStatusId == 2 ? 'btn-primary' : 'btn-secondary'}" data-status="2" style="flex:1;">✗ Not Going</button>
-          <button class="btn modal-status-btn ${currentStatusId == 3 ? 'btn-primary' : 'btn-secondary'}" data-status="3" style="flex:1;">? Maybe</button>
         </div>
         <input type="text" id="override-note" placeholder="Note (optional): Injured, confirmed via text..." 
                style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:var(--space-3);box-sizing:border-box;background:var(--bg-secondary);color:var(--text-primary);">

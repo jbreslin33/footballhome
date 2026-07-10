@@ -2262,7 +2262,6 @@ class LineupsScreen extends Screen {
     // bucket; zone assignment wins over RSVP/training state.
     const starter = [], bench = [], alternate = [];
     const going2plus = [], going1 = [], going0 = [];
-    const maybe = [];
     const notGoing = [], noResponse = [];
 
     // Source of truth = td.players (C++ /api/matches/:id/roster-players),
@@ -2288,8 +2287,6 @@ class LineupsScreen extends Screen {
         if (n >= 2)      going2plus.push(e);
         else if (n === 1) going1.push(e);
         else              going0.push(e);
-      } else if (rsvp === 'maybe') {
-        maybe.push(e);
       } else if (rsvp === 'no') {
         notGoing.push(e);
       } else {
@@ -2309,7 +2306,6 @@ class LineupsScreen extends Screen {
       { kind: 'player', title: 'GOING · 2+ TRAININGS', color: '#16a34a', entries: going2plus },
       { kind: 'player', title: 'GOING · 1 TRAINING',   color: '#65a30d', entries: going1 },
       { kind: 'player', title: 'GOING · 0 TRAININGS',  color: '#a3a32d', entries: going0 },
-      { kind: 'player', title: 'MAYBE',                color: '#f59e0b', entries: maybe },
       { kind: 'player', title: 'NOT GOING',            color: '#ef4444', entries: notGoing },
       { kind: 'player', title: 'NO RESPONSE',          color: '#94a3b8', entries: noResponse },
       { kind: 'coach',  title: 'COACHES',              color: '#0ea5e9', entries: (rec.coaches || []).map(enrich) },
@@ -2398,12 +2394,10 @@ class LineupsScreen extends Screen {
     // RSVP pill — single letter, color-coded background, matches the S/B/A/N
     // zone selector visual language.
     //   G = green   (going)
-    //   M = yellow  (maybe)
     //   N = red     (not going)
     //   ? = orange  (no response / unknown)
     const rsvpInfo =
       rsvp === 'yes'   ? { letter: 'G', bg: '#22c55e', fg: '#0b1220', title: 'Going' } :
-      rsvp === 'maybe' ? { letter: 'M', bg: '#eab308', fg: '#0b1220', title: 'Maybe' } :
       rsvp === 'no'    ? { letter: 'N', bg: '#ef4444', fg: '#fff',    title: 'Not going' } :
                          { letter: '?', bg: '#f97316', fg: '#0b1220', title: 'No response' };
     const rsvpDot = `
@@ -2416,7 +2410,7 @@ class LineupsScreen extends Screen {
     // when a player has NO response yet AND a next match is loaded for this
     // team.  Two icon buttons (📧 / 📱) call POST /api/auth/magic-link/mint
     // and open the resulting mailto:/sms: URI in the admin's own client.
-    //   • Hidden once the player has any RSVP (yes/maybe/no).
+    //   • Hidden once the player has any RSVP (yes/no).
     //   • Hidden for coach kind (no chat_event scope).
     //   • Each button disabled when the corresponding contact (email/phone)
     //     is missing from LeagueApps.

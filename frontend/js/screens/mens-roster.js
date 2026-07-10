@@ -582,14 +582,14 @@ class MensRosterScreen extends Screen {
     // roster still visually flags who hasn't onboarded.
     const firstNameForJoin = p.firstName || 'there';
     const inviteUrl = 'https://footballhome.org';
-    const inviteSmsBody = `Hey ${firstNameForJoin} — Lighthouse 1893 is using ${inviteUrl} for weekly RSVPs. Log in with the Google account you use for LeagueApps (or set a password) to see this week's practices, games and pickups and RSVP YES / NO / MAYBE to all of them. Thanks!`;
+    const inviteSmsBody = `Hey ${firstNameForJoin} — Lighthouse 1893 is using ${inviteUrl} for weekly RSVPs. Log in with the Google account you use for LeagueApps (or set a password) to see this week's practices, games and pickups and RSVP YES / NO to all of them. Thanks!`;
     const inviteEmailSubject = 'Football Home — Lighthouse 1893 weekly RSVPs';
     const inviteEmailBody = [
       `Hi ${firstNameForJoin},`,
       '',
       `Lighthouse 1893 is rolling out ${inviteUrl} so we have a clearer picture of who's coming each week.`,
       '',
-      `Head to ${inviteUrl} and sign in with the same Google account you use for LeagueApps (or set a password on the sign-in page). From your home screen you'll see this week's practices, games and pickups and can RSVP YES / NO / MAYBE to all of them in one tap.`,
+      `Head to ${inviteUrl} and sign in with the same Google account you use for LeagueApps (or set a password on the sign-in page). From your home screen you'll see this week's practices, games and pickups and can RSVP YES / NO to all of them in one tap.`,
       '',
       'You can also set default availability by day-of-week + event type so the page auto-fills going forward.',
       '',
