@@ -1,5 +1,4 @@
 #include "EventController.h"
-#include "../core/Crypto.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
 #include <sstream>
@@ -29,14 +28,6 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     // GET /api/matches/team/:teamId - Get matches for a team
     router.get("/api/matches/team/:teamId", [this](const Request& request) {
         return this->handleGetMatches(request);
-    });
-
-    // GET /api/mens/upcoming-events - All upcoming mens events (games,
-    // practices, pickup) across every team with gender_category='mens'.
-    // Feeds the Mens Reminders screen so the coach can send RSVP nudges
-    // for anything on the horizon without hopping between dashboards.
-    router.get("/api/mens/upcoming-events", [this](const Request& request) {
-        return this->handleGetMensUpcomingEvents(request);
     });
 
     // POST /api/matches/team/:teamId/sync-league - Sync match scores from league website
@@ -157,11 +148,6 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleSetPlayerRSVP(request);
     });
 
-    // GET /api/matches/:matchId/rsvp-summary - Aggregate RSVP + attendance counts
-    router.get("/api/matches/:matchId/rsvp-summary", [this](const Request& request) {
-        return this->handleGetMatchRsvpSummary(request);
-    });
-    
     // GET /api/events/club/:clubId/chat-events - Get chat events for a club
     router.get(prefix + "/club/:clubId/chat-events", [this](const Request& request) {
         return this->handleGetClubChatEvents(request);
@@ -499,10 +485,7 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "ce.image_url AS calendar_image_url, ";
         query << "COALESCE(ss.name, '') AS source_name, ";
         query << "m.source_system_id, ";
-        query << "COALESCE(NULLIF(v.address,''), NULLIF(ce.location_address,'')) AS venue_address, ";
-        query << "m.match_type_id, ";
-        query << "COALESCE(m.end_time::text, '') AS end_time, ";
-        query << "COALESCE(m.venue_id::text, '') AS venue_id ";
+        query << "COALESCE(NULLIF(v.address,''), NULLIF(ce.location_address,'')) AS venue_address ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
@@ -571,15 +554,6 @@ Response EventController::handleGetMatches(const Request& request) {
             if (result.columns() > 18 && !result[i][18].is_null()) {
                 matches_json << ",\"venue_address\":\"" << escapeJSON(result[i][18].c_str()) << "\"";
             }
-            if (result.columns() > 19 && !result[i][19].is_null()) {
-                matches_json << ",\"match_type_id\":" << result[i][19].c_str();
-            }
-            if (result.columns() > 20 && !result[i][20].is_null() && result[i][20].c_str()[0] != '\0') {
-                matches_json << ",\"end_time\":\"" << result[i][20].c_str() << "\"";
-            }
-            if (result.columns() > 21 && !result[i][21].is_null() && result[i][21].c_str()[0] != '\0') {
-                matches_json << ",\"venue_id\":" << result[i][21].c_str();
-            }
             
             matches_json << "}";
         }
@@ -593,71 +567,6 @@ Response EventController::handleGetMatches(const Request& request) {
         std::cerr << "❌ EventController::handleGetMatches error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve matches");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
-    }
-}
-
-// GET /api/mens/upcoming-events
-// Returns a flat, date-sorted list of every upcoming, non-cancelled
-// event where the home team has gender_category='mens' — covering the
-// game teams (APSL / Liga 1 / Liga 2 / U23 / friendlies) as well as
-// the pool teams for shared practices (908) and pickup (909).  Feeds
-// the "Mens Reminders" admin screen so the coach sees one list and
-// can trigger POST /api/matches/:id/remind row-by-row.
-Response EventController::handleGetMensUpcomingEvents(const Request& request) {
-    (void)request;
-    try {
-        pqxx::result rows = db_->query(
-            "SELECT m.id, "
-            "       COALESCE(NULLIF(m.title,''), "
-            "                CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) AS title, "
-            "       COALESCE(mt.name, '') AS type, "
-            "       COALESCE(m.match_type_id, 0) AS match_type_id, "
-            "       m.match_date::text AS date, "
-            "       COALESCE(TO_CHAR(m.match_time, 'HH24:MI'), '') AS time, "
-            "       TO_CHAR(m.match_date, 'Dy, Mon FMDD') AS date_str, "
-            "       COALESCE(TO_CHAR(m.match_time, 'FMHH12:MI AM'), '') AS time_str, "
-            "       m.home_team_id, "
-            "       COALESCE(ht.name,'') AS home_team_name, "
-            "       COALESCE(awt.name,'') AS away_team_name, "
-            "       COALESCE(v.name, '') AS venue_name "
-            "  FROM matches m "
-            "  JOIN teams ht ON ht.id = m.home_team_id "
-            "  LEFT JOIN teams awt ON awt.id = m.away_team_id "
-            "  LEFT JOIN match_types mt ON mt.id = m.match_type_id "
-            "  LEFT JOIN venues v ON v.id = m.venue_id "
-            " WHERE ht.gender_category = 'mens' "
-            "   AND m.cancelled_at IS NULL "
-            "   AND m.match_date >= CURRENT_DATE "
-            " ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST "
-            " LIMIT 200");
-
-        std::ostringstream out;
-        out << "[";
-        for (size_t i = 0; i < rows.size(); ++i) {
-            if (i > 0) out << ",";
-            out << "{";
-            out << "\"id\":"             << rows[i][0].c_str() << ",";
-            out << "\"title\":\""        << escapeJSON(rows[i][1].c_str())          << "\",";
-            out << "\"type\":\""         << escapeJSON(rows[i][2].c_str())          << "\",";
-            out << "\"match_type_id\":"  << rows[i][3].c_str() << ",";
-            out << "\"date\":\""         << rows[i][4].c_str() << "\",";
-            out << "\"time\":\""         << rows[i][5].c_str() << "\",";
-            out << "\"date_str\":\""     << escapeJSON(rows[i][6].c_str())          << "\",";
-            out << "\"time_str\":\""     << escapeJSON(rows[i][7].c_str())          << "\",";
-            out << "\"home_team_id\":"   << rows[i][8].c_str() << ",";
-            out << "\"home_team_name\":\""<< escapeJSON(rows[i][9].c_str())         << "\",";
-            out << "\"away_team_name\":\""<< escapeJSON(rows[i][10].c_str())        << "\",";
-            out << "\"venue_name\":\""   << escapeJSON(rows[i][11].c_str())         << "\"";
-            out << "}";
-        }
-        out << "]";
-
-        std::string body = createJSONResponse(true, "Mens upcoming events", out.str());
-        return Response(HttpStatus::OK, body);
-    } catch (const std::exception& e) {
-        std::cerr << "❌ handleGetMensUpcomingEvents error: " << e.what() << std::endl;
-        std::string body = createJSONResponse(false, "Failed to retrieve mens events");
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, body);
     }
 }
 
@@ -1015,45 +924,21 @@ Response EventController::handleDeleteMatch(const Request& request) {
             std::string json = createJSONResponse(false, "Invalid match ID in path");
             return Response(HttpStatus::BAD_REQUEST, json);
         }
-
-        // Validate: match_id must be a positive integer.  Guards against
-        // SQL injection since we interpolate below (Db_.query does not
-        // accept parameterised DELETEs in the current binding).
-        for (char c : match_id) {
-            if (c < '0' || c > '9') {
-                std::string json = createJSONResponse(false, "Invalid match ID format");
-                return Response(HttpStatus::BAD_REQUEST, json);
-            }
-        }
-
+        
         std::cout << "🗑️ Deleting match: " << match_id << std::endl;
-
-        // Null out chat_events.match_id first — the FK from chat_events
-        // → matches is NO ACTION (chat is the source-of-truth for
-        // practices/pickups; the matches row is materialised by the
-        // chat_event_create_match trigger).  Setting to NULL detaches
-        // the chat row from the (about-to-be-deleted) match without
-        // deleting the chat message itself.
-        db_->query("UPDATE chat_events SET match_id = NULL WHERE match_id = " + match_id);
-
-        // Detach teams.live_match_id references (FK is SET NULL but be
-        // explicit for clarity in logs).  Most other FK refs
-        // (match_lineups, match_events, training_attendance, etc.)
-        // cascade delete automatically.
-        db_->query("UPDATE teams SET live_match_id = NULL WHERE live_match_id = " + match_id);
-
-        // Delete the match row.  Everything else cascades.  NOTE: this
-        // schema has NO `events` table — all match/practice/pickup data
-        // lives in `matches` (the C++ port carried over a stale
-        // events-table dual-write from an earlier schema).
-        db_->query("DELETE FROM matches WHERE id = " + match_id);
-
+        
+        // Delete from matches table first (FK constraint)
+        db_->query("DELETE FROM matches WHERE id = '" + match_id + "'");
+        
+        // Delete from events table (cascades to RSVPs, etc.)
+        db_->query("DELETE FROM events WHERE id = '" + match_id + "'");
+        
         std::string json = createJSONResponse(true, "Match deleted successfully");
         return Response(HttpStatus::OK, json);
-
+        
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleDeleteMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, std::string("Failed to delete match: ") + e.what());
+        std::string json = createJSONResponse(false, "Failed to delete match");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -1120,20 +1005,13 @@ Response EventController::handleGetVenues(const Request& request) {
     try {
         std::cout << "🔍 Getting venues list" << std::endl;
         
-        // 2026-07-09: rewritten to match the ACTUAL venues schema.
-        // Prior version referenced columns that never existed
-        // (formatted_address, venue_type, surface_type, rating,
-        // is_active) so the endpoint was throwing on every request.
-        // Real columns: id, name, address, city, state, zip, ...
+        // Query active venues
         std::string query = 
-            "SELECT id, name, "
-            "       COALESCE(address, '') AS address, "
-            "       COALESCE(city, '')    AS city, "
-            "       COALESCE(state, '')   AS state, "
-            "       COALESCE(zip, '')     AS zip "
+            "SELECT id, name, formatted_address, city, state, venue_type, surface_type, rating "
             "FROM venues "
+            "WHERE is_active = true "
             "ORDER BY name ASC "
-            "LIMIT 500";
+            "LIMIT 200";
         
         pqxx::result result = db_->query(query);
         
@@ -1143,12 +1021,16 @@ Response EventController::handleGetVenues(const Request& request) {
         for (size_t i = 0; i < result.size(); i++) {
             if (i > 0) venues_json << ",";
             venues_json << "{";
-            venues_json << "\"id\":"        << result[i][0].c_str() << ",";
-            venues_json << "\"name\":\""    << escapeJSON(result[i][1].c_str()) << "\",";
-            venues_json << "\"address\":\"" << escapeJSON(result[i][2].c_str()) << "\",";
-            venues_json << "\"city\":\""    << escapeJSON(result[i][3].c_str()) << "\",";
-            venues_json << "\"state\":\""   << result[i][4].c_str() << "\",";
-            venues_json << "\"zip\":\""     << result[i][5].c_str() << "\"";
+            venues_json << "\"id\":\"" << result[i][0].c_str() << "\",";
+            venues_json << "\"name\":\"" << escapeJSON(result[i][1].c_str()) << "\",";
+            venues_json << "\"address\":\"" << (result[i][2].is_null() ? "" : escapeJSON(result[i][2].c_str())) << "\",";
+            venues_json << "\"city\":\"" << (result[i][3].is_null() ? "" : escapeJSON(result[i][3].c_str())) << "\",";
+            venues_json << "\"state\":\"" << (result[i][4].is_null() ? "" : result[i][4].c_str()) << "\",";
+            venues_json << "\"type\":\"" << (result[i][5].is_null() ? "" : result[i][5].c_str()) << "\",";
+            venues_json << "\"surface\":\"" << (result[i][6].is_null() ? "" : result[i][6].c_str()) << "\"";
+            if (!result[i][7].is_null()) {
+                venues_json << ",\"rating\":\"" << result[i][7].c_str() << "\"";
+            }
             venues_json << "}";
         }
         
@@ -1408,7 +1290,6 @@ Response EventController::handleSetMatchVisibility(const Request& request) {
     }
 }
 
-
 std::string EventController::parseJSON(const std::string& body, const std::string& key) {
     // Simple JSON parsing for key-value pairs
     std::string search = "\"" + key + "\"";
@@ -1444,7 +1325,6 @@ std::string EventController::parseJSON(const std::string& body, const std::strin
     return body.substr(pos, end_pos - pos);
 }
 
-
 std::string EventController::getCurrentTimestamp() {
     auto now = std::time(nullptr);
     auto tm = *std::localtime(&now);
@@ -1476,24 +1356,37 @@ Response EventController::handleCreateRSVP(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid role_type. Must be: player, coach, or parent"));
         }
         
-        // Verify the match exists (schema uses `matches`, not the legacy `events` table).
-        // Coaches are allowed to record/edit RSVPs at any time (including past events).
-        std::string exists_query = "SELECT 1 FROM matches WHERE id = $1::int";
-        pqxx::result event_check = db_->query(exists_query, {event_id});
-
+        // Check if event has ended (event_date + duration has passed)
+        std::string event_ended_query = R"(
+            SELECT CASE 
+                WHEN (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) < NOW()
+                THEN true ELSE false 
+            END as has_ended
+            FROM events e
+            JOIN event_types et ON e.event_type_id = et.id
+            WHERE e.id = $1
+        )";
+        pqxx::result event_check = db_->query(event_ended_query, {event_id});
+        
         if (event_check.empty()) {
             return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Event not found"));
         }
         
+        bool has_ended = event_check[0]["has_ended"].as<bool>();
+        if (has_ended) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "This event has ended. RSVPs are no longer accepted."));
+        }
+        
         // Map frontend status values to database values
-        // ("maybe" was deprecated 2026-07-10 — rejected here.)
         std::string db_status;
         if (status == "attending") {
             db_status = "yes";
         } else if (status == "not_attending") {
             db_status = "no";
+        } else if (status == "maybe") {
+            db_status = "maybe";
         } else {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending or not_attending"));
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending, not_attending, or maybe"));
         }
         
         // Use history table (append-only) based on role_type
@@ -1511,14 +1404,10 @@ Response EventController::handleCreateRSVP(const Request& request) {
         std::string rsvp_status_id = status_result[0]["id"].c_str();
         
         // Always INSERT into history table (append-only, no updates)
-        // Use database uuid_generate_v4() for reliable UUID generation.
-        // `changed_by` is left NULL for coach-set RSVPs because most players
-        // don't have a matching row in the `users` table (that FK targets
-        // `users.id`); the FK on player_id was repointed to `players.id` at
-        // the schema level so we can store the player directly.
+        // Use database uuid_generate_v4() for reliable UUID generation
         std::string insert_query = "INSERT INTO " + table_name + " (id, event_id, " + id_column + ", rsvp_status_id, changed_by, change_source_id, notes, changed_at) "
-                                   "VALUES (uuid_generate_v4(), $1, $2, $3, NULL, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $4, CURRENT_TIMESTAMP) RETURNING id";
-        pqxx::result rsvp_result = db_->query(insert_query, {event_id, user_id, rsvp_status_id, notes});
+                                   "VALUES (uuid_generate_v4(), $1, $2, $3, $4, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $5, CURRENT_TIMESTAMP) RETURNING id";
+        pqxx::result rsvp_result = db_->query(insert_query, {event_id, user_id, rsvp_status_id, user_id, notes});
         std::string rsvp_id = rsvp_result[0][0].c_str();
         std::cout << "✅ " << role_type << " RSVP recorded in history" << std::endl;
         
@@ -1575,26 +1464,12 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
             // Use the current view which shows latest RSVP status
             std::string view_name = role + "_rsvps_current";
             std::string id_column = role + "_id";
-
-            // Player RSVPs reference `players.id` (FK repointed in the schema
-            // when we discovered players don't have `users` rows).  Coach and
-            // parent RSVPs still FK to `users.id`.  Use a role-appropriate
-            // JOIN so the current-status view actually returns rows.
-            std::string join_clause;
-            if (role == "player") {
-                join_clause =
-                    "JOIN players pl ON r." + id_column + " = pl.id "
-                    "JOIN persons p ON pl.person_id = p.id ";
-            } else {
-                join_clause =
-                    "JOIN users u ON r." + id_column + " = u.id "
-                    "JOIN persons p ON u.person_id = p.id ";
-            }
-
+            
             std::string query = "SELECT r.event_id, r." + id_column + " as user_id, rs.name as status, r.notes, r.changed_at as response_date, "
                                "p.first_name, p.last_name, COALESCE(p.first_name, '') as preferred_name, COALESCE(pe.email, '') as email, '' as avatar_url "
                                "FROM " + view_name + " r "
-                               + join_clause +
+                               "JOIN users u ON r." + id_column + " = u.id "
+                               "JOIN persons p ON u.person_id = p.id "
                                "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true "
                                "JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id "
                                "WHERE r.event_id = $1 "
@@ -1614,8 +1489,6 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 std::string avatar_url = result[i]["avatar_url"].is_null() ? "" : result[i]["avatar_url"].c_str();
                 
                 // Map database status values back to frontend values
-                // ("maybe" was deprecated 2026-07-10; historic rows still
-                // read but nobody can create new ones)
                 std::string db_status = result[i]["status"].c_str();
                 std::string frontend_status;
                 if (db_status == "yes") {
@@ -1623,7 +1496,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 } else if (db_status == "no") {
                     frontend_status = "not_attending";
                 } else {
-                    frontend_status = db_status; // historic "maybe" passes through as-is
+                    frontend_status = db_status; // "maybe" stays as is
                 }
                 
                 json_array << "{"
@@ -1657,94 +1530,121 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
 // ============================================
 
 Response EventController::handleGetAttendanceStatuses(const Request& request) {
-    std::cout << "📋 Getting attendance statuses (hardcoded)..." << std::endl;
-    // No dedicated attendance_statuses table exists in this schema.
-    // `training_attendance` stores {attended: bool, attendance_status: varchar}.
-    // We surface a small fixed set of statuses that the coach can toggle.
-    std::string json = R"([
-        {"id": 1, "name": "present",  "display_name": "Present",  "sort_order": 1, "color": "#16a34a"},
-        {"id": 2, "name": "absent",   "display_name": "Absent",   "sort_order": 2, "color": "#dc2626"},
-        {"id": 3, "name": "late",     "display_name": "Late",     "sort_order": 3, "color": "#d97706"},
-        {"id": 4, "name": "excused",  "display_name": "Excused",  "sort_order": 4, "color": "#2563eb"}
-    ])";
-    return Response(HttpStatus::OK, createJSONResponse(true, "Attendance statuses retrieved", json));
+    std::cout << "📋 Getting attendance statuses..." << std::endl;
+    
+    try {
+        std::string query = "SELECT id, name, display_name, sort_order, color FROM attendance_statuses ORDER BY sort_order";
+        pqxx::result result = db_->query(query, {});
+        
+        std::ostringstream json_array;
+        json_array << "[";
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json_array << ",";
+            
+            std::string color = result[i]["color"].is_null() ? "" : result[i]["color"].c_str();
+            
+            json_array << "{"
+                      << "\"id\": " << result[i]["id"].as<int>() << ", "
+                      << "\"name\": \"" << escapeJSON(result[i]["name"].c_str()) << "\", "
+                      << "\"display_name\": \"" << escapeJSON(result[i]["display_name"].c_str()) << "\", "
+                      << "\"sort_order\": " << result[i]["sort_order"].as<int>() << ", "
+                      << "\"color\": \"" << escapeJSON(color) << "\""
+                      << "}";
+        }
+        
+        json_array << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Attendance statuses retrieved", json_array.str()));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting attendance statuses: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get attendance statuses"));
+    }
 }
 
 Response EventController::handleGetEventAttendance(const Request& request) {
-    std::cout << "📋 Getting event attendance (training_attendance)..." << std::endl;
-
+    std::cout << "📋 Getting event attendance..." << std::endl;
+    
     std::string event_id = extractEventIdFromPath(request.getPath());
     if (event_id.empty()) {
         return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Event ID is required"));
     }
-
+    
     try {
-        // Look up the team associated with this match. For practice/pickup we key off
-        // home_team_id; away is only set for real games. Fall back to away_team_id if
-        // needed so this endpoint also works for regular games.
-        std::string team_query =
-            "SELECT COALESCE(home_team_id, away_team_id) AS team_id FROM matches WHERE id = $1::int";
-        pqxx::result team_res = db_->query(team_query, {event_id});
-        if (team_res.empty() || team_res[0]["team_id"].is_null()) {
-            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Match not found"));
-        }
-        std::string team_id = team_res[0]["team_id"].c_str();
-
-        // Auto-seed a training_attendance row for every active roster player so the
-        // coach can start toggling immediately. ON CONFLICT DO NOTHING keeps existing
-        // rows intact.
-        std::string seed_query = R"(
-            INSERT INTO training_attendance (player_id, match_id, attended, attendance_status, source)
-            SELECT r.player_id, $1::int, false, 'pending', 'footballhome'
-            FROM rosters r
-            WHERE r.team_id = $2::int AND r.left_at IS NULL
-            ON CONFLICT (player_id, match_id) DO NOTHING
+        std::string query = R"(
+            SELECT 
+                ea.id,
+                ea.event_id,
+                ea.player_id,
+                p.first_name,
+                p.last_name,
+                '' as preferred_name,
+                COALESCE(pe.email, '') as email,
+                COALESCE(pl.photo_url, '') as avatar_url,
+                ats.id as status_id,
+                ats.name as status_name,
+                ats.display_name as status_display_name,
+                ats.color as status_color,
+                rs.name as rsvp_snapshot,
+                ea.notes,
+                ea.created_at,
+                ea.updated_at,
+                upd_p.first_name as updated_by_first_name,
+                upd_p.last_name as updated_by_last_name
+            FROM event_attendance ea
+            JOIN users u ON ea.player_id = u.id
+            JOIN persons p ON u.person_id = p.id
+            LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true
+            LEFT JOIN players pl ON pl.person_id = p.id
+            JOIN attendance_statuses ats ON ea.status_id = ats.id
+            LEFT JOIN rsvp_statuses rs ON ea.rsvp_snapshot_id = rs.id
+            LEFT JOIN users upd ON ea.updated_by = upd.id
+            LEFT JOIN persons upd_p ON upd.person_id = upd_p.id
+            WHERE ea.event_id = $1
+            ORDER BY p.last_name, p.first_name
         )";
-        db_->query(seed_query, {event_id, team_id});
-
-        // Read back and shape for the frontend.
-        std::string list_query = R"(
-            SELECT ta.id,
-                   ta.player_id,
-                   ta.attended,
-                   COALESCE(ta.attendance_status, '') AS attendance_status,
-                   (COALESCE(per.first_name,'') || ' ' || COALESCE(per.last_name,'')) AS player_name
-            FROM training_attendance ta
-            JOIN players p    ON p.id  = ta.player_id
-            JOIN persons per  ON per.id = p.person_id
-            WHERE ta.match_id = $1::int
-            ORDER BY per.first_name, per.last_name
-        )";
-        pqxx::result rows = db_->query(list_query, {event_id});
-
-        std::ostringstream out;
-        out << "[";
-        for (size_t i = 0; i < rows.size(); ++i) {
-            if (i > 0) out << ",";
-            std::string status = rows[i]["attendance_status"].c_str();
-            bool attended = rows[i]["attended"].as<bool>();
-
-            // Map the DB value back to the numeric status_id the frontend expects.
-            int status_id = 0;
-            std::string status_name;
-            if      (status == "present") { status_id = 1; status_name = "present"; }
-            else if (status == "absent")  { status_id = 2; status_name = "absent"; }
-            else if (status == "late")    { status_id = 3; status_name = "late"; }
-            else if (status == "excused") { status_id = 4; status_name = "excused"; }
-            else if (attended)            { status_id = 1; status_name = "present"; }
-            else                           { status_id = 0; status_name = ""; }
-
-            out << "{"
-                << "\"id\": " << rows[i]["id"].as<int>() << ", "
-                << "\"player_id\": " << rows[i]["player_id"].as<int>() << ", "
-                << "\"player_name\": \"" << escapeJSON(rows[i]["player_name"].c_str()) << "\", "
-                << "\"status_id\": " << status_id << ", "
-                << "\"status_name\": \"" << status_name << "\""
-                << "}";
+        
+        pqxx::result result = db_->query(query, {event_id});
+        
+        std::ostringstream json_array;
+        json_array << "[";
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json_array << ",";
+            
+            std::string notes = result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str();
+            std::string rsvp_snapshot = result[i]["rsvp_snapshot"].is_null() ? "" : result[i]["rsvp_snapshot"].c_str();
+            std::string status_color = result[i]["status_color"].is_null() ? "" : result[i]["status_color"].c_str();
+            std::string avatar_url = result[i]["avatar_url"].is_null() ? "" : result[i]["avatar_url"].c_str();
+            std::string updated_by_name = "";
+            if (!result[i]["updated_by_first_name"].is_null()) {
+                updated_by_name = std::string(result[i]["updated_by_first_name"].c_str()) + " " + result[i]["updated_by_last_name"].c_str();
+            }
+            
+            json_array << "{"
+                      << "\"id\": \"" << result[i]["id"].c_str() << "\", "
+                      << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
+                      << "\"player_id\": \"" << result[i]["player_id"].c_str() << "\", "
+                      << "\"player_name\": \"" << escapeJSON(result[i]["first_name"].c_str()) << " " << escapeJSON(result[i]["last_name"].c_str()) << "\", "
+                      << "\"player_email\": \"" << escapeJSON(result[i]["email"].c_str()) << "\", "
+                      << "\"photoUrl\": \"" << escapeJSON(avatar_url) << "\", "
+                      << "\"status_id\": " << result[i]["status_id"].as<int>() << ", "
+                      << "\"status_name\": \"" << escapeJSON(result[i]["status_name"].c_str()) << "\", "
+                      << "\"status_display_name\": \"" << escapeJSON(result[i]["status_display_name"].c_str()) << "\", "
+                      << "\"status_color\": \"" << escapeJSON(status_color) << "\", "
+                      << "\"rsvp_snapshot\": \"" << escapeJSON(rsvp_snapshot) << "\", "
+                      << "\"notes\": \"" << escapeJSON(notes) << "\", "
+                      << "\"updated_by\": \"" << escapeJSON(updated_by_name) << "\", "
+                      << "\"created_at\": \"" << result[i]["created_at"].c_str() << "\", "
+                      << "\"updated_at\": \"" << result[i]["updated_at"].c_str() << "\""
+                      << "}";
         }
-        out << "]";
-
-        return Response(HttpStatus::OK, createJSONResponse(true, "Attendance retrieved", out.str()));
+        
+        json_array << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Attendance retrieved", json_array.str()));
+        
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting attendance: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get attendance"));
@@ -1782,58 +1682,55 @@ Response EventController::handleUpdateAttendance(const Request& request) {
     
     try {
         int status_id = std::stoi(status_id_str);
-
-        // Map the numeric status_id (1..4) to the training_attendance columns
-        // (`attended: bool` + `attendance_status: varchar`).
-        bool attended = false;
-        std::string status_name;
-        switch (status_id) {
-            case 1: attended = true;  status_name = "present"; break;
-            case 2: attended = false; status_name = "absent";  break;
-            case 3: attended = true;  status_name = "late";    break;
-            case 4: attended = false; status_name = "excused"; break;
-            default:
-                return Response(HttpStatus::BAD_REQUEST,
-                                createJSONResponse(false, "Invalid status_id (expected 1..4)"));
+        
+        // TODO: Verify user is a coach for this event's team
+        
+        std::string query;
+        pqxx::result result;
+        
+        if (updated_by.empty()) {
+            // No updated_by provided
+            query = R"(
+                UPDATE event_attendance 
+                SET status_id = $1, 
+                    notes = $2, 
+                    updated_at = NOW()
+                WHERE id = $3
+                RETURNING id
+            )";
+            result = db_->query(query, {std::to_string(status_id), notes, attendance_id});
+        } else {
+            query = R"(
+                UPDATE event_attendance 
+                SET status_id = $1, 
+                    notes = $2, 
+                    updated_at = NOW(), 
+                    updated_by = $3
+                WHERE id = $4
+                RETURNING id
+            )";
+            result = db_->query(query, {std::to_string(status_id), notes, updated_by, attendance_id});
         }
-
-        std::string query = R"(
-            UPDATE training_attendance
-               SET attended = $1::boolean,
-                   attendance_status = $2,
-                   updated_at = NOW(),
-                   override_by_user_id = NULLIF($3, '')::int,
-                   override_note = NULLIF($4, '')
-             WHERE id = $5::int
-             RETURNING id
-        )";
-        pqxx::result result = db_->query(query, {
-            attended ? std::string("true") : std::string("false"),
-            status_name,
-            updated_by,
-            notes,
-            attendance_id
-        });
-
+        
         if (result.empty()) {
             return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Attendance record not found"));
         }
-
+        
         // Log to ##u or ##p file
         std::map<std::string, std::string> columns = {
-            {"attended", attended ? "true" : "false"},
-            {"attendance_status", status_name}
+            {"status_id", std::to_string(status_id)},
+            {"notes", notes}
         };
-        if (!updated_by.empty()) columns["override_by_user_id"] = updated_by;
-        if (!notes.empty())      columns["override_note"] = notes;
-        std::string upsert_sql = SqlBuilder::buildUpsert("training_attendance", attendance_id, columns);
-        SqlFileLogger::log("training_attendance", upsert_sql);
-
-        std::cout << "✅ Attendance updated: " << attendance_id
-                  << " -> " << status_name << std::endl;
-
+        if (!updated_by.empty()) {
+            columns["updated_by"] = updated_by;
+        }
+        std::string upsert_sql = SqlBuilder::buildUpsert("event_attendance", attendance_id, columns);
+        SqlFileLogger::log("event_attendance", upsert_sql);
+        
+        std::cout << "✅ Attendance updated: " << attendance_id << std::endl;
+        
         return Response(HttpStatus::OK, createJSONResponse(true, "Attendance updated successfully"));
-
+        
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating attendance: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update attendance"));
@@ -2197,7 +2094,7 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             // chat_events table not available — skip training RSVP data
         }
 
-        // Find the chat_event for this match (RSVP source)
+        // Find the chat_event for this match (GroupMe RSVP source)
         int matchChatEventId = 0;
         try {
             std::string matchEventQuery = R"(
@@ -2211,15 +2108,15 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 matchChatEventId = matchEventResult[0]["chat_event_id"].as<int>();
             }
         } catch (...) {
-            // chat_events table not available — skip chat RSVP lookup
+            // chat_events table not available — skip GroupMe RSVP lookup
         }
 
-        // Get all players from the home team roster with enriched data.
-        // After migration 059, event_rsvps is the single source of truth for
-        // player RSVPs (FH-native /api/rsvp writes + backfilled historical
-        // RSVPs + mirror-trigger copies of any C++ admin "pulse"
-        // writes that still target chat_event_rsvps).
-        // RSVP precedence: admin override (player_rsvps_current) > event_rsvps.
+        // Get all players from the home team roster with enriched data
+        // RSVP priority: admin override (player_rsvps_current) > GroupMe RSVP (chat_event_rsvps)
+        //   - admin_rsvp comes from player_rsvps_current (keyed on users.id, joined via persons)
+        //   - gm_rsvp comes from chat_event_rsvps for this match's chat_event,
+        //     using cer.person_id (auto-populated by GroupMe sync when the member
+        //     was identified) honoring override_rsvp_status_id if present.
         std::string query = R"(
             SELECT DISTINCT
                 p.id as player_id,
@@ -2229,9 +2126,6 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 false::boolean as is_keeper,
                 NULL::text as position,
                 CASE WHEN ml.id IS NOT NULL THEN true ELSE false END as on_game_roster,
-                ml.zone as lineup_zone,
-                ml.slot_number as lineup_slot,
-                COALESCE(ml.is_starter, false) as lineup_is_starter,
                 COALESCE(r.jersey_number::text, '') as jersey_number,
                 r.team_id as roster_team_id,
                 -- Admin override RSVP (player_rsvps_current is keyed by users.id)
@@ -2242,23 +2136,14 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                     WHERE prc.event_id = m.id AND u_admin.person_id = pe.id
                     LIMIT 1
                 ) as admin_rsvp,
-                -- FH-native RSVP — unified table written by /api/rsvp, the
-                -- mirror trigger from chat_event_rsvps, and historical
-                -- backfill (migration 059).  source_id distinguishes
-                -- ('app' | 'admin' | ...) but we don't surface it here.
+                -- GroupMe RSVP for this match's chat_event (honors admin override on the rsvp row)
                 (
-                    SELECT rs.name FROM event_rsvps er
-                    JOIN rsvp_statuses rs ON rs.id = er.rsvp_status_id
-                    WHERE er.chat_event_id = $3::int AND er.person_id = pe.id
+                    SELECT rs.name FROM chat_event_rsvps cer
+                    JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
+                    WHERE cer.chat_event_id = $3::int AND cer.person_id = pe.id
                     LIMIT 1
-                ) as fh_rsvp,
-                (
-                    SELECT er.updated_at::text FROM event_rsvps er
-                    WHERE er.chat_event_id = $3::int AND er.person_id = pe.id
-                    LIMIT 1
-                ) as fh_rsvp_at,
-                -- Individual chat memberships removed with the GroupMe cutover;
-                -- columns retained for API shape compatibility.
+                ) as gm_rsvp,
+                -- Individual chat memberships (chat_external_members not available)
                 false::boolean as in_chat_apsl,
                 false::boolean as in_chat_casa,
                 false::boolean as in_chat_u23,
@@ -2268,43 +2153,10 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.left_at IS NULL) as on_roster_u23
             FROM matches m
             JOIN rosters r ON r.team_id = CASE WHEN $2 <> '' THEN $2::int ELSE m.home_team_id END AND r.left_at IS NULL
-            JOIN teams t ON t.id = r.team_id
             JOIN players p ON r.player_id = p.id
             JOIN persons pe ON pe.id = p.person_id
             LEFT JOIN match_lineups ml ON ml.match_id = m.id AND ml.player_id = p.id
             WHERE m.id = $1
-              -- Lineup = FH-members only (June 2026 cutover).  An FH-member
-              -- is either:
-              --   1. A LeagueApps mens registrant (external_person_aliases
-              --      JOIN mens_team_assignments).  For non-pool teams the
-              --      assignment must be on THIS team; for pool teams
-              --      (Practice / Pickup, teams.is_pool=true) ANY mens
-              --      assignment counts since pool teams are open to every
-              --      mens member.
-              --   2. A FootballHome self-registrant (fh_member_at set).
-              -- No saved-lineup or admin-pulse escape hatch — ghost roster
-              -- regardless of any historical match_lineups or admin RSVP.
-              --
-              -- IMPORTANT: this endpoint returns the INTERNAL roster only
-              -- (mens_team_assignments — what Lighthouse considers on the
-              -- team).  The OFFICIAL roster (public league-website scrape
-              -- — teams.source_system_id IN 1..3) is a separate concept
-              -- and is intentionally NOT surfaced here; between seasons
-              -- the official roster may be empty while the internal
-              -- roster is still active.
-              AND (
-                EXISTS (
-                  SELECT 1
-                    FROM external_person_aliases epa
-                    JOIN roster_assignments mta
-                      ON mta.leagueapps_user_id::text = epa.external_user_id
-                     AND mta.domain = 'mens'
-                   WHERE epa.person_id = pe.id
-                     AND epa.provider = 'leagueapps'
-                     AND (mta.team_id = r.team_id OR t.is_pool)
-                )
-                OR pe.fh_member_at IS NOT NULL
-              )
             ORDER BY pe.last_name, pe.first_name
         )";
 
@@ -2314,19 +2166,39 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
         std::map<int, std::vector<std::string>> practiceMap;
         std::map<int, std::vector<bool>> practiceOverrideMap;
         if (!teIds.empty()) {
-            // After migration 059 event_rsvps is the unified RSVP table — admin
-            // pulses, FH-native /api/rsvp, mirror-trigger copies of any chat
-            // sync writes, and backfilled historical RSVPs all land
-            // here keyed by (chat_event_id, person_id).  is_override marks the
-            // 'admin' source so the UI can render the pulse indicator.
             std::string practiceQuery = R"(
-                SELECT er.person_id,
-                       er.chat_event_id,
-                       rs.name AS rsvp,
-                       (er.source_id = 3) AS is_override
-                  FROM event_rsvps er
-                  JOIN rsvp_statuses rs ON rs.id = er.rsvp_status_id
-                 WHERE er.chat_event_id = ANY($1)
+                SELECT DISTINCT ON (person_id, chat_event_id)
+                       person_id,
+                       chat_event_id,
+                       rsvp,
+                       is_override
+                FROM (
+                    -- Rows matched via external_user_id -> chat_external_members
+                    SELECT cem2.person_id,
+                           cer.chat_event_id,
+                           COALESCE(
+                               (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
+                               ''
+                           ) as rsvp,
+                           (cer.override_rsvp_status_id IS NOT NULL) as is_override
+                    FROM chat_event_rsvps cer
+                    JOIN chat_external_members cem2 ON cem2.external_user_id = cer.external_user_id
+                        AND cem2.person_id IS NOT NULL
+                    WHERE cer.chat_event_id = ANY($1)
+                    UNION
+                    -- Rows inserted directly with person_id (admin overrides)
+                    SELECT cer.person_id,
+                           cer.chat_event_id,
+                           COALESCE(
+                               (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
+                               ''
+                           ) as rsvp,
+                           true as is_override
+                    FROM chat_event_rsvps cer
+                    WHERE cer.chat_event_id = ANY($1)
+                      AND cer.person_id IS NOT NULL
+                      AND cer.external_user_id IS NULL
+                ) combined
             )";
             std::string arrayLiteral = "{";
             for (size_t i = 0; i < teIds.size(); i++) {
@@ -2371,21 +2243,17 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
 
             int personId = row["person_id"].as<int>();
 
-            // RSVP precedence after migration 059:
-            //   1. admin override (player_rsvps_current) always wins
-            //   2. else event_rsvps (unified — covers app, mirrored admin,
-            //      and backfilled historical entries)
-            //   3. else null
+            // RSVP: admin override wins, else GM rsvp, else null
             bool hasAdminRsvp = !row["admin_rsvp"].is_null();
-            bool hasFhRsvp    = !row["fh_rsvp"].is_null();
+            bool hasGmRsvp = !row["gm_rsvp"].is_null();
             std::string effectiveRsvp = "";
             std::string rsvpSource = "";
             if (hasAdminRsvp) {
                 effectiveRsvp = row["admin_rsvp"].c_str();
                 rsvpSource = "admin";
-            } else if (hasFhRsvp) {
-                effectiveRsvp = row["fh_rsvp"].c_str();
-                rsvpSource = "footballhome";
+            } else if (hasGmRsvp) {
+                effectiveRsvp = row["gm_rsvp"].c_str();
+                rsvpSource = "groupme";
             }
 
             json << "{";
@@ -2398,12 +2266,6 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             json << "\"rsvpStatus\":" << (effectiveRsvp.empty() ? "null" : "\"" + effectiveRsvp + "\"") << ",";
             json << "\"rsvpSource\":" << (rsvpSource.empty() ? "null" : "\"" + rsvpSource + "\"") << ",";
             json << "\"onGameRoster\":" << (row["on_game_roster"].as<bool>() ? "true" : "false") << ",";
-            // Saved lineup zone (null when player isn't on a saved lineup yet).
-            bool onLineup = row["on_game_roster"].as<bool>();
-            json << "\"onLineup\":" << (onLineup ? "true" : "false") << ",";
-            json << "\"lineupZone\":" << (row["lineup_zone"].is_null() ? "null" : "\"" + std::string(row["lineup_zone"].c_str()) + "\"") << ",";
-            json << "\"lineupSlot\":" << (row["lineup_slot"].is_null() ? "null" : std::string(row["lineup_slot"].c_str())) << ",";
-            json << "\"isStarter\":" << (row["lineup_is_starter"].as<bool>() ? "true" : "false") << ",";
             json << "\"jerseyNumber\":\"" << escapeJSON(row["jersey_number"].c_str()) << "\",";
             json << "\"rosterTeamId\":\"" << row["roster_team_id"].c_str() << "\",";
 
@@ -2447,8 +2309,8 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
         }
 
         // -------------------------------------------------------------
-        // Diagnostics — surfaces chat → footballhome person linking
-        // and admin/chat RSVP counts for this match so the lineup screen
+        // Diagnostics — surfaces GroupMe → footballhome person linking
+        // and admin/GM RSVP counts for this match so the lineup screen
         // can show "why is everyone listed as no response?" up front.
         // -------------------------------------------------------------
         int totalRsvps = 0, linkedRsvps = 0, unlinkedRsvps = 0;
@@ -2494,21 +2356,16 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             } catch (...) {}
         }
 
-        // Count from the result we already built (avoids a second join).
-        // After migration 059 "gm_rsvp" no longer exists as a separate column —
-        // fh_rsvp is the unified RSVP (app + historical backfill + mirrored
-        // admin writes).  We keep the historical JSON keys (rosterWithGmRsvp
-        // etc.) for frontend backward-compat; they now mean "roster players
-        // with any non-admin RSVP in event_rsvps".
+        // Count from the result we already built (avoids a second join)
         for (const auto& row : result) {
             if (!row["admin_rsvp"].is_null()) rosterWithAdminRsvp++;
-            if (!row["fh_rsvp"].is_null()) {
+            if (!row["gm_rsvp"].is_null()) {
                 rosterWithGmRsvp++;
                 if (matchedSample.size() < 50) {
                     matchedSample.emplace_back(
                         row["first_name"].c_str(),
                         row["last_name"].c_str(),
-                        row["fh_rsvp"].c_str());
+                        row["gm_rsvp"].c_str());
                 }
             }
         }
@@ -2592,6 +2449,37 @@ Response EventController::handleSetPlayerRSVP(const Request& request) {
 }
 
 // Helper function to decode base64url
+static std::string base64UrlDecode(const std::string& input) {
+    std::string base64 = input;
+    
+    // Convert base64url to base64
+    for (size_t i = 0; i < base64.length(); ++i) {
+        if (base64[i] == '-') base64[i] = '+';
+        else if (base64[i] == '_') base64[i] = '/';
+    }
+    
+    // Add padding if necessary
+    while (base64.length() % 4 != 0) {
+        base64 += '=';
+    }
+    
+    // Decode base64
+    BIO *bio, *b64;
+    char *buffer = new char[base64.length()];
+    
+    bio = BIO_new_mem_buf(base64.c_str(), base64.length());
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_push(b64, bio);
+    
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    int decoded_length = BIO_read(bio, buffer, base64.length());
+    BIO_free_all(bio);
+    
+    std::string result(buffer, decoded_length);
+    delete[] buffer;
+    
+    return result;
+}
 
 std::string EventController::extractUserIdFromToken(const Request& request) {
     // Extract Authorization header
@@ -2614,7 +2502,7 @@ std::string EventController::extractUserIdFromToken(const Request& request) {
             std::string payload_encoded = token.substr(first_dot + 1, second_dot - first_dot - 1);
             
             // Decode payload
-            std::string payload = fh::crypto::base64UrlDecode(payload_encoded);
+            std::string payload = base64UrlDecode(payload_encoded);
             
             // Extract userId from JSON payload
             // Format: {"userId":"xxx",...}
@@ -2666,10 +2554,12 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
                    ce.event_date, ce.event_time, ce.start_at, ce.end_at,
                    ce.external_id, ce.match_id, ce.is_active,
                    c.name as chat_name, c.id as chat_id, c.chat_type_id,
-                   (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
-                    AND r.rsvp_status_id = 1) as going_count,
-                   (SELECT COUNT(*) FROM event_rsvps r WHERE r.chat_event_id = ce.id 
-                    AND r.rsvp_status_id = 2) as not_going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 1) as going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 2) as not_going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 3) as maybe_count,
                    m.match_date, mt.name as match_type_name,
                    ht.name as home_team, at2.name as away_team,
                    m.home_score, m.away_score
@@ -2710,7 +2600,8 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
                  << "\"home_score\":" << (events[i]["home_score"].is_null() ? "null" : events[i]["home_score"].c_str()) << ","
                  << "\"away_score\":" << (events[i]["away_score"].is_null() ? "null" : events[i]["away_score"].c_str()) << ","
                  << "\"going\":" << events[i]["going_count"].c_str() << ","
-                 << "\"not_going\":" << events[i]["not_going_count"].c_str()
+                 << "\"not_going\":" << events[i]["not_going_count"].c_str() << ","
+                 << "\"maybe\":" << events[i]["maybe_count"].c_str()
                  << "}";
         }
         json << "],";
@@ -2806,7 +2697,7 @@ Response EventController::handleOverrideRSVP(const Request& request) {
         std::string clearStr = parseJSON(body, "clear");
 
         if (clearStr == "true") {
-            // Clear override — revert to underlying RSVP value
+            // Clear override — revert to GroupMe synced value
             std::string clearSql = 
                 "UPDATE chat_event_rsvps SET "
                 "override_rsvp_status_id = NULL, "
@@ -2886,13 +2777,13 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
         }
 
         if (clearStr == "true") {
-            // Delete admin-only rows (no external sync data behind them)
+            // Delete admin-only rows (no GroupMe data behind them)
             db_->query(
                 "DELETE FROM chat_event_rsvps "
                 "WHERE chat_event_id = $1 AND person_id = $2 AND external_user_id IS NULL",
                 {chatEventId, personId});
 
-            // Clear override on externally-synced rows so the original value shows through
+            // Clear override on GroupMe-synced rows so the original value shows through
             db_->query(
                 "UPDATE chat_event_rsvps SET "
                 "override_rsvp_status_id = NULL, overridden_by_user_id = NULL, "
@@ -2900,7 +2791,7 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
                 "WHERE chat_event_id = $1 AND person_id = $2",
                 {chatEventId, personId});
 
-            // Return the underlying synced value (if any)
+            // Return the underlying GroupMe value (if any)
             pqxx::result underlying = db_->query(
                 "SELECT rs.name FROM chat_event_rsvps cer "
                 "JOIN rsvp_statuses rs ON rs.id = cer.rsvp_status_id "
@@ -2909,7 +2800,7 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
                 {chatEventId, personId});
 
             std::ostringstream json;
-            json << "{\"success\":true,\"message\":\"Override cleared\"";
+            json << "{\"success\":true,\"message\":\"Released to GroupMe\"";
             if (!underlying.empty()) {
                 json << ",\"rsvpStatus\":\"" << escapeJSON(underlying[0][0].c_str()) << "\"";
             }
@@ -3193,76 +3084,5 @@ Response EventController::handleSyncLeague(const Request& request) {
         std::cerr << "\u274c handleSyncLeague error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, "Sync failed"));
-    }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// GET /api/matches/:matchId/rsvp-summary
-//
-// Returns compact aggregate counts for the Practice/Pickup Dashboard row
-// badges (no per-player data — that's what /api/events/:eventId/rsvps is
-// for).  Shape:
-//   {
-//     "success": true,
-//     "match_id": 9218,
-//     "rsvp":       {"yes": 12, "no": 1},
-//     "attendance": {"present": 8, "absent": 1}
-//   }
-//
-// Notes:
-//  • RSVP counts come from the `player_rsvps_current` view (latest status
-//    per player per event).
-//  • Attendance counts read `training_attendance` — only rows where
-//    `attended = true` count as present, `attended = false` as absent.
-//    Rows missing entirely are the "not yet marked" set (not returned;
-//    frontend derives it from total_expected − present − absent if it
-//    knows the denominator).
-// ────────────────────────────────────────────────────────────────────────────
-Response EventController::handleGetMatchRsvpSummary(const Request& request) {
-    try {
-        const std::string matchIdStr = extractMatchIdFromPath(request.getPath());
-        if (matchIdStr.empty()) {
-            return Response(HttpStatus::BAD_REQUEST,
-                createJSONResponse(false, "Invalid matchId in path"));
-        }
-
-        // Single query — aggregates both RSVP and attendance in one pass.
-        // FILTER (...) is postgres-native and cheaper than 6 subselects.
-        const std::string q =
-            "WITH r AS ("
-            "  SELECT rsvp_status_id FROM player_rsvps_current WHERE event_id = $1::int"
-            "), a AS ("
-            "  SELECT attended FROM training_attendance WHERE match_id = $1::int"
-            ") "
-            "SELECT "
-            "  (SELECT COUNT(*) FROM r WHERE rsvp_status_id = 1) AS yes,"
-            "  (SELECT COUNT(*) FROM r WHERE rsvp_status_id = 2) AS no,"
-            "  (SELECT COUNT(*) FROM a WHERE attended = true)    AS present,"
-            "  (SELECT COUNT(*) FROM a WHERE attended = false)   AS absent";
-        auto rows = db_->query(q, {matchIdStr});
-        if (rows.empty()) {
-            // Should never happen (aggregates always return 1 row) but
-            // return zeros anyway so the frontend contract is stable.
-            std::ostringstream out;
-            out << "{\"success\":true,\"match_id\":" << matchIdStr
-                << ",\"rsvp\":{\"yes\":0,\"no\":0}"
-                << ",\"attendance\":{\"present\":0,\"absent\":0}}";
-            return Response(HttpStatus::OK, out.str());
-        }
-        const auto& r = rows[0];
-        std::ostringstream out;
-        out << "{\"success\":true,\"match_id\":" << matchIdStr
-            << ",\"rsvp\":{"
-            << "\"yes\":"   << r["yes"].c_str()   << ","
-            << "\"no\":"    << r["no"].c_str()
-            << "},\"attendance\":{"
-            << "\"present\":" << r["present"].c_str() << ","
-            << "\"absent\":"  << r["absent"].c_str()
-            << "}}";
-        return Response(HttpStatus::OK, out.str());
-    } catch (const std::exception& e) {
-        std::cerr << "❌ handleGetMatchRsvpSummary error: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJSONResponse(false, std::string("Failed to get summary: ") + e.what()));
     }
 }

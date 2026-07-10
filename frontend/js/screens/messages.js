@@ -366,7 +366,7 @@ class MessagesScreen extends Screen {
           // actually show up) and flag data-copy-html="1" so the copy
           // handler writes text/html to the clipboard.  Plain-text
           // snippets keep the <pre> renderer that preserves the exact
-          // paste-into-GroupMe formatting they were authored in.
+          // paste-into-chat formatting they were authored in.
           const bodyBlock = bodyHtml
             ? `<div id="${id}" data-copy-html="1" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; line-height: 1.55;">${bodyHtml}</div>`
             : `<pre id="${id}" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.88rem; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.5;">${this.escapeHtml(bodyText)}</pre>`;

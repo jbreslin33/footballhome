@@ -870,7 +870,7 @@ class LeadsScreen extends Screen {
     const snippets = this.messageSnippets(funnelLabel);
 
     const TIER_ORDER = ['broadcast', 'followup', 'qualify', 'close', 'soft', 'info'];
-    const TIER_LABEL = { broadcast: 'Broadcast (paste to GroupMe / LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
+    const TIER_LABEL = { broadcast: 'Broadcast (paste to LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
     const byTier = {};
     for (const s of snippets) {
       const tt = s.tier || 'info';
@@ -1348,16 +1348,6 @@ class LeadsScreen extends Screen {
     const URL_WOMEN = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership';
     const URL_BOYS  = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership';
     const URL_GIRLS = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-1893-girls-club-soccer-membership';
-    // Philadelphia Pickup ⚽️ GroupMe chat (id 65284700). Open chat; soft
-    // fallback for hesitant leads.  Share link below; the snippet body will
-    // ALSO prepend the next scheduled pickup (if any) pulled live from the
-    // chat's calendar via /api/leads/next-pickup.
-    const PICKUP_LINK = 'https://groupme.com/join_group/65284700/VRuVK50q';
-    // Shared Practice/Training GroupMe chat — ONE chat that every adult
-    // team uses for mid-week practice heads-up (chat name is "Training").
-    // Game chats are per-team (see GAME_CHATS below) but practice +
-    // pickup are club-wide singletons.
-    const PRACTICE_LINK = 'https://groupme.com/join_group/108640377/8jHkgybd';
 
     const LINKS = {
       'Brazil Men':                URL_MEN,
@@ -1488,22 +1478,6 @@ class LeadsScreen extends Screen {
       // wire it before the first real lead lands.
     };
 
-    // Per-funnel GroupMe GAME chat share URLs — each team has its own
-    // game chat for matchday RSVPs.  Practice + pickup are NOT here —
-    // those are club-wide singletons (PRACTICE_LINK / PICKUP_LINK above).
-    //
-    // Share URL format:
-    //   https://groupme.com/join_group/{group_id}/{share_token}
-    // Copy from the GroupMe app: tap group name → Share Group.
-    // We can't auto-mint these from the DB (we only store {group_id}, not
-    // the share token).  Funnels without an entry skip the Welcome chip.
-    const GAME_CHATS = {
-      'Brazil Men':       'https://groupme.com/join_group/114866775/nMhuqv5R',
-      'PR Men':           'https://groupme.com/join_group/114866725/faQKo5Vv',
-      'U23 Men':          'https://groupme.com/join_group/114664832/yYQrXaFS',
-      // APSL/Liga 1, U23 Women, Tri County Women — TODO.
-    };
-
     // Per-funnel public handbook URLs.  Currently only the Men's
     // handbook exists (covers all adult Men funnels — Brazil, PR, U23,
     // APSL, Men's Club).  Surfaced in the adult Welcome + More info
@@ -1615,9 +1589,6 @@ class LeadsScreen extends Screen {
       link:          LINKS[baseLabel] || 'https://lighthouse1893.leagueapps.com',
       linkBoys:      URL_BOYS,
       linkGirls:     URL_GIRLS,
-      pickupLink:    PICKUP_LINK,
-      practiceLink:  PRACTICE_LINK,
-      gameChat:      GAME_CHATS[baseLabel] || null,
       handbookLink:  HANDBOOKS[baseLabel] || null,
       rosterLink:    isCombinedU23PR ? CASA_ROSTER_URL : (ROSTER_LINKS[baseLabel] || null),
       rosterNote:    ROSTER_NOTES[baseLabel] || null,
@@ -2227,8 +2198,7 @@ class LeadsScreen extends Screen {
     if (MENS_BROADCAST_FUNNELS.has(funnelLabel)) {
       const availabilityBody =
         `Hi guys,\n\n` +
-        `We're moving how we track availability for games, practice and pickup to footballhome.org — which works on your phone or computer, and also installs as an app on your phone.\n\n` +
-        `Heads-up: from now on we won't be posting games / practice / pickup in GroupMe. All of that lives on footballhome.org. GroupMe stays as a chat only for now.\n\n` +
+        `We track availability for games, practice and pickup on footballhome.org — which works on your phone or computer, and also installs as an app on your phone.\n\n` +
         `How to get in:\n` +
         `1. Open https://footballhome.org on your phone or computer\n` +
         `2. On your phone? Tap Share → Add to Home Screen (iOS) or Install app (Android) so it lives on your home screen like a real app.\n` +
@@ -2292,16 +2262,13 @@ class LeadsScreen extends Screen {
 
     // Welcome — sent AFTER the lead registers.  Two flavors:
     //
-    //   • Adult funnels  → list the GroupMe chats to join (game / practice
-    //                      / pickup).  Renders for ALL adult funnels; any
-    //                      chat that isn't set up yet is skipped from the
-    //                      list and called out in a closing "I'll send the
-    //                      link once it's up" line so the lead knows it's
-    //                      coming.  Chats listed in usage order: game (next
-    //                      match RSVP) → practice (mid-week heads-up) →
-    //                      pickup (open-run fallback).  Practice + pickup
-    //                      are club-wide singletons; only the game chat is
-    //                      team-specific.
+    //   • Adult funnels  → short "you're in, reply anytime" note plus
+    //                      any league-team roster registration steps
+    //                      (CASA for PR/Brazil Men, etc.).  We DO NOT
+    //                      hand out chat/join links — practice, pickup,
+    //                      and game details flow through the coach's
+    //                      own text/email replies, and match RSVPs go
+    //                      through the FH magic-link the coach sends.
     //
     //   • Youth funnels  → there's no parent/player chat yet, so the
     //                      blurb sets expectations: practice & game
@@ -2337,50 +2304,11 @@ class LeadsScreen extends Screen {
         body: lines.join('\n'),
       });
     } else {
-      // Adult: build the chat list from whatever is actually set up.
-      // Skip any TODO/missing chat from the list and append a closing
-      // line naming what's still coming so the lead knows to expect a
-      // follow-up link.  Roster registration (when required by the
-      // league — e.g. CASA for PR/Brazil Men) gets folded into the
-      // same numbered list so the whole onboarding reads as one
-      // checklist the lead can refer back to ("did you finish step 4?").
-      const isReal = (u) => !!u && !/^TODO_/.test(u);
-      // Men's funnels share Tue/Thu/Sat pickup AS a valid substitute
-      // for the Wed/Fri practice (this is how Brazil/PR/U23 actually
-      // run — coaches encourage hitting pickup if practice doesn't
-      // fit).  Women's adult funnels currently don't have that policy
-      // wired in, so we keep the line stricter for them.
-      const MENS_FUNNELS = new Set(['Brazil Men', 'PR Men', 'U23 Men', 'U23 Men + PR', "Men's Club", 'APSL / Liga 1']);
-      const isMens = MENS_FUNNELS.has(funnelLabel);
-      // Women's adult funnels have NO practice chat — they don't run
-      // mid-week practices.  Skip the practice step entirely for them
-      // (don't even surface as 'missing'; we'd never send the link).
-      const WOMENS_FUNNELS = new Set(['U23 Women', 'Tri County Women', "Women's Club"]);
-      const isWomens = WOMENS_FUNNELS.has(funnelLabel);
+      // Adult: short welcome + league roster steps only.  No chat links —
+      // practice/pickup/game logistics come from the coach's own texts and
+      // emails; match RSVPs go through the FH magic-link the coach sends.
       const stepLines = [];
-      const missing   = [];
       let n = 1;
-      if (isReal(c.gameChat)) {
-        stepLines.push(`${n++}. 🗓 Game chat — RSVP for matches here:`);
-        stepLines.push(`   ${c.gameChat}`);
-      } else {
-        missing.push('team game chat');
-      }
-      if (!isWomens) {
-        if (isReal(c.practiceLink)) {
-          stepLines.push(`${n++}. 🏃 Practice chat — Wed/Fri training heads-up:`);
-          stepLines.push(`   ${c.practiceLink}`);
-        } else {
-          missing.push('practice chat');
-        }
-      }
-      if (isReal(c.pickupLink)) {
-        const pickupDesc = isMens
-          ? `⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice. Pickup counts as a team practice:`
-          : `⚽ Pickup chat — open runs Tue/Thu/Sat if you can't make practice:`;
-        stepLines.push(`${n++}. ${pickupDesc}`);
-        stepLines.push(`   ${c.pickupLink}`);
-      }
       if (c.rosterLink) {
         stepLines.push(`${n++}. 📝 League team roster — required to play sanctioned games:`);
         stepLines.push(`   ${c.rosterLink}`);
@@ -2393,26 +2321,16 @@ class LeadsScreen extends Screen {
         stepLines.push(`${n++}. 📬 League registration — ${c.rosterNote}`);
       }
 
-      const lines = [`🎉 You're officially a member of the club. Next steps to play in games and attend practices & pickups:`, ``];
+      const lines = [`🎉 You're officially a member of the club.`, ``];
       if (stepLines.length) {
-        lines.push(...stepLines);
-      } else {
-        lines.push(`Team chats are getting set up this week — I'll send the links as soon as they're live.`);
+        lines.push(...stepLines, ``);
       }
-      if (missing.length) {
-        const list = missing.length > 1
-          ? `${missing.slice(0, -1).join(', ')} and ${missing.slice(-1)}`
-          : missing[0];
-        const verb = missing.length > 1 ? "they're" : "it's";
-        lines.push(``, `I'll send you the ${list} link${missing.length > 1 ? 's' : ''} as soon as ${verb} set up.`);
-      }
-      lines.push(``, `Let me know if you have any questions!`, ``, `See you on the field. 🤝`);
+      lines.push(`Reply anytime and I'll send you the next practice, pickup, and match details — including the RSVP link for each match.`, ``, `See you on the field. 🤝`);
 
       snippets.push({
         id: 'welcome',
-        label: '🎉 Welcome / Join chats',
+        label: '🎉 Welcome',
         tier: 'close',
-        todo: missing.length > 0,
         subject: 'Welcome to Lighthouse 1893 SC! Next steps',
         body: lines.join('\n'),
       });
@@ -2426,8 +2344,10 @@ class LeadsScreen extends Screen {
       // register, but pickup is open — they can come play, meet the squad,
       // see if it's a fit, then decide. Doesn't compete with the close.
       // Dynamic body: lead with the NEXT scheduled pickup (date/time/field)
-      // if the calendar has one, otherwise fall back to a generic invite to
-      // the chat. this._nextPickup is loaded by loadLeads().
+      // if the calendar has one, otherwise fall back to a generic invite.
+      // this._nextPickup is loaded by loadLeads().  No join URL — the coach
+      // texts/emails logistics directly; if the lead replies "in" we know
+      // to expect them.
       const next = this._nextPickup;
       let pickupBody;
       if (next && next.start_at) {
@@ -2435,22 +2355,14 @@ class LeadsScreen extends Screen {
         const loc   = (next.location || next.location_address || '').trim();
         const title = (next.title || '').trim();
         const where = loc ? ` @ ${loc}` : '';
-        // Derive the per-event GroupMe share URL from the chat join link:
-        //   chat:  https://groupme.com/join_group/{conv}/{token}
-        //   event: https://groupme.com/join_event/{conv}/{event_id}/{token}
-        // Share token is per-chat (same one), so no extra data needed.
-        const eventUrl = (next.external_id && /\/join_group\//.test(c.pickupLink))
-          ? c.pickupLink.replace('/join_group/', '/join_event/')
-                        .replace(/\/([^\/]+)$/, `/${next.external_id}/$1`)
-          : c.pickupLink;
         const titleClause = title ? `"${title}" — ` : '';
         pickupBody =
           `Our next pickup: ${titleClause}${when}${where}.\n` +
-          `RSVP "Going" here so we know to expect you: ${eventUrl}\n` +
+          `Reply "in" if you can make it and I'll expect you.\n` +
           `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
       } else {
         pickupBody =
-          `No pressure to commit yet — jump in our Philadelphia Pickup chat for the next session and RSVP "Going" on whichever pickup works for you: ${c.pickupLink}\n` +
+          `No pressure to commit yet — reply and I'll let you know when the next pickup is scheduled.\n` +
           `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
       }
       snippets.push({

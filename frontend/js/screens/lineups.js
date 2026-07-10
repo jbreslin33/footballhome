@@ -421,7 +421,7 @@ class LineupsScreen extends Screen {
       }
     });
 
-    // Drag-to-merge removed with the GroupMe cutover — no more loose-end
+    // Drag-to-merge removed — no more loose-end
     // (LA-only / GM-only) cards exist to drag, and the merge modal can be
     // reached directly from Club Admin if a stray duplicate appears.
   }
@@ -751,7 +751,7 @@ class LineupsScreen extends Screen {
         const d = td.diagnostics;
         this._appendLoading(
           `  [${td.team.name}] roster=${d.rosterSize} · chat="${d.chatName || '—'}" · ` +
-          `gm rsvps=${d.gmRsvpTotal} (linked ${d.gmRsvpLinkedToPerson}, unlinked ${d.gmRsvpUnlinked}) · ` +
+          `rsvps=${d.gmRsvpTotal} (linked ${d.gmRsvpLinkedToPerson}, unlinked ${d.gmRsvpUnlinked}) · ` +
           `roster-matched: gm=${d.rosterWithGmRsvp}, admin=${d.rosterWithAdminRsvp}`
         );
       } else {
@@ -2474,7 +2474,7 @@ class LineupsScreen extends Screen {
       }
     }
 
-    // Drag-to-merge removed with the GroupMe cutover — no draggable cards.
+    // Drag-to-merge removed — no draggable cards.
     const draggable = '';
 
     // Toggle / edit controls.  Edit (✏️) shows for EVERY card kind so the
@@ -2622,7 +2622,7 @@ class LineupsScreen extends Screen {
   }
 
   // -------------------------------------------------------------------------
-  // Merge confirm modal removed with the GroupMe cutover — no loose-end
+  // Merge confirm modal removed — no loose-end
   // (LA-only / GM-only) cards exist to drag, so there's no drag-merge flow.
   // /api/persons/merge is still callable from Club Admin tools if needed.
   // -------------------------------------------------------------------------
