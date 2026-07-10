@@ -157,6 +157,30 @@ bool callerRosteredForMatch(long long personId, long long matchId) {
     return !r.empty();
 }
 
+// Return caller's users.id when they're an active coach on the
+// match's home_team_id, else empty string.  Active = team_coaches
+// row with ended_at IS NULL.  Coach RSVPs write into
+// coach_rsvp_history.coach_id which FKs to users.id (NOT coaches.id),
+// so we resolve the whole chain here: team_coaches → coaches →
+// persons.id → users.id.
+std::string coachUserIdForMatch(long long personId, long long matchId) {
+    auto* db = Database::getInstance();
+    auto r = db->query(
+        "SELECT u.id "
+        "  FROM matches m "
+        "  JOIN team_coaches tc  ON tc.team_id  = m.home_team_id "
+        "  JOIN coaches      c   ON c.id        = tc.coach_id "
+        "  JOIN users        u   ON u.person_id = c.person_id "
+        " WHERE m.id = $1::int "
+        "   AND m.cancelled_at IS NULL "
+        "   AND tc.ended_at IS NULL "
+        "   AND u.person_id = $2::int "
+        " LIMIT 1",
+        {std::to_string(matchId), std::to_string(personId)});
+    if (r.empty() || r[0]["id"].is_null()) return {};
+    return std::to_string(r[0]["id"].as<long long>());
+}
+
 std::optional<long long> jsonInt(const json& j, const char* key) {
     if (!j.contains(key) || j[key].is_null()) return std::nullopt;
     if (j[key].is_number_integer())  return j[key].get<long long>();
@@ -226,13 +250,22 @@ Response MyController::handleGetWeek(const Request& request) {
         const long long playerId = resolvePlayerId(personId);
 
         auto rows = db->query(
-            // Eligibility (migration 107): the caller has
-            // player_rsvp_eligibility for m.home_team_id.  Team 908
-            // = Practice, 909 = Pickup, others = physical home teams.
+            // Eligibility: caller sees an event if they're rostered as
+            // a player on m.home_team_id (via player_rsvp_eligibility),
+            // OR they're an active coach on m.home_team_id (via
+            // team_coaches, ended_at IS NULL).  A person who's both
+            // gets a single event row (UNION dedups on match id).
+            //
+            // The is_coach flag drives which history table we read for
+            // `my_rsvp`: coach_rsvp_history keyed by users.id when
+            // is_coach=TRUE, else player_rsvp_history keyed by
+            // player_id.  On the write side (handlePostRsvp) the same
+            // check routes coach RSVPs into coach_rsvp_history.
             "WITH eligible_matches AS ( "
             "  SELECT DISTINCT m.id, m.match_type_id, m.home_team_id, m.match_date, "
             "         m.match_time, m.end_time, m.venue_id, m.title, "
-            "         m.description, m.rsvp_opens_at, m.series_id "
+            "         m.description, m.rsvp_opens_at, m.series_id, "
+            "         FALSE AS is_coach "
             "    FROM matches m "
             "    JOIN player_rsvp_eligibility ple "
             "      ON ple.team_id = m.home_team_id "
@@ -244,6 +277,33 @@ Response MyController::handleGetWeek(const Request& request) {
             "     AND m.rsvp_opens_at IS NOT NULL "
             "     AND m.rsvp_opens_at <= NOW() "
             "     AND m.match_date >= (NOW() AT TIME ZONE 'America/New_York')::date "
+            "  UNION "
+            "  SELECT DISTINCT m.id, m.match_type_id, m.home_team_id, m.match_date, "
+            "         m.match_time, m.end_time, m.venue_id, m.title, "
+            "         m.description, m.rsvp_opens_at, m.series_id, "
+            "         TRUE AS is_coach "
+            "    FROM matches m "
+            "    JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
+            "                        AND tc.ended_at IS NULL "
+            "    JOIN coaches       c ON c.id        = tc.coach_id "
+            "    JOIN users         u ON u.person_id = c.person_id "
+            "                        AND u.person_id = $1::int "
+            "   WHERE m.cancelled_at IS NULL "
+            "     AND m.rsvp_opens_at IS NOT NULL "
+            "     AND m.rsvp_opens_at <= NOW() "
+            "     AND m.match_date >= (NOW() AT TIME ZONE 'America/New_York')::date "
+            "), "
+            // Collapse duplicate rows when caller is both player &
+            // coach on the same team — coach takes precedence so the
+            // RSVP goes to coach_rsvp_history.
+            "eligible_matches_dedup AS ( "
+            "  SELECT id, match_type_id, home_team_id, match_date, match_time, "
+            "         end_time, venue_id, title, description, rsvp_opens_at, "
+            "         series_id, bool_or(is_coach) AS is_coach "
+            "    FROM eligible_matches "
+            "   GROUP BY id, match_type_id, home_team_id, match_date, match_time, "
+            "            end_time, venue_id, title, description, rsvp_opens_at, "
+            "            series_id "
             ") "
 
             "SELECT em.id AS match_id, em.match_type_id, mt.name AS match_type, "
@@ -255,8 +315,25 @@ Response MyController::handleGetWeek(const Request& request) {
             "       em.title, em.description, "
             "       to_char(em.rsvp_opens_at AT TIME ZONE 'UTC', "
             "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS rsvp_opens_at, "
-            "       em.series_id, "
-            "       ( "
+            "       em.series_id, em.is_coach, "
+            "       CASE WHEN em.is_coach THEN ( "
+            "         SELECT jsonb_build_object( "
+            "                  'rsvp_status_id', ch.rsvp_status_id, "
+            "                  'status',         rs.name, "
+            "                  'notes',          ch.notes, "
+            "                  'change_source',  cs.name, "
+            "                  'changed_at', to_char(ch.changed_at AT TIME ZONE 'UTC', "
+            "                                        'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') "
+            "                ) "
+            "           FROM coach_rsvp_history ch "
+            "           JOIN rsvp_statuses rs ON rs.id = ch.rsvp_status_id "
+            "           LEFT JOIN rsvp_change_sources cs ON cs.id = ch.change_source_id "
+            "           JOIN users u ON u.id = ch.coach_id "
+            "          WHERE ch.event_id = em.id "
+            "            AND u.person_id = $1::int "
+            "          ORDER BY ch.changed_at DESC "
+            "          LIMIT 1 "
+            "       ) ELSE ( "
             "         SELECT jsonb_build_object( "
             "                  'rsvp_status_id', h.rsvp_status_id, "
             "                  'status',         rs.name, "
@@ -272,8 +349,8 @@ Response MyController::handleGetWeek(const Request& request) {
             "            AND h.player_id = $2::int "
             "          ORDER BY h.changed_at DESC "
             "          LIMIT 1 "
-            "       ) AS my_rsvp "
-            "  FROM eligible_matches em "
+            "       ) END AS my_rsvp "
+            "  FROM eligible_matches_dedup em "
             "  JOIN match_types mt ON mt.id = em.match_type_id "
             "  LEFT JOIN venues v  ON v.id  = em.venue_id "
             " ORDER BY em.match_date, em.match_time",
@@ -312,6 +389,7 @@ Response MyController::handleGetWeek(const Request& request) {
                 {"description",   strOrNull("description")},
                 {"rsvp_opens_at", strOrNull("rsvp_opens_at")},
                 {"series_id",     intOrNull("series_id")},
+                {"is_coach",      !row["is_coach"].is_null() && row["is_coach"].as<bool>()},
                 {"my_rsvp",       rsvp},
             });
         }
@@ -391,7 +469,13 @@ Response MyController::handleGetWeek(const Request& request) {
 
 // POST /api/my/rsvp
 // Body: {match_id, rsvp_status_id, note?}
-// Inserts a player_rsvp_history row with change_source_id=1 (app).
+//
+// If the caller is an active coach on the event's home team, the row
+// goes into coach_rsvp_history (keyed by users.id).  Otherwise the
+// caller must be a rostered player and the row goes into
+// player_rsvp_history (keyed by players.id).  A person who is both
+// coach and player is treated as a coach (see handleGetWeek dedup —
+// they see a single event row with is_coach=TRUE).
 Response MyController::handlePostRsvp(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
@@ -416,7 +500,42 @@ Response MyController::handlePostRsvp(const Request& request) {
         note = body["note"].get<std::string>();
     }
 
-    // Membership check first (403 before we touch history).
+    auto* db = Database::getInstance();
+
+    // Coach path first — takes precedence over player path.
+    const std::string coachUserId = coachUserIdForMatch(personId, matchId);
+    if (!coachUserId.empty()) {
+        try {
+            std::vector<std::string> params = {
+                std::to_string(matchId),
+                coachUserId,               // coach_id (users.id)
+                std::to_string(statusId),
+                coachUserId,               // changed_by (users.id) — coach is self-recording
+                note,
+            };
+            auto r = db->query(
+                "INSERT INTO coach_rsvp_history "
+                "  (event_id, coach_id, rsvp_status_id, changed_by, "
+                "   change_source_id, notes) "
+                "VALUES ($1::int, $2::int, $3::int, "
+                "        NULLIF($4, '')::int, 1, NULLIF($5, '')) "
+                "RETURNING id, changed_at",
+                params);
+            if (r.empty()) {
+                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "insert failed");
+            }
+            return jsonOk({
+                {"success",  true},
+                {"role",     "coach"},
+                {"rsvp_id",  r[0]["id"].as<std::string>()},
+            });
+        } catch (const std::exception& e) {
+            std::cerr << "[POST /api/my/rsvp coach] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+        }
+    }
+
+    // Player path — the pre-coach behaviour.
     if (!callerRosteredForMatch(personId, matchId)) {
         return jsonError(HttpStatus::FORBIDDEN, "not rostered on this team");
     }
@@ -426,7 +545,6 @@ Response MyController::handlePostRsvp(const Request& request) {
         return jsonError(HttpStatus::FORBIDDEN, "no player record");
     }
 
-    auto* db = Database::getInstance();
     try {
         const std::string changedBy = resolveChangedByUserId(personId);
         std::vector<std::string> params = {
@@ -451,6 +569,7 @@ Response MyController::handlePostRsvp(const Request& request) {
 
         return jsonOk({
             {"success",  true},
+            {"role",     "player"},
             {"rsvp_id",  r[0]["id"].as<std::string>()},
         });
     } catch (const std::exception& e) {
@@ -874,10 +993,10 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "match not found");
         }
 
-        // Caller must be on this match's roster themselves, OR carry
-        // an admins row — we don't leak rosters to arbitrary logged-in
-        // users.  Same eligibility rule as callerRosteredForMatch() —
-        // uses the materialized player_rsvp_eligibility table so pool
+        // Caller must be on this match's roster themselves, OR be
+        // an active coach on the match's home team, OR carry an
+        // admins row — we don't leak rosters to arbitrary logged-in
+        // users.  Player check uses player_rsvp_eligibility so pool
         // teams (908 Practice / 909 Pickup) resolve correctly.
         auto membership = db->query(
             "SELECT 1 "
@@ -888,6 +1007,15 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "   AND epa.external_user_id = ple.leagueapps_user_id::text "
             " WHERE ple.team_id = m.home_team_id "
             "   AND epa.person_id = $1::int "
+            " UNION ALL "
+            " SELECT 1 "
+            "  FROM matches m "
+            "  JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
+            "                      AND tc.ended_at IS NULL "
+            "  JOIN coaches       c ON c.id        = tc.coach_id "
+            "  JOIN users         u ON u.person_id = c.person_id "
+            "                      AND u.person_id = $1::int "
+            " WHERE m.id = $2::int "
             " UNION ALL "
             " SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
             "  WHERE u.person_id = $1::int "
@@ -904,9 +1032,21 @@ Response MyController::handleGetEventRsvps(const Request& request) {
         // i.e. they aren't on any numbered team.  Used by the UI to
         // badge them as "Pickup" members so team members can tell
         // them apart from the regular roster at a glance.
+        //
+        // Coaches are EXCLUDED here — they render in a separate
+        // `coaches` list below so their "Coach" badge is unmissable
+        // and their RSVPs (from coach_rsvp_history) don't collide
+        // with player RSVPs.
         auto rows = db->query(
             "WITH m AS ( "
             "  SELECT id, match_type_id, home_team_id FROM matches WHERE id = $1::int "
+            "), "
+            "coach_persons AS ( "
+            "  SELECT c.person_id "
+            "    FROM m "
+            "    JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
+            "                        AND tc.ended_at IS NULL "
+            "    JOIN coaches       c ON c.id        = tc.coach_id "
             "), "
             "eligible AS ( "
             "  SELECT DISTINCT epa.person_id "
@@ -916,6 +1056,7 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "    JOIN external_person_aliases epa "
             "      ON epa.provider = 'leagueapps' "
             "     AND epa.external_user_id = ple.leagueapps_user_id::text "
+            "   WHERE epa.person_id NOT IN (SELECT person_id FROM coach_persons) "
             ") "
             "SELECT e.person_id, p.first_name, p.last_name, "
             "       COALESCE(h.rsvp_status_id, 0) AS status_id, "
@@ -963,6 +1104,64 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             }
         }
 
+        // Coaches list — active team_coaches for this match's home
+        // team, joined to their latest coach_rsvp_history row.  Only
+        // coaches with a users row are surfaced (coach_id FKs to
+        // users.id), so legacy placeholder coach persons without an
+        // app account silently drop off.
+        auto coachRows = db->query(
+            "WITH m AS ( "
+            "  SELECT id, home_team_id FROM matches WHERE id = $1::int "
+            ") "
+            "SELECT u.id AS user_id, p.id AS person_id, "
+            "       p.first_name, p.last_name, "
+            "       COALESCE(h.rsvp_status_id, 0) AS status_id "
+            "  FROM m "
+            "  JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
+            "                      AND tc.ended_at IS NULL "
+            "  JOIN coaches       c ON c.id        = tc.coach_id "
+            "  JOIN persons       p ON p.id        = c.person_id "
+            "  JOIN users         u ON u.person_id = c.person_id "
+            "  LEFT JOIN LATERAL ( "
+            "    SELECT rsvp_status_id "
+            "      FROM coach_rsvp_history hh "
+            "     WHERE hh.event_id = m.id "
+            "       AND hh.coach_id = u.id "
+            "     ORDER BY hh.changed_at DESC "
+            "     LIMIT 1 "
+            "  ) h ON true "
+            " ORDER BY p.last_name NULLS LAST, p.first_name NULLS LAST",
+            {std::to_string(matchId)});
+
+        json coachGoing      = json::array();
+        json coachMaybe      = json::array();
+        json coachNotGoing   = json::array();
+        json coachNoResponse = json::array();
+        for (const auto& r : coachRows) {
+            const int statusId = r["status_id"].is_null() ? 0 : r["status_id"].as<int>();
+            json entry = {
+                {"user_id",    r["user_id"].as<long long>()},
+                {"person_id",  r["person_id"].as<long long>()},
+                {"first_name", r["first_name"].is_null() ? std::string{} : r["first_name"].as<std::string>()},
+                {"last_name",  r["last_name"].is_null()  ? std::string{} : r["last_name"].as<std::string>()},
+                {"is_coach",   true},
+            };
+            switch (statusId) {
+                case 1: coachGoing.push_back(entry);      break;
+                case 2: coachNotGoing.push_back(entry);   break;
+                case 3: coachMaybe.push_back(entry);      break;
+                default: coachNoResponse.push_back(entry); break;
+            }
+        }
+        json coaches = {
+            {"going",       coachGoing},
+            {"maybe",       coachMaybe},
+            {"not_going",   coachNotGoing},
+            {"no_response", coachNoResponse},
+            {"total",       (long long)(coachGoing.size() + coachMaybe.size()
+                                         + coachNotGoing.size() + coachNoResponse.size())},
+        };
+
         json counts = {
             {"going",       (long long)going.size()},
             {"maybe",       (long long)maybe.size()},
@@ -978,6 +1177,7 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             {"maybe",       maybe},
             {"not_going",   notGoing},
             {"no_response", noResponse},
+            {"coaches",     coaches},
         });
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/my/event-rsvps] " << e.what() << std::endl;

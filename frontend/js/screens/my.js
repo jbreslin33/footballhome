@@ -452,6 +452,10 @@ class MyScreen extends Screen {
         <div style="margin-top: var(--space-3); font-size:0.8rem; opacity:0.75;">
           <span style="opacity:0.7;">Your availability:</span>
           <strong style="color:${yourStatusColor};">${this.escapeHtml(yourStatusLabel)}</strong>
+          ${ev.is_coach ? `<span style="display:inline-block; margin-left:8px; padding:1px 8px;
+                                        border-radius:8px; background:rgba(147,197,253,0.15);
+                                        color:#93c5fd; font-size:0.72rem; font-weight:700;
+                                        letter-spacing:0.03em; vertical-align:middle;">🧢 COACH</span>` : ''}
         </div>
         <div style="display:flex; gap: var(--space-2); margin-top: var(--space-2);">
           ${btn(1, 'Going',     '#16a34a')}
@@ -498,12 +502,14 @@ class MyScreen extends Screen {
 
     const expandedBody = (expanded && data) ? `
       <div style="margin-top: var(--space-3); padding-top: var(--space-3);
-                  border-top: 1px dashed rgba(255,255,255,0.1);
-                  display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-        ${this._renderRsvpBucket('Going',     data.going,       '#16a34a', '✓')}
-        ${this._renderRsvpBucket('Maybe',     data.maybe,       '#f59e0b', '?')}
-        ${this._renderRsvpBucket("Can't go",  data.not_going,   '#dc2626', '✕')}
-        ${this._renderRsvpBucket('No reply',  data.no_response, '#6b7280', '—')}
+                  border-top: 1px dashed rgba(255,255,255,0.1);">
+        ${this._renderCoachRsvpsBlock(data.coaches)}
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+          ${this._renderRsvpBucket('Going',     data.going,       '#16a34a', '✓')}
+          ${this._renderRsvpBucket('Maybe',     data.maybe,       '#f59e0b', '?')}
+          ${this._renderRsvpBucket("Can't go",  data.not_going,   '#dc2626', '✕')}
+          ${this._renderRsvpBucket('No reply',  data.no_response, '#6b7280', '—')}
+        </div>
       </div>
     ` : (expanded && loading) ? `
       <div style="margin-top: var(--space-3); padding: var(--space-3) 0;
@@ -528,6 +534,48 @@ class MyScreen extends Screen {
         </button>
       </div>
       ${expandedBody}
+    `;
+  }
+
+  // Coach RSVP row — renders above the four player-status buckets
+  // inside the expanded "who's going" panel.  Coach RSVPs live in
+  // coach_rsvp_history (separate from player_rsvp_history) and are
+  // always shown together as a single "Coaches" block so it's clear
+  // at a glance which staff are coming.  Returns '' when the event
+  // has no active coaches with an app account (users.id row).
+  _renderCoachRsvpsBlock(coaches) {
+    if (!coaches || !coaches.total) return '';
+    const line = (label, arr, color, icon) => {
+      if (!arr || !arr.length) return '';
+      const names = arr.map(c => {
+        const first = (c.first_name || '').trim();
+        const last  = (c.last_name  || '').trim();
+        return this.escapeHtml((first + (last ? ' ' + last : '')) || `Coach #${c.user_id}`);
+      }).join(', ');
+      return `
+        <div style="font-size:0.85rem; padding:2px 0;">
+          <span style="color:${color}; font-weight:600;">${icon} ${this.escapeHtml(label)}:</span>
+          <span style="opacity:0.9;"> ${names}</span>
+        </div>
+      `;
+    };
+    const rows =
+        line('Going',    coaches.going,       '#16a34a', '✓')
+      + line('Maybe',    coaches.maybe,       '#f59e0b', '?')
+      + line("Can't go", coaches.not_going,   '#dc2626', '✕')
+      + line('No reply', coaches.no_response, '#6b7280', '—');
+    return `
+      <div style="margin-bottom: var(--space-3); padding: var(--space-2);
+                  background: rgba(147,197,253,0.06);
+                  border: 1px solid rgba(147,197,253,0.20);
+                  border-radius: 6px;">
+        <div style="color:#93c5fd; font-weight:700; font-size:0.8rem;
+                    text-transform: uppercase; letter-spacing: 0.05em;
+                    margin-bottom: 4px;">
+          🧢 Coaches
+        </div>
+        ${rows}
+      </div>
     `;
   }
 
