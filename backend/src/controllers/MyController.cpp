@@ -157,24 +157,25 @@ bool callerRosteredForMatch(long long personId, long long matchId) {
     return !r.empty();
 }
 
-// Return caller's users.id when they're an active coach on the
-// match's home_team_id, else empty string.  Active = team_coaches
-// row with ended_at IS NULL.  Coach RSVPs write into
-// coach_rsvp_history.coach_id which FKs to users.id (NOT coaches.id),
-// so we resolve the whole chain here: team_coaches → coaches →
-// persons.id → users.id.
+// Return caller's users.id when they're eligible to RSVP as a coach
+// on the match's home_team_id, else empty string.  Backed by
+// coach_rsvp_eligibility, which merges (a) mirrored rows from
+// team_coaches (source='team_coach') and (b) manual admin grants for
+// cover shifts / temporary coaching (source='manual_grant'), with an
+// optional expires_at gate on manual grants.  Single-table lookup;
+// coach_rsvp_eligibility.coach_id already FKs users.id so no chain
+// resolution needed.
 std::string coachUserIdForMatch(long long personId, long long matchId) {
     auto* db = Database::getInstance();
     auto r = db->query(
         "SELECT u.id "
         "  FROM matches m "
-        "  JOIN team_coaches tc  ON tc.team_id  = m.home_team_id "
-        "  JOIN coaches      c   ON c.id        = tc.coach_id "
-        "  JOIN users        u   ON u.person_id = c.person_id "
+        "  JOIN coach_rsvp_eligibility cre ON cre.team_id = m.home_team_id "
+        "                              AND (cre.expires_at IS NULL OR cre.expires_at > NOW()) "
+        "  JOIN users u ON u.id = cre.coach_id "
+        "                AND u.person_id = $2::int "
         " WHERE m.id = $1::int "
         "   AND m.cancelled_at IS NULL "
-        "   AND tc.ended_at IS NULL "
-        "   AND u.person_id = $2::int "
         " LIMIT 1",
         {std::to_string(matchId), std::to_string(personId)});
     if (r.empty() || r[0]["id"].is_null()) return {};
@@ -252,9 +253,11 @@ Response MyController::handleGetWeek(const Request& request) {
         auto rows = db->query(
             // Eligibility: caller sees an event if they're rostered as
             // a player on m.home_team_id (via player_rsvp_eligibility),
-            // OR they're an active coach on m.home_team_id (via
-            // team_coaches, ended_at IS NULL).  A person who's both
-            // gets a single event row (UNION dedups on match id).
+            // OR they're eligible to coach m.home_team_id (via
+            // coach_rsvp_eligibility, which mirrors active team_coaches
+            // rows and also supports manual_grant rows for cover
+            // shifts).  A person who's both gets a single event row
+            // (UNION dedups on match id).
             //
             // The is_coach flag drives which history table we read for
             // `my_rsvp`: coach_rsvp_history keyed by users.id when
@@ -283,11 +286,11 @@ Response MyController::handleGetWeek(const Request& request) {
             "         m.description, m.rsvp_opens_at, m.series_id, "
             "         TRUE AS is_coach "
             "    FROM matches m "
-            "    JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
-            "                        AND tc.ended_at IS NULL "
-            "    JOIN coaches       c ON c.id        = tc.coach_id "
-            "    JOIN users         u ON u.person_id = c.person_id "
-            "                        AND u.person_id = $1::int "
+            "    JOIN coach_rsvp_eligibility cre "
+            "      ON cre.team_id = m.home_team_id "
+            "     AND (cre.expires_at IS NULL OR cre.expires_at > NOW()) "
+            "    JOIN users u ON u.id = cre.coach_id "
+            "                AND u.person_id = $1::int "
             "   WHERE m.cancelled_at IS NULL "
             "     AND m.rsvp_opens_at IS NOT NULL "
             "     AND m.rsvp_opens_at <= NOW() "
@@ -1010,11 +1013,10 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             " UNION ALL "
             " SELECT 1 "
             "  FROM matches m "
-            "  JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
-            "                      AND tc.ended_at IS NULL "
-            "  JOIN coaches       c ON c.id        = tc.coach_id "
-            "  JOIN users         u ON u.person_id = c.person_id "
-            "                      AND u.person_id = $1::int "
+            "  JOIN coach_rsvp_eligibility cre ON cre.team_id = m.home_team_id "
+            "                                AND (cre.expires_at IS NULL OR cre.expires_at > NOW()) "
+            "  JOIN users u ON u.id = cre.coach_id "
+            "                AND u.person_id = $1::int "
             " WHERE m.id = $2::int "
             " UNION ALL "
             " SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
@@ -1042,11 +1044,12 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "  SELECT id, match_type_id, home_team_id FROM matches WHERE id = $1::int "
             "), "
             "coach_persons AS ( "
-            "  SELECT c.person_id "
+            "  SELECT u.person_id "
             "    FROM m "
-            "    JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
-            "                        AND tc.ended_at IS NULL "
-            "    JOIN coaches       c ON c.id        = tc.coach_id "
+            "    JOIN coach_rsvp_eligibility cre "
+            "      ON cre.team_id = m.home_team_id "
+            "     AND (cre.expires_at IS NULL OR cre.expires_at > NOW()) "
+            "    JOIN users u ON u.id = cre.coach_id "
             "), "
             "eligible AS ( "
             "  SELECT DISTINCT epa.person_id "
@@ -1104,11 +1107,12 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             }
         }
 
-        // Coaches list — active team_coaches for this match's home
-        // team, joined to their latest coach_rsvp_history row.  Only
-        // coaches with a users row are surfaced (coach_id FKs to
-        // users.id), so legacy placeholder coach persons without an
-        // app account silently drop off.
+        // Coaches list — everyone with coach_rsvp_eligibility for this
+        // match's home team (both mirrored team_coaches assignments and
+        // manual cover-shift grants), joined to their latest
+        // coach_rsvp_history row.  Since coach_rsvp_eligibility.coach_id
+        // already FKs users.id, no coaches/persons chain resolution
+        // needed — we just look up person_id via users.person_id.
         auto coachRows = db->query(
             "WITH m AS ( "
             "  SELECT id, home_team_id FROM matches WHERE id = $1::int "
@@ -1117,11 +1121,11 @@ Response MyController::handleGetEventRsvps(const Request& request) {
             "       p.first_name, p.last_name, "
             "       COALESCE(h.rsvp_status_id, 0) AS status_id "
             "  FROM m "
-            "  JOIN team_coaches tc ON tc.team_id  = m.home_team_id "
-            "                      AND tc.ended_at IS NULL "
-            "  JOIN coaches       c ON c.id        = tc.coach_id "
-            "  JOIN persons       p ON p.id        = c.person_id "
-            "  JOIN users         u ON u.person_id = c.person_id "
+            "  JOIN coach_rsvp_eligibility cre "
+            "    ON cre.team_id = m.home_team_id "
+            "   AND (cre.expires_at IS NULL OR cre.expires_at > NOW()) "
+            "  JOIN users   u ON u.id = cre.coach_id "
+            "  JOIN persons p ON p.id = u.person_id "
             "  LEFT JOIN LATERAL ( "
             "    SELECT rsvp_status_id "
             "      FROM coach_rsvp_history hh "
