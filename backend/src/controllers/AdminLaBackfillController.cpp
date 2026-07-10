@@ -1,5 +1,6 @@
 #include "AdminLaBackfillController.h"
 
+#include <chrono>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
@@ -8,6 +9,7 @@
 
 #include "../database/Database.h"
 #include "../models/PersonLinker.h"
+#include "../services/LaProgramSync.h"
 #include "../services/LeagueAppsService.h"
 #include "../third_party/json.hpp"
 
@@ -138,6 +140,9 @@ void AdminLaBackfillController::registerRoutes(Router& router,
     });
     router.get(prefix + "/members", [this](const Request& req) {
         return this->handleMembers(req);
+    });
+    router.post(prefix + "/membership/sync", [this](const Request& req) {
+        return this->handleSyncMemberships(req);
     });
 }
 
@@ -444,7 +449,8 @@ Response AdminLaBackfillController::handleBackfill(const Request& request) {
 //     }
 //   }
 // ────────────────────────────────────────────────────────────────────────────
-static Response respondMembers(const std::string& variant) {
+static Response respondMembers(const std::string& variant,
+                                const std::string& category) {
     try {
         auto* db = Database::getInstance();
 
@@ -452,6 +458,11 @@ static Response respondMembers(const std::string& variant) {
         // Category label capitalisation: only "men", "boys", "girls" are
         // seeded today (matches memory notes 2026-07-01).  Any future
         // category (e.g. "women") is title-cased generically.
+        //
+        // $1 = variant ('active' | 'paused')
+        // $2 = category ('men' | 'women' | 'boys' | 'girls' | '' for all).
+        //     The `$2 = ''` short-circuit keeps the endpoint back-compat
+        //     for callers that don't scope by category yet.
         auto rows = db->query(
             "WITH primary_email AS ( "
             // Prefer is_primary=true, else fall back to most-recent row.
@@ -500,13 +511,15 @@ static Response respondMembers(const std::string& variant) {
             "  LEFT JOIN primary_email parent_pem ON parent_pem.person_id = pe.parent_person_id "
             "  LEFT JOIN primary_phone parent_pph ON parent_pph.person_id = pe.parent_person_id "
             " WHERE plm.ended_at IS NULL AND lp.variant = $1 "
+            "   AND ($2 = '' OR lp.category = $2) "
             " ORDER BY lp.category, lp.program_id, pe.last_name, pe.first_name",
-            { variant });
+            { variant, category });
 
         // Group by (category, program_id) — one group per sub-program.
         std::ostringstream out;
         out << "{\"success\":true,\"data\":{"
             << "\"variant\":" << jsonEscape(variant) << ","
+            << "\"category\":" << jsonEscape(category) << ","
             << "\"groups\":[";
 
         long long   curProgramId = -1;
@@ -606,16 +619,168 @@ static std::string resolveVariant(const Request& request,
     return v;
 }
 
+// Optional `?category=` query param — narrows the enumeration to a
+// single LA category.  Empty string = "all categories".  Values outside
+// the allowlist collapse to empty so a client typo never returns zero
+// rows silently.
+static std::string resolveCategory(const Request& request) {
+    std::string c = request.getQueryParam("category");
+    if (c.empty()) return "";
+    // Lowercase for case-insensitive compare.
+    for (auto& ch : c) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    if (c == "men" || c == "women" || c == "boys" || c == "girls") return c;
+    return "";
+}
+
 Response AdminLaBackfillController::handlePausedMembers(const Request& request) {
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
-    return respondMembers(resolveVariant(request, "paused"));
+    return respondMembers(resolveVariant(request, "paused"), resolveCategory(request));
 }
 
 Response AdminLaBackfillController::handleMembers(const Request& request) {
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
-    return respondMembers(resolveVariant(request, "active"));
+    return respondMembers(resolveVariant(request, "active"), resolveCategory(request));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/admin/membership/sync?variant=<active|paused>&category=<opt>
+//
+// The "click a Membership tile" refresh hook.  For every LA program in
+// `leagueapps_programs` matching the (variant, category) filter, run
+// LaProgramSync — which fetches the current LA registrations, upserts
+// persons + external_person_aliases + emails + phones + person_la_memberships,
+// and sets ended_at on rows LA has dropped.  Per-program failures are
+// captured, not fatal; the response reports them so the client can
+// show an amber "some programs failed" strip.
+//
+// After this returns, `GET /api/admin/members?...` reflects the fresh
+// snapshot with zero additional LA traffic.
+// ────────────────────────────────────────────────────────────────────────────
+Response AdminLaBackfillController::handleSyncMemberships(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    const std::string variant  = resolveVariant(request, "active");
+    const std::string category = resolveCategory(request);
+
+    struct ProgramRow {
+        long long   programId;
+        std::string programName;
+        std::string category;
+        std::string variant;
+    };
+    std::vector<ProgramRow> programs;
+
+    try {
+        auto* db = Database::getInstance();
+        auto rows = db->query(
+            "SELECT program_id, program_name, category, variant "
+            "  FROM leagueapps_programs "
+            " WHERE variant = $1 "
+            "   AND ($2 = '' OR category = $2) "
+            " ORDER BY category, program_id",
+            { variant, category });
+        for (const auto& r : rows) {
+            ProgramRow pr;
+            pr.programId   = r["program_id"].as<long long>();
+            pr.programName = r["program_name"].is_null() ? "" : r["program_name"].c_str();
+            pr.category    = r["category"].is_null()     ? "" : r["category"].c_str();
+            pr.variant     = r["variant"].is_null()      ? "" : r["variant"].c_str();
+            programs.push_back(std::move(pr));
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "AdminLaBackfillController::handleSyncMemberships enumerate error: "
+                  << e.what() << std::endl;
+        return internalErr(HttpStatus::INTERNAL_SERVER_ERROR,
+                           std::string("Failed to enumerate programs: ") + e.what());
+    }
+
+    const auto startAll = std::chrono::steady_clock::now();
+
+    struct SyncOut {
+        long long   programId;
+        std::string programName;
+        std::string category;
+        std::string variant;
+        bool        ok = false;
+        std::size_t recordCount = 0;
+        long long   elapsedMs = 0;
+        std::string error;
+    };
+    std::vector<SyncOut> results;
+    results.reserve(programs.size());
+
+    int programsOk = 0;
+    int programsFailed = 0;
+    std::size_t totalRecords = 0;
+
+    for (const auto& p : programs) {
+        SyncOut o;
+        o.programId   = p.programId;
+        o.programName = p.programName;
+        o.category    = p.category;
+        o.variant     = p.variant;
+
+        const auto t0 = std::chrono::steady_clock::now();
+        try {
+            LaProgramSync sync;
+            auto res = sync.run(static_cast<int>(p.programId));
+            o.ok = true;
+            o.recordCount = res.recs.size();
+            totalRecords += o.recordCount;
+            ++programsOk;
+        } catch (const std::exception& e) {
+            o.ok = false;
+            o.error = e.what();
+            ++programsFailed;
+            std::cerr << "[membership/sync program=" << p.programId
+                      << "] LaProgramSync failed: " << e.what() << std::endl;
+        }
+        const auto t1 = std::chrono::steady_clock::now();
+        o.elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+        results.push_back(std::move(o));
+    }
+
+    const auto endAll   = std::chrono::steady_clock::now();
+    const long long elapsedMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(endAll - startAll).count();
+    const long long syncedAtMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+
+    std::ostringstream out;
+    out << "{\"success\":true,\"data\":{"
+        << "\"variant\":"  << jsonEscape(variant) << ","
+        << "\"category\":" << jsonEscape(category) << ","
+        << "\"programs\":[";
+    for (std::size_t i = 0; i < results.size(); ++i) {
+        const auto& o = results[i];
+        if (i) out << ",";
+        out << "{"
+            << "\"programId\":"    << o.programId
+            << ",\"programName\":" << jsonEscape(o.programName)
+            << ",\"category\":"    << jsonEscape(o.category)
+            << ",\"variant\":"     << jsonEscape(o.variant)
+            << ",\"ok\":"          << (o.ok ? "true" : "false")
+            << ",\"recordCount\":" << o.recordCount
+            << ",\"elapsedMs\":"   << o.elapsedMs
+            << ",\"error\":"       << jsonEscape(o.error)
+            << "}";
+    }
+    out << "],"
+        << "\"programsOk\":"     << programsOk << ","
+        << "\"programsFailed\":" << programsFailed << ","
+        << "\"totalRecords\":"   << totalRecords << ","
+        << "\"elapsedMs\":"      << elapsedMs << ","
+        << "\"syncedAtMs\":"     << syncedAtMs
+        << "}}";
+
+    Response r(HttpStatus::OK, out.str());
+    r.setHeader("Content-Type", "application/json");
+    return r;
 }

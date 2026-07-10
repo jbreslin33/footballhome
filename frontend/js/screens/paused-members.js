@@ -42,8 +42,31 @@ class PausedMembersScreen extends Screen {
              display:flex; flex-wrap:wrap; gap: var(--space-2); align-items:center;">
         </div>
 
-        <div id="members-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">
-          Loading members…
+        <div id="members-loading" style="display:block; padding: var(--space-4);">
+          <div id="members-boot" style="max-width: 520px; margin: 0 auto;
+               background: #0b1220; color: #d1d5db;
+               border: 1px solid #1f2937; border-radius: var(--radius-md);
+               padding: var(--space-4);
+               font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+               font-size: 0.9rem; line-height: 1.55;">
+            <div style="opacity: 0.7; margin-bottom: var(--space-3);">
+              football-home boot &middot; refresh membership
+            </div>
+            <div class="boot-line" data-step="1" style="display:flex; gap:8px; align-items:baseline;">
+              <span class="boot-mark" style="width:1.6em; display:inline-block;">[<span class="boot-spin">·</span>]</span>
+              <span>Contacting LeagueApps</span>
+            </div>
+            <div class="boot-line" data-step="2" style="display:flex; gap:8px; align-items:baseline; opacity:0.4;">
+              <span class="boot-mark" style="width:1.6em; display:inline-block;">[ ]</span>
+              <span>Refreshing local database</span>
+            </div>
+            <div class="boot-line" data-step="3" style="display:flex; gap:8px; align-items:baseline; opacity:0.4;">
+              <span class="boot-mark" style="width:1.6em; display:inline-block;">[ ]</span>
+              <span>Loading member list</span>
+            </div>
+            <div id="members-boot-detail" style="margin-top: var(--space-3);
+                 opacity: 0.6; min-height: 1.2em; font-size: 0.8rem;"></div>
+          </div>
         </div>
         <div id="members-error" style="display:none; color: var(--color-error);
                                        padding: var(--space-4); text-align:center;"></div>
@@ -138,21 +161,49 @@ class PausedMembersScreen extends Screen {
     if (filtersEl)  filtersEl.style.display  = 'none';
     if (bulkBar)    bulkBar.style.display    = 'none';
 
+    this._resetBoot();
+
+    const qs = `variant=${encodeURIComponent(this.variant)}` +
+               (this.category ? `&category=${encodeURIComponent(this.category)}` : '');
+
+    // ── Step 1 + 2: sync from LeagueApps → upsert local DB ─────────
+    // A single POST to the backend covers both.  The backend fans out
+    // over every LA program matching (variant, category) and runs
+    // LaProgramSync per program.  We show the two steps sequentially
+    // for UX; both are already done by the time the POST returns.
+    let syncInfo = null;
     try {
-      // /members defaults to variant=active; /paused-members defaults
-      // to variant=paused.  Passing the explicit query param makes the
-      // choice unambiguous either way.
-      const url = `/api/admin/members?variant=${encodeURIComponent(this.variant)}`;
-      const res = await this.auth.fetch(url);
+      const syncRes = await this.auth.fetch(`/api/admin/membership/sync?${qs}`, {
+        method: 'POST',
+      });
+      if (!syncRes.ok) throw new Error(`sync HTTP ${syncRes.status}`);
+      const syncBody = await syncRes.json();
+      if (!syncBody?.success) throw new Error(syncBody?.error || 'Sync failed');
+      syncInfo = syncBody.data || null;
+
+      this._markBoot(1, 'ok', this._bootProgramLine(syncInfo));
+      // Brief pause so both checkmarks don't flash at once — vibes.
+      await this._sleep(180);
+      this._markBoot(2, 'ok', this._bootDbLine(syncInfo));
+    } catch (err) {
+      console.error('membership sync failed', err);
+      this._markBoot(1, 'fail', err.message);
+      this._markBoot(2, 'fail', 'Skipped — using last known DB state');
+      // Non-fatal: still try to read.  syncInfo stays null.
+    }
+
+    // ── Step 3: load members from DB (fresh) ────────────────────────
+    try {
+      const res = await this.auth.fetch(`/api/admin/members?${qs}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       if (!body?.success) throw new Error(body?.error || 'Load failed');
 
-      // Store ALL groups; category is applied at render time so the
-      // chip row can flip between Men / Women / Boys / Girls instantly
-      // without re-fetching.
       this._groups = Array.isArray(body?.data?.groups) ? body.data.groups : [];
       const total  = this._filteredGroups().reduce((n, g) => n + (g.members?.length || 0), 0);
+
+      this._markBoot(3, 'ok', total === 1 ? '1 member' : `${total} members`);
+      await this._sleep(220); // Let the last checkmark register visually.
 
       loadingEl.style.display = 'none';
 
@@ -167,9 +218,9 @@ class PausedMembersScreen extends Screen {
       this._renderCategoryChips();
       if (filtersEl)  filtersEl.style.display  = 'flex';
       if (searchWrap) searchWrap.style.display = 'block';
+      this._renderSyncStrip(syncInfo);
 
       if (total === 0) {
-        // Chips visible but selected category has 0 → soft empty.
         emptyEl.style.display = 'block';
         const catLabel = { men:'men', women:'women', boys:'boys', girls:'girls' }[this.category] || '';
         emptyEl.textContent = this.variant === 'paused'
@@ -184,11 +235,95 @@ class PausedMembersScreen extends Screen {
       this._renderBulkBar();
     } catch (err) {
       console.error('members load failed', err);
-      loadingEl.style.display = 'none';
+      this._markBoot(3, 'fail', err.message);
+      // Leave the boot screen visible with the failure state so the
+      // operator can see which step broke.
       errorEl.style.display   = 'block';
       errorEl.textContent     = `Failed to load members: ${err.message}`;
     }
   }
+
+  // ── Boot-screen helpers ───────────────────────────────────────────
+  _resetBoot() {
+    const boot = this.find('#members-boot');
+    if (!boot) return;
+    boot.style.display = 'block';
+    boot.querySelectorAll('.boot-line').forEach((line, i) => {
+      line.style.opacity = (i === 0) ? '1' : '0.4';
+      const mark = line.querySelector('.boot-mark');
+      if (mark) mark.innerHTML = (i === 0)
+        ? '[<span class="boot-spin">·</span>]'
+        : '[ ]';
+    });
+    const detail = this.find('#members-boot-detail');
+    if (detail) detail.textContent = '';
+  }
+  _markBoot(step, state, detailText) {
+    const boot = this.find('#members-boot');
+    if (!boot) return;
+    const line = boot.querySelector(`.boot-line[data-step="${step}"]`);
+    if (line) {
+      line.style.opacity = '1';
+      const mark = line.querySelector('.boot-mark');
+      if (mark) {
+        if (state === 'ok')      mark.textContent = '[✓]';
+        else if (state === 'fail') mark.textContent = '[✗]';
+        else                       mark.innerHTML   = '[<span class="boot-spin">·</span>]';
+      }
+    }
+    // Reveal + spinner-ify the next step, if this one succeeded.
+    if (state === 'ok') {
+      const next = boot.querySelector(`.boot-line[data-step="${step + 1}"]`);
+      if (next) {
+        next.style.opacity = '1';
+        const nmark = next.querySelector('.boot-mark');
+        if (nmark) nmark.innerHTML = '[<span class="boot-spin">·</span>]';
+      }
+    }
+    const detail = this.find('#members-boot-detail');
+    if (detail && detailText) detail.textContent = detailText;
+  }
+  _bootProgramLine(info) {
+    if (!info) return '';
+    const n = Array.isArray(info.programs) ? info.programs.length : 0;
+    const totalMs = info.elapsedMs || 0;
+    const totalRecs = info.totalRecords || 0;
+    return `${n} program${n === 1 ? '' : 's'} · ${totalRecs} record${totalRecs === 1 ? '' : 's'} · ${totalMs} ms`;
+  }
+  _bootDbLine(info) {
+    if (!info) return '';
+    const fails = info.programsFailed || 0;
+    return fails > 0 ? `${fails} program${fails === 1 ? '' : 's'} failed` : 'ok';
+  }
+  _renderSyncStrip(info) {
+    // Small strip below the header showing when the data was refreshed
+    // — amber if any programs failed.  Placed inline in the loading
+    // slot's parent so it survives the loading-hide toggle.
+    const anchor = this.find('#members-groups');
+    if (!anchor) return;
+    // Remove any prior strip so re-renders don't stack.
+    const prior = this.element.querySelector('.members-sync-strip');
+    if (prior) prior.remove();
+    if (!info) return;
+    const failed = info.programsFailed || 0;
+    const secs = ((info.elapsedMs || 0) / 1000).toFixed(1);
+    const strip = document.createElement('div');
+    strip.className = 'members-sync-strip';
+    strip.style.cssText = `
+      margin-bottom: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      background: ${failed ? '#fef3c7' : 'var(--bg-secondary)'};
+      color: ${failed ? '#92400e' : 'var(--text-secondary)'};
+      border: 1px solid ${failed ? '#f59e0b' : 'var(--color-border)'};
+    `;
+    strip.textContent = failed
+      ? `⚠ Refreshed from LeagueApps with ${failed} program failure${failed === 1 ? '' : 's'} — some data may be stale.`
+      : `🔄 Synced from LeagueApps just now · ${secs}s`;
+    anchor.parentNode.insertBefore(strip, anchor);
+  }
+  _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   // Groups after applying the category chip.  Returns everything if
   // `this.category` is empty (== "All" chip selected).

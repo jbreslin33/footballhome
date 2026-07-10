@@ -22,9 +22,14 @@ class AdminClubScreen extends Screen {
 
         <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Membership</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Who's in the club right now — active members, pickup members, and lead pipeline.
+          One tile per LeagueApps membership program — 4 categories × 2 variants (active + pickup).
         </p>
         <div id="section-membership" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h4 style="margin: var(--space-4) 0 var(--space-2); opacity: 0.75; font-size: 0.9rem; font-weight: 500;">
+          Other — pending re-homing
+        </h4>
+        <div id="section-membership-misc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧩 Team Dashboards</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -108,17 +113,44 @@ class AdminClubScreen extends Screen {
     };
 
     // ── Membership ─────────────────────────────────────────────────────
-    // One tile per operator concept, not per category.  The members /
-    // paused-members screens now show category chips at the top so a
-    // single tile handles all four sub-programs.
+    // One tile per LeagueApps membership program.  Kept in exact
+    // sync with `leagueapps_programs` (4 categories × 2 variants):
+    //
+    //   men   / active  → Lighthouse Men's Club 1893 Soccer Membership   (5039300)
+    //   men   / pickup  → Lighthouse Men's Club 1893 Pickup Membership   (5070075)
+    //   women / active  → Lighthouse Women's Club 1895 Soccer Membership (5039340)
+    //   women / pickup  → Lighthouse Women's Club 1895 Pickup Membership (5064686)
+    //   boys  / active  → Lighthouse Boys Club 1897 Soccer Membership    (5039252)
+    //   boys  / pickup  → Lighthouse Boys Club 1897 Pickup Membership    (5064618)
+    //   girls / active  → Lighthouse Girl's Club 1898 Soccer Membership  (5039357)
+    //   girls / pickup  → Lighthouse Girl's Club 1898 Pickup Membership  (5064662)
+    //
+    // Tile ids follow the `(paused-members|members)-(mens|womens|boys|girls)`
+    // convention that handleSubNavigation() already parses via regex —
+    // "members-*" opens variant=active, "paused-members-*" opens
+    // variant=paused (which the members screen displays as "Pickup").
+    // Adding a new LA program means adding one line here.
     const membershipTiles = [
-      { id: 'club-rosters',    icon: '🗂️', label: 'Club Rosters',     description: 'Cross-domain master board — every FH member with color-coded team chips across Mens / Womens / Boys / Girls' },
-      { id: 'members',         icon: '👥', label: 'Members',          description: 'Active members across all sub-programs — filter by Men / Women / Boys / Girls inside' },
-      { id: 'paused-members',  icon: '⚽', label: 'Pickup Membership', description: 'Members on the pickup-only roster (eligible for pickup, not team practice/games)' },
-      { id: 'leads',           icon: '📋', label: 'Leads',            description: 'Ad interest form submissions' },
-      { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics',  description: 'What touches actually turn into LA registrations' },
+      { id: 'members-mens',          icon: '👨',  label: 'Mens Membership',    description: "Lighthouse Men's Club 1893 — active members" },
+      { id: 'paused-members-mens',   icon: '⚡',  label: 'Mens Pickup',        description: "Lighthouse Men's Club 1893 Pickup" },
+      { id: 'members-womens',        icon: '👩',  label: 'Womens Membership',  description: "Lighthouse Women's Club 1895 — active members" },
+      { id: 'paused-members-womens', icon: '⚡',  label: 'Womens Pickup',      description: "Lighthouse Women's Club 1895 Pickup" },
+      { id: 'members-boys',          icon: '👦',  label: 'Boys Membership',    description: 'Lighthouse Boys Club 1897 — active members' },
+      { id: 'paused-members-boys',   icon: '⚡',  label: 'Boys Pickup',        description: 'Lighthouse Boys Club 1897 Pickup' },
+      { id: 'members-girls',         icon: '👧',  label: 'Girls Membership',   description: "Lighthouse Girl's Club 1898 — active members" },
+      { id: 'paused-members-girls',  icon: '⚡',  label: "Girls Pickup",       description: "Lighthouse Girl's Club 1898 Pickup" },
     ];
     renderInto('#section-membership', membershipTiles);
+
+    // Membership-adjacent tiles that don't map 1:1 to an LA program —
+    // parked here until the next reorg pass decides where they live.
+    // Handlers stay in handleSubNavigation() so the tiles work as-is.
+    const membershipMiscTiles = [
+      { id: 'club-rosters',    icon: '🗂️', label: 'Club Rosters',    description: 'Cross-domain master board — every FH member with color-coded team chips across Mens / Womens / Boys / Girls' },
+      { id: 'leads',           icon: '📋', label: 'Leads',           description: 'Ad interest form submissions' },
+      { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics', description: 'What touches actually turn into LA registrations' },
+    ];
+    renderInto('#section-membership-misc', membershipMiscTiles);
 
     // ── Team Dashboards ────────────────────────────────────────────────
     // Grouped by club (Mens / Womens / Boys / Girls).  Each tile is a
