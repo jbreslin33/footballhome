@@ -103,6 +103,64 @@ SessionGate requireSession(const Request& request) {
                       sessVal.empty() ? "Not signed in" : "Session expired")};
 }
 
+// ─── View-as / impersonation (2026-07-11) ───────────────────────────
+// If `?asPersonId=N` is set in the query string, this helper swaps the
+// caller's own person_id for N so /api/my/* endpoints render exactly
+// what that person would see.  Gated to admins only, and refused on
+// write endpoints (RSVPs / chat posts / recurring prefs) — writes
+// always execute as the actual caller, no impersonated writes.
+//
+// Usage — for READS:
+//   long long personId = gate.session->personId;
+//   if (auto err = applyImpersonation(request, personId, true, &personId))
+//       return *err;
+// For WRITES, pass allowImpersonation=false so the presence of
+// `?asPersonId=` returns 403.
+//
+// When the param is absent or invalid, `*effectivePersonId` stays at
+// the caller's own id and nullopt is returned.
+std::optional<Response> applyImpersonation(const Request& request,
+                                            long long authPersonId,
+                                            bool allowImpersonation,
+                                            long long* effectivePersonId) {
+    *effectivePersonId = authPersonId;
+    const std::string q = request.getQueryParam("asPersonId");
+    if (q.empty()) return std::nullopt;
+    long long target = 0;
+    try { target = std::stoll(q); } catch (...) { target = 0; }
+    if (target <= 0 || target == authPersonId) return std::nullopt;
+
+    if (!allowImpersonation) {
+        return jsonError(HttpStatus::FORBIDDEN,
+                          "view-as is read-only — write endpoints must run as the actual caller");
+    }
+
+    auto* db = Database::getInstance();
+    try {
+        auto isAdmin = db->query(
+            "SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+            " WHERE u.person_id = $1::int LIMIT 1",
+            {std::to_string(authPersonId)});
+        if (isAdmin.empty()) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                              "only admins may use view-as");
+        }
+        auto exists = db->query(
+            "SELECT 1 FROM persons WHERE id = $1::int LIMIT 1",
+            {std::to_string(target)});
+        if (exists.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND,
+                              "view-as target person not found");
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[applyImpersonation] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                          "view-as check failed");
+    }
+    *effectivePersonId = target;
+    return std::nullopt;
+}
+
 // Resolve players.id for the caller.  Only signed-in persons with a
 // `players` row can RSVP or hold recurring preferences — matches
 // player_rsvp_history's FK on player_id.  Returns 0 when the caller
@@ -234,7 +292,9 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
 Response MyController::handleGetWeek(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
 
     auto* db = Database::getInstance();
     try {
@@ -482,7 +542,9 @@ Response MyController::handleGetWeek(const Request& request) {
 Response MyController::handlePostRsvp(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/false, &personId))
+        return *err;
 
     json body;
     try { body = json::parse(request.getBody()); }
@@ -585,7 +647,9 @@ Response MyController::handlePostRsvp(const Request& request) {
 Response MyController::handleGetRecurring(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
 
     auto* db = Database::getInstance();
     try {
@@ -623,7 +687,9 @@ Response MyController::handleGetRecurring(const Request& request) {
 Response MyController::handlePutRecurring(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/false, &personId))
+        return *err;
 
     json body;
     try { body = json::parse(request.getBody()); }
@@ -775,7 +841,9 @@ std::string trimCopy(const std::string& s) {
 Response MyController::handleGetChatMessages(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
 
     if (!isMensChatMember(personId)) {
         return jsonError(HttpStatus::FORBIDDEN, "Not a member of the men's chat");
@@ -851,7 +919,9 @@ Response MyController::handleGetChatMessages(const Request& request) {
 Response MyController::handlePostChatMessage(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/false, &personId))
+        return *err;
 
     if (!isMensChatMember(personId)) {
         return jsonError(HttpStatus::FORBIDDEN, "Not a member of the men's chat");
@@ -964,7 +1034,9 @@ Response MyController::handlePostChatMessage(const Request& request) {
 Response MyController::handleGetEventRsvps(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
 
     const std::string midParam = request.getQueryParam("match_id");
     if (midParam.empty()) {

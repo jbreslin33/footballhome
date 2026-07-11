@@ -14,6 +14,54 @@ class Auth {
         console.error('Failed to parse stored user:', e);
       }
     }
+
+    // ── View-as / impersonation (2026-07-11) ─────────────────────
+    // When a club admin picks a member from the "View as..." dropdown
+    // on the role-selection screen, we store the target person_id here
+    // (and their display name for the persistent banner).  The fetch
+    // wrapper below then appends `?asPersonId=<id>` to any /api/my/*
+    // request so the backend renders the app as that person.  Writes
+    // (POST/PUT/DELETE) are refused by the backend when this param is
+    // set — see MyController::applyImpersonation.
+    const vaId = localStorage.getItem('viewAsPersonId');
+    this.viewAsPersonId   = vaId ? Number(vaId) : null;
+    this.viewAsPersonName = localStorage.getItem('viewAsPersonName') || '';
+  }
+
+  // Enter view-as mode.  Persists to localStorage so a refresh keeps
+  // you in the impersonated view (the banner is your reminder).
+  setViewAs(personId, personName) {
+    const id = Number(personId) || 0;
+    if (!id) { this.clearViewAs(); return; }
+    this.viewAsPersonId   = id;
+    this.viewAsPersonName = String(personName || '');
+    localStorage.setItem('viewAsPersonId',   String(id));
+    localStorage.setItem('viewAsPersonName', this.viewAsPersonName);
+    this._notifyViewAsChanged();
+  }
+
+  clearViewAs() {
+    this.viewAsPersonId   = null;
+    this.viewAsPersonName = '';
+    localStorage.removeItem('viewAsPersonId');
+    localStorage.removeItem('viewAsPersonName');
+    this._notifyViewAsChanged();
+  }
+
+  getViewAs() {
+    return this.viewAsPersonId
+      ? { personId: this.viewAsPersonId, personName: this.viewAsPersonName }
+      : null;
+  }
+
+  _notifyViewAsChanged() {
+    // Fire a DOM event so the top-of-page banner (in index.html) and
+    // any currently-mounted screen can refresh in-place.
+    try {
+      window.dispatchEvent(new CustomEvent('viewAsChanged', {
+        detail: this.getViewAs(),
+      }));
+    } catch (_e) { /* IE11 not supported */ }
   }
   
   isLoggedIn() {
@@ -68,6 +116,10 @@ class Auth {
     this.user = null;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    // Also clear any active view-as impersonation so the next login
+    // starts clean.  Otherwise the banner would linger showing a
+    // person the new caller might not even be allowed to impersonate.
+    this.clearViewAs();
   }
   
   // Fetch wrapper that adds auth header + globally recovers from 401.
@@ -93,7 +145,19 @@ class Auth {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    return fetch(this.apiBase + path, {
+    // ── View-as URL injection ───────────────────────────────────
+    // When impersonating, append `?asPersonId=<id>` to any /api/my/*
+    // path so the backend renders as that person.  Scoped strictly to
+    // the /api/my/* prefix — no other endpoint honors the override
+    // and injecting it elsewhere would be a footgun (e.g. sending it
+    // to /api/admin/* is harmless but pollutes server logs).
+    let effectivePath = path;
+    if (this.viewAsPersonId && path.startsWith('/api/my/')) {
+      const sep = path.includes('?') ? '&' : '?';
+      effectivePath = path + sep + 'asPersonId=' + encodeURIComponent(this.viewAsPersonId);
+    }
+
+    return fetch(this.apiBase + effectivePath, {
       cache: 'no-store',
       ...options,
       headers,

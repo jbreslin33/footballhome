@@ -68,6 +68,22 @@ class RoleSelectionScreen extends Screen {
 
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
+
+        <!-- ── View-as / impersonation picker (2026-07-11) ────────────
+             Admin-only debugging tool: pick any active member and
+             the app reloads as that person (all /api/my/* calls get
+             ?asPersonId=<id> appended by the auth fetch wrapper).
+             Persistent orange banner at the top of every screen shows
+             who you're viewing as, with an "Exit view-as" button.
+             Writes remain locked to the real caller \u2014 the backend
+             refuses ?asPersonId= on POST/PUT/DELETE. -->
+        <div class="view-as-picker" style="display: ${adminButtonDisplay}; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); padding: var(--space-3); border: 1px dashed #f97316; border-radius: 8px;">
+          <div style="font-weight: bold; color: #c2410c;">\ud83c\udfad View as another member</div>
+          <div style="font-size: 0.8rem; color: #666;">Read-only impersonation \u2014 debugging tool for admins.</div>
+          <select class="view-as-select" style="padding: 8px; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc;">
+            <option value="">\u2014 loading members\u2026 \u2014</option>
+          </select>
+        </div>
       </div>
     `;
     
@@ -118,6 +134,83 @@ class RoleSelectionScreen extends Screen {
         }
       }
     });
+
+    // ── View-as picker ────────────────────────────────────────────────
+    // Only meaningful for admins.  The dropdown is already hidden via
+    // CSS `display: none` for non-admins, but we also short-circuit
+    // the fetch to keep server logs clean.
+    this._maybeLoadViewAsPicker();
+  }
+
+  async _maybeLoadViewAsPicker() {
+    const user = this.navigation.context.user;
+    const isAdmin = user?.role && (
+      user.role === 'club' || user.role === 'sport_division' ||
+      user.role === 'team' || user.role === 'super' ||
+      user.role === 'system' || user.role === 'league'
+    );
+    if (!isAdmin) return;
+
+    const select = this.element.querySelector('.view-as-select');
+    if (!select) return;
+
+    // One-time change handler.  Setting `viewAsPersonId` in Auth fires
+    // a `viewAsChanged` DOM event; the banner in index.html reacts to
+    // it and shows itself.  Then we navigate to /my as the target so
+    // the admin immediately sees that person's weekly schedule.
+    select.addEventListener('change', (ev) => {
+      const opt = ev.target.selectedOptions[0];
+      if (!opt || !opt.value) return;
+      const personId   = Number(opt.value);
+      const personName = opt.getAttribute('data-name') || opt.textContent || '';
+      if (!personId) return;
+      this.auth.setViewAs(personId, personName);
+      this.navigation.context.role = 'player';
+      this.navigation.goTo('my');
+    });
+
+    try {
+      const res = await this.auth.fetch('/api/admin/members?variant=active');
+      if (!res.ok) {
+        select.innerHTML = '<option value="">— failed to load members —</option>';
+        return;
+      }
+      const body = await res.json();
+      const groups = body?.data?.groups || [];
+
+      // Category emoji + display order — mirrors the "everyone pickup
+      // and regular members on men, boys etc" phrasing from the
+      // feature request.  Any category not in this map falls through
+      // as a plain-labelled optgroup at the end.
+      const catOrder  = ['men', 'women', 'boys', 'girls'];
+      const catEmoji  = { men: '👨', women: '👩', boys: '👦', girls: '👧' };
+      groups.sort((a, b) => {
+        const ai = catOrder.indexOf(a.category);
+        const bi = catOrder.indexOf(b.category);
+        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+      });
+
+      const parts = ['<option value="">— pick a member —</option>'];
+      for (const g of groups) {
+        const emoji = catEmoji[g.category] || '•';
+        const label = `${emoji} ${g.label || g.category} — ${g.program_name || ''}`.trim();
+        parts.push(`<optgroup label="${this.escapeHtml(label)}">`);
+        const members = g.members || [];
+        for (const m of members) {
+          const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || `Person #${m.person_id}`;
+          parts.push(
+            `<option value="${m.person_id}" data-name="${this.escapeHtml(name)}">`
+            + this.escapeHtml(name)
+            + '</option>'
+          );
+        }
+        parts.push('</optgroup>');
+      }
+      select.innerHTML = parts.join('');
+    } catch (e) {
+      console.error('[view-as] failed to load members:', e);
+      select.innerHTML = '<option value="">— failed to load members —</option>';
+    }
   }
   
   handleRoleSelection(role) {

@@ -55,6 +55,27 @@
     <link rel="stylesheet" href="vendor/vis-network.min.css">
 </head>
 <body>
+    <!-- ── View-as / impersonation banner (2026-07-11) ────────────────
+         Persistent orange bar shown at the very top of every screen
+         when an admin has entered "View as..." mode from the
+         role-selection screen.  Populated by the tiny IIFE below,
+         which listens for `viewAsChanged` events fired by auth.js
+         AND runs once on load so refreshes keep the banner visible.
+         Clicking "Exit view-as" clears the impersonation and reloads
+         the current screen. -->
+    <div id="view-as-banner" style="display:none; position:sticky; top:0;
+         z-index:9998; background:#f97316; color:white;
+         padding:8px 14px; font-weight:600; text-align:center;
+         box-shadow:0 2px 8px rgba(0,0,0,0.25);">
+      <span style="margin-right:12px;">🎭 <span id="view-as-banner-name">Viewing as…</span></span>
+      <button id="view-as-banner-exit" style="padding:4px 12px;
+              border-radius:6px; border:1px solid rgba(255,255,255,0.5);
+              background:rgba(0,0,0,0.15); color:white; font-weight:700;
+              cursor:pointer;">
+        Exit view-as
+      </button>
+    </div>
+
     <div id="context-header" class="context-header" style="display: none;">
         <div class="context-info">
             <span id="context-user" class="context-item"></span>
@@ -102,6 +123,58 @@
         setInterval(poll, 30000);        // recheck every 30 s
         document.addEventListener('visibilitychange', function () {
           if (!document.hidden) poll();  // instant recheck when tab regains focus
+        });
+      })();
+    </script>
+
+    <!-- ── View-as banner controller (2026-07-11) ─────────────────────
+         Bridges auth.js's `viewAsChanged` event to the banner DOM
+         element added above.  Also renders once on load so a page
+         refresh mid-impersonation still shows the reminder.  Kept
+         inline (not in auth.js) so the banner is available before
+         the rest of the JS bundle parses. -->
+    <script>
+      (function () {
+        function readViewAs() {
+          try {
+            var id   = localStorage.getItem('viewAsPersonId');
+            var name = localStorage.getItem('viewAsPersonName') || '';
+            return id ? { personId: Number(id), personName: name } : null;
+          } catch (_e) { return null; }
+        }
+        function render() {
+          var el   = document.getElementById('view-as-banner');
+          var name = document.getElementById('view-as-banner-name');
+          if (!el || !name) return;
+          var va = readViewAs();
+          if (va && va.personId) {
+            name.textContent = 'Viewing as ' + (va.personName || ('#' + va.personId));
+            el.style.display = 'block';
+          } else {
+            el.style.display = 'none';
+          }
+        }
+        window.addEventListener('viewAsChanged', render);
+        // Click handler wired in DOMContentLoaded so window.app is up.
+        document.addEventListener('DOMContentLoaded', function () {
+          render();
+          var exitBtn = document.getElementById('view-as-banner-exit');
+          if (exitBtn) {
+            exitBtn.addEventListener('click', function () {
+              try {
+                if (window.app && window.app.auth) {
+                  window.app.auth.clearViewAs();
+                }
+              } catch (_e) {
+                localStorage.removeItem('viewAsPersonId');
+                localStorage.removeItem('viewAsPersonName');
+                render();
+              }
+              // Force the current screen to re-fetch without the ?asPersonId= param.
+              // Cheapest reliable path: full reload.
+              location.reload();
+            });
+          }
         });
       })();
     </script>
