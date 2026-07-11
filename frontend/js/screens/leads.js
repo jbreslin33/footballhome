@@ -2205,6 +2205,54 @@ class LeadsScreen extends Screen {
       });
     }
 
+    // ── Broadcast: Alumni return (Men's Club only) — short SMS-length
+    // outreach to last-season players who haven't re-registered.
+    // Paired with `alumni-return-followup` below, which the coach
+    // sends after an "in" reply (includes the LeagueApps link + the
+    // U.S. Soccer / FIFA name-and-DOB ask needed to file clearance).
+    //
+    // Copy is DELIBERATELY plain-text (no _proBold / _boldText) —
+    // this snippet is designed for SMS/WhatsApp/iMessage where
+    // Unicode-math bold renders as boxed characters on old Android
+    // and where screen readers spell math-bold char-by-char (see
+    // accessibility caveat on _boldText).  Emphasis is carried by
+    // quoted keywords ("in" / "out" / "explanation") and by the
+    // three-beat expectation list.
+    //
+    // Response frame is intentionally three-way (yes / no /
+    // explanation) rather than binary — captures the guys who'd
+    // default to "out" only because their situation (injury, work
+    // travel, moving, kit fee friction) doesn't fit a clean yes.
+    // "We want you back" as the reason for the flexibility flips
+    // the third option from concession to invitation.
+    if (funnelLabel === "Men's Club") {
+      snippets.push({
+        id: 'alumni-return-sms',
+        label: '📣 Alumni return — 1st team (SMS)',
+        tier: 'broadcast',
+        body:
+          `Hey {first} — James at Lighthouse 1893. ` +
+          `Pre-season is on and I want you back for APSL, U.S. Open Cup, and Amateur Cup. ` +
+          `The expectation is simple: this week, 1st team players are signed, preparing for the season, and at practice. ` +
+          `Reply "in" for the link. ` +
+          `Reply "out" if this year isn't yours. ` +
+          `Or reply with an explanation if it's complicated (injury, work, life) — we'll figure it out because we want you back. ` +
+          `I need a response either way. ` +
+          `Yes, no, or explanation?`,
+      });
+      snippets.push({
+        id: 'alumni-return-followup',
+        label: '✅ Alumni "in" reply — send link',
+        tier: 'followup',
+        body:
+          `Hey {first} — welcome back. Here's the registration:\n\n` +
+          `→ ${c.link}\n\n` +
+          `$1 today. LeagueApps will send a single prorated invoice for the rest of July (~$1.13/day). Regular $35/month starts Fri Aug 7 — no per-season/per-tournament/kit/indoor fees. Pause or cancel anytime.\n\n` +
+          `Once you're registered, reply with your full legal name (as on passport / ID) and your date of birth — I need those to file your U.S. Soccer / FIFA clearance. If you've ever been registered with a soccer federation outside the U.S., also tell me which country and which club so I can add the FIFA international clearance (ITC) to the filing.\n\n` +
+          `— James Breslin\nSoccer Director, Lighthouse 1893 SC`,
+      });
+    }
+
     // ── Broadcast: Practice schedule — sent to CURRENTLY REGISTERED
     // players (no registration ask, just logistics).  Explains the
     // grade-based practice slots and first-practice date.  Surfaces on
