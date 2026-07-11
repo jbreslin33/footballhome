@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <!-- Zero-cache mandate. -->
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma"        content="no-cache">
+  <meta http-equiv="Expires"       content="0">
+  <title>Trail Test — Football Home</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <style>
+    :root {
+      --bg:      #0b1c3d;
+      --bg2:     #10285a;
+      --accent:  #ffcc00;
+      --fg:      #f4f6fb;
+      --muted:   rgba(244, 246, 251, 0.72);
+      --card:    rgba(255, 255, 255, 0.06);
+      --border:  rgba(255, 255, 255, 0.14);
+      --err:     #ff5b5b;
+      --ok:      #6bd66b;
+      --pitch:   #1e6b3a;
+      --pitch2:  #245a34;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+      color: var(--fg);
+      overflow: hidden;
+      /* Prevent iOS bounce/scroll while dragging on the canvas. */
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    body { display: flex; flex-direction: column; }
+
+    /* -------- TOP BAR -------------------------------------------- */
+    .bar {
+      flex: 0 0 auto;
+      display: flex; align-items: center; gap: 12px;
+      padding: env(safe-area-inset-top, 0) 12px 8px 12px;
+      padding-top: max(env(safe-area-inset-top, 0px), 8px);
+      background: rgba(0,0,0,0.25);
+      border-bottom: 1px solid var(--border);
+    }
+    .bar .back {
+      color: var(--muted); text-decoration: none;
+      padding: 6px 10px; border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .bar .back:hover { color: var(--accent); border-color: var(--accent); }
+    .bar .title {
+      font-weight: 700; color: var(--accent);
+      font-size: 1rem;
+    }
+    .bar .spacer { flex: 1; }
+    .bar .hud {
+      display: flex; gap: 12px;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+    }
+    .bar .hud .lbl { color: var(--muted); margin-right: 4px; }
+    .bar .hud .val { color: var(--fg); font-weight: 700; }
+    .bar .hud .val.err { color: var(--err); }
+
+    /* -------- STAGE ---------------------------------------------- */
+    .stage {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: crosshair;
+    }
+
+    /* -------- OVERLAYS ------------------------------------------- */
+    .overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .overlay.active { pointer-events: auto; }
+    .panel {
+      background: rgba(11, 28, 61, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 24px;
+      max-width: 460px;
+      width: calc(100% - 40px);
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }
+    .panel h2 {
+      margin: 0 0 8px 0; color: var(--accent);
+      font-size: 1.25rem;
+    }
+    .panel p {
+      margin: 0 0 12px 0; color: var(--muted);
+      line-height: 1.45; font-size: 0.95rem;
+    }
+    .panel .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .btn {
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; border: 1px solid transparent;
+      font-family: inherit;
+    }
+    .btn.primary   { background: var(--accent); color: #1a1500; }
+    .btn.primary:hover  { background: #ffd633; }
+    .btn.ghost     { background: transparent; color: var(--fg); border-color: var(--border); }
+    .btn.ghost:hover    { border-color: var(--accent); color: var(--accent); }
+
+    .variant-picker {
+      display: flex; gap: 10px; justify-content: center;
+      margin: 12px 0 4px 0;
+    }
+    .variant-picker label {
+      flex: 1; max-width: 160px;
+      padding: 12px; border-radius: 12px;
+      border: 1px solid var(--border);
+      cursor: pointer; background: var(--card);
+      transition: border-color .12s ease, background .12s ease;
+    }
+    .variant-picker label.selected {
+      border-color: var(--accent);
+      background: rgba(255, 204, 0, 0.08);
+    }
+    .variant-picker input { display: none; }
+    .variant-picker .v-name { font-weight: 700; color: var(--fg); }
+    .variant-picker .v-desc { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+    /* Big centred banner used for "Lift your finger to restart", the
+       3-2-1 countdown, and the "Tap circle 1 to begin" hint. Not
+       interactive; ignores pointer events so it sits over the pitch. */
+    .banner {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      color: var(--fg);
+      padding: 8px 16px; border-radius: 999px;
+      font-size: 0.9rem;
+      pointer-events: none;
+      z-index: 4;
+      max-width: 90%;
+      text-align: center;
+    }
+    .banner.err { background: rgba(255, 91, 91, 0.85); color: #1a0000; font-weight: 700; }
+    .banner.big { font-size: 3rem; font-weight: 900; padding: 20px 40px; }
+
+    /* Score screen table. */
+    .score {
+      display: grid; grid-template-columns: auto auto; gap: 6px 18px;
+      margin: 12px auto; max-width: 320px;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.95rem;
+    }
+    .score .k { color: var(--muted); text-align: left; }
+    .score .v { color: var(--fg); font-weight: 700; text-align: right; }
+    .score .v.hi { color: var(--accent); }
+
+    .disclaimer {
+      color: var(--muted); font-size: 0.75rem; margin-top: 10px;
+      line-height: 1.4;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="/tactical-games.html">‹ Back</a>
+  <div class="title" id="barTitle">Trail Test</div>
+  <div class="spacer"></div>
+  <div class="hud">
+    <div><span class="lbl">Time</span><span class="val" id="hudTime">0.0</span>s</div>
+    <div><span class="lbl">Next</span><span class="val" id="hudNext">—</span></div>
+    <div><span class="lbl">Errors</span><span class="val err" id="hudErr">0</span></div>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <canvas id="pitch"></canvas>
+
+  <!-- Transient banner (hint / restart / countdown). -->
+  <div id="banner" class="banner hidden"></div>
+
+  <!-- START overlay ------------------------------------------------ -->
+  <div id="overlayStart" class="overlay active">
+    <div class="panel">
+      <h2>Trail Test</h2>
+      <p>
+        Drag your finger through the circles <b>in order</b>, as fast as you can.
+        You'll play <b>two rounds</b> back-to-back — numbers first, then
+        numbers-and-letters (<b>1&nbsp;→&nbsp;A&nbsp;→&nbsp;2&nbsp;→&nbsp;B</b>…).
+      </p>
+      <p style="font-size: 0.85rem;">
+        Wrong circle = the pitch flashes red — no time lost, but the error is counted.
+        <b>Lift your finger mid-round and the round restarts.</b> Results only save if you finish both.
+      </p>
+      <div class="variant-picker" id="variantPicker">
+        <label data-v="kids" class="selected">
+          <input type="radio" name="variant" value="kids" checked>
+          <div class="v-name">Kids</div>
+          <div class="v-desc">10 circles each round</div>
+        </label>
+        <label data-v="standard">
+          <input type="radio" name="variant" value="standard">
+          <div class="v-name">Standard</div>
+          <div class="v-desc">25 circles each round</div>
+        </label>
+      </div>
+      <div class="row">
+        <button id="btnStart" class="btn primary">Start Part A</button>
+      </div>
+      <p class="disclaimer">
+        Scores are for internal progress tracking, not clinical assessment.
+      </p>
+    </div>
+  </div>
+
+  <!-- SCORE overlay ------------------------------------------------ -->
+  <div id="overlayScore" class="overlay hidden">
+    <div class="panel">
+      <h2>Nice work</h2>
+      <p style="margin-bottom: 4px;">You finished both rounds.</p>
+      <div class="score" id="scoreBody"></div>
+      <div class="row">
+        <button id="btnSubmit" class="btn primary">Save Result</button>
+        <button id="btnReplay" class="btn ghost">Play Again</button>
+      </div>
+      <p id="submitMsg" class="disclaimer"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════
+// Trail Test — TMT-inspired canvas game.
+// See DESIGN docs / migration 210 comment for the "why".  This file is
+// intentionally standalone (no bundler) so it can be dropped in and
+// iterated on fast.
+// ═══════════════════════════════════════════════════════════════════════
+
+// ---------- Constants -------------------------------------------------
+
+// Pitch is drawn in a local coordinate system, 105 m long × 68 m wide,
+// then transformed to canvas pixels each frame.  Keeping game logic in
+// metres means seeded layouts reproduce identically regardless of the
+// screen they're played on.
+const PITCH_W_M = 105;
+const PITCH_H_M = 68;
+
+// Circle placement: minimum centre-to-centre spacing in metres.  Chosen
+// so that even the 25-circle standard variant lays out cleanly on the
+// short axis of a phone screen.
+const CIRCLE_R_M      = 3.8;
+const CIRCLE_MIN_GAP  = 9.5;
+const CIRCLE_EDGE_PAD = 5.0;   // keep circles this far from touchline
+
+// Variant tables.  Kids B alternates through A-E; Standard B through A-L.
+const VARIANTS = {
+  kids:     { n: 10, letters: ['A','B','C','D','E'] },
+  standard: { n: 25, letters: ['A','B','C','D','E','F','G','H','I','J','K','L'] },
+};
+
+const COUNTDOWN_MS = 3000;    // Part-A → Part-B interlude
+const ERROR_FLASH_MS = 350;
+
+// ---------- Seeded RNG (Mulberry32) -----------------------------------
+// Cheap, deterministic, good enough for scattering ~25 dots.  Persisted
+// as layout_seed so a coach can replay the exact board.
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ---------- Layout ----------------------------------------------------
+// Rejection-sampled Poisson-ish scatter.  For our small counts this
+// finishes in a handful of attempts; if we can't place all N in 5,000
+// tries we re-seed (deterministically) and try again.
+function generateCircles(count, seed) {
+  let attempt = 0;
+  while (attempt < 8) {
+    const rand = mulberry32(seed + attempt * 7919);
+    const pts  = [];
+    let tries = 0;
+    while (pts.length < count && tries < 5000) {
+      tries++;
+      const x = CIRCLE_EDGE_PAD + rand() * (PITCH_W_M - 2 * CIRCLE_EDGE_PAD);
+      const y = CIRCLE_EDGE_PAD + rand() * (PITCH_H_M - 2 * CIRCLE_EDGE_PAD);
+      let ok = true;
+      for (let i = 0; i < pts.length; i++) {
+        const dx = pts[i].x - x, dy = pts[i].y - y;
+        if (dx*dx + dy*dy < CIRCLE_MIN_GAP * CIRCLE_MIN_GAP) { ok = false; break; }
+      }
+      if (ok) pts.push({ x, y });
+    }
+    if (pts.length === count) return pts;
+    attempt++;
+  }
+  // Give up — should never happen at N ≤ 25 with our spacing.
+  throw new Error('circle placement failed');
+}
+
+// Build the labelled sequence for a part.
+//   Part A: labels "1" .. "N" against circles 0..N-1
+//   Part B: interleaved "1","A","2","B",...  against circles 0..N-1
+function buildSequence(part, variant) {
+  const { n, letters } = VARIANTS[variant];
+  const labels = [];
+  if (part === 'a') {
+    for (let i = 1; i <= n; i++) labels.push(String(i));
+  } else {
+    // Alternating.  For kids N=10 → 5 nums + 5 letters.  For standard
+    // N=25 → 13 nums + 12 letters.
+    let num = 1, letter = 0;
+    for (let i = 0; i < n; i++) {
+      if (i % 2 === 0) labels.push(String(num++));
+      else             labels.push(letters[letter++]);
+    }
+  }
+  return labels;
+}
+
+// ---------- Game state ------------------------------------------------
+const state = {
+  variant:     'kids',
+  seed:        0,
+  layoutA:     [],   // circles for part A  [{x,y}]
+  layoutB:     [],   // circles for part B
+  labelsA:     [],
+  labelsB:     [],
+  currentPart: null,     // 'a' | 'b' | null
+  currentIdx:  0,        // index of NEXT circle to hit
+  errors:      0,
+  path:        [],       // [{x,y,t}] in pitch metres, current part
+  results:     { partA: null, partB: null }, // {timeMs, errors, path}
+  pointerDown: false,
+  lastInside:  -1,       // index of circle the pointer was inside last tick
+  startTs:     0,        // ms, first-touch of circle 1 for current part
+  flashUntil:  0,        // ms wall-clock; while now < this the pitch is red
+  countdownEnd: 0,       // ms wall-clock; between parts
+  attemptRecorded: false,  // suppress duplicate unload beacons
+};
+
+// ---------- DOM -------------------------------------------------------
+const canvas = document.getElementById('pitch');
+const ctx    = canvas.getContext('2d');
+const stage  = document.getElementById('stage');
+const banner = document.getElementById('banner');
+const hudTime = document.getElementById('hudTime');
+const hudNext = document.getElementById('hudNext');
+const hudErr  = document.getElementById('hudErr');
+const barTitle = document.getElementById('barTitle');
+const overlayStart = document.getElementById('overlayStart');
+const overlayScore = document.getElementById('overlayScore');
+const scoreBody = document.getElementById('scoreBody');
+const submitMsg = document.getElementById('submitMsg');
+const btnStart  = document.getElementById('btnStart');
+const btnSubmit = document.getElementById('btnSubmit');
+const btnReplay = document.getElementById('btnReplay');
+const variantPicker = document.getElementById('variantPicker');
+
+// Variant picker — visual toggle only, feeds state.variant.
+variantPicker.addEventListener('click', (e) => {
+  const label = e.target.closest('label[data-v]');
+  if (!label) return;
+  variantPicker.querySelectorAll('label').forEach(l => l.classList.remove('selected'));
+  label.classList.add('selected');
+  label.querySelector('input').checked = true;
+});
+
+// ---------- Sizing ----------------------------------------------------
+// Fit the pitch inside the stage preserving 105:68 aspect ratio, with
+// small margins.  Recompute on resize / orientation change.
+let scale = 1;   // px per metre
+let offX  = 0;   // px offset of pitch origin inside canvas
+let offY  = 0;
+
+function fit() {
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const margin = 8;
+  const sx = (w - margin * 2) / PITCH_W_M;
+  const sy = (h - margin * 2) / PITCH_H_M;
+  scale = Math.min(sx, sy);
+  offX = (w - PITCH_W_M * scale) / 2;
+  offY = (h - PITCH_H_M * scale) / 2;
+}
+window.addEventListener('resize', () => { fit(); draw(); });
+
+// Convert canvas px ⇄ pitch metres.
+function pxToPitch(px, py) {
+  return { x: (px - offX) / scale, y: (py - offY) / scale };
+}
+
+// ---------- Drawing ---------------------------------------------------
+function drawPitch(nowFlashing) {
+  const W = PITCH_W_M * scale;
+  const H = PITCH_H_M * scale;
+
+  // Field.  When flashing (wrong-circle feedback), tint red.
+  ctx.fillStyle = nowFlashing ? '#7a2a2a' : getComputedStyle(document.documentElement).getPropertyValue('--pitch');
+  ctx.fillRect(offX, offY, W, H);
+
+  // Alternating mow bands (subtle).
+  ctx.fillStyle = nowFlashing ? '#6a1e1e' : getComputedStyle(document.documentElement).getPropertyValue('--pitch2');
+  const bands = 8;
+  for (let i = 0; i < bands; i += 2) {
+    ctx.fillRect(offX + (W / bands) * i, offY, W / bands, H);
+  }
+
+  // Touchlines + halfway + centre circle + penalty areas.  All in metres.
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = Math.max(1, scale * 0.15);
+  ctx.strokeRect(offX, offY, W, H);
+
+  // halfway line
+  ctx.beginPath();
+  ctx.moveTo(offX + W / 2, offY);
+  ctx.lineTo(offX + W / 2, offY + H);
+  ctx.stroke();
+
+  // centre circle (9.15 m radius)
+  ctx.beginPath();
+  ctx.arc(offX + W / 2, offY + H / 2, 9.15 * scale, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // penalty areas (16.5 m × 40.32 m)
+  const pw = 16.5 * scale, ph = 40.32 * scale;
+  ctx.strokeRect(offX,             offY + (H - ph) / 2, pw, ph);
+  ctx.strokeRect(offX + W - pw,    offY + (H - ph) / 2, pw, ph);
+}
+
+function drawPath(path) {
+  if (path.length < 2) return;
+  ctx.strokeStyle = 'rgba(255, 204, 0, 0.85)';
+  ctx.lineWidth = Math.max(2, scale * 0.35);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const p0 = path[0];
+  ctx.moveTo(offX + p0.x * scale, offY + p0.y * scale);
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i];
+    ctx.lineTo(offX + p.x * scale, offY + p.y * scale);
+  }
+  ctx.stroke();
+}
+
+function drawCircles(circles, labels, currentIdx) {
+  const r = CIRCLE_R_M * scale;
+  const fs = Math.max(12, r * 0.9);
+  ctx.font = `700 ${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < circles.length; i++) {
+    const c = circles[i];
+    const cx = offX + c.x * scale;
+    const cy = offY + c.y * scale;
+    const done = i < currentIdx;
+    const isNext = i === currentIdx;
+    // Body
+    ctx.fillStyle = done   ? 'rgba(107, 214, 107, 0.85)'
+                  : isNext ? '#fff'
+                           : 'rgba(255,255,255,0.94)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    // Ring for the next target — makes it obvious where to go.
+    if (isNext) {
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+      ctx.lineWidth = Math.max(2, scale * 0.35);
+      ctx.stroke();
+    }
+    // Label
+    ctx.fillStyle = done ? '#083008' : '#0b1c3d';
+    ctx.fillText(labels[i], cx, cy + fs * 0.03);
+  }
+}
+
+function draw() {
+  const now = performance.now();
+  const flashing = now < state.flashUntil;
+  drawPitch(flashing);
+
+  if (state.currentPart) {
+    const circles = state.currentPart === 'a' ? state.layoutA : state.layoutB;
+    const labels  = state.currentPart === 'a' ? state.labelsA : state.labelsB;
+    drawPath(state.path);
+    drawCircles(circles, labels, state.currentIdx);
+  } else {
+    // Between parts / pre-start: preview the layout of the pending part
+    // (the one currently loaded into state.currentPart-to-be — we use
+    // whatever's queued for display in `state.previewPart`).
+    if (state.previewPart) {
+      const circles = state.previewPart === 'a' ? state.layoutA : state.layoutB;
+      const labels  = state.previewPart === 'a' ? state.labelsA : state.labelsB;
+      drawCircles(circles, labels, 0);
+    }
+  }
+}
+
+// ---------- HUD -------------------------------------------------------
+function updateHud() {
+  if (state.currentPart) {
+    const t = state.startTs ? (performance.now() - state.startTs) / 1000 : 0;
+    hudTime.textContent = t.toFixed(1);
+    const labels = state.currentPart === 'a' ? state.labelsA : state.labelsB;
+    hudNext.textContent = labels[state.currentIdx] || '✓';
+    hudErr.textContent = String(state.errors);
+  } else {
+    hudTime.textContent = '0.0';
+    hudNext.textContent = '—';
+    hudErr.textContent = '0';
+  }
+}
+
+// ---------- Banner ----------------------------------------------------
+function showBanner(text, cls = '') {
+  banner.textContent = text;
+  banner.className = 'banner ' + cls;
+}
+function hideBanner() { banner.className = 'banner hidden'; }
+
+// ---------- Pointer handling ------------------------------------------
+canvas.addEventListener('pointerdown', onPointerDown);
+canvas.addEventListener('pointermove', onPointerMove);
+canvas.addEventListener('pointerup',   onPointerUp);
+canvas.addEventListener('pointercancel', onPointerUp);
+canvas.addEventListener('pointerleave', onPointerUp);
+
+function localPt(e) {
+  const rect = canvas.getBoundingClientRect();
+  return pxToPitch(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function circleUnderPitchPt(pt, circles) {
+  for (let i = 0; i < circles.length; i++) {
+    const dx = circles[i].x - pt.x, dy = circles[i].y - pt.y;
+    if (dx*dx + dy*dy <= CIRCLE_R_M * CIRCLE_R_M) return i;
+  }
+  return -1;
+}
+
+function onPointerDown(e) {
+  if (!state.currentPart) return;
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  state.pointerDown = true;
+  state.lastInside = -1;
+  const pt = localPt(e);
+  // Treat as a move — checks for circle-1 start.
+  handlePoint(pt);
+}
+
+function onPointerMove(e) {
+  if (!state.currentPart || !state.pointerDown) return;
+  const pt = localPt(e);
+  handlePoint(pt);
+}
+
+function onPointerUp(e) {
+  if (!state.currentPart || !state.pointerDown) return;
+  state.pointerDown = false;
+
+  // If the pointer went up before the part finished, restart per
+  // Reitan protocol.
+  if (state.currentIdx < currentLayout().length) {
+    restartPart();
+  }
+}
+
+function currentLayout() {
+  return state.currentPart === 'a' ? state.layoutA : state.layoutB;
+}
+
+function handlePoint(pt) {
+  const circles = currentLayout();
+
+  // Record path once the timer is running.
+  if (state.startTs) {
+    state.path.push({ x: pt.x, y: pt.y, t: Math.round(performance.now() - state.startTs) });
+  }
+
+  const idx = circleUnderPitchPt(pt, circles);
+  if (idx === -1) { state.lastInside = -1; return; }
+  if (idx === state.lastInside) return;   // still inside same circle, no event
+  state.lastInside = idx;
+
+  if (idx === state.currentIdx) {
+    // Correct next circle.
+    if (state.currentIdx === 0 && !state.startTs) {
+      // First hit → start timer, seed path.
+      state.startTs = performance.now();
+      state.path = [{ x: pt.x, y: pt.y, t: 0 }];
+      hideBanner();
+    }
+    state.currentIdx++;
+    if (state.currentIdx === circles.length) {
+      finishPart();
+    }
+  } else {
+    // Wrong circle: error + red flash. Do NOT advance.
+    state.errors++;
+    state.flashUntil = performance.now() + ERROR_FLASH_MS;
+  }
+}
+
+// ---------- Part lifecycle --------------------------------------------
+function startPart(part) {
+  state.currentPart = part;
+  state.previewPart = null;
+  state.currentIdx = 0;
+  state.errors = 0;
+  state.path = [];
+  state.startTs = 0;
+  state.lastInside = -1;
+  state.pointerDown = false;
+  barTitle.textContent = part === 'a' ? 'Trail Test — Part A (Numbers)'
+                                       : 'Trail Test — Part B (Numbers & Letters)';
+  showBanner(part === 'a'
+    ? 'Press & hold on circle 1 to start.'
+    : 'Press & hold on circle 1 to begin Part B.');
+}
+
+function restartPart() {
+  state.currentIdx = 0;
+  state.errors = 0;
+  state.path = [];
+  state.startTs = 0;
+  state.lastInside = -1;
+  showBanner('Lift detected — starting this round over.', 'err');
+  setTimeout(() => {
+    if (state.currentPart && !state.startTs) {
+      showBanner('Press & hold on circle 1 to start.');
+    }
+  }, 900);
+}
+
+function finishPart() {
+  const now = performance.now();
+  const timeMs = Math.round(now - state.startTs);
+  const record = { timeMs, errors: state.errors, path: state.path.slice() };
+  if (state.currentPart === 'a') {
+    state.results.partA = record;
+    // Interlude: 3-2-1 then Part B.  Player can lift now.
+    state.pointerDown = false;
+    state.currentPart = null;
+    state.previewPart = 'b';
+    state.countdownEnd = performance.now() + COUNTDOWN_MS;
+    runCountdown();
+  } else {
+    state.results.partB = record;
+    state.currentPart = null;
+    showScoreScreen();
+  }
+}
+
+function runCountdown() {
+  const tick = () => {
+    const remain = state.countdownEnd - performance.now();
+    if (remain <= 0) {
+      hideBanner();
+      startPart('b');
+      return;
+    }
+    const secs = Math.ceil(remain / 1000);
+    showBanner('Part B in ' + secs, 'big');
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+// ---------- Score screen ----------------------------------------------
+function fmt(ms) { return (ms / 1000).toFixed(1) + 's'; }
+
+function showScoreScreen() {
+  const a = state.results.partA, b = state.results.partB;
+  scoreBody.innerHTML = `
+    <div class="k">Part A time</div><div class="v">${fmt(a.timeMs)}</div>
+    <div class="k">Part A errors</div><div class="v ${a.errors ? '' : 'hi'}">${a.errors}</div>
+    <div class="k">Part B time</div><div class="v">${fmt(b.timeMs)}</div>
+    <div class="k">Part B errors</div><div class="v ${b.errors ? '' : 'hi'}">${b.errors}</div>
+    <div class="k">B − A (flex. cost)</div><div class="v hi">${fmt(b.timeMs - a.timeMs)}</div>
+  `;
+  submitMsg.textContent = '';
+  btnSubmit.disabled = false;
+  overlayScore.classList.remove('hidden');
+  overlayScore.classList.add('active');
+}
+
+// ---------- Submit ----------------------------------------------------
+function authHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  try {
+    const t = localStorage.getItem('token');
+    if (t) h['Authorization'] = 'Bearer ' + t;
+  } catch (_) { /* private mode */ }
+  return h;
+}
+
+async function submitResult() {
+  const a = state.results.partA, b = state.results.partB;
+  if (!a || !b) return;
+  btnSubmit.disabled = true;
+  submitMsg.textContent = 'Saving…';
+  const body = {
+    variant:        state.variant,
+    layout_seed:    state.seed,
+    part_a_time_ms: a.timeMs,
+    part_a_errors:  a.errors,
+    part_b_time_ms: b.timeMs,
+    part_b_errors:  b.errors,
+    // Compact tuples keep the payload small and match the coach-replay
+    // shape stored in trail_test_results.path_a / path_b.
+    path_a: a.path.map(p => [+p.x.toFixed(2), +p.y.toFixed(2), p.t]),
+    path_b: b.path.map(p => [+p.x.toFixed(2), +p.y.toFixed(2), p.t]),
+  };
+  try {
+    const res = await fetch('/api/tactical/trail-test/results', {
+      method: 'POST',
+      headers: authHeaders(),
+      credentials: 'same-origin',   // fh_sess cookie fallback
+      cache: 'no-store',
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) {
+      submitMsg.textContent = 'Please sign in to save your result.';
+      btnSubmit.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      submitMsg.textContent = 'Save failed (' + res.status + '). Try again.';
+      btnSubmit.disabled = false;
+      return;
+    }
+    state.attemptRecorded = true;   // completed
+    submitMsg.textContent = 'Saved. Good run.';
+  } catch (e) {
+    submitMsg.textContent = 'Network error. Try again.';
+    btnSubmit.disabled = false;
+  }
+}
+
+// ---------- Attempt telemetry -----------------------------------------
+// Fire-and-forget beacon for drop-outs.  Uses navigator.sendBeacon
+// where possible so the record survives page-unload; falls back to
+// fetch(keepalive).
+function recordAbandon(outcome, extras) {
+  if (state.attemptRecorded) return;
+  state.attemptRecorded = true;
+  const payload = Object.assign({
+    variant:     state.variant,
+    layout_seed: state.seed,
+    outcome:     outcome,
+  }, extras || {});
+  const url = '/api/tactical/trail-test/attempts';
+  const json = JSON.stringify(payload);
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([json], { type: 'application/json' });
+      navigator.sendBeacon(url, blob);
+      return;
+    }
+  } catch (_) {}
+  try {
+    fetch(url, {
+      method: 'POST',
+      headers: authHeaders(),
+      credentials: 'same-origin',
+      cache: 'no-store',
+      keepalive: true,
+      body: json,
+    }).catch(() => {});
+  } catch (_) {}
+}
+
+window.addEventListener('pagehide', () => {
+  // Only fire if we started something but never saved a complete run.
+  if (!state.currentPart && !state.previewPart) return;
+  let outcome = 'abandoned_before_a';
+  let extras = {};
+  const now = performance.now();
+  if (state.currentPart === 'a') {
+    outcome = state.startTs ? 'abandoned_in_a' : 'abandoned_before_a';
+    if (state.startTs) {
+      extras = { partial_ms: Math.round(now - state.startTs),
+                 partial_errors: state.errors, partial_part: 'a' };
+    }
+  } else if (state.currentPart === 'b') {
+    outcome = 'abandoned_in_b';
+    if (state.startTs) {
+      extras = { partial_ms: Math.round(now - state.startTs),
+                 partial_errors: state.errors, partial_part: 'b' };
+    }
+  } else if (state.previewPart === 'b') {
+    // Between parts — we already have a completed A but no B.
+    outcome = 'abandoned_in_b';
+  }
+  recordAbandon(outcome, extras);
+});
+
+// ---------- Start / replay wiring -------------------------------------
+function newGame(variant) {
+  state.variant = variant;
+  state.seed = (Math.floor(Math.random() * 0xFFFFFFFF)) >>> 0;
+  state.layoutA = generateCircles(VARIANTS[variant].n, state.seed);
+  // Second seed = first seed XOR-mixed so B layout is different but
+  // still derivable from a single stored `layout_seed`.
+  state.layoutB = generateCircles(VARIANTS[variant].n, (state.seed ^ 0xA5A5A5A5) >>> 0);
+  state.labelsA = buildSequence('a', variant);
+  state.labelsB = buildSequence('b', variant);
+  state.results = { partA: null, partB: null };
+  state.attemptRecorded = false;
+  overlayStart.classList.add('hidden'); overlayStart.classList.remove('active');
+  overlayScore.classList.add('hidden'); overlayScore.classList.remove('active');
+  fit();
+  startPart('a');
+}
+
+btnStart.addEventListener('click', () => {
+  const chosen = variantPicker.querySelector('input:checked').value;
+  newGame(chosen);
+});
+
+btnReplay.addEventListener('click', () => {
+  overlayScore.classList.add('hidden'); overlayScore.classList.remove('active');
+  state.currentPart = null;
+  state.previewPart = null;
+  overlayStart.classList.remove('hidden'); overlayStart.classList.add('active');
+});
+
+btnSubmit.addEventListener('click', submitResult);
+
+// ---------- Main loop -------------------------------------------------
+function frame() {
+  updateHud();
+  draw();
+  requestAnimationFrame(frame);
+}
+
+fit();
+frame();
+</script>
+</body>
+</html>

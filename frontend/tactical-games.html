@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Zero-cache mandate from user memory: every response is fresh. -->
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma"        content="no-cache">
+  <meta http-equiv="Expires"       content="0">
+  <title>Tactical Games — Football Home</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <style>
+    :root {
+      --bg:     #0b1c3d;
+      --bg2:    #10285a;
+      --accent: #ffcc00;
+      --fg:     #f4f6fb;
+      --muted:  rgba(244, 246, 251, 0.72);
+      --card:   rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.14);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+      color: var(--fg);
+    }
+    body {
+      display: flex; flex-direction: column;
+      padding: 24px; max-width: 640px; margin: 0 auto;
+    }
+    header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 8px 0 24px;
+    }
+    header img { width: 42px; height: 42px; }
+    header .titles { line-height: 1.15; }
+    header h1 { margin: 0; font-size: 1.35rem; color: var(--accent); }
+    header .sub { color: var(--muted); font-size: 0.9rem; }
+    .back {
+      display: inline-block; color: var(--muted); text-decoration: none;
+      margin-bottom: 16px; font-size: 0.9rem;
+    }
+    .back:hover { color: var(--accent); }
+
+    .game {
+      display: flex; align-items: center; gap: 16px;
+      padding: 20px; margin-bottom: 14px;
+      background: var(--card);
+      border: 1px solid var(--border); border-radius: 14px;
+      color: inherit; text-decoration: none;
+      transition: transform .08s ease, border-color .12s ease, background .12s ease;
+    }
+    .game:hover, .game:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: rgba(255, 204, 0, 0.06);
+    }
+    .game .icon {
+      flex: 0 0 auto;
+      width: 56px; height: 56px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: rgba(255, 204, 0, 0.12);
+      font-size: 1.8rem;
+    }
+    .game .body { flex: 1; min-width: 0; }
+    .game .title { font-weight: 700; font-size: 1.05rem; margin-bottom: 2px; }
+    .game .desc  { color: var(--muted); font-size: 0.88rem; line-height: 1.35; }
+    .game .badge {
+      display: inline-block; margin-left: 8px;
+      padding: 1px 8px; border-radius: 999px;
+      font-size: 0.72rem; letter-spacing: 0.02em;
+      background: rgba(255, 204, 0, 0.18); color: var(--accent);
+      border: 1px solid rgba(255, 204, 0, 0.3);
+      vertical-align: middle;
+    }
+    .game .chev { color: var(--muted); font-size: 1.6rem; }
+
+    .footer-note {
+      margin-top: 22px; color: var(--muted); font-size: 0.8rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← Back</a>
+
+  <header>
+    <img src="/images/lighthouse-1893-crest.png" alt="">
+    <div class="titles">
+      <h1>Tactical Games</h1>
+      <div class="sub">Sim demo + cognitive learning games</div>
+    </div>
+  </header>
+
+  <a class="game" href="/sim.html">
+    <div class="icon">⚽</div>
+    <div class="body">
+      <div class="title">Sim Demo <span class="badge">M0</span></div>
+      <div class="desc">Wander an empty pitch. Joystick + sprint. Zero rules — just proves the sim works end-to-end.</div>
+    </div>
+    <div class="chev">›</div>
+  </a>
+
+  <a class="game" href="/trail-test.html">
+    <div class="icon">🧠</div>
+    <div class="body">
+      <div class="title">Trail Test <span class="badge">Learning Game 1</span></div>
+      <div class="desc">Drag your finger across the pitch, hitting circles in order. Two rounds back-to-back: numbers, then numbers-and-letters. A TMT-style drill from the same family of test the top-flight Swedish study used.</div>
+    </div>
+    <div class="chev">›</div>
+  </a>
+
+  <p class="footer-note">
+    Tactical Games are experimental. Scores are for internal progress tracking, not clinical assessment.
+  </p>
+</body>
+</html>

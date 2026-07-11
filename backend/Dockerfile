@@ -19,10 +19,13 @@ WORKDIR /app
 # Copy backend source code and build files (context is already backend/)
 COPY . .
 
-# Build with CMake
+# Build with CMake.
+# NOTE: capped at -j2 (not $(nproc)) because gcc-12 with libpqxx / json.hpp
+# uses ~1.5-2 GB per compile job; dev boxes with 4 cores + 8 GB RAM were
+# OOM-killed at higher parallelism.
 RUN mkdir -p build && cd build && \
     cmake .. && \
-    make -j$(nproc)
+    make -j2
 
 # Expose port
 EXPOSE 3001

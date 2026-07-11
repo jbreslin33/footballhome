@@ -54,6 +54,7 @@
 #include "controllers/MyController.h"
 #include "controllers/EventReminderController.h"
 #include "controllers/SimLobbyController.h"
+#include "controllers/TrailTestController.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
 
@@ -105,6 +106,7 @@ private:
     std::shared_ptr<MyController> my_controller_;
     std::shared_ptr<EventReminderController> event_reminder_controller_;
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
+    std::shared_ptr<TrailTestController> trail_test_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -149,6 +151,7 @@ public:
         my_controller_ = std::make_shared<MyController>();
         event_reminder_controller_ = std::make_shared<EventReminderController>();
         sim_lobby_controller_ = std::make_shared<SimLobbyController>();
+        trail_test_controller_ = std::make_shared<TrailTestController>();
     }
     
     bool initialize() {
@@ -315,6 +318,13 @@ private:
         //   POST /api/sim/matches
         //   POST /api/sim/matches/:matchId/join   (mints sim-side HS256 JWT)
         router_.useController("/api/sim", sim_lobby_controller_);
+
+        // Tactical Games — Learning Game 1 (Trail Test).  Pure client-
+        // side canvas game; this controller is just the storage seam.
+        //   POST /api/tactical/trail-test/results   (complete A+B session)
+        //   POST /api/tactical/trail-test/attempts  (telemetry, incl. drop-outs)
+        //   GET  /api/tactical/trail-test/results   (caller's history)
+        router_.useController("/api/tactical", trail_test_controller_);
 
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {
