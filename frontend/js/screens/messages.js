@@ -60,15 +60,66 @@ class MessagesScreen extends Screen {
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
+    // Layout is a 2-column grid on desktop (sticky team list + main
+    // pane) that collapses to a single column on narrow viewports.
+    // On mobile the team list becomes a horizontally-scrolling tab
+    // strip pinned to the top of the main pane — same content, but
+    // reachable with a thumb-swipe instead of eating half the screen.
+    // Also caps snippet <pre> font-size on mobile so 90-char SMS
+    // bodies don't force a horizontal scroll.
     div.innerHTML = `
+      <style>
+        .messages-layout {
+          display: grid;
+          grid-template-columns: 220px minmax(0, 1fr);
+          gap: var(--space-4);
+          padding: var(--space-4);
+          align-items: start;
+        }
+        .messages-layout #messages-team-list {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-2);
+          position: sticky;
+          top: var(--space-4);
+        }
+        @media (max-width: 720px) {
+          .messages-layout {
+            grid-template-columns: minmax(0, 1fr);
+            gap: var(--space-2);
+            padding: var(--space-2);
+          }
+          .messages-layout #messages-team-list {
+            position: sticky;
+            top: 0;
+            flex-direction: row;
+            overflow-x: auto;
+            padding: var(--space-2) 0;
+            background: var(--bg-primary, #0f172a);
+            z-index: 2;
+            -webkit-overflow-scrolling: touch;
+          }
+          .messages-layout #messages-team-list button {
+            flex: 0 0 auto;
+            white-space: nowrap;
+          }
+          .messages-layout #messages-body pre {
+            font-size: 0.82rem !important;
+          }
+          .messages-layout #messages-body h2,
+          .messages-layout #messages-body h3 {
+            font-size: 1rem !important;
+          }
+        }
+      </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>💬 Messages</h1>
         <p class="subtitle">Canned responses & welcome messages for every team — pick a team, copy what you need.</p>
       </div>
 
-      <div style="display:grid; grid-template-columns: 220px 1fr; gap: var(--space-4); padding: var(--space-4); align-items:start;">
-        <aside id="messages-team-list" style="display:flex; flex-direction:column; gap: var(--space-2); position:sticky; top: var(--space-4);"></aside>
+      <div class="messages-layout">
+        <aside id="messages-team-list"></aside>
         <main id="messages-body" style="min-width:0;"></main>
       </div>
     `;
