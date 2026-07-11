@@ -48,7 +48,13 @@ class AdminClubScreen extends Screen {
         <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👧 Girls Club</h4>
         <div id="dash-girls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📲 Media &amp; Socials</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">�️ RSVP</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Diagnostic — who can RSVP for Pickup, Practice, APSL, Liga 1, Liga 2, Adult.
+        </p>
+        <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">�📲 Media &amp; Socials</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Instagram posts, printable flyers, ad previews, public exhibits, and coach-facing messaging.
         </p>
@@ -196,6 +202,16 @@ class AdminClubScreen extends Screen {
     renderInto('#dash-womens', womensDashTiles);
     renderInto('#dash-boys',   boysDashTiles);
     renderInto('#dash-girls',  girlsDashTiles);
+
+    // ── RSVP ──────────────────────────────────────────────────────────
+    // Single diagnostic tile — opens the RSVP-eligibility board with
+    // All / Men / Women / Boys / Girls tabs so the coach can see at a
+    // glance who's eligible for which mens-selection team (APSL,
+    // Liga 1, Liga 2, Adult, Practice, Pickup) and toggle grants.
+    const rsvpTiles = [
+      { id: 'rsvp-eligibility', icon: '🗳️', label: 'RSVP Eligibility', description: 'Debug board — who can RSVP for Pickup, Practice, APSL, Liga 1, Liga 2, Adult (tabs: All / Men / Women / Boys / Girls)' },
+    ];
+    renderInto('#section-rsvp', rsvpTiles);
 
     // ── Media & Socials ────────────────────────────────────────────────
     // Everything that ends up in front of a prospect or member — IG
@@ -390,6 +406,14 @@ class AdminClubScreen extends Screen {
 
     if (section === 'messages') {
       this.navigation.goTo('messages', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+
+    if (section === 'rsvp-eligibility') {
+      this.navigation.goTo('rsvp-eligibility', {
         clubId: this.clubId,
         clubName: this.clubName
       });

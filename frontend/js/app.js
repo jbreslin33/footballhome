@@ -68,6 +68,7 @@ class App {
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
+      rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
       practiceDashboard: new PracticeDashboardScreen(this.navigation, this.auth),
       rsvp: new RsvpScreen(this.navigation, this.auth),
@@ -141,6 +142,7 @@ class App {
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     this.screenManager.register('payments', this.screens.payments);
     this.screenManager.register('messages', this.screens.messages);
+    this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);
     // Mens is the default; womens is the same screen with a gender param.
     // 'lineups' kept as a backward-compat alias for any old bookmarks / links.
     this.screenManager.register('mens-lineups', this.screens.lineups);

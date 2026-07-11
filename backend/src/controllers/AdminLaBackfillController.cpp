@@ -500,7 +500,11 @@ static Response respondMembers(const std::string& variant,
             "            ELSE COALESCE(pph.can_receive_calls, FALSE) END AS phone_call, "
             "       COALESCE(NULLIF(TRIM(CONCAT_WS(' ', parent.first_name, parent.last_name)), ''), '') AS parent_name, "
             "       pl.id AS player_id, "
-            "       plm.joined_at "
+            "       plm.joined_at, "
+            // LA user_id lives on external_person_aliases (provider='leagueapps').
+            // Needed by the RSVP-eligibility diagnostic screen to key into
+            // player_rsvp_eligibility.  See memory footballhome.md 2026-07-11.
+            "       epa.external_user_id AS leagueapps_user_id "
             "  FROM person_la_memberships plm "
             "  JOIN leagueapps_programs lp     ON lp.program_id = plm.la_program_id "
             "  JOIN persons pe                 ON pe.id         = plm.person_id "
@@ -510,6 +514,11 @@ static Response respondMembers(const std::string& variant,
             "  LEFT JOIN primary_phone pph     ON pph.person_id = pe.id "
             "  LEFT JOIN primary_email parent_pem ON parent_pem.person_id = pe.parent_person_id "
             "  LEFT JOIN primary_phone parent_pph ON parent_pph.person_id = pe.parent_person_id "
+            "  LEFT JOIN external_person_aliases epa "
+            "         ON epa.person_id = pe.id "
+            "        AND epa.provider  = 'leagueapps' "
+            "        AND epa.external_user_id IS NOT NULL "
+            "        AND epa.external_user_id <> '' "
             " WHERE plm.ended_at IS NULL AND lp.variant = $1 "
             "   AND ($2 = '' OR lp.category = $2) "
             " ORDER BY lp.category, lp.program_id, pe.last_name, pe.first_name",
@@ -578,6 +587,7 @@ static Response respondMembers(const std::string& variant,
             const bool        phoneViaParent = !row["phone_via_parent"].is_null() && row["phone_via_parent"].as<bool>();
             const std::string parentName = row["parent_name"].is_null() ? "" : row["parent_name"].c_str();
             const std::string joinedAt  = row["joined_at"].is_null() ? "" : row["joined_at"].c_str();
+            const std::string laUserId  = row["leagueapps_user_id"].is_null() ? "" : row["leagueapps_user_id"].c_str();
 
             out << "{"
                 <<   "\"person_id\":"        << row["person_id"].as<int>()
@@ -593,6 +603,7 @@ static Response respondMembers(const std::string& variant,
                 << ",\"parent_name\":"       << jsonEscape(parentName)
                 << ",\"player_id\":"         << (row["player_id"].is_null() ? "null" : std::to_string(row["player_id"].as<int>()))
                 << ",\"joined_at\":"         << jsonEscape(joinedAt)
+                << ",\"leagueapps_user_id\":" << (laUserId.empty() ? std::string("null") : jsonEscape(laUserId))
                 << "}";
         }
         closeGroup(out);
