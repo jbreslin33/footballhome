@@ -2228,7 +2228,7 @@ class LeadsScreen extends Screen {
     if (funnelLabel === "Men's Club") {
       snippets.push({
         id: 'alumni-return-sms',
-        label: '📣 Alumni return — 1st team (SMS)',
+        label: '📣 Alumni',
         tier: 'broadcast',
         body:
           `Hey {first} — James at Lighthouse 1893. ` +
@@ -2242,7 +2242,7 @@ class LeadsScreen extends Screen {
       });
       snippets.push({
         id: 'alumni-return-followup',
-        label: '✅ Alumni "in" reply — send link',
+        label: '✅ Alumni — send link',
         tier: 'followup',
         body:
           `Hey {first} — welcome back. Here's the registration:\n\n` +
