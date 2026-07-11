@@ -25,6 +25,18 @@ class PausedMembersScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
+        <div id="members-sync-bar" style="margin-bottom: var(--space-3); display:flex;
+             align-items:center; gap: var(--space-2); flex-wrap: wrap;">
+          <span id="members-sync-time" style="padding:4px 12px; border-radius:9999px;
+                font-size:0.85rem; font-weight:500; background: transparent;
+                color: #94a3b8; border: 1px solid #94a3b8; white-space:nowrap;">
+            Last sync: —
+          </span>
+          <button class="sync-now-btn btn btn-secondary" style="padding: 4px 12px; font-size: 0.85rem;">
+            🔄 Sync now
+          </button>
+        </div>
+
         <div id="members-filters" style="display:none; margin-bottom: var(--space-3);
              flex-wrap:wrap; gap: var(--space-1);">
         </div>
@@ -150,6 +162,14 @@ class PausedMembersScreen extends Screen {
     }
 
     this._load();
+    // Ticker keeps the pill's color/age label fresh while the screen
+    // stays open — walks green → yellow → orange → red as time drifts.
+    this._updateSyncPill();
+    this._startSyncTicker();
+  }
+
+  onExit() {
+    this._stopSyncTicker();
   }
 
   async _load() {
@@ -193,8 +213,11 @@ class PausedMembersScreen extends Screen {
       // Brief pause so both checkmarks don't flash at once — vibes.
       await this._sleep(180);
       this._markBoot(2, 'ok', this._bootDbLine(syncInfo));
-      // Record the moment for the on-screen "Last sync" strip.
+      // Record the moment for the on-screen "Last sync" pill + track
+      // partial-failure count so the pill can turn amber.
       this._lastSyncAt = new Date();
+      this._lastSyncFailedPrograms = syncInfo?.programsFailed || 0;
+      this._updateSyncPill();
     } catch (err) {
       console.error('membership sync failed', err);
       this._markBoot(1, 'fail', err.message);
@@ -242,7 +265,7 @@ class PausedMembersScreen extends Screen {
       this._renderCategoryChips();
       if (filtersEl)  filtersEl.style.display  = 'flex';
       if (searchWrap) searchWrap.style.display = 'block';
-      this._renderSyncStrip(syncInfo);
+      this._updateSyncPill();
 
       if (total === 0) {
         emptyEl.style.display = 'block';
@@ -319,42 +342,58 @@ class PausedMembersScreen extends Screen {
     const fails = info.programsFailed || 0;
     return fails > 0 ? `${fails} program${fails === 1 ? '' : 's'} failed` : 'ok';
   }
-  _renderSyncStrip(info) {
-    // Strip below the header: timestamped last-sync label + a manual
-    // "Sync now" button so the operator can force a fresh pull without
-    // leaving the screen.  Amber if any LA programs failed during sync.
-    const anchor = this.find('#members-groups');
-    if (!anchor) return;
-    // Remove any prior strip so re-renders don't stack.
-    const prior = this.element.querySelector('.members-sync-strip');
-    if (prior) prior.remove();
-    if (!info) return;
-    const failed = info.programsFailed || 0;
-    const secs = ((info.elapsedMs || 0) / 1000).toFixed(1);
-    const when = this._lastSyncAt || new Date();
-    const timeStr = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    const strip = document.createElement('div');
-    strip.className = 'members-sync-strip';
-    strip.style.cssText = `
-      margin-bottom: var(--space-3);
-      padding: var(--space-2) var(--space-3);
-      border-radius: var(--radius-md);
-      font-size: 0.85rem;
-      background: ${failed ? '#fef3c7' : 'var(--bg-secondary)'};
-      color: ${failed ? '#92400e' : 'var(--text-secondary)'};
-      border: 1px solid ${failed ? '#f59e0b' : 'var(--color-border)'};
-      display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
-    `;
-    const label = failed
-      ? `⚠ Last sync ${timeStr} · ${failed} program${failed === 1 ? '' : 's'} failed — data may be stale`
-      : `🔄 Last sync: <strong>${timeStr}</strong> · ${secs}s`;
-    strip.innerHTML = `
-      <span style="flex: 1 1 auto; min-width: 0;">${label}</span>
-      <button class="btn btn-secondary sync-now-btn" style="font-size: 0.8rem; padding: 4px 10px; white-space: nowrap;">
-        🔄 Sync now
-      </button>
-    `;
-    anchor.parentNode.insertBefore(strip, anchor);
+  _renderSyncStrip() {
+    // Deprecated — replaced by the persistent #members-sync-bar pill.
+    // Kept as a no-op so any stale call sites don't blow up.
+  }
+
+  // Returns the color palette for the last-sync pill based on age:
+  //   0-5m  green   |  5-10m  yellow  |  10-15m  orange  |  15m+  red
+  // Amber override when the last sync had partial program failures.
+  _syncPillStyle() {
+    const failed = this._lastSyncFailedPrograms || 0;
+    if (!this._lastSyncAt) {
+      return { bg: 'transparent', color: '#94a3b8', border: '#94a3b8', ago: null, min: null };
+    }
+    const min = Math.floor((Date.now() - this._lastSyncAt.getTime()) / 60000);
+    let bg, color, border;
+    if (failed > 0)     { bg='#fef3c7'; color='#92400e'; border='#f59e0b'; }
+    else if (min < 5)   { bg='#d1fae5'; color='#065f46'; border='#10b981'; }
+    else if (min < 10)  { bg='#fef9c3'; color='#854d0e'; border='#eab308'; }
+    else if (min < 15)  { bg='#fed7aa'; color='#7c2d12'; border='#f97316'; }
+    else                { bg='#fee2e2'; color='#7f1d1d'; border='#ef4444'; }
+    const ago = min < 1 ? 'just now' : `${min}m ago`;
+    return { bg, color, border, ago, min };
+  }
+
+  _updateSyncPill() {
+    const el = this.find('#members-sync-time');
+    if (!el) return;
+    const s = this._syncPillStyle();
+    el.style.background   = s.bg;
+    el.style.color        = s.color;
+    el.style.borderColor  = s.border;
+    if (!this._lastSyncAt) {
+      el.textContent = 'Last sync: —';
+      return;
+    }
+    const timeStr = this._lastSyncAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const failed = this._lastSyncFailedPrograms || 0;
+    const warn = failed > 0 ? ` · ⚠ ${failed} failed` : '';
+    el.textContent = `Last sync: ${timeStr} (${s.ago})${warn}`;
+  }
+
+  _startSyncTicker() {
+    this._stopSyncTicker();
+    // 30s cadence — age is minute-granular so this is plenty responsive
+    // and cheap.  Ticker is stopped on onExit to avoid leaks.
+    this._syncTicker = setInterval(() => this._updateSyncPill(), 30 * 1000);
+  }
+  _stopSyncTicker() {
+    if (this._syncTicker) {
+      clearInterval(this._syncTicker);
+      this._syncTicker = null;
+    }
   }
 
   _escapeHtml(s) {

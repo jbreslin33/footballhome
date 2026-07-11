@@ -14,8 +14,9 @@ class LeadsScreen extends Screen {
         <div id="leads-sync-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="leads-sync-icon" style="font-size: 16px;">⏳</span>
           <span id="leads-sync-status" style="flex:1; min-width: 200px;">Syncing latest leads from Meta…</span>
+          <span id="leads-sync-time" style="padding:3px 10px; border-radius:9999px; font-size:12px; font-weight:500; background:transparent; color:#94a3b8; border:1px solid #94a3b8; white-space:nowrap;">Last sync: —</span>
           <button id="leads-sync-log-toggle" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px;" title="Show/hide load log">📜 Log</button>
-          <button id="leads-sync-refresh" class="btn btn-secondary" style="display:none; padding: 4px 10px; font-size: 13px;">🔄 Sync now</button>
+          <button id="leads-sync-refresh" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px;">🔄 Sync now</button>
         </div>
         <div id="leads-sync-log" style="display:block; margin: 0 0 var(--space-3) 0; max-height: 220px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #1e293b; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.4;"></div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
@@ -43,15 +44,71 @@ class LeadsScreen extends Screen {
     });
 
     this.loadLeads();
+    // Ticker keeps the last-sync pill's color/age label fresh while the
+    // screen stays open (green → yellow → orange → red as time drifts).
+    this._updateSyncPill();
+    this._startSyncTicker();
   }
 
-  _setSyncBanner({ icon, text, showRefresh = false }) {
+  onExit() {
+    this._stopSyncTicker();
+  }
+
+  _setSyncBanner({ icon, text, showRefresh = true }) {
+    // Sync button is always visible so the operator can force a fresh
+    // pull at any time — during first load, after success, or after
+    // failure.  `showRefresh` is kept for backward-compat callers but
+    // now defaults to true and is effectively ignored (button never
+    // hides).
     const iconEl = this.find('#leads-sync-icon');
     const textEl = this.find('#leads-sync-status');
     const btnEl  = this.find('#leads-sync-refresh');
     if (iconEl) iconEl.textContent = icon;
     if (textEl) textEl.textContent = text;
-    if (btnEl)  btnEl.style.display = showRefresh ? 'inline-block' : 'none';
+    if (btnEl)  btnEl.style.display = 'inline-block';
+  }
+
+  // Color palette for the last-sync pill based on age:
+  //   0-5m  green   |  5-10m  yellow  |  10-15m  orange  |  15m+  red
+  _syncPillStyle() {
+    if (!this._lastSyncAt) {
+      return { bg: 'transparent', color: '#94a3b8', border: '#94a3b8', ago: null, min: null };
+    }
+    const min = Math.floor((Date.now() - this._lastSyncAt.getTime()) / 60000);
+    let bg, color, border;
+    if (min < 5)       { bg='#d1fae5'; color='#065f46'; border='#10b981'; }
+    else if (min < 10) { bg='#fef9c3'; color='#854d0e'; border='#eab308'; }
+    else if (min < 15) { bg='#fed7aa'; color='#7c2d12'; border='#f97316'; }
+    else               { bg='#fee2e2'; color='#7f1d1d'; border='#ef4444'; }
+    const ago = min < 1 ? 'just now' : `${min}m ago`;
+    return { bg, color, border, ago, min };
+  }
+
+  _updateSyncPill() {
+    const el = this.find('#leads-sync-time');
+    if (!el) return;
+    const s = this._syncPillStyle();
+    el.style.background   = s.bg;
+    el.style.color        = s.color;
+    el.style.borderColor  = s.border;
+    if (!this._lastSyncAt) {
+      el.textContent = 'Last sync: —';
+      return;
+    }
+    const timeStr = this._lastSyncAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    el.textContent = `Last sync: ${timeStr} (${s.ago})`;
+  }
+
+  _startSyncTicker() {
+    this._stopSyncTicker();
+    // 30s cadence — age is minute-granular so this is plenty responsive.
+    this._syncTicker = setInterval(() => this._updateSyncPill(), 30 * 1000);
+  }
+  _stopSyncTicker() {
+    if (this._syncTicker) {
+      clearInterval(this._syncTicker);
+      this._syncTicker = null;
+    }
   }
 
   // Sticky paste-instruction banner shown after clicking ✉ Email.  Two
@@ -213,22 +270,22 @@ class LeadsScreen extends Screen {
       // post a failure message above.
       if (syncReport) {
         const elapsedSec = ((Date.now() - syncStartMs) / 1000).toFixed(1);
-        // Persistent last-sync timestamp for the banner — updated on
-        // every completed sync (skipped-by-TTL counts as a completion
-        // too, so the operator sees "just checked" instead of a stale
-        // time drifting further from now).
+        // Persistent last-sync timestamp for the color-coded pill —
+        // updated on every completed sync (skipped-by-TTL counts as a
+        // completion too, so the pill reads "just now" instead of a
+        // stale time drifting further from now).
         this._lastSyncAt = new Date();
-        const ts = this._lastSyncAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        this._updateSyncPill();
         let icon = '✅';
         let text;
         if (syncReport.skippedByTtl) {
           icon = 'ℹ️';
-          text = `Cached (synced <30s ago). ${leads.length} leads. · Last sync: ${ts}`;
+          text = `Cached (synced <30s ago). ${leads.length} leads.`;
         } else if (syncReport.failedForms && syncReport.failedForms.length) {
           icon = '⚠️';
-          text = `Partial sync: ${syncReport.syncedRows} rows from ${syncReport.formsSynced}/${syncReport.formsTotal} forms in ${elapsedSec}s. ${syncReport.failedForms.length} form(s) failed. · Last sync: ${ts}`;
+          text = `Partial sync: ${syncReport.syncedRows} rows from ${syncReport.formsSynced}/${syncReport.formsTotal} forms in ${elapsedSec}s. ${syncReport.failedForms.length} form(s) failed.`;
         } else {
-          text = `Synced ${syncReport.syncedRows} row${syncReport.syncedRows === 1 ? '' : 's'} from ${syncReport.formsTotal} form${syncReport.formsTotal === 1 ? '' : 's'} in ${elapsedSec}s. ${leads.length} leads total. · Last sync: ${ts}`;
+          text = `Synced ${syncReport.syncedRows} row${syncReport.syncedRows === 1 ? '' : 's'} from ${syncReport.formsTotal} form${syncReport.formsTotal === 1 ? '' : 's'} in ${elapsedSec}s. ${leads.length} leads total.`;
         }
         this._setSyncBanner({ icon, text, showRefresh: true });
       }
