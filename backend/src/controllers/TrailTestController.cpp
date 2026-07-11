@@ -97,7 +97,10 @@ constexpr int         kMaxErrorsPerPart = 500;
 constexpr std::size_t kMaxUserAgentLen = 512;
 
 bool isValidVariant(const std::string& v) {
-    return v == "kids" || v == "standard";
+    // 'study'    — 16-node variant mirroring D-KEFS structure
+    //              (Vestberg-style executive-function research).
+    // 'standard' — 25-node classic Reitan TMT.
+    return v == "study" || v == "standard";
 }
 
 }  // namespace

@@ -202,20 +202,27 @@
         You'll play <b>two rounds</b> back-to-back — numbers first, then
         numbers-and-letters (<b>1&nbsp;→&nbsp;A&nbsp;→&nbsp;2&nbsp;→&nbsp;B</b>…).
       </p>
+      <p style="font-size: 0.9rem;">
+        <b style="color: var(--err);">Do not touch the wrong circle.</b>
+        Every out-of-order number or letter counts as an error — the pitch
+        flashes red, your error count goes up, and you can't advance until
+        you find the correct next circle. <b>The timer keeps running while
+        you correct the mistake.</b>
+      </p>
       <p style="font-size: 0.85rem;">
-        Wrong circle = the pitch flashes red — no time lost, but the error is counted.
-        <b>Lift your finger mid-round and the round restarts.</b> Results only save if you finish both.
+        <b>Lift your finger mid-round and the round restarts.</b>
+        Results only save if you finish both rounds.
       </p>
       <div class="variant-picker" id="variantPicker">
-        <label data-v="kids" class="selected">
-          <input type="radio" name="variant" value="kids" checked>
-          <div class="v-name">Kids</div>
-          <div class="v-desc">10 circles each round</div>
+        <label data-v="study" class="selected">
+          <input type="radio" name="variant" value="study" checked>
+          <div class="v-name">Study</div>
+          <div class="v-desc">16 circles · D-KEFS-style</div>
         </label>
         <label data-v="standard">
           <input type="radio" name="variant" value="standard">
-          <div class="v-name">Standard</div>
-          <div class="v-desc">25 circles each round</div>
+          <div class="v-name">Classic</div>
+          <div class="v-desc">25 circles · Reitan TMT</div>
         </label>
       </div>
       <div class="row">
@@ -263,14 +270,23 @@ const PITCH_H_M = 68;
 
 // Circle placement: minimum centre-to-centre spacing in metres.  Chosen
 // so that even the 25-circle standard variant lays out cleanly on the
-// short axis of a phone screen.
-const CIRCLE_R_M      = 3.8;
-const CIRCLE_MIN_GAP  = 9.5;
-const CIRCLE_EDGE_PAD = 5.0;   // keep circles this far from touchline
+// short axis of a phone screen.  Circles are deliberately small — the
+// scoring signal is precision + speed under switching load, so a fat
+// finger hitting the right neighbourhood shouldn't be the same as a
+// deliberate tap.
+const CIRCLE_R_M      = 2.4;
+const CIRCLE_MIN_GAP  = 7.0;
+const CIRCLE_EDGE_PAD = 4.0;   // keep circles this far from touchline
 
-// Variant tables.  Kids B alternates through A-E; Standard B through A-L.
+// Variant tables.
+//   study    — 16 nodes total per part. Mirrors the D-KEFS Trail
+//              Making Test structure used in the Vestberg (2012)
+//              soccer executive-function research.  Part A: 1-16.
+//              Part B: 1-A-2-B-...-8-H (8 numbers + 8 letters).
+//   standard — 25 nodes per part.  Classic Reitan TMT.  Part A: 1-25.
+//              Part B: 1-A-...-12-L-13.
 const VARIANTS = {
-  kids:     { n: 10, letters: ['A','B','C','D','E'] },
+  study:    { n: 16, letters: ['A','B','C','D','E','F','G','H'] },
   standard: { n: 25, letters: ['A','B','C','D','E','F','G','H','I','J','K','L'] },
 };
 
@@ -341,7 +357,7 @@ function buildSequence(part, variant) {
 
 // ---------- Game state ------------------------------------------------
 const state = {
-  variant:     'kids',
+  variant:     'study',
   seed:        0,
   layoutA:     [],   // circles for part A  [{x,y}]
   layoutB:     [],   // circles for part B
@@ -475,7 +491,8 @@ function drawPath(path) {
 
 function drawCircles(circles, labels, currentIdx) {
   const r = CIRCLE_R_M * scale;
-  const fs = Math.max(12, r * 0.9);
+  // Labels sized so digits stay legible even on the shrunken circles.
+  const fs = Math.max(10, r * 1.15);
   ctx.font = `700 ${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -626,9 +643,24 @@ function handlePoint(pt) {
       finishPart();
     }
   } else {
-    // Wrong circle: error + red flash. Do NOT advance.
+    // Wrong circle: error + red flash. Do NOT advance. Timer keeps
+    // running — the correction-time cost IS the penalty (standard
+    // TMT protocol), on top of the +1 error count.
     state.errors++;
     state.flashUntil = performance.now() + ERROR_FLASH_MS;
+    // Only surface a banner if the timer is running (avoids double
+    // banners over the "Press & hold on circle 1" hint).
+    if (state.startTs) {
+      const labels = state.currentPart === 'a' ? state.labelsA : state.labelsB;
+      showBanner('Wrong circle — go to ' + labels[state.currentIdx] + ' (error +1)', 'err');
+      // Flip back to the resting banner once the flash fades.
+      setTimeout(() => {
+        if (state.currentPart && state.startTs
+            && performance.now() >= state.flashUntil - 20) {
+          hideBanner();
+        }
+      }, ERROR_FLASH_MS + 100);
+    }
   }
 }
 
