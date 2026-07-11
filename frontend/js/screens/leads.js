@@ -213,16 +213,22 @@ class LeadsScreen extends Screen {
       // post a failure message above.
       if (syncReport) {
         const elapsedSec = ((Date.now() - syncStartMs) / 1000).toFixed(1);
+        // Persistent last-sync timestamp for the banner — updated on
+        // every completed sync (skipped-by-TTL counts as a completion
+        // too, so the operator sees "just checked" instead of a stale
+        // time drifting further from now).
+        this._lastSyncAt = new Date();
+        const ts = this._lastSyncAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
         let icon = '✅';
         let text;
         if (syncReport.skippedByTtl) {
           icon = 'ℹ️';
-          text = `Cached (synced <30s ago). ${leads.length} leads.`;
+          text = `Cached (synced <30s ago). ${leads.length} leads. · Last sync: ${ts}`;
         } else if (syncReport.failedForms && syncReport.failedForms.length) {
           icon = '⚠️';
-          text = `Partial sync: ${syncReport.syncedRows} rows from ${syncReport.formsSynced}/${syncReport.formsTotal} forms in ${elapsedSec}s. ${syncReport.failedForms.length} form(s) failed.`;
+          text = `Partial sync: ${syncReport.syncedRows} rows from ${syncReport.formsSynced}/${syncReport.formsTotal} forms in ${elapsedSec}s. ${syncReport.failedForms.length} form(s) failed. · Last sync: ${ts}`;
         } else {
-          text = `Synced ${syncReport.syncedRows} row${syncReport.syncedRows === 1 ? '' : 's'} from ${syncReport.formsTotal} form${syncReport.formsTotal === 1 ? '' : 's'} in ${elapsedSec}s. ${leads.length} leads total.`;
+          text = `Synced ${syncReport.syncedRows} row${syncReport.syncedRows === 1 ? '' : 's'} from ${syncReport.formsTotal} form${syncReport.formsTotal === 1 ? '' : 's'} in ${elapsedSec}s. ${leads.length} leads total. · Last sync: ${ts}`;
         }
         this._setSyncBanner({ icon, text, showRefresh: true });
       }
