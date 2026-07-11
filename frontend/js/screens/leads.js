@@ -932,8 +932,8 @@ class LeadsScreen extends Screen {
     const email    = this.fillTemplate(t.email,   previewLead);
     const snippets = this.messageSnippets(funnelLabel);
 
-    const TIER_ORDER = ['broadcast', 'followup', 'qualify', 'close', 'soft', 'info'];
-    const TIER_LABEL = { broadcast: 'Broadcast (paste to LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
+    const TIER_ORDER = ['alumni', 'broadcast', 'followup', 'qualify', 'close', 'soft', 'info'];
+    const TIER_LABEL = { alumni: 'Alumni return', broadcast: 'Broadcast (paste to LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
     const byTier = {};
     for (const s of snippets) {
       const tt = s.tier || 'info';
@@ -2229,7 +2229,7 @@ class LeadsScreen extends Screen {
       snippets.push({
         id: 'alumni-return-sms',
         label: '📣 Alumni',
-        tier: 'broadcast',
+        tier: 'alumni',
         body:
           `Hey {first} — James at Lighthouse 1893. ` +
           `Pre-season is on and I want you back for APSL, U.S. Open Cup, and Amateur Cup. ` +
@@ -2243,7 +2243,7 @@ class LeadsScreen extends Screen {
       snippets.push({
         id: 'alumni-return-followup',
         label: '✅ Alumni — send link',
-        tier: 'followup',
+        tier: 'alumni',
         body:
           `Hey {first} — welcome back. Here's the registration:\n\n` +
           `→ ${c.link}\n\n` +

@@ -46,7 +46,7 @@ class MessagesScreen extends Screen {
     // the Leads page.  Funnels at the top are the ones we actively
     // chase; keep them most-accessible.
     this._funnels = [
-      'Brazil Men', 'PR Men', 'U23 Men', 'U23 Men + PR', "Men's Club",
+      'PR Men', 'U23 Men', 'U23 Men + PR', "Men's Club",
       'APSL / Liga 1',
       'U23 Women', 'Tri County Women', "Women's Club",
       'Boys Club (Grades 1–6)', 'Boys Club (K-12)', 'Boys Club (U11/U12)',
@@ -385,9 +385,10 @@ class MessagesScreen extends Screen {
     // Leads page.  'program' is the canonical LA program-page copy —
     // pinned at the top so admins can grab-and-paste when editing a
     // LeagueApps program listing.
-    const TIER_ORDER = ['program', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
+    const TIER_ORDER = ['program', 'alumni', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
     const TIER_TITLES = {
       program:  '📋 LeagueApps Program Description',
+      alumni:   '🎯 Alumni return (SMS + "in" reply follow-up)',
       followup: '📨 Follow-up (touch 2 — after they say yes)',
       broadcast: '📣 Broadcasts (LA Messages — entire roster)',
       close:   '🎯 Close (the ask)',
