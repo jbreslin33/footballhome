@@ -1,0 +1,91 @@
+/* frontend/css/sim.css
+ * Full-viewport layout for the fh-sim.v1 demo page.
+ */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #0b3d1a;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 Helvetica, Arial, sans-serif;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#sim-root {
+    position: fixed;
+    inset: 0;
+    display: block;
+}
+
+#sim-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;   /* stop pinch-zoom / scroll during play */
+}
+
+/* Joystick overlay lives on top of the pitch canvas. Full-viewport so
+ * a touch anywhere anchors the stick — but we route pointer events
+ * through it only when we actually want to receive them (see JS). */
+#sim-joystick {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    pointer-events: auto;
+    background: transparent;
+}
+
+/* Sprint pad — bottom right, big enough for a thumb. Hidden on
+ * pointer-fine devices (mouse) since keyboard Shift does the same job. */
+#sim-sprint-pad {
+    position: absolute;
+    right: max(24px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: rgba(255, 213, 74, 0.30);
+    border: 2px solid rgba(255, 213, 74, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    touch-action: none;
+    pointer-events: auto;
+    z-index: 3;
+}
+#sim-sprint-pad:active {
+    background: rgba(255, 213, 74, 0.55);
+}
+@media (pointer: fine) {
+    #sim-sprint-pad { display: none; }
+}
+
+#sim-status {
+    position: absolute;
+    left: max(8px, env(safe-area-inset-left));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 4px;
+    font: 12px monospace;
+    color: #fff;
+    z-index: 3;
+    pointer-events: none;
+    max-width: 60vw;
+}
+
+.sim-status--fatal {
+    background: rgba(150, 30, 30, 0.85);
+    color: #fff;
+}

@@ -53,6 +53,7 @@
 #include "controllers/MatchSeriesController.h"
 #include "controllers/MyController.h"
 #include "controllers/EventReminderController.h"
+#include "controllers/SimLobbyController.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
 
@@ -103,6 +104,7 @@ private:
     std::shared_ptr<MatchSeriesController> match_series_controller_;
     std::shared_ptr<MyController> my_controller_;
     std::shared_ptr<EventReminderController> event_reminder_controller_;
+    std::shared_ptr<SimLobbyController> sim_lobby_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -146,6 +148,7 @@ public:
         match_series_controller_ = std::make_shared<MatchSeriesController>();
         my_controller_ = std::make_shared<MyController>();
         event_reminder_controller_ = std::make_shared<EventReminderController>();
+        sim_lobby_controller_ = std::make_shared<SimLobbyController>();
     }
     
     bool initialize() {
@@ -306,7 +309,13 @@ private:
         //   POST /api/matches/:id/remind
         //   GET  /api/reminders/verify
         router_.useController("/api", event_reminder_controller_);
-        
+
+        // Slice 12 — fh-sim lobby + JWT bridge.
+        //   GET  /api/sim/matches
+        //   POST /api/sim/matches
+        //   POST /api/sim/matches/:matchId/join   (mints sim-side HS256 JWT)
+        router_.useController("/api/sim", sim_lobby_controller_);
+
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {
             return Response::json("{\"status\":\"healthy\",\"service\":\"footballhome-backend\"}");

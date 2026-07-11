@@ -99,6 +99,7 @@ set(SOURCES
     src/controllers/MatchSeriesController.cpp
     src/controllers/MyController.cpp
     src/controllers/EventReminderController.cpp
+    src/controllers/SimLobbyController.cpp
     src/services/RsvpMaterialization.cpp)
 
 # Create executable

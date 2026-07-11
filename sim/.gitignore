@@ -1,0 +1,28 @@
+# sim/.gitignore
+# Build artifacts
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+compile_commands.json
+Makefile
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.cache/
+
+# Object files
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe

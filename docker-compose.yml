@@ -142,6 +142,43 @@ services:
       backend:
         condition: service_started
 
+  # C++ tactical football simulator (M0).
+  #
+  # Owns one Match, drives a 20 Hz tick loop, and exposes /sim as a
+  # WebSocket endpoint (fh-sim.v1 wire protocol, §7 of sim/DESIGN.md).
+  # Every client authenticates with a JWT_SECRET-signed token — the
+  # SAME shared secret the backend uses — so browser clients only need
+  # to hand the sim the token they already have.
+  #
+  # nginx (frontend container) proxies /sim → footballhome_sim:9100.
+  # Never expose 9100 to the host; the browser talks WSS via the
+  # frontend's TLS-terminating nginx.
+  footballhome_sim:
+    build:
+      context: ./sim
+      dockerfile: Dockerfile
+    container_name: footballhome_sim
+    restart: unless-stopped
+    env_file: ./env
+    environment:
+      SIM_BIND_ADDRESS: 0.0.0.0
+      SIM_PORT: "9100"
+      SIM_MATCH_ID: "1"
+      SIM_MATCH_SEED: "42"
+    networks:
+      - footballhome_network
+    # No ports: block — the sim is only reachable via nginx on the
+    # internal footballhome_network.
+    healthcheck:
+      # A raw TCP connect to 9100 is enough to prove the process is up
+      # and the socket is listening. WebSocket handshake is not exercised
+      # here; the backend / frontend do that end-to-end.
+      test: ["CMD-SHELL", "ss -Hln --tcp sport = :9100 | grep -q LISTEN"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+
 
 
 # Named volumes for persistent data

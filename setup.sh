@@ -35,9 +35,9 @@ echo -e "${BLUE}Football Home - First-Time Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> vpn -> nginx
+# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx
 # (age must precede vpn so scrape-vpn.conf.age is decrypted before vpn step reads it)
-STEPS=(base age podman node chrome env scraper vendor)
+STEPS=(base age podman node chrome env scraper vendor sim)
 [ "$OS_TYPE" = "Linux" ] && STEPS+=(vpn nginx)
 
 # ── Arg parsing ───────────────────────────────────────────────────────

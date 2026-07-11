@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b3d1a">
+<!-- Zero-cache mandate from user memory: every response is fresh. -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma"        content="no-cache">
+<meta http-equiv="Expires"       content="0">
+<title>footballhome sim — empty pitch</title>
+<link rel="stylesheet" href="/css/sim.css">
+</head>
+<body>
+<div id="sim-root">
+    <canvas id="sim-canvas"   aria-label="pitch view"></canvas>
+    <canvas id="sim-joystick" aria-label="virtual joystick"></canvas>
+    <div id="sim-sprint-pad" role="button" aria-label="sprint">RUN</div>
+    <div id="sim-status">connecting…</div>
+</div>
+
+<!-- Classic script tags — this repo's frontend intentionally has no build
+     step, so each file registers a global on `window` (see wire.js). -->
+<script src="/js/sim/wire.js"></script>
+<script src="/js/sim/transport.js"></script>
+<script src="/js/sim/interpolator.js"></script>
+<script src="/js/sim/renderer.js"></script>
+<script src="/js/sim/input.js"></script>
+<script src="/js/sim/client.js"></script>
+</body>
+</html>

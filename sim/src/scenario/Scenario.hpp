@@ -1,0 +1,83 @@
+// footballhome sim - Scenario interface
+//
+// A Scenario declares a self-contained gameplay setup: pitch dimensions,
+// playable-area constraints, initial slot spawns, and the ball's starting
+// position if any. Scenarios are pure declaration + read-only checks —
+// they do not own state or drive simulation.
+//
+// M0 has exactly one scenario: EmptyPitchScenario.
+//
+// See DESIGN.md §5.6, §16.1.
+
+#pragma once
+
+#include "awareness/AwarenessView.hpp"
+#include "common/IdTypes.hpp"
+#include "common/Role.hpp"
+#include "math/Fixed64.hpp"
+#include "math/Vec3.hpp"
+#include "profile/ConceptSet.hpp"
+#include "profile/PlayerProfile.hpp"
+
+#include <optional>
+#include <string>
+#include <vector>
+
+namespace fh::sim::scenario {
+
+struct PitchSpec {
+    math::Fixed64 length_m;    // FIFA regulation: 105 m
+    math::Fixed64 width_m;     // FIFA regulation: 68  m
+};
+
+struct PlayableArea {
+    // Polygon defining the region where the ball is considered in play.
+    // M0: usually a rectangle at the pitch corners. Empty vector = no
+    // constraint (M0 default: whole pitch is playable).
+    std::vector<math::Vec3> polygon;
+
+    enum class Mode : std::uint8_t {
+        Hard      = 0,  // ball is snapped back / play resets
+        Soft      = 1,  // event fires but play continues
+        Advisory  = 2,  // no engine action; UI hint only
+    };
+    Mode          constraint_mode{Mode::Advisory};
+    math::Fixed64 zoom_hint{math::Fixed64::zero()};   // client camera fit
+};
+
+struct SlotSpawn {
+    SlotId        slot;
+    math::Vec3    position;
+    math::Fixed64 heading;
+    Role          role{Role::Any};
+
+    // If the slot starts controlled by AI, this is what to plug into it.
+    // In M0 the unclaimed default is WanderController; these fields are
+    // for M3+ AiController slots.
+    std::optional<profile::ConceptSet>    ai_concepts;
+    std::optional<profile::PlayerProfile> ai_profile;
+};
+
+class Scenario {
+public:
+    virtual ~Scenario() = default;
+
+    // Stable identifier, matches sim_scenarios.code_id.
+    virtual std::string          id() const = 0;
+    virtual std::string          displayName() const = 0;
+
+    virtual PitchSpec            pitch() const = 0;
+    virtual PlayableArea         playableArea() const = 0;
+    virtual std::vector<SlotSpawn> initialSpawns() const = 0;
+    virtual std::optional<math::Vec3> ballSpawn() const = 0;   // M0: none
+
+    // Ended / success / reset predicates over WorldView. M0: all return
+    // false (empty-pitch never ends by itself).
+    virtual bool                 checkSuccess(const awareness::WorldView& w) const = 0;
+    virtual bool                 checkReset(const awareness::WorldView& w)   const = 0;
+
+    // Short user-facing hints shown pre-match.
+    virtual std::vector<std::string> hints() const = 0;
+};
+
+} // namespace fh::sim::scenario

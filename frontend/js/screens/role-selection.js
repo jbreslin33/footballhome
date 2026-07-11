@@ -57,7 +57,15 @@ class RoleSelectionScreen extends Screen {
             <div style="font-size: 0.85rem; opacity: 0.8;">Assign players to summer squads</div>
           </div>
         </button>
-        
+
+        <a href="/sim.html" class="btn btn-lg btn-primary" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
+          <span style="font-size: 2rem;">⚽</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Sim Demo (M0)</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Wander an empty pitch — testing only</div>
+          </div>
+        </a>
+
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
       </div>

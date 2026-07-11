@@ -1,0 +1,33 @@
+# sim/.dockerignore
+#
+# Keep the build context small and reproducible — never ship host build
+# artifacts, IDE state, or design docs into the image.
+
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+compile_commands.json
+Makefile
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+.vscode/
+.idea/
+*.swp
+*.swo
+.cache/
+
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+
+# Docs and mockups are development-time only.
+DESIGN.md
+mockups/
