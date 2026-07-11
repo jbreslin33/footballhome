@@ -15,7 +15,7 @@ class LeadsScreen extends Screen {
           <span id="leads-sync-icon" style="font-size: 16px;">⏳</span>
           <span id="leads-sync-status" style="flex:1; min-width: 200px;">Syncing latest leads from Meta…</span>
           <button id="leads-sync-log-toggle" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px;" title="Show/hide load log">📜 Log</button>
-          <button id="leads-sync-refresh" class="btn btn-secondary" style="display:none; padding: 4px 10px; font-size: 13px;">🔄 Refresh now</button>
+          <button id="leads-sync-refresh" class="btn btn-secondary" style="display:none; padding: 4px 10px; font-size: 13px;">🔄 Sync now</button>
         </div>
         <div id="leads-sync-log" style="display:block; margin: 0 0 var(--space-3) 0; max-height: 220px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #1e293b; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.4;"></div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
@@ -149,7 +149,7 @@ class LeadsScreen extends Screen {
       syncReport = await syncRes.json();
       const syncMs = Date.now() - syncStartMs;
       if (syncReport.skippedByTtl) {
-        this._appendLog(`Sync skipped: cached <30s ago (use Refresh to force). (${syncMs}ms)`, 'info');
+        this._appendLog(`Sync skipped: cached <30s ago (use Sync now to force). (${syncMs}ms)`, 'info');
       } else {
         const synced  = syncReport.syncedRows ?? 0;
         const formsT  = syncReport.formsTotal ?? '?';
@@ -176,7 +176,7 @@ class LeadsScreen extends Screen {
       // be stale.
       this._setSyncBanner({
         icon: '⚠️',
-        text: `Meta sync failed (${err.message}) — showing cached leads. Click refresh to retry.`,
+        text: `Meta sync failed (${err.message}) — showing cached leads. Click Sync now to retry.`,
         showRefresh: true,
       });
     }
