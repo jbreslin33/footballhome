@@ -25,6 +25,21 @@ class PausedMembersScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
+        <div id="members-variant-toggle" style="margin-bottom: var(--space-3); display:inline-flex;
+             gap: 0; border-radius: 9999px; overflow: hidden;
+             border: 1px solid var(--color-border); background: var(--bg-secondary);">
+          <button class="variant-pill" data-variant="active" style="padding: 6px 18px; border: 0;
+                  background: transparent; color: var(--text-secondary); font-size: 0.9rem;
+                  font-weight: 500; cursor: pointer;">
+            👥 Active
+          </button>
+          <button class="variant-pill" data-variant="paused" style="padding: 6px 18px; border: 0;
+                  background: transparent; color: var(--text-secondary); font-size: 0.9rem;
+                  font-weight: 500; cursor: pointer;">
+            ⚽ Pickup
+          </button>
+        </div>
+
         <div id="members-sync-bar" style="margin-bottom: var(--space-3); display:flex;
              align-items:center; gap: var(--space-2); flex-wrap: wrap;">
           <span id="members-sync-time" style="padding:4px 12px; border-radius:9999px;
@@ -107,20 +122,19 @@ class PausedMembersScreen extends Screen {
     this._filter  = '';
 
     // Swap title + subtitle to match the variant + optional category.
-    const titleEl    = this.find('#members-title');
+    this._updateTitle();
     const subtitleEl = this.find('#members-subtitle');
     const catLabel   = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
     if (this.variant === 'active') {
-      if (titleEl)    titleEl.textContent    = catLabel ? `👥 ${catLabel} Members` : '👥 Membership';
       if (subtitleEl) subtitleEl.textContent = catLabel
         ? `Active ${catLabel.toLowerCase()} club members`
         : 'Active members across Men / Women / Boys / Girls sub-programs';
     } else {
-      if (titleEl)    titleEl.textContent    = catLabel ? `⚽ ${catLabel} Pickup` : '⚽ Pickup Membership';
       if (subtitleEl) subtitleEl.textContent = catLabel
         ? `${catLabel} members on the pickup-only roster`
         : 'Members on the pickup-only roster (eligible for pickup, not team practice/games)';
     }
+    this._updateVariantToggle();
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
@@ -130,6 +144,21 @@ class PausedMembersScreen extends Screen {
       const bulkBtn = e.target.closest('[data-bulk]');
       if (bulkBtn) {
         this._handleBulk(bulkBtn.getAttribute('data-bulk'));
+        return;
+      }
+      // Active / Pickup segmented toggle in the header.  Switches
+      // `this.variant`, updates title + subtitle + toggle styling,
+      // then re-runs the full sync-and-load flow.  Category chip
+      // selection is preserved across toggles.
+      const variantBtn = e.target.closest('#members-variant-toggle .variant-pill');
+      if (variantBtn) {
+        const next = variantBtn.getAttribute('data-variant');
+        if (next && next !== this.variant) {
+          this.variant = next;
+          this._updateTitle();
+          this._updateVariantToggle();
+          this._load();
+        }
         return;
       }
       // Manual re-sync: same code path as sync-on-load — brings the
@@ -147,6 +176,7 @@ class PausedMembersScreen extends Screen {
         this._renderCategoryChips();
         this._renderGroups();
         this._renderBulkBar();
+        this._updateTitle();
         this._updateSubtitle();
         return;
       }
@@ -448,6 +478,27 @@ class PausedMembersScreen extends Screen {
     const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
     const scope = catLabel ? `${catLabel} — ` : '';
     subtitle.textContent = `${scope}${total} ${noun} member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
+  }
+
+  _updateTitle() {
+    const titleEl = this.find('#members-title');
+    if (!titleEl) return;
+    const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
+    if (this.variant === 'active') {
+      titleEl.textContent = catLabel ? `👥 ${catLabel} Members` : '👥 Membership';
+    } else {
+      titleEl.textContent = catLabel ? `⚽ ${catLabel} Pickup` : '⚽ Pickup Membership';
+    }
+  }
+
+  _updateVariantToggle() {
+    const buttons = this.element.querySelectorAll('#members-variant-toggle .variant-pill');
+    buttons.forEach(btn => {
+      const active = btn.getAttribute('data-variant') === this.variant;
+      btn.style.background = active ? 'var(--color-primary, #2563eb)' : 'transparent';
+      btn.style.color      = active ? '#fff' : 'var(--text-secondary)';
+      btn.style.fontWeight = active ? '600' : '500';
+    });
   }
 
   // Return the flat list of members currently in view (respects the

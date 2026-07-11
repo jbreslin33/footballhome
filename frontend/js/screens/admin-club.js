@@ -22,7 +22,7 @@ class AdminClubScreen extends Screen {
 
         <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Membership</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          One tile per LeagueApps membership program — 4 categories × 2 variants (active + pickup).
+          Unified members board — flip Active / Pickup and filter by category from one screen.
         </p>
         <div id="section-membership" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
@@ -113,32 +113,17 @@ class AdminClubScreen extends Screen {
     };
 
     // ── Membership ─────────────────────────────────────────────────────
-    // One tile per LeagueApps membership program.  Kept in exact
-    // sync with `leagueapps_programs` (4 categories × 2 variants):
+    // Single tile that opens the unified Members board (paused-members
+    // screen).  The board has an Active / Pickup toggle and category
+    // chips (Men / Women / Boys / Girls) so the coach can reach any of
+    // the 8 LA sub-programs (4 categories × 2 variants) from one place
+    // without leaving the screen.
     //
-    //   men   / active  → Lighthouse Men's Club 1893 Soccer Membership   (5039300)
-    //   men   / pickup  → Lighthouse Men's Club 1893 Pickup Membership   (5070075)
-    //   women / active  → Lighthouse Women's Club 1895 Soccer Membership (5039340)
-    //   women / pickup  → Lighthouse Women's Club 1895 Pickup Membership (5064686)
-    //   boys  / active  → Lighthouse Boys Club 1897 Soccer Membership    (5039252)
-    //   boys  / pickup  → Lighthouse Boys Club 1897 Pickup Membership    (5064618)
-    //   girls / active  → Lighthouse Girl's Club 1898 Soccer Membership  (5039357)
-    //   girls / pickup  → Lighthouse Girl's Club 1898 Pickup Membership  (5064662)
-    //
-    // Tile ids follow the `(paused-members|members)-(mens|womens|boys|girls)`
-    // convention that handleSubNavigation() already parses via regex —
-    // "members-*" opens variant=active, "paused-members-*" opens
-    // variant=paused (which the members screen displays as "Pickup").
-    // Adding a new LA program means adding one line here.
+    // Deep-link tile ids (`members-mens`, `paused-members-girls`, etc.)
+    // are still honored by handleSubNavigation() below, so any external
+    // bookmark / hash-route pointing at a specific slice keeps working.
     const membershipTiles = [
-      { id: 'members-mens',          icon: '👨',  label: 'Mens Membership',    description: "Lighthouse Men's Club 1893 — active members" },
-      { id: 'paused-members-mens',   icon: '⚡',  label: 'Mens Pickup',        description: "Lighthouse Men's Club 1893 Pickup" },
-      { id: 'members-womens',        icon: '👩',  label: 'Womens Membership',  description: "Lighthouse Women's Club 1895 — active members" },
-      { id: 'paused-members-womens', icon: '⚡',  label: 'Womens Pickup',      description: "Lighthouse Women's Club 1895 Pickup" },
-      { id: 'members-boys',          icon: '👦',  label: 'Boys Membership',    description: 'Lighthouse Boys Club 1897 — active members' },
-      { id: 'paused-members-boys',   icon: '⚡',  label: 'Boys Pickup',        description: 'Lighthouse Boys Club 1897 Pickup' },
-      { id: 'members-girls',         icon: '👧',  label: 'Girls Membership',   description: "Lighthouse Girl's Club 1898 — active members" },
-      { id: 'paused-members-girls',  icon: '⚡',  label: "Girls Pickup",       description: "Lighthouse Girl's Club 1898 Pickup" },
+      { id: 'members', icon: '👥', label: 'Members', description: 'Unified board — Active / Pickup toggle, filter by Men / Women / Boys / Girls' },
     ];
     renderInto('#section-membership', membershipTiles);
 
