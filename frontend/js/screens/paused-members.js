@@ -1063,7 +1063,7 @@ class PausedMembersScreen extends Screen {
       subject = 'Your FootballHome account is ready';
       body    = `Hey ${first},\n\n` +
                 `You're set up on FootballHome. Go to https://footballhome.org, ` +
-                `sign in, then set your availability so we know who to count on.\n\n` +
+                `sign in, then set your availability for events so we don't have to remind you.\n\n` +
                 `Please reply to let me know you got this.\n\n` +
                 `— James Breslin\n` +
                 `Soccer Director, Lighthouse`;
