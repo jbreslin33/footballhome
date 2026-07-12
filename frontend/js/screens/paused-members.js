@@ -25,20 +25,6 @@ class PausedMembersScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
-        <div id="members-variant-toggle" style="margin-bottom: var(--space-3); display:inline-flex;
-             gap: 0; border-radius: 9999px; overflow: hidden;
-             border: 1px solid var(--color-border); background: var(--bg-secondary);">
-          <button class="variant-pill" data-variant="active" style="padding: 6px 18px; border: 0;
-                  background: transparent; color: var(--text-secondary); font-size: 0.9rem;
-                  font-weight: 500; cursor: pointer;">
-            👥 Active
-          </button>
-          <button class="variant-pill" data-variant="paused" style="padding: 6px 18px; border: 0;
-                  background: transparent; color: var(--text-secondary); font-size: 0.9rem;
-                  font-weight: 500; cursor: pointer;">
-            ⚽ Pickup
-          </button>
-        </div>
 
         <div id="members-sync-bar" style="margin-bottom: var(--space-3); display:flex;
              align-items:center; gap: var(--space-2); flex-wrap: wrap;">
@@ -115,13 +101,20 @@ class PausedMembersScreen extends Screen {
   onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
-    // 'active' → Membership, 'paused' → Paused Membership.  Default to
-    // 'paused' for legacy callers that navigate to 'paused-members'
-    // without a variant param.
-    this.variant  = (params?.variant === 'active') ? 'active' : 'paused';
-    // Optional per-category filter — matches leagueapps_programs.category.
-    const cat = String(params?.category || '').toLowerCase();
-    this.category = ['men','women','boys','girls'].includes(cat) ? cat : '';
+    // Which LA sub-program is currently in focus.  `null` == "All"
+    // pseudo-chip (every sub-program in one scrolling list).  The
+    // chip row is rendered from whatever `_groups` came back from
+    // the API — one chip per (category, variant) pair.
+    this.programId = null;
+    // Legacy nav params (`variant=active|paused`, `category=men|…`)
+    // still arrive from admin-club tiles.  Translate them into a
+    // best-effort pre-selected `programId` once the first load
+    // resolves — see `_applyLegacyParams()`.  Stored so we can
+    // consume them exactly once per screen entry.
+    this._pendingLegacyCategory = String(params?.category || '').toLowerCase();
+    this._pendingLegacyVariant  = (params?.variant === 'active' || params?.variant === 'pickup' || params?.variant === 'paused')
+      ? (params.variant === 'paused' ? 'pickup' : params.variant)
+      : '';
     this._groups  = [];
     this._filter  = '';
     // Sort key for the member cards inside each group.  Default is
@@ -139,20 +132,11 @@ class PausedMembersScreen extends Screen {
     this._flagNoAccount = localStorage.getItem('members-flag-no-account') === '1';
     this._flagDormant   = localStorage.getItem('members-flag-dormant')   === '1';
 
-    // Swap title + subtitle to match the variant + optional category.
+    // Title + subtitle default to the "all clubs" view; `_updateTitle`
+    // and `_updateSubtitle` re-run after each chip click and after the
+    // legacy nav params resolve (see `_applyLegacyParams`).
     this._updateTitle();
-    const subtitleEl = this.find('#members-subtitle');
-    const catLabel   = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
-    if (this.variant === 'active') {
-      if (subtitleEl) subtitleEl.textContent = catLabel
-        ? `Active ${catLabel.toLowerCase()} club members`
-        : 'Active members across Men / Women / Boys / Girls sub-programs';
-    } else {
-      if (subtitleEl) subtitleEl.textContent = catLabel
-        ? `${catLabel} members on the pickup-only roster`
-        : 'Members on the pickup-only roster (eligible for pickup, not team practice/games)';
-    }
-    this._updateVariantToggle();
+    this._updateSubtitle();
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
@@ -164,21 +148,6 @@ class PausedMembersScreen extends Screen {
         this._handleBulk(bulkBtn.getAttribute('data-bulk'));
         return;
       }
-      // Active / Pickup segmented toggle in the header.  Switches
-      // `this.variant`, updates title + subtitle + toggle styling,
-      // then re-runs the full sync-and-load flow.  Category chip
-      // selection is preserved across toggles.
-      const variantBtn = e.target.closest('#members-variant-toggle .variant-pill');
-      if (variantBtn) {
-        const next = variantBtn.getAttribute('data-variant');
-        if (next && next !== this.variant) {
-          this.variant = next;
-          this._updateTitle();
-          this._updateVariantToggle();
-          this._load();
-        }
-        return;
-      }
       // Manual re-sync: same code path as sync-on-load — brings the
       // boot screen back, hits POST /membership/sync, then reloads
       // the list.  Also used as the "Try again" button when the
@@ -187,11 +156,15 @@ class PausedMembersScreen extends Screen {
         this._load();
         return;
       }
-      const chip = e.target.closest('[data-category-chip]');
+      // Club chip row — one chip per LA sub-program (Mens Club, Mens
+      // Pickup Club, Boys Club, …) plus an "All" pseudo-chip.  Clicking
+      // narrows the visible groups to a single sub-program without
+      // re-hitting the API (all data is already loaded).
+      const chip = e.target.closest('[data-program-chip]');
       if (chip) {
-        const cat = chip.getAttribute('data-category-chip');
-        this.category = (cat === 'all') ? '' : cat;
-        this._renderCategoryChips();
+        const pid = chip.getAttribute('data-program-chip');
+        this.programId = (pid === 'all') ? null : Number(pid);
+        this._renderProgramChips();
         this._renderGroups();
         this._renderBulkBar();
         this._updateTitle();
@@ -297,8 +270,11 @@ class PausedMembersScreen extends Screen {
 
     this._resetBoot();
 
-    const qs = `variant=${encodeURIComponent(this.variant)}` +
-               (this.category ? `&category=${encodeURIComponent(this.category)}` : '');
+    // Always request every sub-program in one shot; the flat club-chip
+    // row on the client narrows the view.  `variant=all` returns both
+    // active and pickup groups together — see AdminLaBackfillController::
+    // respondMembers.
+    const qs = `variant=all`;
 
     // ── Step 1 + 2: sync from LeagueApps → upsert local DB ─────────
     // A single POST to the backend covers both.  The backend fans out
@@ -362,13 +338,17 @@ class PausedMembersScreen extends Screen {
 
       if (this._groups.length === 0) {
         emptyEl.style.display = 'block';
-        emptyEl.textContent = this.variant === 'paused'
-          ? 'Nobody is on the pickup roster right now.'
-          : 'No active members found.';
+        emptyEl.textContent = 'No members found in any sub-program.';
         return;
       }
 
-      this._renderCategoryChips();
+      // Consume any legacy `?variant=`/`?category=` nav params from the
+      // admin-club tile: pick the first program group matching them so
+      // the old "go to Pickup Membership" tile still lands on the right
+      // chip.  Runs at most once per screen entry.
+      this._applyLegacyParams();
+
+      this._renderProgramChips();
       this._renderSortPills();
       if (filtersEl)  filtersEl.style.display  = 'flex';
       if (searchWrap) searchWrap.style.display = 'block';
@@ -376,10 +356,7 @@ class PausedMembersScreen extends Screen {
 
       if (total === 0) {
         emptyEl.style.display = 'block';
-        const catLabel = { men:'men', women:'women', boys:'boys', girls:'girls' }[this.category] || '';
-        emptyEl.textContent = this.variant === 'paused'
-          ? (catLabel ? `No ${catLabel} on the pickup roster right now.` : 'Nobody is on the pickup roster right now.')
-          : (catLabel ? `No active ${catLabel} members found.` : 'No active members found.');
+        emptyEl.textContent = 'No members match the current filter.';
         return;
       }
 
@@ -510,11 +487,29 @@ class PausedMembersScreen extends Screen {
   }
   _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-  // Groups after applying the category chip.  Returns everything if
-  // `this.category` is empty (== "All" chip selected).
+  // Groups after applying the club chip.  Returns everything if
+  // `this.programId` is null (== "All" chip selected).
   _filteredGroups() {
-    if (!this.category) return this._groups;
-    return this._groups.filter(g => (g.category || '').toLowerCase() === this.category);
+    if (this.programId == null) return this._groups;
+    return this._groups.filter(g => Number(g.program_id) === this.programId);
+  }
+
+  // One-shot legacy param translator: if the caller navigated in with
+  // `?variant=active&category=boys` (old admin-club tile shape), pick
+  // the first matching program group and pre-select its chip.  Consumes
+  // the pending params so subsequent renders don't reapply them.
+  _applyLegacyParams() {
+    const wantCat     = this._pendingLegacyCategory;
+    const wantVariant = this._pendingLegacyVariant;
+    this._pendingLegacyCategory = '';
+    this._pendingLegacyVariant  = '';
+    if (!wantCat && !wantVariant) return;
+    const match = (this._groups || []).find(g => {
+      const catOk     = !wantCat     || String(g.category || '').toLowerCase() === wantCat;
+      const variantOk = !wantVariant || String(g.variant  || '').toLowerCase() === wantVariant;
+      return catOk && variantOk;
+    });
+    if (match) this.programId = Number(match.program_id);
   }
 
   // Sort a member list per the current `this._sort` key.  Non-mutating
@@ -642,22 +637,18 @@ class PausedMembersScreen extends Screen {
     `;
   }
 
-  _renderCategoryChips() {
+  _renderProgramChips() {
     const el = this.find('#members-filters');
     if (!el) return;
-    // Available categories = whatever categories the server returned +
-    // an "All" pseudo-chip.  Preserves display order (men → women → boys → girls).
-    const order = ['men', 'women', 'boys', 'girls'];
-    const present = new Set(this._groups.map(g => (g.category || '').toLowerCase()));
-    const cats = order.filter(c => present.has(c));
-    const totalAll = this._groups.reduce((n, g) => n + (g.members?.length || 0), 0);
-    const countFor = (cat) => this._groups
-      .filter(g => (g.category || '').toLowerCase() === cat)
-      .reduce((n, g) => n + (g.members?.length || 0), 0);
-    const label = { men:'👨 Men', women:'👩 Women', boys:'👦 Boys', girls:'👧 Girls' };
 
-    const chip = (id, text, count, active) => `
-      <button data-category-chip="${id}"
+    // Preserve display order: men (Club then Pickup) → women → boys →
+    // girls, driven by the backend's ORDER BY (category, variant<>'active').
+    // We just walk `this._groups` in the order it arrived.
+    const emoji = (cat) => ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
+    const totalAll = this._groups.reduce((n, g) => n + (g.members?.length || 0), 0);
+
+    const chip = (pid, text, count, active) => `
+      <button data-program-chip="${pid}"
               style="padding:6px 12px; border-radius:999px; cursor:pointer;
                      font-weight:600; font-size:0.85rem; border:1px solid var(--color-border);
                      background:${active ? 'var(--color-primary, #2563eb)' : 'var(--bg-secondary)'};
@@ -665,43 +656,52 @@ class PausedMembersScreen extends Screen {
         ${text} <span style="opacity:0.7; font-weight:400;">(${count})</span>
       </button>`;
 
-    el.innerHTML = [
-      chip('all', 'All', totalAll, !this.category),
-      ...cats.map(c => chip(c, label[c] || c, countFor(c), this.category === c)),
-    ].join(' ');
+    const chips = [
+      chip('all', '👥 All', totalAll, this.programId == null),
+    ];
+    for (const g of this._groups) {
+      const cat   = String(g.category || '').toLowerCase();
+      const label = `${emoji(cat)} ${g.label || g.program_name || 'Club'}`;
+      const count = (g.members || []).length;
+      chips.push(chip(g.program_id, label, count, Number(g.program_id) === this.programId));
+    }
+
+    el.innerHTML = chips.join(' ');
   }
+
+  // Backward-compat shim for any legacy call sites that still use the
+  // old category-chip name.  Redirects to the per-program renderer.
+  _renderCategoryChips() { this._renderProgramChips(); }
 
   _updateSubtitle() {
     const subtitle = this.find('#members-subtitle');
     if (!subtitle) return;
     const groups = this._filteredGroups();
     const total  = groups.reduce((n, g) => n + (g.members?.length || 0), 0);
-    const noun = this.variant === 'paused' ? 'pickup' : 'active';
-    const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
-    const scope = catLabel ? `${catLabel} — ` : '';
-    subtitle.textContent = `${scope}${total} ${noun} member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
+    if (this.programId != null && groups.length === 1) {
+      const g = groups[0];
+      subtitle.textContent = `${g.label || g.program_name} — ${total} member${total === 1 ? '' : 's'}`;
+    } else {
+      subtitle.textContent = `${total} member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
+    }
   }
 
   _updateTitle() {
     const titleEl = this.find('#members-title');
     if (!titleEl) return;
-    const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.category] || '';
-    if (this.variant === 'active') {
-      titleEl.textContent = catLabel ? `👥 ${catLabel} Members` : '👥 Membership';
-    } else {
-      titleEl.textContent = catLabel ? `⚽ ${catLabel} Pickup` : '⚽ Pickup Membership';
+    if (this.programId != null) {
+      const g = (this._groups || []).find(x => Number(x.program_id) === this.programId);
+      if (g) {
+        const cat = String(g.category || '').toLowerCase();
+        const emoji = ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
+        titleEl.textContent = `${emoji} ${g.label || g.program_name || 'Membership'}`;
+        return;
+      }
     }
+    titleEl.textContent = '👥 Membership';
   }
 
-  _updateVariantToggle() {
-    const buttons = this.element.querySelectorAll('#members-variant-toggle .variant-pill');
-    buttons.forEach(btn => {
-      const active = btn.getAttribute('data-variant') === this.variant;
-      btn.style.background = active ? 'var(--color-primary, #2563eb)' : 'transparent';
-      btn.style.color      = active ? '#fff' : 'var(--text-secondary)';
-      btn.style.fontWeight = active ? '600' : '500';
-    });
-  }
+  _updateVariantToggle() { /* removed — the Active/Pickup toggle is gone; each sub-program is its own chip now. */ }
 
   // Return the flat list of members currently in view (respects the
   // search filter).  Used to power bulk actions and the summary strip.
@@ -809,12 +809,18 @@ class PausedMembersScreen extends Screen {
     }
     if (action === 'vcard') {
       // Bulk export — one .vcf file containing every visible member,
-      // filename baked from variant + optional category + count so the
-      // file lands in Downloads with a recognisable name.  iOS/Android
+      // filename baked from selected sub-program (or "all") + count so
+      // the file lands in Downloads with a recognisable name.  iOS/Android
       // Contacts apps happily import multi-entry vCards as a batch.
       if (!visible.length) return;
-      const cat = this.category ? `-${this.category}` : '';
-      const fname = `lighthouse-${this.variant}${cat}-${visible.length}-contacts.vcf`;
+      let slug = 'all';
+      if (this.programId != null) {
+        const g = (this._groups || []).find(x => Number(x.program_id) === this.programId);
+        if (g && g.label) {
+          slug = String(g.label).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'all';
+        }
+      }
+      const fname = `lighthouse-${slug}-${visible.length}-contacts.vcf`;
       this._downloadVcard(visible, fname);
       return;
     }
@@ -882,16 +888,14 @@ class PausedMembersScreen extends Screen {
       return hay.includes(filter);
     };
 
-    // Verb used in the "since" line — "Joined" for active, "Pickup since"
-    // for pickup-only members.  joined_at reflects when the current
-    // membership row was opened by PersonLinker::recordMembership.
-    const sinceLabel = this.variant === 'paused' ? 'Pickup since' : 'Joined';
-
     const html = this._filteredGroups().map(g => {
       const members = this._sortMembers(
         (g.members || []).filter(m => this._passesStatusFlags(m)).filter(matches)
       );
       const count = members.length;
+      // Verb used in the "since" line — per-group so "Pickup since" only
+      // appears for pickup-variant sub-programs.
+      const sinceLabel = (String(g.variant || '').toLowerCase() === 'pickup') ? 'Pickup since' : 'Joined';
       const cards = members.map(m => this._renderCard(m, sinceLabel)).join('');
 
       // Skip empty groups when filtering.
@@ -1198,7 +1202,6 @@ class PausedMembersScreen extends Screen {
     const noteParts = [];
     if (m.person_id) noteParts.push(`FH person #${m.person_id}`);
     if (joined)      noteParts.push(`joined ${joined}`);
-    if (this.variant === 'paused') noteParts.push('pickup-only');
     const note = noteParts.join(' · ');
 
     const lines = [

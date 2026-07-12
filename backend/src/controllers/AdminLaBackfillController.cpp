@@ -485,7 +485,7 @@ static Response respondMembers(const std::string& variant,
             // has none, and flag it so the UI can label the contact as
             // via-parent.  See admin/members smoke test 2026-07-03:
             // 30 boys → 4 own email vs 26 parent email.
-            "SELECT lp.category, lp.program_id, lp.program_name, "
+            "SELECT lp.category, lp.variant, lp.program_id, lp.program_name, "
             "       pe.id AS person_id, pe.first_name, pe.last_name, "
             "       TO_CHAR(pe.birth_date, 'YYYY-MM-DD') AS dob, "
             "       COALESCE(NULLIF(pem.email, ''), parent_pem.email, '') AS email, "
@@ -533,9 +533,13 @@ static Response respondMembers(const std::string& variant,
             "        AND epa.external_user_id IS NOT NULL "
             "        AND epa.external_user_id <> '' "
             "  LEFT JOIN users u               ON u.person_id   = pe.id "
-            " WHERE plm.ended_at IS NULL AND lp.variant = $1 "
+            " WHERE plm.ended_at IS NULL "
+            "   AND ($1 = '' OR lp.variant  = $1) "
             "   AND ($2 = '' OR lp.category = $2) "
-            " ORDER BY lp.category, lp.program_id, pe.last_name, pe.first_name",
+            // Sort: active variants first within a category (so "Mens
+            // Club" comes before "Mens Pickup Club" in the chip row),
+            // then by program_id for stable ordering.
+            " ORDER BY lp.category, (lp.variant <> 'active'), lp.program_id, pe.last_name, pe.first_name",
             { variant, category });
 
         // Group by (category, program_id) — one group per sub-program.
@@ -555,18 +559,27 @@ static Response respondMembers(const std::string& variant,
             o << "]}";
         };
 
-        // "men" → "Men", "boys" → "Boys", etc. — title-case first character
-        // only.  Append " Paused" when variant=paused so screens using the
-        // label directly don't need extra logic.
-        auto categoryLabel = [&](const std::string& cat) -> std::string {
-            std::string label = cat;
-            if (!label.empty()) label[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(label[0])));
-            if (variant == "paused") label += " Paused";
-            return label;
+        // "men" → "Mens Club", "boys" → "Boys Club", etc.  When the row's
+        // variant is `pickup` we insert " Pickup" before "Club" so the
+        // frontend can show a single flat chip row (one per sub-program)
+        // without needing an active/pickup toggle.  The label is derived
+        // from the row's own variant — NOT the request-level variant —
+        // because the endpoint also serves `variant=all`, which mixes
+        // both variants in one response.  Special-case "men" → "Mens"
+        // and "women" → "Womens" so we don't emit "Men Club" /
+        // "Women Club" (grammatically awkward).
+        auto categoryLabel = [&](const std::string& cat, const std::string& rowVariant) -> std::string {
+            std::string noun = cat;
+            if      (cat == "men")   noun = "Mens";
+            else if (cat == "women") noun = "Womens";
+            else if (!noun.empty())  noun[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(noun[0])));
+            const std::string suffix = (rowVariant == "pickup") ? " Pickup Club" : " Club";
+            return noun + suffix;
         };
 
         for (const auto& row : rows) {
             const std::string category     = row["category"].is_null()     ? "" : row["category"].c_str();
+            const std::string rowVariant   = row["variant"].is_null()      ? "" : row["variant"].c_str();
             const long long   programId    = row["program_id"].as<long long>();
             const std::string programName  = row["program_name"].is_null() ? "" : row["program_name"].c_str();
 
@@ -578,7 +591,8 @@ static Response respondMembers(const std::string& variant,
                 firstGroup = false;
                 out << "{"
                     <<   "\"category\":"     << jsonEscape(category)
-                    << ",\"label\":"         << jsonEscape(categoryLabel(category))
+                    << ",\"variant\":"       << jsonEscape(rowVariant)
+                    << ",\"label\":"         << jsonEscape(categoryLabel(category, rowVariant))
                     << ",\"program_id\":"    << programId
                     << ",\"program_name\":"  << jsonEscape(programName)
                     << ",\"members\":[";
@@ -647,11 +661,28 @@ static Response respondMembers(const std::string& variant,
 // unknown values to avoid arbitrary SQL parameter injection at the
 // value-level (query params flow into a $1 placeholder so it's safe,
 // but a bad value would return zero rows and mask a client typo).
+//
+// Accepted values:
+//   "active" | "pickup" | "paused" (legacy alias for "pickup")
+//     → filters lp.variant equal to that value.
+//   "all" | ""  → no variant filter (returns groups from every
+//     sub-program — the Members screen's flat club-chip layout).
+// Returns the empty string for "all" so downstream SQL callers can
+// pass it straight into the `($1 = '' OR lp.variant = $1)` predicate.
 static std::string resolveVariant(const Request& request,
                                    const std::string& defaultVariant) {
     std::string v = request.getQueryParam("variant");
     if (v.empty()) v = defaultVariant;
-    if (v != "active" && v != "paused") v = defaultVariant;
+    // Legacy alias: some older callers still send "paused", which was
+    // the DB label before it was renamed to "pickup".  Map first so
+    // the allowlist check below sees a canonical value.
+    if (v == "paused") v = "pickup";
+    if (v == "all") return "";
+    if (v != "active" && v != "pickup") {
+        // Fall back to the endpoint's default (also normalising it).
+        v = (defaultVariant == "paused") ? "pickup" : defaultVariant;
+        if (v == "all") return "";
+    }
     return v;
 }
 
@@ -717,9 +748,9 @@ Response AdminLaBackfillController::handleSyncMemberships(const Request& request
         auto rows = db->query(
             "SELECT program_id, program_name, category, variant "
             "  FROM leagueapps_programs "
-            " WHERE variant = $1 "
+            " WHERE ($1 = '' OR variant  = $1) "
             "   AND ($2 = '' OR category = $2) "
-            " ORDER BY category, program_id",
+            " ORDER BY category, (variant <> 'active'), program_id",
             { variant, category });
         for (const auto& r : rows) {
             ProgramRow pr;
