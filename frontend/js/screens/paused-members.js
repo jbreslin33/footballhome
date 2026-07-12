@@ -56,6 +56,10 @@ class PausedMembersScreen extends Screen {
              flex-wrap:wrap; gap: var(--space-1);">
         </div>
 
+        <div id="members-sort" style="display:none; margin-bottom: var(--space-3);
+             flex-wrap:wrap; gap: var(--space-1); align-items:center;">
+        </div>
+
         <div id="members-search-wrap" style="margin-bottom: var(--space-3); display:none;">
           <input id="members-search" type="search" placeholder="Search name, email, phone…"
                  style="width:100%; padding: var(--space-2) var(--space-3); font-size: 1rem;
@@ -120,6 +124,13 @@ class PausedMembersScreen extends Screen {
     this.category = ['men','women','boys','girls'].includes(cat) ? cat : '';
     this._groups  = [];
     this._filter  = '';
+    // Sort key for the member cards inside each group.  Default is
+    // registration date descending so new sign-ups float to the top of
+    // every sub-program — the club admin acts on them first (welcome
+    // email, roster placement, etc.).  Persisted in localStorage so a
+    // page reload preserves the choice.
+    // Values: 'joined_desc' | 'joined_asc' | 'last_asc' | 'first_asc'
+    this._sort = localStorage.getItem('members-sort') || 'joined_desc';
 
     // Swap title + subtitle to match the variant + optional category.
     this._updateTitle();
@@ -178,6 +189,40 @@ class PausedMembersScreen extends Screen {
         this._renderBulkBar();
         this._updateTitle();
         this._updateSubtitle();
+        return;
+      }
+      // Sort pill row — re-orders cards inside each sub-program group.
+      // Clicking the currently active "Reg date" pill toggles between
+      // newest-first (default) and oldest-first so admins can also flip
+      // to see long-time members bottom-up.
+      const sortBtn = e.target.closest('[data-sort]');
+      if (sortBtn) {
+        const next = sortBtn.getAttribute('data-sort');
+        if (next === 'joined_desc' && this._sort === 'joined_desc') {
+          this._sort = 'joined_asc';
+        } else if (next === 'joined_desc' && this._sort === 'joined_asc') {
+          this._sort = 'joined_desc';
+        } else {
+          this._sort = next;
+        }
+        try { localStorage.setItem('members-sort', this._sort); } catch (_) {}
+        this._renderSortPills();
+        this._renderGroups();
+        return;
+      }
+      // Per-row "👤 Save" → download a single-entry vCard for that member.
+      // Phones/browsers open .vcf directly with their Contacts app so
+      // the operator can add the person with one tap.  Data source is
+      // the same row already on screen — no extra API call.
+      const vcardBtn = e.target.closest('[data-vcard-person-id]');
+      if (vcardBtn) {
+        const pid = Number(vcardBtn.getAttribute('data-vcard-person-id')) || 0;
+        const m = this._visibleMembers().find(x => Number(x.person_id) === pid);
+        if (m) {
+          const name = `${m.first_name || 'contact'}-${m.last_name || pid}`
+            .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || `contact-${pid}`;
+          this._downloadVcard([m], `${name}.vcf`);
+        }
         return;
       }
     });
@@ -293,6 +338,7 @@ class PausedMembersScreen extends Screen {
       }
 
       this._renderCategoryChips();
+      this._renderSortPills();
       if (filtersEl)  filtersEl.style.display  = 'flex';
       if (searchWrap) searchWrap.style.display = 'block';
       this._updateSyncPill();
@@ -440,6 +486,76 @@ class PausedMembersScreen extends Screen {
     return this._groups.filter(g => (g.category || '').toLowerCase() === this.category);
   }
 
+  // Sort a member list per the current `this._sort` key.  Non-mutating
+  // (returns a fresh array) so the underlying `_groups` cache from the
+  // API stays stable across re-sorts.  Missing values sort to the end.
+  _sortMembers(list) {
+    const arr = Array.isArray(list) ? list.slice() : [];
+    const key = this._sort || 'joined_desc';
+    const strCmp = (a, b) => String(a || '').toLowerCase()
+      .localeCompare(String(b || '').toLowerCase());
+    const tieBreak = (a, b) => strCmp(a.last_name, b.last_name)
+      || strCmp(a.first_name, b.first_name);
+    const joinedTs = (m) => {
+      if (!m.joined_at) return null;
+      const t = new Date(m.joined_at).getTime();
+      return Number.isFinite(t) ? t : null;
+    };
+    if (key === 'first_asc') {
+      arr.sort((a, b) => strCmp(a.first_name, b.first_name)
+        || strCmp(a.last_name, b.last_name));
+    } else if (key === 'last_asc') {
+      arr.sort((a, b) => strCmp(a.last_name, b.last_name)
+        || strCmp(a.first_name, b.first_name));
+    } else {
+      // joined_desc / joined_asc — nulls at the bottom regardless of dir.
+      const dir = key === 'joined_asc' ? 1 : -1;
+      arr.sort((a, b) => {
+        const ta = joinedTs(a);
+        const tb = joinedTs(b);
+        if (ta === null && tb === null) return tieBreak(a, b);
+        if (ta === null) return 1;
+        if (tb === null) return -1;
+        return (ta === tb) ? tieBreak(a, b) : (ta - tb) * dir;
+      });
+    }
+    return arr;
+  }
+
+  _renderSortPills() {
+    const el = this.find('#members-sort');
+    if (!el) return;
+    // Only surface the control once the list is populated — keeps the
+    // pre-load boot screen uncluttered.
+    const hasData = (this._groups || []).some(g => (g.members || []).length);
+    if (!hasData) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+
+    const isJoined = this._sort === 'joined_desc' || this._sort === 'joined_asc';
+    const arrow    = this._sort === 'joined_asc' ? ' ↑' : ' ↓';
+    const active = (on) => on
+      ? 'background:var(--color-primary, #2563eb); color:#fff; border-color:transparent;'
+      : 'background:var(--bg-secondary); color:var(--text-primary);';
+    const base = 'padding:5px 12px; border-radius:999px; cursor:pointer;'
+      + ' font-weight:600; font-size:0.8rem; border:1px solid var(--color-border);';
+
+    el.innerHTML = `
+      <span style="opacity:0.6; font-size:0.8rem; margin-right:4px;">Sort:</span>
+      <button data-sort="joined_desc" title="Registration date — click again to flip direction"
+              style="${base} ${active(isJoined)}">
+        📅 Reg date${isJoined ? arrow : ''}
+      </button>
+      <button data-sort="last_asc"
+              style="${base} ${active(this._sort === 'last_asc')}">
+        🔤 Last name
+      </button>
+      <button data-sort="first_asc"
+              style="${base} ${active(this._sort === 'first_asc')}">
+        🔤 First name
+      </button>
+    `;
+  }
+
   _renderCategoryChips() {
     const el = this.find('#members-filters');
     if (!el) return;
@@ -503,6 +619,8 @@ class PausedMembersScreen extends Screen {
 
   // Return the flat list of members currently in view (respects the
   // search filter).  Used to power bulk actions and the summary strip.
+  // Sorted per the active sort pill so bulk exports (vCard, emails,
+  // phones) come out in the same order the admin sees on screen.
   _visibleMembers() {
     const filter = this._filter;
     const matches = (m) => {
@@ -515,7 +633,7 @@ class PausedMembersScreen extends Screen {
     };
     const out = [];
     for (const g of this._filteredGroups()) {
-      for (const m of (g.members || [])) {
+      for (const m of this._sortMembers(g.members || [])) {
         if (matches(m)) out.push(m);
       }
     }
@@ -553,6 +671,10 @@ class PausedMembersScreen extends Screen {
               title="Copy phones to clipboard, comma-separated">
         📋 Copy phones
       </button>
+      <button class="btn btn-sm btn-secondary" data-bulk="vcard"
+              title="Download a single .vcf with all ${visible.length} contact${visible.length===1?'':'s'} — tap on phone to add to Contacts">
+        👤 Save Contacts (${visible.length})
+      </button>
     `;
   }
 
@@ -578,6 +700,17 @@ class PausedMembersScreen extends Screen {
     if (action === 'copy-phones') {
       const phones = [...new Set(visible.map(m => this._phoneDigits(m.phone)).filter(Boolean))];
       this._copyToClipboard(phones.join(', '), `${phones.length} phone${phones.length===1?'':'s'} copied`);
+      return;
+    }
+    if (action === 'vcard') {
+      // Bulk export — one .vcf file containing every visible member,
+      // filename baked from variant + optional category + count so the
+      // file lands in Downloads with a recognisable name.  iOS/Android
+      // Contacts apps happily import multi-entry vCards as a batch.
+      if (!visible.length) return;
+      const cat = this.category ? `-${this.category}` : '';
+      const fname = `lighthouse-${this.variant}${cat}-${visible.length}-contacts.vcf`;
+      this._downloadVcard(visible, fname);
       return;
     }
   }
@@ -650,7 +783,7 @@ class PausedMembersScreen extends Screen {
     const sinceLabel = this.variant === 'paused' ? 'Pickup since' : 'Joined';
 
     const html = this._filteredGroups().map(g => {
-      const members = (g.members || []).filter(matches);
+      const members = this._sortMembers((g.members || []).filter(matches));
       const count = members.length;
       const cards = members.map(m => this._renderCard(m, sinceLabel)).join('');
 
@@ -727,6 +860,17 @@ class PausedMembersScreen extends Screen {
                     font-size:0.75rem; font-weight:700;">📞 Call</a>`
       );
     }
+    // "Save" → download a single-contact vCard.  Always offered (even
+    // when there's no phone/email) so admins can still stash a name +
+    // DOB + person_id reference in their phone book.
+    if (m.person_id) {
+      buttons.push(
+        `<button type="button" data-vcard-person-id="${m.person_id}"
+                 style="padding:5px 10px; border-radius:4px; cursor:pointer;
+                        background:#111827; color:#c7d2fe; border:1px solid #4b5563;
+                        font-size:0.75rem; font-weight:700;">👤 Save</button>`
+      );
+    }
     const btnRow = buttons.length
       ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${buttons.join('')}</div>`
       : '';
@@ -746,6 +890,88 @@ class PausedMembersScreen extends Screen {
         ${btnRow}
       </div>
     `;
+  }
+
+  // ── vCard export ─────────────────────────────────────────────────
+  // Client-side .vcf generation — no backend endpoint needed since
+  // the row already carries first_name / last_name / email / phone /
+  // dob / person_id / joined_at.  Format is vCard 3.0 (widest
+  // compatibility with iOS Contacts, Android Contacts, macOS
+  // Contacts, Google Contacts).  Multi-entry vCards are just
+  // concatenated BEGIN/END:VCARD blocks separated by CRLF.
+
+  _vcardEscape(s) {
+    // vCard 3.0 spec: escape backslash, comma, semicolon, and newlines.
+    // Anything else passes through verbatim (Contacts apps are lenient
+    // about the rest).
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+  }
+
+  _vcardPhone(phone) {
+    // Normalise to E.164 when we can (10 digits → +1XXX, 11 starting
+    // with 1 → +1XXX).  Anything else we emit as-is so international
+    // formats or weird placeholders still round-trip.
+    const d = this._phoneDigits(phone);
+    if (d.length === 10)                       return `+1${d}`;
+    if (d.length === 11 && d.startsWith('1'))  return `+${d}`;
+    return d || String(phone || '');
+  }
+
+  _generateVcard(m) {
+    const esc   = (s) => this._vcardEscape(s);
+    const first = (m.first_name || '').trim();
+    const last  = (m.last_name  || '').trim();
+    const fn    = `${first} ${last}`.trim() || `Person #${m.person_id || ''}`.trim();
+    const email = (m.email || '').trim();
+    const phone = this._vcardPhone(m.phone);
+    const joined = m.joined_at
+      ? new Date(m.joined_at).toLocaleDateString()
+      : '';
+    // NOTE keeps enough breadcrumb that a reimport / manual lookup
+    // later can trace the row back to the FH person record.
+    const noteParts = [];
+    if (m.person_id) noteParts.push(`FH person #${m.person_id}`);
+    if (joined)      noteParts.push(`joined ${joined}`);
+    if (this.variant === 'paused') noteParts.push('pickup-only');
+    const note = noteParts.join(' · ');
+
+    const lines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${esc(fn)}`,
+      `N:${esc(last)};${esc(first)};;;`,
+    ];
+    if (phone) lines.push(`TEL;TYPE=CELL:${esc(phone)}`);
+    if (email) lines.push(`EMAIL;TYPE=INTERNET:${esc(email)}`);
+    lines.push('ORG:Lighthouse 1893 SC');
+    if (note)        lines.push(`NOTE:${esc(note)}`);
+    if (m.person_id) lines.push(`X-FH-PERSON-ID:${m.person_id}`);
+    lines.push('END:VCARD');
+    return lines.join('\r\n');
+  }
+
+  _downloadVcard(members, filename) {
+    if (!members || !members.length) return;
+    const body = members.map(m => this._generateVcard(m)).join('\r\n') + '\r\n';
+    const blob = new Blob([body], { type: 'text/vcard;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'contacts.vcf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoke slightly later so mobile Safari has time to hand the file
+    // off to the Contacts app.
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    this._toast(members.length === 1
+      ? `Saved ${(members[0].first_name || '').trim()} ${(members[0].last_name || '').trim()}.vcf`.trim()
+      : `Saved ${members.length} contacts to ${filename}`);
   }
 
   // ── Formatters ────────────────────────────────────────────────────

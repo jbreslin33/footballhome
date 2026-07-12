@@ -20,20 +20,47 @@ class AdminClubScreen extends Screen {
           </p>
         </div>
 
-        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Membership</h3>
+        <!-- ── Club-admin funnel · Member → Billing → Roster → RSVP Eligibility ──
+             These four sections gate each other in order:
+               1. Member       — are you in the club?
+               2. Billing      — if so, are you paid up?
+               3. Roster       — assigned to which team?
+               4. RSVP Elig.   — which team events can you RSVP for?
+             Layout below this block (Team Dashboards, Media, Structure, misc)
+             is still being evaluated and is intentionally left below the fold. -->
+
+        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Member</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Unified members board — flip Active / Pickup and filter by category from one screen.
+          Step 1 — are you in the club? LA-synced roster of every active / pickup registration, filterable by Men · Women · Boys · Girls.
         </p>
         <div id="section-membership" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h4 style="margin: var(--space-4) 0 var(--space-2); opacity: 0.75; font-size: 0.9rem; font-weight: 500;">
-          Other — pending re-homing
-        </h4>
-        <div id="section-membership-misc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">💰 Billing</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Step 2 — if you're a member, we bill you and track it. Payments by status (Paid Up · Behind · Overdue · Never Paid), delinquent queue, LA charge flags.
+        </p>
+        <div id="section-billing" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🎽 Roster</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Step 3 — put each paid member on a specific team. Mens tiers (APSL / Liga 1 / Liga 2 / Adult / Practice / Pickup), Boys teams, Girls teams, cross-domain master board.
+        </p>
+        <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗳️ RSVP Eligibility</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Step 4 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
+        </p>
+        <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <!-- ── Below the funnel · still evaluating layout ────────────
+             Everything below is either a viewing lens on the same
+             underlying data (Team Dashboards) or supporting infra
+             (Media, Structure, leads).  Grouping here is provisional. -->
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧩 Team Dashboards</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Aggregated per-team views — grouped by club (Mens · Womens · Boys · Girls).
+          Aggregated per-team views — grouped by club (Mens · Womens · Boys · Girls). Lineups, practice, pickup, game-day eligibility.
         </p>
 
         <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👨 Mens Club</h4>
@@ -48,23 +75,16 @@ class AdminClubScreen extends Screen {
         <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👧 Girls Club</h4>
         <div id="dash-girls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">�️ RSVP</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Diagnostic — who can RSVP for Pickup, Practice, APSL, Liga 1, Liga 2, Adult.
-        </p>
-        <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <h4 style="margin: var(--space-4) 0 var(--space-2); opacity: 0.75; font-size: 0.9rem; font-weight: 500;">
+          Other — pending re-homing
+        </h4>
+        <div id="section-membership-misc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">�📲 Media &amp; Socials</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📲 Media &amp; Socials</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Instagram posts, printable flyers, ad previews, public exhibits, and coach-facing messaging.
         </p>
         <div id="section-media" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">💰 Financials</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          LeagueApps payment history — one screen per program, freshly synced on every load.
-        </p>
-        <div id="financials" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Structure</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -136,8 +156,11 @@ class AdminClubScreen extends Screen {
     // Membership-adjacent tiles that don't map 1:1 to an LA program —
     // parked here until the next reorg pass decides where they live.
     // Handlers stay in handleSubNavigation() so the tiles work as-is.
+    //
+    // (2026-07-12) `club-rosters` was moved out of here and into the
+    // new 🎽 Roster funnel section — it's a roster viewer, not a
+    // pending-re-home orphan.
     const membershipMiscTiles = [
-      { id: 'club-rosters',    icon: '🗂️', label: 'Club Rosters',    description: 'Cross-domain master board — every FH member with color-coded team chips across Mens / Womens / Boys / Girls' },
       { id: 'leads',           icon: '📋', label: 'Leads',           description: 'Ad interest form submissions' },
       { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics', description: 'What touches actually turn into LA registrations' },
     ];
@@ -160,8 +183,8 @@ class AdminClubScreen extends Screen {
       { id: 'liga2-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga2'    }, icon: '🏆', label: 'Liga 2',                   description: 'CASA Liga 2 teams — standings, schedule, rosters' },
       { id: 'tricounty-dash', target: 'mens-lineups',       params: { gender: 'mens',   division: 'tricounty'}, icon: '🏆', label: 'Tri County',               description: 'Tri County league teams — standings, schedule, rosters' },
       { id: 'mens-game-elig', target: 'mens-game-eligibility', params: { gender: 'mens' },                        icon: '🎯', label: 'Game Eligibility',         description: 'Projected 35-player APSL & Liga 1 rosters — game-day availability & call-ups' },
-      { id: 'mens-roster-board', target: 'mens-roster',        params: { gender: 'mens' },                        icon: '🎽', label: 'Mens Roster',              description: 'Dues-aware roster selection — assign to teams, see overdue counts, Dues Owed column, LA pause actions' },
-      { id: 'mens-delinquent', target: 'mens-delinquent',       params: { gender: 'mens' },                        icon: '💰', label: 'Delinquent Members',       description: 'Players overdue on dues — 7+ days = dues owed (past hold threshold)' },
+      // (2026-07-12) `mens-roster-board` moved to 🎽 Roster funnel section.
+      // (2026-07-12) `mens-delinquent`  moved to 💰 Billing funnel section.
       { id: 'mens-events-reminders', target: 'mens-events-reminders', params: {},                                    icon: '📢', label: 'Mens Reminders',           description: 'All upcoming men\'s events (games · practice · pickup) — one tap to nudge non-responders' },
     ];
 
@@ -178,7 +201,7 @@ class AdminClubScreen extends Screen {
     // even though target + params are identical.
     const boysDashTiles = [
       { id: 'boys-lineups',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', matchType: 'game' }, icon: '🧩', label: 'Boys Dashboard',       description: 'Boys teams — roster, schedule, attendance' },
-      { id: 'boys-roster',    target: 'boys-roster',         params: { gender: 'youth', sex: 'boys' },                    icon: '🎽', label: 'Boys Roster',          description: 'Live LA roster — boys + girls together (girls play on boys teams for now)' },
+      // (2026-07-12) `boys-roster` moved to 🎽 Roster funnel section.
       { id: 'boys-practice',  target: 'youth-practice-dash', params: { gender: 'youth', sex: 'boys', kind: 'practice' }, icon: '🏃', label: 'Boys Practice',        description: 'Add / edit / delete boys practices' },
       { id: 'boys-pickup',    target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'boys', kind: 'pickup'   }, icon: '⚡', label: 'Boys Pickup',          description: 'Add / edit / delete boys pickup sessions' },
       { id: 'u8-boys-dash',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u8'  }, icon: '👦', label: 'U8 Boys',              description: 'U8 boys teams — roster, schedule, attendance' },
@@ -188,7 +211,7 @@ class AdminClubScreen extends Screen {
 
     const girlsDashTiles = [
       { id: 'girls-lineups',  target: 'youth-roster',        params: { gender: 'youth', sex: 'girls', matchType: 'game' }, icon: '🧩', label: 'Girls Dashboard',    description: 'Girls teams — roster, schedule, attendance' },
-      { id: 'girls-roster',   target: 'girls-roster',        params: { gender: 'youth', sex: 'girls' },                    icon: '🎽', label: 'Girls Roster',       description: 'Live LA roster — girls + boys together (mirror of Boys Roster while girls play on boys teams)' },
+      // (2026-07-12) `girls-roster` moved to 🎽 Roster funnel section.
       { id: 'girls-practice', target: 'youth-practice-dash', params: { gender: 'youth', sex: 'girls', kind: 'practice' }, icon: '🏃', label: 'Girls Practice',      description: 'Add / edit / delete girls practices' },
       { id: 'girls-pickup',   target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'girls', kind: 'pickup'   }, icon: '⚡', label: 'Girls Pickup',        description: 'Add / edit / delete girls pickup sessions' },
     ];
@@ -229,27 +252,44 @@ class AdminClubScreen extends Screen {
     ];
     renderInto('#section-media', mediaTiles);
 
-    // ── Financials tiles ─────────────────────────────────────────────
-    // Single tile — the payments screen groups members by payment
-    // status (Paid Up / Behind / Overdue / Never Paid) and lets the
-    // operator filter by category (Men / Women / Boys / Girls) inside.
-    const financialTiles = [
-      { id: 'payments', target: 'payments', params: {}, icon: '💳', label: 'Payments', description: 'Members grouped by status: Paid Up · Behind · Overdue · Never Paid' },
+    // ── 💰 Billing funnel section ────────────────────────────────────
+    // Step 2 of the club-admin funnel.  Everything money-related lives
+    // here — the Payments screen groups members by status (Paid Up /
+    // Behind / Overdue / Never Paid) and the Delinquent screen surfaces
+    // the past-due queue that needs charging.
+    //
+    // Both tiles use the shared `_dashTiles` lookup for click routing,
+    // so no extra `handleSubNavigation` branch is needed.
+    const billingTiles = [
+      { id: 'payments',        target: 'payments',        params: {},                    icon: '💳', label: 'Payments',           description: 'Members grouped by status: Paid Up · Behind · Overdue · Never Paid — filter by Men / Women / Boys / Girls inside' },
+      { id: 'mens-delinquent', target: 'mens-delinquent', params: { gender: 'mens' },   icon: '🚨', label: 'Delinquent Members', description: 'Players overdue on dues — 7+ days past next-bill = dues owed (past hold threshold, LA-pause candidates)' },
     ];
-    this._dashTiles = (this._dashTiles || []).concat(financialTiles);
+    renderInto('#section-billing', billingTiles);
+    this._dashTiles = (this._dashTiles || []).concat(billingTiles);
 
-    const finNav = this.find('#financials');
-    if (finNav) {
-      finNav.innerHTML = financialTiles.map(t => `
-        <button class="btn btn-lg btn-secondary sub-nav-btn"
-                data-section="${t.id}"
-                style="height: auto; padding: var(--space-3); text-align: left;">
-          <div style="font-size: 2rem; margin-bottom: var(--space-1);">${t.icon}</div>
-          <div style="font-weight: 600; margin-bottom: var(--space-1);">${t.label}</div>
-          <div style="opacity: 0.7; font-size: 0.85rem;">${t.description}</div>
-        </button>
-      `).join('');
-    }
+    // ── 🎽 Roster funnel section ─────────────────────────────────────
+    // Step 3 of the club-admin funnel.  Assign each paid member to a
+    // specific team.  Mens Roster is the mens-club selection board
+    // (APSL / Liga 1 / Liga 2 / Adult / Practice / Pickup — read-only
+    // dues signal via BillingBadge but assignment is the primary job).
+    // Boys/Girls Rosters mirror LA rosters directly.  Club Rosters is
+    // the cross-domain master.
+    //
+    // No womens-roster tile yet: the Womens Dashboard is still the
+    // roster view for women (single tier, no dues gating).
+    const rosterTiles = [
+      { id: 'mens-roster-board', target: 'mens-roster',  params: { gender: 'mens' },              icon: '🎽', label: 'Mens Roster',   description: 'Assign mens-club members to APSL / Liga 1 / Liga 2 / Adult / Practice / Pickup — dues signal inline (badge only, not the workbench)' },
+      { id: 'boys-roster',       target: 'boys-roster',  params: { gender: 'youth', sex: 'boys' }, icon: '🎽', label: 'Boys Roster',   description: 'Live LA roster — boys + girls together (girls play on boys teams for now)' },
+      { id: 'girls-roster',      target: 'girls-roster', params: { gender: 'youth', sex: 'girls' },icon: '🎽', label: 'Girls Roster',  description: 'Live LA roster — girls + boys together (mirror of Boys Roster while girls play on boys teams)' },
+      { id: 'club-rosters',      target: null,           params: {},                              icon: '🗂️', label: 'Club Rosters',  description: 'Cross-domain master board — every FH member with color-coded team chips across Mens / Womens / Boys / Girls' },
+    ];
+    renderInto('#section-rosters', rosterTiles);
+    // Only push the tiles that route via _dashTiles (target !== null).
+    // `club-rosters` is handled by its own if-branch in
+    // handleSubNavigation() so we skip it here to avoid a double-route.
+    this._dashTiles = (this._dashTiles || []).concat(
+      rosterTiles.filter(t => t.target)
+    );
 
     // ── Structure ──────────────────────────────────────────────────────
     // Club structural entities — events, users, players, teams,
