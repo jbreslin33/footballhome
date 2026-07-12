@@ -1050,21 +1050,25 @@ class PausedMembersScreen extends Screen {
     let step, subject, body;
     if (!m.has_fh_account) {
       step    = 'Sign in with Google';
-      subject = 'Join FootballHome — 1 click';
+      subject = 'Welcome to the club — join us on FootballHome';
       body    = `Hey ${first},\n\n` +
-                `We're running the men's team on FootballHome. ` +
-                `Go to https://footballhome.org and tap "Sign in with Google" — ` +
-                `takes 5 seconds and uses your Gmail. Ping me if it doesn't work.\n\n` +
-                `Please reply to let me know you got this.\n\n` +
+                `Welcome to the club! This is where practices, pickups, and ` +
+                `games are listed: FootballHome.\n\n` +
+                `Please go to https://footballhome.org and tap "Sign in with Google" ` +
+                `(5 seconds, uses your Gmail), then set your availability accurately ` +
+                `for the week.\n\n` +
+                `Let me know any issues!\n\n` +
                 `— James Breslin\n` +
                 `Soccer Director, Lighthouse`;
     } else {
       step    = 'First visit — set your availability';
-      subject = 'Your FootballHome account is ready';
+      subject = 'Welcome to the club — set your availability on FootballHome';
       body    = `Hey ${first},\n\n` +
-                `You're set up on FootballHome. Go to https://footballhome.org, ` +
-                `sign in, then set your availability for events so we don't have to remind you.\n\n` +
-                `Please reply to let me know you got this.\n\n` +
+                `Welcome to the club! This is where practices, pickups, and ` +
+                `games are listed: FootballHome.\n\n` +
+                `You're already set up — please log in at https://footballhome.org ` +
+                `and set your availability accurately for the week.\n\n` +
+                `Let me know any issues!\n\n` +
                 `— James Breslin\n` +
                 `Soccer Director, Lighthouse`;
     }
