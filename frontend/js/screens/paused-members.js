@@ -1055,6 +1055,7 @@ class PausedMembersScreen extends Screen {
                 `We're running the men's team on FootballHome. ` +
                 `Go to https://footballhome.org and tap "Sign in with Google" — ` +
                 `takes 5 seconds and uses your Gmail. Ping me if it doesn't work.\n\n` +
+                `Please reply to let me know you got this.\n\n` +
                 `— Jim`;
     } else {
       step    = 'First visit — set your availability';
@@ -1062,6 +1063,7 @@ class PausedMembersScreen extends Screen {
       body    = `Hey ${first},\n\n` +
                 `You're set up on FootballHome. Go to https://footballhome.org, ` +
                 `sign in, then set your availability so we know who to count on.\n\n` +
+                `Please reply to let me know you got this.\n\n` +
                 `— Jim`;
     }
 
