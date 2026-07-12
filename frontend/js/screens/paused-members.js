@@ -129,8 +129,15 @@ class PausedMembersScreen extends Screen {
     // every sub-program — the club admin acts on them first (welcome
     // email, roster placement, etc.).  Persisted in localStorage so a
     // page reload preserves the choice.
-    // Values: 'joined_desc' | 'joined_asc' | 'last_asc' | 'first_asc'
+    // Values: 'joined_desc' | 'joined_asc' | 'inactive_desc' | 'inactive_asc' | 'last_asc' | 'first_asc'
     this._sort = localStorage.getItem('members-sort') || 'joined_desc';
+    // Two mutually-inclusive status filters, applied AFTER category +
+    // search text.  Persisted so a reload preserves the operator's
+    // triage view.  A member matching EITHER active filter is shown
+    // (OR-semantics) so admins can build a single "needs attention"
+    // bucket by turning both on.
+    this._flagNoAccount = localStorage.getItem('members-flag-no-account') === '1';
+    this._flagDormant   = localStorage.getItem('members-flag-dormant')   === '1';
 
     // Swap title + subtitle to match the variant + optional category.
     this._updateTitle();
@@ -194,7 +201,8 @@ class PausedMembersScreen extends Screen {
       // Sort pill row — re-orders cards inside each sub-program group.
       // Clicking the currently active "Reg date" pill toggles between
       // newest-first (default) and oldest-first so admins can also flip
-      // to see long-time members bottom-up.
+      // to see long-time members bottom-up.  "Inactivity" behaves the
+      // same way: click while active to flip most-dormant / least-dormant.
       const sortBtn = e.target.closest('[data-sort]');
       if (sortBtn) {
         const next = sortBtn.getAttribute('data-sort');
@@ -202,12 +210,35 @@ class PausedMembersScreen extends Screen {
           this._sort = 'joined_asc';
         } else if (next === 'joined_desc' && this._sort === 'joined_asc') {
           this._sort = 'joined_desc';
+        } else if (next === 'inactive_desc' && this._sort === 'inactive_desc') {
+          this._sort = 'inactive_asc';
+        } else if (next === 'inactive_desc' && this._sort === 'inactive_asc') {
+          this._sort = 'inactive_desc';
         } else {
           this._sort = next;
         }
         try { localStorage.setItem('members-sort', this._sort); } catch (_) {}
         this._renderSortPills();
         this._renderGroups();
+        return;
+      }
+      // Account-status filter toggles — multi-select.  Turning either
+      // on narrows the visible member list to the union of both filters
+      // (see `_visibleMembers`).  Both off === no filter (show all).
+      const flagBtn = e.target.closest('[data-flag]');
+      if (flagBtn) {
+        const which = flagBtn.getAttribute('data-flag');
+        if (which === 'no-account') {
+          this._flagNoAccount = !this._flagNoAccount;
+          try { localStorage.setItem('members-flag-no-account', this._flagNoAccount ? '1' : '0'); } catch (_) {}
+        } else if (which === 'dormant') {
+          this._flagDormant = !this._flagDormant;
+          try { localStorage.setItem('members-flag-dormant', this._flagDormant ? '1' : '0'); } catch (_) {}
+        }
+        this._renderSortPills();
+        this._renderGroups();
+        this._renderBulkBar();
+        this._updateSubtitle();
         return;
       }
       // Per-row "👤 Save" → download a single-entry vCard for that member.
@@ -507,6 +538,28 @@ class PausedMembersScreen extends Screen {
     } else if (key === 'last_asc') {
       arr.sort((a, b) => strCmp(a.last_name, b.last_name)
         || strCmp(a.first_name, b.first_name));
+    } else if (key === 'inactive_desc' || key === 'inactive_asc') {
+      // Sort by days_since_activity.  "desc" (default) surfaces the
+      // most-dormant at the top — that's the triage direction.  Null
+      // (== never seen / no account) is treated as infinitely dormant
+      // so those rows also float to the top under desc, which is what
+      // an admin doing outreach wants.  Under asc the nulls sink to
+      // the bottom for the same reason.
+      const dir = key === 'inactive_asc' ? 1 : -1;
+      const inact = (m) => {
+        const d = m.days_since_activity;
+        if (d == null) return Number.POSITIVE_INFINITY;
+        const n = Number(d);
+        return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+      };
+      arr.sort((a, b) => {
+        const da = inact(a);
+        const db = inact(b);
+        if (da === db) return tieBreak(a, b);
+        // ±Infinity math works cleanly here: (Infinity - Infinity) is
+        // NaN so guard by equality first (above).
+        return (da < db ? -1 : 1) * dir;
+      });
     } else {
       // joined_desc / joined_asc — nulls at the bottom regardless of dir.
       const dir = key === 'joined_asc' ? 1 : -1;
@@ -531,19 +584,40 @@ class PausedMembersScreen extends Screen {
     if (!hasData) { el.style.display = 'none'; return; }
     el.style.display = 'flex';
 
-    const isJoined = this._sort === 'joined_desc' || this._sort === 'joined_asc';
-    const arrow    = this._sort === 'joined_asc' ? ' ↑' : ' ↓';
+    const isJoined      = this._sort === 'joined_desc'   || this._sort === 'joined_asc';
+    const isInactive    = this._sort === 'inactive_desc' || this._sort === 'inactive_asc';
+    const joinedArrow   = this._sort === 'joined_asc'   ? ' ↑' : ' ↓';
+    const inactiveArrow = this._sort === 'inactive_asc' ? ' ↑' : ' ↓';
     const active = (on) => on
       ? 'background:var(--color-primary, #2563eb); color:#fff; border-color:transparent;'
       : 'background:var(--bg-secondary); color:var(--text-primary);';
+    const flagActive = (on) => on
+      ? 'background:#7f1d1d; color:#fecaca; border-color:#b91c1c;'
+      : 'background:var(--bg-secondary); color:var(--text-primary);';
     const base = 'padding:5px 12px; border-radius:999px; cursor:pointer;'
       + ' font-weight:600; font-size:0.8rem; border:1px solid var(--color-border);';
+
+    // Counts for the two status filter chips.  Scoped to the current
+    // category (so "No account (12)" reflects only Boys when Boys is
+    // selected, etc.) but NOT to the search text — admins expect the
+    // chip counter to be stable while they type.
+    const scope = [];
+    for (const g of this._filteredGroups()) {
+      for (const m of (g.members || [])) scope.push(m);
+    }
+    const noAccountCount = scope.filter(m => !m.has_fh_account).length;
+    const dormantCount   = scope.filter(m => m.has_fh_account
+      && (m.days_since_activity == null || Number(m.days_since_activity) >= 8)).length;
 
     el.innerHTML = `
       <span style="opacity:0.6; font-size:0.8rem; margin-right:4px;">Sort:</span>
       <button data-sort="joined_desc" title="Registration date — click again to flip direction"
               style="${base} ${active(isJoined)}">
-        📅 Reg date${isJoined ? arrow : ''}
+        📅 Reg date${isJoined ? joinedArrow : ''}
+      </button>
+      <button data-sort="inactive_desc" title="Days since last activity — most-dormant first, click again to flip"
+              style="${base} ${active(isInactive)}">
+        ⏰ Inactivity${isInactive ? inactiveArrow : ''}
       </button>
       <button data-sort="last_asc"
               style="${base} ${active(this._sort === 'last_asc')}">
@@ -552,6 +626,18 @@ class PausedMembersScreen extends Screen {
       <button data-sort="first_asc"
               style="${base} ${active(this._sort === 'first_asc')}">
         🔤 First name
+      </button>
+
+      <span style="opacity:0.4; margin:0 4px;">│</span>
+
+      <span style="opacity:0.6; font-size:0.8rem; margin-right:4px;">Filter:</span>
+      <button data-flag="no-account" title="Members who have not created an FH account"
+              style="${base} ${flagActive(this._flagNoAccount)}">
+        🚫 No account (${noAccountCount})
+      </button>
+      <button data-flag="dormant" title="Members with an account but no activity in 8+ days (or never logged in)"
+              style="${base} ${flagActive(this._flagDormant)}">
+        💤 Dormant 8d+ (${dormantCount})
       </button>
     `;
   }
@@ -621,6 +707,11 @@ class PausedMembersScreen extends Screen {
   // search filter).  Used to power bulk actions and the summary strip.
   // Sorted per the active sort pill so bulk exports (vCard, emails,
   // phones) come out in the same order the admin sees on screen.
+  //
+  // Applies four gates in order: category chip → status flags → sort
+  // → search text.  Category + flags shrink the pool; search then
+  // further narrows.  Sort runs in between so the emitted list stays
+  // in card-display order even after the search filter runs.
   _visibleMembers() {
     const filter = this._filter;
     const matches = (m) => {
@@ -631,13 +722,27 @@ class PausedMembersScreen extends Screen {
       ].map(v => (v || '').toLowerCase()).join(' ');
       return hay.includes(filter);
     };
+    const passesFlags = (m) => this._passesStatusFlags(m);
     const out = [];
     for (const g of this._filteredGroups()) {
-      for (const m of this._sortMembers(g.members || [])) {
+      for (const m of this._sortMembers((g.members || []).filter(passesFlags))) {
         if (matches(m)) out.push(m);
       }
     }
     return out;
+  }
+
+  // Both flags off === no filter (everyone visible).  Either flag on
+  // narrows to matching members; both flags on unions the two buckets
+  // ("no account" OR "dormant").  A member with no FH account never
+  // matches "dormant" because dormant explicitly requires has_fh_account.
+  _passesStatusFlags(m) {
+    if (!this._flagNoAccount && !this._flagDormant) return true;
+    const noAccount = !m.has_fh_account;
+    const dormant   = !!m.has_fh_account
+      && (m.days_since_activity == null || Number(m.days_since_activity) >= 8);
+    return (this._flagNoAccount && noAccount)
+        || (this._flagDormant   && dormant);
   }
 
   _renderBulkBar() {
@@ -783,7 +888,9 @@ class PausedMembersScreen extends Screen {
     const sinceLabel = this.variant === 'paused' ? 'Pickup since' : 'Joined';
 
     const html = this._filteredGroups().map(g => {
-      const members = this._sortMembers((g.members || []).filter(matches));
+      const members = this._sortMembers(
+        (g.members || []).filter(m => this._passesStatusFlags(m)).filter(matches)
+      );
       const count = members.length;
       const cards = members.map(m => this._renderCard(m, sinceLabel)).join('');
 
@@ -816,6 +923,9 @@ class PausedMembersScreen extends Screen {
     const phoneDigits = this._phoneDigits(phone);
     const dob   = m.dob || '';
     const joined = m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '';
+    // Dormancy chip — sits right under the name so it's the first
+    // thing an admin scans.  See `_activityChip` for the color bands.
+    const activityChip = this._activityChip(m);
     // Youth (boys/girls) usually have contact info on the parent row;
     // the API returns the parent value when the child has none and flags
     // it so we can label it clearly.
@@ -881,6 +991,7 @@ class PausedMembersScreen extends Screen {
             border: 1px solid var(--color-border);
             display:flex; flex-direction:column; gap:4px;">
         <div style="font-weight:600;">${this._esc(name)}</div>
+        ${activityChip}
         ${dobLine}
         ${emailLine}
         ${phoneLine}
@@ -890,6 +1001,44 @@ class PausedMembersScreen extends Screen {
         ${btnRow}
       </div>
     `;
+  }
+
+  // ── Activity chip ────────────────────────────────────────────────
+  // Small color-coded pill on each member card that answers "is this
+  // person engaged with FH?" at a glance.  Backend supplies two
+  // fields on every member row:
+  //   has_fh_account       (bool)   — do they have a `users` row?
+  //   days_since_activity  (int|nl) — floor((NOW - last_seen_at)/24h),
+  //                                    NULL when no account or account
+  //                                    has never sent an authenticated
+  //                                    request.
+  // Bands:
+  //   🚫 Never   — no FH account at all.
+  //   💤 Never   — account exists, has never logged in.
+  //   ⏰ 0–7d    — green   (active within the past week + 1d cushion).
+  //   ⏰ 8d+     — red     (dormant — needs a nudge or is cold).
+  _activityChip(m) {
+    const chip = (bg, fg, border, text) =>
+      `<div style="display:inline-flex; align-items:center; gap:4px;
+                   align-self:flex-start; padding:2px 8px; border-radius:999px;
+                   font-size:0.7rem; font-weight:700;
+                   background:${bg}; color:${fg}; border:1px solid ${border};">${text}</div>`;
+
+    if (!m.has_fh_account) {
+      return chip('#1f2937', '#9ca3af', '#374151', '🚫 No account');
+    }
+    const raw = m.days_since_activity;
+    if (raw == null) {
+      return chip('#3f1d1d', '#fecaca', '#7f1d1d', '💤 Never logged in');
+    }
+    const d = Number(raw);
+    if (!Number.isFinite(d) || d < 0) {
+      return chip('#1f2937', '#9ca3af', '#374151', '⏰ unknown');
+    }
+    if (d < 8) {
+      return chip('#0b3a2e', '#a7f3d0', '#10b981', `⏰ ${d === 0 ? 'today' : d + 'd'}`);
+    }
+    return chip('#3f1d1d', '#fecaca', '#b91c1c', `⏰ ${d}d`);
   }
 
   // ── vCard export ─────────────────────────────────────────────────

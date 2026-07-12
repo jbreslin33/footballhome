@@ -1,8 +1,12 @@
 #include "Controller.h"
 #include "Crypto.h"
+#include "../database/Database.h"
 #include <cstdio>
 #include <sstream>
 #include <regex>
+#include <iostream>
+#include <string>
+#include <vector>
 
 Response Controller::jsonResponse(const std::string& json) {
     return Response::json(json);
@@ -149,5 +153,47 @@ bool Controller::requireBearer(const Request& request) {
     // alg, or has expired; the handler will emit a 401 without leaking
     // which of those failed.
     const std::string token = h.substr(7);
-    return fh::crypto::verifyJwtHS256(token);
+    std::string payload;
+    if (!fh::crypto::verifyJwtHS256(token, &payload)) return false;
+
+    // ── Activity heartbeat ────────────────────────────────────────
+    // On every successfully-authenticated request bump users.last_seen_at
+    // so club admins can spot dormant accounts on the Members screen.
+    // Rules:
+    //   • Skip when `?asPersonId=` is set — that's an admin view-as
+    //     session; falsifying either the admin's OR the target's
+    //     activity would corrupt the dormancy ledger.  (See
+    //     MyController::applyImpersonation.)
+    //   • Throttle to once per minute per user via the WHERE clause so
+    //     a page burst doesn't hammer the DB.
+    //   • Fire-and-forget: never let a bump failure break auth.  If the
+    //     column is missing (pre-migration) or the query throws we
+    //     swallow it and continue — the request has already been
+    //     authenticated by the JWT check above.
+    if (request.getQueryParam("asPersonId").empty()) {
+        // Pull "userId":"NNN" from the JWT payload.  Payload is minted by
+        // AuthController::generateJWT / OAuthController::generateJWT in a
+        // byte-compatible shape — quoted string, not a bare integer.
+        static const std::regex uidRe("\"userId\"\\s*:\\s*\"([0-9]+)\"");
+        std::smatch m;
+        if (std::regex_search(payload, m, uidRe) && m.size() > 1) {
+            try {
+                auto* db = Database::getInstance();
+                std::vector<std::string> params;
+                params.push_back(m[1].str());
+                db->query(
+                    "UPDATE users SET last_seen_at = NOW() "
+                    " WHERE id = $1::int "
+                    "   AND (last_seen_at IS NULL "
+                    "        OR last_seen_at < NOW() - INTERVAL '1 minute')",
+                    params);
+            } catch (const std::exception& e) {
+                // Log once and move on — auth already succeeded.
+                std::cerr << "[requireBearer] last_seen_at bump failed: "
+                          << e.what() << std::endl;
+            }
+        }
+    }
+
+    return true;
 }

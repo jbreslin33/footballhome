@@ -504,7 +504,20 @@ static Response respondMembers(const std::string& variant,
             // LA user_id lives on external_person_aliases (provider='leagueapps').
             // Needed by the RSVP-eligibility diagnostic screen to key into
             // player_rsvp_eligibility.  See memory footballhome.md 2026-07-11.
-            "       epa.external_user_id AS leagueapps_user_id "
+            "       epa.external_user_id AS leagueapps_user_id, "
+            // Account + activity signals — powers the ⏰ dormancy chip
+            // and inactivity sort on the Members screen.  A person has
+            // AT MOST one row in `users` (users.person_id NOT NULL, 1:1),
+            // so a scalar LEFT JOIN is safe.  `last_seen_at` is bumped
+            // by Controller::requireBearer on every authenticated
+            // request (see migration 114).  NULL === never logged in
+            // OR pre-migration silence — the frontend renders '🚫 Never'
+            // in either case.
+            "       (u.id IS NOT NULL)              AS has_fh_account, "
+            "       CASE WHEN u.last_seen_at IS NULL THEN NULL "
+            "            ELSE GREATEST(0, "
+            "                 EXTRACT(EPOCH FROM (NOW() - u.last_seen_at))::bigint / 86400) "
+            "       END AS days_since_activity "
             "  FROM person_la_memberships plm "
             "  JOIN leagueapps_programs lp     ON lp.program_id = plm.la_program_id "
             "  JOIN persons pe                 ON pe.id         = plm.person_id "
@@ -519,6 +532,7 @@ static Response respondMembers(const std::string& variant,
             "        AND epa.provider  = 'leagueapps' "
             "        AND epa.external_user_id IS NOT NULL "
             "        AND epa.external_user_id <> '' "
+            "  LEFT JOIN users u               ON u.person_id   = pe.id "
             " WHERE plm.ended_at IS NULL AND lp.variant = $1 "
             "   AND ($2 = '' OR lp.category = $2) "
             " ORDER BY lp.category, lp.program_id, pe.last_name, pe.first_name",
@@ -588,6 +602,15 @@ static Response respondMembers(const std::string& variant,
             const std::string parentName = row["parent_name"].is_null() ? "" : row["parent_name"].c_str();
             const std::string joinedAt  = row["joined_at"].is_null() ? "" : row["joined_at"].c_str();
             const std::string laUserId  = row["leagueapps_user_id"].is_null() ? "" : row["leagueapps_user_id"].c_str();
+            const bool        hasAccount  = !row["has_fh_account"].is_null() && row["has_fh_account"].as<bool>();
+            // `days_since_activity` is NULL when the user has never made
+            // an authenticated request (or has no FH account at all).
+            // We surface it as JSON `null` so the frontend can render a
+            // dedicated "Never" pill instead of guessing from the number.
+            const std::string daysStr =
+                row["days_since_activity"].is_null()
+                    ? std::string("null")
+                    : std::to_string(row["days_since_activity"].as<long long>());
 
             out << "{"
                 <<   "\"person_id\":"        << row["person_id"].as<int>()
@@ -604,6 +627,8 @@ static Response respondMembers(const std::string& variant,
                 << ",\"player_id\":"         << (row["player_id"].is_null() ? "null" : std::to_string(row["player_id"].as<int>()))
                 << ",\"joined_at\":"         << jsonEscape(joinedAt)
                 << ",\"leagueapps_user_id\":" << (laUserId.empty() ? std::string("null") : jsonEscape(laUserId))
+                << ",\"has_fh_account\":"    << (hasAccount ? "true" : "false")
+                << ",\"days_since_activity\":" << daysStr
                 << "}";
         }
         closeGroup(out);
