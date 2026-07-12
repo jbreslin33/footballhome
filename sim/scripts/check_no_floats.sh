@@ -12,12 +12,13 @@
 set -euo pipefail
 
 # Directories forbidden from touching float / double / std::sin / std::cos / std::sqrt.
+# Paths are relative to SIM_ROOT (the sim/ directory).
 FORBIDDEN_MATH_DIRS=(
-    "sim/src/physics"
-    "sim/src/controller"
-    "sim/src/behavior"
-    "sim/src/scenario"
-    "sim/src/match"
+    "src/physics"
+    "src/controller"
+    "src/behavior"
+    "src/scenario"
+    "src/match"
 )
 
 # Directories allowed to reference WorldView. Every other file may only
@@ -26,13 +27,16 @@ FORBIDDEN_MATH_DIRS=(
 # never touch controllers or behaviors), so passing a WorldView here is
 # the intended API (see DESIGN.md §5.6).
 ALLOWED_WORLDVIEW_DIRS=(
-    "sim/src/awareness"
-    "sim/src/match"
-    "sim/src/scenario"
+    "src/awareness"
+    "src/match"
+    "src/scenario"
 )
 
-ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT"
+# SIM_ROOT = directory containing src/, tests/, scripts/. Works whether
+# invoked from workspace root on the host (SIM_ROOT=<repo>/sim) or from
+# inside the sim container (SIM_ROOT=/src).
+SIM_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$SIM_ROOT"
 
 fail=0
 
@@ -65,19 +69,19 @@ for dir in "${FORBIDDEN_MATH_DIRS[@]}"; do
 done
 
 # --- 2. WorldView only allowed in awareness/ and match/ ---------------------
-if [[ -d "sim/src" ]]; then
+if [[ -d "src" ]]; then
     # Build a grep exclude expression from allowed dirs.
     excl_args=()
     for d in "${ALLOWED_WORLDVIEW_DIRS[@]}"; do
         excl_args+=(--exclude-dir="$(basename "$d")")
     done
-    # Search only sim/src excluding the allowed subtrees.
+    # Search only src/ excluding the allowed subtrees.
     # Filter out lines where the match is inside a `// ...` or ` * ...` comment,
     # same rule as the float/double check above.
     if hits=$(grep -RInw 'WorldView' \
                 --include='*.cpp' --include='*.hpp' --include='*.h' \
                 "${excl_args[@]}" \
-                sim/src 2>/dev/null \
+                src 2>/dev/null \
                 | grep -vE ':\s*//' \
                 | grep -vE '^\s*\*' || true); then
         if [[ -n "$hits" ]]; then
@@ -98,7 +102,7 @@ if hits=$(grep -RInE "$BAD_FLAG_RE" \
             --include='Dockerfile*' \
             --include='Makefile*' \
             --include='*.mk' \
-            sim/ 2>/dev/null \
+            . 2>/dev/null \
             | awk -F: 'BEGIN{IGNORECASE=1}{
                 line=$0;
                 # strip leading "file:line:" so we look only at the code text

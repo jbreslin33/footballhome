@@ -1,56 +1,33 @@
-// footballhome sim - Milestone 0 attribute + concept catalogue
+// footballhome sim - Milestone 0 baseline profile values.
 //
-// The DB (§8) is source of truth for registries in production. In M0 we
-// have no DB slice yet, so this header exposes the M0 IDs, keys, defaults,
-// and a helper that seeds an in-memory registry so tests, tools, and the
-// early server bootstrap can run without a database.
+// The registry CATALOG (attribute IDs, keys, categories; concept IDs, keys,
+// categories) is generated at CMake configure time from
+// database/migrations/200-sim-registries.sql into M0Registry.generated.hpp
+// (see DESIGN.md section 22.11). That header exports:
 //
-// When the DB migration lands, migration 200-sim-registries.sql must use
-// the SAME (id, key) pairs defined here — otherwise loaded profiles will
-// silently reference wrong attributes.
+//   * inline constexpr AttrId    m0::kMaxWalkSpeed, kMaxJogSpeed, ...
+//   * inline constexpr ConceptId m0::kRunToPoint, ...
+//   * inline void m0::seedRegistries(AttributeRegistry&, ConceptRegistry&)
 //
-// See DESIGN.md §5.2, §8, §16.2, §16.3.
+// This file adds ONLY the non-catalog piece: default M0 attribute + concept
+// VALUES (Fixed64 numbers - max walk speed = 2.0 m/s, etc.). These are
+// gameplay balance baselines, not registry schema, and belong to the C++
+// code rather than the migration.
+//
+// See DESIGN.md sections 5.2, 8, 16.2, 16.3, 21.1, 22.11.
 
 #pragma once
 
-#include "common/IdTypes.hpp"
+#include "common/M0Registry.generated.hpp"     // constants + seedRegistries()
 #include "math/Fixed64.hpp"
 #include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
-#include "registry/AttributeRegistry.hpp"
-#include "registry/ConceptRegistry.hpp"
 
 namespace fh::sim::m0 {
 
 // -----------------------------------------------------------------------
-// Physical attributes consumed by M0 mechanics (see §16.2).
-// -----------------------------------------------------------------------
-inline constexpr AttrId kMaxWalkSpeed        = 1;   // m/s
-inline constexpr AttrId kMaxJogSpeed         = 2;   // m/s
-inline constexpr AttrId kMaxSprintSpeed      = 3;   // m/s
-inline constexpr AttrId kAcceleration        = 4;   // m/s²
-inline constexpr AttrId kDeceleration        = 5;   // m/s²
-inline constexpr AttrId kAgility             = 6;   // rad/s
-inline constexpr AttrId kStaminaMax          = 7;   // pool
-inline constexpr AttrId kStaminaDrainRate    = 8;   // /s while sprinting
-inline constexpr AttrId kStaminaRecoveryRate = 9;   // /s while walk/idle
-
-// -----------------------------------------------------------------------
-// Concepts registered in M0 (see §16.3). Exactly one: run_to_point,
-// which unlocks WanderController.
-// -----------------------------------------------------------------------
-inline constexpr ConceptId kRunToPoint = 1;
-
-// -----------------------------------------------------------------------
-// Register the M0 attributes + concepts into the given registries.
-// Idempotent — safe to call from tests and from server bootstrap.
-// -----------------------------------------------------------------------
-void seedRegistries(registry::AttributeRegistry& attrs,
-                    registry::ConceptRegistry&   concepts);
-
-// -----------------------------------------------------------------------
-// Default M0 physical AttributeSet (§16.2 numbers). Every player in M0
-// gets these values until per-player profiles land later.
+// Default M0 physical AttributeSet (see DESIGN.md section 16.2 numbers).
+// Every player in M0 gets these values until per-player profiles land.
 // -----------------------------------------------------------------------
 profile::AttributeSet defaultPhysical();
 

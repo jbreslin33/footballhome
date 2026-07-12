@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace fh::sim::registry {
 
@@ -43,6 +44,10 @@ public:
     std::size_t size() const noexcept { return by_id_.size(); }
     bool        empty() const noexcept { return by_id_.empty(); }
     void        clear() noexcept;
+
+    // Snapshot of all entries, sorted ascending by id. Copies; not hot-path.
+    // Used by the boot-time drift check (persistence::verifyM0RegistryConsistency).
+    std::vector<Entry> entries() const;
 
 private:
     std::unordered_map<AttrId, Entry>       by_id_;

@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
         pkg-config \
         libssl-dev \
+        libpqxx-dev \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -27,9 +28,26 @@ COPY src ./src
 COPY tests ./tests
 COPY scripts ./scripts
 
+# Lint gate: enforce determinism-critical hygiene BEFORE we compile — if a
+# banned pattern crept in, we want the failure loud and early rather than
+# a subtle runtime desync months later. See DESIGN.md §10, §22.10.
+RUN bash scripts/check_no_floats.sh \
+    && bash scripts/check_no_bad_rng.sh \
+    && bash scripts/check_no_hardcoded_attrs.sh
+
+# ---- Build-time version (§16.6 task 7) --------------------------------------
+# The build context is ./sim so .git is NOT visible here. The host-side
+# build.sh runs `git describe --tags --dirty --always` and forwards the
+# result via docker-compose build args → this ARG → cmake -D. Falls
+# back to "unknown" for ad-hoc `podman build sim/` invocations that
+# don't set the arg. The value is stamped into MatchRow.server_version
+# and the HELLO_ACK frame.
+ARG FH_SIM_GIT_DESCRIBE=unknown
+
 # Configure + build (Release, no sanitizers).
 RUN cmake -S . -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
+        -DFH_SIM_GIT_DESCRIBE="${FH_SIM_GIT_DESCRIBE}" \
     && cmake --build build --parallel
 
 # Run the full test suite as part of the image build — image build FAILS
@@ -42,10 +60,13 @@ FROM debian:trixie-slim AS runtime
 
 # libssl3 provides libcrypto.so.3 which sim_auth links against for
 # HMAC-SHA256 / SHA1 / constant-time compare.
+# libpqxx-7.10 is the C++ Postgres client used by sim_persistence
+# (see DESIGN.md §22.12). Version tracks trixie's `libpqxx-dev`.
 # iproute2 provides `ss`, used by the compose healthcheck.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libstdc++6 \
         libssl3 \
+        libpqxx-7.10 \
         iproute2 \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*

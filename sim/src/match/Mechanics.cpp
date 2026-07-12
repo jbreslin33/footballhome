@@ -34,16 +34,27 @@ Fixed64 wrap_pi(Fixed64 a) noexcept
 
 MechanicsParams MechanicsParams::fromPhysical(const profile::AttributeSet& physical)
 {
+    // Baseline VALUES live only in M0Attributes.cpp (§22.11) — the single
+    // sanctioned source of hard-coded attribute defaults. We fall back to
+    // them if `physical` is missing any attribute (a per-player profile
+    // may legitimately not override every slot). Sourcing here (instead
+    // of an inline `Fixed64::fromDouble(...)`) satisfies
+    // check_no_hardcoded_attrs.sh (§16.6).
+    static const profile::AttributeSet kDefaults = m0::defaultPhysical();
+    const auto get = [&](AttrId id) {
+        return physical.get(id, kDefaults.get(id, Fixed64::zero()));
+    };
+
     MechanicsParams p;
-    p.max_walk_speed        = physical.get(m0::kMaxWalkSpeed,        Fixed64::fromDouble(2.0));
-    p.max_jog_speed         = physical.get(m0::kMaxJogSpeed,         Fixed64::fromDouble(4.5));
-    p.max_sprint_speed      = physical.get(m0::kMaxSprintSpeed,      Fixed64::fromDouble(7.5));
-    p.acceleration          = physical.get(m0::kAcceleration,        Fixed64::fromDouble(6.0));
-    p.deceleration          = physical.get(m0::kDeceleration,        Fixed64::fromDouble(8.0));
-    p.agility               = physical.get(m0::kAgility,             Fixed64::fromDouble(6.0));
-    p.stamina_max           = physical.get(m0::kStaminaMax,          Fixed64::fromDouble(1.0));
-    p.stamina_drain_rate    = physical.get(m0::kStaminaDrainRate,    Fixed64::fromDouble(0.10));
-    p.stamina_recovery_rate = physical.get(m0::kStaminaRecoveryRate, Fixed64::fromDouble(0.05));
+    p.max_walk_speed        = get(m0::kMaxWalkSpeed);
+    p.max_jog_speed         = get(m0::kMaxJogSpeed);
+    p.max_sprint_speed      = get(m0::kMaxSprintSpeed);
+    p.acceleration          = get(m0::kAcceleration);
+    p.deceleration          = get(m0::kDeceleration);
+    p.agility               = get(m0::kAgility);
+    p.stamina_max           = get(m0::kStaminaMax);
+    p.stamina_drain_rate    = get(m0::kStaminaDrainRate);
+    p.stamina_recovery_rate = get(m0::kStaminaRecoveryRate);
     return p;
 }
 

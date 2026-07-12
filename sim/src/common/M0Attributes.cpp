@@ -1,24 +1,11 @@
-// footballhome sim - Milestone 0 attribute + concept seed values
+// footballhome sim - Milestone 0 baseline profile values.
+//
+// See M0Attributes.hpp for scope. Catalog seed lives in the CMake-generated
+// M0Registry.generated.hpp; this file only holds Fixed64 balance numbers.
 
 #include "common/M0Attributes.hpp"
 
 namespace fh::sim::m0 {
-
-void seedRegistries(registry::AttributeRegistry& attrs,
-                    registry::ConceptRegistry&   concepts)
-{
-    attrs.addEntry(kMaxWalkSpeed,        "physical.max_walk_speed",        "physical");
-    attrs.addEntry(kMaxJogSpeed,         "physical.max_jog_speed",         "physical");
-    attrs.addEntry(kMaxSprintSpeed,      "physical.max_sprint_speed",      "physical");
-    attrs.addEntry(kAcceleration,        "physical.acceleration",          "physical");
-    attrs.addEntry(kDeceleration,        "physical.deceleration",          "physical");
-    attrs.addEntry(kAgility,             "physical.agility",               "physical");
-    attrs.addEntry(kStaminaMax,          "physical.stamina_max",           "physical");
-    attrs.addEntry(kStaminaDrainRate,    "physical.stamina_drain_rate",    "physical");
-    attrs.addEntry(kStaminaRecoveryRate, "physical.stamina_recovery_rate", "physical");
-
-    concepts.addEntry(kRunToPoint, "run_to_point", "movement");
-}
 
 profile::AttributeSet defaultPhysical()
 {

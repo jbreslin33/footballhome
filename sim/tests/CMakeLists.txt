@@ -51,6 +51,13 @@ function(fh_add_server_test name)
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
+# Tests for the persistence layer (IPgClient + InMemoryPgClient).
+function(fh_add_persistence_test name)
+    add_executable(${name} ${name}.cpp)
+    target_link_libraries(${name} PRIVATE sim_persistence sim_test_harness)
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
 fh_add_test(test_fixed64)
 fh_add_test(test_fixed_math)
 fh_add_test(test_vec3)
@@ -72,6 +79,7 @@ fh_add_gameplay_test(test_mechanics)
 fh_add_gameplay_test(test_stamina)
 fh_add_gameplay_test(test_match_tick)
 fh_add_gameplay_test(test_determinism)
+fh_add_gameplay_test(test_canonical_hash)
 
 fh_add_net_test(test_binary_v1_serializer)
 fh_add_net_test(test_websocket_frame)
@@ -82,3 +90,11 @@ fh_add_net_test(test_input_frame)
 fh_add_auth_test(test_jwt_verifier)
 
 fh_add_server_test(test_sim_server)
+
+fh_add_persistence_test(test_in_memory_pg_client)
+
+fh_add_persistence_test(test_pg_client)
+
+fh_add_persistence_test(test_registry_loader)
+fh_add_persistence_test(test_profile_store)
+fh_add_persistence_test(test_async_pg_log)

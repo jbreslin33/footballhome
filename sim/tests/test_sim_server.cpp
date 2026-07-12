@@ -18,6 +18,8 @@
 #include "net/WebSocketFrame.hpp"
 #include "net/WebSocketTransport.hpp"
 #include "net/WireFormat.hpp"
+#include "persistence/InMemoryPgClient.hpp"
+#include "persistence/ProfileStore.hpp"
 #include "physics/StubPhysics.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "server/SimServer.hpp"
@@ -63,6 +65,8 @@ using fh::sim::net::read_u32_le;
 using fh::sim::net::read_u64_le;
 using fh::sim::net::ws::Opcode;
 using fh::sim::net::ws::WebSocketTransport;
+using fh::sim::persistence::InMemoryPgClient;
+using fh::sim::persistence::ProfileStore;
 using fh::sim::physics::StubPhysics;
 using fh::sim::scenario::EmptyPitchScenario;
 using fh::sim::server::SimServer;
@@ -331,9 +335,11 @@ std::vector<std::uint8_t> buildInputFramePayload(std::uint32_t client_tick,
 // response bytes. Everything after that is server-to-client wire data.
 // ---------------------------------------------------------------------------
 struct Fixture {
-    std::unique_ptr<JwtVerifier> verifier;
-    WebSocketTransport*          transport_raw{nullptr};
-    std::unique_ptr<SimServer>   server;
+    std::unique_ptr<JwtVerifier>       verifier;
+    WebSocketTransport*                transport_raw{nullptr};
+    std::unique_ptr<InMemoryPgClient>  db;
+    std::unique_ptr<ProfileStore>      profile_store;
+    std::unique_ptr<SimServer>         server;
 
     Fixture() {
         verifier = makeVerifier();
@@ -354,6 +360,13 @@ struct Fixture {
         mcfg.clock    = std::make_unique<RealtimeClock>(20);
         auto match_ = std::make_unique<Match>(std::move(mcfg));
 
+        // In-memory persistence: ProfileStore::loadOrCreate will
+        // materialize a default M0 profile on first-touch and upsert it
+        // back — round-trippable within the fixture without touching
+        // real Postgres.
+        db            = std::make_unique<InMemoryPgClient>();
+        profile_store = std::make_unique<ProfileStore>(*db);
+
         SimServer::Config scfg;
         scfg.tick_hz  = 20;
         scfg.match_id = 42;
@@ -362,7 +375,8 @@ struct Fixture {
             scfg,
             std::move(transport),
             std::make_unique<BinaryV1Serializer>(),
-            std::move(match_));
+            std::move(match_),
+            profile_store.get());
     }
 
     std::uint16_t port() const noexcept { return transport_raw->boundPort(); }

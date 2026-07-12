@@ -40,6 +40,14 @@
     main.mode-longposter { aspect-ratio: 1080 / 2160; max-height: calc(100vh - 180px); }  /* 1:2 print aspect, very tall */
     main img { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 
+    /* Grid view — all slides on one page, no aspect-ratio constraint on main. */
+    main.mode-grid { aspect-ratio: auto; max-height: none; background: transparent; box-shadow: none; overflow: visible; }
+    main.mode-grid img#slide, main.mode-grid .arrow, main.mode-grid .hit, main.mode-grid .dots { display: none; }
+    #grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; width: 100%; }
+    #grid figure { margin: 0; background: #000; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+    #grid figure img { display: block; width: 100%; height: auto; }
+    #grid figcaption { padding: 6px 8px; font-size: 11px; color: var(--muted); background: var(--panel); }
+
     .hit { position: absolute; top: 0; bottom: 0; width: 35%; cursor: pointer; z-index: 2; }
     .hit.left  { left: 0; }
     .hit.right { right: 0; }
@@ -80,6 +88,7 @@
     <div class="hit left"  id="hit-prev"></div>
     <div class="hit right" id="hit-next"></div>
     <div class="dots" id="dots"></div>
+    <div id="grid"></div>
   </main>
 
   <footer>
@@ -91,6 +100,7 @@
     <div class="controls">
       <div class="view-switch" id="view-switch">
         <button data-view="carousel"   title="Multi-slide IG carousel (1 per source paragraph)">Carousel</button>
+        <button data-view="grid"       title="All carousel slides on one page">Grid</button>
         <button data-view="poster"     title="Whole poster fit to 1 IG portrait (1080×1350)">Single</button>
         <button data-view="longposter" title="Native 1:2 print aspect (1080×2160) — Stories / X / web">Long</button>
       </div>
@@ -110,7 +120,7 @@
     const params = new URLSearchParams(location.search);
     const posterNum = parseInt(params.get('p') || '1', 10);
     const view = params.get('view') || 'carousel';
-    const VIEWS = ['carousel', 'poster', 'longposter'];
+    const VIEWS = ['carousel', 'poster', 'longposter', 'grid'];
     const pad = String(posterNum).padStart(2, '0');
 
     const img        = document.getElementById('slide');
@@ -147,7 +157,7 @@
     }
 
     async function discover() {
-      // Single-image views resolve to one PNG; only the carousel paginates.
+      // Single-image views resolve to one PNG; only the carousel/grid paginate.
       if (view === 'poster')     return await singleton(`../images/posts/exhibit-p${pad}-poster.png`);
       if (view === 'longposter') return await singleton(`../images/posts/exhibit-p${pad}-longposter.png`);
       const out = [];
@@ -156,6 +166,23 @@
         if (await head(url)) out.push(url); else break;
       }
       return out;
+    }
+
+    function renderGrid() {
+      const gridEl = document.getElementById('grid');
+      gridEl.innerHTML = '';
+      slides.forEach((url, i) => {
+        const fig = document.createElement('figure');
+        const im  = document.createElement('img');
+        im.src = bust(url);
+        im.alt = `Slide ${i + 1}`;
+        const cap = document.createElement('figcaption');
+        cap.textContent = `Slide ${i + 1} / ${slides.length}`;
+        fig.appendChild(im);
+        fig.appendChild(cap);
+        gridEl.appendChild(fig);
+      });
+      counter.textContent = `${slides.length} slides`;
     }
 
     async function singleton(url) { return (await head(url)) ? [url] : []; }
@@ -207,11 +234,12 @@
       loadPosterMeta();
       slides = await discover();
       if (!slides.length) {
-        const modeArg = view === 'carousel' ? 'slides' : (view === 'poster' ? 'single' : 'long');
+        const modeArg = (view === 'carousel' || view === 'grid') ? 'slides' : (view === 'poster' ? 'single' : 'long');
         frame.innerHTML = `<div class="err">No <strong>${view}</strong> render found for poster ${posterNum}.<br><br>Render it with:<br><code style="color:var(--gold)">node scripts/render-poster-from-source.js ${posterNum} ${modeArg}</code></div>`;
         counter.textContent = '0 / 0';
         return;
       }
+      if (view === 'grid') { renderGrid(); return; }
       show(0);
     }
 

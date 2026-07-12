@@ -86,6 +86,58 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # -----------------------------------------------------------------------------
+# Registry catalog codegen (see DESIGN.md section 22.11).
+#
+# `sim/src/common/M0Registry.generated.hpp` is generated from
+# `database/migrations/200-sim-registries.sql` — the single source of truth
+# for attribute + concept IDs. The generated header contains inline
+# constexpr AttrId / ConceptId constants plus a seedRegistries() helper.
+#
+# Two modes:
+#   * Host build: the migration file is visible at
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/... — CMake wires
+#     an add_custom_command so editing the migration regenerates the
+#     header automatically on the next build.
+#   * Container build: the migration file is NOT in the sim/ build context;
+#     the header must have been pre-generated on the host and COPY'd in.
+#     CMake fails loudly with a clear error if it's missing.
+# -----------------------------------------------------------------------------
+set(SIM_MIGRATION_FILE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/200-sim-registries.sql)
+set(SIM_GEN_HEADER
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common/M0Registry.generated.hpp)
+set(SIM_GEN_SCRIPT
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/gen_registry_header.awk)
+
+if(EXISTS ${SIM_MIGRATION_FILE})
+    message(STATUS
+        "sim: registry codegen wired against ${SIM_MIGRATION_FILE}")
+    add_custom_command(
+        OUTPUT  ${SIM_GEN_HEADER}
+        COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} > ${SIM_GEN_HEADER}
+        DEPENDS ${SIM_MIGRATION_FILE} ${SIM_GEN_SCRIPT}
+        COMMENT "Regenerating M0Registry.generated.hpp from migration 200"
+        VERBATIM)
+    add_custom_target(gen_m0_registry ALL DEPENDS ${SIM_GEN_HEADER})
+else()
+    if(NOT EXISTS ${SIM_GEN_HEADER})
+        message(FATAL_ERROR
+            "sim: neither migration source nor pre-generated header found.\n"
+            "  Missing: ${SIM_MIGRATION_FILE}\n"
+            "  Missing: ${SIM_GEN_HEADER}\n"
+            "  Pre-generate on the host before building the sim container:\n"
+            "    awk -f sim/scripts/gen_registry_header.awk \\\n"
+            "        database/migrations/200-sim-registries.sql \\\n"
+            "        > sim/src/common/M0Registry.generated.hpp")
+    endif()
+    message(STATUS
+        "sim: using pre-generated ${SIM_GEN_HEADER} "
+        "(migration source not in build context)")
+    # No custom target needed; the header is a static input file.
+    add_custom_target(gen_m0_registry)
+endif()
+
+# -----------------------------------------------------------------------------
 # The math foundation library (Fixed64, FixedMath, TrigLUT, Vec3, RngDet)
 # -----------------------------------------------------------------------------
 add_library(sim_math STATIC
@@ -112,9 +164,47 @@ add_library(sim_data STATIC
     src/profile/ConceptSet.cpp
     src/profile/RecognitionSet.cpp
     src/awareness/RecognitionSystem.cpp
+    src/common/M0Attributes.cpp
 )
 target_include_directories(sim_data PUBLIC src)
 target_link_libraries(sim_data PUBLIC sim_math sim_flags)
+add_dependencies(sim_data gen_m0_registry)
+
+# -----------------------------------------------------------------------------
+# Persistence library (Postgres boundary; see DESIGN.md §22.12).
+#
+# IPgClient is the interface; InMemoryPgClient is the in-process test double
+# / replay driver, shipped in production sources so `fh-sim-replay` can
+# drive replays from memory as well as from Postgres. The concrete
+# libpqxx-backed PgClient is the third TU below.
+#
+# Depends only on sim_flags for warnings — the interface uses domain ID
+# types from `common/IdTypes.hpp` (header-only) and std::byte spans, so
+# no compiled sim_math / sim_data code is needed to link the interface.
+# libpqxx (found via pkg-config) is a PRIVATE dep — only PgClient.cpp
+# includes <pqxx/pqxx.h>, so downstream targets don't transitively see it.
+# -----------------------------------------------------------------------------
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
+
+# AsyncPgLog (§16.6 task 8) uses std::thread / std::mutex /
+# std::condition_variable and is header-only — templated header
+# instantiated in SimServer.cpp (sim_server), main.cpp
+# (footballhome_sim exe), and each async-log test. Threads is
+# PUBLIC on sim_persistence so every consumer picks up the pthread
+# link line transitively.
+find_package(Threads REQUIRED)
+
+add_library(sim_persistence STATIC
+    src/persistence/InMemoryPgClient.cpp
+    src/persistence/PgClient.cpp
+    src/persistence/ProfileStore.cpp
+    src/persistence/RegistryLoader.cpp
+)
+target_include_directories(sim_persistence PUBLIC src)
+target_link_libraries(sim_persistence PUBLIC sim_flags sim_data Threads::Threads)
+target_link_libraries(sim_persistence PRIVATE PkgConfig::PQXX)
+add_dependencies(sim_persistence gen_m0_registry)
 
 # -----------------------------------------------------------------------------
 # Gameplay stack (physics, controllers, scenarios, match orchestration).
@@ -123,7 +213,6 @@ target_link_libraries(sim_data PUBLIC sim_math sim_flags)
 # they form everything a headless match needs before the networking slice.
 # -----------------------------------------------------------------------------
 add_library(sim_gameplay STATIC
-    src/common/M0Attributes.cpp
     src/physics/StubPhysics.cpp
     src/controller/HumanController.cpp
     src/controller/WanderController.cpp
@@ -132,9 +221,11 @@ add_library(sim_gameplay STATIC
     src/match/MatchClock.cpp
     src/match/Mechanics.cpp
     src/match/Match.cpp
+    src/match/CanonicalHash.cpp
 )
 target_include_directories(sim_gameplay PUBLIC src)
 target_link_libraries(sim_gameplay PUBLIC sim_data sim_flags)
+add_dependencies(sim_gameplay gen_m0_registry)
 
 # -----------------------------------------------------------------------------
 # Networking / wire (SNAPSHOT + INPUT serializers, transports later).
@@ -176,13 +267,55 @@ add_library(sim_server STATIC
     src/server/SimServer.cpp
 )
 target_include_directories(sim_server PUBLIC src)
-target_link_libraries(sim_server PUBLIC sim_net sim_gameplay sim_flags)
+target_link_libraries(sim_server PUBLIC sim_net sim_gameplay sim_persistence sim_flags)
 
 # -----------------------------------------------------------------------------
 # Executable (footballhome_sim daemon).
 # -----------------------------------------------------------------------------
 add_executable(footballhome_sim src/main.cpp)
-target_link_libraries(footballhome_sim PRIVATE sim_server sim_flags)
+target_link_libraries(footballhome_sim PRIVATE sim_server sim_persistence sim_flags)
+
+# -----------------------------------------------------------------------------
+# Build-time version string (§16.6 task 7).
+#
+# Populated in one of two ways (first hit wins):
+#   1. Explicit -DFH_SIM_GIT_DESCRIBE=<string> on the cmake command line.
+#      This is how container builds inject the value — the podman/docker
+#      build context is ./sim so the .git directory isn't visible, and
+#      build.sh runs `git describe` on the host + forwards it via
+#      docker-compose build args → Dockerfile ARG → cmake -D.
+#   2. Local `git describe --tags --dirty --always` when this CMakeLists
+#      sits inside a checkout (developer builds outside a container).
+# Falls back to "unknown" if neither source is available.
+#
+# The value is passed through as the FH_SIM_GIT_DESCRIBE compile define
+# so main.cpp can stringify it into:
+#   * MatchConfig::server_version (sent in HELLO_ACK payload, DESIGN §7)
+#   * MatchRow::server_version   (written to sim_matches.server_version)
+#
+# Scoped to the executable target because it's the only translation
+# unit that legitimately needs it — libraries stay build-cache-friendly.
+# -----------------------------------------------------------------------------
+if(NOT DEFINED FH_SIM_GIT_DESCRIBE OR FH_SIM_GIT_DESCRIBE STREQUAL "")
+    find_program(GIT_EXECUTABLE git)
+    set(FH_SIM_GIT_DESCRIBE "unknown")
+    if(GIT_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/../.git")
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} describe --tags --dirty --always
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/.."
+            OUTPUT_VARIABLE   _git_describe_out
+            RESULT_VARIABLE   _git_describe_rc
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(_git_describe_rc EQUAL 0 AND _git_describe_out)
+            set(FH_SIM_GIT_DESCRIBE "${_git_describe_out}")
+        endif()
+    endif()
+endif()
+message(STATUS "sim: FH_SIM_GIT_DESCRIBE = ${FH_SIM_GIT_DESCRIBE}")
+target_compile_definitions(footballhome_sim
+    PRIVATE FH_SIM_GIT_DESCRIBE="${FH_SIM_GIT_DESCRIBE}")
 
 # -----------------------------------------------------------------------------
 # Tests

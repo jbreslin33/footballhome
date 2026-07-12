@@ -1,0 +1,312 @@
+// footballhome sim - RegistryLoader tests
+//
+// Exercises the free-function loader + boot-time drift check that bridges
+// the DB (via IPgClient) to the runtime AttributeRegistry / ConceptRegistry
+// / PatternRegistry types. See DESIGN.md §16.6, §22.9.
+
+#include "common/M0Registry.generated.hpp"
+#include "persistence/InMemoryPgClient.hpp"
+#include "persistence/RegistryLoader.hpp"
+#include "registry/AttributeRegistry.hpp"
+#include "registry/ConceptRegistry.hpp"
+#include "registry/PatternRegistry.hpp"
+#include "test_harness.hpp"
+
+#include <string>
+#include <vector>
+
+using fh::sim::persistence::InMemoryPgClient;
+using fh::sim::persistence::PgError;
+using fh::sim::persistence::RegistryRow;
+using fh::sim::registry::AttributeRegistry;
+using fh::sim::registry::ConceptRegistry;
+using fh::sim::registry::PatternRegistry;
+
+namespace {
+
+// Build a canonical M0 attribute-row set (matches migration 200 /
+// M0Registry.generated.hpp). Kept local to this test so the drift-check
+// tests can mutate a copy without perturbing other tests.
+std::vector<RegistryRow> canonicalM0Attrs()
+{
+    return {
+        {1, "physical.max_walk_speed",        "physical"},
+        {2, "physical.max_jog_speed",         "physical"},
+        {3, "physical.max_sprint_speed",      "physical"},
+        {4, "physical.acceleration",          "physical"},
+        {5, "physical.deceleration",          "physical"},
+        {6, "physical.agility",               "physical"},
+        {7, "physical.stamina_max",           "physical"},
+        {8, "physical.stamina_drain_rate",    "physical"},
+        {9, "physical.stamina_recovery_rate", "physical"},
+    };
+}
+
+std::vector<RegistryRow> canonicalM0Concepts()
+{
+    return { {1, "run_to_point", "movement"} };
+}
+
+} // namespace
+
+// ============================================================================
+// loadAttributeRegistryFromDb — happy path + edge cases
+// ============================================================================
+
+FH_TEST(load_attribute_registry_populates_and_indexes)
+{
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(canonicalM0Attrs());
+
+    AttributeRegistry reg;
+    fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
+
+    FH_EXPECT_EQ(reg.size(), std::size_t{9});
+    // Round-trip lookup by id.
+    const auto* e = reg.find(static_cast<fh::sim::AttrId>(3));
+    FH_EXPECT(e != nullptr);
+    FH_EXPECT(e->key == "physical.max_sprint_speed");
+    // Round-trip lookup by key.
+    const auto id = reg.lookup("physical.agility");
+    FH_EXPECT(id.has_value());
+    FH_EXPECT_EQ(*id, fh::sim::AttrId{6});
+}
+
+FH_TEST(load_attribute_registry_clears_prior_contents)
+{
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(canonicalM0Attrs());
+
+    AttributeRegistry reg;
+    // Pre-populate with junk that would falsely satisfy a "size increased"
+    // check if the loader didn't clear.
+    reg.addEntry(static_cast<fh::sim::AttrId>(999), "junk.key", "junk");
+    fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
+
+    FH_EXPECT_EQ(reg.size(), std::size_t{9});
+    FH_EXPECT(reg.find(static_cast<fh::sim::AttrId>(999)) == nullptr);
+}
+
+FH_TEST(load_attribute_registry_throws_when_db_empty)
+{
+    InMemoryPgClient db;   // no seed → empty
+    AttributeRegistry reg;
+    bool threw = false;
+    try {
+        fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
+    } catch (const PgError& e) {
+        threw = true;
+        FH_EXPECT(e.context() == "loadAttributeRegistry");
+    }
+    FH_EXPECT(threw);
+    FH_EXPECT(reg.empty());  // clear() ran before throw
+}
+
+// ============================================================================
+// loadConceptRegistryFromDb / loadPatternRegistryFromDb
+// ============================================================================
+
+FH_TEST(load_concept_registry_populates)
+{
+    InMemoryPgClient db;
+    db.seedConceptRegistry(canonicalM0Concepts());
+
+    ConceptRegistry reg;
+    fh::sim::persistence::loadConceptRegistryFromDb(reg, db);
+
+    FH_EXPECT_EQ(reg.size(), std::size_t{1});
+    const auto* e = reg.find(static_cast<fh::sim::ConceptId>(1));
+    FH_EXPECT(e != nullptr);
+    FH_EXPECT(e->key == "run_to_point");
+}
+
+FH_TEST(load_concept_registry_throws_when_db_empty)
+{
+    InMemoryPgClient db;
+    ConceptRegistry reg;
+    bool threw = false;
+    try {
+        fh::sim::persistence::loadConceptRegistryFromDb(reg, db);
+    } catch (const PgError& e) {
+        threw = true;
+        FH_EXPECT(e.context() == "loadConceptRegistry");
+    }
+    FH_EXPECT(threw);
+}
+
+FH_TEST(load_pattern_registry_allows_empty_db)
+{
+    // §12.5: patterns are M4+; M0 database has zero pattern rows. The
+    // loader must accept this without throwing — unlike attribute /
+    // concept where an empty table indicates a broken migration.
+    InMemoryPgClient db;
+    PatternRegistry reg;
+    reg.addEntry(static_cast<fh::sim::PatternId>(999), "junk", "junk");
+    fh::sim::persistence::loadPatternRegistryFromDb(reg, db);
+    FH_EXPECT(reg.empty());
+}
+
+// ============================================================================
+// verifyM0RegistryConsistency — drift check
+// ============================================================================
+
+FH_TEST(verify_passes_when_db_matches_compile_time_catalog)
+{
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(canonicalM0Attrs());
+    db.seedConceptRegistry(canonicalM0Concepts());
+
+    AttributeRegistry attrs;
+    ConceptRegistry   concepts;
+    fh::sim::persistence::loadAttributeRegistryFromDb(attrs,    db);
+    fh::sim::persistence::loadConceptRegistryFromDb  (concepts, db);
+
+    // Should not throw.
+    fh::sim::persistence::verifyM0RegistryConsistency(attrs, concepts);
+}
+
+FH_TEST(verify_throws_on_missing_attribute_row)
+{
+    auto rows = canonicalM0Attrs();
+    rows.pop_back();   // drop kStaminaRecoveryRate (id=9)
+
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(std::move(rows));
+    db.seedConceptRegistry(canonicalM0Concepts());
+
+    AttributeRegistry attrs;
+    ConceptRegistry   concepts;
+    fh::sim::persistence::loadAttributeRegistryFromDb(attrs,    db);
+    fh::sim::persistence::loadConceptRegistryFromDb  (concepts, db);
+
+    bool threw = false;
+    try {
+        fh::sim::persistence::verifyM0RegistryConsistency(attrs, concepts);
+    } catch (const PgError& e) {
+        threw = true;
+        FH_EXPECT(e.context() == "verifyM0RegistryConsistency");
+        const std::string msg{e.what()};
+        FH_EXPECT(msg.find("id=9") != std::string::npos);
+        FH_EXPECT(msg.find("missing") != std::string::npos);
+    }
+    FH_EXPECT(threw);
+}
+
+FH_TEST(verify_throws_on_key_mismatch)
+{
+    auto rows = canonicalM0Attrs();
+    rows[0].key = "physical.SNEAKY_WRONG_KEY";
+
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(std::move(rows));
+    db.seedConceptRegistry(canonicalM0Concepts());
+
+    AttributeRegistry attrs;
+    ConceptRegistry   concepts;
+    fh::sim::persistence::loadAttributeRegistryFromDb(attrs,    db);
+    fh::sim::persistence::loadConceptRegistryFromDb  (concepts, db);
+
+    bool threw = false;
+    try {
+        fh::sim::persistence::verifyM0RegistryConsistency(attrs, concepts);
+    } catch (const PgError& e) {
+        threw = true;
+        const std::string msg{e.what()};
+        FH_EXPECT(msg.find("key mismatch") != std::string::npos);
+        FH_EXPECT(msg.find("SNEAKY_WRONG_KEY") != std::string::npos);
+    }
+    FH_EXPECT(threw);
+}
+
+FH_TEST(verify_throws_on_category_mismatch)
+{
+    auto rows = canonicalM0Attrs();
+    rows[0].category = "mental";   // was "physical"
+
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(std::move(rows));
+    db.seedConceptRegistry(canonicalM0Concepts());
+
+    AttributeRegistry attrs;
+    ConceptRegistry   concepts;
+    fh::sim::persistence::loadAttributeRegistryFromDb(attrs,    db);
+    fh::sim::persistence::loadConceptRegistryFromDb  (concepts, db);
+
+    bool threw = false;
+    try {
+        fh::sim::persistence::verifyM0RegistryConsistency(attrs, concepts);
+    } catch (const PgError& e) {
+        threw = true;
+        const std::string msg{e.what()};
+        FH_EXPECT(msg.find("category mismatch") != std::string::npos);
+    }
+    FH_EXPECT(threw);
+}
+
+FH_TEST(verify_throws_when_db_has_extra_rows)
+{
+    auto rows = canonicalM0Attrs();
+    rows.push_back({100, "physical.SURPRISE", "physical"});
+
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(std::move(rows));
+    db.seedConceptRegistry(canonicalM0Concepts());
+
+    AttributeRegistry attrs;
+    ConceptRegistry   concepts;
+    fh::sim::persistence::loadAttributeRegistryFromDb(attrs,    db);
+    fh::sim::persistence::loadConceptRegistryFromDb  (concepts, db);
+
+    bool threw = false;
+    try {
+        fh::sim::persistence::verifyM0RegistryConsistency(attrs, concepts);
+    } catch (const PgError& e) {
+        threw = true;
+        const std::string msg{e.what()};
+        FH_EXPECT(msg.find("size mismatch") != std::string::npos);
+    }
+    FH_EXPECT(threw);
+}
+
+FH_TEST(verify_throws_on_concept_mismatch)
+{
+    InMemoryPgClient db;
+    db.seedAttributeRegistry(canonicalM0Attrs());
+    // Seed WRONG concept key.
+    db.seedConceptRegistry({{1, "wrong_concept", "movement"}});
+
+    AttributeRegistry attrs;
+    ConceptRegistry   concepts;
+    fh::sim::persistence::loadAttributeRegistryFromDb(attrs,    db);
+    fh::sim::persistence::loadConceptRegistryFromDb  (concepts, db);
+
+    bool threw = false;
+    try {
+        fh::sim::persistence::verifyM0RegistryConsistency(attrs, concepts);
+    } catch (const PgError& e) {
+        threw = true;
+        const std::string msg{e.what()};
+        FH_EXPECT(msg.find("concept") != std::string::npos);
+        FH_EXPECT(msg.find("key mismatch") != std::string::npos);
+    }
+    FH_EXPECT(threw);
+}
+
+// ============================================================================
+// entries() accessor — sanity (used by drift check internally)
+// ============================================================================
+
+FH_TEST(registry_entries_returns_ascending_by_id)
+{
+    AttributeRegistry reg;
+    reg.addEntry(static_cast<fh::sim::AttrId>(3), "c", "physical");
+    reg.addEntry(static_cast<fh::sim::AttrId>(1), "a", "physical");
+    reg.addEntry(static_cast<fh::sim::AttrId>(2), "b", "physical");
+    const auto es = reg.entries();
+    FH_EXPECT_EQ(es.size(), std::size_t{3});
+    FH_EXPECT_EQ(es[0].id, fh::sim::AttrId{1});
+    FH_EXPECT_EQ(es[1].id, fh::sim::AttrId{2});
+    FH_EXPECT_EQ(es[2].id, fh::sim::AttrId{3});
+}
+
+FH_TEST_MAIN()

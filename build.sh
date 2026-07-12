@@ -140,7 +140,24 @@ echo ""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 1: BUILD
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Regenerate the sim registry catalog header from migration 200. The sim
+# container build context is ./sim, so the migration file (which lives in
+# ./database/) is not visible during `podman build` — the header must be
+# produced on the host first. See sim/DESIGN.md section 22.11.
+echo -e "${YELLOW}🔧 Regenerating sim registry header from migration 200...${NC}"
+awk -f sim/scripts/gen_registry_header.awk \
+    database/migrations/200-sim-registries.sql \
+    > sim/src/common/M0Registry.generated.hpp
+echo -e "${GREEN}✓ sim/src/common/M0Registry.generated.hpp regenerated${NC}"
+echo ""
+
 echo -e "${YELLOW}🔨 Building images...${NC}"
+# Compute + export the sim's build-time version so docker-compose can
+# forward it to the sim Dockerfile ARG (see sim/DESIGN.md §16.6 task 7).
+# Falls back to "unknown" if this isn't a git checkout.
+export FH_SIM_GIT_DESCRIBE="$(git describe --tags --dirty --always 2>/dev/null || echo unknown)"
+echo -e "${BLUE}  FH_SIM_GIT_DESCRIBE=${FH_SIM_GIT_DESCRIBE}${NC}"
 $DOCKER_COMPOSE build
 echo -e "${GREEN}✓ Build complete${NC}"
 echo ""

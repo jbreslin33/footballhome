@@ -22,6 +22,10 @@
 #include "match/Match.hpp"
 #include "net/INetworkTransport.hpp"
 #include "net/ISnapshotSerializer.hpp"
+#include "persistence/EventLog.hpp"
+#include "persistence/InputLog.hpp"
+#include "persistence/ProfileStore.hpp"
+#include "profile/PlayerProfile.hpp"
 
 #include <atomic>
 #include <cstdint>
@@ -39,13 +43,21 @@ public:
         std::uint64_t match_id    = 1;     // sent in HELLO_ACK
     };
 
-    // Ownership: SimServer takes over all three dependencies. Match must
-    // already be constructed with a scenario (SimServer never spawns
-    // scenarios itself; that's main.cpp / a factory).
+    // Ownership: SimServer takes over transport / serializer / match. The
+    // ProfileStore is non-owning — main() keeps it alive alongside the
+    // PgClient it wraps. `input_log` / `event_log` are also non-owning
+    // and may be nullptr; when null, the corresponding logging path is
+    // silently skipped (tests use this to run without a background
+    // drain thread). Match must already be constructed with a
+    // scenario (SimServer never spawns scenarios itself; that's
+    // main.cpp / a factory).
     SimServer(Config cfg,
               std::unique_ptr<net::INetworkTransport>   transport,
               std::unique_ptr<net::ISnapshotSerializer> serializer,
-              std::unique_ptr<match::Match>             match);
+              std::unique_ptr<match::Match>             match,
+              persistence::ProfileStore*                profile_store,
+              persistence::InputLog*                    input_log = nullptr,
+              persistence::EventLog*                    event_log = nullptr);
 
     ~SimServer() = default;
 
@@ -84,9 +96,12 @@ private:
     void handleDisconnect(ClientId cid);
     void handleMessage(ClientId cid, std::span<const std::uint8_t> bytes);
 
-    // Assign the first unowned scenario slot to `cid`. Returns 0 if all
-    // slots are taken (client stays connected as spectator).
-    SlotId assignFreeSlot(ClientId cid);
+    // Assign the first unowned scenario slot to `cid`, seating them with
+    // the supplied profile. Returns 0 if all slots are taken (client
+    // stays connected as spectator).
+    SlotId assignFreeSlot(ClientId cid,
+                          PersonId person,
+                          profile::PlayerProfile profile);
 
     // Serialize match.snapshot() once and send the resulting bytes to
     // every mapped client.
@@ -96,6 +111,9 @@ private:
     std::unique_ptr<net::INetworkTransport>      transport_;
     std::unique_ptr<net::ISnapshotSerializer>    serializer_;
     std::unique_ptr<match::Match>                match_;
+    persistence::ProfileStore*                   profile_store_{nullptr};
+    persistence::InputLog*                       input_log_{nullptr};
+    persistence::EventLog*                       event_log_{nullptr};
 
     // ClientId → SlotId. 0 = spectator (no slot assigned).
     std::unordered_map<ClientId, SlotId>         client_slot_;

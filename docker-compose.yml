@@ -157,6 +157,12 @@ services:
     build:
       context: ./sim
       dockerfile: Dockerfile
+      args:
+        # Computed on the host by build.sh (git describe --tags --dirty
+        # --always) and forwarded here so the container image knows
+        # exactly which commit produced it — see sim/DESIGN.md §16.6
+        # task 7. Falls back to "unknown" if the env var isn't set.
+        FH_SIM_GIT_DESCRIBE: "${FH_SIM_GIT_DESCRIBE:-unknown}"
     container_name: footballhome_sim
     restart: unless-stopped
     env_file: ./env
@@ -165,6 +171,7 @@ services:
       SIM_PORT: "9100"
       SIM_MATCH_ID: "1"
       SIM_MATCH_SEED: "42"
+      POSTGRES_PASSWORD: footballhome_pass
     networks:
       - footballhome_network
     # No ports: block — the sim is only reachable via nginx on the

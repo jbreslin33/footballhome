@@ -12,6 +12,11 @@ cmake_install.cmake
 CTestTestfile.cmake
 Testing/
 
+# Generated from database/migrations/200-sim-registries.sql at CMake
+# configure time (host) or pre-baked before podman build (container).
+# See DESIGN.md section 22.11.
+src/common/M0Registry.generated.hpp
+
 # IDE / editor
 .vscode/
 .idea/

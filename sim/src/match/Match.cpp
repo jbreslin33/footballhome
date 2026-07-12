@@ -158,28 +158,62 @@ void Match::tick()
     clock_->advance();
 }
 
-void Match::claimSlot(SlotId slot_id, ClientId client)
+void Match::claimSlot(SlotId slot_id,
+                      ClientId client,
+                      PersonId person,
+                      profile::PlayerProfile profile)
 {
-    Slot* s = findSlot(slot_id);
-    if (s == nullptr) { return; }
+    // Locate the slot's index in the sorted vector so we can also refresh
+    // the parallel params_by_slot_ array. Linear scan is fine — this runs
+    // at most once per client-connect, not per tick.
+    std::size_t idx = 0;
+    for (; idx < slots_.size(); ++idx) {
+        if (slots_[idx].slot_id == slot_id) { break; }
+    }
+    if (idx == slots_.size()) { return; }
 
-    if (s->owner.has_value() && *s->owner == client) {
-        return;   // idempotent
+    Slot& s = slots_[idx];
+
+    // Idempotent: repeated claim by the same client is a no-op. The first
+    // claim's profile wins for the session — profile refreshes require
+    // an explicit release+claim cycle.
+    if (s.owner.has_value() && *s.owner == client) {
+        return;
     }
 
-    s->controller = std::make_unique<controller::HumanController>(client);
-    s->owner      = client;
+    s.controller = std::make_unique<controller::HumanController>(client);
+    s.owner      = client;
+    s.person     = person;
+    s.profile    = std::move(profile);
+
+    // Attribute values drive movement caps + stamina curve. Refreshing
+    // params here is the whole point of per-person profiles (§16.6).
+    params_by_slot_[idx] = MechanicsParams::fromPhysical(s.profile.physical);
 }
 
 void Match::releaseSlot(SlotId slot_id)
 {
-    Slot* s = findSlot(slot_id);
-    if (s == nullptr) { return; }
+    std::size_t idx = 0;
+    for (; idx < slots_.size(); ++idx) {
+        if (slots_[idx].slot_id == slot_id) { break; }
+    }
+    if (idx == slots_.size()) { return; }
+
+    Slot& s = slots_[idx];
 
     const scenario::PitchSpec pitch = scenario_->pitch();
-    s->controller = std::make_unique<controller::WanderController>(
+    s.controller = std::make_unique<controller::WanderController>(
         pitch.length_m, pitch.width_m, &rng_);
-    s->owner.reset();
+    s.owner.reset();
+    s.person.reset();
+
+    // Wander AI runs on the M0 baseline profile — a released slot has no
+    // "identity" any more. Values live in M0Attributes.cpp (§22.11).
+    s.profile.physical = m0::defaultPhysical();
+    s.profile.concepts = m0::defaultConcepts();
+    // technical, mental, recognition stay empty (M0).
+
+    params_by_slot_[idx] = MechanicsParams::fromPhysical(s.profile.physical);
 }
 
 void Match::applyInput(ClientId client, const controller::Intent& intent)

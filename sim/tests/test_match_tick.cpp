@@ -12,12 +12,15 @@
 #include "physics/StubPhysics.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "controller/Intent.hpp"
+#include "common/M0Attributes.hpp"
 #include "math/Fixed64.hpp"
+#include "profile/PlayerProfile.hpp"
 #include "test_harness.hpp"
 
 #include <memory>
 
 using fh::sim::ClientId;
+using fh::sim::PersonId;
 using fh::sim::SlotId;
 using fh::sim::TickNum;
 using fh::sim::controller::Intent;
@@ -28,6 +31,21 @@ using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
 using fh::sim::physics::StubPhysics;
 using fh::sim::scenario::EmptyPitchScenario;
+
+namespace {
+
+// Build the M0 baseline profile used by every test that just needs a
+// "generic human player" for a slot claim. Uses the sanctioned default
+// values from M0Attributes.cpp (§22.11).
+fh::sim::profile::PlayerProfile makeDefaultProfile()
+{
+    fh::sim::profile::PlayerProfile p;
+    p.physical = fh::sim::m0::defaultPhysical();
+    p.concepts = fh::sim::m0::defaultConcepts();
+    return p;
+}
+
+} // namespace
 
 namespace {
 
@@ -61,7 +79,7 @@ FH_TEST(match_advances_tick_counter) {
 
 FH_TEST(claim_slot_makes_it_human_owned) {
     auto m = makeMatch();
-    m->claimSlot(SlotId{3}, ClientId{999});
+    m->claimSlot(SlotId{3}, ClientId{999}, PersonId{999}, makeDefaultProfile());
     const auto snap = m->snapshot();
     bool found = false;
     for (const auto& e : snap.entities) {
@@ -77,7 +95,7 @@ FH_TEST(claim_slot_makes_it_human_owned) {
 
 FH_TEST(claim_release_reverts_to_ai) {
     auto m = makeMatch();
-    m->claimSlot(SlotId{5}, ClientId{1});
+    m->claimSlot(SlotId{5}, ClientId{1}, PersonId{1}, makeDefaultProfile());
     m->releaseSlot(SlotId{5});
     const auto snap = m->snapshot();
     for (const auto& e : snap.entities) {
@@ -87,7 +105,7 @@ FH_TEST(claim_release_reverts_to_ai) {
 
 FH_TEST(human_input_moves_entity) {
     auto m = makeMatch();
-    m->claimSlot(SlotId{1}, ClientId{1});
+    m->claimSlot(SlotId{1}, ClientId{1}, PersonId{1}, makeDefaultProfile());
 
     // Send east-ward sprint intent.
     Intent in;

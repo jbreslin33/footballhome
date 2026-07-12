@@ -8,8 +8,10 @@
 #include "math/Vec3.hpp"
 #include "net/InputFrame.hpp"
 #include "net/WireFormat.hpp"
+#include "persistence/IPgClient.hpp"
 
 #include <chrono>
+#include <cstdio>
 #include <utility>
 
 namespace fh::sim::server {
@@ -36,11 +38,17 @@ constexpr std::int64_t tickPeriodMs(std::uint32_t tick_hz) noexcept
 SimServer::SimServer(Config cfg,
                      std::unique_ptr<net::INetworkTransport>   transport,
                      std::unique_ptr<net::ISnapshotSerializer> serializer,
-                     std::unique_ptr<match::Match>             match)
+                     std::unique_ptr<match::Match>             match,
+                     persistence::ProfileStore*                profile_store,
+                     persistence::InputLog*                    input_log,
+                     persistence::EventLog*                    event_log)
     : cfg_{cfg}
     , transport_{std::move(transport)}
     , serializer_{std::move(serializer)}
     , match_{std::move(match)}
+    , profile_store_{profile_store}
+    , input_log_{input_log}
+    , event_log_{event_log}
 {
     transport_->setOnConnect(
         [this](ClientId cid, const auth::JwtClaims& claims) {
@@ -103,7 +111,7 @@ void SimServer::tickOnceForTest()
 // Transport callbacks
 // ---------------------------------------------------------------------------
 
-void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& /*claims*/)
+void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& claims)
 {
     // Idempotent: if a stale entry exists for this client (shouldn't, but
     // protect against transport bugs) release the old slot first.
@@ -113,8 +121,51 @@ void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& /*claims*/)
         client_slot_.erase(existing);
     }
 
-    const SlotId slot = assignFreeSlot(cid);   // 0 => spectator
+    // Resolve identity + profile before touching the match. If the DB is
+    // unreachable mid-match, this new client degrades to spectator (slot
+    // 0) rather than crashing the whole match for other players. Boot-
+    // time DB failures are caught in main() and abort the process; this
+    // path handles transient mid-match blips only (§16.6, §22.12).
+    const PersonId person = static_cast<PersonId>(claims.person_id);
+    SlotId slot = 0;
+    if (profile_store_ != nullptr) {
+        try {
+            auto profile = profile_store_->loadOrCreate(person);
+            slot = assignFreeSlot(cid, person, std::move(profile));
+        } catch (const persistence::PgError& e) {
+            std::fprintf(stderr,
+                         "sim: profile load failed for person=%llu (%s: %s); "
+                         "degrading connection to spectator\n",
+                         static_cast<unsigned long long>(person),
+                         e.context().c_str(),
+                         e.what());
+            slot = 0;
+        }
+    }
     client_slot_.emplace(cid, slot);
+
+    // Event log (§16.6 task 8): ClientConnect is unconditional; SlotClaim
+    // only when a real slot (>0) was assigned. Both carry no payload in
+    // M0 — the tick_num on the row + event_type + row order is enough
+    // for replay tooling to reconstruct ownership. Payload versioning
+    // (§21.1 outstanding ship-blocker) will land alongside the M1+ event
+    // schema; safe to leave nullopt until then since M0 replay is
+    // driven off sim_match_inputs.slot_id directly.
+    if (event_log_ != nullptr) {
+        persistence::EventRow ev;
+        ev.match_id   = cfg_.match_id;
+        ev.tick_num   = match_->tick_num();
+        ev.event_type = persistence::EventType::ClientConnect;
+        event_log_->push(std::move(ev));
+
+        if (slot != 0u) {
+            persistence::EventRow claim;
+            claim.match_id   = cfg_.match_id;
+            claim.tick_num   = match_->tick_num();
+            claim.event_type = persistence::EventType::SlotClaim;
+            event_log_->push(std::move(claim));
+        }
+    }
 
     const auto ack = net::encodeHelloAckFrame(cfg_.match_id, slot, cfg_.tick_hz);
     (void)transport_->send(cid, ack);
@@ -124,6 +175,25 @@ void SimServer::handleDisconnect(ClientId cid)
 {
     const auto it = client_slot_.find(cid);
     if (it == client_slot_.end()) { return; }
+
+    // Event log ordering (§16.6 task 8): SlotRelease (if any) BEFORE
+    // ClientDisconnect so replay sees "slot freed, then peer left" —
+    // matches the semantic causality even though both land in the same
+    // tick.
+    if (event_log_ != nullptr) {
+        if (it->second != 0u) {
+            persistence::EventRow rel;
+            rel.match_id   = cfg_.match_id;
+            rel.tick_num   = match_->tick_num();
+            rel.event_type = persistence::EventType::SlotRelease;
+            event_log_->push(std::move(rel));
+        }
+        persistence::EventRow dc;
+        dc.match_id   = cfg_.match_id;
+        dc.tick_num   = match_->tick_num();
+        dc.event_type = persistence::EventType::ClientDisconnect;
+        event_log_->push(std::move(dc));
+    }
 
     if (it->second != 0u) {
         match_->releaseSlot(it->second);
@@ -155,6 +225,27 @@ void SimServer::handleMessage(ClientId cid, std::span<const std::uint8_t> bytes)
             intent.wants_sprint = di->wants_sprint;
             intent.wants_walk   = di->wants_walk;
             match_->applyInput(cid, intent);
+
+            // Input log (§16.6 task 8): record the accepted wire frame
+            // for deterministic replay. Only mapped clients with a real
+            // slot (>0) reach here in the intended path; spectator-only
+            // clients would be rejected upstream by Match::applyInput
+            // (findSlotByOwner miss) so a log row with slot=0 is
+            // meaningless. Log the wire bytes verbatim — Match already
+            // saw the same bytes translated to Intent, so replay's
+            // Match sees the identical Intent after the same decode.
+            if (input_log_ != nullptr) {
+                const auto slot_it = client_slot_.find(cid);
+                if (slot_it != client_slot_.end() && slot_it->second != 0u) {
+                    persistence::InputRow row;
+                    row.match_id = cfg_.match_id;
+                    row.tick_num = match_->tick_num();
+                    row.slot_id  = slot_it->second;
+                    const auto byte_span = std::as_bytes(bytes);
+                    row.payload.assign(byte_span.begin(), byte_span.end());
+                    input_log_->push(std::move(row));
+                }
+            }
             return;
         }
         // Slot claim/release, hello, ping, pong: not yet wired for M0.
@@ -170,11 +261,13 @@ void SimServer::handleMessage(ClientId cid, std::span<const std::uint8_t> bytes)
 // Helpers
 // ---------------------------------------------------------------------------
 
-SlotId SimServer::assignFreeSlot(ClientId cid)
+SlotId SimServer::assignFreeSlot(ClientId cid,
+                                 PersonId person,
+                                 profile::PlayerProfile profile)
 {
     for (const auto& slot : match_->slots()) {
         if (!slot.owner.has_value()) {
-            match_->claimSlot(slot.slot_id, cid);
+            match_->claimSlot(slot.slot_id, cid, person, std::move(profile));
             return slot.slot_id;
         }
     }

@@ -36,7 +36,9 @@
 
 namespace fh::sim::match {
 
-using MatchId = std::uint64_t;
+// MatchId lives in `fh::sim` (common/IdTypes.hpp) so persistence and other
+// non-match subsystems can spell it without pulling in this heavy header.
+// Name lookup from within fh::sim::match resolves it transparently.
 
 struct MatchConfig {
     MatchId                                    id{0};
@@ -61,10 +63,19 @@ public:
 
     // Slot lifecycle -----------------------------------------------------
     //
-    // Human ↔ AI swap. Human takes over the slot's controller; the previous
-    // controller is destroyed. Idempotent: claiming a slot already owned by
-    // the same client is a no-op.
-    void claimSlot(SlotId slot, ClientId client);
+    // Human ↔ AI swap. `profile` becomes the slot's profile and is used
+    // to recompute MechanicsParams (max speeds, acceleration, stamina
+    // curves) — the profile IS the source of truth for gameplay balance
+    // per-person (§16.6). `person` is stored on the slot to enable
+    // audit / event-log SlotClaim records (§14 / §22.12).
+    //
+    // Idempotent: claiming a slot already owned by the same client is a
+    // no-op even if the caller passes a different profile — the first
+    // claim wins for the session's lifetime.
+    void claimSlot(SlotId slot,
+                   ClientId client,
+                   PersonId person,
+                   profile::PlayerProfile profile);
     void releaseSlot(SlotId slot);
     void applyInput(ClientId client, const controller::Intent& intent);
 

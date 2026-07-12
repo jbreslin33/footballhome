@@ -2,6 +2,7 @@
 
 #include "registry/PatternRegistry.hpp"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -69,6 +70,18 @@ void PatternRegistry::clear() noexcept
 {
     by_id_.clear();
     by_key_.clear();
+}
+
+std::vector<PatternRegistry::Entry> PatternRegistry::entries() const
+{
+    std::vector<Entry> out;
+    out.reserve(by_id_.size());
+    for (const auto& [id, entry] : by_id_) {
+        out.push_back(entry);
+    }
+    std::sort(out.begin(), out.end(),
+              [](const Entry& a, const Entry& b) { return a.id < b.id; });
+    return out;
 }
 
 } // namespace fh::sim::registry
