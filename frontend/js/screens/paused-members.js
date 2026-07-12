@@ -926,6 +926,10 @@ class PausedMembersScreen extends Screen {
     // Dormancy chip — sits right under the name so it's the first
     // thing an admin scans.  See `_activityChip` for the color bands.
     const activityChip = this._activityChip(m);
+    // "Next step" widget — sends the right onboarding message for the
+    // person's current state (no account / never logged in / done).
+    // See `_onboardingSection` for the copy per state.
+    const onboardingSection = this._onboardingSection(m);
     // Youth (boys/girls) usually have contact info on the parent row;
     // the API returns the parent value when the child has none and flags
     // it so we can label it clearly.
@@ -992,6 +996,7 @@ class PausedMembersScreen extends Screen {
             display:flex; flex-direction:column; gap:4px;">
         <div style="font-weight:600;">${this._esc(name)}</div>
         ${activityChip}
+        ${onboardingSection}
         ${dobLine}
         ${emailLine}
         ${phoneLine}
@@ -999,6 +1004,107 @@ class PausedMembersScreen extends Screen {
                       ${this._esc(sinceLabel)} ${this._esc(joined)}
                     </div>` : ''}
         ${btnRow}
+      </div>
+    `;
+  }
+
+  // ── Onboarding "next step" widget ───────────────────────────────
+  // Small widget under the activity chip that either flags "✅ Onboarded"
+  // (green pill, no action needed) or renders per-member outreach
+  // buttons pre-populated with the *specific* next step for their
+  // current funnel state.
+  //
+  // States:
+  //   Onboarded          — has_fh_account && days_since_activity != null.
+  //                        Any activity ever = they've crossed the FH
+  //                        threshold, so we don't nudge them here even
+  //                        if they're currently dormant (that's a
+  //                        re-engagement problem, not onboarding).
+  //   🚫 No account      — needs to sign in with Google for the first
+  //                        time.  Body carries the 1-click CTA.
+  //   💤 Never logged in — account exists but they've never actually
+  //                        authenticated against the new backend.
+  //                        Body says "you're set up, come use it".
+  //
+  // Ships as plain mailto:/sms: URIs — no SMTP infra needed.  Admin
+  // taps the button, native mail/messages app opens with the body
+  // pre-filled, admin can edit before send.
+  _onboardingSection(m) {
+    const first  = (m.first_name || '').trim() || 'there';
+    const email  = (m.email || '').trim();
+    const phoneD = this._phoneDigits(m.phone || '');
+    const canEmail = !!email;
+    const canText  = !!phoneD && m.phone_sms !== false;
+
+    // ✅ Onboarded → single green pill, no buttons.
+    if (m.has_fh_account && m.days_since_activity != null) {
+      return `<div style="display:inline-flex; align-items:center; gap:4px;
+                          align-self:flex-start; padding:2px 8px; border-radius:999px;
+                          font-size:0.7rem; font-weight:700;
+                          background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;">
+                ✅ Onboarded
+              </div>`;
+    }
+
+    // Pick copy by state.
+    let step, subject, body;
+    if (!m.has_fh_account) {
+      step    = 'Sign in with Google';
+      subject = 'Join FootballHome — 1 click';
+      body    = `Hey ${first},\n\n` +
+                `We're running the men's team on FootballHome. ` +
+                `Go to https://footballhome.org and tap "Sign in with Google" — ` +
+                `takes 5 seconds and uses your Gmail. Ping me if it doesn't work.\n\n` +
+                `— Jim`;
+    } else {
+      step    = 'First visit — set your availability';
+      subject = 'Your FootballHome account is ready';
+      body    = `Hey ${first},\n\n` +
+                `You're set up on FootballHome. Go to https://footballhome.org, ` +
+                `sign in, then set your availability so we know who to count on.\n\n` +
+                `— Jim`;
+    }
+
+    const encSubject = encodeURIComponent(subject);
+    const encBody    = encodeURIComponent(body);
+
+    const buttons = [];
+    if (canEmail) {
+      buttons.push(
+        `<a href="mailto:${this._esc(email)}?subject=${encSubject}&body=${encBody}"
+            target="_blank" rel="noopener"
+            style="padding:4px 10px; border-radius:4px; text-decoration:none;
+                   background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
+                   font-size:0.7rem; font-weight:700;">✉️ Email</a>`
+      );
+    }
+    if (canText) {
+      buttons.push(
+        `<a href="sms:${phoneD}?body=${encBody}"
+            style="padding:4px 10px; border-radius:4px; text-decoration:none;
+                   background:#3a2e05; color:#fde68a; border:1px solid #d97706;
+                   font-size:0.7rem; font-weight:700;">💬 Text</a>`
+      );
+    }
+
+    const noContactHint = buttons.length ? '' :
+      `<div style="font-size:0.7rem; opacity:0.65;">
+         (no email/phone on file — reach out in person)
+       </div>`;
+
+    return `
+      <div style="background: rgba(59,130,246,0.06);
+                  border: 1px solid rgba(59,130,246,0.28);
+                  border-radius: var(--radius-sm);
+                  padding: 6px 8px;
+                  display:flex; flex-direction:column; gap:4px;
+                  margin-top: 2px;">
+        <div style="font-size:0.65rem; font-weight:700; opacity:0.75;
+                    letter-spacing:0.05em; text-transform:uppercase;">
+          📣 Onboarding — ${this._esc(step)}
+        </div>
+        ${buttons.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${buttons.join('')}</div>` : ''}
+        ${noContactHint}
       </div>
     `;
   }
