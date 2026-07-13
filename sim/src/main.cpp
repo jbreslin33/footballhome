@@ -232,15 +232,70 @@ int main(int /*argc*/, char** /*argv*/)
     // window. scenario_id is 0 in M0 (only EmptyPitchScenario exists);
     // real scenario cataloguing lands with the drills work in M1.
     //
+    // Before upserting we READ the existing row (if any) and refuse to
+    // start if (scenario_id, seed, tick_hz) differ from what we're
+    // about to write. Rationale: those three fields identify the
+    // *deterministic replay contract* of the match — every input in
+    // sim_match_inputs was recorded against them, and `fh-sim-replay`
+    // will reproduce a divergent hash if they silently change under it.
+    // `upsertMatch`'s `ON CONFLICT` clause (spec §16.6) only refreshes
+    // server_version and NEVER overwrites config fields (both to
+    // preserve replay coherence and because the DB is the source of
+    // truth for recorded matches). So a divergence between "what env /
+    // seed the daemon thinks it's serving" and "what the DB row says
+    // this match was played with" is either an operator error (bumped
+    // SIM_MATCH_SEED without cleaning the row) or a bug (someone hand-
+    // edited the row). Either way, fail loud at boot — surfacing the
+    // drift here is orders of magnitude cheaper than debugging a
+    // divergent replay hash three days later. Closes DESIGN §16.5 note
+    // added 2026-07-13.
+    //
     // MatchStart is written after upsertMatch so any ORDER BY tick_num,
     // event_type observer sees a coherent "row exists, then it began".
     // ------------------------------------------------------------------
     try {
+        constexpr std::int16_t kM0ScenarioId = 0;  // EmptyPitchScenario;
+                                                   // see Replay.cpp::makeScenario
+        constexpr std::int16_t kTickHz       = 20;
+
+        const auto existing = db->getMatch(match_id);
+        if (existing.has_value()) {
+            const bool drift =
+                existing->scenario_id != kM0ScenarioId
+                || existing->seed     != seed
+                || existing->tick_hz  != kTickHz;
+            if (drift) {
+                std::fprintf(stderr,
+                    "footballhome_sim: refusing to start — sim_matches row "
+                    "for match_id=%llu already exists with config that "
+                    "differs from this daemon's intended write:\n"
+                    "  DB  : scenario_id=%d seed=%llu tick_hz=%d "
+                    "server_version=%s\n"
+                    "  boot: scenario_id=%d seed=%llu tick_hz=%d\n"
+                    "Recorded inputs are keyed against the DB row's "
+                    "(scenario_id, seed, tick_hz); silently overwriting "
+                    "them would corrupt every replay. Fix: either bump "
+                    "SIM_MATCH_ID to a fresh id, or clean the existing "
+                    "row (DELETE FROM sim_matches WHERE id=%llu — cascades "
+                    "to sim_match_inputs + sim_match_events).\n",
+                    static_cast<unsigned long long>(match_id),
+                    static_cast<int>(existing->scenario_id),
+                    static_cast<unsigned long long>(existing->seed),
+                    static_cast<int>(existing->tick_hz),
+                    existing->server_version.c_str(),
+                    static_cast<int>(kM0ScenarioId),
+                    static_cast<unsigned long long>(seed),
+                    static_cast<int>(kTickHz),
+                    static_cast<unsigned long long>(match_id));
+                return 6;
+            }
+        }
+
         fh::sim::persistence::MatchRow mrow;
         mrow.id             = match_id;
-        mrow.scenario_id    = 0;
+        mrow.scenario_id    = kM0ScenarioId;
         mrow.seed           = seed;
-        mrow.tick_hz        = 20;
+        mrow.tick_hz        = kTickHz;
         mrow.server_version = FH_SIM_GIT_DESCRIBE;
         db->upsertMatch(mrow);
 
