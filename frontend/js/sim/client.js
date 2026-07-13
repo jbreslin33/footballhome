@@ -5,35 +5,60 @@
 // loop + fixed-rate INPUT publisher.
 //
 // Life-cycle:
-//   1. Resolve a sim JWT (see resolveSimJwt below):
+//   1. Resolve target match_id from `?match=<n>` URL param (default 1
+//      = M0 seed).
+//   2. Resolve a sim JWT (see resolveSimJwt below):
 //        a. `?token=<jwt>` URL param wins (dev / mint-dev-jwt.sh path).
 //        b. Else if the site's backend login JWT is in localStorage
-//           ('token'), POST /api/sim/matches/1/join with a Bearer
-//           header — the backend bridges users.id → person_id and
-//           mints a fresh sim JWT for us. Cache it as sim_token.
+//           ('token'), POST /api/sim/matches/${match_id}/join with a
+//           Bearer header — the backend bridges users.id → person_id,
+//           mints a fresh sim JWT, AND returns the ws_path (either
+//           legacy `/sim` for the M0 seed or `/sim/${match_id}` for
+//           orchestrator-launched matches). Cache the token as
+//           sim_token.
 //        c. Else fall back to a previously-cached sim_token.
 //        d. Else surface a fatal message.
-//   2. Open the WS connection with the fh-sim.v1.bearer.<jwt> subprotocol.
-//   3. On HELLO_ACK, remember our slot + tick rate and start the loop.
-//   4. requestAnimationFrame draws whatever the interpolator can
+//   3. Open the WS connection at the resolved ws_path with the
+//      fh-sim.v1.bearer.<jwt> subprotocol.
+//   4. On HELLO_ACK, remember our slot + tick rate and start the loop.
+//   5. requestAnimationFrame draws whatever the interpolator can
 //      produce for `now`; a setInterval publishes INPUT at 30 Hz
 //      (slightly faster than the server tick so late frames still
 //      land inside a tick window).
-//   5. Any failure surfaces to the on-page status HUD; page reload = retry.
+//   6. Any failure surfaces to the on-page status HUD; page reload = retry.
 
 'use strict';
 
-// M0: the sim daemon serves a single hard-coded match id. POST /join is
-// idempotent — it returns the running match's fresh JWT regardless.
-const SIM_M0_MATCH_ID = 1;
+// Match-id resolution:
+//   * `?match=<n>` URL param wins (dev / direct-link path — e.g. after
+//     the SPA POSTs /api/sim/matches and receives {id, ws_url}, it can
+//     redirect the user here with ?match=N).
+//   * Else fall back to 1 — the M0 seed match served by the
+//     docker-compose `footballhome_sim` container (see migration 202).
+//     This keeps the pre-14.4 direct-load flow working: hitting
+//     /sim.html with a valid login token joins the M0 daemon exactly
+//     like it did before multi-match orchestration landed.
+function resolveMatchId() {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get('match');
+    if (raw && /^\d+$/.test(raw)) {
+        const n = parseInt(raw, 10);
+        if (n > 0) return n;
+    }
+    return 1;
+}
 
-// Fetch a fresh sim JWT from the backend using the caller's login JWT.
-// Returns the sim token string on success, or null if the login JWT is
-// missing / rejected / the /join endpoint is not reachable.
-async function fetchSimTokenViaLoginJwt(loginJwt) {
+// Fetch a fresh sim JWT + ws_path from the backend using the caller's
+// login JWT. Returns { token, wsPath } on success, or null on any
+// failure. The ws_path discriminates orchestrator-launched matches
+// (routed to footballhome_sim_${id}:9100 via the nginx regex block)
+// from the legacy M0 seed (routed to footballhome_sim:9100 via the
+// exact-match block) — see backend/src/controllers/SimLobbyController.cpp
+// handleJoinMatch for the discrimination rule.
+async function fetchSimTokenViaLoginJwt(loginJwt, matchId) {
     try {
         const resp = await fetch(
-            '/api/sim/matches/' + SIM_M0_MATCH_ID + '/join',
+            '/api/sim/matches/' + matchId + '/join',
             {
                 method:      'POST',
                 cache:       'no-store',
@@ -54,29 +79,43 @@ async function fetchSimTokenViaLoginJwt(loginJwt) {
             console.warn('[sim] /join response missing token field');
             return null;
         }
-        return body.token;
+        // ws_path is guaranteed by handleJoinMatch (Slice 14.4). Fall
+        // back to legacy /sim for a defensive-but-technically-dead-code
+        // path if an old backend somehow ships without the field.
+        const wsPath = (typeof body.ws_path === 'string' && body.ws_path.length > 0)
+            ? body.ws_path
+            : '/sim';
+        return { token: body.token, wsPath: wsPath };
     } catch (err) {
         console.warn('[sim] /join fetch failed:', err);
         return null;
     }
 }
 
-// Priority-ordered resolution — see life-cycle step 1 above.
-async function resolveSimJwt() {
+// Priority-ordered resolution — see life-cycle step 1 in the header
+// comment. Returns { jwt, wsPath, source } — wsPath may be null when
+// jwt came from ?token=… or from the cache, in which case the caller
+// falls back to the legacy /sim path (the only path a pre-14.4 cached
+// token could have been minted for).
+async function resolveSimJwt(matchId) {
     const params = new URLSearchParams(location.search);
     const urlToken = params.get('token');
     if (urlToken) {
         try { localStorage.setItem('sim_token', urlToken); } catch (_e) {}
-        return { jwt: urlToken, source: 'url' };
+        // ?token=… is the dev/manual path — we don't know which
+        // match the mint-dev-jwt.sh caller targeted, so use the
+        // ?match=… hint (defaulting to /sim if no match hint).
+        const wsPath = matchId > 1 ? ('/sim/' + matchId) : '/sim';
+        return { jwt: urlToken, wsPath: wsPath, source: 'url' };
     }
 
     let loginJwt = null;
     try { loginJwt = localStorage.getItem('token'); } catch (_e) {}
     if (loginJwt) {
-        const fresh = await fetchSimTokenViaLoginJwt(loginJwt);
+        const fresh = await fetchSimTokenViaLoginJwt(loginJwt, matchId);
         if (fresh) {
-            try { localStorage.setItem('sim_token', fresh); } catch (_e) {}
-            return { jwt: fresh, source: 'join' };
+            try { localStorage.setItem('sim_token', fresh.token); } catch (_e) {}
+            return { jwt: fresh.token, wsPath: fresh.wsPath, source: 'join' };
         }
         // fall through to cached sim_token if /join failed
     }
@@ -84,10 +123,11 @@ async function resolveSimJwt() {
     let cached = null;
     try { cached = localStorage.getItem('sim_token'); } catch (_e) {}
     if (cached) {
-        return { jwt: cached, source: 'cache' };
+        const wsPath = matchId > 1 ? ('/sim/' + matchId) : '/sim';
+        return { jwt: cached, wsPath: wsPath, source: 'cache' };
     }
 
-    return { jwt: null, source: null };
+    return { jwt: null, wsPath: null, source: null };
 }
 
 (async function main() {
@@ -102,19 +142,22 @@ async function resolveSimJwt() {
     }
 
     statusEl.textContent = 'resolving token…';
-    const resolved = await resolveSimJwt();
-    const jwt = resolved.jwt;
+    const matchId  = resolveMatchId();
+    const resolved = await resolveSimJwt(matchId);
+    const jwt      = resolved.jwt;
     if (!jwt) {
         showFatal(statusEl,
             'No sim JWT. Sign in to footballhome first, append ?token=<jwt> ' +
             'to the URL, or run sim/scripts/mint-dev-jwt.sh to generate one.');
         return;
     }
-    console.log('[sim] using JWT from', resolved.source);
+    console.log('[sim] using JWT from', resolved.source,
+                '\u2192 ws_path', resolved.wsPath, 'match_id', matchId);
 
-    // WS URL: same host, /sim path, matching protocol scheme.
+    // WS URL: same host, ws_path from /join response (or fallback for
+    // ?token=/cache paths), matching protocol scheme.
     const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = scheme + '//' + location.host + '/sim';
+    const url = scheme + '//' + location.host + resolved.wsPath;
 
     const renderer     = new FhSimRenderer(canvas);
     const interpolator = new FhSimInterpolator(20);

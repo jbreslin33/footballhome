@@ -324,12 +324,18 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
             }
             const auto& r = rows[0];
             const long long existingMatchId = r["id"].as<long long>();
+            // Legacy ws path — the M0 seed match is served by the
+            // docker-compose `footballhome_sim` container (no _{id}
+            // suffix), reachable only via nginx's exact-match
+            // `location = /sim` block. NOT /sim/${id}, which routes
+            // through the regex block to footballhome_sim_${id} —
+            // that hostname doesn't exist for the M0 seed.
             return jsonOk(json{
                 {"id",           existingMatchId},
                 {"scenario_id",  r["scenario_id"].as<int>()},
                 {"seed",         r["seed"].as<long long>()},
                 {"tick_hz",      r["tick_hz"].as<int>()},
-                {"ws_url",       buildWsUrl(existingMatchId)},
+                {"ws_url",       std::string("/sim")},
                 {"note",         "orchestrator disabled — returned seeded match"},
             });
         } catch (const std::exception& e) {
@@ -473,6 +479,31 @@ Response SimLobbyController::handleJoinMatch(const Request& request) {
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "database error");
     }
 
+    // ws_path discrimination (Slice 14.4):
+    //   * Orchestrator-launched matches have a `sim_running_matches`
+    //     row → ws_path = "/sim/${match_id}" (nginx regex block routes
+    //     to footballhome_sim_${match_id}:9100).
+    //   * The pre-seeded M0 match (docker-compose service
+    //     `footballhome_sim`, migration 202 seed) has NO row → ws_path
+    //     = "/sim" (nginx exact-match block routes to
+    //     footballhome_sim:9100).
+    // Presence of a row is the ONLY discriminator — do NOT special-
+    // case on match_id == 1, because a future rebuild could reseed at
+    // a different id.
+    std::string ws_path = "/sim";
+    try {
+        auto rows = db_->query(
+            "SELECT 1 FROM sim_running_matches WHERE match_id = $1::bigint LIMIT 1",
+            {std::to_string(matchId)});
+        if (!rows.empty()) {
+            ws_path = "/sim/" + std::to_string(matchId);
+        }
+    } catch (const std::exception& e) {
+        // Non-fatal: fall back to legacy path. Log so ops sees it.
+        std::cerr << "[sim-lobby] join ws_path lookup failed: "
+                  << e.what() << " (falling back to /sim)" << std::endl;
+    }
+
     // Mint the sim JWT. We use the same JWT_SECRET the sim daemon
     // reads from ./env; both processes share it via docker-compose.
     const std::string payload = buildSimJwtPayload(personId, matchId, kSimJwtTtl);
@@ -484,7 +515,7 @@ Response SimLobbyController::handleJoinMatch(const Request& request) {
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "token minting failed");
     }
 
-    // ws_url is a *relative* path so the browser can attach whatever
+    // ws_path is a *relative* path so the browser can attach whatever
     // scheme+host it's currently loaded from (http→ws, https→wss).
     // The token travels via the WebSocket subprotocol header, not as
     // a URL parameter, so we DON'T bake it in here.
@@ -492,7 +523,7 @@ Response SimLobbyController::handleJoinMatch(const Request& request) {
         {"match_id",      matchId},
         {"person_id",     personId},
         {"token",         token},
-        {"ws_path",       "/sim"},
+        {"ws_path",       ws_path},
         {"subprotocol",   std::string("fh-sim.v1.bearer.") + token},
         {"expires_in_s",  static_cast<long long>(kSimJwtTtl.count())},
     });
