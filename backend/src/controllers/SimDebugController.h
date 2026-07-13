@@ -61,6 +61,15 @@ private:
     Database* db_;
     bool enabled_;
 
+    // Cross-container replay RPC target (sub-slice 8.1). Both read
+    // once at construction from FH_SIM_ADMIN_URL / FH_SIM_ADMIN_TOKEN.
+    // If admin_token_ is empty the endpoint returns 503 unconfigured
+    // (rather than silently sending unauthenticated requests to the
+    // sim). admin_url_ defaults to http://footballhome_sim:9101 so
+    // dev environments Just Work when the token is set.
+    std::string admin_url_;
+    std::string admin_token_;
+
     // ----- rate limiter -----
     // person_id → sliding window of recent request times. Kept simple:
     // pop from the front while entries are outside the window, count

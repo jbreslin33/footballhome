@@ -16,6 +16,7 @@
 // No exceptions escape main(); every construction failure prints to
 // stderr and exits with a non-zero code.
 
+#include "admin/AdminHttpServer.hpp"
 #include "auth/JwtVerifier.hpp"
 #include "match/CanonicalHash.hpp"
 #include "match/Match.hpp"
@@ -161,6 +162,60 @@ int main(int /*argc*/, char** /*argv*/)
 
     fh::sim::persistence::ProfileStore profile_store{*db};
 
+    // ------------------------------------------------------------------
+    // Admin HTTP server (§16.6 sub-slice 8.1, DESIGN §22.12).
+    //
+    // The admin endpoint (POST /admin/replay) executes cross-container
+    // replay requests originating from `footballhome_backend`. It gets
+    // its OWN Postgres connection ("admin_db") so it can query and
+    // insert alongside the tick loop without contending on the primary
+    // connection or the async log-drain connection.
+    //
+    // Disabled at runtime when FH_SIM_ADMIN_TOKEN is unset/empty. This
+    // is *not* fatal — dev environments that don't need the endpoint
+    // (or a compromised token being rotated) shouldn't take the sim
+    // down. Missing DB, though, IS fatal (same tier as the main db
+    // failure above).
+    //
+    // Bind is intentionally 0.0.0.0 inside the podman network; the
+    // network segment itself is the security boundary. The bearer
+    // token defence-in-depths against a rogue container.
+    // ------------------------------------------------------------------
+    std::unique_ptr<fh::sim::persistence::PgClient>   admin_db;
+    std::unique_ptr<fh::sim::admin::AdminHttpServer>  admin_server;
+    const char* admin_token_c = std::getenv("FH_SIM_ADMIN_TOKEN");
+    const bool  admin_enabled =
+        (admin_token_c != nullptr && admin_token_c[0] != '\0');
+    if (admin_enabled) {
+        try {
+            admin_db = std::make_unique<fh::sim::persistence::PgClient>(db_cfg);
+        } catch (const fh::sim::persistence::PgError& e) {
+            std::fprintf(stderr,
+                         "footballhome_sim: admin db connect failed: %s: %s\n",
+                         e.context().c_str(),
+                         e.what());
+            return 7;
+        }
+        fh::sim::admin::AdminHttpServer::Config acfg;
+        acfg.bind_address = envOr("SIM_ADMIN_BIND_ADDRESS", "0.0.0.0");
+        acfg.port         = parsePort(envOr("SIM_ADMIN_PORT", "9101"));
+        acfg.admin_token  = admin_token_c;
+        admin_server = std::make_unique<fh::sim::admin::AdminHttpServer>(
+            acfg, *admin_db);
+        if (!admin_server->start()) {
+            std::fprintf(stderr,
+                         "footballhome_sim: admin http server failed to "
+                         "bind %s:%u\n",
+                         acfg.bind_address.c_str(),
+                         static_cast<unsigned>(acfg.port));
+            return 8;
+        }
+    } else {
+        std::fprintf(stderr,
+                     "footballhome_sim: FH_SIM_ADMIN_TOKEN not set — "
+                     "admin http server disabled\n");
+    }
+
     std::fprintf(stderr,
                  "footballhome_sim: loaded registries — "
                  "attrs=%zu concepts=%zu patterns=%zu\n",
@@ -291,6 +346,12 @@ int main(int /*argc*/, char** /*argv*/)
     server.run();
 
     g_server.store(nullptr, std::memory_order_relaxed);
+
+    // Stop admin HTTP server first: no external client should be able
+    // to trigger a replay or observe partial-shutdown state while we
+    // drain the input/event logs and write MatchEnd. `stop()` is
+    // idempotent and safe if the server was never started.
+    if (admin_server) { admin_server->stop(); }
 
     // Stop async log drains BEFORE writing MatchEnd (§16.6 task 8).
     // Any queued input / event rows must land in Postgres before the

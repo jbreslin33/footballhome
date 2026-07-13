@@ -293,10 +293,27 @@ target_link_libraries(fh-sim-replay PRIVATE sim_tools sim_flags)
 # stamp to avoid duplicating the resolver logic.)
 
 # -----------------------------------------------------------------------------
+# Admin HTTP server (§16.6 sub-slice 8.1).
+#
+# Serves POST /admin/replay on an internal port (default 9101) so the
+# backend container can proxy /api/sim/debug/matches/:id/state?tick=T
+# without either container needing to spawn subprocesses or share
+# binaries. Depends on sim_tools for the Replay driver and on
+# sim_persistence for the IPgClient interface.
+# -----------------------------------------------------------------------------
+add_library(sim_admin STATIC
+    src/admin/AdminHttpServer.cpp
+)
+target_include_directories(sim_admin PUBLIC src)
+target_link_libraries(sim_admin PUBLIC
+    sim_tools sim_persistence sim_flags Threads::Threads)
+
+# -----------------------------------------------------------------------------
 # Executable (footballhome_sim daemon).
 # -----------------------------------------------------------------------------
 add_executable(footballhome_sim src/main.cpp)
-target_link_libraries(footballhome_sim PRIVATE sim_server sim_persistence sim_flags)
+target_link_libraries(footballhome_sim PRIVATE
+    sim_server sim_persistence sim_admin sim_flags)
 
 # -----------------------------------------------------------------------------
 # Build-time version string (§16.6 task 7).

@@ -56,6 +56,11 @@ services:
       # Admin-only + rate-limited; still gated behind this flag so a
       # future prod deploy can turn it off without a rebuild.
       FH_ENABLE_SIM_DEBUG: ${FH_ENABLE_SIM_DEBUG:-1}
+      # Cross-container replay RPC (sub-slice 8.1). Backend POSTs to
+      # this URL. FH_SIM_ADMIN_TOKEN is deliberately NOT listed here;
+      # it flows in from `env_file: ./env` above so we don't override
+      # it to empty when the shell environment doesn't export it.
+      FH_SIM_ADMIN_URL: ${FH_SIM_ADMIN_URL:-http://footballhome_sim:9101}
     ports:
       - "3001:3001"
     dns:
@@ -176,6 +181,15 @@ services:
       SIM_MATCH_ID: "1"
       SIM_MATCH_SEED: "42"
       POSTGRES_PASSWORD: footballhome_pass
+      # Admin HTTP endpoint (POST /admin/replay) — enabled when the
+      # FH_SIM_ADMIN_TOKEN bearer token (loaded from env_file above)
+      # is non-empty. Backend/SimDebugController posts to it using
+      # the same token. See sim/DESIGN.md §16.6 sub-slice 8.1 and
+      # §22.12. FH_SIM_ADMIN_TOKEN is deliberately NOT listed here
+      # so it flows in from env_file rather than being clobbered to
+      # empty by shell substitution.
+      SIM_ADMIN_BIND_ADDRESS: 0.0.0.0
+      SIM_ADMIN_PORT: "9101"
     networks:
       - footballhome_network
     # No ports: block — the sim is only reachable via nginx on the

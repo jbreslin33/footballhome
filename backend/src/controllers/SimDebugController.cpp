@@ -1,6 +1,7 @@
 #include "SimDebugController.h"
 
 #include "../core/Crypto.h"
+#include "../core/HttpClient.h"
 #include "../database/Database.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
@@ -12,6 +13,7 @@
 #include <deque>
 #include <exception>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <regex>
@@ -157,6 +159,27 @@ bool readEnableFlag() {
     return s == "1" || s == "true" || s == "yes" || s == "on";
 }
 
+// ---------------------------------------------------------------------
+// Read FH_SIM_ADMIN_URL / FH_SIM_ADMIN_TOKEN once at construction. URL
+// defaults to the compose-network hostname so a dev only needs to
+// export the token. Trailing slash is stripped so we can concatenate
+// path segments (`admin_url_ + "/admin/replay"`) unconditionally.
+// ---------------------------------------------------------------------
+
+std::string readAdminUrl() {
+    const char* v = std::getenv("FH_SIM_ADMIN_URL");
+    std::string s = (v != nullptr && *v != '\0')
+                        ? std::string(v)
+                        : std::string("http://footballhome_sim:9101");
+    while (!s.empty() && s.back() == '/') s.pop_back();
+    return s;
+}
+
+std::string readAdminToken() {
+    const char* v = std::getenv("FH_SIM_ADMIN_TOKEN");
+    return (v != nullptr) ? std::string(v) : std::string();
+}
+
 }  // namespace
 
 // =====================================================================
@@ -165,7 +188,9 @@ bool readEnableFlag() {
 
 SimDebugController::SimDebugController()
     : db_(Database::getInstance()),
-      enabled_(readEnableFlag()) {}
+      enabled_(readEnableFlag()),
+      admin_url_(readAdminUrl()),
+      admin_token_(readAdminToken()) {}
 
 void SimDebugController::registerRoutes(Router& router,
                                         const std::string& prefix) {
@@ -403,23 +428,29 @@ Response SimDebugController::handleEvents(const Request& request) {
 // =====================================================================
 // GET /api/sim/debug/matches/:id/state?tick=T
 //
-// Not implemented in this sub-slice. The DESIGN spec calls for
-// spawning `fh-sim-replay --match-id N --up-to-tick T --emit-hex
-// --emit-json-snapshot` in a sandboxed subprocess, but the binary is
-// only present in the `footballhome_sim` container image (see
-// sim/Dockerfile) — the backend container has no way to invoke it
-// today. Two follow-ups will unblock this (sub-slice 8.1):
+// Proxies to the sim daemon's admin HTTP endpoint (POST /admin/replay
+// on footballhome_sim:9101) which runs the actual replay in-process
+// using the same code fh-sim-replay does. The sim ships the binary,
+// the backend never needs to know how replay works — it just knows
+// how to ask (see sim/DESIGN.md §16.6 sub-slice 8.1 and §22.12).
 //
-//   (a) bundle fh-sim-replay into the backend image alongside its
-//       runtime deps (libpqxx, libc++), OR
-//   (b) expose a debug replay endpoint on the sim daemon itself
-//       (localhost socket, HS256-signed request from the backend),
-//       and have the backend proxy through to it.
+// Contract preserved for callers:
+//   200 body forwarded verbatim from the sim ({match_id, final_tick,
+//       hash_hex, hash_u64, inputs_applied, slots_synthesized,
+//       canonical_hex?}).
+//   400 tick out of range / bad matchId (rejected locally before RPC).
+//   401/403 auth failures (same as other debug endpoints).
+//   404 forwarded from sim when the match_id has no rows.
+//   429 our own rate limit.
+//   502 sim daemon unreachable (DNS / connect / TLS / non-2xx that
+//       isn't an intentional 4xx from the sim).
+//   503 admin endpoint not configured (FH_SIM_ADMIN_TOKEN empty).
 //
-// Path (b) is preferred because it keeps binaries owned by whichever
-// container ships them, but it's non-trivial. Returning 501 here so
-// the endpoint is visible in the router surface without silently
-// returning garbage.
+// `emit_hex` is intentionally NOT exposed on this endpoint — the
+// canonical hex dump is O(200 KB) and only useful for divergence
+// forensics. Callers who want it should use fh-sim-replay directly
+// (via `sudo podman exec footballhome_sim fh-sim-replay ...`) or a
+// dedicated forensic endpoint if we ever need one.
 // =====================================================================
 
 Response SimDebugController::handleState(const Request& request) {
@@ -436,22 +467,68 @@ Response SimDebugController::handleState(const Request& request) {
     if (matchId <= 0) {
         return jsonError(HttpStatus::BAD_REQUEST, "invalid matchId");
     }
-    // Read the tick so we surface it in the diagnostic body even though
-    // we can't act on it yet.
-    const long long tick = qparamInt(request, "tick", -1);
 
-    json body = {
-        {"error",          "not implemented"},
-        {"match_id",       matchId},
-        {"tick",           tick < 0 ? json(nullptr) : json(tick)},
-        {"reason",         "fh-sim-replay lives in footballhome_sim, not "
-                           "footballhome_backend — cross-container spawn "
-                           "deferred to sub-slice 8.1"},
-        {"workaround",     "run manually inside the sim container: "
-                           "`sudo podman exec footballhome_sim "
-                           "fh-sim-replay --match-id N --up-to-tick T --emit-hex`"},
+    // tick is optional. -1 → let the sim default to end-of-match. We
+    // clamp to a uint32 because that's the wire type on the admin
+    // endpoint; anything larger is a client bug.
+    const long long tick = qparamInt(request, "tick", -1);
+    if (tick > static_cast<long long>(std::numeric_limits<std::uint32_t>::max())) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                          "tick out of range (max 2^32-1)");
+    }
+
+    if (admin_token_.empty()) {
+        return jsonError(HttpStatus::SERVICE_UNAVAILABLE,
+                          "sim admin RPC not configured "
+                          "(FH_SIM_ADMIN_TOKEN unset on backend)");
+    }
+
+    // Build the JSON body. Keys deliberately match the sim's
+    // AdminHttpServer::parseReplayJson contract exactly.
+    json body_json = { {"match_id", static_cast<std::uint64_t>(matchId)} };
+    if (tick >= 0) {
+        body_json["up_to_tick"] = static_cast<std::uint32_t>(tick);
+    }
+    const std::string body = body_json.dump();
+
+    HttpClient client;
+    HttpClient::Headers headers = {
+        {"Authorization", "Bearer " + admin_token_},
     };
-    Response r(HttpStatus::NOT_IMPLEMENTED, body.dump());
+    const HttpClient::Response rpc =
+        client.postJson(admin_url_ + "/admin/replay", body, headers);
+
+    // Transport-level failure: sim is down, network broken, TLS bad.
+    if (!rpc.error.empty()) {
+        std::cerr << "[sim-debug] admin RPC transport error: "
+                  << rpc.error << std::endl;
+        json err = {
+            {"error",  "sim daemon unreachable"},
+            {"detail", rpc.error},
+            {"url",    admin_url_ + "/admin/replay"},
+        };
+        Response r(HttpStatus::BAD_GATEWAY, err.dump());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    }
+
+    // The sim already returns application/json. Forward status + body
+    // verbatim so the caller sees exactly what the sim said (including
+    // its own 400/404/500 shapes). We do NOT re-wrap successful bodies
+    // — that would double-serialize and change field ordering.
+    HttpStatus fwd_status;
+    switch (rpc.status) {
+        case 200: fwd_status = HttpStatus::OK;                    break;
+        case 400: fwd_status = HttpStatus::BAD_REQUEST;           break;
+        case 401: fwd_status = HttpStatus::UNAUTHORIZED;          break;
+        case 403: fwd_status = HttpStatus::FORBIDDEN;             break;
+        case 404: fwd_status = HttpStatus::NOT_FOUND;             break;
+        case 405: fwd_status = HttpStatus::METHOD_NOT_ALLOWED;    break;
+        case 429: fwd_status = HttpStatus::TOO_MANY_REQUESTS;     break;
+        case 500: fwd_status = HttpStatus::INTERNAL_SERVER_ERROR; break;
+        default:  fwd_status = HttpStatus::BAD_GATEWAY;           break;
+    }
+    Response r(fwd_status, rpc.body);
     r.setHeader("Content-Type", "application/json; charset=utf-8");
     return r;
 }

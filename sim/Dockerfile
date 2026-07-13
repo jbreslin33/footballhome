@@ -75,7 +75,11 @@ COPY --from=build /src/build/footballhome_sim /usr/local/bin/footballhome_sim
 COPY --from=build /src/build/fh-sim-replay    /usr/local/bin/fh-sim-replay
 
 # The sim listens on SIM_PORT (default 9100) inside the container.
+# The admin HTTP endpoint (POST /admin/replay) listens on
+# SIM_ADMIN_PORT (default 9101) when FH_SIM_ADMIN_TOKEN is set.
+# See sim/DESIGN.md §16.6 sub-slice 8.1 and §22.12.
 EXPOSE 9100
+EXPOSE 9101
 
 # Run as non-root — nothing here needs privileged access.
 RUN useradd --system --uid 10001 --home-dir /nonexistent \

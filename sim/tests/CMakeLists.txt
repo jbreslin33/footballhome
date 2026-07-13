@@ -98,6 +98,7 @@ fh_add_persistence_test(test_pg_client)
 fh_add_persistence_test(test_registry_loader)
 fh_add_persistence_test(test_profile_store)
 fh_add_persistence_test(test_async_pg_log)
+fh_add_persistence_test(test_async_pg_log_load)
 
 # fh-sim-replay integration test — needs the full replay driver
 # (sim_tools) plus the InMemoryPgClient it drives (sim_persistence)
@@ -106,3 +107,12 @@ add_executable(test_replay test_replay.cpp)
 target_link_libraries(test_replay PRIVATE
     sim_tools sim_persistence sim_gameplay sim_net sim_test_harness)
 add_test(NAME test_replay COMMAND test_replay)
+
+# AdminHttpServer test (§16.6 sub-slice 8.1) — parser + JSON + full
+# loopback socket e2e. Needs sim_admin for the class under test,
+# sim_persistence for InMemoryPgClient, sim_tools for replayMatch
+# (pulled in transitively by sim_admin but named for clarity).
+add_executable(test_admin_http_server test_admin_http_server.cpp)
+target_link_libraries(test_admin_http_server PRIVATE
+    sim_admin sim_persistence sim_tools sim_test_harness)
+add_test(NAME test_admin_http_server COMMAND test_admin_http_server)

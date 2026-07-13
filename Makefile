@@ -167,6 +167,30 @@ test:
 	@echo "🧪 Running tests..."
 	@npm test
 
+# 10-minute sim persistence load test — proves AsyncPgLog<InputRow> drops
+# zero rows under simulated 100 ms Postgres latency for a full 10-minute
+# match (DESIGN.md §16.5 exit criterion). Opt-in because it takes ~10
+# minutes; the 5-second variant already runs in every sim image build
+# via ctest. Uses a fresh debian:trixie-slim container to compile just
+# the load-test binary, mirroring scripts/check_determinism_cross_arch.sh.
+sim-load-test-10min:
+	@echo "🧪 Running 10-minute AsyncPgLog load test (wall time ~10 min)..."
+	@sudo podman run --rm \
+		-v $(PWD)/sim:/work/sim:ro,z \
+		-e DEBIAN_FRONTEND=noninteractive \
+		-e FH_SIM_LOAD_10MIN=1 \
+		docker.io/library/debian:trixie-slim \
+		bash -c 'set -euo pipefail; \
+			apt-get update -qq >/dev/null; \
+			apt-get install -y -qq --no-install-recommends \
+				g++ cmake ninja-build make pkg-config \
+				libssl-dev libpqxx-dev ca-certificates >/dev/null; \
+			cp -R /work/sim /tmp/sim; \
+			cd /tmp/sim; \
+			cmake -S . -B build-x -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null; \
+			cmake --build build-x --target test_async_pg_log_load >/dev/null; \
+			./build-x/tests/test_async_pg_log_load'
+
 # ============================================================
 # Custom Targets (Domain-Specific)
 # ============================================================
