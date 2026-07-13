@@ -213,6 +213,7 @@ add_dependencies(sim_persistence gen_m0_registry)
 # -----------------------------------------------------------------------------
 add_library(sim_gameplay STATIC
     src/physics/StubPhysics.cpp
+    src/physics/BallPhysics.cpp
     src/controller/HumanController.cpp
     src/controller/WanderController.cpp
     src/controller/AiController.cpp

@@ -71,6 +71,7 @@ fh_add_data_test(test_recognition_set)
 fh_add_data_test(test_recognition_passthrough)
 
 fh_add_gameplay_test(test_stub_physics)
+fh_add_gameplay_test(test_ball_physics)
 fh_add_gameplay_test(test_match_clock)
 fh_add_gameplay_test(test_human_controller)
 fh_add_gameplay_test(test_empty_pitch_scenario)
