@@ -14,6 +14,7 @@
 #include "net/InputFrame.hpp"
 #include "physics/StubPhysics.hpp"
 #include "profile/PlayerProfile.hpp"
+#include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 
 #include <algorithm>
@@ -29,19 +30,25 @@ namespace fh::sim::tools {
 
 namespace {
 
-// M0 has one scenario. `scenario_id == 0` is what SimServer stamps into
-// the MatchRow at boot; anything else is a future scenario we can't
-// replay yet. Fail loud rather than silently substituting the empty
-// pitch — a hash mismatch after replay would be nearly impossible to
-// debug from the outside.
+// Scenario-id → Scenario factory. IDs are hand-managed per §22.9; each
+// new scenario adds a DB row via a migration AND a branch here.
+// Assignments:
+//   0 = EmptyPitchScenario    (M0 baseline; migrations 200 + 204)
+//   1 = BallOnPitchScenario   (M1 Slice 15 demo; migration 207)
+// Anything else is unknown — throw loudly rather than silently
+// substituting a scenario, because a hash mismatch after replay would
+// be nearly impossible to debug from the outside.
 std::unique_ptr<scenario::Scenario> makeScenario(std::int16_t scenario_id)
 {
     if (scenario_id == 0) {
         return std::make_unique<scenario::EmptyPitchScenario>();
     }
+    if (scenario_id == 1) {
+        return std::make_unique<scenario::BallOnPitchScenario>();
+    }
     throw std::runtime_error(
         "replayMatch: unknown scenario_id=" + std::to_string(scenario_id) +
-        " (M0 supports only scenario_id=0 / EmptyPitchScenario)");
+        " (known: 0=EmptyPitchScenario, 1=BallOnPitchScenario)");
 }
 
 // M0 default profile — see M0 limitation note in Replay.hpp.

@@ -218,6 +218,7 @@ add_library(sim_gameplay STATIC
     src/controller/WanderController.cpp
     src/controller/AiController.cpp
     src/scenario/EmptyPitchScenario.cpp
+    src/scenario/BallOnPitchScenario.cpp
     src/match/MatchClock.cpp
     src/match/Mechanics.cpp
     src/match/Match.cpp
