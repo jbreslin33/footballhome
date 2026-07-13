@@ -54,6 +54,30 @@ struct SlotSpawn {
     // If the slot starts controlled by AI, this is what to plug into it.
     // In M0 the unclaimed default is WanderController; these fields are
     // for M3+ AiController slots.
+    //
+    // The three fields are mutually exclusive by intent, though we do not
+    // enforce it at type level:
+    //
+    //   ai_profile_source  -> at match setup, runtime calls
+    //                         ProfileStore::load(person_id) and injects
+    //                         the loaded PlayerProfile into the AI slot.
+    //                         Use this to drive AI pieces from a real
+    //                         teammate's profile ("our player names on AI
+    //                         pieces" product feature). Wiring lands with
+    //                         M3's first AiController scenario; M0 leaves
+    //                         it nullopt.
+    //   ai_profile         -> inline literal profile blob. Use for
+    //                         synthetic AI pieces (drills, tutorials)
+    //                         where no real person owns the profile.
+    //   ai_concepts        -> inline concept overlay layered on top of
+    //                         whichever profile source was picked above.
+    //                         Use for drill-specific plays that shouldn't
+    //                         mutate the AI's persisted concept set.
+    //
+    // If both ai_profile_source and ai_profile are set, ai_profile_source
+    // wins (persisted-profile-of-record takes precedence over inline blob)
+    // — see DESIGN.md §21.2 item 1 resolution note.
+    std::optional<PersonId>               ai_profile_source;
     std::optional<profile::ConceptSet>    ai_concepts;
     std::optional<profile::PlayerProfile> ai_profile;
 };

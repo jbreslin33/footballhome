@@ -44,8 +44,9 @@ EmptyPitchScenario::EmptyPitchScenario(std::size_t slot_count) noexcept
         s.position = math::Vec3{x_offsets[col], y_offsets[row], math::Fixed64::zero()};
         s.heading  = math::Fixed64::zero();   // facing +x
         s.role     = Role::Any;
-        // ai_concepts / ai_profile stay nullopt — Match defaults unclaimed
-        // slots to WanderController.
+        // ai_profile_source / ai_concepts / ai_profile all stay nullopt —
+        // Match defaults unclaimed slots to WanderController. Real AI
+        // pieces (M3+) will set one of these; see Scenario.hpp SlotSpawn.
         spawns_.push_back(s);
     }
 }
