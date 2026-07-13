@@ -8,6 +8,7 @@
 #include "common/M0Attributes.hpp"
 #include "controller/HumanController.hpp"
 #include "controller/WanderController.hpp"
+#include "physics/BallPhysics.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -91,6 +92,32 @@ void Match::spawnInitialSlots()
             params_by_slot_.push_back(p);
         }
     }
+
+    // -----------------------------------------------------------------
+    // Ball spawn (Slice 15.2).
+    //
+    // Ball is a physics entity with is_ball=true and slot_id=0 (§7.2:
+    // slot 0 is reserved for the ball). No controller, no mechanics —
+    // its velocity decays each tick via BallPhysics::tickBall(), and
+    // physics.step() integrates position from that velocity like any
+    // other entity. Absent-ball scenarios (M0 EmptyPitchScenario) return
+    // nullopt here, so ball_ stays nullopt and the tick loop skips the
+    // ball branch entirely.
+    // -----------------------------------------------------------------
+    if (const auto bs = scenario_->ballSpawn(); bs.has_value()) {
+        physics::EntityDef bdef;
+        bdef.slot_id  = SlotId{0};
+        bdef.position = bs->position;
+        bdef.velocity = bs->velocity;
+        bdef.radius   = math::Fixed64::zero();   // M1: no collisions yet
+        bdef.height   = math::Fixed64::zero();
+        bdef.is_ball  = true;
+
+        const EntityId eid = physics_->spawn(bdef);
+        physics_->setHeading(eid, math::Fixed64::zero());
+        physics_->setMotion (eid, MotionState::Idle);
+        ball_ = eid;
+    }
 }
 
 awareness::WorldView Match::buildWorldView() const
@@ -139,6 +166,24 @@ void Match::tick()
         physics_->setHeading (slot.entity, res.new_heading);
         physics_->setMotion  (slot.entity, res.new_motion);
         slot.stamina = res.new_stamina;
+    }
+
+    // -----------------------------------------------------------------
+    // Ball friction pass (Slice 15.2).
+    //
+    // Applies passive multiplicative decay to the ball's velocity, then
+    // lets physics.step() below integrate position from that decayed
+    // velocity. Runs after the per-slot mechanics loop so a future
+    // Slice 16 kick mechanic can setVelocity() on the ball first and
+    // still get its friction applied this same tick (kick → decay →
+    // integrate — kick propagates immediately, one-tick lag on decay).
+    // -----------------------------------------------------------------
+    if (ball_.has_value()) {
+        EntityState ball = physics_->get(*ball_);
+        physics::tickBall(ball,
+                          physics::kDefaultBallDecayPerTick,
+                          physics::kDefaultBallRestThreshold);
+        physics_->setVelocity(*ball_, ball.velocity);
     }
 
     // -----------------------------------------------------------------
@@ -257,12 +302,25 @@ Snapshot Match::snapshot() const
         static_cast<std::uint32_t>(ms_i64);
     snap.match_time_ms = ms_u32;
 
-    snap.entities.reserve(slots_.size());
+    snap.entities.reserve(slots_.size() + (ball_.has_value() ? 1u : 0u));
+
+    // Ball first — SlotId{0} sorts ahead of every player slot (1..N),
+    // so this keeps the "sorted by slot_id ascending" invariant §5.7
+    // documents on Snapshot without a post-hoc sort pass.
+    if (ball_.has_value()) {
+        SnapshotEntity be;
+        be.state              = physics_->get(*ball_);
+        be.flags.human_controlled = false;
+        be.flags.is_ball          = true;
+        be.flags.active           = true;
+        snap.entities.push_back(be);
+    }
+
     for (const Slot& slot : slots_) {
         SnapshotEntity se;
         se.state              = physics_->get(slot.entity);
         se.flags.human_controlled = slot.owner.has_value();
-        se.flags.is_ball          = false;   // no ball in M0
+        se.flags.is_ball          = false;
         se.flags.active           = true;
         snap.entities.push_back(se);
     }

@@ -45,6 +45,21 @@ struct PlayableArea {
     math::Fixed64 zoom_hint{math::Fixed64::zero()};   // client camera fit
 };
 
+// Initial ball state for a scenario. Returned by Scenario::ballSpawn() to
+// let the Match spawn a ball entity (is_ball=true) at construction time.
+// Position and velocity are in the same pitch-space Vec3 coordinates as
+// player spawns. A zero-velocity BallSpawn is a legitimate "ball at rest
+// on the centre spot" configuration (M1's demo case).
+//
+// Kept as a struct rather than an alias for math::Vec3 so future scenarios
+// can add spin, height, owner-slot, etc. without another API break.
+//
+// See DESIGN.md §23.3 Slice 15.2.
+struct BallSpawn {
+    math::Vec3 position;
+    math::Vec3 velocity;
+};
+
 struct SlotSpawn {
     SlotId        slot;
     math::Vec3    position;
@@ -93,7 +108,7 @@ public:
     virtual PitchSpec            pitch() const = 0;
     virtual PlayableArea         playableArea() const = 0;
     virtual std::vector<SlotSpawn> initialSpawns() const = 0;
-    virtual std::optional<math::Vec3> ballSpawn() const = 0;   // M0: none
+    virtual std::optional<BallSpawn> ballSpawn() const = 0;   // M0: none
 
     // Ended / success / reset predicates over WorldView. M0: all return
     // false (empty-pitch never ends by itself).

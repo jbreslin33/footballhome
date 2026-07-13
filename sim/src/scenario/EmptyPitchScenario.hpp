@@ -22,7 +22,7 @@ public:
     PitchSpec                   pitch() const override         { return pitch_; }
     PlayableArea                playableArea() const override  { return playable_; }
     std::vector<SlotSpawn>      initialSpawns() const override { return spawns_; }
-    std::optional<math::Vec3>   ballSpawn() const override     { return std::nullopt; }
+    std::optional<BallSpawn>    ballSpawn() const override     { return std::nullopt; }
 
     bool checkSuccess(const awareness::WorldView& w) const override { (void)w; return false; }
     bool checkReset(const awareness::WorldView& w)   const override { (void)w; return false; }
