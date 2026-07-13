@@ -156,10 +156,6 @@ class AdminClubScreen extends Screen {
     // Membership-adjacent tiles that don't map 1:1 to an LA program —
     // parked here until the next reorg pass decides where they live.
     // Handlers stay in handleSubNavigation() so the tiles work as-is.
-    //
-    // (2026-07-12) `club-rosters` was moved out of here and into the
-    // new 🎽 Roster funnel section — it's a roster viewer, not a
-    // pending-re-home orphan.
     const membershipMiscTiles = [
       { id: 'leads',           icon: '📋', label: 'Leads',           description: 'Ad interest form submissions' },
       { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics', description: 'What touches actually turn into LA registrations' },
@@ -269,24 +265,14 @@ class AdminClubScreen extends Screen {
 
     // ── 🎽 Roster funnel section ─────────────────────────────────────
     // Step 3 of the club-admin funnel.  Assign each paid member to a
-    // specific team.  Mens Roster is the mens-club selection board
-    // (APSL / Liga 1 / Liga 2 / Adult / Practice / Pickup — read-only
-    // dues signal via BillingBadge but assignment is the primary job).
-    // Boys/Girls Rosters mirror LA rosters directly.  Club Rosters is
-    // the cross-domain master.
-    //
-    // No womens-roster tile yet: the Womens Dashboard is still the
-    // roster view for women (single tier, no dues gating).
+    // specific team.  Consolidated 2026-07-13 into a single tile that
+    // routes to the /#rosters screen — a FilterBar chip switcher
+    // (All / Mens / Womens / Boys / Girls) which mounts the appropriate
+    // sub-screen underneath.  Same UX pattern as Members + Payments.
     const rosterTiles = [
-      { id: 'mens-roster-board', target: 'mens-roster',  params: { gender: 'mens' },              icon: '🎽', label: 'Mens Roster',   description: 'Assign mens-club members to APSL / Liga 1 / Liga 2 / Adult / Practice / Pickup — dues signal inline (badge only, not the workbench)' },
-      { id: 'boys-roster',       target: 'boys-roster',  params: { gender: 'youth', sex: 'boys' }, icon: '🎽', label: 'Boys Roster',   description: 'Live LA roster — boys + girls together (girls play on boys teams for now)' },
-      { id: 'girls-roster',      target: 'girls-roster', params: { gender: 'youth', sex: 'girls' },icon: '🎽', label: 'Girls Roster',  description: 'Live LA roster — girls + boys together (mirror of Boys Roster while girls play on boys teams)' },
-      { id: 'club-rosters',      target: null,           params: {},                              icon: '🗂️', label: 'Club Rosters',  description: 'Cross-domain master board — every FH member with color-coded team chips across Mens / Womens / Boys / Girls' },
+      { id: 'rosters', target: 'rosters', params: {}, icon: '🎽', label: 'Rosters', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side)' },
     ];
     renderInto('#section-rosters', rosterTiles);
-    // Only push the tiles that route via _dashTiles (target !== null).
-    // `club-rosters` is handled by its own if-branch in
-    // handleSubNavigation() so we skip it here to avoid a double-route.
     this._dashTiles = (this._dashTiles || []).concat(
       rosterTiles.filter(t => t.target)
     );
@@ -436,14 +422,6 @@ class AdminClubScreen extends Screen {
 
     if (section === 'leads-analytics') {
       this.navigation.goTo('leads-analytics', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'club-rosters') {
-      this.navigation.goTo('club-rosters', {
         clubId: this.clubId,
         clubName: this.clubName
       });

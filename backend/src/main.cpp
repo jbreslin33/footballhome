@@ -35,7 +35,6 @@
 #include "controllers/YouthRosterController.h"
 #include "controllers/MensRosterController.h"
 #include "controllers/BoysRosterController.h"
-#include "controllers/ClubRostersController.h"
 #include "controllers/PersonBillingController.h"
 #include "controllers/PayReminderLogController.h"
 #include "controllers/PaymentsController.h"
@@ -88,7 +87,6 @@ private:
     std::shared_ptr<YouthRosterController> youth_roster_controller_;
     std::shared_ptr<MensRosterController> mens_roster_controller_;
     std::shared_ptr<BoysRosterController> boys_roster_controller_;
-    std::shared_ptr<ClubRostersController> club_rosters_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
@@ -134,7 +132,6 @@ public:
         youth_roster_controller_ = std::make_shared<YouthRosterController>();
         mens_roster_controller_  = std::make_shared<MensRosterController>();
         boys_roster_controller_  = std::make_shared<BoysRosterController>();
-        club_rosters_controller_ = std::make_shared<ClubRostersController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         payments_controller_ = std::make_shared<PaymentsController>();
@@ -262,10 +259,6 @@ private:
         router_.useController("/api/youth-roster", youth_roster_controller_);
         // Phase 8 — mens-roster (GET + /assign + /roster-status) ported to C++.
         router_.useController("/api/mens-roster", mens_roster_controller_);
-        // Cross-domain master board (2026-07-07).  Read-only for now;
-        // per-domain boards will eventually re-implement as filtered
-        // views over this same endpoint.
-        router_.useController("/api/club-rosters", club_rosters_controller_);
         // Phase 2 boys-roster (2026-07-05) — same shape as mens, backed by
         // roster_columns / roster_assignments filtered to domain='boys'.
         // Pulls registrants from both Boys Club and Girls Club LA programs.
