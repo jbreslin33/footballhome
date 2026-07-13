@@ -59,6 +59,13 @@ class RsvpEligibilityScreen extends Screen {
         <div id="rsvp-elig-filters" style="display:none; margin-bottom: var(--space-3);
              flex-wrap:wrap; gap: var(--space-1);"></div>
 
+        <!-- Sort + status-filter pill row — mirrors MembersScreen
+             #members-sort so both screens share the same triage
+             affordances (📅 Reg date, ⏰ Inactivity, 🔤 Last/First,
+             plus 🚫 No account and 💤 Dormant chips). -->
+        <div id="rsvp-elig-sort" style="display:none; margin-bottom: var(--space-3);
+             flex-wrap:wrap; gap: var(--space-1); align-items:center;"></div>
+
         <div id="rsvp-elig-search-wrap" style="margin-bottom: var(--space-3); display:none;">
           <input id="rsvp-elig-search" type="search"
                  placeholder="Search name, email, phone…"
@@ -124,6 +131,21 @@ class RsvpEligibilityScreen extends Screen {
       ? params.restoreSearch : '';
     this._pendingFocusLaUserId = params?.focusLaUserId || null;
 
+    // Sort key — same catalog as MembersScreen so the two screens
+    // feel identical.  Persisted per-screen so operators can pick
+    // different defaults on each.
+    // Values: 'joined_desc' | 'joined_asc' | 'inactive_desc' | 'inactive_asc' | 'last_asc' | 'first_asc'
+    if (typeof this._sort !== 'string') {
+      this._sort = localStorage.getItem('rsvp-elig-sort') || 'joined_desc';
+    }
+    // Status-filter chips (OR-semantics, matches MembersScreen).
+    if (typeof this._flagNoAccount !== 'boolean') {
+      this._flagNoAccount = localStorage.getItem('rsvp-elig-flag-no-account') === '1';
+    }
+    if (typeof this._flagDormant !== 'boolean') {
+      this._flagDormant = localStorage.getItem('rsvp-elig-flag-dormant') === '1';
+    }
+
     // FilterBar host is inside the DOM tree that ScreenManager
     // rebuilds on every entry, so the cached instance would write
     // into a detached ghost element (same reason MembersScreen
@@ -149,6 +171,45 @@ class RsvpEligibilityScreen extends Screen {
       }
       if (e.target.closest('.rsvp-elig-sync-now')) {
         this._load({ force: true });
+        return;
+      }
+      // Sort pill — same click semantics as MembersScreen: clicking
+      // the currently-active Reg-date / Inactivity pill flips its
+      // direction (↓ ↔ ↑); any other pill click just switches keys.
+      const sortBtn = e.target.closest('[data-sort]');
+      if (sortBtn) {
+        const next = sortBtn.getAttribute('data-sort');
+        if (next === 'joined_desc' && this._sort === 'joined_desc') {
+          this._sort = 'joined_asc';
+        } else if (next === 'joined_desc' && this._sort === 'joined_asc') {
+          this._sort = 'joined_desc';
+        } else if (next === 'inactive_desc' && this._sort === 'inactive_desc') {
+          this._sort = 'inactive_asc';
+        } else if (next === 'inactive_desc' && this._sort === 'inactive_asc') {
+          this._sort = 'inactive_desc';
+        } else {
+          this._sort = next;
+        }
+        try { localStorage.setItem('rsvp-elig-sort', this._sort); } catch (_) {}
+        this._renderSortPills();
+        this._renderGroups();
+        return;
+      }
+      // Status-filter chips — same OR-semantics as MembersScreen.
+      const flagBtn = e.target.closest('[data-flag]');
+      if (flagBtn) {
+        const which = flagBtn.getAttribute('data-flag');
+        if (which === 'no-account') {
+          this._flagNoAccount = !this._flagNoAccount;
+          try { localStorage.setItem('rsvp-elig-flag-no-account', this._flagNoAccount ? '1' : '0'); } catch (_) {}
+        } else if (which === 'dormant') {
+          this._flagDormant = !this._flagDormant;
+          try { localStorage.setItem('rsvp-elig-flag-dormant', this._flagDormant ? '1' : '0'); } catch (_) {}
+        }
+        this._renderSortPills();
+        // _renderGroups() calls _updateSubtitle(totalShown) internally,
+        // so no explicit subtitle refresh needed here.
+        this._renderGroups();
         return;
       }
       // Team-eligibility toggle chip — inside a card, sits ABOVE the
@@ -224,6 +285,7 @@ class RsvpEligibilityScreen extends Screen {
       groupsEl.style.display  = 'block';
       this._consumePendingRestore();
       this._renderChips();
+      this._renderSortPills();
       this._renderLegend();
       this._renderGroups();
       this._revealChrome();
@@ -292,6 +354,7 @@ class RsvpEligibilityScreen extends Screen {
       groupsEl.style.display  = 'block';
       this._consumePendingRestore();
       this._renderChips();
+      this._renderSortPills();
       this._renderLegend();
       this._renderGroups();
       this._revealChrome();
@@ -325,9 +388,11 @@ class RsvpEligibilityScreen extends Screen {
 
   _revealChrome() {
     const filters = this.find('#rsvp-elig-filters');
+    const sort    = this.find('#rsvp-elig-sort');
     const search  = this.find('#rsvp-elig-search-wrap');
     const legend  = this.find('#rsvp-elig-legend');
     if (filters) filters.style.display = 'flex';
+    if (sort)    sort.style.display    = 'flex';
     if (search)  search.style.display  = 'block';
     if (legend)  legend.style.display  = 'flex';
   }
@@ -389,6 +454,9 @@ class RsvpEligibilityScreen extends Screen {
       selected: this.categoryFilter || 'all',
       onSelect: (id) => {
         this.categoryFilter = (id === 'all' || id == null) ? null : id;
+        // Refresh sort-pill counts too — the "No account" / "Dormant"
+        // chip counters are scoped to the current category.
+        this._renderSortPills();
         this._renderGroups();
       },
     }]);
@@ -436,7 +504,9 @@ class RsvpEligibilityScreen extends Screen {
 
     let totalShown = 0;
     const html = groups.map(g => {
-      const members = (g.members || []).filter(matches);
+      const members = this._sortMembers(
+        (g.members || []).filter(m => this._passesStatusFlags(m)).filter(matches)
+      );
       totalShown += members.length;
       if (filter && members.length === 0) return '';
       const cards = members.map(m => this._renderCard(m)).join('');
@@ -533,6 +603,138 @@ class RsvpEligibilityScreen extends Screen {
     const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.categoryFilter] || 'All';
     el.textContent =
       `${count} member${count === 1 ? '' : 's'} — ${catLabel} · click a team chip to grant/revoke RSVP eligibility, click the card to open the person profile`;
+  }
+
+  // Sort a member list per the current `this._sort` key.  Identical
+  // implementation to MembersScreen._sortMembers so the two screens
+  // stay in visual + behavioural lockstep.  Non-mutating; missing
+  // values sort to the end.
+  _sortMembers(list) {
+    const arr = Array.isArray(list) ? list.slice() : [];
+    const key = this._sort || 'joined_desc';
+    const strCmp = (a, b) => String(a || '').toLowerCase()
+      .localeCompare(String(b || '').toLowerCase());
+    const tieBreak = (a, b) => strCmp(a.last_name, b.last_name)
+      || strCmp(a.first_name, b.first_name);
+    const joinedTs = (m) => {
+      if (!m.joined_at) return null;
+      const t = new Date(m.joined_at).getTime();
+      return Number.isFinite(t) ? t : null;
+    };
+    if (key === 'first_asc') {
+      arr.sort((a, b) => strCmp(a.first_name, b.first_name)
+        || strCmp(a.last_name, b.last_name));
+    } else if (key === 'last_asc') {
+      arr.sort((a, b) => strCmp(a.last_name, b.last_name)
+        || strCmp(a.first_name, b.first_name));
+    } else if (key === 'inactive_desc' || key === 'inactive_asc') {
+      const dir = key === 'inactive_asc' ? 1 : -1;
+      const inact = (m) => {
+        const d = m.days_since_activity;
+        if (d == null) return Number.POSITIVE_INFINITY;
+        const n = Number(d);
+        return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+      };
+      arr.sort((a, b) => {
+        const da = inact(a);
+        const db = inact(b);
+        if (da === db) return tieBreak(a, b);
+        return (da < db ? -1 : 1) * dir;
+      });
+    } else {
+      const dir = key === 'joined_asc' ? 1 : -1;
+      arr.sort((a, b) => {
+        const ta = joinedTs(a);
+        const tb = joinedTs(b);
+        if (ta === null && tb === null) return tieBreak(a, b);
+        if (ta === null) return 1;
+        if (tb === null) return -1;
+        return (ta === tb) ? tieBreak(a, b) : (ta - tb) * dir;
+      });
+    }
+    return arr;
+  }
+
+  // Status-flag predicate — mirrors MembersScreen._passesStatusFlags.
+  // Both flags off = show all.  Any flag on = OR-union of matching
+  // members (someone missing an account OR dormant 8d+).
+  _passesStatusFlags(m) {
+    if (!this._flagNoAccount && !this._flagDormant) return true;
+    if (this._flagNoAccount && !m.has_fh_account) return true;
+    if (this._flagDormant) {
+      const dormant = m.has_fh_account
+        && (m.days_since_activity == null || Number(m.days_since_activity) >= 8);
+      if (dormant) return true;
+    }
+    return false;
+  }
+
+  // Sort + status-filter pill row.  Kept in visual sync with
+  // MembersScreen._renderSortPills so the two screens share the
+  // exact same triage affordances.
+  _renderSortPills() {
+    const el = this.find('#rsvp-elig-sort');
+    if (!el) return;
+    const hasData = (this._groups || []).some(g => (g.members || []).length);
+    if (!hasData) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+
+    const isJoined      = this._sort === 'joined_desc'   || this._sort === 'joined_asc';
+    const isInactive    = this._sort === 'inactive_desc' || this._sort === 'inactive_asc';
+    const joinedArrow   = this._sort === 'joined_asc'   ? ' ↑' : ' ↓';
+    const inactiveArrow = this._sort === 'inactive_asc' ? ' ↑' : ' ↓';
+    const active = (on) => on
+      ? 'background:var(--color-primary, #2563eb); color:#fff; border-color:transparent;'
+      : 'background:var(--bg-secondary); color:var(--text-primary);';
+    const flagActive = (on) => on
+      ? 'background:#7f1d1d; color:#fecaca; border-color:#b91c1c;'
+      : 'background:var(--bg-secondary); color:var(--text-primary);';
+    const base = 'padding:5px 12px; border-radius:999px; cursor:pointer;'
+      + ' font-weight:600; font-size:0.8rem; border:1px solid var(--color-border);';
+
+    // Counts for the two status-filter chips — scoped to the current
+    // category (like MembersScreen).
+    const scope = [];
+    for (const g of this._groups) {
+      if (this.categoryFilter
+          && String(g.category || '').toLowerCase() !== this.categoryFilter) continue;
+      for (const m of (g.members || [])) scope.push(m);
+    }
+    const noAccountCount = scope.filter(m => !m.has_fh_account).length;
+    const dormantCount   = scope.filter(m => m.has_fh_account
+      && (m.days_since_activity == null || Number(m.days_since_activity) >= 8)).length;
+
+    el.innerHTML = `
+      <span style="opacity:0.6; font-size:0.8rem; margin-right:4px;">Sort:</span>
+      <button data-sort="joined_desc" title="Registration date — click again to flip direction"
+              style="${base} ${active(isJoined)}">
+        📅 Reg date${isJoined ? joinedArrow : ''}
+      </button>
+      <button data-sort="inactive_desc" title="Days since last activity — most-dormant first, click again to flip"
+              style="${base} ${active(isInactive)}">
+        ⏰ Inactivity${isInactive ? inactiveArrow : ''}
+      </button>
+      <button data-sort="last_asc"
+              style="${base} ${active(this._sort === 'last_asc')}">
+        🔤 Last name
+      </button>
+      <button data-sort="first_asc"
+              style="${base} ${active(this._sort === 'first_asc')}">
+        🔤 First name
+      </button>
+
+      <span style="opacity:0.4; margin:0 4px;">│</span>
+
+      <span style="opacity:0.6; font-size:0.8rem; margin-right:4px;">Filter:</span>
+      <button data-flag="no-account" title="Members who have not created an FH account"
+              style="${base} ${flagActive(this._flagNoAccount)}">
+        🚫 No account (${noAccountCount})
+      </button>
+      <button data-flag="dormant" title="Members with an account but no activity in 8+ days (or never logged in)"
+              style="${base} ${flagActive(this._flagDormant)}">
+        💤 Dormant 8d+ (${dormantCount})
+      </button>
+    `;
   }
 
   // Scroll the focused member's card into view (only if the caller
