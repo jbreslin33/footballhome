@@ -91,6 +91,18 @@ fh_add_auth_test(test_jwt_verifier)
 
 fh_add_server_test(test_sim_server)
 
+# End-to-end match-lifecycle persistence assertion (§16.5 exit criterion:
+# every match played end-to-end writes sim_matches ended_at + result,
+# sim_match_inputs rows, and MatchStart/Connect/Claim/Release/Disconnect/
+# MatchEnd events). Needs sim_server (the class under test), sim_persistence
+# (InMemoryPgClient), sim_gameplay (canonical hash) and OpenSSL (JWT mint).
+add_executable(test_match_lifecycle_persistence
+    test_match_lifecycle_persistence.cpp)
+target_link_libraries(test_match_lifecycle_persistence PRIVATE
+    sim_server sim_persistence sim_gameplay sim_test_harness OpenSSL::Crypto)
+add_test(NAME test_match_lifecycle_persistence
+         COMMAND test_match_lifecycle_persistence)
+
 fh_add_persistence_test(test_in_memory_pg_client)
 
 fh_add_persistence_test(test_pg_client)
