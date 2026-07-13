@@ -135,9 +135,6 @@ void AdminLaBackfillController::registerRoutes(Router& router,
     router.get(prefix + "/la-probe", [this](const Request& req) {
         return this->handleProbe(req);
     });
-    router.get(prefix + "/paused-members", [this](const Request& req) {
-        return this->handlePausedMembers(req);
-    });
     router.get(prefix + "/members", [this](const Request& req) {
         return this->handleMembers(req);
     });
@@ -419,9 +416,8 @@ Response AdminLaBackfillController::handleBackfill(const Request& request) {
 
 
 // ────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/paused-members       — defaults to variant=paused
 // GET /api/admin/members              — defaults to variant=active
-// GET /api/admin/{paused-,}members?variant=active|paused    — explicit
+// GET /api/admin/members?variant=active|paused    — explicit
 //
 // Returns every person currently on a sub-program of the requested variant,
 // grouped by category (men / boys / girls / …).  Data source is the
@@ -698,13 +694,6 @@ static std::string resolveCategory(const Request& request) {
     for (auto& ch : c) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
     if (c == "men" || c == "women" || c == "boys" || c == "girls") return c;
     return "";
-}
-
-Response AdminLaBackfillController::handlePausedMembers(const Request& request) {
-    if (!requireBearer(request)) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-    }
-    return respondMembers(resolveVariant(request, "paused"), resolveCategory(request));
 }
 
 Response AdminLaBackfillController::handleMembers(const Request& request) {

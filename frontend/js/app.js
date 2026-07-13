@@ -57,7 +57,7 @@ class App {
       internalRoster: new InternalRosterScreen(this.navigation, this.auth),
       leads: new LeadsScreen(this.navigation, this.auth),
       leadsAnalytics: new LeadsAnalyticsScreen(this.navigation, this.auth),
-      pausedMembers: new PausedMembersScreen(this.navigation, this.auth),
+      members: new MembersScreen(this.navigation, this.auth),
       mensGameEligibility: new MensGameEligibilityScreen(this.navigation, this.auth),
       mensRoster: new MensRosterScreen(this.navigation, this.auth),
       boysRoster: new BoysRosterScreen(this.navigation, this.auth),
@@ -131,13 +131,8 @@ class App {
     this.screenManager.register('internal-roster', this.screens.internalRoster);
     this.screenManager.register('leads', this.screens.leads);
     this.screenManager.register('leads-analytics', this.screens.leadsAnalytics);
-    // Unified Members board.  Primary name is `members` (URL:
-    // `#members`).  `paused-members` is kept as a backward-compat
-    // alias so old bookmarks / deep-links still resolve.  The screen
-    // class is still named `PausedMembersScreen` for historical
-    // reasons — renaming the file/class is a separate cleanup.
-    this.screenManager.register('members',        this.screens.pausedMembers);
-    this.screenManager.register('paused-members', this.screens.pausedMembers);
+    // Unified Members board (URL: `#members`).
+    this.screenManager.register('members', this.screens.members);
     this.screenManager.register('mens-game-eligibility', this.screens.mensGameEligibility);
     this.screenManager.register('mens-roster', this.screens.mensRoster);
     this.screenManager.register('boys-roster', this.screens.boysRoster);

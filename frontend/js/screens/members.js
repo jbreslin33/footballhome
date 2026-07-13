@@ -1,4 +1,4 @@
-// PausedMembersScreen — Club-admin view of everyone currently on an
+// MembersScreen — Club-admin view of everyone currently on an
 // active- or paused-variant LA sub-program (Men / Women / Boys / Girls,
 // or their paused counterparts).
 //
@@ -13,7 +13,7 @@
 // `category` param (men / women / boys / girls) narrows the view to a
 // single sub-program so bulk actions (Email All → Gmail BCC) apply
 // only to that group.
-class PausedMembersScreen extends Screen {
+class MembersScreen extends Screen {
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
@@ -121,7 +121,27 @@ class PausedMembersScreen extends Screen {
     this._pendingLegacyVariant  = (params?.variant === 'active' || params?.variant === 'pickup' || params?.variant === 'paused')
       ? (params.variant === 'paused' ? 'pickup' : params.variant)
       : '';
-    this._groups  = [];
+    // Chip-state restore (2026-07-13): when PersonScreen's Back button
+    // returns here it passes `restoreChip` snapshotted from the current
+    // filter state, so the exact chip the operator had selected before
+    // drilling in stays highlighted after coming back.  Also one-shot,
+    // consumed inside `_applyLegacyParams()`.
+    this._pendingRestoreChip = params?.restoreChip || null;
+    this._pendingRestoreSearch = typeof params?.restoreSearch === 'string' ? params.restoreSearch : '';
+    // FilterBar captures its `host` DOM node at construction; the
+    // ScreenManager wipes + rebuilds the DOM on every re-entry, so
+    // the cached instance would write into a detached ghost element
+    // and chips would silently vanish.  Force a fresh FilterBar per
+    // entry.  Same reasoning for any future component that binds to
+    // a specific host node inside `this.element`.
+    this._filterBar = null;
+    // Preserve the previous entry's `_groups` cache across a back-nav
+    // from PersonScreen so the chip row can render immediately from
+    // stale data.  `_load()` will refresh in the background without
+    // hiding the chips, so the user never sees an empty filter bar.
+    // On a truly fresh entry (or first-ever load) `_groups` is
+    // undefined here — initialise it.
+    if (!Array.isArray(this._groups)) this._groups = [];
     this._filter  = '';
     // Sort key for the member cards inside each group.  Default is
     // registration date descending so new sign-ups float to the top of
@@ -237,7 +257,7 @@ class PausedMembersScreen extends Screen {
         if (laUid) {
           this.navigation.goTo('person', {
             leagueAppsUserId: laUid,
-            returnTo: 'paused-members',
+            returnTo: 'members',
             returnToParams: this._returnParams(),
           });
         }
@@ -274,15 +294,43 @@ class PausedMembersScreen extends Screen {
     const filtersEl  = this.find('#members-filters');
     const bulkBar   = this.find('#members-bulk-bar');
 
-    loadingEl.style.display = 'block';
-    errorEl.style.display   = 'none';
-    emptyEl.style.display   = 'none';
-    groupsEl.style.display  = 'none';
-    if (searchWrap) searchWrap.style.display = 'none';
-    if (filtersEl)  filtersEl.style.display  = 'none';
-    if (bulkBar)    bulkBar.style.display    = 'none';
+    // If we already have a `_groups` cache from a previous entry, render
+    // the chip row + member cards + search input immediately from stale
+    // data so a back-nav from PersonScreen doesn't flash an empty
+    // filter bar while the LA sync runs.  The sync + DB fetch below
+    // still runs and re-renders once fresh data lands.  On a truly
+    // cold entry `_groups` is empty and we fall back to the boot
+    // screen (loading spinner + step checklist) as before.
+    const hasCache = Array.isArray(this._groups) && this._groups.length > 0;
 
-    this._resetBoot();
+    if (hasCache) {
+      // Warm re-entry: keep chips + list visible; run sync in the
+      // background.  Consume any pending chip-restore *now* so the
+      // right chip lights up before the async sync completes.
+      this._applyLegacyParams();
+      this._renderProgramChips();
+      this._renderSortPills();
+      if (filtersEl)  filtersEl.style.display  = 'flex';
+      if (searchWrap) searchWrap.style.display = 'block';
+      this._updateSubtitle();
+      groupsEl.style.display = 'block';
+      this._renderGroups();
+      this._renderBulkBar();
+      loadingEl.style.display = 'none';
+      errorEl.style.display   = 'none';
+      emptyEl.style.display   = 'none';
+      this._updateSyncPill();
+    } else {
+      // Cold entry: full boot screen.
+      loadingEl.style.display = 'block';
+      errorEl.style.display   = 'none';
+      emptyEl.style.display   = 'none';
+      groupsEl.style.display  = 'none';
+      if (searchWrap) searchWrap.style.display = 'none';
+      if (filtersEl)  filtersEl.style.display  = 'none';
+      if (bulkBar)    bulkBar.style.display    = 'none';
+      this._resetBoot();
+    }
 
     // Sync scope: on initial load (or the global "All" chip) we sync
     // every program (variant=all).  On chip clicks the caller passes a
@@ -530,6 +578,37 @@ class PausedMembersScreen extends Screen {
   // chip instead.  Consumes the pending params so subsequent renders
   // don't reapply them.
   _applyLegacyParams() {
+    // Priority: an explicit `restoreChip` snapshot from PersonScreen
+    // wins over the legacy category/variant path so returning from a
+    // drill-down lands you exactly where you left off — including the
+    // search term.  One-shot: consumed here and cleared.
+    const restore = this._pendingRestoreChip;
+    this._pendingRestoreChip = null;
+    if (this._pendingRestoreSearch) {
+      this._filter = this._pendingRestoreSearch.toLowerCase();
+      const searchEl = this.find('#members-search');
+      if (searchEl) searchEl.value = this._pendingRestoreSearch;
+      this._pendingRestoreSearch = '';
+    }
+    if (restore) {
+      // programId wins over categoryFilter (mutually exclusive).
+      if (restore.programId != null && restore.programId !== '') {
+        this.programId      = Number(restore.programId);
+        this.categoryFilter = null;
+      } else if (restore.categoryFilter) {
+        this.categoryFilter = String(restore.categoryFilter);
+        this.programId      = null;
+      } else {
+        // Explicit "All" (both null) — clear both so the All chip lights up.
+        this.programId      = null;
+        this.categoryFilter = null;
+      }
+      // Discard any legacy params so the below block doesn't clobber
+      // the restore.
+      this._pendingLegacyCategory = '';
+      this._pendingLegacyVariant  = '';
+      return;
+    }
     const wantCat     = this._pendingLegacyCategory;
     const wantVariant = this._pendingLegacyVariant;
     this._pendingLegacyCategory = '';
@@ -1459,8 +1538,17 @@ class PausedMembersScreen extends Screen {
     return {
       clubId:    this.clubId,
       clubName:  this.clubName,
-      variant:   this._pendingLegacyVariant  || undefined,
-      category:  this._pendingLegacyCategory || undefined,
+      // Live chip snapshot (mutually exclusive; either wins over the
+      // other on restore).  Passing null explicitly means "restore
+      // the All chip" — different from the omit-both legacy behaviour
+      // (which would fall back to defaults / other params).
+      restoreChip: {
+        programId:      this.programId,
+        categoryFilter: this.categoryFilter,
+      },
+      // Search input value so a return doesn't blow away the operator's
+      // in-progress name/email/phone filter.
+      restoreSearch: this._filter || '',
     };
   }
 }

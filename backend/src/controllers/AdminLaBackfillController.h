@@ -39,7 +39,6 @@ private:
 
     Response handleBackfill(const Request& request);
     Response handleProbe(const Request& request);
-    Response handlePausedMembers(const Request& request);
     Response handleMembers(const Request& request);
     Response handleSyncMemberships(const Request& request);
 

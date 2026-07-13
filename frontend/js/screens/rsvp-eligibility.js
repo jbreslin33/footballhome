@@ -189,7 +189,7 @@ class RsvpEligibilityScreen extends Screen {
     }
   }
 
-  // Category tabs — match paused-members style so the mental model
+  // Category tabs — match members-screen style so the mental model
   // transfers.  Counts reflect the current member set (before search
   // filter) so the tabs don't jump around as you type.
   _renderChips() {

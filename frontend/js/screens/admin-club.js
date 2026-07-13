@@ -139,14 +139,13 @@ class AdminClubScreen extends Screen {
     };
 
     // ── Membership ─────────────────────────────────────────────────────
-    // Single tile that opens the unified Members board (paused-members
-    // screen).  The board has an Active / Pickup toggle and category
-    // chips (Men / Women / Boys / Girls) so the coach can reach any of
-    // the 8 LA sub-programs (4 categories × 2 variants) from one place
-    // without leaving the screen.
+    // Single tile that opens the unified Members board.  The board has
+    // an Active / Pickup toggle and category chips (Men / Women / Boys /
+    // Girls) so the coach can reach any of the 8 LA sub-programs (4
+    // categories × 2 variants) from one place without leaving the screen.
     //
-    // Deep-link tile ids (`members-mens`, `paused-members-girls`, etc.)
-    // are still honored by handleSubNavigation() below, so any external
+    // Deep-link tile ids (`members-mens`, `members-girls`, etc.) are
+    // still honored by handleSubNavigation() below, so any external
     // bookmark / hash-route pointing at a specific slice keeps working.
     const membershipTiles = [
       { id: 'members', icon: '👥', label: 'Members', description: 'Unified board — Active / Pickup toggle, filter by Men / Women / Boys / Girls' },
@@ -325,16 +324,6 @@ class AdminClubScreen extends Screen {
       return;
     }
 
-    if (section === 'paused-members') {
-      // Legacy tile id — route to the new `members` screen name so
-      // the URL becomes `#members` instead of `#paused-members`.
-      this.navigation.goTo('members', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
     if (section === 'members') {
       // Unified Members board — the screen filters by variant/category
       // internally via chips, so no `variant` param is needed here.
@@ -349,24 +338,19 @@ class AdminClubScreen extends Screen {
     // Per-category deep links.  Same screen, but the screen filters
     // groups client-side by category and updates the title so bulk
     // actions (email-all / copy-all) apply to a single sub-program.
-    const catMatch = section.match(/^(paused-members|members)-(mens|womens|boys|girls)$/);
+    const catMatch = section.match(/^members-(mens|womens|boys|girls)$/);
     if (catMatch) {
-      const [, base, cat] = catMatch;
-      const variant  = base === 'paused-members' ? 'paused' : 'active';
+      const [, cat] = catMatch;
       // UI category ids map to DB `category` column values:
       //   mens   → men       womens → women
       //   boys   → boys      girls  → girls
       const dbCategory = cat === 'mens' ? 'men'
                        : cat === 'womens' ? 'women'
                        : cat;
-      // Always route to the new `members` screen name (URL: `#members`).
-      // The legacy `paused-members` tile id is preserved only so old
-      // admin-club bookmarks still work — the variant param carries
-      // the paused/active intent.
       this.navigation.goTo('members', {
         clubId:   this.clubId,
         clubName: this.clubName,
-        variant,
+        variant:  'active',
         category: dbCategory,
       });
       return;
