@@ -195,6 +195,22 @@ class PaymentsScreen extends Screen {
         this.resolveFlag(id, status);
         return;
       }
+      // Card body → open the universal PersonScreen.  Guard against
+      // clicks on the inline action buttons and anchors above so their
+      // handlers stay in charge.
+      const anchorInside = e.target.closest('a, button, input, textarea, select, label');
+      if (anchorInside) return;
+      const card = e.target.closest('.pay-member-card[data-la-user-id]');
+      if (card) {
+        const laUid = card.getAttribute('data-la-user-id');
+        if (laUid) {
+          this.navigation.goTo('person', {
+            leagueAppsUserId: laUid,
+            returnTo: 'payments',
+          });
+        }
+        return;
+      }
       // (Category / program / status chip clicks are handled by the
       // shared FilterBar component — see `_buildFilterBar` below.)
     });
@@ -858,8 +874,11 @@ class PaymentsScreen extends Screen {
                                      font-size:0.75rem; font-weight:700;">📋 Copy Pause Warning</button>`;
 
     return `
-      <div style="background: var(--bg-secondary, #111827); border:1px solid var(--border-color, #374151);
-                  border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+      <div class="pay-member-card"
+           data-la-user-id="${m.laUserId || ''}"
+           style="background: var(--bg-secondary, #111827); border:1px solid var(--border-color, #374151);
+                  border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px;
+                  ${m.laUserId ? 'cursor:pointer;' : ''}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="font-weight:700; font-size:1rem;">${name}</div>
           ${badge}

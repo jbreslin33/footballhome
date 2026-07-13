@@ -24,6 +24,7 @@
 #include "controllers/EventRsvpController.h"
 #include "controllers/PersonOverrideController.h"
 #include "controllers/PersonMergeController.h"
+#include "controllers/PersonProfileController.h"
 #include "controllers/EventController.h"
 #include "controllers/DivisionController.h"
 #include "controllers/AvailabilityController.h"
@@ -76,6 +77,7 @@ private:
     std::shared_ptr<TeamReconciliationController> team_reconciliation_controller_;
     std::shared_ptr<PersonOverrideController> person_override_controller_;
     std::shared_ptr<PersonMergeController> person_merge_controller_;
+    std::shared_ptr<PersonProfileController> person_profile_controller_;
     std::shared_ptr<EventController> event_controller_;
     std::shared_ptr<DivisionController> division_controller_;
     std::shared_ptr<AvailabilityController> availability_controller_;
@@ -121,6 +123,7 @@ public:
         team_reconciliation_controller_ = std::make_shared<TeamReconciliationController>();
         person_override_controller_ = std::make_shared<PersonOverrideController>();
         person_merge_controller_ = std::make_shared<PersonMergeController>();
+        person_profile_controller_ = std::make_shared<PersonProfileController>();
         event_controller_ = std::make_shared<EventController>();
         division_controller_ = std::make_shared<DivisionController>();
         availability_controller_ = std::make_shared<AvailabilityController>();
@@ -237,6 +240,9 @@ private:
         router_.useController("/api/teams", team_reconciliation_controller_);
         router_.useController("/api/persons", person_override_controller_);
         router_.useController("/api/persons", person_merge_controller_);
+        // GET /api/persons/la/:leagueAppsUserId — universal person profile
+        // that powers the drill-down PersonScreen (2026-07-13).
+        router_.useController("/api/persons", person_profile_controller_);
         // FH-native cookie-authed event + RSVP surface registered
         // BEFORE the legacy EventController so /api/events/:chatEventId
         // resolves here (chat_events table) instead of the older

@@ -70,6 +70,7 @@ set(SOURCES
     src/controllers/TeamRosterController.cpp
     src/controllers/PersonOverrideController.cpp
     src/controllers/PersonMergeController.cpp
+    src/controllers/PersonProfileController.cpp
     src/controllers/EventController.cpp
     src/controllers/DivisionController.cpp
     src/controllers/AvailabilityController.cpp

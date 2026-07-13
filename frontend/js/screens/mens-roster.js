@@ -102,6 +102,25 @@ class MensRosterScreen extends Screen {
         this._handlePayClickRefresh(payLog, e);
         return;
       }
+      // Card body → open the universal PersonScreen.  Skip when the
+      // click landed on an interactive control (buttons, anchors,
+      // selects) so drag/drop, moves, payments, and LA-open buttons
+      // stay in charge.  Also skip during an active drag so the mouse
+      // sequence doesn't accidentally navigate on drop-release.
+      if (this._dragSourceUserId) return;
+      const interactive = e.target.closest('a, button, input, textarea, select, label');
+      if (interactive) return;
+      const card = e.target.closest('.mr-card[data-la-user-id]');
+      if (card) {
+        const laUid = card.getAttribute('data-la-user-id');
+        if (laUid) {
+          this.navigation.goTo('person', {
+            leagueAppsUserId: laUid,
+            returnTo: 'mens-roster',
+          });
+        }
+        return;
+      }
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -720,8 +739,15 @@ class MensRosterScreen extends Screen {
     const dragAttrs = col && col.teamId
       ? `draggable="true" data-user-id="${p.leagueAppsUserId}" data-team-id="${col.teamId}"`
       : '';
+    // Separate from `data-user-id` (drag-only, real columns) — always
+    // present so the delegated card-click drill-down works even for
+    // Unassigned cards where drag is disabled.
+    const laUidAttr = p.leagueAppsUserId
+      ? `data-la-user-id="${p.leagueAppsUserId}"`
+      : '';
+    const cardCursor = p.leagueAppsUserId ? 'cursor:pointer;' : '';
     return `
-      <div id="${cardId}" class="mr-card" ${dragAttrs} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow}">
+      <div id="${cardId}" class="mr-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow} ${cardCursor}">
         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px; row-gap:3px;">
           ${posChip}
           <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>

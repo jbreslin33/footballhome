@@ -224,6 +224,25 @@ class PausedMembersScreen extends Screen {
         }
         return;
       }
+      // Card body → open the PersonScreen for that member.  Guard so
+      // clicks on the action buttons (Email / Text / Call / Save) or
+      // any inner anchor stay in-place — they've already returned above
+      // if handled, but anchors haven't.  Also skip if there's no LA
+      // user id (rare: manual FH-member with no LA alias).
+      const anchorInside = e.target.closest('a, button, input, textarea, select, label');
+      if (anchorInside) return;
+      const card = e.target.closest('.paused-card[data-la-user-id]');
+      if (card) {
+        const laUid = card.getAttribute('data-la-user-id');
+        if (laUid) {
+          this.navigation.goTo('person', {
+            leagueAppsUserId: laUid,
+            returnTo: 'paused-members',
+            returnToParams: this._returnParams(),
+          });
+        }
+        return;
+      }
     });
 
     const search = this.find('#members-search');
@@ -1137,10 +1156,14 @@ class PausedMembersScreen extends Screen {
       : '';
 
     return `
-      <div class="paused-card" style="background: var(--bg-secondary);
+      <div class="paused-card"
+           data-la-user-id="${m.leagueapps_user_id || ''}"
+           data-person-id="${m.person_id || ''}"
+           style="background: var(--bg-secondary);
             border-radius: var(--radius-md); padding: var(--space-3);
             border: 1px solid var(--color-border);
-            display:flex; flex-direction:column; gap:4px;">
+            display:flex; flex-direction:column; gap:4px;
+            ${m.leagueapps_user_id ? 'cursor:pointer;' : ''}">
         <div style="font-weight:600;">${this._esc(name)}</div>
         ${activityChip}
         ${onboardingSection}
@@ -1427,5 +1450,17 @@ class PausedMembersScreen extends Screen {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  // Snapshot of the params that reproduce this exact view — chip +
+  // variant + club — so the PersonScreen "Back" button drops the
+  // operator back on the same filtered card list.
+  _returnParams() {
+    return {
+      clubId:    this.clubId,
+      clubName:  this.clubName,
+      variant:   this._pendingLegacyVariant  || undefined,
+      category:  this._pendingLegacyCategory || undefined,
+    };
   }
 }
