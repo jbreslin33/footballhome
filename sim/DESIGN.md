@@ -2241,9 +2241,9 @@ From [§15](#15-milestone-plan) (milestone plan): **"Ball entity + dribble physi
 
 - Slice numbering continues from Slice 13 (M0 close-out) — first M1 slice is Slice 14.
 - Each slice ends with a green ctest gate on the sim side AND a working end-to-end demo reachable from the frontend Tactical Games hub tile (or a new M1-scoped tile).
-- Every determinism gate (§22.1 bit-exact, §22.2 Fixed64, §22.9 registry ID stability, §22.14 write policy, Task D's boot-time drift guard) MUST continue to pass at the end of every slice — no slice is allowed to green-light while breaking any of them.
-- New ADRs land as `§22.15`, `§22.16`, … in chronological order — never re-numbered (§22.0 rule).
-- SQL migrations continue the sim-scoped numbering: next available is `205-sim-*.sql`.
+- Every determinism gate (§22.1 bit-exact, §22.2 Fixed64, §22.9 registry ID stability, §22.14 write policy, ADR §22.18 profile-row storage, Task D's boot-time drift guard) MUST continue to pass at the end of every slice — no slice is allowed to green-light while breaking any of them.
+- New ADRs land as `§22.19`, `§22.20`, … in chronological order — never re-numbered (§22.0 rule). ADRs §22.15/§22.16/§22.17 originally reserved for M1 draft slots (see §23.7) are unused; §22.18 landed 2026-07-13 out of that sequence (profile-row normalization) — chronological rule prevails, next ADR is §22.19.
+- SQL migrations continue the sim-scoped numbering: next available is `206-sim-*.sql` (205 landed 2026-07-13 as `205-sim-normalize-profiles.sql` per ADR §22.18).
 - CI lint gate ([sim/Dockerfile](sim/Dockerfile)) gets a new script per invariant added (grep-based, same shape as the four M0 checks).
 
 ### 23.2 Deliverables
@@ -2282,7 +2282,7 @@ Grouped by subsystem, mirroring §16.1's checkbox style. Tick boxes in place as 
 - [ ] [backend/src/orchestration/SimOrchestrator.{h,cpp}](backend/src/orchestration/SimOrchestrator.h) — shells out to `podman run` per §16.7 step 1 with 5 s health-check timeout and `--restart on-failure:3`.
 - [ ] [backend/src/orchestration/SimRouter.{h,cpp}](backend/src/orchestration/SimRouter.h) — generalizes the §16.6 sub-slice 8.1 HTTP-RPC pattern from `footballhome_sim` (single, hardcoded) to `footballhome_sim_${match_id}` (dynamic lookup via `sim_running_matches`).
 - [ ] [backend/src/controllers/SimLobbyController.cpp](backend/src/controllers/SimLobbyController.cpp) `handleCreateMatch` becomes real per §16.7 step 2: INSERTs `sim_matches` row, calls `SimOrchestrator::launchMatch`, returns `{match_id, ws_url}`.
-- [ ] `database/migrations/205-sim-running-matches.sql` — new table `sim_running_matches(match_id, container_id, container_name, launched_at)` with FK to `sim_matches.id`. Reconciled on backend startup against `podman ps` (per §16.7 step 9 "backend crash" failure-mode).
+- [ ] `database/migrations/206-sim-running-matches.sql` — new table `sim_running_matches(match_id, container_id, container_name, launched_at)` with FK to `sim_matches.id`. Reconciled on backend startup against `podman ps` (per §16.7 step 9 "backend crash" failure-mode). (205 is `205-sim-normalize-profiles.sql`, ADR §22.18.)
 - [ ] [frontend/sim.html](frontend/sim.html) reads `?match_id=X` from URL query; falls back to match_id=1 for M0-legacy compatibility so old bookmarks still work.
 - [ ] [frontend/nginx.conf](frontend/nginx.conf) adds `location ~ ^/sim/(?<mid>\d+)$` regex block with `proxy_pass http://footballhome_sim_${mid}:9100/sim;` + standard WS-upgrade dance.
 - [ ] Backend reaper thread reconciling `sim_matches.ended_at IS NULL` vs `podman ps` (§16.7 step 6). Runs every 5 min under an advisory-lock guard so parallel backend replicas don't race.
@@ -2307,7 +2307,7 @@ Slice numbering continues from Slice 13 (M0 close-out). Each slice ends with a g
 Landed FIRST because Slices 15–17 need to spawn fresh matches to test ball scenarios without perturbing the M0 legacy match `id=1` (which has Task D's boot-time drift guard protecting its `(scenario_id, seed, tick_hz)`).
 
 - 14.1 `SimOrchestrator::launchMatch` + `docker-compose.yml` grants backend access to the podman socket.
-- 14.2 Migration 205 (`sim_running_matches` table) + [backend/src/models/SimRunningMatch.h](backend/src/models/SimRunningMatch.h).
+- 14.2 Migration 206 (`sim_running_matches` table) + [backend/src/models/SimRunningMatch.h](backend/src/models/SimRunningMatch.h).
 - 14.3 `SimLobbyController::handleCreateMatch` becomes real (INSERT `sim_matches`, call `SimOrchestrator`, return `{match_id, ws_url}`).
 - 14.4 `SimRouter` fans out `/api/sim/debug/matches/:id/{inputs,events,state}` per §16.6 sub-slice 8.1 pattern.
 - 14.5 Frontend `?match_id=X` handling + nginx regex block.
@@ -2333,7 +2333,7 @@ Ball can be spawned into a match at scenario-defined position and rolls with fri
 
 One player can pick up + move the ball. Ball follows the owning player at `heading + small_offset` when player is in `ball_control_radius`. Dribble efficiency reduces the player's effective walk speed while carrying — introduces the new `physical.dribble_efficiency` attribute (see draft ADR §22.15 below).
 
-- 16.1 New attribute `physical.dribble_efficiency` — migration 206 extending `sim_attribute_registry` per §22.9 pattern (stable ID via explicit INSERT + `setval`), `m0::defaultPhysical()` extended, [sim/src/common/M0Registry.generated.hpp](sim/src/common/M0Registry.generated.hpp) regenerated by `gen_registry_header.awk`. Boot-time drift check (§16.6) catches mismatch.
+- 16.1 New attribute `physical.dribble_efficiency` — migration 207 extending `sim_attribute_registry` per §22.9 pattern (stable ID via explicit INSERT + `setval`), `m0::defaultPhysical()` extended, [sim/src/common/M0Registry.generated.hpp](sim/src/common/M0Registry.generated.hpp) regenerated by `gen_registry_header.awk`. Boot-time drift check (§16.6) catches mismatch.
 - 16.2 `DribbleIntent` extension to `Intent`; `HumanController::decide` emits it when close to ball.
 - 16.3 `BallControl` mechanic: first-touch wins (compare `SlotId` distance to ball; ties broken by lower `SlotId` for determinism); ball position glued to `owner.position + heading_offset` while owner is within `ball_control_radius`.
 - 16.4 Owner releases ball on any of: distance > `ball_control_radius`, explicit `ReleaseIntent`, or match end.
@@ -2380,7 +2380,7 @@ Ticked in place as work lands (same style as §16.5). All must be green for M1 t
 - [ ] 20 concurrent matches per host without perceptible tick-loop jitter (≥ 19.9 Hz effective tick rate under load — Slice 14.7 load test).
 - [ ] Cross-arch determinism CI green for M1 scenarios (ball trajectory identical amd64 vs arm64 — Slices 15.6, 16.6, 17.6).
 - [ ] `sudo podman logs footballhome_sim_${match_id}` shows only that match's logs (no interleaving; proven by test with 3 concurrent matches).
-- [ ] `SELECT COUNT(*) FROM sim_player_profile WHERE updated_at <> created_at` still returns 0 at the end of M1 (§22.14 invariant preserved through M1 — validates that no Slice 14–18 code path accidentally added a `.save()` bypass).
+- [ ] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at the end of M1 (§22.14 invariant preserved through M1 via ADR §22.18's row-set expansion — validates that no Slice 14–18 code path accidentally added a `.save()` bypass).
 - [ ] No new §21 ship-blocker items opened during M1 without a matching closure or explicit revisit-condition timestamp.
 
 ### 23.5 Explicit M1 non-goals
@@ -2407,9 +2407,11 @@ Analogous to §21.2 but for M2. Track new blockers here as they emerge during M1
 
 Placeholder for ADRs that will formalize decisions Slice 14–18 forces. Each ADR follows §22.0's format when it lands.
 
-- **§22.15 (Slice 16)** — `physical.dribble_efficiency` as a new attribute vs a hardcoded constant in `BallControl`. Draft: introduce it as a first-class attribute to keep the "profile drives mechanics" invariant (§22.9 stability + §22.14 write policy inherit unchanged), even though M1's `m0::defaultPhysical()` gives every player the same default value.
-- **§22.16 (Slice 15)** — Wire v1.1 extension format (length-prefixed extensible regions vs fixed-layout new fields). Draft: length-prefixed with client capability negotiation via HELLO_ACK — same shape as HTTP/1.1 extension headers. Rejected alternative: fixed-layout with version byte in frame header (breaks the "same wire encoder for v1 and v1.1" simplicity).
-- **§22.17 (Slice 14)** — Backend → podman API access surface (UNIX socket vs `podman run` shell-out vs REST API). Draft: `podman run` shell-out for M1 (simplest ops surface, matches every debugging incantation in [.github/copilot-instructions.md](.github/copilot-instructions.md)); revisit if launch latency measurements from Slice 14.7 push us toward the UNIX-socket API.
+**ADR numbering note (2026-07-13)**: the §22.15/§22.16/§22.17 slots reserved below were never used — ADR §22.18 landed first (out-of-sequence, profile-row normalization) on 2026-07-13. Per the §22.0 append-only rule, ADRs land at the next available integer at write time. The three draft ADRs below will therefore land as §22.19 (Slice 14 podman surface), §22.20 (Slice 15 wire v1.1), §22.21 (Slice 16 dribble_efficiency) in *slice-completion order*, not in the order drafted here.
+
+- **§22.19 (Slice 14, was drafted as §22.17)** — Backend → podman API access surface (UNIX socket vs `podman run` shell-out vs REST API). Draft: `podman run` shell-out for M1 (simplest ops surface, matches every debugging incantation in [.github/copilot-instructions.md](.github/copilot-instructions.md)); revisit if launch latency measurements from Slice 14.7 push us toward the UNIX-socket API.
+- **§22.20 (Slice 15, was drafted as §22.16)** — Wire v1.1 extension format (length-prefixed extensible regions vs fixed-layout new fields). Draft: length-prefixed with client capability negotiation via HELLO_ACK — same shape as HTTP/1.1 extension headers. Rejected alternative: fixed-layout with version byte in frame header (breaks the "same wire encoder for v1 and v1.1" simplicity).
+- **§22.21 (Slice 16, was drafted as §22.15)** — `physical.dribble_efficiency` as a new attribute vs a hardcoded constant in `BallControl`. Draft: introduce it as a first-class attribute to keep the "profile drives mechanics" invariant (§22.9 stability + §22.14 write policy inherit unchanged, and §22.18 row-set storage makes the new row appear in `sim_player_attribute` alongside existing physical rows), even though M1's `m0::defaultPhysical()` gives every player the same default value.
 
 ### 23.8 Reference cross-links
 
