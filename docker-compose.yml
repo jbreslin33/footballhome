@@ -52,6 +52,10 @@ services:
       META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID:-}
       META_PAGE_ID: ${META_PAGE_ID:-}
       META_ADS_TOKEN: ${META_ADS_TOKEN:-}
+      # Slice 13 sub-slice 8: sim debug endpoints (/api/sim/debug/*).
+      # Admin-only + rate-limited; still gated behind this flag so a
+      # future prod deploy can turn it off without a rebuild.
+      FH_ENABLE_SIM_DEBUG: ${FH_ENABLE_SIM_DEBUG:-1}
     ports:
       - "3001:3001"
     dns:

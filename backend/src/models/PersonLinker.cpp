@@ -391,3 +391,64 @@ void PersonLinker::recordMembership(int personId,
                   << std::endl;
     }
 }
+
+void PersonLinker::closeStaleMemberships(long long programId,
+                                         const std::set<std::string>& activeLaUserIds) {
+    if (programId <= 0) return;
+    try {
+        // Pull every OPEN row for this program alongside its canonical
+        // LA userId (via external_person_aliases).  Anyone with an alias
+        // whose external_user_id is NOT in the active set (or who has no
+        // alias at all — orphaned/manual insert) gets ended_at set.
+        //
+        // We fetch first + UPDATE by id list rather than a subquery so
+        // the DB call count is bounded (2 round-trips) even for a large
+        // program, and so the same set of ids can be logged.
+        auto rows = db_->query(
+            "SELECT plm.id, "
+            "       COALESCE(epa.external_user_id, '') AS la_user_id "
+            "  FROM person_la_memberships plm "
+            "  LEFT JOIN external_person_aliases epa "
+            "         ON epa.person_id = plm.person_id "
+            "        AND epa.provider  = 'leagueapps' "
+            " WHERE plm.la_program_id = $1::bigint "
+            "   AND plm.ended_at IS NULL",
+            {std::to_string(programId)});
+
+        std::vector<std::string> toCloseIds;
+        toCloseIds.reserve(rows.size());
+        for (const auto& row : rows) {
+            const std::string laUid = row["la_user_id"].c_str();
+            // Keep only rows whose LA userId is in the "still a member"
+            // set.  Rows with no alias (empty laUid) or aliases outside
+            // the set are closed.
+            if (laUid.empty() || activeLaUserIds.find(laUid) == activeLaUserIds.end()) {
+                toCloseIds.push_back(std::to_string(row["id"].as<long long>()));
+            }
+        }
+
+        if (toCloseIds.empty()) return;
+
+        // Build "$1,$2,…" list; pqxx doesn't take array literals cleanly
+        // through the current db_->query() helper so we inline the ids
+        // (they came straight from the DB as bigints — safe).
+        std::ostringstream idList;
+        for (std::size_t i = 0; i < toCloseIds.size(); ++i) {
+            if (i) idList << ",";
+            idList << toCloseIds[i];
+        }
+        db_->query(
+            "UPDATE person_la_memberships "
+            "   SET ended_at = now(), updated_at = now() "
+            " WHERE id IN (" + idList.str() + ") "
+            "   AND ended_at IS NULL");
+
+        std::cerr << "[PersonLinker::closeStaleMemberships] program=" << programId
+                  << " closed " << toCloseIds.size() << " row(s)"
+                  << " (active-la-user-ids=" << activeLaUserIds.size() << ")"
+                  << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[PersonLinker::closeStaleMemberships] " << e.what()
+                  << " (programId=" << programId << ")" << std::endl;
+    }
+}

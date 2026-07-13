@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <set>
 #include "../third_party/json.hpp"
 
 class Database;
@@ -58,6 +59,19 @@ public:
     void recordMembership(int personId,
                           long long programId,
                           long long registrationId = 0);
+
+    // End-of-sync sweep: for LA sub-program `programId`, close (set
+    // ended_at = now()) every OPEN person_la_memberships row whose person
+    // is NOT represented in `activeLaUserIds` (the set of LA userIds that
+    // LaProgramSync just accepted as "still a member" for this program —
+    // i.e. registrationStatus in {SPOT_RESERVED, SPOT_PENDING, WAITING_LIST}).
+    // Callers MUST pass the CANONICAL LA userId set — persons whose
+    // external_person_aliases row maps to an id in this set are kept open,
+    // everyone else for this program is closed.  Best-effort: logs +
+    // swallows on DB errors.  User directive 2026-07-12: membership
+    // MUST come from LA every time — no more "sync only opens" behavior.
+    void closeStaleMemberships(long long programId,
+                               const std::set<std::string>& activeLaUserIds);
 
 private:
     Database* db_;

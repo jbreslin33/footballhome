@@ -56,9 +56,13 @@ public:
 
     void insertInput(const InputRow& row) override;
     void insertInputBatch(std::span<const InputRow> rows) override;
+    std::vector<InputRow>
+    loadInputsForMatch(MatchId id,
+                       std::optional<TickNum> up_to_tick = std::nullopt) override;
 
     void insertEvent(const EventRow& row) override;
     void insertEventBatch(std::span<const EventRow> rows) override;
+    std::optional<MatchEndRecord> loadMatchEnd(MatchId id) override;
 
 private:
     struct Impl;

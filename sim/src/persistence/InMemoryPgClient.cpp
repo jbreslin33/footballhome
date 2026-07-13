@@ -177,6 +177,26 @@ void InMemoryPgClient::insertInputBatch(std::span<const InputRow> rows)
     }
 }
 
+std::vector<InputRow>
+InMemoryPgClient::loadInputsForMatch(MatchId id,
+                                     std::optional<TickNum> up_to_tick)
+{
+    std::vector<InputRow> out;
+    for (const auto& row : inputs_) {
+        if (row.match_id != id) { continue; }
+        if (up_to_tick.has_value() && row.tick_num > *up_to_tick) { continue; }
+        out.push_back(row);
+    }
+    // Match the DB's ORDER BY tick_num ASC, slot_id ASC so replay sees
+    // the identical sequence irrespective of insertion order.
+    std::sort(out.begin(), out.end(),
+              [](const InputRow& a, const InputRow& b) {
+                  if (a.tick_num != b.tick_num) { return a.tick_num < b.tick_num; }
+                  return a.slot_id < b.slot_id;
+              });
+    return out;
+}
+
 // ---------------------------------------------------------------------------
 // Event log
 // ---------------------------------------------------------------------------
@@ -192,6 +212,24 @@ void InMemoryPgClient::insertEventBatch(std::span<const EventRow> rows)
     for (const auto& row : rows) {
         events_.push_back(row);
     }
+}
+
+std::optional<IPgClient::MatchEndRecord>
+InMemoryPgClient::loadMatchEnd(MatchId id)
+{
+    // Scan in reverse — the most recent MatchEnd wins under crash-restart
+    // semantics (matches the DB's `ORDER BY id DESC LIMIT 1`).
+    for (auto it = events_.rbegin(); it != events_.rend(); ++it) {
+        if (it->match_id != id) { continue; }
+        if (it->event_type != EventType::MatchEnd) { continue; }
+        MatchEndRecord rec;
+        rec.tick_num = it->tick_num;
+        if (it->payload.has_value()) {
+            rec.payload = *it->payload;
+        }
+        return rec;
+    }
+    return std::nullopt;
 }
 
 } // namespace fh::sim::persistence

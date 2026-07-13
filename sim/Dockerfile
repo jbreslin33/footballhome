@@ -72,6 +72,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /src/build/footballhome_sim /usr/local/bin/footballhome_sim
+COPY --from=build /src/build/fh-sim-replay    /usr/local/bin/fh-sim-replay
 
 # The sim listens on SIM_PORT (default 9100) inside the container.
 EXPOSE 9100

@@ -188,11 +188,33 @@ public:
     // is observable to a concurrent replay reader.
     virtual void insertInputBatch(std::span<const InputRow> rows) = 0;
 
+    // Load every recorded input for a match ordered by (tick_num ASC,
+    // slot_id ASC) — the ordering `fh-sim-replay` relies on to apply
+    // inputs deterministically. If `up_to_tick` is set, rows with
+    // `tick_num > *up_to_tick` are excluded. Empty result when the
+    // match had no accepted inputs.
+    virtual std::vector<InputRow>
+    loadInputsForMatch(MatchId id,
+                       std::optional<TickNum> up_to_tick = std::nullopt) = 0;
+
     // ------------------------------------------------------------------
     // Event log
     // ------------------------------------------------------------------
     virtual void insertEvent(const EventRow& row) = 0;
     virtual void insertEventBatch(std::span<const EventRow> rows) = 0;
+
+    // Fetch the most recent MatchEnd (event_type=2) row for a match, or
+    // nullopt if none exists. `fh-sim-replay --verify` uses this to
+    // recover both the target tick_num (how many ticks to replay) and
+    // the reference canonical hash (8-byte big-endian FNV-1a-64) to
+    // compare against the replay's own hash. Returned tick_num is the
+    // tick at which MatchEnd was written — replay stops after ticking
+    // that many times so the final snapshot matches the live one.
+    struct MatchEndRecord {
+        TickNum                tick_num{0};
+        std::vector<std::byte> payload;   // exactly 8 bytes for a valid MatchEnd
+    };
+    virtual std::optional<MatchEndRecord> loadMatchEnd(MatchId id) = 0;
 };
 
 } // namespace fh::sim::persistence

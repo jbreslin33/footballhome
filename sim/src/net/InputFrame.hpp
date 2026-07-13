@@ -51,6 +51,18 @@ struct DecodedInput {
 // payload length, or short buffer. Never throws.
 std::optional<DecodedInput> decodeInputFrame(std::span<const std::uint8_t> frame);
 
+// Encode an INPUT message ready to hand to the transport's send(). Used
+// by tests + the debug/replay path to synthesize wire-shape input rows
+// with the same byte layout the live server accepts. Returns exactly
+// kInputFrameBytes (20) bytes. `wants_walk` currently sets bit 1 of the
+// flags byte; both flag bits are exposed even though the M0 mechanics
+// only look at sprint.
+std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
+                                           float         desired_dir_x,
+                                           float         desired_dir_y,
+                                           bool          wants_sprint,
+                                           bool          wants_walk = false);
+
 // -----------------------------------------------------------------------
 // HELLO_ACK payload (§7.1): 14 bytes
 //   [u64 match_id]

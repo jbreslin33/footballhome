@@ -98,3 +98,11 @@ fh_add_persistence_test(test_pg_client)
 fh_add_persistence_test(test_registry_loader)
 fh_add_persistence_test(test_profile_store)
 fh_add_persistence_test(test_async_pg_log)
+
+# fh-sim-replay integration test — needs the full replay driver
+# (sim_tools) plus the InMemoryPgClient it drives (sim_persistence)
+# and the gameplay layer for canonical hash comparison.
+add_executable(test_replay test_replay.cpp)
+target_link_libraries(test_replay PRIVATE
+    sim_tools sim_persistence sim_gameplay sim_net sim_test_harness)
+add_test(NAME test_replay COMMAND test_replay)

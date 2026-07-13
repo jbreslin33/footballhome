@@ -33,7 +33,10 @@ constexpr const char* PS_UPDATE_MATCH_ENDED = "update_match_ended";
 constexpr const char* PS_LOAD_PROFILE       = "load_profile";
 constexpr const char* PS_UPSERT_PROFILE     = "upsert_profile";
 constexpr const char* PS_INSERT_INPUT       = "insert_input";
+constexpr const char* PS_LOAD_INPUTS_ALL    = "load_inputs_all";
+constexpr const char* PS_LOAD_INPUTS_UPTO   = "load_inputs_upto";
 constexpr const char* PS_INSERT_EVENT       = "insert_event";
+constexpr const char* PS_LOAD_MATCH_END     = "load_match_end";
 
 // libpqxx 7.x accepts std::basic_string_view<std::byte> as a bytea
 // parameter and returns std::basic_string<std::byte> when a column is
@@ -160,10 +163,32 @@ PgClient::PgClient(const ConnConfig& cfg)
             "ON CONFLICT (match_id, tick_num, slot_id) DO UPDATE SET "
             "  payload = EXCLUDED.payload");
 
+        // Replay reads (see fh-sim-replay). Sort key must be stable so
+        // the replay driver applies inputs in the same order the live
+        // server accepted them.
+        c.prepare(PS_LOAD_INPUTS_ALL,
+            "SELECT match_id, tick_num, slot_id, payload "
+            "FROM sim_match_inputs WHERE match_id = $1 "
+            "ORDER BY tick_num ASC, slot_id ASC");
+        c.prepare(PS_LOAD_INPUTS_UPTO,
+            "SELECT match_id, tick_num, slot_id, payload "
+            "FROM sim_match_inputs "
+            "WHERE match_id = $1 AND tick_num <= $2 "
+            "ORDER BY tick_num ASC, slot_id ASC");
+
         c.prepare(PS_INSERT_EVENT,
             "INSERT INTO sim_match_events "
             "  (match_id, tick_num, event_type, payload) "
             "VALUES ($1, $2, $3, $4)");
+
+        // Latest MatchEnd (event_type=2) row. Under crash-restart the
+        // sim may write MatchEnd twice with slightly different snapshot
+        // hashes; the last-written wins (matches
+        // InMemoryPgClient::loadMatchEnd's reverse-scan semantics).
+        c.prepare(PS_LOAD_MATCH_END,
+            "SELECT tick_num, payload FROM sim_match_events "
+            "WHERE match_id = $1 AND event_type = 2 "
+            "ORDER BY id DESC LIMIT 1");
     } catch (const PgError&) {
         throw;
     } catch (const pqxx::sql_error& e) {
@@ -387,6 +412,35 @@ void PgClient::insertInputBatch(std::span<const InputRow> rows)
     }
 }
 
+std::vector<InputRow>
+PgClient::loadInputsForMatch(MatchId id,
+                             std::optional<TickNum> up_to_tick)
+{
+    try {
+        pqxx::work tx(impl_->conn);
+        const auto res =
+            up_to_tick.has_value()
+                ? tx.exec(pqxx::prepped{PS_LOAD_INPUTS_UPTO},
+                          pqxx::params{id, *up_to_tick})
+                : tx.exec(pqxx::prepped{PS_LOAD_INPUTS_ALL},
+                          pqxx::params{id});
+        std::vector<InputRow> out;
+        out.reserve(res.size());
+        for (const auto& r : res) {
+            InputRow row;
+            row.match_id = r[0].as<MatchId>();
+            row.tick_num = r[1].as<TickNum>();
+            row.slot_id  = r[2].as<SlotId>();
+            row.payload  = readBytea(r[3]);
+            out.push_back(std::move(row));
+        }
+        tx.commit();
+        return out;
+    } catch (const std::exception& e) {
+        throw PgError("loadInputsForMatch", e.what());
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Event log
 // ---------------------------------------------------------------------------
@@ -432,6 +486,27 @@ void PgClient::insertEventBatch(std::span<const EventRow> rows)
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("insertEventBatch", e.what());
+    }
+}
+
+std::optional<IPgClient::MatchEndRecord>
+PgClient::loadMatchEnd(MatchId id)
+{
+    try {
+        pqxx::work tx(impl_->conn);
+        const auto res = tx.exec(pqxx::prepped{PS_LOAD_MATCH_END},
+                                 pqxx::params{id});
+        tx.commit();
+        if (res.empty()) {
+            return std::nullopt;
+        }
+        const auto& r = res[0];
+        MatchEndRecord rec;
+        rec.tick_num = r[0].as<TickNum>();
+        rec.payload  = readBytea(r[1]);
+        return rec;
+    } catch (const std::exception& e) {
+        throw PgError("loadMatchEnd", e.what());
     }
 }
 

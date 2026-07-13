@@ -101,16 +101,22 @@ class PausedMembersScreen extends Screen {
   onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
-    // Which LA sub-program is currently in focus.  `null` == "All"
-    // pseudo-chip (every sub-program in one scrolling list).  The
-    // chip row is rendered from whatever `_groups` came back from
-    // the API — one chip per (category, variant) pair.
+    // Which LA sub-program is currently in focus.  `null` == no
+    // program-specific selection.  Mutually exclusive with
+    // `categoryFilter` — clicking a program chip clears categoryFilter
+    // and vice-versa.  When BOTH are null the "All" chip is active.
     this.programId = null;
+    // Category-aggregate filter ("men" | "women" | "boys" | "girls" |
+    // null).  When set, all programs matching that category are shown
+    // together (both active + pickup variants).  The "All Men" chip
+    // sets this to "men", "All Women" → "women", etc.  Mutually
+    // exclusive with `programId`.
+    this.categoryFilter = null;
     // Legacy nav params (`variant=active|paused`, `category=men|…`)
     // still arrive from admin-club tiles.  Translate them into a
-    // best-effort pre-selected `programId` once the first load
-    // resolves — see `_applyLegacyParams()`.  Stored so we can
-    // consume them exactly once per screen entry.
+    // best-effort pre-selected chip once the first load resolves —
+    // see `_applyLegacyParams()`.  Stored so we can consume them
+    // exactly once per screen entry.
     this._pendingLegacyCategory = String(params?.category || '').toLowerCase();
     this._pendingLegacyVariant  = (params?.variant === 'active' || params?.variant === 'pickup' || params?.variant === 'paused')
       ? (params.variant === 'paused' ? 'pickup' : params.variant)
@@ -156,19 +162,38 @@ class PausedMembersScreen extends Screen {
         this._load();
         return;
       }
-      // Club chip row — one chip per LA sub-program (Mens Club, Mens
-      // Pickup Club, Boys Club, …) plus an "All" pseudo-chip.  Clicking
-      // narrows the visible groups to a single sub-program without
-      // re-hitting the API (all data is already loaded).
+      // Chip row — two chip types.  User directive 2026-07-12: every
+      // chip click MUST re-sync from LeagueApps first (so the DB
+      // reflects the current LA console for that scope) before we
+      // re-query the DB and re-render.  No client-side-only filtering
+      // anymore.  Sync scope is narrower than the global initial load:
+      //   • program chip  → sync just that (variant, category) pair
+      //   • category chip → sync all variants for that category
+      //   • "All" chip    → full sync (variant=all)
       const chip = e.target.closest('[data-program-chip]');
       if (chip) {
         const pid = chip.getAttribute('data-program-chip');
         this.programId = (pid === 'all') ? null : Number(pid);
-        this._renderProgramChips();
-        this._renderGroups();
-        this._renderBulkBar();
-        this._updateTitle();
-        this._updateSubtitle();
+        this.categoryFilter = null;
+        let scope = {};
+        if (this.programId != null) {
+          const g = (this._groups || []).find(x => Number(x.program_id) === this.programId);
+          if (g) scope = {
+            syncVariant:  String(g.variant  || '').toLowerCase(),
+            syncCategory: String(g.category || '').toLowerCase(),
+          };
+        }
+        this._load(scope);
+        return;
+      }
+      const catChip = e.target.closest('[data-category-chip]');
+      if (catChip) {
+        this.categoryFilter = catChip.getAttribute('data-category-chip') || null;
+        this.programId = null;
+        this._load({
+          syncVariant:  '',                   // both variants (Club + Pickup)
+          syncCategory: this.categoryFilter,  // narrow to this gender
+        });
         return;
       }
       // Sort pill row — re-orders cards inside each sub-program group.
@@ -251,7 +276,7 @@ class PausedMembersScreen extends Screen {
     this._stopSyncTicker();
   }
 
-  async _load() {
+  async _load(scope) {
     const loadingEl = this.find('#members-loading');
     const errorEl   = this.find('#members-error');
     const emptyEl   = this.find('#members-empty');
@@ -270,11 +295,19 @@ class PausedMembersScreen extends Screen {
 
     this._resetBoot();
 
-    // Always request every sub-program in one shot; the flat club-chip
-    // row on the client narrows the view.  `variant=all` returns both
-    // active and pickup groups together — see AdminLaBackfillController::
-    // respondMembers.
-    const qs = `variant=all`;
+    // Sync scope: on initial load (or the global "All" chip) we sync
+    // every program (variant=all).  On chip clicks the caller passes a
+    // narrower (syncVariant, syncCategory) so we only hit LA for the
+    // relevant program(s).  The DB READ afterwards is ALWAYS full-
+    // response (variant=all) so the chip row's per-program counts stay
+    // accurate no matter which chip triggered the reload.
+    const syncVariant  = (scope && typeof scope.syncVariant  === 'string') ? scope.syncVariant  : 'all';
+    const syncCategory = (scope && typeof scope.syncCategory === 'string') ? scope.syncCategory : '';
+    const syncParams = new URLSearchParams();
+    if (syncVariant)  syncParams.set('variant',  syncVariant);
+    if (syncCategory) syncParams.set('category', syncCategory);
+    const syncQs  = syncParams.toString();
+    const fetchQs = 'variant=all';
 
     // ── Step 1 + 2: sync from LeagueApps → upsert local DB ─────────
     // A single POST to the backend covers both.  The backend fans out
@@ -283,7 +316,7 @@ class PausedMembersScreen extends Screen {
     // for UX; both are already done by the time the POST returns.
     let syncInfo = null;
     try {
-      const syncRes = await this.auth.fetch(`/api/admin/membership/sync?${qs}`, {
+      const syncRes = await this.auth.fetch(`/api/admin/membership/sync?${syncQs}`, {
         method: 'POST',
       });
       if (!syncRes.ok) throw new Error(`sync HTTP ${syncRes.status}`);
@@ -323,7 +356,7 @@ class PausedMembersScreen extends Screen {
 
     // ── Step 3: load members from DB (fresh) ────────────────────────
     try {
-      const res = await this.auth.fetch(`/api/admin/members?${qs}`);
+      const res = await this.auth.fetch(`/api/admin/members?${fetchQs}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       if (!body?.success) throw new Error(body?.error || 'Load failed');
@@ -487,23 +520,37 @@ class PausedMembersScreen extends Screen {
   }
   _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-  // Groups after applying the club chip.  Returns everything if
-  // `this.programId` is null (== "All" chip selected).
+  // Groups after applying the chip selection.  Program chip wins if
+  // both are set (shouldn't happen — they're mutually exclusive), but
+  // check in the safe order anyway.  Returns everything when neither
+  // is set (== "All" chip active).
   _filteredGroups() {
-    if (this.programId == null) return this._groups;
-    return this._groups.filter(g => Number(g.program_id) === this.programId);
+    if (this.programId != null) {
+      return this._groups.filter(g => Number(g.program_id) === this.programId);
+    }
+    if (this.categoryFilter) {
+      return this._groups.filter(g => String(g.category || '').toLowerCase() === this.categoryFilter);
+    }
+    return this._groups;
   }
 
   // One-shot legacy param translator: if the caller navigated in with
   // `?variant=active&category=boys` (old admin-club tile shape), pick
-  // the first matching program group and pre-select its chip.  Consumes
-  // the pending params so subsequent renders don't reapply them.
+  // the first matching program group and pre-select its chip.  If only
+  // `category` was given (no variant), pre-select the category-aggregate
+  // chip instead.  Consumes the pending params so subsequent renders
+  // don't reapply them.
   _applyLegacyParams() {
     const wantCat     = this._pendingLegacyCategory;
     const wantVariant = this._pendingLegacyVariant;
     this._pendingLegacyCategory = '';
     this._pendingLegacyVariant  = '';
     if (!wantCat && !wantVariant) return;
+    // Category-only → aggregate chip ("All Men", "All Boys", …).
+    if (wantCat && !wantVariant) {
+      this.categoryFilter = wantCat;
+      return;
+    }
     const match = (this._groups || []).find(g => {
       const catOk     = !wantCat     || String(g.category || '').toLowerCase() === wantCat;
       const variantOk = !wantVariant || String(g.variant  || '').toLowerCase() === wantVariant;
@@ -641,29 +688,72 @@ class PausedMembersScreen extends Screen {
     const el = this.find('#members-filters');
     if (!el) return;
 
-    // Preserve display order: men (Club then Pickup) → women → boys →
-    // girls, driven by the backend's ORDER BY (category, variant<>'active').
-    // We just walk `this._groups` in the order it arrived.
+    // Chip row layout, per category (order driven by backend's
+    // ORDER BY category, variant<>'active', program_id):
+    //   [👥 All]
+    //   [👨 All Men] [👨 Mens Club Members] [👨 Mens Pickup Members]
+    //   [👩 All Women] [👩 Womens Club Members] [👩 Womens Pickup Members]
+    //   [👦 All Boys] [👦 Boys Club Members] [👦 Boys Pickup Members]
+    //   [👧 All Girls] [👧 Girls Club Members] [👧 Girls Pickup Members]
+    // The "All <Category>" chip is inserted the first time we see a
+    // new category as we walk `this._groups`, and its count is the sum
+    // of every program in that category (Club + Pickup, de-duplicated
+    // by person_id — a person enrolled in both variants counts once).
     const emoji = (cat) => ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
-    const totalAll = this._groups.reduce((n, g) => n + (g.members?.length || 0), 0);
+    const catLabel = (cat) => ({ men:'All Men', women:'All Women', boys:'All Boys', girls:'All Girls' }[cat] || `All ${cat}`);
 
-    const chip = (pid, text, count, active) => `
+    // Global All count — unique persons across every group.
+    const allSeen = new Set();
+    for (const g of this._groups) {
+      for (const m of (g.members || [])) allSeen.add(m.person_id);
+    }
+    const totalAll = allSeen.size;
+
+    // Per-category unique-person counts (dedupe across Club + Pickup).
+    const catSeen = new Map(); // cat -> Set(person_id)
+    for (const g of this._groups) {
+      const cat = String(g.category || '').toLowerCase();
+      if (!cat) continue;
+      let set = catSeen.get(cat);
+      if (!set) { set = new Set(); catSeen.set(cat, set); }
+      for (const m of (g.members || [])) set.add(m.person_id);
+    }
+
+    const pillBase = 'padding:6px 12px; border-radius:999px; cursor:pointer;'
+      + ' font-weight:600; font-size:0.85rem; border:1px solid var(--color-border);';
+    const pillActive   = 'background:var(--color-primary, #2563eb); color:white;';
+    const pillInactive = 'background:var(--bg-secondary); color:var(--text-primary);';
+
+    const programChip = (pid, text, count, active) => `
       <button data-program-chip="${pid}"
-              style="padding:6px 12px; border-radius:999px; cursor:pointer;
-                     font-weight:600; font-size:0.85rem; border:1px solid var(--color-border);
-                     background:${active ? 'var(--color-primary, #2563eb)' : 'var(--bg-secondary)'};
-                     color:${active ? 'white' : 'var(--text-primary)'};">
+              style="${pillBase} ${active ? pillActive : pillInactive}">
         ${text} <span style="opacity:0.7; font-weight:400;">(${count})</span>
       </button>`;
 
+    const categoryChip = (cat, count, active) => `
+      <button data-category-chip="${cat}"
+              style="${pillBase} ${active ? pillActive : pillInactive}">
+        ${emoji(cat)} ${catLabel(cat)} <span style="opacity:0.7; font-weight:400;">(${count})</span>
+      </button>`;
+
     const chips = [
-      chip('all', '👥 All', totalAll, this.programId == null),
+      programChip('all', '👥 All', totalAll,
+                  this.programId == null && !this.categoryFilter),
     ];
+    let seenCat = null;
     for (const g of this._groups) {
-      const cat   = String(g.category || '').toLowerCase();
+      const cat = String(g.category || '').toLowerCase();
+      if (cat && cat !== seenCat) {
+        // Insert the aggregate chip the first time we see this category.
+        chips.push(categoryChip(cat,
+                                (catSeen.get(cat) || new Set()).size,
+                                this.categoryFilter === cat));
+        seenCat = cat;
+      }
       const label = `${emoji(cat)} ${g.label || g.program_name || 'Club'}`;
       const count = (g.members || []).length;
-      chips.push(chip(g.program_id, label, count, Number(g.program_id) === this.programId));
+      chips.push(programChip(g.program_id, label, count,
+                             Number(g.program_id) === this.programId));
     }
 
     el.innerHTML = chips.join(' ');
@@ -677,12 +767,22 @@ class PausedMembersScreen extends Screen {
     const subtitle = this.find('#members-subtitle');
     if (!subtitle) return;
     const groups = this._filteredGroups();
-    const total  = groups.reduce((n, g) => n + (g.members?.length || 0), 0);
+    // De-duplicate across groups so a person enrolled in both Club and
+    // Pickup variants counts once in the aggregate views ("All Men",
+    // "All", etc.).
+    const seen = new Set();
+    for (const g of groups) {
+      for (const m of (g.members || [])) seen.add(m.person_id);
+    }
+    const total = seen.size;
     if (this.programId != null && groups.length === 1) {
       const g = groups[0];
       subtitle.textContent = `${g.label || g.program_name} — ${total} member${total === 1 ? '' : 's'}`;
+    } else if (this.categoryFilter) {
+      const catLabel = ({ men:'All Men', women:'All Women', boys:'All Boys', girls:'All Girls' }[this.categoryFilter] || `All ${this.categoryFilter}`);
+      subtitle.textContent = `${catLabel} — ${total} unique member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
     } else {
-      subtitle.textContent = `${total} member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
+      subtitle.textContent = `${total} unique member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
     }
   }
 
@@ -697,6 +797,13 @@ class PausedMembersScreen extends Screen {
         titleEl.textContent = `${emoji} ${g.label || g.program_name || 'Membership'}`;
         return;
       }
+    }
+    if (this.categoryFilter) {
+      const cat = this.categoryFilter;
+      const emoji = ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
+      const label = ({ men:'All Men', women:'All Women', boys:'All Boys', girls:'All Girls' }[cat] || `All ${cat}`);
+      titleEl.textContent = `${emoji} ${label}`;
+      return;
     }
     titleEl.textContent = '👥 Membership';
   }
@@ -955,8 +1062,23 @@ class PausedMembersScreen extends Screen {
 
     const buttons = [];
     if (email) {
+      // Gmail compose (not mailto:) so it opens in the operator's Gmail
+      // tab rather than Apple Mail / Outlook.  Pre-fill a short body
+      // that asks the recipient to reply — that reply is what opens
+      // a communication channel even for people who aren't on FH yet.
+      const subject = `Football Home — checking in`;
+      const body    =
+        `Hey ${(m.first_name || '').trim() || 'there'},\n\n` +
+        `Just checking in — please reply and let me know you got this so ` +
+        `I know I have the right email for you.\n\n` +
+        `--James Breslin\nSoccer Director at Lighthouse`;
+      const gmailUrl =
+        `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
+        `&to=${encodeURIComponent(email)}` +
+        `&su=${encodeURIComponent(subject)}` +
+        `&body=${encodeURIComponent(body)}`;
       buttons.push(
-        `<a href="mailto:${this._esc(email)}" target="_blank" rel="noopener"
+        `<a href="${gmailUrl}" target="_blank" rel="noopener"
              style="padding:5px 10px; border-radius:4px; text-decoration:none;
                     background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
                     font-size:0.75rem; font-weight:700;">✉️ Email</a>`
@@ -1061,7 +1183,8 @@ class PausedMembersScreen extends Screen {
                 `Please go to https://footballhome.org and tap "Sign in with Google" ` +
                 `(5 seconds, uses your Gmail), then set your availability accurately ` +
                 `for the week.\n\n` +
-                `Let me know any issues!\n\n` +
+                `Please reply and let me know you got this so I know I have the ` +
+                `right contact info for you.\n\n` +
                 `--James Breslin Soccer Director at Lighthouse`;
     } else {
       step    = 'First visit — set your availability';
@@ -1071,17 +1194,27 @@ class PausedMembersScreen extends Screen {
                 `games are listed: FootballHome.\n\n` +
                 `You're already set up — please log in at https://footballhome.org ` +
                 `and set your availability accurately for the week.\n\n` +
-                `Let me know any issues!\n\n` +
+                `Please reply and let me know you got this so I know I have the ` +
+                `right contact info for you.\n\n` +
                 `--James Breslin Soccer Director at Lighthouse`;
     }
 
     const encSubject = encodeURIComponent(subject);
     const encBody    = encodeURIComponent(body);
+    // Gmail compose — not mailto: — so the operator's Gmail tab
+    // handles it instead of Apple Mail.  `to=` puts the recipient in
+    // the To field; the &su/&body params are the same names Gmail's
+    // compose URL uses.
+    const gmailUrl =
+      `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
+      `&to=${encodeURIComponent(email)}` +
+      `&su=${encSubject}` +
+      `&body=${encBody}`;
 
     const buttons = [];
     if (canEmail) {
       buttons.push(
-        `<a href="mailto:${this._esc(email)}?subject=${encSubject}&body=${encBody}"
+        `<a href="${gmailUrl}"
             target="_blank" rel="noopener"
             style="padding:4px 10px; border-radius:4px; text-decoration:none;
                    background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;

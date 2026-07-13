@@ -100,6 +100,7 @@ set(SOURCES
     src/controllers/MyController.cpp
     src/controllers/EventReminderController.cpp
     src/controllers/SimLobbyController.cpp
+    src/controllers/SimDebugController.cpp
     src/controllers/TrailTestController.cpp
     src/services/RsvpMaterialization.cpp)
 

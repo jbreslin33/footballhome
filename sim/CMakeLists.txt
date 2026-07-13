@@ -270,6 +270,29 @@ target_include_directories(sim_server PUBLIC src)
 target_link_libraries(sim_server PUBLIC sim_net sim_gameplay sim_persistence sim_flags)
 
 # -----------------------------------------------------------------------------
+# Tools (offline utilities: fh-sim-replay).
+#
+# `sim_tools` holds the shared Replay driver library so test_replay can
+# link it without duplicating the source. Depends on the full gameplay
+# + persistence + net stack because replay reconstructs a live Match
+# and decodes wire InputFrame payloads.
+# -----------------------------------------------------------------------------
+add_library(sim_tools STATIC
+    src/tools/Replay.cpp
+)
+target_include_directories(sim_tools PUBLIC src)
+target_link_libraries(sim_tools PUBLIC
+    sim_gameplay sim_persistence sim_net sim_flags)
+
+add_executable(fh-sim-replay src/tools/replay_main.cpp)
+target_link_libraries(fh-sim-replay PRIVATE sim_tools sim_flags)
+# Same GIT_DESCRIBE stamp as footballhome_sim so `--help` shows the
+# build version. Value is resolved a few lines below.
+# (target_compile_definitions call is at the bottom of the file after
+# FH_SIM_GIT_DESCRIBE is resolved — kept together with the daemon's
+# stamp to avoid duplicating the resolver logic.)
+
+# -----------------------------------------------------------------------------
 # Executable (footballhome_sim daemon).
 # -----------------------------------------------------------------------------
 add_executable(footballhome_sim src/main.cpp)
@@ -315,6 +338,8 @@ if(NOT DEFINED FH_SIM_GIT_DESCRIBE OR FH_SIM_GIT_DESCRIBE STREQUAL "")
 endif()
 message(STATUS "sim: FH_SIM_GIT_DESCRIBE = ${FH_SIM_GIT_DESCRIBE}")
 target_compile_definitions(footballhome_sim
+    PRIVATE FH_SIM_GIT_DESCRIBE="${FH_SIM_GIT_DESCRIBE}")
+target_compile_definitions(fh-sim-replay
     PRIVATE FH_SIM_GIT_DESCRIBE="${FH_SIM_GIT_DESCRIBE}")
 
 # -----------------------------------------------------------------------------

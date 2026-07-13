@@ -340,7 +340,9 @@ class AdminClubScreen extends Screen {
     }
 
     if (section === 'paused-members') {
-      this.navigation.goTo('paused-members', {
+      // Legacy tile id — route to the new `members` screen name so
+      // the URL becomes `#members` instead of `#paused-members`.
+      this.navigation.goTo('members', {
         clubId: this.clubId,
         clubName: this.clubName
       });
@@ -348,9 +350,9 @@ class AdminClubScreen extends Screen {
     }
 
     if (section === 'members') {
-      // Reuses the paused-members screen with variant=active so we
-      // don't maintain two nearly-identical class definitions.
-      this.navigation.goTo('paused-members', {
+      // Unified Members board — the screen filters by variant/category
+      // internally via chips, so no `variant` param is needed here.
+      this.navigation.goTo('members', {
         clubId: this.clubId,
         clubName: this.clubName,
         variant: 'active',
@@ -371,7 +373,11 @@ class AdminClubScreen extends Screen {
       const dbCategory = cat === 'mens' ? 'men'
                        : cat === 'womens' ? 'women'
                        : cat;
-      this.navigation.goTo('paused-members', {
+      // Always route to the new `members` screen name (URL: `#members`).
+      // The legacy `paused-members` tile id is preserved only so old
+      // admin-club bookmarks still work — the variant param carries
+      // the paused/active intent.
+      this.navigation.goTo('members', {
         clubId:   this.clubId,
         clubName: this.clubName,
         variant,

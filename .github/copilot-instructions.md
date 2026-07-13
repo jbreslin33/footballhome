@@ -2,18 +2,76 @@
 
 ## ⚠️ CRITICAL RULES (READ FIRST)
 
+### Repo Location
+- **Workspace lives at `/srv/footballhome`** (moved from `/home/jbreslin/footballhome`).
+- All absolute paths, systemd units, cron jobs, nginx configs, and backup scripts must use `/srv/footballhome`.
+- Before assuming a path, `pwd` or check the workspace root.
+
+### Container / DB Access Rules
+**Podman runs ROOTFUL on this host.** All container/DB commands require `sudo`:
+- ❌ `podman ps` → returns empty (rootless namespace, sees no containers)
+- ❌ `make shell-db` → fails ("no such container")
+- ❌ `docker …` → docker is not installed; the engine is `podman`
+- ✅ `sudo podman ps`
+- ✅ `sudo make shell-db`
+- ✅ `sudo podman exec -i footballhome_db psql -U footballhome_user -d footballhome -c "SELECT …"`
+- ✅ `sudo podman logs -f footballhome_backend`
+
+**Before running anything containerized:** `sudo podman ps` to confirm what's up.
+
+**Container names:**
+- `footballhome_db` — Postgres (port 5432)
+- `footballhome_backend` — C++ HTTP server (port 3001)
+- `footballhome_frontend` — nginx (port 3000)
+- `footballhome_sim` — sim service
+- `footballhome_scraper` — long-lived scraper shell
+- `footballhome_leagueapps_sync` — LA sync worker
+
+**Engine:** `podman` (see `ENGINE := $(shell command -v podman ...)` in Makefile).
+
+### Sanity-Check Order Before Acting
+Before running commands or making changes, in this order:
+1. `pwd` — confirm you're in `/srv/footballhome`.
+2. `make help` — list available targets (don't guess).
+3. `sudo podman ps` — confirm what containers are running.
+4. Read the relevant existing file — do not overwrite unread files.
+
+### Membership Data Flow (STRICT — user directive)
+**Any view showing LeagueApps membership MUST follow: LA API → update DB → query DB → render. Never skip.**
+- On page load AND on every tab / chip / filter change, POST `/api/admin/membership/sync` FIRST (narrow scope where possible: `?variant=X&category=Y`), then GET `/api/admin/members`.
+- Client-side-only tab switching (filtering already-fetched groups) is BANNED for membership views.
+- A person is a member of an LA program **only** when their `registrationStatus` is one of: `SPOT_RESERVED`, `SPOT_PENDING`, `WAITING_LIST`. Every other status (DROPPED, CANCELED, DECLINED, REFUNDED, …) means NOT a member of that program.
+- After sync, `LaProgramSync` closes (`ended_at = now()`) any open `person_la_memberships` row for the synced program whose person is no longer in the LA-returned "still a member" set. DB after sync == LA console at sync time.
+- Rule of thumb: if you're rendering membership from `person_la_memberships` without a preceding LA sync in the same code path, you're wrong.
+
 ### Terminal Command Rules
-**NEVER use these commands when showing build/scraper output:**
-- ❌ `tail` - User wants FULL output, not last N lines
-- ❌ `head` - User wants FULL output, not first N lines  
-- ❌ `grep` - Do not filter build output
-- ❌ `tail -f` - Do not use blocking/hanging commands
-- ❌ Pipe to files (`> output.txt`) - Show output directly
+**User must see FULL, UNFILTERED output of every command you run — no exceptions.**
 
-**WHY:** User needs to see complete output to diagnose issues. Filtering hides critical errors.
+**NEVER use these on ANY command (build, scraper, `podman ps`, `ls`, `psql`, logs, git, etc.):**
+- ❌ `| head` / `head -n` — truncates start of output
+- ❌ `| tail` / `tail -n` — truncates end of output
+- ❌ `| grep` — hides context around matches
+- ❌ `| awk` / `| sed` / `| cut` for filtering display — same problem
+- ❌ `tail -f` / `less` / `more` / any pager — blocks the terminal
+- ❌ `> file.txt` / `&> file.log` — hides output from user
+- ❌ `2>/dev/null` — hides errors
+- ❌ `--quiet` / `-q` flags that suppress output
 
-**CORRECT:** `./build.sh` (full output)  
-**WRONG:** `./build.sh 2>&1 | head -100` or `./build.sh | grep error`
+**WHY:** User needs to see complete output to diagnose issues. Filtering hides critical errors and forces them to re-run the command themselves.
+
+**Examples:**
+- ✅ `sudo podman ps` &nbsp;&nbsp;❌ `sudo podman ps | head -10`
+- ✅ `./build.sh` &nbsp;&nbsp;❌ `./build.sh 2>&1 | head -100`
+- ✅ `git status` &nbsp;&nbsp;❌ `git status | head -20`
+- ✅ `sudo podman logs footballhome_backend` &nbsp;&nbsp;❌ `... | tail -50`
+- ✅ `ls database/data/` &nbsp;&nbsp;❌ `ls database/data/ | head`
+
+**If output is genuinely huge and would overwhelm:** tell the user first and ask which slice they want — do NOT silently truncate.
+
+**Legitimate uses of head/tail/grep** (allowed):
+- Inside a script the user will run later (not for display).
+- Testing whether a pattern exists before acting: `grep -q PATTERN file && do-thing` (no output shown).
+- The user explicitly asks you to filter.
 
 ### File Organization Rules
 **Root folder is for:**

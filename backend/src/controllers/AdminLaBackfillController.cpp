@@ -559,21 +559,22 @@ static Response respondMembers(const std::string& variant,
             o << "]}";
         };
 
-        // "men" → "Mens Club", "boys" → "Boys Club", etc.  When the row's
-        // variant is `pickup` we insert " Pickup" before "Club" so the
-        // frontend can show a single flat chip row (one per sub-program)
-        // without needing an active/pickup toggle.  The label is derived
-        // from the row's own variant — NOT the request-level variant —
-        // because the endpoint also serves `variant=all`, which mixes
-        // both variants in one response.  Special-case "men" → "Mens"
-        // and "women" → "Womens" so we don't emit "Men Club" /
-        // "Women Club" (grammatically awkward).
+        // "men" → "Mens Club Members", "boys" → "Boys Club Members", etc.
+        // When the row's variant is `pickup` we swap in "Pickup Members"
+        // so the frontend can show a flat chip row (one per sub-program)
+        // alongside per-category aggregate chips ("All Men", "All Boys").
+        // The label is derived from the row's own variant — NOT the
+        // request-level variant — because the endpoint also serves
+        // `variant=all`, which mixes both variants in one response.
+        // Special-case "men" → "Mens" and "women" → "Womens" so we
+        // don't emit "Men Club Members" / "Women Club Members"
+        // (grammatically awkward).
         auto categoryLabel = [&](const std::string& cat, const std::string& rowVariant) -> std::string {
             std::string noun = cat;
             if      (cat == "men")   noun = "Mens";
             else if (cat == "women") noun = "Womens";
             else if (!noun.empty())  noun[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(noun[0])));
-            const std::string suffix = (rowVariant == "pickup") ? " Pickup Club" : " Club";
+            const std::string suffix = (rowVariant == "pickup") ? " Pickup Members" : " Club Members";
             return noun + suffix;
         };
 

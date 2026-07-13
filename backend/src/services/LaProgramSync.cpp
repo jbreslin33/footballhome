@@ -98,29 +98,38 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
             out.paymentByRegistration[regId] = lp;
         }
 
-        // Everyone LA returns for this program is a member of that program
-        // (i.e. shows up on the LA console Members list at
-        // /console/sites/41983/players?bid=<programId>).  registrationStatus
-        // (`SPOT_RESERVED`, `SPOT_PENDING`, `WAITING_LIST`, …) does NOT
-        // gate membership — coaches manually move truly-inactive folks to
-        // the paused-variant program, which is handled by
-        // `person_la_memberships` + the paused filter in LaPool/roster.
-        // (User directive 2026-07-03.)
-        out.activeUserIds.insert(uid);
+        // Membership gate (user directive 2026-07-12): a person is a
+        // member of this LA program ONLY if their registrationStatus is
+        // one of the three statuses the LA console displays by default —
+        //   SPOT_RESERVED, SPOT_PENDING, WAITING_LIST.
+        // Every other status (DROPPED, CANCELED, DECLINED, REFUNDED, …)
+        // is treated as "not currently a member of this program".  The
+        // person is still linked via linkLa (so their alias/contact info
+        // stays fresh), but no membership row is opened, and the
+        // end-of-loop closeStaleMemberships sweep will END any pre-existing
+        // open row for this program.  This replaces the earlier "presence
+        // == member" heuristic which caused dropped-out folks to keep
+        // showing up under the Members board (see 2026-07-03 comment
+        // below — superseded).
+        const bool isMember =
+               status == "SPOT_RESERVED"
+            || status == "SPOT_PENDING"
+            || status == "WAITING_LIST";
 
-        // Link EVERY reg (active + paused + waitlisted) — per user directive
-        // 2026-07-01, presence in any sub-program = member.  The membership
-        // row we write records WHICH program (and therefore variant) they
-        // are currently registered in; downstream queries decide whether to
-        // show them (variant='active') or hide them from rosters/pool
-        // (variant='paused').
+        if (isMember) {
+            out.activeUserIds.insert(uid);
+        }
+
+        // Link EVERY reg (member or not) so aliases + contact info stay
+        // current for people who later re-join.  Only WRITE the
+        // membership row when isMember == true.
         try {
             auto r = linker.linkLa(rec);
             if (!r.skipReason.empty()) {
                 std::cerr << "[la-sync program=" << programId
                           << "] linkLa skipped userId=" << uid
                           << ": " << r.skipReason << std::endl;
-            } else if (r.personId > 0) {
+            } else if (r.personId > 0 && isMember) {
                 linker.recordMembership(r.personId, programId, regId);
             }
         } catch (const std::exception& e) {
@@ -131,6 +140,12 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
 
         out.recs.push_back(std::move(rec));
     }
+
+    // End-of-sync sweep: close any OPEN membership rows for this program
+    // whose person is no longer in the "still a member" set.  This is
+    // what makes the sync AUTHORITATIVE — the DB after sync reflects
+    // exactly the LA console for this program at this moment.
+    linker.closeStaleMemberships(static_cast<long long>(programId), out.activeUserIds);
 
     return out;
 }

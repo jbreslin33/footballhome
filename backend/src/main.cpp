@@ -54,6 +54,7 @@
 #include "controllers/MyController.h"
 #include "controllers/EventReminderController.h"
 #include "controllers/SimLobbyController.h"
+#include "controllers/SimDebugController.h"
 #include "controllers/TrailTestController.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
@@ -106,6 +107,7 @@ private:
     std::shared_ptr<MyController> my_controller_;
     std::shared_ptr<EventReminderController> event_reminder_controller_;
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
+    std::shared_ptr<SimDebugController> sim_debug_controller_;
     std::shared_ptr<TrailTestController> trail_test_controller_;
 
 public:
@@ -151,6 +153,7 @@ public:
         my_controller_ = std::make_shared<MyController>();
         event_reminder_controller_ = std::make_shared<EventReminderController>();
         sim_lobby_controller_ = std::make_shared<SimLobbyController>();
+        sim_debug_controller_ = std::make_shared<SimDebugController>();
         trail_test_controller_ = std::make_shared<TrailTestController>();
     }
     
@@ -318,6 +321,15 @@ private:
         //   POST /api/sim/matches
         //   POST /api/sim/matches/:matchId/join   (mints sim-side HS256 JWT)
         router_.useController("/api/sim", sim_lobby_controller_);
+
+        // Slice 13 sub-slice 8 — fh-sim debug endpoints (admin-only,
+        // gated on FH_ENABLE_SIM_DEBUG=1). Uses migration 201 decode
+        // helpers for input/event visibility; /state defers to
+        // sub-slice 8.1 (cross-container fh-sim-replay spawn).
+        //   GET  /api/sim/debug/matches/:id/inputs
+        //   GET  /api/sim/debug/matches/:id/events
+        //   GET  /api/sim/debug/matches/:id/state    (501 today)
+        router_.useController("/api/sim/debug", sim_debug_controller_);
 
         // Tactical Games — Learning Game 1 (Trail Test).  Pure client-
         // side canvas game; this controller is just the storage seam.
