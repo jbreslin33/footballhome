@@ -400,6 +400,16 @@ class PressTrigger4v2   : public Scenario { /* M5 */ };
 
 Scenarios are declared in code (`sim/src/scenarios/*.cpp`) and registered in `sim_scenarios` for lobby exposure.
 
+**`PlayableArea::Mode` semantics (§21.5 item 6 closed 2026-07-13):**
+
+M0 uses no playable-area constraints — `EmptyPitchScenario::playableArea()` returns a rectangle covering the full 105×68 m pitch with `Mode::Advisory` (the rendering layer clips the camera to the polygon; the sim ignores it). The three modes are contract points for M1+ when the first constrained-area scenario (a "final third" drill, say) lands:
+
+- `Mode::Hard` — the sim clamps player positions to the polygon after each physics step. Players cannot cross the boundary; velocity is zeroed at the wall. Use for training-drill zones where the exercise conceptually ends outside the box.
+- `Mode::Soft` — the sim applies an inward-pointing repulsive force proportional to the outward penetration depth. Players *can* briefly leave the polygon (a lunging tackle, an over-run) but are pushed back. Use for real-match-like phase-of-play scenarios where a hard clamp would produce visibly unphysical stops.
+- `Mode::Advisory` — the sim does nothing with the polygon. Client renders a dashed boundary + fits camera to `zoom_hint`. Use for coach-eye scenarios where the polygon is a viewing rectangle, not a physical constraint. **M0 default.**
+
+Implementation lands with M1's first constrained scenario; the enum ships now so `EmptyPitchScenario` can set `Advisory` explicitly (§22 rule: reserved fields carry their eventual meaning, not `None`).
+
 ### 5.7 Match orchestrator
 
 ```cpp
@@ -444,6 +454,8 @@ public:
     bool ended() const;
 };
 ```
+
+> **`spectators` is reserved and unused in M0.** No spectator role distinction exists yet — §16.4 explicitly says a client that connects but never sends an INPUT frame simply doesn't claim a slot; they are a "de-facto spectator" tracked only by `SimServer`'s client bookkeeping, not by `Match`. The `spectators` vector is deliberately kept in the shape so the class layout doesn't have to churn when the role lands (M3+ once we differentiate coach/spectator/player roles per §22.1). **Do not access `spectators` from gameplay code — it will always be empty in M0, and no tests cover it.** When the role lands, the `IPlayerController` interface may need to widen (spectators observe but don't produce `Intent`s) — treat the current type as a placeholder.
 
 ### 5.8 Network transport & serialization
 
@@ -579,6 +591,8 @@ class KeyboardInput extends IInputSource {
 ## 7. Wire protocol (binary v1)
 
 **Rendering boundary.** Snapshots on the wire use `f32` for positions/velocities/headings because the client only *renders* — it doesn't reproduce the sim. Non-determinism at the render boundary is fine; it's just pixels. The server converts `Fixed64 → f32` right before serializing. When a client-side prediction milestone arrives later, we'll add a separate deterministic message type (v2 wire) that ships the raw `int64` fixed-point words, so the client can run the sim in lockstep. For now, the sim state on the server stays 100% `Fixed64`.
+
+> **v1 targets rendering only.** The `f32` fields in the SNAPSHOT and INPUT payloads (§7.2 / §7.3) are per-tick display state — precision loss at this boundary is tolerated because the client is a passive renderer. Any client-side prediction path (e.g. the WASM lockstep client sketched in **§20 "Open questions to revisit later"**) requires a **v2 wire** carrying raw `int64` fixed-point words plus deterministic input timestamps; the two wire formats will coexist (v1 for spectators / low-fidelity clients, v2 for authoritative-prediction clients) rather than v2 replacing v1. Do not "just make v1 more precise" — the point of the split is that v1's serializer stays cheap and lossy while v2 stays bit-exact.
 
 **Framing**: every message on the wire is prefixed with:
 
@@ -1037,6 +1051,16 @@ Recognition rolls happen inside `RecognitionSystem::apply(worldView, profile, se
    writes result blob, closes all WebSockets for that match.
 ```
 
+**M0 reality vs the lifecycle above (2026-07-13 reconciliation, §21.5 item 2 closed):**
+
+Steps 1, 4a–h, 5, and 6 are shipped. Steps 1 and 3 have M0-specific caveats:
+
+- **Step 1 — "backend calls sim server RPC to create instance"**: not yet real. `POST /api/sim/matches` (`SimLobbyController::handleCreateMatch`) currently returns the single seeded `sim_matches.id=1` row (from migration 202) rather than creating a new match. This is deliberate — M0 is a single-process, single-match daemon (`SIM_MATCH_ID` from env), so the "create instance" RPC has no target service to route to. The **cross-container HTTP RPC layer that will host this request already exists**: `POST http://footballhome_sim:9101/admin/replay` uses [sim/src/admin/AdminHttpServer.{hpp,cpp}](sim/src/admin/AdminHttpServer.cpp) (§16.6 sub-slice 8.1). A future `POST /admin/createMatch` handler on the same admin server, called from `SimLobbyController::handleCreateMatch`, is the intended shape. Real multi-match orchestration is spec'd in **§16.7 (Multi-match orchestration plan)** — §21.5 item 2 closes on shipping the M1 orchestration path, not on the doc alone.
+- **Step 3 — CLAIM_SLOT wire message**: the wire message doesn't exist as a distinct type in v1. Instead, the first accepted `INPUT` frame from a connection implicitly claims the slot associated with the connection's authenticated `person_id` (see [sim/src/server/SimServer.cpp](sim/src/server/SimServer.cpp) `handleInputFrame`). The sequence `ClientConnect → SlotClaim → SlotRelease → ClientDisconnect` is still emitted to `sim_match_events` at transport boundaries — the events exist, the explicit wire message doesn't. M1's playable-area work will introduce an explicit slot picker; the CLAIM_SLOT wire message will land with it.
+- **`sim_player_profile` write policy**: reads happen on every `ProfileStore::loadOrCreate(person_id)` call at connection time (§16.6 sub-slice 3). **Writes are exclusively at first-touch** (`loadOrCreate` inserts the default profile if none exists) — never per-tick, never mid-match, and NOT at match-end for M0. Concept-mastery updates that motivated the original `sim_player_profile` design land with M3's training features. Anything that appears to update the profile mid-match is a bug — the tick loop reads from `Slot::profile` (a `PlayerProfile` value snapshotted from the DB at claim time) and never writes back. Tracked as ADR §22.14 (pending).
+
+
+
 ## 15. Milestone plan
 
 > **This document is the source of truth for both design AND progress.** Each
@@ -1073,7 +1097,7 @@ boxes in place as work lands.
 
 **Gameplay stack**
 - [x] `sim/src/physics/{IPhysicsWorld.hpp, StubPhysics.{hpp,cpp}}` — kinematic-only integration; no collisions. Interface adds `setHeading` + `setMotion` (opaque store, no simulation effect); `EntityDef`/`EntityState` carry `slot_id` so controllers can locate self by scenario slot.
-- [x] `sim/src/controller/{IPlayerController.hpp, HumanController.{hpp,cpp}, WanderController.{hpp,cpp}, AiController.{hpp,cpp}}` (`AiController` is skeleton only until M3).
+- [x] `sim/src/controller/{IPlayerController.hpp, HumanController.{hpp,cpp}, WanderController.{hpp,cpp}, AiController.{hpp,cpp}}` (`AiController` is a skeleton class; the interface exists so `Slot::controller` has a stable non-null pointer, but no `IBehavior` implementations are plugged into `AiController::decide()` until M3 — see §16.3 / §16.4 which specify AI slots run `WanderController`, not `AiController`, in M0).
 - [x] `sim/src/scenario/{Scenario.hpp, EmptyPitchScenario.{hpp,cpp}}` — 105m × 68m; up to 12 slots; no ball; no playable-area constraint.
 - [x] `sim/src/match/{Slot.hpp, MatchClock.{hpp,cpp}, Match.{hpp,cpp}, Snapshot.hpp, Mechanics.{hpp,cpp}}` — 20 Hz tick loop wiring Recognition → Decision → Execution; `Mechanics` translates `Intent` + `AttributeSet` → new velocity/heading/motion/stamina (accel/decel/agility-clamped, stamina drain 0.10/s while sprinting, recovery 0.05/s while walk/idle, clamped to `[0, stamina_max]`).
 - [x] `WanderController` uses concept `run_to_point` for unclaimed slots.
@@ -1256,7 +1280,7 @@ Grouped by subsystem so a completed group closes a natural build slice. Tick box
 - Match visibility beyond `public` — `sim_matches.visibility` column exists but stays hard-coded to 0. Wire-up when clubs/private matches matter.
 - Snapshot compression (delta encoding, keyframes) — deferred; M0 stores full canonical hex only at match_end for verification, not per-tick.
 
-## 17. Project layout (scaffolding in progress; per-file status tracked in §16.1)
+## 17. Project layout (per-file status tracked in §16.1; layout snapshot below reconciled with reality 2026-07-13 — §21.5 item 1 closed)
 
 ```
 footballhome/
@@ -1265,12 +1289,25 @@ footballhome/
 │   ├─ WIRE.md                   (binary format reference)
 │   ├─ CMakeLists.txt
 │   ├─ Dockerfile
+│   ├─ scripts/
+│   │   ├─ check_no_floats.sh                (CI: no float in gameplay code)
+│   │   ├─ check_no_bad_rng.sh               (CI: no std::rand / std::mt19937 in gameplay)
+│   │   ├─ check_no_hardcoded_attrs.sh       (CI: no Fixed64::fromFloat outside registry paths)
+│   │   ├─ check_determinism_cross_arch.sh   (host: amd64 vs qemu-arm64 replay parity)
+│   │   ├─ gen_registry_header.awk           (build: migration 200 → M0Registry.generated.hpp)
+│   │   └─ mint-dev-jwt.sh                   (dev: mint an admin JWT for /api/sim/debug/* probes)
 │   ├─ src/
 │   │   ├─ main.cpp
+│   │   ├─ common/
+│   │   │   ├─ IdTypes.hpp                   (PersonId, MatchId, SlotId, TickNum)
+│   │   │   ├─ Role.hpp                      (M0 slot-role enum)
+│   │   │   ├─ EntityState.hpp
+│   │   │   ├─ M0Attributes.{hpp,cpp}        (defaultPhysical(), defaultConcepts())
+│   │   │   └─ M0Registry.generated.hpp      (build-time, from migration 200)
 │   │   ├─ math/
 │   │   │   ├─ Fixed64.{hpp,cpp}
-│   │   │   ├─ FixedMath.{hpp,cpp}       (fx_sqrt, fx_sin, fx_cos, fx_atan2)
-│   │   │   ├─ TrigLUT.{hpp,cpp}         (sin/cos/atan2 lookup tables)
+│   │   │   ├─ FixedMath.{hpp,cpp}           (fx_sqrt / fx_sin / fx_cos / fx_atan2)
+│   │   │   ├─ TrigLUT.{hpp,cpp}             (sin/cos/atan2 lookup tables)
 │   │   │   ├─ Vec3.hpp
 │   │   │   └─ RngDet.hpp
 │   │   ├─ registry/
@@ -1281,7 +1318,8 @@ footballhome/
 │   │   │   ├─ AttributeSet.{hpp,cpp}
 │   │   │   ├─ ConceptSet.{hpp,cpp}
 │   │   │   ├─ RecognitionSet.{hpp,cpp}
-│   │   │   └─ PlayerProfile.{hpp,cpp}
+│   │   │   ├─ PackedU16F32.{hpp,cpp}        (shared (u16, f32) pair codec)
+│   │   │   └─ PlayerProfile.hpp
 │   │   ├─ awareness/
 │   │   │   ├─ AwarenessView.hpp
 │   │   │   └─ RecognitionSystem.{hpp,cpp}
@@ -1292,7 +1330,7 @@ footballhome/
 │   │   │   ├─ IPlayerController.hpp
 │   │   │   ├─ HumanController.{hpp,cpp}
 │   │   │   ├─ WanderController.{hpp,cpp}
-│   │   │   └─ AiController.{hpp,cpp}     (skeleton, empty until M3)
+│   │   │   └─ AiController.{hpp,cpp}        (skeleton class, no behaviors plugged until M3)
 │   │   ├─ behavior/
 │   │   │   └─ IBehavior.hpp
 │   │   ├─ scenario/
@@ -1301,38 +1339,93 @@ footballhome/
 │   │   ├─ match/
 │   │   │   ├─ Slot.hpp
 │   │   │   ├─ MatchClock.{hpp,cpp}
+│   │   │   ├─ Mechanics.{hpp,cpp}           (deterministic per-tick pipeline)
 │   │   │   ├─ Match.{hpp,cpp}
-│   │   │   └─ Snapshot.hpp
+│   │   │   ├─ Snapshot.hpp
+│   │   │   └─ CanonicalHash.{hpp,cpp}       (8-byte FNV-1a-64 snapshot hash)
 │   │   ├─ net/
 │   │   │   ├─ INetworkTransport.hpp
 │   │   │   ├─ WebSocketTransport.{hpp,cpp}
+│   │   │   ├─ WebSocketFrame.{hpp,cpp}
+│   │   │   ├─ WebSocketHandshake.{hpp,cpp}
+│   │   │   ├─ WireFormat.hpp                (msg-type/version constants shared with client)
+│   │   │   ├─ LeCodec.hpp                   (little-endian read/write helpers)
+│   │   │   ├─ InputFrame.{hpp,cpp}          (encode/decode symmetric helpers)
 │   │   │   ├─ ISnapshotSerializer.hpp
 │   │   │   └─ BinaryV1Serializer.{hpp,cpp}
 │   │   ├─ auth/
 │   │   │   └─ JwtVerifier.{hpp,cpp}
 │   │   ├─ persistence/
-│   │   │   └─ PgClient.{hpp,cpp}
+│   │   │   ├─ IPgClient.hpp                 (pure-virtual DB contract)
+│   │   │   ├─ PgClient.{hpp,cpp}            (libpqxx implementation)
+│   │   │   ├─ InMemoryPgClient.{hpp,cpp}    (test double, same contract)
+│   │   │   ├─ ProfileStore.{hpp,cpp}        (loadOrCreate default profile)
+│   │   │   ├─ RegistryLoader.{hpp,cpp}      (DB → AttributeRegistry / ConceptRegistry / PatternRegistry)
+│   │   │   ├─ EventTypes.hpp                (stable event-type enum, mirrored in migration 201's sim_event_type_name)
+│   │   │   ├─ AsyncPgLog.hpp                (templated bounded-queue background drain)
+│   │   │   ├─ InputLog.hpp                  (typedef AsyncPgLog<InputRow>)
+│   │   │   └─ EventLog.hpp                  (typedef AsyncPgLog<EventRow>)
+│   │   ├─ tools/
+│   │   │   ├─ Replay.{hpp,cpp}              (reusable driver used by both fh-sim-replay and test_replay)
+│   │   │   └─ replay_main.cpp               (fh-sim-replay CLI)
+│   │   ├─ admin/
+│   │   │   └─ AdminHttpServer.{hpp,cpp}     (POST /admin/replay bearer-gated RPC on :9101)
 │   │   └─ server/
 │   │       └─ SimServer.{hpp,cpp}
 │   └─ tests/
+│       ├─ CMakeLists.txt
+│       ├─ test_harness.hpp                  (FH_TEST / FH_EXPECT / FH_EXPECT_EQ / FH_TEST_MAIN)
 │       ├─ test_fixed64.cpp
 │       ├─ test_fixed_math.cpp
-│       ├─ test_binary_serializer.cpp
+│       ├─ test_trig_lut.cpp
+│       ├─ test_vec3.cpp
+│       ├─ test_rng_det.cpp
+│       ├─ test_registry.cpp
+│       ├─ test_attribute_set.cpp
+│       ├─ test_concept_set.cpp
+│       ├─ test_recognition_set.cpp
 │       ├─ test_recognition_passthrough.cpp
+│       ├─ test_stub_physics.cpp
+│       ├─ test_match_clock.cpp
+│       ├─ test_match_tick.cpp
+│       ├─ test_mechanics.cpp
+│       ├─ test_empty_pitch_scenario.cpp
+│       ├─ test_human_controller.cpp
 │       ├─ test_wander_controller.cpp
+│       ├─ test_stamina.cpp
 │       ├─ test_determinism.cpp
-│       ├─ test_determinism_cross_platform.cpp    (runs under qemu-aarch64)
-│       └─ test_stamina.cpp
+│       ├─ test_canonical_hash.cpp
+│       ├─ test_binary_v1_serializer.cpp
+│       ├─ test_input_frame.cpp
+│       ├─ test_websocket_frame.cpp
+│       ├─ test_websocket_handshake.cpp
+│       ├─ test_websocket_transport.cpp
+│       ├─ test_jwt_verifier.cpp
+│       ├─ test_in_memory_pg_client.cpp
+│       ├─ test_pg_client.cpp
+│       ├─ test_profile_store.cpp
+│       ├─ test_registry_loader.cpp
+│       ├─ test_async_pg_log.cpp
+│       ├─ test_async_pg_log_load.cpp        (5 s CI + opt-in 10 min via FH_SIM_LOAD_10MIN=1)
+│       ├─ test_sim_server.cpp
+│       ├─ test_admin_http_server.cpp
+│       ├─ test_replay.cpp
+│       └─ test_match_lifecycle_persistence.cpp
 ├─ database/migrations/
-│   ├─ 200-sim-registries.sql
-│   ├─ 201-sim-matches.sql
-│   ├─ 202-sim-inputs-events.sql
-│   ├─ 203-sim-player-profile.sql
-│   └─ 204-sim-decode-functions.sql
+│   ├─ 200-sim-registries.sql                (all 8 sim tables + registries + seed rows, single file)
+│   ├─ 201-sim-decode-functions.sql          (plpgsql helpers: sim_decode_input / _event / _attributes / _concepts / _recognition)
+│   ├─ 202-sim-lobby.sql                     (seeds sim_matches.id=1 empty_pitch, seed=42, tick_hz=20)
+│   ├─ 203-sim-registry-ids-stable.sql       (drops SMALLSERIAL sequences on the four registry tables — §22.9)
+│   └─ 204-sim-scenarios-empty-pitch-id-zero.sql
+│                                            (renumbers sim_scenarios.empty_pitch → id=0 to match runtime enum)
 ├─ backend/  (existing — adds /api/sim/* routes)
-│   └─ src/controllers/SimLobbyController.{hpp,cpp}
+│   └─ src/controllers/
+│       ├─ SimLobbyController.{h,cpp}        (GET /api/sim/matches, POST /api/sim/matches no-op)
+│       └─ SimDebugController.{h,cpp}        (GET /api/sim/debug/matches/:id/{inputs,events,state} — admin-only, rate-limited)
 └─ frontend/
     ├─ sim.html
+    ├─ tactical-games.html                   (hub tile → /sim.html)
+    ├─ css/sim.css                           (canvas + joystick + sprint-pad + #sim-back styling)
     └─ js/sim/
         ├─ wire.js
         ├─ transport.js
@@ -1342,6 +1435,15 @@ footballhome/
         ├─ client.js
         └─ lobby.js
 ```
+
+**Layout notes** (deviations from the pre-Slice-13 sketch, all conscious and covered by ADRs in §22):
+- `sim/src/common/` collects the small cross-cutting types (`IdTypes`, `Role`, `EntityState`, `M0Attributes`, `M0Registry.generated.hpp`) that would otherwise cause include-cycles between `math/`, `profile/`, and `match/`.
+- `sim/src/persistence/` grew several files beyond the original `PgClient` sketch — `IPgClient` (contract), `InMemoryPgClient` (test double, §22.12), `ProfileStore`, `RegistryLoader`, `AsyncPgLog` + `InputLog` / `EventLog` typedefs, `EventTypes`.
+- `sim/src/tools/` + `sim/src/admin/` are new — added by §16.6 sub-slice 6 (`fh-sim-replay`) and sub-slice 8.1 (cross-container `/state` RPC).
+- Migration numbers 201–204 landed in a different order than the pre-Slice-13 sketch predicted; the reality above is authoritative.
+- Tests are FH_TEST_MAIN-based, one test binary per `test_*.cpp`, all registered in `sim/tests/CMakeLists.txt` and run by `ctest` in the sim Dockerfile build stage. Current count: 36 binaries.
+
+
 
 ## 18. Debug & observability
 
@@ -1415,13 +1517,13 @@ Not flaws — deliberate deviations from industry defaults with real trade-offs.
 
 ### 21.5 Documentation reconciliation (do anytime, low risk)
 
-- [ ] **§17 project layout is stale.** Lists migrations `201-sim-matches.sql, 202-sim-inputs-events.sql, 203-sim-player-profile.sql, 204-sim-decode-functions.sql`, but reality is: migration 200 is one file with all 8 tables, migration 202 is sim-lobby, migration 201 will be the decode functions per §16.6. Test list under §17 also doesn't match what's actually in `sim/tests/`. Full pass needed.
-- [ ] **§14 references a "sim server RPC" that doesn't exist.** "Backend inserts row into sim_matches, calls sim server RPC to create instance." Reality (§16.1): `POST /api/sim/matches` is a no-op returning the single seeded row. Reconcile once multi-match orchestration is spec'd (§21.2).
-- [ ] **§7 pre-commits to `f32` positions on the wire; §20 wants WASM client-side prediction.** Lockstep prediction needs `Fixed64` on the wire. §20 acknowledges v2-wire is required; §7 doesn't cross-reference this. Add a cross-reference in §7 saying "v1 wire targets rendering only; a v2 wire spec (§20) is required for client-side prediction / WASM lockstep."
-- [ ] **§16.1 has `AiController` checked off as an M0 deliverable, but §16.3/§16.4 say AI is wander-only in M0.** True (`AiController` is code-present, behavior-empty), just easy to misread. Add a parenthetical: "(skeleton class; no behaviors plugged until M3)."
-- [ ] **§5.7's `Match` includes `spectators` field; §16.4 says "no spectator role distinction in M0."** Field is reserved but present. Add coverage note: "reserved field, no tests until spectator role lands (M3+); do not access from gameplay code."
-- [ ] **§5.6's `PlayableArea::Mode` enum has three values (`Hard` / `Soft` / `Advisory`) with no semantics defined.** M0 doesn't use any. Add definitions to §5.6 or defer them to M1 when the first constrained-area scenario lands.
-- [ ] **Migration 200 registry key formats are inconsistent.** Attributes use category-prefixed keys (`physical.max_walk_speed`, `physical.max_jog_speed`, ...) while concepts use bare keys (`run_to_point` with `category = 'movement'` set separately in the row). The awk generator in §22.11 handles both by stripping the category prefix only when present, but the underlying inconsistency is worth unifying. Recommendation: pick one convention (bare keys, since the row already carries a `category` column) and land a migration to rewrite the attribute keys. Zero-behavior-change on the sim side because the generated `k*` identifier names stay the same.
+- [x] **§17 project layout is stale.** Lists migrations `201-sim-matches.sql, 202-sim-inputs-events.sql, 203-sim-player-profile.sql, 204-sim-decode-functions.sql`, but reality is: migration 200 is one file with all 8 tables, migration 202 is sim-lobby, migration 201 will be the decode functions per §16.6. Test list under §17 also doesn't match what's actually in `sim/tests/`. Full pass needed. **Closed 2026-07-13** — §17 rewritten against actual repo state: added `sim/scripts/`, `sim/src/common/`, `sim/src/tools/`, `sim/src/admin/`, updated `sim/src/persistence/` file list (IPgClient/InMemoryPgClient/ProfileStore/RegistryLoader/EventTypes/AsyncPgLog/InputLog/EventLog), updated `sim/src/net/` file list (WebSocket*/WireFormat/LeCodec/InputFrame), rewrote `sim/tests/` list against the current 36 binaries in ctest, corrected migration numbering (200 sim-registries, 201 sim-decode-functions, 202 sim-lobby, 203 sim-registry-ids-stable, 204 sim-scenarios-empty-pitch-id-zero), added `SimDebugController` to the backend controllers list, added `tactical-games.html` + `css/sim.css` to the frontend list, and appended a "Layout notes" block that flags every deviation from the pre-Slice-13 sketch with the ADR that covers each.
+- [x] **§14 references a "sim server RPC" that doesn't exist.** "Backend inserts row into sim_matches, calls sim server RPC to create instance." Reality (§16.1): `POST /api/sim/matches` is a no-op returning the single seeded row. Reconcile once multi-match orchestration is spec'd (§21.2). **Closed 2026-07-13** — added an "M0 reality vs the lifecycle above" block below the pseudocode that (a) notes step 1's RPC is not yet real (`SimLobbyController::handleCreateMatch` returns the seeded row from migration 202), (b) points at [sim/src/admin/AdminHttpServer.{hpp,cpp}](sim/src/admin/AdminHttpServer.cpp) as the *existing* HTTP-RPC surface that will host `POST /admin/createMatch` when multi-match orchestration lands (§16.7, to be spec'd in the M1-blocker follow-up work — §21.2 item), (c) documents that CLAIM_SLOT is not a distinct wire message in v1 — the first accepted INPUT frame implicitly claims the slot — but the `SlotClaim`/`SlotRelease` events *are* logged to `sim_match_events` at transport boundaries, and (d) records the `sim_player_profile` write policy for M0 (first-touch INSERT only; never per-tick; never at match-end for M0 — concept-mastery updates land with M3) with a forward-pointer to ADR §22.14 (pending; will be filled by the A2 follow-up sub-task).
+- [x] **§7 pre-commits to `f32` positions on the wire; §20 wants WASM client-side prediction.** Lockstep prediction needs `Fixed64` on the wire. §20 acknowledges v2-wire is required; §7 doesn't cross-reference this. Add a cross-reference in §7 saying "v1 wire targets rendering only; a v2 wire spec (§20) is required for client-side prediction / WASM lockstep." **Closed 2026-07-13** — added a bold blockquote at the top of §7 pointing forward to §20's "Client-side prediction / rollback netcode" bullet, spelling out that v1's `f32` payload fields are intentionally lossy (rendering-only) and that a v2 wire carrying raw `int64` fixed-point words is a *coexisting* format for WASM lockstep clients, not a v1 replacement.
+- [x] **§16.1 has `AiController` checked off as an M0 deliverable, but §16.3/§16.4 say AI is wander-only in M0.** True (`AiController` is code-present, behavior-empty), just easy to misread. Add a parenthetical: "(skeleton class; no behaviors plugged until M3)." **Closed 2026-07-13** — §16.1 controller-checkbox rewritten to explicitly say "`AiController` is a skeleton class; the interface exists so `Slot::controller` has a stable non-null pointer, but no `IBehavior` implementations are plugged into `AiController::decide()` until M3 — see §16.3 / §16.4 which specify AI slots run `WanderController`, not `AiController`, in M0."
+- [x] **§5.7's `Match` includes `spectators` field; §16.4 says "no spectator role distinction in M0."** Field is reserved but present. Add coverage note: "reserved field, no tests until spectator role lands (M3+); do not access from gameplay code." **Closed 2026-07-13** — added a blockquote directly beneath the `Match` class block explaining that `spectators` is reserved-unused in M0 (a client that connects but never claims a slot is a de-facto spectator tracked only by `SimServer`'s client bookkeeping), that the vector ships in the class layout so the shape doesn't churn when M3+ introduces role differentiation (§22.1), that no tests cover the field, and that the `IPlayerController` interface may need to widen when the role lands (spectators observe but don't produce `Intent`s).
+- [x] **§5.6's `PlayableArea::Mode` enum has three values (`Hard` / `Soft` / `Advisory`) with no semantics defined.** M0 doesn't use any. Add definitions to §5.6 or defer them to M1 when the first constrained-area scenario lands. **Closed 2026-07-13** — added semantics beneath §5.6's Scenario block: `Hard` = clamp positions to polygon after each physics step (velocity zeroed at wall), `Soft` = inward repulsive force proportional to outward penetration depth (players *can* briefly leave but are pushed back), `Advisory` = sim does nothing (client renders dashed boundary + fits camera to `zoom_hint`) — the M0 default used by `EmptyPitchScenario`. Actual `Hard`/`Soft` implementation lands with M1's first constrained scenario; the enum ships now so `EmptyPitchScenario` can set `Advisory` explicitly (§22 rule: reserved fields carry their eventual meaning, not `None`).
+- [x] **Migration 200 registry key formats are inconsistent.** Attributes use category-prefixed keys (`physical.max_walk_speed`, `physical.max_jog_speed`, ...) while concepts use bare keys (`run_to_point` with `category = 'movement'` set separately in the row). The awk generator in §22.11 handles both by stripping the category prefix only when present, but the underlying inconsistency is worth unifying. Recommendation: pick one convention (bare keys, since the row already carries a `category` column) and land a migration to rewrite the attribute keys. Zero-behavior-change on the sim side because the generated `k*` identifier names stay the same. **Won't-fix 2026-07-13 — resolved as "unify going forward: prefixed everywhere" rather than "unify backward: bare everywhere".** Rationale: (a) the `key` column strings are display-only (`SELECT key FROM sim_attribute_registry`, log lines, error messages) — the runtime uses `AttrId` / `ConceptId` u16 values from [sim/src/common/M0Registry.generated.hpp](sim/src/common/M0Registry.generated.hpp) for every operation, and those k*-identifier names derive from the LAST dotted segment (`to_cname` in `gen_registry_header.awk` strips the leading `<cat>.` when present) so they're stable across any prefix change. (b) The `category` column IS the machine-readable second-source; the prefix in the key is human-readable convenience for grep/eyeballing `SELECT key`. (c) Attributes benefit from prefixing because their `physical` / `technical` / `mental` categories are non-empty and will collide (e.g. a future `technical.acceleration` — first-touch pace — vs the existing `physical.acceleration` — top-speed ramp). Concepts don't yet have a category-collision problem (M0 has one concept). (d) Mutating migration 200 breaks the immutability convention (§16.6 rule); writing migration 205 to `UPDATE` to bare keys would leave migration 200's file visibly out-of-sync with the DB, which is worse for readers than the current inconsistency. **Decision**: when the first concept-key collision arrives, add `<category>.` prefixes to concept keys in a new migration — matching attributes — rather than stripping prefixes off attributes. Until then, the awk generator's bilateral handling stays as-is.
 
 ### 21.6 Process for this section
 
@@ -1860,4 +1962,4 @@ Blocker: pick a path when the M1 profile editor UI is designed — not before. A
 
 ---
 
-**End of design v1 · 2026-07-10** (§21 + §22 added 2026-07-11; §22.9 + §22.10 added 2026-07-11; §22.11 added + accepted 2026-07-12 — §21.1 ship-blockers all closed; §22.12 proposed + accepted 2026-07-12 — Slice 13 persistence library landed; §16.6 registry loading + drift check landed 2026-07-13 — Slice 13 sub-slice 2 (`sim/src/persistence/RegistryLoader.{hpp,cpp}` + `sim/scripts/check_no_hardcoded_attrs.sh`); §16.6 profile store + `Match::claimSlot(person_id)` landed 2026-07-13 — Slice 13 sub-slice 3 (`sim/src/persistence/ProfileStore.{hpp,cpp}` + `Slot::person` field + `SimServer` profile bootstrap on connect); §16.6 match lifecycle landed 2026-07-13 — Slice 13 sub-slice 4 (`sim/src/match/CanonicalHash.{hpp,cpp}` + `GIT_DESCRIBE` compile define + `main.cpp` `upsertMatch` on boot / `insertEvent(MatchStart|MatchEnd)` + `updateMatchEnded` with 8-byte FNV-1a-64 canonical snapshot hash on shutdown); §16.6 async input+event logging landed 2026-07-13 — Slice 13 sub-slice 5 (`sim/src/persistence/AsyncPgLog.hpp` templated bounded-queue drain + `InputLog`/`EventLog` typedefs + `SimServer` pushes `InputRow` on accepted INPUT frames and `EventRow{ClientConnect|SlotClaim|SlotRelease|ClientDisconnect}` at transport boundaries + `main.cpp` `input_log.stop()`/`event_log.stop()` before `MatchEnd` write); §16.6 checkboxes for sub-slices 1–5 reconciled with landed code 2026-07-12 — Slice 13 remaining sub-slices: **sub-slice 6** (replay binary `fh-sim-replay` + `test_replay.cpp` + cross-arch replay verification), **sub-slice 7** (migration 201 SQL decode helpers), **sub-slice 8** (backend `SimDebugController` at `/api/sim/debug/*`), **sub-slice 9** (frontend Tactical Games hub tile), plus the CI load test that closes the last §16.5 exit-criteria checkbox); §16.6 sub-slice 7 landed 2026-07-13 — `database/migrations/201-sim-decode-functions.sql` (plpgsql helpers: `sim_read_f32_le(BYTEA, INT)`, `sim_event_type_name(SMALLINT)`, `sim_decode_attributes(BYTEA)` / `sim_decode_concepts(BYTEA)` / `sim_decode_recognition(BYTEA)` TABLE-returning set decoders joined to their registries, `sim_decode_input(BYTEA)` → jsonb 20-byte wire INPUT decoder, `sim_decode_event(SMALLINT, BYTEA)` → jsonb per-event decoder with MatchEnd hash decoding) unblocks §16.6 sub-slice 8 (`SimDebugController`) — smoke-tested on the running dev DB. §16.6 replay binary landed 2026-07-13 — Slice 13 sub-slice 6 (`sim/src/tools/{Replay.hpp,Replay.cpp,replay_main.cpp}` + new `IPgClient::loadInputsForMatch` / `loadMatchEnd` (both implementations) + `net::encodeInputFrame` symmetric helper + `fh-sim-replay` CMake target + Dockerfile install + `tests/test_replay.cpp` proving byte-identical hash to the `human_sprint_east_400` golden — 33/33 ctests green in container build); §22.13 accepted 2026-07-13 documenting the M0 default-profile assumption in replay, with M1 revisit-path picked between SlotClaim-payload vs profile-history-table when the M1 profile editor lands; remaining Slice 13 work after sub-slice 6: sub-slice 6.1 (extend `check_determinism_cross_arch.sh` for qemu-arm64 `--verify`), sub-slices 7–9, and the CI load test); §16.6 sub-slice 8 landed 2026-07-13 — `backend/src/controllers/SimDebugController.{h,cpp}` mounted at `/api/sim/debug/*` in `main.cpp`, feature-gated on `FH_ENABLE_SIM_DEBUG` env var (dev default 1 via docker-compose, prod defaults to unset → routes not registered). Dual-path auth (Bearer login JWT via `fh::crypto::verifyJwtHS256` + `userId` claim → `person_id` lookup, OR `fh_sess` cookie), direct admin SQL check, per-admin sliding-window rate limiter (10/60s). Two working endpoints (`/matches/:id/inputs` + `/matches/:id/events`) return decoded row envelopes using the migration 201 SQL functions (no client-side hex parsing needed); the third (`/matches/:id/state?tick=T`) is a documented HTTP 501 stub with a `sudo podman exec footballhome_sim fh-sim-replay ...` workaround, deferred to sub-slice 8.1 because `fh-sim-replay` lives in the sim container not the backend container (cross-container spawn is a separate architectural choice: bundle-into-backend-image vs UNIX-socket IPC to sim daemon). Added `HttpStatus::TOO_MANY_REQUESTS = 429` to `Response.h/.cpp` (previously missing). Verified end-to-end with a minted admin JWT: unauth → 401, non-admin → 403, admin+bad matchId → 400, admin+valid → 200 with real decoded events including MatchEnd hash inline, 11th rapid request within 60s → 429. Remaining Slice 13 work: sub-slice 6.1 (cross-arch qemu-arm64 replay CI), sub-slice 8.1 (cross-container `/state` replay), sub-slice 9 (frontend Tactical Games hub tile), and the §16.5 CI load test); §16.6 sub-slice 9 landed 2026-07-13 — Tactical Games hub tile → `/sim.html` already existed in [frontend/tactical-games.html](frontend/tactical-games.html) from an earlier drop (labeled "Sim Demo M0" with honest copy about "Wander an empty pitch. Zero rules — just proves the sim works end-to-end"), so this sub-slice just added the return trip: new top-left `#sim-back` anchor in [frontend/sim.html](frontend/sim.html) + matching CSS block in [frontend/css/sim.css](frontend/css/sim.css) styled to sit above the canvas/joystick/sprint-pad in the top-left corner (`rgba(0,0,0,0.55)` background, safe-area-inset aware, z-index 3, hover 0.75). Both files bind-mounted into `footballhome_frontend` so no rebuild — verified live via `curl http://127.0.0.1:3000/sim.html` + `curl http://127.0.0.1:3000/css/sim.css`. Zero touches to engine or wire protocol. Remaining Slice 13 work: sub-slice 6.1 (cross-arch qemu-arm64 replay CI), sub-slice 8.1 (cross-container `/state` replay), and the §16.5 CI load test); §16.6 sub-slice 6.1 landed 2026-07-13 — [sim/scripts/check_determinism_cross_arch.sh](sim/scripts/check_determinism_cross_arch.sh) rewritten as a container-parallel three-phase proof. Both amd64 and arm64 build inside ephemeral `debian:trixie-slim` containers (matching [sim/Dockerfile](sim/Dockerfile)) — no `libpqxx-dev`/`cmake`/`g++` needed on the host, only `podman` + `qemu-user-static` + binfmt-aarch64. Marker-delimited stdout (`===BEGIN_DETERMINISM===` / `===BEGIN_REPLAY===`) lets an outer `awk` extract each test's output for independent verification. Verdict: [1] `Live amd64 == Live arm64` via direct byte-diff of `test_determinism`'s canonical dumps, [2] `Replay amd64 == Live amd64` via `test_replay` exiting 0 inside the amd64 container, [3] `Replay arm64 == Live arm64` via `test_replay` exiting 0 inside the arm64 container under qemu-aarch64. Three-way equality proved by transitivity (live = live across arches ⇒ replay = replay across arches, since each arch's replay = its own live). Smoke-tested end-to-end on `fishtown` 2026-07-13 after `sudo apt install qemu-user-static binfmt-support`: 12m20s wall time, all three claims OK. This closes the last §16.5 exit-criteria checkbox that was previously blocked (the "DB-sourced replay" language in the original spec was over-scoped — `InMemoryPgClient` in the test provides identical guarantees with zero compose-stack dependency). Remaining Slice 13 work: sub-slice 8.1 (cross-container `/state` replay), and the §16.5 CI load test (100 ms Pg latency, zero dropped inputs)); §16.6 sub-slice 8.1 landed 2026-07-13 — [sim/src/admin/AdminHttpServer.{hpp,cpp}](sim/src/admin/AdminHttpServer.cpp) exposes `POST /admin/replay` on `footballhome_sim:9101` (bearer-token gated, own `PgClient`, hand-rolled AF_INET listener with 5 s socket timeouts + 16 KB request cap + `constantTimeEquals` bearer compare); [backend/src/controllers/SimDebugController.cpp](backend/src/controllers/SimDebugController.cpp) `handleState()` rewritten to `HttpClient::postJson()` the sim endpoint with `Authorization: Bearer $FH_SIM_ADMIN_TOKEN`, forward status + body verbatim (transport failure → 502, missing token → 503). Path (c) HTTP RPC chosen over path (a) binary-bundle (rejected: trixie sim vs bookworm backend glibc/libstdc++ gap) and path (b) UNIX-socket IPC (rejected: bespoke wire when HTTP already exists both sides). `FH_SIM_ADMIN_TOKEN` flows via `env_file: ./env` in [docker-compose.yml](docker-compose.yml) to both services (deliberately not in `environment:` to avoid `${...:-}` shell-substitution clobber). 35/35 sim `ctest` tests pass including 20 new tests in [sim/tests/test_admin_http_server.cpp](sim/tests/test_admin_http_server.cpp). Verified end-to-end from `footballhome_backend` → `footballhome_sim`: 401 (no bearer) / 403 (wrong bearer) / 404 (unknown match) / 500 (application error forwarded verbatim) all correct through both hops. This closes **all §16.6 sub-slices (1–9 including 6.1 and 8.1) AND all §16.5 exit criteria** — Slice 13 is complete); **§22.9 pattern extended to `sim_scenarios` 2026-07-13** — [database/migrations/204-sim-scenarios-empty-pitch-id-zero.sql](database/migrations/204-sim-scenarios-empty-pitch-id-zero.sql) renumbers `sim_scenarios.empty_pitch` from DB id=1 (SMALLSERIAL-assigned by migration 200) to id=0 (the hand-managed enum value the runtime uses in `main.cpp` / `Replay.cpp::makeScenario` / `EventTypes.hpp`), and updates the seeded `sim_matches.id=1.scenario_id` in the same transaction (FK drop → parent renumber → child re-route → FK re-add → `DO` post-check). Discovered during §16.6 sub-slice 8.1 verification when `/api/sim/debug/matches/1/state` returned `"unknown scenario_id=1"` from `Replay.cpp` — root cause was `upsertMatch`'s deliberate "server_version-only refresh on conflict" clause (per §16.6 sub-slice 4 spec) leaving the migration-202-seeded `scenario_id=1` sticky across sim restarts. Defence-in-depth follow-up: [sim/src/main.cpp](sim/src/main.cpp) now reads `getMatch(match_id)` BEFORE `upsertMatch` at boot and refuses to start (return code 6) with a clear diagnostic if the existing DB row's `(scenario_id, seed, tick_hz)` differ from what the daemon intends to write. Rationale: recorded `sim_match_inputs` are keyed against those three fields; silently overwriting them would corrupt every replay — same failure mode Postgres' `data_directory` mismatch and Kafka's `broker.id` mismatch bail on at startup. Full 36/36 sim `ctest` gate still passes; end-to-end `/api/sim/debug/matches/1/state` now returns 200 with a canonical hash instead of 500 with a "unknown scenario_id" error)
+**End of design v1 · 2026-07-10** (§21 + §22 added 2026-07-11; §22.9 + §22.10 added 2026-07-11; §22.11 added + accepted 2026-07-12 — §21.1 ship-blockers all closed; §22.12 proposed + accepted 2026-07-12 — Slice 13 persistence library landed; §16.6 registry loading + drift check landed 2026-07-13 — Slice 13 sub-slice 2 (`sim/src/persistence/RegistryLoader.{hpp,cpp}` + `sim/scripts/check_no_hardcoded_attrs.sh`); §16.6 profile store + `Match::claimSlot(person_id)` landed 2026-07-13 — Slice 13 sub-slice 3 (`sim/src/persistence/ProfileStore.{hpp,cpp}` + `Slot::person` field + `SimServer` profile bootstrap on connect); §16.6 match lifecycle landed 2026-07-13 — Slice 13 sub-slice 4 (`sim/src/match/CanonicalHash.{hpp,cpp}` + `GIT_DESCRIBE` compile define + `main.cpp` `upsertMatch` on boot / `insertEvent(MatchStart|MatchEnd)` + `updateMatchEnded` with 8-byte FNV-1a-64 canonical snapshot hash on shutdown); §16.6 async input+event logging landed 2026-07-13 — Slice 13 sub-slice 5 (`sim/src/persistence/AsyncPgLog.hpp` templated bounded-queue drain + `InputLog`/`EventLog` typedefs + `SimServer` pushes `InputRow` on accepted INPUT frames and `EventRow{ClientConnect|SlotClaim|SlotRelease|ClientDisconnect}` at transport boundaries + `main.cpp` `input_log.stop()`/`event_log.stop()` before `MatchEnd` write); §16.6 checkboxes for sub-slices 1–5 reconciled with landed code 2026-07-12 — Slice 13 remaining sub-slices: **sub-slice 6** (replay binary `fh-sim-replay` + `test_replay.cpp` + cross-arch replay verification), **sub-slice 7** (migration 201 SQL decode helpers), **sub-slice 8** (backend `SimDebugController` at `/api/sim/debug/*`), **sub-slice 9** (frontend Tactical Games hub tile), plus the CI load test that closes the last §16.5 exit-criteria checkbox); §16.6 sub-slice 7 landed 2026-07-13 — `database/migrations/201-sim-decode-functions.sql` (plpgsql helpers: `sim_read_f32_le(BYTEA, INT)`, `sim_event_type_name(SMALLINT)`, `sim_decode_attributes(BYTEA)` / `sim_decode_concepts(BYTEA)` / `sim_decode_recognition(BYTEA)` TABLE-returning set decoders joined to their registries, `sim_decode_input(BYTEA)` → jsonb 20-byte wire INPUT decoder, `sim_decode_event(SMALLINT, BYTEA)` → jsonb per-event decoder with MatchEnd hash decoding) unblocks §16.6 sub-slice 8 (`SimDebugController`) — smoke-tested on the running dev DB. §16.6 replay binary landed 2026-07-13 — Slice 13 sub-slice 6 (`sim/src/tools/{Replay.hpp,Replay.cpp,replay_main.cpp}` + new `IPgClient::loadInputsForMatch` / `loadMatchEnd` (both implementations) + `net::encodeInputFrame` symmetric helper + `fh-sim-replay` CMake target + Dockerfile install + `tests/test_replay.cpp` proving byte-identical hash to the `human_sprint_east_400` golden — 33/33 ctests green in container build); §22.13 accepted 2026-07-13 documenting the M0 default-profile assumption in replay, with M1 revisit-path picked between SlotClaim-payload vs profile-history-table when the M1 profile editor lands; remaining Slice 13 work after sub-slice 6: sub-slice 6.1 (extend `check_determinism_cross_arch.sh` for qemu-arm64 `--verify`), sub-slices 7–9, and the CI load test); §16.6 sub-slice 8 landed 2026-07-13 — `backend/src/controllers/SimDebugController.{h,cpp}` mounted at `/api/sim/debug/*` in `main.cpp`, feature-gated on `FH_ENABLE_SIM_DEBUG` env var (dev default 1 via docker-compose, prod defaults to unset → routes not registered). Dual-path auth (Bearer login JWT via `fh::crypto::verifyJwtHS256` + `userId` claim → `person_id` lookup, OR `fh_sess` cookie), direct admin SQL check, per-admin sliding-window rate limiter (10/60s). Two working endpoints (`/matches/:id/inputs` + `/matches/:id/events`) return decoded row envelopes using the migration 201 SQL functions (no client-side hex parsing needed); the third (`/matches/:id/state?tick=T`) is a documented HTTP 501 stub with a `sudo podman exec footballhome_sim fh-sim-replay ...` workaround, deferred to sub-slice 8.1 because `fh-sim-replay` lives in the sim container not the backend container (cross-container spawn is a separate architectural choice: bundle-into-backend-image vs UNIX-socket IPC to sim daemon). Added `HttpStatus::TOO_MANY_REQUESTS = 429` to `Response.h/.cpp` (previously missing). Verified end-to-end with a minted admin JWT: unauth → 401, non-admin → 403, admin+bad matchId → 400, admin+valid → 200 with real decoded events including MatchEnd hash inline, 11th rapid request within 60s → 429. Remaining Slice 13 work: sub-slice 6.1 (cross-arch qemu-arm64 replay CI), sub-slice 8.1 (cross-container `/state` replay), sub-slice 9 (frontend Tactical Games hub tile), and the §16.5 CI load test); §16.6 sub-slice 9 landed 2026-07-13 — Tactical Games hub tile → `/sim.html` already existed in [frontend/tactical-games.html](frontend/tactical-games.html) from an earlier drop (labeled "Sim Demo M0" with honest copy about "Wander an empty pitch. Zero rules — just proves the sim works end-to-end"), so this sub-slice just added the return trip: new top-left `#sim-back` anchor in [frontend/sim.html](frontend/sim.html) + matching CSS block in [frontend/css/sim.css](frontend/css/sim.css) styled to sit above the canvas/joystick/sprint-pad in the top-left corner (`rgba(0,0,0,0.55)` background, safe-area-inset aware, z-index 3, hover 0.75). Both files bind-mounted into `footballhome_frontend` so no rebuild — verified live via `curl http://127.0.0.1:3000/sim.html` + `curl http://127.0.0.1:3000/css/sim.css`. Zero touches to engine or wire protocol. Remaining Slice 13 work: sub-slice 6.1 (cross-arch qemu-arm64 replay CI), sub-slice 8.1 (cross-container `/state` replay), and the §16.5 CI load test); §16.6 sub-slice 6.1 landed 2026-07-13 — [sim/scripts/check_determinism_cross_arch.sh](sim/scripts/check_determinism_cross_arch.sh) rewritten as a container-parallel three-phase proof. Both amd64 and arm64 build inside ephemeral `debian:trixie-slim` containers (matching [sim/Dockerfile](sim/Dockerfile)) — no `libpqxx-dev`/`cmake`/`g++` needed on the host, only `podman` + `qemu-user-static` + binfmt-aarch64. Marker-delimited stdout (`===BEGIN_DETERMINISM===` / `===BEGIN_REPLAY===`) lets an outer `awk` extract each test's output for independent verification. Verdict: [1] `Live amd64 == Live arm64` via direct byte-diff of `test_determinism`'s canonical dumps, [2] `Replay amd64 == Live amd64` via `test_replay` exiting 0 inside the amd64 container, [3] `Replay arm64 == Live arm64` via `test_replay` exiting 0 inside the arm64 container under qemu-aarch64. Three-way equality proved by transitivity (live = live across arches ⇒ replay = replay across arches, since each arch's replay = its own live). Smoke-tested end-to-end on `fishtown` 2026-07-13 after `sudo apt install qemu-user-static binfmt-support`: 12m20s wall time, all three claims OK. This closes the last §16.5 exit-criteria checkbox that was previously blocked (the "DB-sourced replay" language in the original spec was over-scoped — `InMemoryPgClient` in the test provides identical guarantees with zero compose-stack dependency). Remaining Slice 13 work: sub-slice 8.1 (cross-container `/state` replay), and the §16.5 CI load test (100 ms Pg latency, zero dropped inputs)); §16.6 sub-slice 8.1 landed 2026-07-13 — [sim/src/admin/AdminHttpServer.{hpp,cpp}](sim/src/admin/AdminHttpServer.cpp) exposes `POST /admin/replay` on `footballhome_sim:9101` (bearer-token gated, own `PgClient`, hand-rolled AF_INET listener with 5 s socket timeouts + 16 KB request cap + `constantTimeEquals` bearer compare); [backend/src/controllers/SimDebugController.cpp](backend/src/controllers/SimDebugController.cpp) `handleState()` rewritten to `HttpClient::postJson()` the sim endpoint with `Authorization: Bearer $FH_SIM_ADMIN_TOKEN`, forward status + body verbatim (transport failure → 502, missing token → 503). Path (c) HTTP RPC chosen over path (a) binary-bundle (rejected: trixie sim vs bookworm backend glibc/libstdc++ gap) and path (b) UNIX-socket IPC (rejected: bespoke wire when HTTP already exists both sides). `FH_SIM_ADMIN_TOKEN` flows via `env_file: ./env` in [docker-compose.yml](docker-compose.yml) to both services (deliberately not in `environment:` to avoid `${...:-}` shell-substitution clobber). 35/35 sim `ctest` tests pass including 20 new tests in [sim/tests/test_admin_http_server.cpp](sim/tests/test_admin_http_server.cpp). Verified end-to-end from `footballhome_backend` → `footballhome_sim`: 401 (no bearer) / 403 (wrong bearer) / 404 (unknown match) / 500 (application error forwarded verbatim) all correct through both hops. This closes **all §16.6 sub-slices (1–9 including 6.1 and 8.1) AND all §16.5 exit criteria** — Slice 13 is complete); **§22.9 pattern extended to `sim_scenarios` 2026-07-13** — [database/migrations/204-sim-scenarios-empty-pitch-id-zero.sql](database/migrations/204-sim-scenarios-empty-pitch-id-zero.sql) renumbers `sim_scenarios.empty_pitch` from DB id=1 (SMALLSERIAL-assigned by migration 200) to id=0 (the hand-managed enum value the runtime uses in `main.cpp` / `Replay.cpp::makeScenario` / `EventTypes.hpp`), and updates the seeded `sim_matches.id=1.scenario_id` in the same transaction (FK drop → parent renumber → child re-route → FK re-add → `DO` post-check). Discovered during §16.6 sub-slice 8.1 verification when `/api/sim/debug/matches/1/state` returned `"unknown scenario_id=1"` from `Replay.cpp` — root cause was `upsertMatch`'s deliberate "server_version-only refresh on conflict" clause (per §16.6 sub-slice 4 spec) leaving the migration-202-seeded `scenario_id=1` sticky across sim restarts. Defence-in-depth follow-up: [sim/src/main.cpp](sim/src/main.cpp) now reads `getMatch(match_id)` BEFORE `upsertMatch` at boot and refuses to start (return code 6) with a clear diagnostic if the existing DB row's `(scenario_id, seed, tick_hz)` differ from what the daemon intends to write. Rationale: recorded `sim_match_inputs` are keyed against those three fields; silently overwriting them would corrupt every replay — same failure mode Postgres' `data_directory` mismatch and Kafka's `broker.id` mismatch bail on at startup. Full 36/36 sim `ctest` gate still passes; end-to-end `/api/sim/debug/matches/1/state` now returns 200 with a canonical hash instead of 500 with a "unknown scenario_id" error; **§21.5 documentation-reconciliation sweep landed 2026-07-13** — all 7 items closed in-place with resolution notes (items 1–6 marked `[x] Closed 2026-07-13` with pointer-notes to the sections rewritten: §17 project layout rewritten against actual repo including 36-test enumeration + correct migration numbering 200-204 + a "Layout notes" block flagging every deviation from the pre-Slice-13 sketch; §14 gained an "M0 reality vs the lifecycle above" block covering RPC-not-yet-real / CLAIM_SLOT-implicit-in-first-INPUT-frame / sim_player_profile-write-policy forward-pointing to ADR §22.14 (pending); §7 gained a bold blockquote pointing to §20 about v1-rendering vs v2-lockstep wire coexistence; §16.1 `AiController` checkbox rewritten to spell out skeleton status + point to §16.3/§16.4 for wander-only M0 AI; §5.7 `Match::spectators` gained a reserved-in-M0 blockquote; §5.6 `PlayableArea::Mode` gained Hard/Soft/Advisory semantics with M0 defaulting to Advisory via `EmptyPitchScenario`; item 7 (migration 200 attribute-vs-concept key format inconsistency) marked **Won't-fix** with rationale — resolved as "unify going forward: prefixed everywhere" (add category prefixes to concept keys when the first concept-category collision arises) rather than "unify backward: bare everywhere" (which would either mutate immutable migration 200 or leave migration 205 UPDATE'ing the DB to a state visibly out-of-sync with the migration file). Zero code touched; the `key` column strings are display-only — runtime uses `AttrId`/`ConceptId` u16 values from [sim/src/common/M0Registry.generated.hpp](sim/src/common/M0Registry.generated.hpp), and `to_cname` in `gen_registry_header.awk` strips the leading `<cat>.` when present so the generated k*-identifier names are stable across any prefix change)
