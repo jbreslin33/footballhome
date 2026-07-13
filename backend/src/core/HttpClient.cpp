@@ -71,6 +71,12 @@ HttpClient::Response HttpClient::postJson(const std::string& url,
     return perform(url, "POST", jsonBody, "application/json", headers, unixSocketPath);
 }
 
+HttpClient::Response HttpClient::del(const std::string& url,
+                                     const Headers& headers,
+                                     const std::string& unixSocketPath) {
+    return perform(url, "DELETE", {}, {}, headers, unixSocketPath);
+}
+
 HttpClient::Response HttpClient::perform(const std::string& url,
                                          const std::string& method,
                                          const std::string& body,
@@ -115,6 +121,11 @@ HttpClient::Response HttpClient::perform(const std::string& url,
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.data());
+    } else if (method == "DELETE") {
+        // libcurl's CURLOPT_CUSTOMREQUEST lets any method name ride on
+        // the same code path. No body — DELETE requests over the podman
+        // API use query-string parameters (`?force=true`, etc.).
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     }
     // GET is curl's default; no extra setup needed.
 

@@ -331,35 +331,95 @@ LaunchResult SimOrchestrator::launchMatch(const LaunchOptions& opts) {
 }
 
 void SimOrchestrator::removeContainerBestEffort(const std::string& container_id) {
-    // DELETE /containers/{id}?force=true — force stops-then-removes so
-    // we don't need a separate stop call for a container that never
-    // reached "started" state.
-    const std::string url = std::string(kPodmanUrlPrefix) + "/"
-                          + kPodmanApiVersion
-                          + "/containers/" + container_id + "?force=true";
-    // libcurl-based HttpClient doesn't expose DELETE directly today,
-    // but the API server accepts POST /containers/{id}/stop followed by
-    // DELETE /containers/{id}. Since we already handle transport
-    // errors as warnings-only here, use the simpler stop-then-forget
-    // pattern via the /stop endpoint (POST, no body). Any residual
-    // stopped container will be swept up by the Slice 14.6 reaper
-    // pass — this call exists only to reduce the window during which
-    // a stale name blocks retries.
+    // Rollback path from launchMatch. Reuses the full stopMatch flow
+    // (stop-with-grace → delete) so a partial-launch failure leaves
+    // exactly the same clean state as an explicit stopMatch call.
+    // Grace period is deliberately short (2s) because a container that
+    // failed to start has no in-flight work worth flushing — either the
+    // process never wrote anything, or it wrote and then crashed, and
+    // we're just trying to free the name.
+    StopOptions opts;
+    opts.container_id   = container_id;
+    opts.grace_seconds  = 2;
+    StopResult r = stopMatch(opts);
+    if (!r.ok && !r.already_gone) {
+        std::cerr << "[sim-orchestrator] best-effort cleanup failed for "
+                  << container_id << ": " << r.error
+                  << " (leaked container name will be resolved by reaper)"
+                  << std::endl;
+    }
+}
+
+StopResult SimOrchestrator::stopMatch(const StopOptions& opts) {
+    StopResult r;
+
+    if (!cfg_.enabled) {
+        r.error = "orchestrator disabled (FH_SIM_ORCHESTRATOR_ENABLED unset)";
+        return r;
+    }
+    if (opts.container_id.empty()) {
+        r.error = "container_id required";
+        return r;
+    }
+    if (opts.grace_seconds < 0) {
+        r.error = "grace_seconds must be >= 0";
+        return r;
+    }
+
+    // Step 1: SIGTERM + wait up to grace_seconds. Docker/podman API
+    // returns 204 (stopped), 304 (already stopped), or 404 (missing).
+    // /stop is synchronous up to `t` seconds — if the daemon exits
+    // cleanly before that, the call returns as soon as the process
+    // reaps. If not, podman escalates to SIGKILL and returns 204 anyway.
     const std::string stopUrl = std::string(kPodmanUrlPrefix) + "/"
                               + kPodmanApiVersion
-                              + "/containers/" + container_id + "/stop";
+                              + "/containers/" + opts.container_id
+                              + "/stop?t=" + std::to_string(opts.grace_seconds);
     HttpClient::Response stop = http_.postJson(stopUrl, "", {},
                                                cfg_.podman_socket_path);
     if (!stop.error.empty()) {
-        std::cerr << "[sim-orchestrator] best-effort stop failed for "
-                  << container_id << ": " << stop.error << std::endl;
-    } else if (stop.status != 204 && stop.status != 304
-               && stop.status != 404) {
-        std::cerr << "[sim-orchestrator] best-effort stop HTTP "
-                  << stop.status << " for " << container_id
-                  << ": " << stop.body << std::endl;
+        r.error = "podman stop transport error: " + stop.error;
+        return r;
     }
-    (void)url;  // reserved for a future proper DELETE call
+    if (stop.status == 404) {
+        // Container already gone — /delete will 404 too. Treat as
+        // idempotent success so the caller's retry after a partial
+        // success (stop OK, delete failed, retry) collapses cleanly.
+        r.ok = true;
+        r.already_gone = true;
+        return r;
+    }
+    if (stop.status != 204 && stop.status != 304) {
+        r.error = "podman stop returned HTTP " + std::to_string(stop.status)
+                + ": " + stop.body;
+        return r;
+    }
+
+    // Step 2: DELETE. No `force=true` — /stop above already guaranteed
+    // the container is stopped, so `force` would only mask bugs.
+    const std::string delUrl = std::string(kPodmanUrlPrefix) + "/"
+                             + kPodmanApiVersion
+                             + "/containers/" + opts.container_id;
+    HttpClient::Response del = http_.del(delUrl, {}, cfg_.podman_socket_path);
+    if (!del.error.empty()) {
+        r.error = "podman delete transport error: " + del.error;
+        return r;
+    }
+    if (del.status == 404) {
+        // Raced with the reaper or another delete — the container is
+        // gone. Same idempotent-success semantics as the /stop 404 case.
+        r.ok = true;
+        r.already_gone = true;
+        return r;
+    }
+    if (del.status != 204 && del.status != 200) {
+        r.error = "podman delete returned HTTP " + std::to_string(del.status)
+                + ": " + del.body;
+        return r;
+    }
+
+    r.ok = true;
+    return r;
 }
 
 } // namespace fh::orchestration

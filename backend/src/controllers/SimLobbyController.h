@@ -32,4 +32,5 @@ private:
     Response handleListMatches(const Request& request);
     Response handleCreateMatch(const Request& request);
     Response handleJoinMatch(const Request& request);
+    Response handleStopMatch(const Request& request);
 };

@@ -70,6 +70,14 @@ public:
                       const Headers& headers = {},
                       const std::string& unixSocketPath = "");
 
+    // HTTP DELETE. Body-less by design — callers pass parameters via the
+    // query string. Used by SimOrchestrator::stopMatch (Slice 14.5) to hit
+    // podman's `DELETE /v1.41/containers/{id}` endpoint over the UNIX
+    // socket. Named `del` (not `delete`) because `delete` is a C++ keyword.
+    Response del(const std::string& url,
+                 const Headers& headers = {},
+                 const std::string& unixSocketPath = "");
+
     // RFC 3986 unreserved encoding.  Pure utility; doesn't touch the wire.
     static std::string urlEncode(const std::string& in);
 

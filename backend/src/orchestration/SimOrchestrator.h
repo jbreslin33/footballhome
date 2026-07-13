@@ -80,6 +80,23 @@ struct LaunchResult {
     std::string error;           // non-empty iff !ok
 };
 
+// Inputs to stopMatch. container_id is the primary identifier —
+// stopping by name requires an extra podman round-trip to resolve, and
+// the caller already has the id in `sim_running_matches.container_id`.
+// grace_seconds is the SIGTERM→SIGKILL window; 5s matches podman-compose
+// default and gives the sim's shutdown chain enough time to flush
+// AsyncPgLog buffers on a healthy daemon.
+struct StopOptions {
+    std::string container_id;      // required, non-empty
+    int         grace_seconds = 5; // podman /stop?t= parameter
+};
+
+struct StopResult {
+    bool        ok = false;
+    bool        already_gone = false; // container had already been removed
+    std::string error;                // non-empty iff !ok
+};
+
 class SimOrchestrator {
 public:
     // `http` is borrowed — the caller (HttpServer in main.cpp) owns the
@@ -111,6 +128,32 @@ public:
     //
     // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
     LaunchResult launchMatch(const LaunchOptions& opts);
+
+    // Slice 14.5 — stop + remove a running per-match sim daemon container.
+    //
+    // Three-step podman API call:
+    //   1. POST /v1.41/containers/${id}/stop?t=${grace_seconds}
+    //      SIGTERMs the container; podman waits up to grace_seconds for
+    //      graceful exit, then SIGKILLs. Grace period gives the sim
+    //      daemon's signal-handler chain time to flush AsyncPgLog
+    //      buffers and write the final MatchEnd event (see
+    //      sim/src/main.cpp:409 shutdown sequence).
+    //   2. DELETE /v1.41/containers/${id}
+    //      Removes the (now-stopped) container so its name is freed for
+    //      future launches. `force=true` is NOT set — /stop above already
+    //      guaranteed the container is stopped, so a force here would
+    //      only mask bugs.
+    //   3. Repository row cleanup is the caller's job — this method
+    //      operates purely on the podman surface.
+    //
+    // Idempotent: an already-stopped container returns 304 from /stop
+    // and 204 from DELETE — both counted as success. A completely-
+    // missing container (404 from either call) is also success, so a
+    // caller retrying after a partial success (stop OK, delete failed)
+    // gets a clean retry.
+    //
+    // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
+    StopResult stopMatch(const StopOptions& opts);
 
     // Config accessor (used by main.cpp boot log to report the current
     // feature-flag + socket path).

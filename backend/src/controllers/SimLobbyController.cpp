@@ -102,9 +102,13 @@ long long resolveCallerPersonId(const Request& request) {
 // Path param + JWT minting helpers
 // ---------------------------------------------------------------------
 
-// Extract the numeric matchId from a path like "/api/sim/matches/42/join".
+// Extract the numeric matchId from a path like
+// "/api/sim/matches/42/join" or ".../42/stop". Suffix is matched
+// against a fixed set so a typo (e.g. "/joinn") returns 0 rather
+// than silently succeeding with the wrong matchId.
 long long extractMatchIdFromPath(const std::string& path) {
-    static const std::regex re(R"(/api/sim/matches/([0-9]+)/join(?:/|$))");
+    static const std::regex re(
+        R"(/api/sim/matches/([0-9]+)/(?:join|stop)(?:/|$))");
     std::smatch m;
     if (std::regex_search(path, m, re)) {
         try { return std::stoll(m[1].str()); } catch (...) { return 0; }
@@ -158,6 +162,12 @@ void SimLobbyController::registerRoutes(Router& router,
     router.post(prefix + "/matches/:matchId/join",
                 [this](const Request& request) {
         return this->handleJoinMatch(request);
+    });
+
+    // POST /api/sim/matches/:matchId/stop  (Slice 14.5)
+    router.post(prefix + "/matches/:matchId/stop",
+                [this](const Request& request) {
+        return this->handleStopMatch(request);
     });
 }
 
@@ -526,5 +536,173 @@ Response SimLobbyController::handleJoinMatch(const Request& request) {
         {"ws_path",       ws_path},
         {"subprotocol",   std::string("fh-sim.v1.bearer.") + token},
         {"expires_in_s",  static_cast<long long>(kSimJwtTtl.count())},
+    });
+}
+
+// =====================================================================
+// POST /api/sim/matches/:matchId/stop
+// =====================================================================
+//
+// Slice 14.5 — stop + reap an orchestrator-launched per-match sim
+// daemon container.
+//
+// Steps:
+//   1. Auth: caller must be the match creator (sim_matches.created_by
+//      == personId). No admin bypass in this slice — that lands with
+//      the operator/admin surface in a later slice. If the row's
+//      created_by is NULL (M0 legacy seed from migration 202), no one
+//      is authorized: return 403.
+//   2. Validate the match has a running-container row. No row =
+//      nothing to stop; return 404 rather than a confusing 200 —
+//      caller almost certainly has a stale UI.
+//   3. SimOrchestrator::stopMatch — SIGTERM (5s grace) → DELETE via
+//      podman REST API. Idempotent: already-gone containers count as
+//      success (see SimOrchestrator::stopMatch header for details).
+//   4. On stop success: UPDATE sim_matches SET ended_at = NOW() and
+//      DELETE from sim_running_matches. Both under the same "everything
+//      after step 3 is bookkeeping" umbrella — failure to update
+//      ended_at is logged but doesn't fail the response because the
+//      container is already gone from the container-runtime's PoV.
+//
+// Feature-flag gate: when FH_SIM_ORCHESTRATOR_ENABLED is unset/0 the
+// handler returns 503 rather than silently succeeding — an operator
+// stopping a match wants confirmation the daemon is actually gone.
+//
+// Idempotency contract: calling stop twice on the same match returns
+// 200 both times (the second time is effectively a no-op because
+// sim_running_matches has no row). This matches the "stop is safe to
+// retry" expectation from UIs.
+
+Response SimLobbyController::handleStopMatch(const Request& request) {
+    const long long personId = resolveCallerPersonId(request);
+    if (personId <= 0) {
+        return jsonError(HttpStatus::UNAUTHORIZED, "sign in required");
+    }
+
+    const long long matchId = extractMatchIdFromPath(request.getPath());
+    if (matchId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "invalid matchId");
+    }
+
+    // -----------------------------------------------------------------
+    // 1) Ownership check. `created_by` NULL → no one owns it (M0 seed).
+    // -----------------------------------------------------------------
+    std::optional<long long> createdBy;
+    bool alreadyEnded = false;
+    try {
+        auto rows = db_->query(
+            "SELECT created_by, ended_at FROM sim_matches WHERE id = $1::bigint",
+            {std::to_string(matchId)});
+        if (rows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "match not found");
+        }
+        if (!rows[0]["created_by"].is_null()) {
+            createdBy = rows[0]["created_by"].as<long long>();
+        }
+        alreadyEnded = !rows[0]["ended_at"].is_null();
+    } catch (const std::exception& e) {
+        std::cerr << "[sim-lobby] stop lookup failed: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "database error");
+    }
+    if (!createdBy.has_value() || *createdBy != personId) {
+        return jsonError(HttpStatus::FORBIDDEN,
+                         "only the match creator can stop this match");
+    }
+
+    // -----------------------------------------------------------------
+    // 2) Feature-flag gate + running-row lookup.
+    // -----------------------------------------------------------------
+    fh::orchestration::SimOrchestratorConfig cfg =
+        fh::orchestration::loadConfigFromEnv();
+    if (!cfg.enabled) {
+        return jsonError(HttpStatus::SERVICE_UNAVAILABLE,
+                         "orchestrator disabled");
+    }
+
+    std::string containerId;
+    std::string containerName;
+    try {
+        auto rows = db_->query(
+            "SELECT container_id, container_name FROM sim_running_matches "
+            " WHERE match_id = $1::bigint",
+            {std::to_string(matchId)});
+        if (rows.empty()) {
+            // No running-row → nothing to reap. If the match was
+            // already ended this is the idempotent second-call case;
+            // otherwise the container is missing for some other reason
+            // (crashed + reaper swept it, orchestrator disabled at
+            // launch time, ...). Either way, respond 200 with a note.
+            return jsonOk(json{
+                {"match_id",      matchId},
+                {"stopped",       false},
+                {"already_gone",  true},
+                {"note",          alreadyEnded
+                                    ? "match already ended"
+                                    : "no running container row (nothing to reap)"},
+            });
+        }
+        if (!rows[0]["container_id"].is_null()) {
+            containerId = rows[0]["container_id"].as<std::string>();
+        }
+        containerName = rows[0]["container_name"].as<std::string>();
+    } catch (const std::exception& e) {
+        std::cerr << "[sim-lobby] stop running-row lookup failed: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "database error");
+    }
+
+    // -----------------------------------------------------------------
+    // 3) Stop + delete via podman.
+    // -----------------------------------------------------------------
+    fh::orchestration::StopResult stopResult;
+    if (containerId.empty()) {
+        // Row exists but container_id was never filled in — the launch
+        // must have crashed between insertPending and setContainerId.
+        // We have no id to stop; just clear the DB row. This matches
+        // the reaper's fallback behavior planned for Slice 14.6.
+        stopResult.ok = true;
+        stopResult.already_gone = true;
+    } else {
+        HttpClient http;
+        fh::orchestration::SimOrchestrator orchestrator(cfg, http);
+        fh::orchestration::StopOptions opts;
+        opts.container_id  = containerId;
+        opts.grace_seconds = 5;
+        stopResult = orchestrator.stopMatch(opts);
+    }
+
+    if (!stopResult.ok) {
+        std::cerr << "[sim-lobby] stopMatch(match_id=" << matchId
+                  << ", container=" << containerName
+                  << ") failed: " << stopResult.error << std::endl;
+        return jsonError(HttpStatus::BAD_GATEWAY,
+                         "podman stop failed: " + stopResult.error);
+    }
+
+    // -----------------------------------------------------------------
+    // 4) Bookkeeping. Both updates are best-effort — the container is
+    //    already gone, so a DB blip shouldn't make the caller retry.
+    // -----------------------------------------------------------------
+    try {
+        db_->query(
+            "UPDATE sim_matches SET ended_at = NOW() "
+            " WHERE id = $1::bigint AND ended_at IS NULL",
+            {std::to_string(matchId)});
+    } catch (const std::exception& e) {
+        std::cerr << "[sim-lobby] stop UPDATE sim_matches.ended_at failed: "
+                  << e.what() << std::endl;
+    }
+    (void)fh::orchestration::SimRunningMatchRepo::deleteFor(matchId);
+
+    std::cout << "[sim-lobby] stopped match_id=" << matchId
+              << " container=" << containerName
+              << (stopResult.already_gone ? " (already gone)" : "")
+              << std::endl;
+
+    return jsonOk(json{
+        {"match_id",      matchId},
+        {"stopped",       true},
+        {"already_gone",  stopResult.already_gone},
+        {"container_name", containerName},
     });
 }
