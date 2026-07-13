@@ -406,6 +406,40 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         std::cerr << "[BoysRoster] la_registered_at (by uid) load failed: " << e.what() << std::endl;
     }
 
+    // ── person_payments fallback keyed by la_registration_id ─────────
+    //
+    // Mirrors the mens-roster payments fallback (2026-07-09 commit
+    // d0d938b5) but keyed on la_registration_id instead of la_user_id.
+    // Rationale: on youth registrations the paying LA user is the
+    // PARENT (payer), not the CHILD (member) — so joining payments by
+    // la_user_id → child's external_user_id never matches (e.g. Kaiden
+    // Pressley reg 106062084: parent la_user_id 57717823 paid $1, but
+    // Kaiden's alias external_user_id is 57717830).  For any boys
+    // registration whose la_registered_at row is NULL (LA-reg-date
+    // backfill hasn't caught up yet) the earliest la_registration_id
+    // payment is a reliable registration-date proxy — LA charges the
+    // $1 card-capture fee at signup, so MIN(paid_at) ≈ signup date.
+    std::unordered_map<long long, std::string> laRegisteredAtByRegIdFromPayments;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT la_registration_id, "
+            "       TO_CHAR(MIN(paid_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
+            "  FROM person_payments "
+            " WHERE la_registration_id IS NOT NULL "
+            "   AND paid_at            IS NOT NULL "
+            " GROUP BY la_registration_id "
+        );
+        for (const auto& r : rows) {
+            if (r["la_registration_id"].is_null() || r["reg_iso"].is_null()) continue;
+            laRegisteredAtByRegIdFromPayments[r["la_registration_id"].as<long long>()] =
+                r["reg_iso"].c_str();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[BoysRoster] la_registered_at (payments fallback) load failed: "
+                  << e.what() << std::endl;
+    }
+
     auto laRegIsoFor = [&](const json& regJson, const std::string& uidFallback = std::string{}) -> json {
         long long id = 0;
         if      (regJson.is_number_integer())  id = regJson.get<long long>();
@@ -422,6 +456,14 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         if (!uidFallback.empty()) {
             auto it = laRegisteredAtByUid.find(uidFallback);
             if (it != laRegisteredAtByUid.end()) return json(it->second);
+        }
+        // Final fallback: earliest LA transaction for this registration.
+        // Handles newly-registered youth whose la_registered_at hasn't
+        // been backfilled yet (LA charges $1 at signup → MIN(paid_at)
+        // ≈ signup timestamp within seconds).
+        if (id > 0) {
+            auto pit = laRegisteredAtByRegIdFromPayments.find(id);
+            if (pit != laRegisteredAtByRegIdFromPayments.end()) return json(pit->second);
         }
         return json(nullptr);
     };
