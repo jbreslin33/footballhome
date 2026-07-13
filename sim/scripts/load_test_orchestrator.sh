@@ -16,15 +16,14 @@
 #     the test-created match_ids.
 #
 # What this test does NOT assert (deferred to follow-up slices):
-#   - Cold-start < 2 s / warm-image start < 500 ms per §16.7. Those are
-#     un-contended single-spawn budgets; under 20-way concurrent load
-#     the aggregate wall-clock is a more useful signal. We record p50
-#     and max spawn latency for observation, and only fail on egregious
-#     hangs. Under FH_SIM_LAUNCH_MAX_CONCURRENCY=4 default, the 20th
-#     caller in a CONCURRENT=20 burst queues behind ~5 batches of 4;
-#     total wall time ≈ 15–25 s, so SPAWN_BUDGET_MS defaults to 60000
-#     (matches the curl --max-time in spawn_one)—anything over that
-#     is a genuine hang, not queue latency.
+#   - Cold-start < 2 s / warm-image start < 500 ms per §23.4 M1 exit
+#     criterion. Step 0.5 MEASURES un-contended warm-image spawn +
+#     stop wall-clock and reports it as info for the M1-exit checkbox,
+#     but does not gate the test on the DESIGN target (measurement
+#     first, optimization second). The 20-way burst latency in step 1
+#     is dominated by the FH_SIM_LAUNCH_MAX_CONCURRENCY semaphore
+#     queue, not per-container startup, and is bounded by
+#     SPAWN_BUDGET_MS purely to catch hangs.
 #   - Effective tick rate ≥ 19.9 Hz per daemon (§16.7 exit criterion).
 #     Requires a real WS client harness to measure per-daemon TickPacket
 #     cadence — out of scope for a shell-level integration test.
@@ -158,6 +157,58 @@ sig_b64="$(printf '%s' "${signing_input}" \
 TOKEN="${signing_input}.${sig_b64}"
 export TOKEN
 ok "minted test JWT (userId=${USER_ID}, ttl=1h)"
+
+# --- 0.5) un-contended warm-image spawn latency measurement ----------------
+# Records the wall-clock for ONE spawn + one stop when nothing else is
+# in flight. This is the number DESIGN.md §23.4 M1 exit criterion asks
+# for ("< 2 s cold-start, < 500 ms warm-image start"). The image is
+# already in the local podman store on this host so this measures the
+# warm-image path only; cold-start would require `podman rmi` first,
+# which is destructive and out of scope for an on-live-stack test.
+#
+# We only fail on egregious hangs (> 30 s) — the DESIGN target is a
+# performance goal to be MET during M1, not a currently-shipped
+# invariant. Reporting the number here is what closes the §23.4
+# checkbox loop; if the number is above target, that's a real
+# optimization ticket, not a test failure.
+say "0.5) warm-image spawn latency (single-shot, un-contended)"
+probe_t0="$(date +%s%3N)"
+set +e
+probe_body="$(curl -sS -X POST "${BACKEND_URL}/api/sim/matches" \
+                 -H "Authorization: Bearer ${TOKEN}" \
+                 -H "Content-Type: application/json" \
+                 -d '{"scenario_id":0,"seed":424242,"tick_hz":20}' \
+                 -w '\n%{http_code}' \
+                 --max-time 30 2>&1)"
+probe_rc=$?
+set -e
+probe_t1="$(date +%s%3N)"
+probe_spawn_ms=$(( probe_t1 - probe_t0 ))
+probe_http="$(printf '%s' "${probe_body}" | tail -n1)"
+probe_json="$(printf '%s' "${probe_body}" | sed '$d')"
+if [[ ${probe_rc} -ne 0 || "${probe_http}" != "200" ]]; then
+    fail "probe spawn failed (rc=${probe_rc}, http=${probe_http}): ${probe_json}"
+else
+    probe_mid="$(printf '%s' "${probe_json}" | jq -r '.id')"
+    info "warm-image spawn: ${probe_spawn_ms} ms (§23.4 target < 500 ms)"
+    if [[ "${probe_spawn_ms}" -le 500 ]]; then
+        ok "warm-image spawn ${probe_spawn_ms} ms ≤ 500 ms target"
+    elif [[ "${probe_spawn_ms}" -le 2000 ]]; then
+        info "warm-image spawn ${probe_spawn_ms} ms > 500 ms target but ≤ 2 s cold-start ceiling — perf follow-up (not test failure)"
+    elif [[ "${probe_spawn_ms}" -le 30000 ]]; then
+        info "warm-image spawn ${probe_spawn_ms} ms > 2 s cold-start ceiling — real perf gap vs §23.4, open ticket (not test failure)"
+    else
+        fail "warm-image spawn ${probe_spawn_ms} ms > 30 s hang threshold"
+    fi
+    # Tear down the probe container so the CONCURRENT=20 count is clean.
+    probe_stop_t0="$(date +%s%3N)"
+    curl -sS -o /dev/null -X POST \
+         "${BACKEND_URL}/api/sim/matches/${probe_mid}/stop" \
+         -H "Authorization: Bearer ${TOKEN}" \
+         --max-time 30 || true
+    probe_stop_ms=$(( $(date +%s%3N) - probe_stop_t0 ))
+    info "warm-image stop: ${probe_stop_ms} ms"
+fi
 
 # --- 1) parallel spawn ------------------------------------------------------
 say "1) spawn ${CONCURRENT} matches in parallel"
@@ -316,16 +367,20 @@ stop_one() {
     local mid="$1"
     local t0 t1 elapsed_ms http_code
     t0="$(date +%s%3N)"
-    # --max-time 60: stopMatch shares the same launch-concurrency
+    # --max-time 90: stopMatch shares the same launch-concurrency
     # semaphore as spawns (see SimOrchestrator.cpp). Under a 20-way
     # parallel tear-down the 20th caller queues behind ~5 batches of
     # 4 × ~5 s SIGTERM-grace each ≈ 25 s of queue time plus its own
-    # ~5 s stop work. 60 s gives a comfortable ceiling.
+    # ~5 s stop work. Empirically the 60 s budget from the first
+    # cut of this script left 5/20 clients timing out even though
+    # the backend completed all 20 stops server-side; 90 s gives
+    # the tail comfortable headroom so the client sees the real
+    # HTTP 200 instead of a spurious HTTP 000.
     http_code="$(curl -sS -o /dev/null -X POST \
                      "${BACKEND_URL}/api/sim/matches/${mid}/stop" \
                      -H "Authorization: Bearer ${TOKEN}" \
                      -w '%{http_code}' \
-                     --max-time 60 || echo 000)"
+                     --max-time 90 || echo 000)"
     t1="$(date +%s%3N)"
     elapsed_ms=$(( t1 - t0 ))
     (
