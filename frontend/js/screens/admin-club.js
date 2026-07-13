@@ -29,7 +29,13 @@ class AdminClubScreen extends Screen {
              Layout below this block (Team Dashboards, Media, Structure, misc)
              is still being evaluated and is intentionally left below the fold. -->
 
-        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 Member</h3>
+        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">🎯 Recruitment</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Step 0 — before someone is a member, they're a lead. Ad-interest form submissions, funnel touch-history, and conversion analytics from first touch through LA registration.
+        </p>
+        <div id="section-recruitment" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">👥 Member</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Step 1 — are you in the club? LA-synced roster of every active / pickup registration, filterable by Men · Women · Boys · Girls.
         </p>
@@ -62,7 +68,7 @@ class AdminClubScreen extends Screen {
         <!-- ── Below the funnel · still evaluating layout ────────────
              Everything below is either a viewing lens on the same
              underlying data (Team Dashboards) or supporting infra
-             (Media, Structure, leads).  Grouping here is provisional. -->
+             (Media, Structure).  Grouping here is provisional. -->
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧩 Team Dashboards</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -80,11 +86,6 @@ class AdminClubScreen extends Screen {
 
         <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👧 Girls Club</h4>
         <div id="dash-girls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
-
-        <h4 style="margin: var(--space-4) 0 var(--space-2); opacity: 0.75; font-size: 0.9rem; font-weight: 500;">
-          Other — pending re-homing
-        </h4>
-        <div id="section-membership-misc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📲 Media &amp; Socials</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -158,14 +159,17 @@ class AdminClubScreen extends Screen {
     ];
     renderInto('#section-membership', membershipTiles);
 
-    // Membership-adjacent tiles that don't map 1:1 to an LA program —
-    // parked here until the next reorg pass decides where they live.
-    // Handlers stay in handleSubNavigation() so the tiles work as-is.
-    const membershipMiscTiles = [
+    // ── Recruitment ────────────────────────────────────────────────────
+    // Step 0 of the funnel — the world before someone is a member.
+    // Leads (Meta ad-form submissions) + Leads Analytics (touch-history
+    // → LA-registration conversion).  Both handlers stay in
+    // handleSubNavigation() below (`section === 'leads'` / `'leads-analytics'`)
+    // so tile ids remain stable across the reorg.
+    const recruitmentTiles = [
       { id: 'leads',           icon: '📋', label: 'Leads',           description: 'Ad interest form submissions' },
       { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics', description: 'What touches actually turn into LA registrations' },
     ];
-    renderInto('#section-membership-misc', membershipMiscTiles);
+    renderInto('#section-recruitment', recruitmentTiles);
 
     // ── Team Dashboards ────────────────────────────────────────────────
     // Grouped by club (Mens / Womens / Boys / Girls).  Each tile is a
