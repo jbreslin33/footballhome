@@ -16,6 +16,11 @@
 //                                 (parallel per-ad region fetch for the
 //                                 ACTIVE subset; mirrors Node Promise.all).
 //   GET /api/ads/spend            spend totals grouped by lead_gen_form_id.
+//   GET /api/ads/spend-breakdown  per-ad spend + impressions + clicks +
+//                                 leads (from Meta insights) for a
+//                                 caller-supplied `?window=` preset —
+//                                 powers the Leads Analytics screen's
+//                                 time-frame + ad-selection pills.
 //   GET /api/ads/:adId/preview    302 redirect to Meta-hosted preview
 //                                 iframe.  Returns an HTML error page (not
 //                                 JSON) on failure so it renders cleanly
@@ -35,6 +40,7 @@ private:
     Response handlePreviewList(const Request& request);
     Response handleTargeting(const Request& request);
     Response handleSpend(const Request& request);
+    Response handleSpendBreakdown(const Request& request);
     Response handleAdPreviewIframe(const Request& request);
 
     // Pulled out so all four handlers share one auth gate.

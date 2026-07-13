@@ -576,6 +576,8 @@ void AdsController::registerRoutes(Router& router, const std::string& prefix) {
         [this](const Request& r) { return handleTargeting(r); });
     router.get(prefix + "/spend",
         [this](const Request& r) { return handleSpend(r); });
+    router.get(prefix + "/spend-breakdown",
+        [this](const Request& r) { return handleSpendBreakdown(r); });
     // Param routes registered last so static paths win the prefix match.
     router.get(prefix + "/:adId/preview",
         [this](const Request& r) { return handleAdPreviewIframe(r); });
@@ -787,6 +789,157 @@ Response AdsController::handleSpend(const Request& request) {
             return errJson(HttpStatus::INTERNAL_SERVER_ERROR, msg);
         }
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to fetch spend");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/ads/spend-breakdown?window=today|last_7d|last_30d|last_90d|maximum
+//
+// Powers the Leads Analytics screen's time-frame + ad-selection pills.
+// Returns per-ad rows scoped to the requested window plus a totals
+// block (sum across every ad in the response) so the summary tiles can
+// render without a client-side re-sum on first paint.
+//
+// Any unrecognised `window` value collapses to `maximum` inside
+// MetaAdsService (mirrors the safe fallback used elsewhere).
+// ────────────────────────────────────────────────────────────────────────────
+Response AdsController::handleSpendBreakdown(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    std::string window = request.getQueryParam("window");
+    if (window.empty()) window = "last_7d";
+
+    try {
+        auto raw = MetaAdsService::getInstance().fetchAdsSpendBreakdown(window);
+
+        double   totalSpend       = 0.0;
+        long long totalImpressions = 0;
+        long long totalClicks      = 0;
+        long long totalLeads       = 0;
+        std::string dateStart, dateStop;
+
+        std::ostringstream adsOut;
+        adsOut << '[';
+        bool first = true;
+        for (const auto& ad : raw) {
+            if (first) first = false; else adsOut << ',';
+
+            const std::string adId     = strOrEmpty(dig(ad, {"id"}));
+            const std::string adName   = strOrEmpty(dig(ad, {"name"}));
+            const std::string adStatus = strOrEmpty(dig(ad, {"effective_status"}));
+            const std::string createdT = strOrEmpty(dig(ad, {"created_time"}));
+
+            const std::string formId = strOrEmpty(
+                dig(ad, {"creative", "object_story_spec", "link_data",
+                         "call_to_action", "value", "lead_gen_form_id"}));
+
+            const json* adset = dig(ad, {"adset"});
+            double dailyBudgetUsd = 0.0;
+            std::string adsetStatus;
+            std::string adsetName;
+            std::string adsetStart;
+            if (adset) {
+                if (auto* db = dig(*adset, {"daily_budget"}); db && !db->is_null()) {
+                    dailyBudgetUsd = static_cast<double>(parseLong(db, 0)) / 100.0;
+                }
+                adsetStatus = strOrEmpty(dig(*adset, {"effective_status"}));
+                adsetName   = strOrEmpty(dig(*adset, {"name"}));
+                adsetStart  = strOrEmpty(dig(*adset, {"start_time"}));
+            }
+
+            double   spend       = 0.0;
+            long long impressions = 0;
+            long long clicks      = 0;
+            long long leads       = 0;
+            double   ctr = 0.0, cpc = 0.0, cpm = 0.0, frequency = 0.0;
+            long long reach = 0;
+            std::string ds, dstop;
+
+            const json* ins = dig(ad, {"insights", "data"});
+            if (ins && ins->is_array() && !ins->empty()) {
+                const json& i0 = (*ins)[0];
+                spend       = parseFloat(dig(i0, {"spend"}));
+                impressions = parseLong (dig(i0, {"impressions"}));
+                clicks      = parseLong (dig(i0, {"clicks"}));
+                leads       = findLeadActionValue(dig(i0, {"actions"}));
+                ctr         = parseFloat(dig(i0, {"ctr"}));
+                cpc         = parseFloat(dig(i0, {"cpc"}));
+                cpm         = parseFloat(dig(i0, {"cpm"}));
+                frequency   = parseFloat(dig(i0, {"frequency"}));
+                reach       = parseLong (dig(i0, {"reach"}));
+                ds          = strOrEmpty(dig(i0, {"date_start"}));
+                dstop       = strOrEmpty(dig(i0, {"date_stop"}));
+                if (dateStart.empty() && !ds.empty())    dateStart = ds;
+                if (dateStop .empty() && !dstop.empty()) dateStop  = dstop;
+            }
+
+            totalSpend       += spend;
+            totalImpressions += impressions;
+            totalClicks      += clicks;
+            totalLeads       += leads;
+
+            // CPL per ad — null when leads == 0 so the frontend can render "—".
+            const bool haveCpl = leads > 0;
+            const double cpl   = haveCpl ? (spend / static_cast<double>(leads)) : 0.0;
+
+            adsOut << '{'
+                   <<  "\"ad_id\":"            << jsStr(adId)
+                   << ",\"ad_name\":"          << jsStr(adName)
+                   << ",\"ad_status\":"        << jsStr(adStatus)
+                   << ",\"created_time\":"     << jsStr(createdT)
+                   << ",\"form_id\":"          << jsStr(formId)
+                   << ",\"adset_name\":"       << jsStr(adsetName)
+                   << ",\"adset_status\":"     << jsStr(adsetStatus)
+                   << ",\"adset_start_time\":" << jsStr(adsetStart)
+                   << ",\"daily_budget_usd\":" << jsNumber(dailyBudgetUsd)
+                   << ",\"spend\":"            << jsNumber(spend)
+                   << ",\"impressions\":"      << jsInt(impressions)
+                   << ",\"clicks\":"           << jsInt(clicks)
+                   << ",\"leads\":"            << jsInt(leads)
+                   << ",\"reach\":"            << jsInt(reach)
+                   << ",\"frequency\":"        << jsNumber(frequency)
+                   << ",\"ctr\":"              << jsNumber(ctr)
+                   << ",\"cpc\":"              << jsNumber(cpc)
+                   << ",\"cpm\":"              << jsNumber(cpm)
+                   << ",\"cpl\":"              << (haveCpl ? jsNumber(cpl) : std::string{"null"})
+                   << ",\"date_start\":"       << jsStr(ds)
+                   << ",\"date_stop\":"        << jsStr(dstop)
+                   << '}';
+        }
+        adsOut << ']';
+
+        const bool haveTotalCpl = totalLeads > 0;
+        const double totalCpl   = haveTotalCpl
+            ? (totalSpend / static_cast<double>(totalLeads)) : 0.0;
+
+        std::ostringstream out;
+        out << '{'
+            <<  "\"window\":"      << jsStr(window)
+            << ",\"date_start\":"  << jsStr(dateStart)
+            << ",\"date_stop\":"   << jsStr(dateStop)
+            << ",\"totals\":{"
+            <<     "\"spend\":"       << jsNumber(totalSpend)
+            <<    ",\"impressions\":" << jsInt(totalImpressions)
+            <<    ",\"clicks\":"      << jsInt(totalClicks)
+            <<    ",\"leads\":"       << jsInt(totalLeads)
+            <<    ",\"cpl\":"         << (haveTotalCpl ? jsNumber(totalCpl) : std::string{"null"})
+            << "}"
+            << ",\"ads\":"         << adsOut.str()
+            << '}';
+
+        Response r(HttpStatus::OK, out.str());
+        r.setHeader("Content-Type", "application/json");
+        return r;
+    } catch (const MetaApiError& e) {
+        std::cerr << "Error fetching ad spend breakdown: " << e.what() << std::endl;
+        return errJson(HttpStatus::BAD_GATEWAY, e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "Error fetching ad spend breakdown: " << e.what() << std::endl;
+        const std::string msg = e.what();
+        if (msg.find("Missing META_ADS_TOKEN") != std::string::npos) {
+            return errJson(HttpStatus::INTERNAL_SERVER_ERROR, msg);
+        }
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to fetch spend breakdown");
     }
 }
 

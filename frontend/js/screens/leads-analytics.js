@@ -56,9 +56,41 @@ class LeadsAnalyticsScreen extends Screen {
       ? Object.create(LeadsScreen.prototype)
       : { formLabel: () => '' };
 
+    this._spendWindow    = 'last_7d';
+    this._spendData      = null;
+    this._selectedAdIds  = new Set(); // empty = all
+    this._spendLoading   = false;
+    this._spendError     = null;
+
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn'))   this.navigation.goBack();
       if (e.target.closest('#la-refresh')) this.load();
+
+      const winPill = e.target.closest('[data-window]');
+      if (winPill) {
+        const w = winPill.getAttribute('data-window');
+        if (w && w !== this._spendWindow) {
+          this._spendWindow   = w;
+          this._selectedAdIds = new Set(); // reset ad filter on window change
+          this.loadSpend();
+        }
+        return;
+      }
+
+      const adPill = e.target.closest('[data-ad-id]');
+      if (adPill) {
+        const id = adPill.getAttribute('data-ad-id');
+        if (id === '__all__') {
+          this._selectedAdIds = new Set();
+        } else if (this._selectedAdIds.has(id)) {
+          this._selectedAdIds.delete(id);
+        } else {
+          this._selectedAdIds.add(id);
+        }
+        this.renderSpendInto();
+        return;
+      }
+
       const openLead = e.target.closest('[data-open-lead]');
       if (openLead) {
         // Jump back to the Leads screen — user can filter/act from there.
@@ -70,6 +102,7 @@ class LeadsAnalyticsScreen extends Screen {
     });
 
     this.load();
+    this.loadSpend();
   }
 
   setBanner({ icon, text, showRefresh = false }) {
@@ -133,6 +166,7 @@ class LeadsAnalyticsScreen extends Screen {
     if (!body) return;
 
     body.innerHTML = [
+      `<div id="la-spend-panel">${this.renderSpendPanel()}</div>`,
       this.renderSummary(d.summary || {}),
       this.renderByFunnel(d.byFunnel || []),
       this.renderByTouchCount(d.byTouchCount || []),
@@ -140,6 +174,162 @@ class LeadsAnalyticsScreen extends Screen {
       this.renderDaily(d.recentActivity || []),
       this.renderMatchedUnmarked(d.matchedUnmarked || []),
     ].join('');
+  }
+
+  // ── Section 0: Ad spend panel (Meta) ─────────────────────────────
+  async loadSpend() {
+    this._spendLoading = true;
+    this._spendError   = null;
+    this.renderSpendInto();
+    try {
+      const res = await this.auth.fetch('/api/ads/spend-breakdown?window=' + encodeURIComponent(this._spendWindow));
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
+      }
+      this._spendData = await res.json();
+    } catch (err) {
+      this._spendError = err.message || String(err);
+    } finally {
+      this._spendLoading = false;
+      this.renderSpendInto();
+    }
+  }
+
+  renderSpendInto() {
+    const el = this.find('#la-spend-panel');
+    if (el) el.innerHTML = this.renderSpendPanel();
+  }
+
+  renderSpendPanel() {
+    const windows = [
+      { key: 'today',     label: 'Today' },
+      { key: 'yesterday', label: 'Yesterday' },
+      { key: 'last_7d',   label: 'Last 7d' },
+      { key: 'last_30d',  label: 'Last 30d' },
+      { key: 'last_90d',  label: 'Last 90d' },
+      { key: 'this_month',label: 'This month' },
+      { key: 'last_month',label: 'Last month' },
+      { key: 'maximum',   label: 'Lifetime' },
+    ];
+    const winPills = windows.map(w => {
+      const active = (w.key === this._spendWindow);
+      const bg = active ? '#0f172a' : '#e2e8f0';
+      const fg = active ? '#e0f2fe' : '#0f172a';
+      return `<button data-window="${w.key}" style="padding: 4px 12px; border-radius: 999px; border:1px solid #94a3b8; background:${bg}; color:${fg}; cursor:pointer; font-size: 0.85rem;">${w.label}</button>`;
+    }).join('');
+
+    const header = `
+      <div style="margin-bottom: var(--space-4);">
+        <h2 style="margin: 0 0 var(--space-2);">💰 Ad Spend</h2>
+        <div style="display:flex; gap: 6px; flex-wrap:wrap; margin-bottom: var(--space-3);">${winPills}</div>
+    `;
+    const footer = `</div>`;
+
+    if (this._spendLoading && !this._spendData) {
+      return header + `<div style="opacity:0.6; padding: var(--space-3);">Loading spend…</div>` + footer;
+    }
+    if (this._spendError) {
+      return header + `<div style="color: var(--color-error); padding: var(--space-3);">Failed to load spend: ${this._esc(this._spendError)}</div>` + footer;
+    }
+    if (!this._spendData) {
+      return header + footer;
+    }
+
+    const d = this._spendData;
+    const ads = Array.isArray(d.ads) ? d.ads : [];
+    const selected = this._selectedAdIds;
+    const filtered = selected.size === 0 ? ads : ads.filter(a => selected.has(String(a.ad_id)));
+
+    // Recompute totals over filtered set (client-side).
+    let spend = 0, impressions = 0, clicks = 0, leads = 0;
+    filtered.forEach(a => {
+      spend       += Number(a.spend)       || 0;
+      impressions += Number(a.impressions) || 0;
+      clicks      += Number(a.clicks)      || 0;
+      leads       += Number(a.leads)       || 0;
+    });
+    const cpl = leads > 0 ? (spend / leads) : null;
+    const ctr = impressions > 0 ? (clicks / impressions * 100) : null;
+    const cpc = clicks > 0 ? (spend / clicks) : null;
+
+    // Avg $/day over date range if available.
+    let avgPerDay = null;
+    if (d.date_start && d.date_stop) {
+      const ds = new Date(d.date_start + 'T00:00:00Z').getTime();
+      const de = new Date(d.date_stop  + 'T00:00:00Z').getTime();
+      const days = Math.max(1, Math.round((de - ds) / 86400000) + 1);
+      avgPerDay = spend / days;
+    }
+
+    const money = v => (v == null ? '—' : '$' + Number(v).toFixed(2));
+    const num   = v => (v == null ? '—' : Number(v).toLocaleString());
+    const pctS  = v => (v == null ? '—' : v.toFixed(2) + '%');
+
+    const tile = (label, value, sub) => `
+      <div style="flex:1; min-width: 130px; background:#0f172a; color:#e0f2fe; border:1px solid #334155; border-radius:8px; padding: var(--space-3);">
+        <div style="font-size: 0.75rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em;">${label}</div>
+        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 4px;">${value}</div>
+        ${sub ? `<div style="font-size: 0.75rem; opacity: 0.65; margin-top: 2px;">${sub}</div>` : ''}
+      </div>
+    `;
+
+    const tiles = `
+      <div style="display:flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3);">
+        ${tile('Total spend',   money(spend), avgPerDay != null ? money(avgPerDay) + '/day avg' : '')}
+        ${tile('Impressions',   num(impressions), pctS(ctr) + ' CTR')}
+        ${tile('Clicks',        num(clicks), cpc != null ? money(cpc) + ' CPC' : '')}
+        ${tile('Meta leads',    num(leads), cpl != null ? money(cpl) + ' CPL' : '')}
+        ${tile('Ads shown',     `${filtered.length}${selected.size ? ' / ' + ads.length : ''}`, selected.size ? 'filtered' : 'all ads')}
+      </div>
+    `;
+
+    // Ad-selection pill row (sorted by spend desc).
+    const adsByAllSpend = ads.slice().sort((a, b) => (Number(b.spend)||0) - (Number(a.spend)||0));
+    const allActive = selected.size === 0;
+    const allBg = allActive ? '#0f172a' : '#e2e8f0';
+    const allFg = allActive ? '#e0f2fe' : '#0f172a';
+    const adPills = [
+      `<button data-ad-id="__all__" style="padding: 4px 10px; border-radius: 999px; border:1px solid #94a3b8; background:${allBg}; color:${allFg}; cursor:pointer; font-size: 0.8rem;">All (${ads.length})</button>`,
+    ].concat(adsByAllSpend.map(a => {
+      const id = String(a.ad_id);
+      const active = selected.has(id);
+      const bg = active ? '#0f172a' : '#f1f5f9';
+      const fg = active ? '#e0f2fe' : '#0f172a';
+      const nm = this._esc((a.ad_name || id).slice(0, 40));
+      const sp = money(a.spend);
+      return `<button data-ad-id="${this._esc(id)}" title="${this._esc(a.ad_name || '')}" style="padding: 4px 10px; border-radius: 999px; border:1px solid #cbd5e1; background:${bg}; color:${fg}; cursor:pointer; font-size: 0.8rem;">${nm} · ${sp}</button>`;
+    })).join(' ');
+
+    const adPillsRow = ads.length > 0 ? `
+      <div style="display:flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-3);">${adPills}</div>
+    ` : '';
+
+    // Per-ad table.
+    const rows = filtered.slice().sort((a, b) => (Number(b.spend)||0) - (Number(a.spend)||0)).map(a => {
+      const adCtr = (Number(a.impressions)||0) > 0 ? (Number(a.clicks)/Number(a.impressions)*100) : null;
+      const status = String(a.ad_status || '').toUpperCase();
+      const statusColor = status === 'ACTIVE' ? '#16a34a' : (status === 'PAUSED' ? '#ca8a04' : '#64748b');
+      return `<tr>
+        <td>${this._esc(a.ad_name || a.ad_id)}</td>
+        <td><span style="padding: 2px 8px; border-radius: 4px; background:${statusColor}; color:white; font-size: 0.75rem;">${this._esc(status || '—')}</span></td>
+        <td style="text-align:right;">${money(a.spend)}</td>
+        <td style="text-align:right;">${num(a.impressions)}</td>
+        <td style="text-align:right;">${num(a.clicks)}</td>
+        <td style="text-align:right;">${num(a.leads)}</td>
+        <td style="text-align:right;">${a.leads > 0 ? money(a.spend / a.leads) : '—'}</td>
+        <td style="text-align:right;">${pctS(adCtr)}</td>
+      </tr>`;
+    }).join('');
+
+    const table = filtered.length === 0 ? '' : this._table(
+      'Per-ad breakdown',
+      ['Ad', 'Status', 'Spend', 'Impr', 'Clicks', 'Leads', 'CPL', 'CTR'],
+      rows,
+      (d.date_start && d.date_stop) ? `${d.date_start} → ${d.date_stop}` : ''
+    );
+
+    return header + tiles + adPillsRow + table + footer;
   }
 
   // ── Section 1: Summary tiles ──────────────────────────────────────

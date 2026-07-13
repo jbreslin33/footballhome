@@ -1,8 +1,10 @@
 #include "MetaAdsService.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 
 #include "../core/HttpClient.h"
 
@@ -195,6 +197,71 @@ json MetaAdsService::fetchAdsForSpend() {
         "adset{id,daily_budget,start_time,end_time,effective_status,configured_status},"
         "creative{object_story_spec{link_data{call_to_action}}},"
         "insights.date_preset(maximum){spend,date_start,date_stop}";
+
+    const std::string url = graphUrl(adAccountId_ + "/ads")
+        + "?fields=" + HttpClient::urlEncode(fields)
+        + "&limit=200"
+        + "&access_token=" + token_;
+
+    auto resp = http_->get(url);
+    if (!resp.error.empty()) {
+        throw std::runtime_error(resp.error);
+    }
+    json parsed;
+    try { parsed = json::parse(resp.body); }
+    catch (const std::exception& e) {
+        throw std::runtime_error(std::string{"Meta returned malformed JSON: "} + e.what());
+    }
+    if (parsed.contains("error") && parsed["error"].is_object()) {
+        throw MetaApiError(parsed["error"].value("message", "Meta API error"));
+    }
+    if (!parsed.contains("data") || !parsed["data"].is_array()) {
+        return json::array();
+    }
+    return parsed["data"];
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// /api/ads/spend-breakdown backend
+//
+// Same shape as `fetchAdsForSpend()` but the caller supplies a
+// `date_preset` so the Leads Analytics screen can pill through Today /
+// Last 7d / Last 30d / Last 90d / Lifetime.  Also asks Meta for the
+// full insights bundle (impressions, clicks, actions) so CPL, CTR, and
+// per-window lead counts can be rendered without a second round-trip.
+//
+// Whitelisted presets mirror Meta's enum — anything else falls back to
+// "maximum" so a bad query string just returns lifetime numbers rather
+// than a Meta 400.
+// ────────────────────────────────────────────────────────────────────────────
+json MetaAdsService::fetchAdsSpendBreakdown(const std::string& datePreset) {
+    ensureConfigured();
+    if (token_.empty()) {
+        throw std::runtime_error("Missing META_ADS_TOKEN configuration");
+    }
+
+    static const std::vector<std::string> kAllowed = {
+        "today", "yesterday",
+        "this_week_mon_sun", "this_week_sun_sat",
+        "last_7d", "last_14d", "last_28d", "last_30d", "last_90d",
+        "this_month", "last_month", "this_quarter", "last_quarter",
+        "this_year", "last_year",
+        "maximum",
+    };
+    std::string preset = datePreset;
+    if (preset.empty() ||
+        std::find(kAllowed.begin(), kAllowed.end(), preset) == kAllowed.end()) {
+        preset = "maximum";
+    }
+
+    const std::string fields =
+        "id,name,effective_status,configured_status,created_time,"
+        "adset{id,name,daily_budget,start_time,end_time,effective_status,configured_status},"
+        "creative{object_story_spec{link_data{call_to_action}}},"
+        "insights.date_preset(" + preset + "){"
+            "spend,impressions,clicks,reach,frequency,ctr,cpc,cpm,actions,"
+            "date_start,date_stop"
+        "}";
 
     const std::string url = graphUrl(adAccountId_ + "/ads")
         + "?fields=" + HttpClient::urlEncode(fields)

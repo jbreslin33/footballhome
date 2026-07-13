@@ -66,6 +66,15 @@ public:
     // GET /v21.0/<account>/ads — minimal spend payload (insights{spend}).
     nlohmann::json fetchAdsForSpend();
 
+    // GET /v21.0/<account>/ads — richer per-ad spend + performance payload
+    // for a caller-supplied `date_preset` (today, last_7d, last_30d,
+    // last_90d, this_month, last_month, maximum, …).  Fields include
+    // ad name/status, adset daily budget, and full insights (spend,
+    // impressions, clicks, actions) for the requested window so the
+    // Leads Analytics screen can render totals + CPL per time-frame
+    // without a second round-trip.  Throws on graph error.
+    nlohmann::json fetchAdsSpendBreakdown(const std::string& datePreset);
+
     // GET /v21.0/<adId>/previews?ad_format=... — returns the iframe `src`
     // url extracted from the first preview body.  Throws std::runtime_error
     // with a user-facing message on any failure (missing token, Meta
