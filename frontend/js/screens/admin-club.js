@@ -53,6 +53,12 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📅 Schedule</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Step 5 — club-wide board of every match and practice across every team. Pills for Match / Practice / Pickup, category, and date range. Click a card to open the match.
+        </p>
+        <div id="section-schedule" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
         <!-- ── Below the funnel · still evaluating layout ────────────
              Everything below is either a viewing lens on the same
              underlying data (Team Dashboards) or supporting infra
@@ -231,6 +237,17 @@ class AdminClubScreen extends Screen {
     ];
     renderInto('#section-rsvp', rsvpTiles);
 
+    // ── Schedule ─────────────────────────────────────────
+    // Single tile that opens the club-wide unified schedule board.
+    // Same UX idiom as Members / RSVP Eligibility — shared FilterBar
+    // chips + sort pills + grouped card grid.  Aggregates matches
+    // (via /api/matches/team/:teamId) + practices (via
+    // /api/events/team/:teamId) across every team in the club.
+    const scheduleTiles = [
+      { id: 'admin-schedule', icon: '📅', label: 'Schedule', description: 'Club-wide unified board — every match & practice across every team. Filter by kind, category, date range.' },
+    ];
+    renderInto('#section-schedule', scheduleTiles);
+
     // ── Media & Socials ────────────────────────────────────────────────
     // Everything that ends up in front of a prospect or member — IG
     // posts (holiday / promo / content), printable flyers, ad preview,
@@ -331,6 +348,16 @@ class AdminClubScreen extends Screen {
         clubId: this.clubId,
         clubName: this.clubName,
         variant: 'active',
+      });
+      return;
+    }
+
+    if (section === 'admin-schedule') {
+      // Club-wide unified schedule board — matches + practices across
+      // every team.  See screens/admin-schedule.js.
+      this.navigation.goTo('admin-schedule', {
+        clubId:   this.clubId,
+        clubName: this.clubName,
       });
       return;
     }
