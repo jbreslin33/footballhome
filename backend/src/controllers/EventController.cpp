@@ -722,7 +722,14 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "COALESCE(ss.name, '') as source_name, ";
         query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, '' as venue_zip, ";
         query << "mt.name as division_name, ";
-        query << "ce.image_url AS calendar_image_url ";
+        query << "ce.image_url AS calendar_image_url, ";
+        query << "mt.name as match_type, ";
+        query << "m.match_type_id, ";
+        query << "m.match_date::text as match_date, ";
+        query << "to_char(m.match_time, 'HH24:MI') as match_time, ";
+        query << "m.series_id, ";
+        query << "m.manual_override, ";
+        query << "m.cancelled_at IS NOT NULL as is_cancelled ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
@@ -806,6 +813,27 @@ Response EventController::handleGetMatch(const Request& request) {
         if (!result[0][23].is_null()) {
             match_json << ",\"calendar_image_url\":\"" << escapeJSON(result[0][23].c_str()) << "\"";
         }
+        if (result.columns() > 24 && !result[0][24].is_null() && result[0][24].c_str()[0] != '\0') {
+            match_json << ",\"match_type\":\"" << escapeJSON(result[0][24].c_str()) << "\"";
+        }
+        if (result.columns() > 25 && !result[0][25].is_null()) {
+            match_json << ",\"match_type_id\":" << result[0][25].c_str();
+        }
+        if (result.columns() > 26 && !result[0][26].is_null()) {
+            match_json << ",\"match_date\":\"" << result[0][26].c_str() << "\"";
+        }
+        if (result.columns() > 27 && !result[0][27].is_null()) {
+            match_json << ",\"match_time\":\"" << result[0][27].c_str() << "\"";
+        }
+        if (result.columns() > 28 && !result[0][28].is_null()) {
+            match_json << ",\"series_id\":" << result[0][28].c_str();
+        }
+        if (result.columns() > 29 && !result[0][29].is_null()) {
+            match_json << ",\"manual_override\":" << (result[0][29].as<bool>() ? "true" : "false");
+        }
+        if (result.columns() > 30 && !result[0][30].is_null()) {
+            match_json << ",\"is_cancelled\":" << (result[0][30].as<bool>() ? "true" : "false");
+        }
         
         match_json << "}";
         
@@ -826,98 +854,88 @@ Response EventController::handleUpdateMatch(const Request& request) {
             std::string json = createJSONResponse(false, "Invalid match ID in path");
             return Response(HttpStatus::BAD_REQUEST, json);
         }
-        
+
         std::string body = request.getBody();
         std::cout << "📝 Updating match " << match_id << " with body: " << body << std::endl;
-        
-        // Parse JSON body
-        std::string home_team_id = parseJSON(body, "home_team_id");
-        std::string away_team_id = parseJSON(body, "away_team_id");
-        std::string title = parseJSON(body, "title");
-        std::string date = parseJSON(body, "date");
-        std::string start_time = parseJSON(body, "start_time");
-        std::string venue_id = parseJSON(body, "venue_id");
-        std::string competition_name = parseJSON(body, "competition_name");
-        std::string match_status = parseJSON(body, "match_status");
-        std::string home_team_score = parseJSON(body, "home_team_score");
-        std::string away_team_score = parseJSON(body, "away_team_score");
-        std::string notes = parseJSON(body, "notes");
-        
-        // Update events table
-        std::string event_update = 
-            "UPDATE events SET "
-            "title = $1, "
-            "event_date = $2, "
-            "venue_id = NULLIF($3, '')::uuid, "
-            "description = NULLIF($4, ''), "
-            "updated_at = CURRENT_TIMESTAMP "
-            "WHERE id = $5";
-        
-        std::vector<std::string> event_params = {
-            title,
-            date + " " + start_time + ":00",
-            venue_id,
-            notes,
-            match_id
+
+        // Body fields (all optional — only supplied ones are updated):
+        //   title, notes, date (YYYY-MM-DD), start_time (HH:MM),
+        //   venue_id (int), home_team_id (int), away_team_id (int),
+        //   match_status (name — resolved to match_status_id),
+        //   home_team_score, away_team_score (ints).
+        // Any successful update flips manual_override → true so we
+        // know an operator edited the row (protects it from being
+        // clobbered by the next league-scrape UPSERT).
+        const std::string title           = parseJSON(body, "title");
+        const std::string notes           = parseJSON(body, "notes");
+        const std::string date            = parseJSON(body, "date");
+        const std::string start_time      = parseJSON(body, "start_time");
+        const std::string venue_id        = parseJSON(body, "venue_id");
+        const std::string home_team_id    = parseJSON(body, "home_team_id");
+        const std::string away_team_id    = parseJSON(body, "away_team_id");
+        const std::string match_status    = parseJSON(body, "match_status");
+        const std::string home_team_score = parseJSON(body, "home_team_score");
+        const std::string away_team_score = parseJSON(body, "away_team_score");
+
+        std::ostringstream sql;
+        sql << "UPDATE matches SET manual_override = TRUE";
+        std::vector<std::string> params;
+        auto add = [&](const std::string& frag, const std::string& val) {
+            params.push_back(val);
+            sql << frag << " = $" << params.size();
         };
-        
-        db_->query(event_update, event_params);
-        
-        // Log event update to ##u/##p file
-        std::map<std::string, std::string> event_columns;
-        event_columns["title"] = title;
-        event_columns["event_date"] = date + " " + start_time + ":00";
-        if (!venue_id.empty()) event_columns["venue_id"] = venue_id;
-        if (!notes.empty()) event_columns["description"] = notes;
-        std::string event_upsert = SqlBuilder::buildUpsert("events", match_id, event_columns, "id");
-        SqlFileLogger::log("events", event_upsert);
-        
-        // Update matches table
-        std::string match_update = 
-            "UPDATE matches SET "
-            "home_team_id = $1, "
-            "away_team_id = $2, "
-            "competition_name = NULLIF($3, ''), "
-            "match_status = $4";
-        
-        std::vector<std::string> match_params = {
-            home_team_id,
-            away_team_id,
-            competition_name,
-            match_status.empty() ? "scheduled" : match_status
-        };
-        
+
+        // Non-empty string → apply.  Empty string → skip (leave the
+        // column alone).  For the *scores* we let an empty string
+        // clear the value (NULL) because that's the natural "no
+        // result yet" state; NULLIF handles that below.
+        if (!title.empty())        { sql << ","; add(" title", title); }
+        // Description: an explicit empty string clears the note, but
+        // we can't distinguish "field absent" from "field = ''" with
+        // the current parseJSON.  Treat non-empty as set.
+        if (!notes.empty())        { sql << ","; add(" description", notes); }
+        if (!date.empty())         { sql << ","; add(" match_date", date); }
+        if (!start_time.empty())   { sql << ","; add(" match_time", start_time); }
+        // venue_id — accept int or empty; empty clears the venue.
+        if (!venue_id.empty()) {
+            params.push_back(venue_id);
+            sql << ", venue_id = $" << params.size() << "::int";
+        }
+        if (!home_team_id.empty()) {
+            params.push_back(home_team_id);
+            sql << ", home_team_id = $" << params.size() << "::int";
+        }
+        if (!away_team_id.empty()) {
+            params.push_back(away_team_id);
+            sql << ", away_team_id = $" << params.size() << "::int";
+        }
+        // Score: allow "" to mean "clear" — use NULLIF cast trick.
         if (!home_team_score.empty()) {
-            match_update += ", home_team_score = $" + std::to_string(match_params.size() + 1);
-            match_params.push_back(home_team_score);
+            params.push_back(home_team_score);
+            sql << ", home_score = $" << params.size() << "::int";
         }
         if (!away_team_score.empty()) {
-            match_update += ", away_team_score = $" + std::to_string(match_params.size() + 1);
-            match_params.push_back(away_team_score);
+            params.push_back(away_team_score);
+            sql << ", away_score = $" << params.size() << "::int";
         }
-        
-        match_update += " WHERE id = $" + std::to_string(match_params.size() + 1);
-        match_params.push_back(match_id);
-        
-        db_->query(match_update, match_params);
-        
-        // Log match update to ##u/##p file
-        std::map<std::string, std::string> match_columns;
-        match_columns["home_team_id"] = home_team_id;
-        match_columns["away_team_id"] = away_team_id;
-        if (!competition_name.empty()) match_columns["competition_name"] = competition_name;
-        match_columns["match_status"] = match_status.empty() ? "scheduled" : match_status;
-        if (!home_team_score.empty()) match_columns["home_team_score"] = home_team_score;
-        if (!away_team_score.empty()) match_columns["away_team_score"] = away_team_score;
-        std::string match_upsert = SqlBuilder::buildUpsert("matches", match_id, match_columns, "id");
-        SqlFileLogger::log("matches", match_upsert);
-        
+        // match_status name → resolve to id via subquery.
+        if (!match_status.empty()) {
+            params.push_back(match_status);
+            sql << ", match_status_id = (SELECT id FROM match_statuses WHERE name = $"
+                << params.size() << " LIMIT 1)";
+        }
+
+        params.push_back(match_id);
+        sql << " WHERE id = $" << params.size() << "::int";
+
+        db_->query(sql.str(), params);
+
         std::string json = createJSONResponse(true, "Match updated successfully");
         return Response(HttpStatus::OK, json);
-        
+
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleUpdateMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, "Failed to update match");
+        std::string json = createJSONResponse(false, std::string("Failed to update match: ") + e.what());
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -929,21 +947,35 @@ Response EventController::handleDeleteMatch(const Request& request) {
             std::string json = createJSONResponse(false, "Invalid match ID in path");
             return Response(HttpStatus::BAD_REQUEST, json);
         }
-        
+
         std::cout << "🗑️ Deleting match: " << match_id << std::endl;
-        
-        // Delete from matches table first (FK constraint)
-        db_->query("DELETE FROM matches WHERE id = '" + match_id + "'");
-        
-        // Delete from events table (cascades to RSVPs, etc.)
-        db_->query("DELETE FROM events WHERE id = '" + match_id + "'");
-        
+
+        // 1) Drop any chat_event mirroring this match — the FK on
+        //    chat_events.match_id is NO ACTION and would block the
+        //    delete below.  Downstream (chat_event_rsvps, tactical
+        //    boards, magic-link tokens) cascade off chat_events.
+        db_->query("DELETE FROM chat_events WHERE match_id = $1::int",
+                   std::vector<std::string>{ match_id });
+
+        // 2) Delete the match itself.  All the tournament FKs
+        //    (next_match_id / loser_next_match_id) are NO ACTION —
+        //    guard against orphaning by nulling those first.
+        db_->query("UPDATE matches SET next_match_id = NULL "
+                   "WHERE next_match_id = $1::int",
+                   std::vector<std::string>{ match_id });
+        db_->query("UPDATE matches SET loser_next_match_id = NULL "
+                   "WHERE loser_next_match_id = $1::int",
+                   std::vector<std::string>{ match_id });
+
+        db_->query("DELETE FROM matches WHERE id = $1::int",
+                   std::vector<std::string>{ match_id });
+
         std::string json = createJSONResponse(true, "Match deleted successfully");
         return Response(HttpStatus::OK, json);
-        
+
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleDeleteMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, "Failed to delete match");
+        std::string json = createJSONResponse(false, std::string("Failed to delete match: ") + e.what());
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }

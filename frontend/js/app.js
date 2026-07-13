@@ -70,6 +70,7 @@ class App {
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
       adminSchedule: new AdminScheduleScreen(this.navigation, this.auth),
+      adminScheduleItem: new AdminScheduleItemScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
       practiceDashboard: new PracticeDashboardScreen(this.navigation, this.auth),
       rsvp: new RsvpScreen(this.navigation, this.auth),
@@ -148,6 +149,7 @@ class App {
     this.screenManager.register('messages', this.screens.messages);
     this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);
     this.screenManager.register('admin-schedule', this.screens.adminSchedule);
+    this.screenManager.register('admin-schedule-item', this.screens.adminScheduleItem);
     // Mens is the default; womens is the same screen with a gender param.
     // 'lineups' kept as a backward-compat alias for any old bookmarks / links.
     this.screenManager.register('mens-lineups', this.screens.lineups);

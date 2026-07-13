@@ -198,16 +198,24 @@ class AdminScheduleScreen extends Screen {
         this._renderGroups();
         return;
       }
-      // Card body → drill into match-detail.  Guard against clicks on
-      // inner controls (none right now but future-proof for edit btns).
+      // Card body → open the unified schedule-item detail screen.
+      // Guard against clicks on inner controls (future-proof for
+      // per-card edit / quick-status buttons).
       const anchorInside = e.target.closest('a, button, input, textarea, select, label');
       if (anchorInside) return;
-      const card = e.target.closest('.sched-card[data-match-id]');
+      const card = e.target.closest('.sched-card[data-item-id]');
       if (card) {
-        const matchId = Number(card.getAttribute('data-match-id')) || 0;
-        if (matchId > 0) {
+        const itemId = Number(card.getAttribute('data-item-id')) || 0;
+        if (itemId > 0) {
           this._snapshotHistoryState();
-          this.navigation.goTo('match-detail', { matchId });
+          this.navigation.goTo('admin-schedule-item', {
+            matchId: itemId,
+            returnTo: 'admin-schedule',
+            returnToParams: {
+              clubId:   this.clubId,
+              clubName: this.clubName,
+            },
+          });
         }
       }
     });
@@ -342,16 +350,16 @@ class AdminScheduleScreen extends Screen {
     let kind = 'match';
     if (mtype === 'practice')    kind = 'practice';
     else if (mtype === 'pickup') kind = 'pickup';
-    // Practices / pickups shouldn't drill into match-detail — leave
-    // matchId null so the card body renders non-clickable.
-    const matchId = (kind === 'match') ? Number(m.id) : null;
     return {
       _kind:       kind,
       _category:   cat,
       _dt:         dt,
       _sortTime:   dt ? dt.getTime() : Number.POSITIVE_INFINITY,
       id:          Number(m.id),
-      matchId,
+      // `matchId` is retained for older consumers (e.g. anywhere that
+      // still uses r.matchId directly).  New card wiring keys off
+      // `r.id` instead so practices + pickups are also clickable.
+      matchId:     Number(m.id),
       title:       m.title || '',
       homeName:    m.home_team_name || '',
       awayName:    m.away_team_name || '',
@@ -731,16 +739,19 @@ class AdminScheduleScreen extends Screen {
       ? `<div style="font-size:0.78rem; opacity:0.75;">📍 ${this._esc(r.venueName)}</div>`
       : `<div style="font-size:0.78rem; color:#f59e0b;">⚠ No venue</div>`;
 
-    const clickable = !!r.matchId;
+    // Every card is clickable — schedule-item screen handles matches,
+    // practices, and pickups uniformly.  The row's `id` is the match
+    // primary key (practices + pickups are matches under the hood).
+    const itemId = Number(r.id) || 0;
 
     return `
       <div class="sched-card"
-           ${clickable ? `data-match-id="${r.matchId}"` : ''}
+           ${itemId ? `data-item-id="${itemId}"` : ''}
            style="background: var(--bg-secondary);
                   border-radius: var(--radius-md); padding: var(--space-3);
                   border: 1px solid var(--color-border);
                   display:flex; flex-direction:column; gap:6px;
-                  ${clickable ? 'cursor:pointer;' : ''}">
+                  ${itemId ? 'cursor:pointer;' : ''}">
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           ${kindChip}
           ${statusChip}
