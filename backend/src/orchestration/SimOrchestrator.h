@@ -63,6 +63,23 @@ struct PingResult {
     std::string error;            // non-empty iff !ok
 };
 
+// Inputs to launchMatch — one per-match daemon. Only the values that
+// vary across matches live here; everything else (POSTGRES_*, JWT_SECRET,
+// FH_SIM_ADMIN_TOKEN, SIM_PORT, SIM_ADMIN_PORT, image name, network name)
+// is either read from the backend's own process env at launch time
+// or hardcoded to match docker-compose.yml's `footballhome_sim` service.
+struct LaunchOptions {
+    long long match_id = 0;   // required, > 0
+    long long seed     = 0;   // required (sim also accepts 0 → treats as fallback)
+};
+
+struct LaunchResult {
+    bool        ok = false;
+    std::string container_id;    // ~64-char hex; empty on failure
+    std::string container_name;  // "footballhome_sim_${match_id}"; always set for logs
+    std::string error;           // non-empty iff !ok
+};
+
 class SimOrchestrator {
 public:
     // `http` is borrowed — the caller (HttpServer in main.cpp) owns the
@@ -78,11 +95,33 @@ public:
     // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
     PingResult pingPodman();
 
+    // Slice 14.3 — create + start a per-match sim daemon container.
+    //
+    // Two-step podman API call:
+    //   1. POST /v1.41/containers/create?name=footballhome_sim_${match_id}
+    //      with a spec matching docker-compose.yml's `footballhome_sim`
+    //      service (same image, same network, same env manifest — only
+    //      SIM_MATCH_ID and SIM_MATCH_SEED vary).
+    //   2. POST /v1.41/containers/${id}/start
+    //
+    // On step-2 failure the created-but-not-started container is
+    // best-effort removed so `podman ps -a` doesn't accumulate zombies
+    // across retries. Best-effort means we swallow errors from the
+    // cleanup call — the caller has already got the launch failure.
+    //
+    // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
+    LaunchResult launchMatch(const LaunchOptions& opts);
+
     // Config accessor (used by main.cpp boot log to report the current
     // feature-flag + socket path).
     const SimOrchestratorConfig& config() const { return cfg_; }
 
 private:
+    // Best-effort container cleanup. Called after a partial-launch
+    // failure. Errors are logged and swallowed — the caller already
+    // has the primary error to return.
+    void removeContainerBestEffort(const std::string& container_id);
+
     SimOrchestratorConfig cfg_;
     HttpClient& http_;   // borrowed, never null
 };

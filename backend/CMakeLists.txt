@@ -51,6 +51,7 @@ set(SOURCES
     src/models/BoysRoster.cpp
     src/models/Lead.cpp
     src/models/LeadContact.cpp
+    src/models/SimRunningMatch.cpp
     src/services/UserService.cpp
     src/services/IdentityService.cpp
     src/services/LeagueAppsService.cpp

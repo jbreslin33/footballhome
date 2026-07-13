@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 // ────────────────────────────────────────────────────────────────────────────
 // SimRunningMatch — row struct + helpers for `sim_running_matches`
@@ -11,17 +12,21 @@
 // `/containers/create` returns, deleted by SimOrchestrator::stopMatch /
 // the reaper thread (Slices 14.5 / 14.6).
 //
-// This file is header-only in Slice 14.2 — the repository .cpp lands
-// alongside SimOrchestrator::launchMatch in Slice 14.3, which is the
-// first place that actually writes to the table. Shipping unused CRUD
-// code now would violate the "each slice ends with a green ctest gate +
-// a working end-to-end demo" rule from DESIGN.md §23.3.
-//
 // Naming invariant: the container name is deterministic — every layer
 // that needs to talk to a per-match daemon (SimRouter, reaper,
 // SimOrchestrator itself) derives it via `containerNameFor(match_id)`.
 // Keeping the derivation in one place (this header) means bumping the
 // prefix is a single-file change.
+//
+// Repository shape (Slice 14.3): three free functions in
+// `SimRunningMatchRepo::` — insertPending, setContainerId, deleteFor —
+// each opens/uses the Database singleton and returns a bool for the
+// caller to translate into HTTP 500 vs propagate. Deliberately NOT a
+// class-with-methods pattern (like PersonMerge / MensRoster) because
+// there's no shared connection state to hold across calls; the
+// operations are independent one-shot statements. A full class-with-
+// state repository would land only if we later need read APIs that
+// batch multiple queries under one transaction.
 // ────────────────────────────────────────────────────────────────────────────
 
 namespace fh::orchestration {
@@ -53,5 +58,35 @@ struct SimRunningMatch {
 inline std::string containerNameFor(long long match_id) {
     return "footballhome_sim_" + std::to_string(match_id);
 }
+
+namespace SimRunningMatchRepo {
+
+// Insert the pending row BEFORE calling podman /containers/create so
+// that a mid-launch backend crash leaves a reconcilable audit trail
+// (per DESIGN.md §16.7 step 9). container_id is written as NULL and
+// filled in later by `setContainerId`.
+//
+// Returns false on DB error (already logged to stderr); caller
+// translates to HTTP 500. Returns true on success OR on ON CONFLICT
+// DO NOTHING (a stale row for the same match_id was already there —
+// caller should treat this as "someone else got here first" and
+// probably NOT proceed with launch).
+bool insertPending(long long match_id,
+                   const std::string& container_name);
+
+// Fill in container_id once /containers/create returns success. If
+// the row was deleted between insertPending and this call (e.g.
+// reaper swept it) we log and return false — caller decides whether
+// to abort the launch or continue.
+bool setContainerId(long long match_id,
+                    const std::string& container_id);
+
+// Rollback path — used when podman /containers/create or /start
+// fails after a successful insertPending. Also used by the Slice
+// 14.5 stopMatch and the Slice 14.6 reaper. Returns true whether or
+// not a row was actually present (deletion is idempotent).
+bool deleteFor(long long match_id);
+
+} // namespace SimRunningMatchRepo
 
 } // namespace fh::orchestration

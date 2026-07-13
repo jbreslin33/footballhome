@@ -1,7 +1,10 @@
 #include "SimLobbyController.h"
 
 #include "../core/Crypto.h"
+#include "../core/HttpClient.h"
 #include "../database/Database.h"
+#include "../models/SimRunningMatch.h"
+#include "../orchestration/SimOrchestrator.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
 
@@ -208,42 +211,230 @@ Response SimLobbyController::handleListMatches(const Request& /*request*/) {
 // POST /api/sim/matches
 // =====================================================================
 //
-// M0 constraint: the `footballhome_sim` container binds a single
-// SIM_MATCH_ID from its env. Creating a new DB row wouldn't spawn a
-// new daemon, so this endpoint is deliberately a no-op that
-// idempotently returns whatever open match already exists (row
-// seeded by migration 202). Once the sim gains multi-tenant support
-// this handler is where we'll actually INSERT + notify a match
-// scheduler.
+// Slice 14.3 of M1 (sim/DESIGN.md §23.3): spawn a fresh per-match sim
+// daemon container.
+//
+// Steps:
+//   1. Auth caller (Bearer JWT or fh_sess cookie).
+//   2. Parse body — {scenario_id?, seed?, tick_hz?}. All optional;
+//      defaults match the M0 empty_pitch match seeded by migration 202
+//      so the SPA can POST an empty body and still get a usable match.
+//   3. INSERT sim_matches → new match_id.
+//   4. INSERT sim_running_matches (match_id, container_name, container_id=NULL)
+//      BEFORE calling podman so a mid-launch backend crash still
+//      leaves a reconcilable audit trail (DESIGN §16.7 step 9).
+//   5. Call SimOrchestrator::launchMatch — POST /containers/create +
+//      /containers/${id}/start against the mounted podman socket.
+//   6. On success: UPDATE sim_running_matches SET container_id.
+//   7. On any failure past step 3: DELETE both rows and return 5xx.
+//      No half-committed state left in either table.
+//
+// When FH_SIM_ORCHESTRATOR_ENABLED is unset/0 we fall back to the M0
+// no-op stub — returns the pre-seeded match_id=1 idempotently so
+// existing frontends keep working on hosts that haven't opted into the
+// per-match orchestration yet. This makes 14.3 safe to deploy without
+// a lockstep frontend rollout.
+//
+// Returns:
+//   200 {id, scenario_id, seed, tick_hz, ws_url, container_name}
+//   401 sign in required
+//   400 invalid body
+//   500 database error
+//   502 orchestrator/podman error
+//   503 orchestrator disabled AND no fallback match seeded (should
+//       never happen in a healthy deploy — migration 202 seeds one)
+
+namespace {
+
+// The wire URL a browser hands to `new WebSocket(...)`. Slice 14.5
+// pairs this with an nginx regex block that routes `/sim/${id}` to
+// `footballhome_sim_${id}:9100/sim`. Until 14.5 lands, the URL is
+// still returned (so the API shape is stable) — clients that follow
+// it before 14.5 ships will just fail to route, which is the same
+// user-visible outcome as before 14.3.
+std::string buildWsUrl(long long match_id) {
+    return "/sim/" + std::to_string(match_id);
+}
+
+// Backend-side placeholder for sim_matches.server_version. The sim
+// binary knows its own git-describe (baked in via FH_SIM_GIT_DESCRIBE
+// at image build time — see sim/DESIGN.md §16.6 task 7) but the
+// backend doesn't have that string in-process today. Writing a
+// placeholder is safe because server_version is metadata-only per
+// §10 rule 7 — it doesn't participate in any determinism gate. If
+// replay-compatibility guarantees later require the exact sha, the
+// sim's own admin endpoint can UPDATE this column after startup.
+constexpr const char* kServerVersionPlaceholder = "backend-launched";
+
+} // namespace
 
 Response SimLobbyController::handleCreateMatch(const Request& request) {
     const long long personId = resolveCallerPersonId(request);
     if (personId <= 0) {
         return jsonError(HttpStatus::UNAUTHORIZED, "sign in required");
     }
+
+    // -----------------------------------------------------------------
+    // 1) Parse body. Empty body OK — every field has a sensible default
+    //    matching migration 202's seed row (scenario_id=0 empty_pitch,
+    //    seed=42, tick_hz=20).
+    // -----------------------------------------------------------------
+    int         scenario_id = 0;       // empty_pitch (sim_scenarios.id)
+    long long   seed        = 42;
+    int         tick_hz     = 20;
+    if (!request.getBody().empty()) {
+        try {
+            auto j = json::parse(request.getBody());
+            if (j.contains("scenario_id") && j["scenario_id"].is_number_integer()) {
+                scenario_id = j["scenario_id"].get<int>();
+            }
+            if (j.contains("seed") && j["seed"].is_number_integer()) {
+                seed = j["seed"].get<long long>();
+            }
+            if (j.contains("tick_hz") && j["tick_hz"].is_number_integer()) {
+                tick_hz = j["tick_hz"].get<int>();
+            }
+        } catch (const std::exception& e) {
+            return jsonError(HttpStatus::BAD_REQUEST,
+                             std::string("invalid JSON body: ") + e.what());
+        }
+    }
+    if (scenario_id < 0 || tick_hz <= 0 || tick_hz > 240) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "scenario_id/tick_hz out of range");
+    }
+
+    // -----------------------------------------------------------------
+    // 2) Orchestrator feature-flag gate. When disabled we fall back to
+    //    the M0 idempotent no-op so hosts that haven't opted into
+    //    multi-match orchestration keep serving the seeded match.
+    // -----------------------------------------------------------------
+    fh::orchestration::SimOrchestratorConfig cfg =
+        fh::orchestration::loadConfigFromEnv();
+    if (!cfg.enabled) {
+        try {
+            auto rows = db_->query(
+                "SELECT id, scenario_id, seed, tick_hz "
+                "  FROM sim_matches "
+                " WHERE ended_at IS NULL "
+                " ORDER BY id ASC LIMIT 1");
+            if (rows.empty()) {
+                return jsonError(HttpStatus::SERVICE_UNAVAILABLE,
+                                 "orchestrator disabled and no seeded match");
+            }
+            const auto& r = rows[0];
+            const long long existingMatchId = r["id"].as<long long>();
+            return jsonOk(json{
+                {"id",           existingMatchId},
+                {"scenario_id",  r["scenario_id"].as<int>()},
+                {"seed",         r["seed"].as<long long>()},
+                {"tick_hz",      r["tick_hz"].as<int>()},
+                {"ws_url",       buildWsUrl(existingMatchId)},
+                {"note",         "orchestrator disabled — returned seeded match"},
+            });
+        } catch (const std::exception& e) {
+            std::cerr << "[sim-lobby] create_match (fallback) failed: "
+                      << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "database error");
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // 3) INSERT sim_matches. RETURNING gives us the new match_id.
+    // -----------------------------------------------------------------
+    long long match_id = 0;
     try {
         auto rows = db_->query(
-            "SELECT id, scenario_id, seed, tick_hz "
-            "  FROM sim_matches "
-            " WHERE ended_at IS NULL "
-            " ORDER BY id ASC LIMIT 1");
+            "INSERT INTO sim_matches "
+            "  (scenario_id, seed, tick_hz, server_version, created_by, "
+            "   visibility) "
+            "VALUES ($1::smallint, $2::bigint, $3::smallint, $4, "
+            "        $5::integer, 0) "
+            "RETURNING id",
+            {std::to_string(scenario_id),
+             std::to_string(seed),
+             std::to_string(tick_hz),
+             kServerVersionPlaceholder,
+             std::to_string(personId)});
         if (rows.empty()) {
-            return jsonError(HttpStatus::SERVICE_UNAVAILABLE,
-                             "no open sim match available");
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                             "sim_matches insert returned no id");
         }
-        const auto& r = rows[0];
-        return jsonOk(json{
-            {"id",           r["id"].as<long long>()},
-            {"scenario_id",  r["scenario_id"].as<int>()},
-            {"seed",         r["seed"].as<long long>()},
-            {"tick_hz",      r["tick_hz"].as<int>()},
-            {"note",         "M0: single-daemon; POST is idempotent "
-                             "(returns the running match)."},
-        });
+        match_id = rows[0]["id"].as<long long>();
     } catch (const std::exception& e) {
-        std::cerr << "[sim-lobby] create_match failed: " << e.what() << std::endl;
-        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "database error");
+        std::cerr << "[sim-lobby] create_match INSERT sim_matches failed: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                         "sim_matches insert failed");
     }
+
+    const std::string container_name =
+        fh::orchestration::containerNameFor(match_id);
+
+    // -----------------------------------------------------------------
+    // 4) INSERT sim_running_matches (pending row, no container_id yet).
+    //    If this fails we roll back the sim_matches row.
+    // -----------------------------------------------------------------
+    if (!fh::orchestration::SimRunningMatchRepo::insertPending(
+            match_id, container_name)) {
+        // Rollback sim_matches — best-effort. Failure here logs and
+        // moves on; a leftover sim_matches row with no companion
+        // sim_running_matches row is inert (nothing reads it).
+        try {
+            db_->query("DELETE FROM sim_matches WHERE id = $1::bigint",
+                       {std::to_string(match_id)});
+        } catch (...) {}
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                         "sim_running_matches insert failed");
+    }
+
+    // -----------------------------------------------------------------
+    // 5) Actually launch the container. HttpClient is stateless-per-
+    //    call so a fresh instance here matches how every other
+    //    outbound-HTTP path in this codebase looks.
+    // -----------------------------------------------------------------
+    HttpClient http;
+    fh::orchestration::SimOrchestrator orchestrator(cfg, http);
+    fh::orchestration::LaunchOptions opts;
+    opts.match_id = match_id;
+    opts.seed     = seed;
+    fh::orchestration::LaunchResult launch = orchestrator.launchMatch(opts);
+
+    if (!launch.ok) {
+        std::cerr << "[sim-lobby] launchMatch(match_id=" << match_id
+                  << ") failed: " << launch.error << std::endl;
+        // Roll back BOTH rows so a retry with a new match_id has a
+        // clean slate.
+        fh::orchestration::SimRunningMatchRepo::deleteFor(match_id);
+        try {
+            db_->query("DELETE FROM sim_matches WHERE id = $1::bigint",
+                       {std::to_string(match_id)});
+        } catch (...) {}
+        return jsonError(HttpStatus::BAD_GATEWAY,
+                         "podman launch failed: " + launch.error);
+    }
+
+    // -----------------------------------------------------------------
+    // 6) Fill in container_id. If this UPDATE fails somehow (row was
+    //    reaped mid-launch), we DO NOT roll back the container — it's
+    //    already running and serving traffic. Log and move on; the
+    //    Slice 14.6 reaper will handle the row-vs-container mismatch.
+    // -----------------------------------------------------------------
+    (void)fh::orchestration::SimRunningMatchRepo::setContainerId(
+        match_id, launch.container_id);
+
+    std::cout << "[sim-lobby] launched match_id=" << match_id
+              << " container=" << launch.container_name
+              << " id=" << launch.container_id.substr(0, 12) << std::endl;
+
+    return jsonOk(json{
+        {"id",             match_id},
+        {"scenario_id",    scenario_id},
+        {"seed",           seed},
+        {"tick_hz",        tick_hz},
+        {"ws_url",         buildWsUrl(match_id)},
+        {"container_name", launch.container_name},
+    });
 }
 
 // =====================================================================
