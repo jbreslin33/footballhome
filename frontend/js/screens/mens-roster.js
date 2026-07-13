@@ -209,8 +209,8 @@ class MensRosterScreen extends Screen {
     // one move button and the row atomically leaves the others.
     //
     // The old "Dues Owed" column (team 910) was retired 2026-07-07 via
-    // migration 100 — the OVERDUE chip on each card + the dedicated
-    // /mens-delinquent screen already surface who owes dues, and
+    // migration 100 — the OVERDUE chip on each card + the Payments
+    // screen's Overdue filter already surface who owes dues, and
     // parking warm bodies in a sin-bin cost playable spots.  The
     // `daysOverdue` + `delinquencyState='dues_owed'` fields are still
     // emitted per-player so the chip + banner keep working.

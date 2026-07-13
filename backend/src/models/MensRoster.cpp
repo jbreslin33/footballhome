@@ -967,12 +967,15 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
     //   • 2026-07-04 pm ("don't auto manage it"): sweep disabled, admin
     //     drove placement via a Dues Owed column (team 910).
     //   • 2026-07-07 (migration 100): Dues Owed column archived entirely.
-    //     OVERDUE chip on cards + /mens-delinquent screen surface who
-    //     owes dues without parking bodies in a sin-bin.
+    //     OVERDUE chip on cards + /mens-delinquent screen surfaced who
+    //     owed dues without parking bodies in a sin-bin.
+    //   • 2026-07-13: /mens-delinquent screen removed — the Payments
+    //     screen's Overdue filter covers the same use-case with better
+    //     cross-program filtering.
     //
     // delinquencyState + daysOverdue are still emitted per-player below
-    // (via delinqByUid) so the chip + /#my banner + delinquent screen
-    // keep working.  If we ever want auto-management back, resurrect
+    // (via delinqByUid) so the chip + /#my banner keep working.
+    // If we ever want auto-management back, resurrect
     // MensTeamAssignments::bulk{SoftDeleteForDelinquent,RestoreForDelinquent}
     // behind a feature flag.
 

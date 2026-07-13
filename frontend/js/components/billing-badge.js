@@ -991,7 +991,7 @@ window.BillingBadge = (() => {
     //
     // 2026-07-06 pm — REG cell added per user directive: show each
     // player's LA registration date on cards across all clubs
-    // (mens / boys / youth / mens-delinquent).  Data comes from
+    // (mens / boys / youth).  Data comes from
     // p.laRegisteredAt (backend: person_la_memberships.la_registered_at).
     //
     // 2026-07-06 pm — PRORATE cell added: for a player who just

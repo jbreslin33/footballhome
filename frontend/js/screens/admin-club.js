@@ -184,7 +184,7 @@ class AdminClubScreen extends Screen {
       { id: 'tricounty-dash', target: 'mens-lineups',       params: { gender: 'mens',   division: 'tricounty'}, icon: '🏆', label: 'Tri County',               description: 'Tri County league teams — standings, schedule, rosters' },
       { id: 'mens-game-elig', target: 'mens-game-eligibility', params: { gender: 'mens' },                        icon: '🎯', label: 'Game Eligibility',         description: 'Projected 35-player APSL & Liga 1 rosters — game-day availability & call-ups' },
       // (2026-07-12) `mens-roster-board` moved to 🎽 Roster funnel section.
-      // (2026-07-12) `mens-delinquent`  moved to 💰 Billing funnel section.
+      // (2026-07-13) `mens-delinquent`  removed — Payments screen (Overdue chip) covers this.
       { id: 'mens-events-reminders', target: 'mens-events-reminders', params: {},                                    icon: '📢', label: 'Mens Reminders',           description: 'All upcoming men\'s events (games · practice · pickup) — one tap to nudge non-responders' },
     ];
 
@@ -255,14 +255,14 @@ class AdminClubScreen extends Screen {
     // ── 💰 Billing funnel section ────────────────────────────────────
     // Step 2 of the club-admin funnel.  Everything money-related lives
     // here — the Payments screen groups members by status (Paid Up /
-    // Behind / Overdue / Never Paid) and the Delinquent screen surfaces
-    // the past-due queue that needs charging.
+    // Behind / Overdue / Never Paid) with client-side aggregation across
+    // all four programs (Mens / Womens / Boys / Girls).  The old dedicated
+    // Delinquent tile was retired 2026-07-13 — the Overdue chip on Payments
+    // surfaces the same past-due queue with better filtering.
     //
-    // Both tiles use the shared `_dashTiles` lookup for click routing,
-    // so no extra `handleSubNavigation` branch is needed.
+    // Uses the shared `_dashTiles` lookup for click routing.
     const billingTiles = [
       { id: 'payments',        target: 'payments',        params: {},                    icon: '💳', label: 'Payments',           description: 'Members grouped by status: Paid Up · Behind · Overdue · Never Paid — filter by Men / Women / Boys / Girls inside' },
-      { id: 'mens-delinquent', target: 'mens-delinquent', params: { gender: 'mens' },   icon: '🚨', label: 'Delinquent Members', description: 'Players overdue on dues — 7+ days past next-bill = dues owed (past hold threshold, LA-pause candidates)' },
     ];
     renderInto('#section-billing', billingTiles);
     this._dashTiles = (this._dashTiles || []).concat(billingTiles);
