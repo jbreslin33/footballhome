@@ -21,16 +21,18 @@
 // Data flow (no LA involved — matches are FH-authoritative):
 //   1. GET /api/clubs/:clubId?gender=all
 //        → list of teams belonging to this club, each carrying
-//          `gender_category` (men/women/boys/girls) so we can filter
-//          the schedule by scope.
+//          `gender_category` (mens/womens/boys — DB uses the plural
+//          forms) so we can filter the schedule by scope.
 //   2. In parallel per team:
-//        GET /api/matches/team/:teamId?include_past=true   (matches)
-//        GET /api/events/team/:teamId                       (practices + other)
+//        GET /api/matches/team/:teamId?include_past=true
+//        → returns matches, practices, and pickups (practices/
+//          pickups are stored in the same `matches` table,
+//          distinguished by `match_type`).
 //   3. Dedupe matches by id (a league match appears in BOTH home +
 //      away team feeds; we keep the first copy).
 //   4. Enrich each row with a `_category` (mens/womens/boys/girls) +
 //      `_kind` (match/practice/pickup) derived from the team catalog
-//      and the row's event_type or match_type.
+//      and the row's `match_type`.
 //   5. Render.  All filtering + sorting is client-side.
 //
 // Series (recurring weekly templates) intentionally stay on their own
@@ -108,7 +110,7 @@ class AdminScheduleScreen extends Screen {
 
     // Filter state.
     this.kindFilter     = params?.kind     || null;   // 'match' | 'practice' | null(all)
-    this.categoryFilter = params?.category || null;   // 'men' | 'women' | 'boys' | 'girls' | null(all)
+    this.categoryFilter = params?.category || null;   // 'mens' | 'womens' | 'boys' | 'girls' | null(all)
     this.dateRange      = params?.dateRange || 'upcoming'; // 'upcoming' | 'past' | 'all'
 
     // Restore-state contract (paired with match-detail's back-nav).
@@ -255,7 +257,8 @@ class AdminScheduleScreen extends Screen {
       const club = clubBody?.data || clubBody;
       const teams = Array.isArray(club?.teams) ? club.teams : [];
       // Map: team_id → gender_category (used later to bucket matches
-      // whose home/away is one of our teams).
+      // whose home/away is one of our teams).  DB values are the
+      // plural forms 'mens' / 'womens' / 'boys' — see chip IDs below.
       const teamCat = new Map();
       for (const t of teams) {
         teamCat.set(Number(t.id), String(t.gender_category || '').toLowerCase());
@@ -267,19 +270,19 @@ class AdminScheduleScreen extends Screen {
           `Fetching schedule across ${teams.length} team${teams.length === 1 ? '' : 's'}…`;
       }
 
-      // 2. Fan out matches + practices per team.  Fetch failures for
-      //    any single team are non-fatal — we still render what we got.
+      // 2. Fan out matches per team.  Practices + pickups are stored
+      //    in the `matches` table (differentiated by match_type_id),
+      //    so `/api/matches/team/:id` already returns everything we
+      //    need — no separate /api/events call.  Fetch failures for
+      //    any single team are non-fatal.
       const perTeam = await Promise.all(teams.map(async (t) => {
-        const [matchesRes, eventsRes] = await Promise.all([
-          this.auth.fetch(`/api/matches/team/${t.id}?include_past=true`).catch(() => null),
-          this.auth.fetch(`/api/events/team/${t.id}`).catch(() => null),
-        ]);
+        const matchesRes = await this.auth
+          .fetch(`/api/matches/team/${t.id}?include_past=true`)
+          .catch(() => null);
         const matches = await this._safeJson(matchesRes);
-        const events  = await this._safeJson(eventsRes);
         return {
           teamId:   Number(t.id),
           matches:  Array.isArray(matches?.data)  ? matches.data  : (Array.isArray(matches)  ? matches  : []),
-          events:   Array.isArray(events?.data)   ? events.data   : (Array.isArray(events)   ? events   : []),
         };
       }));
 
@@ -293,18 +296,6 @@ class AdminScheduleScreen extends Screen {
           if (!id || seenMatch.has(id)) continue;
           seenMatch.add(id);
           rows.push(this._normaliseMatch(m, teamCat));
-        }
-      }
-      // Events (practices, pickups, meetings).  Server-side these
-      // aren't deduped by id — a practice is per-team so each team's
-      // feed contains its own set.  Still dedupe defensively.
-      const seenEvent = new Set();
-      for (const bag of perTeam) {
-        for (const ev of bag.events) {
-          const id = Number(ev.id);
-          if (!id || seenEvent.has(id)) continue;
-          seenEvent.add(id);
-          rows.push(this._normaliseEvent(ev, bag.teamId, teamCat));
         }
       }
       this._rows = rows;
@@ -333,7 +324,8 @@ class AdminScheduleScreen extends Screen {
 
   // Match row → uniform shape.  Preserves original fields so the
   // eventual click-through screen (match-detail) can consume them
-  // directly.
+  // directly.  Practices and pickups arrive on this same feed and
+  // are distinguished by `match_type` (from match_types lookup).
   _normaliseMatch(m, teamCat) {
     const dt = m.event_date ? new Date(m.event_date) : null;
     const homeId = Number(m.home_team_id) || null;
@@ -343,13 +335,23 @@ class AdminScheduleScreen extends Screen {
     let cat = '';
     if (homeId && teamCat.has(homeId)) cat = teamCat.get(homeId);
     else if (awayId && teamCat.has(awayId)) cat = teamCat.get(awayId);
+    // Kind from match_type name.  practice → 'practice', pickup →
+    // 'pickup', everything else (league, custom, scrimmage, cup,
+    // tournament) → 'match'.
+    const mtype = String(m.match_type || '').toLowerCase();
+    let kind = 'match';
+    if (mtype === 'practice')    kind = 'practice';
+    else if (mtype === 'pickup') kind = 'pickup';
+    // Practices / pickups shouldn't drill into match-detail — leave
+    // matchId null so the card body renders non-clickable.
+    const matchId = (kind === 'match') ? Number(m.id) : null;
     return {
-      _kind:       'match',
+      _kind:       kind,
       _category:   cat,
       _dt:         dt,
       _sortTime:   dt ? dt.getTime() : Number.POSITIVE_INFINITY,
       id:          Number(m.id),
-      matchId:     Number(m.id),
+      matchId,
       title:       m.title || '',
       homeName:    m.home_team_name || '',
       awayName:    m.away_team_name || '',
@@ -359,38 +361,6 @@ class AdminScheduleScreen extends Screen {
       awayScore:   m.away_team_score,
       competition: m.competition_name || '',
       manualOverride: !!m.manual_override,
-    };
-  }
-
-  // Event row (practice / pickup / meeting) → uniform shape.  Events
-  // are single-team by design; the team's gender_category is the
-  // event's category.
-  _normaliseEvent(ev, teamId, teamCat) {
-    const dt = ev.event_date ? new Date(ev.event_date) : null;
-    const type = String(ev.event_type || 'practice').toLowerCase();
-    // Kind mapping — pickup is presented as its own kind so the
-    // "Practice" chip doesn't sweep it up.
-    let kind = 'practice';
-    if (type.includes('pickup'))   kind = 'pickup';
-    else if (type.includes('game') || type.includes('match')) kind = 'match';
-    return {
-      _kind:       kind,
-      _category:   teamCat.get(Number(teamId)) || '',
-      _dt:         dt,
-      _sortTime:   dt ? dt.getTime() : Number.POSITIVE_INFINITY,
-      id:          Number(ev.id),
-      // Practices don't drill into match-detail — leaving matchId
-      // undefined makes the card body non-clickable (see _renderCard).
-      matchId:     null,
-      title:       ev.title || (kind === 'pickup' ? 'Pickup' : 'Practice'),
-      homeName:    ev.team_name || '',
-      awayName:    '',
-      venueName:   ev.venue_name || ev.location || '',
-      status:      String(ev.status || 'scheduled').toLowerCase(),
-      homeScore:   null,
-      awayScore:   null,
-      competition: '',
-      manualOverride: false,
     };
   }
 
@@ -449,11 +419,11 @@ class AdminScheduleScreen extends Screen {
       { id: 'pickup',   label: '🎯 Pickup',   count: kindCount('pickup') },
     ];
     const catChips = [
-      { id: 'all',   label: '👥 All',     count: this._rows.length },
-      { id: 'men',   label: '👨 Men',     count: catCount('men') },
-      { id: 'women', label: '👩 Women',   count: catCount('women') },
-      { id: 'boys',  label: '👦 Boys',    count: catCount('boys') },
-      { id: 'girls', label: '👧 Girls',   count: catCount('girls') },
+      { id: 'all',    label: '👥 All',   count: this._rows.length },
+      { id: 'mens',   label: '👨 Men',   count: catCount('mens') },
+      { id: 'womens', label: '👩 Women', count: catCount('womens') },
+      { id: 'boys',   label: '👦 Boys',  count: catCount('boys') },
+      { id: 'girls',  label: '👧 Girls', count: catCount('girls') },
     ];
 
     if (!this._filterBar) {

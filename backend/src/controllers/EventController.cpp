@@ -485,12 +485,14 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "ce.image_url AS calendar_image_url, ";
         query << "COALESCE(ss.name, '') AS source_name, ";
         query << "m.source_system_id, ";
-        query << "COALESCE(NULLIF(v.address,''), NULLIF(ce.location_address,'')) AS venue_address ";
+        query << "COALESCE(NULLIF(v.address,''), NULLIF(ce.location_address,'')) AS venue_address, ";
+        query << "COALESCE(mt.name, '') AS match_type_name ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
+        query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
         query << "LEFT JOIN chat_events ce ON ce.match_id = m.id ";
         query << "  AND ce.chat_id = (SELECT id FROM chats WHERE team_id = $1::int LIMIT 1) ";
         query << "LEFT JOIN source_systems ss ON ss.id = m.source_system_id ";
@@ -553,6 +555,9 @@ Response EventController::handleGetMatches(const Request& request) {
             }
             if (result.columns() > 18 && !result[i][18].is_null()) {
                 matches_json << ",\"venue_address\":\"" << escapeJSON(result[i][18].c_str()) << "\"";
+            }
+            if (result.columns() > 19 && !result[i][19].is_null() && result[i][19].c_str()[0] != '\0') {
+                matches_json << ",\"match_type\":\"" << escapeJSON(result[i][19].c_str()) << "\"";
             }
             
             matches_json << "}";
