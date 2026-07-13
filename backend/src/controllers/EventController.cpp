@@ -948,29 +948,110 @@ Response EventController::handleDeleteMatch(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, json);
         }
 
-        std::cout << "🗑️ Deleting match: " << match_id << std::endl;
+        // Series-aware scope.  Callers hitting a match that belongs
+        // to a recurring series must state their intent:
+        //   ?scope=one    → delete just this occurrence (default —
+        //                   also the only legal value for a match
+        //                   with no series_id).
+        //   ?scope=future → delete this occurrence + every later
+        //                   occurrence of the same series, and cap
+        //                   the series with ends_on = day before.
+        //   ?scope=all    → delete every occurrence of the series
+        //                   (past + future) and the series row.
+        std::string scope = request.getQueryParam("scope");
+        if (scope.empty()) scope = "one";
 
-        // 1) Drop any chat_event mirroring this match — the FK on
-        //    chat_events.match_id is NO ACTION and would block the
-        //    delete below.  Downstream (chat_event_rsvps, tactical
-        //    boards, magic-link tokens) cascade off chat_events.
-        db_->query("DELETE FROM chat_events WHERE match_id = $1::int",
-                   std::vector<std::string>{ match_id });
+        std::cout << "🗑️ Deleting match: " << match_id << " scope=" << scope << std::endl;
 
-        // 2) Delete the match itself.  All the tournament FKs
-        //    (next_match_id / loser_next_match_id) are NO ACTION —
-        //    guard against orphaning by nulling those first.
-        db_->query("UPDATE matches SET next_match_id = NULL "
-                   "WHERE next_match_id = $1::int",
-                   std::vector<std::string>{ match_id });
-        db_->query("UPDATE matches SET loser_next_match_id = NULL "
-                   "WHERE loser_next_match_id = $1::int",
-                   std::vector<std::string>{ match_id });
+        // Fetch this row's series context up-front — we need it for
+        // the wider-scope paths, and to validate scope against a
+        // row that isn't part of any series.
+        pqxx::result ctx = db_->query(
+            "SELECT series_id, match_date FROM matches WHERE id = $1::int",
+            std::vector<std::string>{ match_id });
+        if (ctx.empty()) {
+            std::string json = createJSONResponse(false, "Match not found");
+            return Response(HttpStatus::NOT_FOUND, json);
+        }
+        const bool has_series = !ctx[0][0].is_null();
+        const std::string series_id  = has_series ? std::string(ctx[0][0].c_str()) : "";
+        const std::string match_date = ctx[0][1].c_str();
 
-        db_->query("DELETE FROM matches WHERE id = $1::int",
-                   std::vector<std::string>{ match_id });
+        if (scope != "one" && !has_series) {
+            std::string json = createJSONResponse(false, "scope=" + scope + " requires a match linked to a series");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
 
-        std::string json = createJSONResponse(true, "Match deleted successfully");
+        // Helper: build the WHERE clause + params for the set of
+        // match rows we're about to remove.  All three scopes share
+        // the same delete-chat_events + null-out-next-match-refs +
+        // delete-matches pipeline; only the target set differs.
+        std::string where_sql;
+        std::vector<std::string> where_params;
+
+        if (scope == "one") {
+            where_sql = "id = $1::int";
+            where_params = { match_id };
+        } else if (scope == "future") {
+            where_sql = "series_id = $1::int AND match_date >= $2::date";
+            where_params = { series_id, match_date };
+        } else if (scope == "all") {
+            where_sql = "series_id = $1::int";
+            where_params = { series_id };
+        } else {
+            std::string json = createJSONResponse(false, "Unknown scope: " + scope);
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+
+        // 1) Drop chat_events mirroring any match in the target set.
+        db_->query(
+            "DELETE FROM chat_events WHERE match_id IN "
+            "(SELECT id FROM matches WHERE " + where_sql + ")",
+            where_params);
+
+        // 2) Null out tournament FKs pointing INTO the target set.
+        db_->query(
+            "UPDATE matches SET next_match_id = NULL WHERE next_match_id IN "
+            "(SELECT id FROM matches WHERE " + where_sql + ")",
+            where_params);
+        db_->query(
+            "UPDATE matches SET loser_next_match_id = NULL WHERE loser_next_match_id IN "
+            "(SELECT id FROM matches WHERE " + where_sql + ")",
+            where_params);
+
+        // 3) Delete the matches themselves.  Cascades handle
+        //    eligibility_policies, match_events, match_lineups,
+        //    match_lineup_metadata, tactical_boards,
+        //    training_attendance, player_event_reminders, RSVP
+        //    history tables.
+        pqxx::result gone = db_->query(
+            "DELETE FROM matches WHERE " + where_sql + " RETURNING id",
+            where_params);
+        const size_t deleted_count = gone.size();
+
+        // 4) Series-level tail work.
+        if (scope == "future" && has_series) {
+            // Cap the series' ends_on at the day BEFORE the deleted
+            // window.  If that would put ends_on before starts_on
+            // (the whole series is now empty), mark it inactive.
+            db_->query(
+                "UPDATE match_series "
+                "SET ends_on = ($2::date - INTERVAL '1 day')::date, "
+                "    active  = CASE WHEN ($2::date - INTERVAL '1 day')::date < starts_on THEN false ELSE active END, "
+                "    updated_at = now() "
+                "WHERE id = $1::int",
+                std::vector<std::string>{ series_id, match_date });
+        } else if (scope == "all" && has_series) {
+            db_->query(
+                "DELETE FROM match_series WHERE id = $1::int",
+                std::vector<std::string>{ series_id });
+        }
+
+        std::ostringstream msg;
+        msg << "Deleted " << deleted_count << " match" << (deleted_count == 1 ? "" : "es");
+        if (scope == "future") msg << " (this occurrence + all future)";
+        else if (scope == "all") msg << " (entire series + template)";
+        std::string json = createJSONResponse(true, msg.str());
         return Response(HttpStatus::OK, json);
 
     } catch (const std::exception& e) {

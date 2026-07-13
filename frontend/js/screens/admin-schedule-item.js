@@ -468,16 +468,99 @@ class AdminScheduleItemScreen extends Screen {
 
   async _delete() {
     const m = this._match || {};
+    // Series-linked rows deserve a real 3-option chooser — you
+    // almost always want to pick between "this week", "this + all
+    // future" and "wipe the whole series", and the browser confirm
+    // dialog can't do that.  Render an inline panel in place of the
+    // detail view; keep it dismissible.
+    if (m.series_id) {
+      this._renderSeriesDeletePanel();
+      return;
+    }
     const label = m.title || 'this item';
     const ok = window.confirm(`Delete "${label}"?  This can't be undone.`);
     if (!ok) return;
+    await this._doDelete('one');
+  }
+
+  _renderSeriesDeletePanel() {
+    const body = this.find('#sched-item-body');
+    if (!body) return;
+    const m = this._match;
+    const title = this.escapeHtml(m.title || 'this item');
+    const dt = m.event_date ? new Date(m.event_date) : null;
+    const dateStr = dt
+      ? dt.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric', year:'numeric' })
+      : '';
+
+    body.innerHTML = `
+      <div style="max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:12px;">
+        <div style="background:#7f1d1d; color:#fecaca; padding:16px; border-radius:12px;">
+          <div style="font-weight:700; font-size:1.1rem; margin-bottom:4px;">Delete "${title}"</div>
+          <div style="opacity:0.9; font-size:0.9rem;">
+            This is part of a recurring series${dateStr ? ` — the ${dateStr} occurrence` : ''}. Choose what to remove:
+          </div>
+        </div>
+
+        <button class="sched-del-scope" data-scope="one"
+                style="text-align:left; padding:12px 14px; border-radius:10px; border:1px solid var(--color-border);
+                       background:var(--bg-secondary); color:var(--text-primary); cursor:pointer;">
+          <div style="font-weight:700;">Just this occurrence</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary);">
+            Removes only ${dateStr || 'this date'}. The series and all other occurrences stay untouched.
+          </div>
+        </button>
+
+        <button class="sched-del-scope" data-scope="future"
+                style="text-align:left; padding:12px 14px; border-radius:10px; border:1px solid var(--color-border);
+                       background:var(--bg-secondary); color:var(--text-primary); cursor:pointer;">
+          <div style="font-weight:700;">This occurrence + all future</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary);">
+            Removes this date and every later one. Past occurrences stay for the record. Series is capped so no new occurrences generate.
+          </div>
+        </button>
+
+        <button class="sched-del-scope" data-scope="all"
+                style="text-align:left; padding:12px 14px; border-radius:10px; border:1px solid #b91c1c;
+                       background:#7f1d1d; color:#fecaca; cursor:pointer;">
+          <div style="font-weight:700;">Entire series (past + future)</div>
+          <div style="font-size:0.85rem; opacity:0.85;">
+            Removes every occurrence AND deletes the recurring template. Can't be undone.
+          </div>
+        </button>
+
+        <div style="display:flex; gap:8px; margin-top:4px;">
+          <button class="sched-del-cancel"
+                  style="padding:10px 18px; border-radius:8px; border:1px solid var(--color-border);
+                         background:var(--bg-secondary); color:var(--text-primary); cursor:pointer; font-weight:600;">
+            ← Back
+          </button>
+        </div>
+      </div>
+    `;
+
+    body.querySelectorAll('.sched-del-scope').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const scope = btn.getAttribute('data-scope');
+        this._doDelete(scope);
+      });
+    });
+    body.querySelector('.sched-del-cancel')?.addEventListener('click', () => {
+      // Back to view mode.
+      this._renderBody();
+    });
+  }
+
+  async _doDelete(scope) {
     try {
-      const res = await this.auth.fetch(`/api/matches/${this._matchId}`, { method: 'DELETE' });
+      const res = await this.auth.fetch(
+        `/api/matches/${this._matchId}?scope=${encodeURIComponent(scope || 'one')}`,
+        { method: 'DELETE' }
+      );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.message || `HTTP ${res.status}`);
       }
-      // Back to caller — schedule board will re-fetch on entry.
       this._goBack();
     } catch (e) {
       this._showError(`Delete failed: ${e.message}`);
