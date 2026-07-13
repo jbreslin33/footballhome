@@ -85,15 +85,25 @@ struct MatchRow {
     std::int16_t            visibility{0};      // 0=public 1=club 2=private
 };
 
-// A `sim_player_profile` row's three bytea payloads. Kept as three
-// separate vectors because the DB has three separate columns; the
-// AttributeSet / ConceptSet / RecognitionSet codecs each own their own
-// wire format (§8) and concatenating them here would just make callers
-// slice the buffer back apart.
-struct ProfileBlob {
-    std::vector<std::byte> attributes;
-    std::vector<std::byte> concepts;
-    std::vector<std::byte> recognition;
+// A `sim_player_profile` row's rows-per-set payload (see ADR §22.18 —
+// bytea → normalized storage, migration 205). Each of the three sets is
+// a vector of (registry_id, f32_value) pairs. The registry IDs are
+// std::uint16_t to match AttrId / ConceptId / PatternId (all aliased to
+// std::uint16_t in common/IdTypes.hpp).
+//
+// f32 values match the DB's REAL column; ProfileStore converts to/from
+// Fixed64 at the persistence boundary (Fixed64::fromFloat on load,
+// Fixed64::toFloat on save). Round-trip precision is limited by f32
+// (~23-bit mantissa) — same trade-off the previous bytea codec had.
+//
+// Deterministic order: PgClient::loadProfile issues `ORDER BY <id> ASC`
+// so the reconstructed Sets are byte-identical across replicas.
+// ProfileStore::save sorts by id ascending before pushing rows so DB
+// write order is deterministic too (keeps `pg_dump` diffs stable).
+struct ProfileRows {
+    std::vector<std::pair<std::uint16_t, float>> attributes;   // (attr_id,    value)
+    std::vector<std::pair<std::uint16_t, float>> concepts;     // (concept_id, mastery)
+    std::vector<std::pair<std::uint16_t, float>> recognition;  // (pattern_id, skill)
 };
 
 // One row of `sim_match_inputs`. Primary key = (match_id, tick_num,
@@ -162,18 +172,24 @@ public:
                                   std::span<const std::byte> result_hash) = 0;
 
     // ------------------------------------------------------------------
-    // Player profile (bytea round-trip)
+    // Player profile (row-per-set; see ADR §22.18)
     // ------------------------------------------------------------------
     // Returns nullopt if no `sim_player_profile` row exists for
     // `person_id`. Callers (ProfileStore::loadOrCreate) then materialize
     // a default profile and call upsertProfile.
-    virtual std::optional<ProfileBlob> loadProfile(PersonId person_id) = 0;
+    //
+    // A returned ProfileRows always has each vector sorted by id ascending
+    // (SELECT ... ORDER BY <id> ASC), so downstream reconstruction of
+    // AttributeSet / ConceptSet / RecognitionSet is byte-deterministic.
+    virtual std::optional<ProfileRows> loadProfile(PersonId person_id) = 0;
 
-    // Idempotent INSERT ... ON CONFLICT (person_id) DO UPDATE. Writes
-    // all three bytea columns + refreshes `updated_at`. First-touch
-    // for a new person_id is a plain insert.
+    // Idempotent, transactional (INSERT parent envelope + INSERT ... ON
+    // CONFLICT DO UPDATE per child row + DELETE any child rows whose id
+    // is no longer in the incoming set — preserves the previous bytea
+    // semantics of "replace the whole set"). First-touch for a new
+    // person_id is a plain INSERT into all four tables.
     virtual void upsertProfile(PersonId person_id,
-                               const ProfileBlob& blob) = 0;
+                               const ProfileRows& rows) = 0;
 
     // ------------------------------------------------------------------
     // Input log

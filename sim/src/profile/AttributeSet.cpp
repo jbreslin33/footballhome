@@ -2,8 +2,6 @@
 
 #include "profile/AttributeSet.hpp"
 
-#include "profile/PackedU16F32.hpp"
-
 namespace fh::sim::profile {
 
 math::Fixed64 AttributeSet::get(AttrId id, math::Fixed64 default_value) const
@@ -25,18 +23,6 @@ void AttributeSet::set(AttrId id, math::Fixed64 value)
 void AttributeSet::erase(AttrId id)
 {
     values_.erase(id);
-}
-
-std::vector<std::uint8_t> AttributeSet::toBytes() const
-{
-    return detail::encodePackedU16F32(values_);
-}
-
-AttributeSet AttributeSet::fromBytes(std::span<const std::uint8_t> bytes)
-{
-    AttributeSet out;
-    out.values_ = detail::decodePackedU16F32(bytes);
-    return out;
 }
 
 } // namespace fh::sim::profile

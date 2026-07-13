@@ -2,8 +2,6 @@
 
 #include "profile/ConceptSet.hpp"
 
-#include "profile/PackedU16F32.hpp"
-
 namespace fh::sim::profile {
 
 math::Fixed64 ConceptSet::level(ConceptId id) const
@@ -29,18 +27,6 @@ void ConceptSet::plug(ConceptId id, math::Fixed64 mastery)
 void ConceptSet::unplug(ConceptId id)
 {
     mastery_.erase(id);
-}
-
-std::vector<std::uint8_t> ConceptSet::toBytes() const
-{
-    return detail::encodePackedU16F32(mastery_);
-}
-
-ConceptSet ConceptSet::fromBytes(std::span<const std::uint8_t> bytes)
-{
-    ConceptSet out;
-    out.mastery_ = detail::decodePackedU16F32(bytes);
-    return out;
 }
 
 } // namespace fh::sim::profile

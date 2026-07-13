@@ -4,16 +4,14 @@
 // (physical, technical, or mental). AttributeSet is copied into the sim on
 // match start and never mutated during a match.
 //
-// Byte format (persisted in `sim_player_profile.attributes`, §8):
+// Storage: one row per (person_id, attr_id, value) in sim_player_attribute
+// (see ADR §22.18 and migration 205). The on-disk value is REAL (f32) to
+// match the DB source of truth; the persistence layer converts to Fixed64
+// on load and back to f32 on save. Neither conversion is on the tick hot
+// path. Load order is `ORDER BY attr_id ASC` for deterministic
+// reconstruction; save order is sorted ascending for stable pg_dump diffs.
 //
-//   [u16 count LE][ (u16 attr_id LE)(f32 value LE) ] × count
-//
-// The f32 on disk matches the DB's REAL source of truth and enables the
-// SQL decode helper (§8.1). In-memory we work in Fixed64 for determinism.
-// The f32 → Fixed64 conversion happens at load time; the reverse happens
-// at save time. Neither is on the tick hot path.
-//
-// See DESIGN.md §5.2, §8.
+// See DESIGN.md §5.2, §8, §22.18.
 
 #pragma once
 
@@ -21,10 +19,7 @@
 #include "math/Fixed64.hpp"
 
 #include <cstddef>
-#include <cstdint>
-#include <span>
 #include <unordered_map>
-#include <vector>
 
 namespace fh::sim::profile {
 
@@ -43,23 +38,13 @@ public:
     void          erase(AttrId id);
     void          clear() noexcept { values_.clear(); }
 
-    // Direct read-only access for iteration (deterministic order is NOT
-    // guaranteed by unordered_map; use toBytes() when byte-identity matters).
+    // Direct read-only access for iteration. Deterministic order is NOT
+    // guaranteed by unordered_map — the persistence layer sorts by id at
+    // the save boundary (see ProfileStore::save).
     const std::unordered_map<AttrId, math::Fixed64>& values() const noexcept
     {
         return values_;
     }
-
-    // Serialization -----------------------------------------------------
-    // Emit records sorted by AttrId ascending so the byte layout is fully
-    // deterministic regardless of insertion order.
-    std::vector<std::uint8_t> toBytes() const;
-
-    // Parse bytes in the format above. On malformed input (short buffer,
-    // count/length mismatch), returns an empty set — the caller should
-    // treat this as "no attributes present" and log at the persistence
-    // boundary, not here.
-    static AttributeSet fromBytes(std::span<const std::uint8_t> bytes);
 
 private:
     std::unordered_map<AttrId, math::Fixed64> values_;

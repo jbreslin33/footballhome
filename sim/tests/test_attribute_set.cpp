@@ -1,40 +1,21 @@
 // footballhome sim - AttributeSet tests
 //
-// Coverage:
-//   • Empty set round-trip (default '\x0000' bytea produces empty set).
-//   • set/get/has/erase.
-//   • Default value returned for missing IDs.
-//   • Deterministic byte output (sorted by id ascending) independent of
-//     insertion order.
-//   • Full round-trip through toBytes/fromBytes preserves values within
-//     f32 precision.
-//   • Malformed input returns an empty set.
+// Coverage (post ADR §22.18 — byte codec removed, persistence moved to
+// row-per-attribute in sim_player_attribute):
+//   • Default construction is empty.
+//   • get() returns the caller-supplied default for missing IDs.
+//   • set/get/has/erase round-trips a small handful of Fixed64 values.
+//   • clear() resets to empty.
+//   • values() exposes the underlying map (used by ProfileStore::save
+//     to iterate + sort at the persistence boundary).
 
 #include "profile/AttributeSet.hpp"
 #include "math/Fixed64.hpp"
 #include "test_harness.hpp"
 
-#include <array>
-#include <cstdint>
-#include <span>
-#include <vector>
-
 using fh::sim::AttrId;
 using fh::sim::math::Fixed64;
 using fh::sim::profile::AttributeSet;
-
-namespace {
-
-// f32 → Fixed64 → f32 costs about 7 fractional decimal digits. Compare
-// on Fixed64 raw within a generous ulp tolerance so tests are portable.
-bool close_raw(Fixed64 a, Fixed64 b, std::int64_t tol_raw = 4096)
-{
-    const std::int64_t d = a.raw - b.raw;
-    const std::int64_t abs_d = (d < 0) ? -d : d;
-    return abs_d <= tol_raw;
-}
-
-} // namespace
 
 FH_TEST(attribute_set_default_is_empty)
 {
@@ -68,87 +49,30 @@ FH_TEST(attribute_set_set_get_has_erase)
     FH_EXPECT_EQ(s.size(), std::size_t{1});
 }
 
-FH_TEST(attribute_set_empty_roundtrip)
-{
-    // toBytes of an empty set must produce exactly 2 bytes: u16 count = 0.
-    const AttributeSet s;
-    const auto bytes = s.toBytes();
-    FH_EXPECT_EQ(bytes.size(), std::size_t{2});
-    FH_EXPECT_EQ(bytes[0], std::uint8_t{0});
-    FH_EXPECT_EQ(bytes[1], std::uint8_t{0});
-
-    // And parsing that must yield an empty set.
-    const AttributeSet round = AttributeSet::fromBytes(bytes);
-    FH_EXPECT(round.empty());
-}
-
-FH_TEST(attribute_set_db_default_bytea_parses_to_empty)
-{
-    // The DB DEFAULT '\x0000' — verify the codec parses it back to empty.
-    const std::array<std::uint8_t, 2> db_default{{0x00, 0x00}};
-    const AttributeSet round = AttributeSet::fromBytes(db_default);
-    FH_EXPECT(round.empty());
-}
-
-FH_TEST(attribute_set_roundtrip_preserves_values)
+FH_TEST(attribute_set_clear_resets)
 {
     AttributeSet s;
-    s.set(AttrId{10}, Fixed64::fromDouble(4.5));
-    s.set(AttrId{20}, Fixed64::fromDouble(7.5));
-    s.set(AttrId{30}, Fixed64::fromDouble(0.10));
-
-    const auto bytes = s.toBytes();
-    // 2 (count) + 3 * 6 (record) = 20 bytes.
-    FH_EXPECT_EQ(bytes.size(), std::size_t{20});
-
-    const AttributeSet round = AttributeSet::fromBytes(bytes);
-    FH_EXPECT_EQ(round.size(), std::size_t{3});
-    FH_EXPECT(close_raw(round.get(AttrId{10}), Fixed64::fromDouble(4.5)));
-    FH_EXPECT(close_raw(round.get(AttrId{20}), Fixed64::fromDouble(7.5)));
-    FH_EXPECT(close_raw(round.get(AttrId{30}), Fixed64::fromDouble(0.10)));
+    s.set(AttrId{5}, Fixed64::fromInt(3));
+    s.set(AttrId{6}, Fixed64::fromInt(4));
+    FH_EXPECT_EQ(s.size(), std::size_t{2});
+    s.clear();
+    FH_EXPECT(s.empty());
+    FH_EXPECT_EQ(s.size(), std::size_t{0});
 }
 
-FH_TEST(attribute_set_byte_output_deterministic)
+FH_TEST(attribute_set_values_exposes_underlying_map)
 {
-    // Insertion order should NOT affect the byte output (sorted by id).
-    AttributeSet a;
-    a.set(AttrId{30}, Fixed64::fromDouble(3.0));
-    a.set(AttrId{10}, Fixed64::fromDouble(1.0));
-    a.set(AttrId{20}, Fixed64::fromDouble(2.0));
+    // ProfileStore::save iterates .values() at the persistence boundary
+    // and sorts by id — this test just proves the accessor surface. The
+    // sort itself is exercised in test_profile_store.
+    AttributeSet s;
+    s.set(AttrId{10}, Fixed64::fromInt(1));
+    s.set(AttrId{20}, Fixed64::fromInt(2));
 
-    AttributeSet b;
-    b.set(AttrId{10}, Fixed64::fromDouble(1.0));
-    b.set(AttrId{20}, Fixed64::fromDouble(2.0));
-    b.set(AttrId{30}, Fixed64::fromDouble(3.0));
-
-    const auto ba = a.toBytes();
-    const auto bb = b.toBytes();
-    FH_EXPECT_EQ(ba.size(), bb.size());
-    for (std::size_t i = 0; i < ba.size(); ++i) {
-        FH_EXPECT_EQ(ba[i], bb[i]);
-    }
-
-    // And IDs are ordered 10, 20, 30 in the byte stream.
-    // Records start at offset 2 with stride 6 each; id is the first u16 LE.
-    FH_EXPECT_EQ(ba[2],  std::uint8_t{10});
-    FH_EXPECT_EQ(ba[3],  std::uint8_t{0});
-    FH_EXPECT_EQ(ba[8],  std::uint8_t{20});
-    FH_EXPECT_EQ(ba[9],  std::uint8_t{0});
-    FH_EXPECT_EQ(ba[14], std::uint8_t{30});
-    FH_EXPECT_EQ(ba[15], std::uint8_t{0});
-}
-
-FH_TEST(attribute_set_malformed_input_returns_empty)
-{
-    // Zero-length buffer.
-    const std::span<const std::uint8_t> empty_span{};
-    FH_EXPECT(AttributeSet::fromBytes(empty_span).empty());
-
-    // Count claims 3 records but only enough bytes for one.
-    const std::array<std::uint8_t, 8> truncated{
-        {0x03, 0x00,                            // count = 3
-         0x01, 0x00, 0x00, 0x00, 0x80, 0x3F}};  // one record (id=1, val=1.0f)
-    FH_EXPECT(AttributeSet::fromBytes(truncated).empty());
+    const auto& m = s.values();
+    FH_EXPECT_EQ(m.size(), std::size_t{2});
+    FH_EXPECT_EQ(m.at(AttrId{10}).raw, Fixed64::fromInt(1).raw);
+    FH_EXPECT_EQ(m.at(AttrId{20}).raw, Fixed64::fromInt(2).raw);
 }
 
 FH_TEST_MAIN()

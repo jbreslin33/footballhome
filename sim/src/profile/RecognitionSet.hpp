@@ -1,16 +1,15 @@
 // footballhome sim - RecognitionSet
 //
 // Per-pattern probability [0.0, 1.0] that a player correctly identifies the
-// pattern per Recognition scan. Populated from `sim_player_profile.recognition`
-// which defaults to `\x0000` (bytea for u16 count=0) so every player is born
-// with an empty RecognitionSet in M0.
+// pattern per Recognition scan. Populated from sim_player_recognition rows
+// (ADR §22.18, migration 205); in M0 the table is empty for every person,
+// so every player is born with an empty RecognitionSet.
 //
 // This field is deliberately first-class from day 1 even though patterns
-// don't exist until M4 — so the byte layout, wire format, and behavior
+// don't exist until M4 — so the storage layout, wire format, and behavior
 // signatures do not change when M4 lands.
 //
-// Byte format matches AttributeSet (see PackedU16F32.hpp).
-// See DESIGN.md §5.2, §8, §11.
+// See DESIGN.md §5.2, §8, §11, §22.18.
 
 #pragma once
 
@@ -18,10 +17,7 @@
 #include "math/Fixed64.hpp"
 
 #include <cstddef>
-#include <cstdint>
-#include <span>
 #include <unordered_map>
-#include <vector>
 
 namespace fh::sim::profile {
 
@@ -47,9 +43,6 @@ public:
     {
         return skill_;
     }
-
-    std::vector<std::uint8_t>  toBytes() const;
-    static RecognitionSet      fromBytes(std::span<const std::uint8_t> bytes);
 
 private:
     std::unordered_map<PatternId, math::Fixed64> skill_;

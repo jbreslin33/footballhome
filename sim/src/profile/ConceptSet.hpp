@@ -6,8 +6,12 @@
 // M0 uses only one concept, `run_to_point`, wired to WanderController.
 // Real ConceptSets get populated in M3+.
 //
-// Byte format matches AttributeSet (see PackedU16F32.hpp).
-// See DESIGN.md §5.2, §8.
+// Storage: one row per (person_id, concept_id, mastery) in
+// sim_player_concept (see ADR §22.18, migration 205). The in-memory
+// class holds a sparse unordered_map; the persistence layer sorts by id
+// on save/load for deterministic pg_dump / replay diffs.
+//
+// See DESIGN.md §5.2, §8, §22.18.
 
 #pragma once
 
@@ -15,10 +19,7 @@
 #include "math/Fixed64.hpp"
 
 #include <cstddef>
-#include <cstdint>
-#include <span>
 #include <unordered_map>
-#include <vector>
 
 namespace fh::sim::profile {
 
@@ -49,9 +50,6 @@ public:
     {
         return mastery_;
     }
-
-    std::vector<std::uint8_t>  toBytes() const;
-    static ConceptSet          fromBytes(std::span<const std::uint8_t> bytes);
 
 private:
     std::unordered_map<ConceptId, math::Fixed64> mastery_;

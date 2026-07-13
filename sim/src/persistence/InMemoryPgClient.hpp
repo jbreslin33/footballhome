@@ -71,8 +71,8 @@ public:
     void updateMatchEnded(MatchId id,
                           std::span<const std::byte> result_hash) override;
 
-    std::optional<ProfileBlob> loadProfile(PersonId person_id) override;
-    void upsertProfile(PersonId person_id, const ProfileBlob& blob) override;
+    std::optional<ProfileRows> loadProfile(PersonId person_id) override;
+    void upsertProfile(PersonId person_id, const ProfileRows& rows) override;
 
     void insertInput(const InputRow& row) override;
     void insertInputBatch(std::span<const InputRow> rows) override;
@@ -95,7 +95,7 @@ private:
     std::vector<RegistryRow>                concepts_;
     std::vector<RegistryRow>                patterns_;
     std::unordered_map<MatchId, MatchRecord>   matches_;
-    std::unordered_map<PersonId, ProfileBlob>  profiles_;
+    std::unordered_map<PersonId, ProfileRows>  profiles_;
     std::vector<InputRow>                   inputs_;
     std::vector<EventRow>                   events_;
 };

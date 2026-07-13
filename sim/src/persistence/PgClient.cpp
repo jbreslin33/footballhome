@@ -24,19 +24,28 @@ namespace fh::sim::persistence {
 namespace {
 
 // Prepared-statement names. Kept short — they show up in server logs.
-constexpr const char* PS_LOAD_ATTR          = "load_attribute_registry";
-constexpr const char* PS_LOAD_CONCEPT       = "load_concept_registry";
-constexpr const char* PS_LOAD_PATTERN       = "load_pattern_registry";
-constexpr const char* PS_GET_MATCH          = "get_match";
-constexpr const char* PS_UPSERT_MATCH       = "upsert_match";
-constexpr const char* PS_UPDATE_MATCH_ENDED = "update_match_ended";
-constexpr const char* PS_LOAD_PROFILE       = "load_profile";
-constexpr const char* PS_UPSERT_PROFILE     = "upsert_profile";
-constexpr const char* PS_INSERT_INPUT       = "insert_input";
-constexpr const char* PS_LOAD_INPUTS_ALL    = "load_inputs_all";
-constexpr const char* PS_LOAD_INPUTS_UPTO   = "load_inputs_upto";
-constexpr const char* PS_INSERT_EVENT       = "insert_event";
-constexpr const char* PS_LOAD_MATCH_END     = "load_match_end";
+constexpr const char* PS_LOAD_ATTR              = "load_attribute_registry";
+constexpr const char* PS_LOAD_CONCEPT           = "load_concept_registry";
+constexpr const char* PS_LOAD_PATTERN           = "load_pattern_registry";
+constexpr const char* PS_GET_MATCH              = "get_match";
+constexpr const char* PS_UPSERT_MATCH           = "upsert_match";
+constexpr const char* PS_UPDATE_MATCH_ENDED     = "update_match_ended";
+constexpr const char* PS_LOAD_PROFILE_EXISTS    = "load_profile_exists";
+constexpr const char* PS_LOAD_PROFILE_ATTR      = "load_profile_attr";
+constexpr const char* PS_LOAD_PROFILE_CONCEPT   = "load_profile_concept";
+constexpr const char* PS_LOAD_PROFILE_RECOG     = "load_profile_recog";
+constexpr const char* PS_UPSERT_PROFILE_PARENT  = "upsert_profile_parent";
+constexpr const char* PS_DELETE_PROFILE_ATTR    = "delete_profile_attr";
+constexpr const char* PS_DELETE_PROFILE_CONCEPT = "delete_profile_concept";
+constexpr const char* PS_DELETE_PROFILE_RECOG   = "delete_profile_recog";
+constexpr const char* PS_INSERT_PROFILE_ATTR    = "insert_profile_attr";
+constexpr const char* PS_INSERT_PROFILE_CONCEPT = "insert_profile_concept";
+constexpr const char* PS_INSERT_PROFILE_RECOG   = "insert_profile_recog";
+constexpr const char* PS_INSERT_INPUT           = "insert_input";
+constexpr const char* PS_LOAD_INPUTS_ALL        = "load_inputs_all";
+constexpr const char* PS_LOAD_INPUTS_UPTO       = "load_inputs_upto";
+constexpr const char* PS_INSERT_EVENT           = "insert_event";
+constexpr const char* PS_LOAD_MATCH_END         = "load_match_end";
 
 // libpqxx 7.x accepts std::basic_string_view<std::byte> as a bytea
 // parameter and returns std::basic_string<std::byte> when a column is
@@ -142,19 +151,45 @@ PgClient::PgClient(const ConnConfig& cfg)
             "UPDATE sim_matches SET ended_at = NOW(), result = $2 "
             "WHERE id = $1 AND ended_at IS NULL");
 
-        c.prepare(PS_LOAD_PROFILE,
-            "SELECT attributes, concepts, recognition FROM sim_player_profile "
-            "WHERE person_id = $1");
+        c.prepare(PS_LOAD_PROFILE_EXISTS,
+            "SELECT 1 FROM sim_player_profile WHERE person_id = $1");
+        c.prepare(PS_LOAD_PROFILE_ATTR,
+            "SELECT attr_id, value FROM sim_player_attribute "
+            "WHERE person_id = $1 ORDER BY attr_id ASC");
+        c.prepare(PS_LOAD_PROFILE_CONCEPT,
+            "SELECT concept_id, mastery FROM sim_player_concept "
+            "WHERE person_id = $1 ORDER BY concept_id ASC");
+        c.prepare(PS_LOAD_PROFILE_RECOG,
+            "SELECT pattern_id, skill FROM sim_player_recognition "
+            "WHERE person_id = $1 ORDER BY pattern_id ASC");
 
-        c.prepare(PS_UPSERT_PROFILE,
-            "INSERT INTO sim_player_profile "
-            "  (person_id, attributes, concepts, recognition) "
-            "VALUES ($1, $2, $3, $4) "
-            "ON CONFLICT (person_id) DO UPDATE SET "
-            "  attributes  = EXCLUDED.attributes, "
-            "  concepts    = EXCLUDED.concepts, "
-            "  recognition = EXCLUDED.recognition, "
-            "  updated_at  = NOW()");
+        // Parent envelope. In M0 the ON CONFLICT branch never fires
+        // (§22.14 write policy — one INSERT per person for the lifetime
+        // of a match); post-M0, DO UPDATE bumps updated_at so ops can
+        // spot rewrites in the DB.
+        c.prepare(PS_UPSERT_PROFILE_PARENT,
+            "INSERT INTO sim_player_profile (person_id) VALUES ($1) "
+            "ON CONFLICT (person_id) DO UPDATE SET updated_at = NOW()");
+
+        // Replace-whole-set semantics: DELETE all child rows for
+        // person_id, then INSERT the incoming set. Runs inside the same
+        // pqxx::work as the parent upsert, so the transition is atomic.
+        c.prepare(PS_DELETE_PROFILE_ATTR,
+            "DELETE FROM sim_player_attribute WHERE person_id = $1");
+        c.prepare(PS_DELETE_PROFILE_CONCEPT,
+            "DELETE FROM sim_player_concept WHERE person_id = $1");
+        c.prepare(PS_DELETE_PROFILE_RECOG,
+            "DELETE FROM sim_player_recognition WHERE person_id = $1");
+
+        c.prepare(PS_INSERT_PROFILE_ATTR,
+            "INSERT INTO sim_player_attribute (person_id, attr_id, value) "
+            "VALUES ($1, $2, $3)");
+        c.prepare(PS_INSERT_PROFILE_CONCEPT,
+            "INSERT INTO sim_player_concept (person_id, concept_id, mastery) "
+            "VALUES ($1, $2, $3)");
+        c.prepare(PS_INSERT_PROFILE_RECOG,
+            "INSERT INTO sim_player_recognition (person_id, pattern_id, skill) "
+            "VALUES ($1, $2, $3)");
 
         c.prepare(PS_INSERT_INPUT,
             "INSERT INTO sim_match_inputs "
@@ -340,37 +375,88 @@ void PgClient::updateMatchEnded(MatchId id,
 // Player profile
 // ---------------------------------------------------------------------------
 
-std::optional<ProfileBlob> PgClient::loadProfile(PersonId person_id)
+std::optional<ProfileRows> PgClient::loadProfile(PersonId person_id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE},
-                                 pqxx::params{person_id});
-        tx.commit();
-        if (res.empty()) {
+
+        // Existence check first — nullopt vs "row present but all child
+        // tables empty" are semantically different (the latter means
+        // save() was called with empty sets, a valid but weird state).
+        const auto exists = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_EXISTS},
+                                    pqxx::params{person_id});
+        if (exists.empty()) {
+            tx.commit();
             return std::nullopt;
         }
-        const auto& r = res[0];
-        ProfileBlob out;
-        out.attributes  = readBytea(r[0]);
-        out.concepts    = readBytea(r[1]);
-        out.recognition = readBytea(r[2]);
+
+        ProfileRows out;
+
+        const auto attr_res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_ATTR},
+                                      pqxx::params{person_id});
+        out.attributes.reserve(attr_res.size());
+        for (const auto& r : attr_res) {
+            out.attributes.emplace_back(r[0].as<std::uint16_t>(),
+                                        r[1].as<float>());
+        }
+
+        const auto concept_res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_CONCEPT},
+                                         pqxx::params{person_id});
+        out.concepts.reserve(concept_res.size());
+        for (const auto& r : concept_res) {
+            out.concepts.emplace_back(r[0].as<std::uint16_t>(),
+                                      r[1].as<float>());
+        }
+
+        const auto recog_res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_RECOG},
+                                       pqxx::params{person_id});
+        out.recognition.reserve(recog_res.size());
+        for (const auto& r : recog_res) {
+            out.recognition.emplace_back(r[0].as<std::uint16_t>(),
+                                         r[1].as<float>());
+        }
+
+        tx.commit();
         return out;
     } catch (const std::exception& e) {
         throw PgError("loadProfile", e.what());
     }
 }
 
-void PgClient::upsertProfile(PersonId person_id, const ProfileBlob& blob)
+void PgClient::upsertProfile(PersonId person_id, const ProfileRows& rows)
 {
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec(pqxx::prepped{PS_UPSERT_PROFILE},
-            pqxx::params{
-                person_id,
-                viewOf(std::span<const std::byte>{blob.attributes}),
-                viewOf(std::span<const std::byte>{blob.concepts}),
-                viewOf(std::span<const std::byte>{blob.recognition})});
+
+        // 1) Parent envelope (see PS_UPSERT_PROFILE_PARENT for §22.14
+        //    note about the DO UPDATE branch).
+        tx.exec(pqxx::prepped{PS_UPSERT_PROFILE_PARENT},
+                pqxx::params{person_id});
+
+        // 2) Replace-whole-set: wipe then re-insert. Atomic inside the tx.
+        //    In M0 the DELETE removes 0 rows (first touch); post-M0 this
+        //    still preserves the previous bytea-column semantics of
+        //    "the payload IS the set".
+        tx.exec(pqxx::prepped{PS_DELETE_PROFILE_ATTR},
+                pqxx::params{person_id});
+        tx.exec(pqxx::prepped{PS_DELETE_PROFILE_CONCEPT},
+                pqxx::params{person_id});
+        tx.exec(pqxx::prepped{PS_DELETE_PROFILE_RECOG},
+                pqxx::params{person_id});
+
+        for (const auto& [attr_id, value] : rows.attributes) {
+            tx.exec(pqxx::prepped{PS_INSERT_PROFILE_ATTR},
+                    pqxx::params{person_id, attr_id, value});
+        }
+        for (const auto& [concept_id, mastery] : rows.concepts) {
+            tx.exec(pqxx::prepped{PS_INSERT_PROFILE_CONCEPT},
+                    pqxx::params{person_id, concept_id, mastery});
+        }
+        for (const auto& [pattern_id, skill] : rows.recognition) {
+            tx.exec(pqxx::prepped{PS_INSERT_PROFILE_RECOG},
+                    pqxx::params{person_id, pattern_id, skill});
+        }
+
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("upsertProfile", e.what());

@@ -159,7 +159,6 @@ add_library(sim_data STATIC
     src/registry/AttributeRegistry.cpp
     src/registry/ConceptRegistry.cpp
     src/registry/PatternRegistry.cpp
-    src/profile/PackedU16F32.cpp
     src/profile/AttributeSet.cpp
     src/profile/ConceptSet.cpp
     src/profile/RecognitionSet.cpp

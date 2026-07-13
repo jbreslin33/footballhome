@@ -27,7 +27,7 @@ using fh::sim::persistence::InMemoryPgClient;
 using fh::sim::persistence::InputRow;
 using fh::sim::persistence::MatchRow;
 using fh::sim::persistence::PgError;
-using fh::sim::persistence::ProfileBlob;
+using fh::sim::persistence::ProfileRows;
 using fh::sim::persistence::RegistryRow;
 
 namespace {
@@ -182,19 +182,33 @@ FH_TEST(load_profile_missing_returns_nullopt)
 FH_TEST(upsert_profile_and_read_back)
 {
     InMemoryPgClient db;
-    ProfileBlob blob;
-    blob.attributes  = bytesOf({0xaa, 0xbb});
-    blob.concepts    = bytesOf({0xcc});
-    blob.recognition = bytesOf({0xdd, 0xee, 0xff});
 
-    db.upsertProfile(PersonId{42}, blob);
+    // Insertion order is deliberately scrambled — loadProfile must
+    // return rows sorted by id ascending (mirrors PgClient's
+    // `ORDER BY <id> ASC`), so downstream reconstruction of
+    // AttributeSet / ConceptSet / RecognitionSet is deterministic.
+    ProfileRows rows;
+    rows.attributes  = {{20u, 2.0f}, {10u, 1.0f}, {30u, 3.0f}};
+    rows.concepts    = {{2u,  0.5f}, {1u,  0.25f}};
+    rows.recognition = {{7u,  0.9f}};
+
+    db.upsertProfile(PersonId{42}, rows);
     const auto loaded = db.loadProfile(PersonId{42});
     FH_EXPECT(loaded.has_value());
-    FH_EXPECT_EQ(loaded->attributes.size(), std::size_t{2});
-    FH_EXPECT_EQ(loaded->concepts.size(), std::size_t{1});
-    FH_EXPECT_EQ(loaded->recognition.size(), std::size_t{3});
-    FH_EXPECT_EQ(loaded->attributes[0], std::byte{0xaa});
-    FH_EXPECT_EQ(loaded->recognition[2], std::byte{0xff});
+
+    FH_EXPECT_EQ(loaded->attributes.size(), std::size_t{3});
+    FH_EXPECT_EQ(loaded->attributes[0].first,  std::uint16_t{10});
+    FH_EXPECT_EQ(loaded->attributes[1].first,  std::uint16_t{20});
+    FH_EXPECT_EQ(loaded->attributes[2].first,  std::uint16_t{30});
+    FH_EXPECT_EQ(loaded->attributes[0].second, 1.0f);
+
+    FH_EXPECT_EQ(loaded->concepts.size(), std::size_t{2});
+    FH_EXPECT_EQ(loaded->concepts[0].first, std::uint16_t{1});
+    FH_EXPECT_EQ(loaded->concepts[1].first, std::uint16_t{2});
+
+    FH_EXPECT_EQ(loaded->recognition.size(),      std::size_t{1});
+    FH_EXPECT_EQ(loaded->recognition[0].first,    std::uint16_t{7});
+    FH_EXPECT_EQ(loaded->recognition[0].second,   0.9f);
 }
 
 FH_TEST(input_insertion_preserves_order_across_single_and_batch)

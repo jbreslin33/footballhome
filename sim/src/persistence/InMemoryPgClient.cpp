@@ -145,19 +145,30 @@ void InMemoryPgClient::updateMatchEnded(MatchId id,
 // Player profile
 // ---------------------------------------------------------------------------
 
-std::optional<ProfileBlob> InMemoryPgClient::loadProfile(PersonId person_id)
+std::optional<ProfileRows> InMemoryPgClient::loadProfile(PersonId person_id)
 {
     const auto it = profiles_.find(person_id);
     if (it == profiles_.end()) {
         return std::nullopt;
     }
-    return it->second;
+    // Mirror PgClient's ORDER BY <id> ASC semantics — callers depend on
+    // this for deterministic reconstruction of AttributeSet / ConceptSet
+    // / RecognitionSet. Copy first (map holds the canonical unsorted
+    // ProfileRows exactly as upsert wrote it), then sort each vector by
+    // its id (element .first) so the return value is byte-identical to
+    // what PgClient would return for the same person.
+    ProfileRows out = it->second;
+    auto by_id = [](const auto& a, const auto& b) { return a.first < b.first; };
+    std::sort(out.attributes.begin(),  out.attributes.end(),  by_id);
+    std::sort(out.concepts.begin(),    out.concepts.end(),    by_id);
+    std::sort(out.recognition.begin(), out.recognition.end(), by_id);
+    return out;
 }
 
 void InMemoryPgClient::upsertProfile(PersonId person_id,
-                                     const ProfileBlob& blob)
+                                     const ProfileRows& rows)
 {
-    profiles_[person_id] = blob;
+    profiles_[person_id] = rows;
 }
 
 // ---------------------------------------------------------------------------

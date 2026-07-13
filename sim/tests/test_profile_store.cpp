@@ -35,8 +35,8 @@ FH_TEST(load_or_create_materialises_m0_baseline_on_first_touch)
 
     // Every physical AttrId from the M0 catalog is present and equals
     // the value produced by defaultPhysical(). We check three of the
-    // nine — a full sweep is redundant given the codec is exercised by
-    // test_attribute_set.
+    // nine — a full sweep is redundant given the encode/decode path is
+    // exercised by the round-trip test below.
     const auto baseline = fh::sim::m0::defaultPhysical();
     FH_EXPECT_EQ(p.physical.get(fh::sim::m0::kMaxWalkSpeed).raw,
                  baseline.get(fh::sim::m0::kMaxWalkSpeed).raw);
@@ -78,9 +78,9 @@ FH_TEST(load_or_create_second_call_reads_from_db)
 }
 
 // ---------------------------------------------------------------------------
-// save() round-trips small-integer Fixed64 values bit-exactly. AttributeSet
-// serialises through f32 on disk (§8), so we use small integers whose f32
-// representation is exact.
+// save() round-trips small-integer Fixed64 values bit-exactly. Rows are
+// stored as f32 in the DB (§8, ADR §22.18), so we use small integers whose
+// f32 representation is exact.
 // ---------------------------------------------------------------------------
 FH_TEST(save_round_trips_small_integer_fixed64_bytes)
 {
@@ -96,11 +96,10 @@ FH_TEST(save_round_trips_small_integer_fixed64_bytes)
 
     const PlayerProfile read = store.loadOrCreate(person);
 
-    // AttributeSet::toBytes uses f32 on disk (§8), so Fixed64 round-trips
-    // via a f32 intermediate. For values built via fromFraction with power-
-    // of-two denominators the f32 is exact; other values quantise to f32
-    // precision. We chose exactly-representable values above so bit
-    // equality is expected.
+    // ProfileStore encodes values via Fixed64::toFloat and decodes via
+    // Fixed64::fromFloat (per ADR §22.18 — persistence layer converts at
+    // the boundary). For small integers the f32 is exact so bit equality
+    // is expected on the Fixed64 raw.
     FH_EXPECT_EQ(read.physical.get(fh::sim::m0::kMaxWalkSpeed).raw,
                  Fixed64::fromInt(3).raw);
     FH_EXPECT_EQ(read.physical.get(fh::sim::m0::kMaxSprintSpeed).raw,
