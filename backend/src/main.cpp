@@ -424,8 +424,14 @@ private:
             return false;
         }
         
-        // Listen
-        if (listen(server_fd_, 10) < 0) {
+        // Listen. Backlog capped at SOMAXCONN (128 on modern Linux) so
+        // a spawn-burst of 20+ concurrent clients doesn't see connections
+        // dropped at the kernel level while accept() catches up. The old
+        // value of 10 was fine for interactive traffic but the Slice 14.7
+        // orchestrator load test showed the kernel silently ECONNREFUSING
+        // requests past 10 in-flight — visible in the test as "curl (7)
+        // Failed to connect" for the tail of a burst.
+        if (listen(server_fd_, SOMAXCONN) < 0) {
             std::cerr << "❌ Listen failed" << std::endl;
             return false;
         }
@@ -443,9 +449,27 @@ private:
             return;
         }
         
-        // Handle request in separate thread for better concurrency
+        // Handle request in separate thread for better concurrency.
+        // The lambda MUST NOT let any exception escape — an unhandled
+        // exception in a detached std::thread calls std::terminate and
+        // takes the whole backend process down. processRequest() itself
+        // has a top-level catch(std::exception&), but a non-std throw
+        // (e.g. an ABI-level bad_cast) would slip past it. Belt-and-
+        // braces catch(...) here guarantees no request-processing path
+        // can crash the server. Discovered via the Slice 14.7 20-way
+        // concurrent load test, which caused a compose auto-restart.
         std::thread([this, client_fd]() {
-            this->processRequest(client_fd);
+            try {
+                this->processRequest(client_fd);
+            } catch (const std::exception& e) {
+                std::cerr << "❌ Uncaught std::exception in request thread: "
+                          << e.what() << std::endl;
+                ::close(client_fd);
+            } catch (...) {
+                std::cerr << "❌ Uncaught non-std exception in request thread"
+                          << std::endl;
+                ::close(client_fd);
+            }
         }).detach();
     }
     
@@ -529,6 +553,16 @@ private:
             std::cerr << "❌ Request processing error: " << e.what() << std::endl;
             
             // Send error response
+            Response error_response = Response::internalError("Internal server error");
+            std::string http_response = error_response.toHttpString();
+            send(client_fd, http_response.c_str(), http_response.length(), MSG_NOSIGNAL);
+        } catch (...) {
+            // Non-std::exception throws (rare, but possible from ABI
+            // internals or legacy code) would otherwise propagate up
+            // to the thread lambda's outer catch(...). Handle here so
+            // the client at least sees a 500 instead of a dead socket.
+            std::cerr << "❌ Request processing error: non-std exception"
+                      << std::endl;
             Response error_response = Response::internalError("Internal server error");
             std::string http_response = error_response.toHttpString();
             send(client_fd, http_response.c_str(), http_response.length(), MSG_NOSIGNAL);

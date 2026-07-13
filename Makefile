@@ -191,6 +191,15 @@ sim-load-test-10min:
 			cmake --build build-x --target test_async_pg_log_load >/dev/null; \
 			./build-x/tests/test_async_pg_log_load'
 
+# 20-match orchestration load test (Slice 14.7) — spawns N sim
+# containers in parallel via POST /api/sim/matches, lets them tick
+# idle, tears them down via POST /api/sim/matches/:id/stop, and
+# verifies no orphan containers or DB rows survive. Uses the live
+# stack (unlike sim-load-test-10min which spins up an ephemeral
+# debian container). Overridable knobs at the top of the script.
+sim-load-test-orchestrator:
+	@bash sim/scripts/load_test_orchestrator.sh
+
 # ============================================================
 # Custom Targets (Domain-Specific)
 # ============================================================

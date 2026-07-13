@@ -4,15 +4,98 @@
 #include "../models/SimRunningMatch.h"
 #include "../third_party/json.hpp"
 
+#include <condition_variable>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <vector>
 
 namespace fh::orchestration {
 
 namespace {
+
+// ─── Global launch-concurrency limiter (Slice 14.7) ───────────────────────
+// The DESIGN §16.7 goal is "20 concurrent matches per host without spawn
+// errors." A naive implementation (one detached backend thread per HTTP
+// request, each doing a full podman create+start round-trip) stampedes
+// the podman socket + backend memory when 20 arrive together — the
+// 2026-07-13 load test observed 17/20 requests time out at 15 s while
+// podman was still processing containers 13..20. The socket eventually
+// recovered but curl clients had already given up.
+//
+// Fix: cap concurrent launchMatch() calls to a small window. Excess
+// callers block on a CV until a slot frees up. This turns a stampede
+// into an orderly queue — total wall-clock for 20 spawns is roughly
+// (20 / kMax) * per-spawn-ms, and no request is dropped.
+//
+// kMax defaulted to 4 based on: podman 4.9.3 rootful on this host
+// handles ~3-4 parallel create+start ops before its socket queue
+// starts stretching latency past the 5-second p99 mark. Tunable via
+// FH_SIM_LAUNCH_MAX_CONCURRENCY for hosts with beefier storage.
+// Setting it to 1 makes launches strictly serial — useful for
+// debugging podman-side hangs.
+//
+// Why a hand-rolled semaphore instead of std::counting_semaphore?
+// The backend is pinned to C++17 (see CMakeLists.txt); counting_semaphore
+// arrived in C++20. A mutex + CV + counter is 15 lines and does the
+// same job.
+class LaunchSemaphore {
+public:
+    explicit LaunchSemaphore(int max_permits) : available_(max_permits) {}
+
+    void acquire() {
+        std::unique_lock<std::mutex> lk(mtx_);
+        cv_.wait(lk, [&] { return available_ > 0; });
+        --available_;
+    }
+
+    void release() {
+        {
+            std::lock_guard<std::mutex> lk(mtx_);
+            ++available_;
+        }
+        cv_.notify_one();
+    }
+
+private:
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    int available_;
+};
+
+int launchMaxFromEnv() {
+    const char* v = std::getenv("FH_SIM_LAUNCH_MAX_CONCURRENCY");
+    if (!v || !*v) return 4;
+    try {
+        int n = std::stoi(v);
+        if (n < 1)  return 1;
+        if (n > 32) return 32;
+        return n;
+    } catch (...) {
+        return 4;
+    }
+}
+
+LaunchSemaphore& launchSemaphore() {
+    // Meyers-singleton — first access initializes with the env-derived
+    // cap. Later env changes DO NOT retune the live limiter; this is
+    // intentional — the backend restarts for env changes anyway.
+    static LaunchSemaphore instance(launchMaxFromEnv());
+    return instance;
+}
+
+// RAII wrapper. Acquires on construction, releases on destruction —
+// guarantees the semaphore is released even when launchMatch throws
+// or returns early via one of its many error paths.
+struct LaunchPermit {
+    LaunchPermit()  { launchSemaphore().acquire(); }
+    ~LaunchPermit() { launchSemaphore().release(); }
+    LaunchPermit(const LaunchPermit&)            = delete;
+    LaunchPermit& operator=(const LaunchPermit&) = delete;
+};
+
 
 // libcurl requires a scheme+host in the URL even when routing over a
 // UNIX socket via CURLOPT_UNIX_SOCKET_PATH. Convention (borrowed from
@@ -266,6 +349,12 @@ LaunchResult SimOrchestrator::launchMatch(const LaunchOptions& opts) {
         return r;
     }
 
+    // Backpressure: cap concurrent create+start podman round-trips to
+    // FH_SIM_LAUNCH_MAX_CONCURRENCY (default 4). Excess callers block
+    // here until a slot frees up. RAII guarantees the slot is released
+    // even on error-path returns and thrown exceptions below.
+    LaunchPermit permit;
+
     // Step 1: create the container.
     const std::string createUrl = std::string(kPodmanUrlPrefix) + "/"
                                 + kPodmanApiVersion
@@ -365,6 +454,16 @@ StopResult SimOrchestrator::stopMatch(const StopOptions& opts) {
         r.error = "grace_seconds must be >= 0";
         return r;
     }
+
+    // Backpressure: stopMatch does a synchronous /stop?t=5 followed
+    // by DELETE, both against the same rootful podman socket that
+    // launchMatch uses. Under 20-concurrent tear-down the socket
+    // starves the same way it did on launch — the 2026-07-13 load
+    // test observed 10/20 stops timing out at 30 s while podman
+    // was still processing tail-end containers. Cap concurrent
+    // stops behind the same semaphore as launches so a spawn burst
+    // followed by a stop burst can't queue-jump each other.
+    LaunchPermit permit;
 
     // Step 1: SIGTERM + wait up to grace_seconds. Docker/podman API
     // returns 204 (stopped), 304 (already stopped), or 404 (missing).
