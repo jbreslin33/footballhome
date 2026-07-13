@@ -255,6 +255,15 @@ class MembersScreen extends Screen {
       if (card) {
         const laUid = card.getAttribute('data-la-user-id');
         if (laUid) {
+          // Before pushing /person onto history, snapshot the current
+          // chip + search state INTO the current /members browser
+          // history entry.  This is what makes PersonScreen's Back
+          // (a plain window.history.back()) land on the exact
+          // filtered card list we came from.  Without this, the
+          // /members entry still holds the params from the initial
+          // admin-club → members navigation, so back-nav would render
+          // the wrong chip (or the default chip).
+          this._snapshotHistoryState();
           this.navigation.goTo('person', {
             leagueAppsUserId: laUid,
             returnTo: 'members',
@@ -1550,5 +1559,26 @@ class MembersScreen extends Screen {
       // in-progress name/email/phone filter.
       restoreSearch: this._filter || '',
     };
+  }
+
+  // Rewrite the current browser history entry (`/members`) so its
+  // stored `params` include our live chip snapshot.  Called right
+  // before we push `/person` onto history — so a plain browser
+  // history.back() from the person page pops us back to the members
+  // entry we last saw with restore params baked in.
+  //
+  // Why replaceState (not pushState)? We don't want a new history
+  // entry — we're staying on members conceptually; we're just
+  // updating the "where we were" record for the outgoing navigation.
+  _snapshotHistoryState() {
+    try {
+      const cur = window.history.state || {};
+      const merged = {
+        ...cur,
+        screen: cur.screen || 'members',
+        params: { ...(cur.params || {}), ...this._returnParams() },
+      };
+      window.history.replaceState(merged, '', '#members');
+    } catch (_) { /* replaceState is not throwable in practice */ }
   }
 }

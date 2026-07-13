@@ -128,6 +128,92 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request) {
             "ORDER BY merged_at DESC",
             { personIdStr });
 
+        // ── Roster / team assignments ────────────────────────────────
+        // Every roster row for this person's player record, current
+        // (left_at IS NULL) first, then historical.  Includes club +
+        // division context so the UI can group / disambiguate the
+        // frequent "same team name, different division" case.
+        pqxx::result teamsRes = db_->query(
+            "SELECT r.id AS roster_id, r.team_id, r.jersey_number, "
+            "       r.joined_at, r.left_at, "
+            "       t.name AS team_name, t.slug AS team_slug, "
+            "       t.gender_category, t.club_id, "
+            "       c.name AS club_name, "
+            "       d.name AS division_name "
+            "FROM rosters r "
+            "JOIN players pl ON pl.id = r.player_id "
+            "JOIN teams t   ON t.id = r.team_id "
+            "LEFT JOIN clubs c     ON c.id = t.club_id "
+            "LEFT JOIN divisions d ON d.id = t.division_id "
+            "WHERE pl.person_id = $1 "
+            "ORDER BY (r.left_at IS NULL) DESC, r.joined_at DESC "
+            "LIMIT 100",
+            { personIdStr });
+
+        // ── RSVP eligibility (per-team grants keyed by LA user id) ───
+        // These are the teams a player is *allowed* to RSVP to; the
+        // upcomingMatches list below is derived from this set.
+        pqxx::result eligRes = db_->query(
+            "SELECT pre.team_id, pre.granted_at, "
+            "       t.name AS team_name, t.slug AS team_slug, "
+            "       t.gender_category, "
+            "       c.name AS club_name, "
+            "       d.name AS division_name "
+            "FROM player_rsvp_eligibility pre "
+            "JOIN teams t     ON t.id = pre.team_id "
+            "LEFT JOIN clubs c     ON c.id = t.club_id "
+            "LEFT JOIN divisions d ON d.id = t.division_id "
+            "WHERE pre.leagueapps_user_id = $1 "
+            "ORDER BY pre.granted_at DESC",
+            { std::to_string(laUserId) });
+
+        // ── Upcoming matches this player can RSVP to.  Any future,
+        // non-cancelled match where at least one side is a team the
+        // player has RSVP eligibility for.  Capped at 20 rows so a
+        // players-on-five-teams edge case doesn't balloon the payload.
+        pqxx::result upcomingRes = db_->query(
+            "SELECT m.id, m.match_date, m.match_time, m.title, "
+            "       m.rsvp_opens_at, "
+            "       m.home_team_id, m.away_team_id, "
+            "       ht.name AS home_team_name, "
+            "       at.name AS away_team_name, "
+            "       v.name AS venue_name "
+            "FROM matches m "
+            "LEFT JOIN teams ht ON ht.id = m.home_team_id "
+            "LEFT JOIN teams at ON at.id = m.away_team_id "
+            "LEFT JOIN venues v ON v.id = m.venue_id "
+            "WHERE m.cancelled_at IS NULL "
+            "  AND m.match_date >= CURRENT_DATE "
+            "  AND (m.home_team_id IN "
+            "         (SELECT team_id FROM player_rsvp_eligibility "
+            "          WHERE leagueapps_user_id = $1) "
+            "    OR m.away_team_id IN "
+            "         (SELECT team_id FROM player_rsvp_eligibility "
+            "          WHERE leagueapps_user_id = $1)) "
+            "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST "
+            "LIMIT 20",
+            { std::to_string(laUserId) });
+
+        // ── Player's own recent RSVP responses (audit view: "what has
+        // this person actually said yes/no to?").  Joins to players
+        // via the person we already resolved.
+        pqxx::result rsvpsRes = db_->query(
+            "SELECT h.id, h.event_id, h.changed_at, "
+            "       s.name AS status_name, "
+            "       m.match_date, m.match_time, m.title, "
+            "       ht.name AS home_team_name, "
+            "       at.name AS away_team_name "
+            "FROM player_rsvp_history h "
+            "JOIN players pl        ON pl.id = h.player_id "
+            "JOIN matches m         ON m.id  = h.event_id "
+            "LEFT JOIN rsvp_statuses s ON s.id = h.rsvp_status_id "
+            "LEFT JOIN teams ht     ON ht.id = m.home_team_id "
+            "LEFT JOIN teams at     ON at.id = m.away_team_id "
+            "WHERE pl.person_id = $1 "
+            "ORDER BY h.changed_at DESC "
+            "LIMIT 20",
+            { personIdStr });
+
         // ── Assemble the JSON payload ────────────────────────────────
         std::ostringstream json;
         json << "{"
@@ -282,6 +368,95 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request) {
                      <<     ",\"mergedByUserId\":"  << intOrNull(row["merged_by_user_id"])
                      <<     ",\"reversedAt\":"      << strOrNull(row["reversed_at"])
                      <<     ",\"reversedByUserId\":" << intOrNull(row["reversed_by_user_id"])
+                     << "}";
+            }
+        }
+        json << "]";
+
+        // Team assignments (current + historical roster rows).
+        json << ",\"teams\":[";
+        {
+            bool first = true;
+            for (const auto& row : teamsRes) {
+                if (!first) json << ",";
+                first = false;
+                json << "{"
+                     <<     "\"rosterId\":"    << row["roster_id"].as<int>()
+                     <<     ",\"teamId\":"     << row["team_id"].as<int>()
+                     <<     ",\"teamName\":\"" << jsonEscape(row["team_name"].c_str()) << "\""
+                     <<     ",\"teamSlug\":"   << strOrNull(row["team_slug"])
+                     <<     ",\"genderCategory\":" << strOrNull(row["gender_category"])
+                     <<     ",\"clubId\":"       << intOrNull(row["club_id"])
+                     <<     ",\"clubName\":"     << strOrNull(row["club_name"])
+                     <<     ",\"divisionName\":" << strOrNull(row["division_name"])
+                     <<     ",\"jerseyNumber\":" << strOrNull(row["jersey_number"])
+                     <<     ",\"joinedAt\":"     << strOrNull(row["joined_at"])
+                     <<     ",\"leftAt\":"       << strOrNull(row["left_at"])
+                     << "}";
+            }
+        }
+        json << "]";
+
+        // RSVP eligibility (teams this LA user is granted access to).
+        json << ",\"rsvpEligibility\":[";
+        {
+            bool first = true;
+            for (const auto& row : eligRes) {
+                if (!first) json << ",";
+                first = false;
+                json << "{"
+                     <<     "\"teamId\":"       << row["team_id"].as<int>()
+                     <<     ",\"teamName\":\""  << jsonEscape(row["team_name"].c_str()) << "\""
+                     <<     ",\"teamSlug\":"    << strOrNull(row["team_slug"])
+                     <<     ",\"genderCategory\":" << strOrNull(row["gender_category"])
+                     <<     ",\"clubName\":"      << strOrNull(row["club_name"])
+                     <<     ",\"divisionName\":"  << strOrNull(row["division_name"])
+                     <<     ",\"grantedAt\":"     << strOrNull(row["granted_at"])
+                     << "}";
+            }
+        }
+        json << "]";
+
+        // Upcoming matches the player can RSVP to.
+        json << ",\"upcomingMatches\":[";
+        {
+            bool first = true;
+            for (const auto& row : upcomingRes) {
+                if (!first) json << ",";
+                first = false;
+                json << "{"
+                     <<     "\"id\":" << row["id"].as<int>()
+                     <<     ",\"matchDate\":"    << strOrNull(row["match_date"])
+                     <<     ",\"matchTime\":"    << strOrNull(row["match_time"])
+                     <<     ",\"title\":"        << strOrNull(row["title"])
+                     <<     ",\"rsvpOpensAt\":"  << strOrNull(row["rsvp_opens_at"])
+                     <<     ",\"homeTeamId\":"   << intOrNull(row["home_team_id"])
+                     <<     ",\"awayTeamId\":"   << intOrNull(row["away_team_id"])
+                     <<     ",\"homeTeamName\":" << strOrNull(row["home_team_name"])
+                     <<     ",\"awayTeamName\":" << strOrNull(row["away_team_name"])
+                     <<     ",\"venueName\":"    << strOrNull(row["venue_name"])
+                     << "}";
+            }
+        }
+        json << "]";
+
+        // Recent RSVP responses this player has actually made.
+        json << ",\"recentRsvps\":[";
+        {
+            bool first = true;
+            for (const auto& row : rsvpsRes) {
+                if (!first) json << ",";
+                first = false;
+                json << "{"
+                     <<     "\"id\":\""       << jsonEscape(row["id"].c_str()) << "\""
+                     <<     ",\"eventId\":"   << row["event_id"].as<int>()
+                     <<     ",\"changedAt\":" << strOrNull(row["changed_at"])
+                     <<     ",\"status\":"    << strOrNull(row["status_name"])
+                     <<     ",\"matchDate\":" << strOrNull(row["match_date"])
+                     <<     ",\"matchTime\":" << strOrNull(row["match_time"])
+                     <<     ",\"title\":"     << strOrNull(row["title"])
+                     <<     ",\"homeTeamName\":" << strOrNull(row["home_team_name"])
+                     <<     ",\"awayTeamName\":" << strOrNull(row["away_team_name"])
                      << "}";
             }
         }

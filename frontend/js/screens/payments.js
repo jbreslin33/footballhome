@@ -204,6 +204,14 @@ class PaymentsScreen extends Screen {
       if (card) {
         const laUid = card.getAttribute('data-la-user-id');
         if (laUid) {
+          // Snapshot current view state (tab + view + search) into the
+          // /payments browser history entry BEFORE pushing /person.
+          // Person's Back uses window.history.back() rather than
+          // navigation.goTo — see PersonScreen._goBack() for the
+          // rationale.  Without this snapshot, back-nav would land us
+          // on payments with the initial-entry params instead of
+          // whatever tab/search the operator was on.
+          this._snapshotHistoryState();
           this.navigation.goTo('person', {
             leagueAppsUserId: laUid,
             returnTo: 'payments',
@@ -1574,5 +1582,28 @@ class PaymentsScreen extends Screen {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Rewrite the current /payments browser history entry so its
+  // stored `params` capture the operator's live tab + view + search
+  // state.  Called immediately before pushing /person onto history —
+  // pairs with PersonScreen._goBack()'s plain window.history.back()
+  // to make back-nav land on the exact filtered payments view we
+  // came from, not the initial-entry defaults.
+  _snapshotHistoryState() {
+    try {
+      const cur = window.history.state || {};
+      const snapshot = {
+        initialTab:  this.tab,
+        initialView: this.view,
+        search:      this.search || '',
+      };
+      const merged = {
+        ...cur,
+        screen: cur.screen || 'payments',
+        params: { ...(cur.params || {}), ...snapshot },
+      };
+      window.history.replaceState(merged, '', '#payments');
+    } catch (_) { /* no-op */ }
   }
 }

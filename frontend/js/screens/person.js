@@ -67,11 +67,54 @@ class PersonScreen extends Screen {
             <div id="ps-memberships-list"></div>
           </section>
 
+          <!-- Team assignments — every roster row for this person's
+               player record, current rows first then historical. -->
+          <section class="ps-card" id="ps-teams-card">
+            <h2 class="ps-card-title">
+              Team assignments <span id="ps-teams-count" class="ps-count"></span>
+            </h2>
+            <div id="ps-teams-list"></div>
+          </section>
+
+          <!-- RSVP eligibility + the next few matches this player can
+               actually RSVP to.  Drill-down button opens the shared
+               RSVP-eligibility admin screen filtered to this person. -->
+          <section class="ps-card" id="ps-rsvp-card">
+            <h2 class="ps-card-title">
+              RSVP eligibility <span id="ps-rsvp-count" class="ps-count"></span>
+            </h2>
+            <div id="ps-rsvp-teams"></div>
+            <h3 class="ps-subheading" style="margin-top: var(--space-4);">
+              Upcoming matches <span id="ps-upcoming-count" class="ps-count"></span>
+            </h3>
+            <div id="ps-upcoming-list"></div>
+            <div style="margin-top: var(--space-3); text-align: right;">
+              <button type="button" class="btn btn-secondary btn-sm"
+                      id="ps-open-rsvp-admin">
+                Manage RSVP eligibility →
+              </button>
+            </div>
+          </section>
+
           <!-- Upcoming bill (person_billing) + open/recent charge flags. -->
           <section class="ps-card" id="ps-billing-card">
             <h2 class="ps-card-title">Billing</h2>
             <div id="ps-billing-summary"></div>
             <div id="ps-flags-wrap" style="margin-top: var(--space-3);"></div>
+            <div style="margin-top: var(--space-3); text-align: right;">
+              <button type="button" class="btn btn-secondary btn-sm"
+                      id="ps-open-payments">
+                Open in Payments →
+              </button>
+            </div>
+          </section>
+
+          <!-- Recent RSVP responses this player has actually made. -->
+          <section class="ps-card" id="ps-recent-rsvps-card">
+            <h2 class="ps-card-title">
+              Recent RSVP responses <span id="ps-recent-rsvps-count" class="ps-count"></span>
+            </h2>
+            <div id="ps-recent-rsvps-list"></div>
           </section>
 
           <!-- Data-quality tier: field overrides + merge history. -->
@@ -144,11 +187,80 @@ class PersonScreen extends Screen {
           font-size: 0.9rem;
           font-style: italic;
         }
+
+        /* Section-heading count badge (e.g. "Team assignments  3"). */
+        .ps-count {
+          display: inline-block;
+          margin-left: 6px;
+          padding: 1px 8px;
+          border-radius: 9999px;
+          background: var(--bg-primary);
+          border: 1px solid var(--color-border);
+          font-size: 0.75rem;
+          opacity: 0.75;
+          font-weight: 500;
+          text-transform: none;
+          letter-spacing: 0;
+          vertical-align: middle;
+        }
+        .ps-subheading {
+          margin: 0 0 var(--space-2);
+          font-size: 0.85rem;
+          font-weight: 600;
+          opacity: 0.7;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .btn-sm {
+          padding: 4px 12px;
+          font-size: 0.85rem;
+        }
+
+        /* Team / match / RSVP list rows.  Denser than ps-row so a
+           player rostered on 5 teams doesn't overflow the card. */
+        .ps-line {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: var(--space-3);
+          padding: 6px 0;
+          border-bottom: 1px dashed var(--color-border);
+          font-size: 0.9rem;
+        }
+        .ps-line:last-child { border-bottom: none; }
+        .ps-line.past { opacity: 0.55; }
+        .ps-line-primary { font-weight: 500; }
+        .ps-line-meta    { opacity: 0.7; font-size: 0.8rem; text-align: right; }
+        .ps-line-meta .ps-jersey {
+          display: inline-block;
+          min-width: 22px;
+          padding: 0 4px;
+          margin-right: 6px;
+          background: var(--bg-primary);
+          border: 1px solid var(--color-border);
+          border-radius: 4px;
+          text-align: center;
+          font-weight: 700;
+          font-size: 0.75rem;
+        }
       </style>
     `;
     this.element = div;
 
     div.querySelector('.back-btn').addEventListener('click', () => this._goBack());
+
+    // Drill-down: RSVP eligibility → RsvpEligibilityScreen (LA-user
+    // scoped filter is handled by that screen; we just deep-link).
+    div.querySelector('#ps-open-rsvp-admin')
+      .addEventListener('click', () => this._openRsvpAdmin());
+
+    // Drill-down: Billing → Payments screen (person view).  Payments
+    // opens on the "members" view already; the LA user id lets the
+    // screen scroll / highlight this person if it grows that behavior
+    // later — for now the deep-link at least gets the operator there
+    // in one click instead of navigating manually.
+    div.querySelector('#ps-open-payments')
+      .addEventListener('click', () => this._openPayments());
 
     return div;
   }
@@ -168,12 +280,27 @@ class PersonScreen extends Screen {
   }
 
   _goBack() {
+    // ALWAYS pop the browser history entry rather than pushing a new
+    // one onto the stack.  Pushing (via navigation.goTo) leaves a
+    // phantom /person entry directly behind the caller — so the
+    // caller's own Back button (which uses history.back / goBack)
+    // lands the operator on /person again instead of the tile that
+    // led them here (admin-club, etc.).  See members.js
+    // _snapshotHistoryState for the paired half of this contract:
+    // callers save their current filter state INTO their history
+    // entry before opening us, so the browser back-nav restores the
+    // exact view we came from.
+    //
+    // Fallback: if there is somehow no history to pop (opened via a
+    // fresh URL / new tab), fall through to the configured
+    // returnTo — that path DOES push, but it's a first-entry
+    // scenario so there's nothing to double-up.
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
     if (this._returnTo) {
       this.navigation.goTo(this._returnTo, this._returnToParams || {});
-    } else {
-      // Fall back to browser history so "back" behaves naturally when
-      // the screen is opened from anywhere.
-      window.history.back();
     }
   }
 
@@ -226,7 +353,10 @@ class PersonScreen extends Screen {
     this._renderHeaderCard(data);
     this._renderContactCard(data.contact || { emails: [], phones: [] });
     this._renderMembershipsCard(data.memberships || []);
+    this._renderTeamsCard(data.teams || []);
+    this._renderRsvpCard(data.rsvpEligibility || [], data.upcomingMatches || []);
     this._renderBillingCard(data.billing, data.chargeFlags || []);
+    this._renderRecentRsvpsCard(data.recentRsvps || []);
     this._renderDataQualityCard(data.overrides || [], data.merges || []);
   }
 
@@ -391,6 +521,153 @@ class PersonScreen extends Screen {
     `;
   }
 
+  // ── Team assignments ──────────────────────────────────────────────
+  _renderTeamsCard(teams) {
+    const list  = this.element.querySelector('#ps-teams-list');
+    const count = this.element.querySelector('#ps-teams-count');
+    const active = teams.filter(t => !t.leftAt);
+    count.textContent = active.length
+      ? `${active.length} current${teams.length > active.length
+                                  ? ` · ${teams.length - active.length} past`
+                                  : ''}`
+      : (teams.length ? `${teams.length} past` : '');
+
+    if (!teams.length) {
+      list.innerHTML = `<div class="ps-empty">Not on any team roster</div>`;
+      return;
+    }
+    list.innerHTML = teams.map(t => {
+      const past = !!t.leftAt;
+      const bits = [];
+      if (t.clubName)     bits.push(this._escape(t.clubName));
+      if (t.divisionName) bits.push(this._escape(t.divisionName));
+      const context = bits.length ? ` · ${bits.join(' · ')}` : '';
+      const jersey = t.jerseyNumber
+        ? `<span class="ps-jersey">#${this._escape(String(t.jerseyNumber))}</span>`
+        : '';
+      const dateBit = past
+        ? `left ${this._fmtDate(t.leftAt)}`
+        : `since ${this._fmtDate(t.joinedAt)}`;
+      return `
+        <div class="ps-line ${past ? 'past' : ''}">
+          <span class="ps-line-primary">
+            ${jersey}${this._escape(t.teamName)}
+            <span style="opacity:0.6; font-weight:400;">${context}</span>
+          </span>
+          <span class="ps-line-meta">${dateBit}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── RSVP eligibility + upcoming matches ───────────────────────────
+  _renderRsvpCard(eligibility, upcoming) {
+    const teamsEl    = this.element.querySelector('#ps-rsvp-teams');
+    const upEl       = this.element.querySelector('#ps-upcoming-list');
+    const cntEl      = this.element.querySelector('#ps-rsvp-count');
+    const upCntEl    = this.element.querySelector('#ps-upcoming-count');
+
+    cntEl.textContent   = eligibility.length ? String(eligibility.length) : '';
+    upCntEl.textContent = upcoming.length    ? String(upcoming.length)    : '';
+
+    if (!eligibility.length) {
+      teamsEl.innerHTML = `<div class="ps-empty">
+        No RSVP eligibility grants
+      </div>`;
+    } else {
+      teamsEl.innerHTML = eligibility.map(e => {
+        const bits = [];
+        if (e.clubName)     bits.push(this._escape(e.clubName));
+        if (e.divisionName) bits.push(this._escape(e.divisionName));
+        const context = bits.length ? ` · ${bits.join(' · ')}` : '';
+        return `
+          <div class="ps-line">
+            <span class="ps-line-primary">
+              ${this._escape(e.teamName)}
+              <span style="opacity:0.6; font-weight:400;">${context}</span>
+            </span>
+            <span class="ps-line-meta">granted ${this._fmtDate(e.grantedAt)}</span>
+          </div>`;
+      }).join('');
+    }
+
+    if (!upcoming.length) {
+      upEl.innerHTML = `<div class="ps-empty">
+        No upcoming matches for these teams
+      </div>`;
+      return;
+    }
+    upEl.innerHTML = upcoming.map(m => {
+      const label = m.homeTeamName && m.awayTeamName
+        ? `${this._escape(m.homeTeamName)} vs ${this._escape(m.awayTeamName)}`
+        : this._escape(m.title || `Match #${m.id}`);
+      const venue = m.venueName ? ` · ${this._escape(m.venueName)}` : '';
+      const timeBit = m.matchTime ? ` ${this._fmtTime(m.matchTime)}` : '';
+      return `
+        <div class="ps-line">
+          <span class="ps-line-primary">${label}</span>
+          <span class="ps-line-meta">
+            ${this._fmtDate(m.matchDate)}${timeBit}${venue}
+          </span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Recent RSVP responses ─────────────────────────────────────────
+  _renderRecentRsvpsCard(rows) {
+    const list  = this.element.querySelector('#ps-recent-rsvps-list');
+    const count = this.element.querySelector('#ps-recent-rsvps-count');
+    count.textContent = rows.length ? String(rows.length) : '';
+    if (!rows.length) {
+      list.innerHTML = `<div class="ps-empty">No RSVP history</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(r => {
+      const label = r.homeTeamName && r.awayTeamName
+        ? `${this._escape(r.homeTeamName)} vs ${this._escape(r.awayTeamName)}`
+        : this._escape(r.title || `Match #${r.eventId}`);
+      const status = r.status ? this._escape(r.status) : '—';
+      return `
+        <div class="ps-line">
+          <span class="ps-line-primary">
+            <span class="ps-pill">${status}</span>
+            <span style="margin-left:8px;">${label}</span>
+          </span>
+          <span class="ps-line-meta">
+            ${this._fmtDate(r.matchDate)}
+            <span style="opacity:0.5; margin-left:6px;">
+              (${this._fmtDate(r.changedAt)})
+            </span>
+          </span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Drill-down navigation helpers ─────────────────────────────────
+  _openRsvpAdmin() {
+    this.navigation.goTo('rsvp-eligibility', {
+      focusLaUserId: this.leagueAppsUserId,
+      returnTo: 'person',
+      returnToParams: {
+        leagueAppsUserId: this.leagueAppsUserId,
+        returnTo: this._returnTo,
+        returnToParams: this._returnToParams,
+      },
+    });
+  }
+
+  _openPayments() {
+    this.navigation.goTo('payments', {
+      focusLaUserId: this.leagueAppsUserId,
+      initialView: 'members',
+      returnTo: 'person',
+      returnToParams: {
+        leagueAppsUserId: this.leagueAppsUserId,
+        returnTo: this._returnTo,
+        returnToParams: this._returnToParams,
+      },
+    });
+  }
+
   _renderDataQualityCard(overrides, merges) {
     const ovWrap = this.element.querySelector('#ps-overrides-wrap');
     const mgWrap = this.element.querySelector('#ps-merges-wrap');
@@ -462,6 +739,21 @@ class PersonScreen extends Screen {
         hour: '2-digit', minute: '2-digit',
       });
     } catch (_) { return this._escape(String(iso)); }
+  }
+
+  // Matches `matches.match_time` (TIME WITHOUT TIME ZONE, "HH:MM:SS"
+  // string).  Format as e.g. "6:30 PM"; return raw string on parse
+  // failure so we never render a broken cell.
+  _fmtTime(t) {
+    if (!t) return '';
+    const s = String(t);
+    const m = s.match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return this._escape(s);
+    const hh = parseInt(m[1], 10);
+    const mm = m[2];
+    const period = hh >= 12 ? 'PM' : 'AM';
+    const disp = ((hh + 11) % 12) + 1;
+    return `${disp}:${mm} ${period}`;
   }
 
   _escape(s) {

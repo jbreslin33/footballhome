@@ -29,7 +29,19 @@
 //     "billing":      { nextBillDate, nextBillAmount, updatedAt } | null,
 //     "chargeFlags":  [ { id, programId, amountCents, status, … }, … ],
 //     "overrides":    [ { fieldName, value, originalValue, … }, … ],
-//     "merges":       [ { mergeId, keptPersonId, droppedPersonId, … } ]
+//     "merges":       [ { mergeId, keptPersonId, droppedPersonId, … } ],
+//     "teams":        [ { rosterId, teamId, teamName, teamSlug,
+//                         clubId, clubName, divisionName,
+//                         jerseyNumber, joinedAt, leftAt }, … ],
+//     "rsvpEligibility":  [ { teamId, teamName, clubName,
+//                             divisionName, grantedAt }, … ],
+//     "upcomingMatches":  [ { id, matchDate, matchTime, title,
+//                             homeTeamId, awayTeamId, homeTeamName,
+//                             awayTeamName, venueName,
+//                             rsvpOpensAt }, … ],
+//     "recentRsvps":      [ { id, eventId, changedAt, status,
+//                             matchDate, title, homeTeamName,
+//                             awayTeamName }, … ]
 //   }
 //
 // Returns:
