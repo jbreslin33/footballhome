@@ -33,7 +33,8 @@ COPY scripts ./scripts
 # a subtle runtime desync months later. See DESIGN.md §10, §22.10.
 RUN bash scripts/check_no_floats.sh \
     && bash scripts/check_no_bad_rng.sh \
-    && bash scripts/check_no_hardcoded_attrs.sh
+    && bash scripts/check_no_hardcoded_attrs.sh \
+    && bash scripts/check_profile_write_policy.sh
 
 # ---- Build-time version (§16.6 task 7) --------------------------------------
 # The build context is ./sim so .git is NOT visible here. The host-side
