@@ -57,7 +57,8 @@ std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
 
 std::vector<std::uint8_t> encodeHelloAckFrame(std::uint64_t match_id,
                                               std::uint16_t your_slot,
-                                              std::uint32_t tick_hz)
+                                              std::uint32_t tick_hz,
+                                              std::uint16_t wire_capability_bits)
 {
     std::vector<std::uint8_t> out(kHelloAckFrameBytes);
     std::uint8_t* p = out.data();
@@ -68,6 +69,7 @@ std::vector<std::uint8_t> encodeHelloAckFrame(std::uint64_t match_id,
     write_u64_le(p + 0,  match_id);
     write_u16_le(p + 8,  your_slot);
     write_u32_le(p + 10, tick_hz);
+    write_u16_le(p + 14, wire_capability_bits);   // Slice 15.4 (§7.1 addendum)
     return out;
 }
 

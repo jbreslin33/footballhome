@@ -19,6 +19,7 @@ using fh::sim::net::kInputFlagWantsSprint;
 using fh::sim::net::kInputFlagWantsWalk;
 using fh::sim::net::kInputFrameBytes;
 using fh::sim::net::kInputPayloadBytes;
+using fh::sim::net::kWireCapSnapshotBallTrailer;
 using fh::sim::net::kWireVersionV1;
 using fh::sim::net::MsgType;
 using fh::sim::net::read_f32_le;
@@ -154,6 +155,46 @@ FH_TEST(encode_hello_ack_payload_bytes) {
 FH_TEST(encode_hello_ack_zero_slot_is_valid) {
     const auto out = encodeHelloAckFrame(1, 0u, 20u);
     FH_EXPECT_EQ(read_u16_le(out.data() + kFrameHeaderBytes + 8), 0u);
+}
+
+// ---------------------------------------------------------------------------
+// HELLO_ACK v1.1 addendum (Slice 15.4): wire_capability_bits field
+// ---------------------------------------------------------------------------
+FH_TEST(hello_ack_payload_is_16_bytes) {
+    // Slice 15.4 widened HELLO_ACK from 14 → 16 bytes (extra u16 for
+    // wire_capability_bits). This test locks the size so future adds don't
+    // silently drift the frame layout.
+    FH_EXPECT_EQ(kHelloAckPayloadBytes, 16u);
+    FH_EXPECT_EQ(kHelloAckFrameBytes,   kFrameHeaderBytes + 16u);
+}
+
+FH_TEST(encode_hello_ack_default_capability_bits_are_zero) {
+    // Old 3-arg call sites (should be none in the tree post-Slice-15.4) get
+    // capability_bits = 0 via the default arg — behaves like M0 for callers
+    // that don't opt into the v1.1 trailer.
+    const auto out = encodeHelloAckFrame(0xAAAAAAAAAAAAAAAAull, 5u, 20u);
+    FH_EXPECT_EQ(out.size(), kHelloAckFrameBytes);
+    FH_EXPECT_EQ(read_u16_le(out.data() + kFrameHeaderBytes + 14), 0u);
+}
+
+FH_TEST(encode_hello_ack_writes_capability_bits) {
+    const auto out = encodeHelloAckFrame(1ull, 2u, 20u, kWireCapSnapshotBallTrailer);
+    FH_EXPECT_EQ(out.size(), kHelloAckFrameBytes);
+    // wire_capability_bits lives at payload offset 14 (immediately after the
+    // 14-byte M0 payload).
+    const std::uint16_t cap = read_u16_le(out.data() + kFrameHeaderBytes + 14);
+    FH_EXPECT_EQ(cap, kWireCapSnapshotBallTrailer);
+    FH_EXPECT((cap & kWireCapSnapshotBallTrailer) != 0u);
+}
+
+FH_TEST(encode_hello_ack_capability_bits_are_bitfield) {
+    // Verify multiple bits can be OR'd together — the encoder is a passthrough.
+    constexpr std::uint16_t kAllKnown = kWireCapSnapshotBallTrailer;
+    constexpr std::uint16_t kFuture   = 1u << 15;
+    const auto out = encodeHelloAckFrame(1ull, 2u, 20u,
+                                         static_cast<std::uint16_t>(kAllKnown | kFuture));
+    FH_EXPECT_EQ(read_u16_le(out.data() + kFrameHeaderBytes + 14),
+                 static_cast<std::uint16_t>(kAllKnown | kFuture));
 }
 
 FH_TEST_MAIN()

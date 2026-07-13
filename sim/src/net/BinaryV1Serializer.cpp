@@ -26,17 +26,36 @@ using fh::sim::match::SnapshotEntity;
 // ---------------------------------------------------------------------------
 std::vector<std::uint8_t> BinaryV1Serializer::serialize(const Snapshot& snap)
 {
-    // Refuse to encode more entities than fit in the u16 payload cap. This
-    // is a hard error, not a silent truncation — losing entities would be a
-    // safety bug.
-    if (snap.entities.size() > kMaxSnapshotEntities) {
+    // Slice 15.4: split entities into (player entities, optional ball). The
+    // ball moves out of the main entities region into the v1.1 trailer so
+    // it can carry richer per-ball state (spin, owner) than the fixed 30-byte
+    // entity record. Player entities keep the exact M0 wire layout.
+    const SnapshotEntity* ball_entity = nullptr;
+    std::size_t player_count = 0;
+    for (const SnapshotEntity& e : snap.entities) {
+        if (e.flags.is_ball) {
+            // Only one ball per snapshot is supported on the wire; extra
+            // ball-flagged entities would silently vanish, which is worse
+            // than refusing to encode. Slice 15.2 emits at most one.
+            if (ball_entity != nullptr) { return {}; }
+            ball_entity = &e;
+        } else {
+            ++player_count;
+        }
+    }
+
+    // Refuse to encode more player entities than fit in the u16 count field.
+    // Hard error, not silent truncation — losing entities would be a safety bug.
+    if (player_count > kMaxSnapshotEntities) {
         return {};
     }
 
-    const std::size_t n = snap.entities.size();
-    const std::size_t payload_bytes =
-        kSnapshotHeaderBytes + n * kEntityRecordBytes;
-    const std::size_t total_bytes = kFrameHeaderBytes + payload_bytes;
+    const std::size_t entities_bytes = player_count * kEntityRecordBytes;
+    const std::size_t trailer_bytes  = ball_entity
+        ? (kSnapshotTrailerLenBytes + kBallRegionBytes)
+        : 0;
+    const std::size_t payload_bytes  = kSnapshotHeaderBytes + entities_bytes + trailer_bytes;
+    const std::size_t total_bytes    = kFrameHeaderBytes + payload_bytes;
 
     std::vector<std::uint8_t> out(total_bytes);
     std::uint8_t* p = out.data();
@@ -50,13 +69,15 @@ std::vector<std::uint8_t> BinaryV1Serializer::serialize(const Snapshot& snap)
     // -- Payload header (§7.2) ---------------------------------------------
     write_u32_le(p + 0, static_cast<std::uint32_t>(snap.tick));
     write_u32_le(p + 4, snap.match_time_ms);
-    write_u16_le(p + 8, static_cast<std::uint16_t>(n));
+    // num_entities counts PLAYER entities only — the ball is transported in
+    // the v1.1 trailer below, not in the entities region.
+    write_u16_le(p + 8, static_cast<std::uint16_t>(player_count));
     p += kSnapshotHeaderBytes;
 
-    // -- Entities (§7.2 record) -------------------------------------------
-    for (std::size_t i = 0; i < n; ++i) {
-        const SnapshotEntity& e = snap.entities[i];
-        const EntityState&    s = e.state;
+    // -- Entities (§7.2 record) — player entities only --------------------
+    for (const SnapshotEntity& e : snap.entities) {
+        if (e.flags.is_ball) { continue; }   // routed to trailer
+        const EntityState& s = e.state;
 
         write_u16_le(p + 0,  static_cast<std::uint16_t>(s.slot_id));
         write_u16_le(p + 2,  e.flags.toU16());
@@ -69,6 +90,30 @@ std::vector<std::uint8_t> BinaryV1Serializer::serialize(const Snapshot& snap)
         write_u8    (p + 28, static_cast<std::uint8_t>(s.motion));
         write_u8    (p + 29, 0);   // reserved
         p += kEntityRecordBytes;
+    }
+
+    // -- v1.1 trailer (§7.2 addendum) — only emitted when ball is present -
+    //
+    // Backward-compat design: no-ball snapshots are BYTE-IDENTICAL to M0,
+    // so v1.0 receivers keep working. Ball snapshots grow the payload; v1.1
+    // receivers know to expect a trailer because HELLO_ACK advertised the
+    // kWireCapSnapshotBallTrailer capability bit.
+    if (ball_entity != nullptr) {
+        write_u16_le(p + 0, static_cast<std::uint16_t>(kBallRegionBytes));
+        p += kSnapshotTrailerLenBytes;
+        const EntityState& s = ball_entity->state;
+        write_f32_le(p + 0,  s.position.x.toFloat());
+        write_f32_le(p + 4,  s.position.y.toFloat());
+        write_f32_le(p + 8,  s.position.z.toFloat());
+        write_f32_le(p + 12, s.velocity.x.toFloat());
+        write_f32_le(p + 16, s.velocity.y.toFloat());
+        write_f32_le(p + 20, s.velocity.z.toFloat());
+        // Ball spin (offset 24..27): reserved in Slice 15, always 0.
+        write_f32_le(p + 24, 0.0f);
+        // Ball owner slot (offset 28..29): kBallOwnerLoose until possession
+        // is implemented in a later slice.
+        write_u16_le(p + 28, kBallOwnerLoose);
+        p += kBallRegionBytes;
     }
 
     return out;
@@ -103,10 +148,11 @@ Snapshot BinaryV1Serializer::deserialize(std::span<const std::uint8_t> bytes)
     const std::uint16_t n = read_u16_le(p + 8);
     p += kSnapshotHeaderBytes;
 
-    // Reject partial / trailing junk. The frame's payload length must
-    // exactly account for header + N entities.
+    // Slice 15.4: payload_sz may be LARGER than header+entities to carry a
+    // v1.1 trailer (ball region). It may not be smaller — that's malformed.
     const std::size_t entities_bytes = static_cast<std::size_t>(n) * kEntityRecordBytes;
-    if (payload_sz != kSnapshotHeaderBytes + entities_bytes) { return empty; }
+    const std::size_t entities_end   = kSnapshotHeaderBytes + entities_bytes;
+    if (payload_sz < entities_end) { return empty; }
 
     snap.entities.reserve(n);
     for (std::uint16_t i = 0; i < n; ++i) {
@@ -146,6 +192,57 @@ Snapshot BinaryV1Serializer::deserialize(std::span<const std::uint8_t> bytes)
         snap.entities.push_back(e);
         p += kEntityRecordBytes;
     }
+
+    // -- v1.1 trailer (§7.2 addendum, Slice 15.4) -------------------------
+    //
+    // If any bytes remain after the entities region, they must form a
+    // well-formed [u16 trailer_len][trailer_len bytes] block. Backward-compat:
+    // senders that emit no trailer produce zero remaining bytes and never
+    // enter this branch.
+    const std::size_t remaining = static_cast<std::size_t>(payload_sz) - entities_end;
+    if (remaining == 0) {
+        return snap;
+    }
+    if (remaining < kSnapshotTrailerLenBytes) { return empty; }
+    const std::uint16_t trailer_len = read_u16_le(p);
+    p += kSnapshotTrailerLenBytes;
+    if (remaining != kSnapshotTrailerLenBytes + trailer_len) { return empty; }
+
+    if (trailer_len == 0) {
+        // "Trailer present but empty" — legal but wasteful; senders should
+        // just omit the trailer. No ball to decode.
+        return snap;
+    }
+    if (trailer_len < kBallRegionBytes) {
+        // Trailer too short to hold a ball region — malformed for v1.1.
+        return empty;
+    }
+
+    SnapshotEntity ball{};
+    EntityState&   bs = ball.state;
+    bs.id                        = EntityId{0};
+    bs.slot_id                   = SlotId{0};    // Slice 15.2 convention: ball at slot 0
+    bs.position.x                = math::Fixed64::fromFloat(read_f32_le(p + 0));
+    bs.position.y                = math::Fixed64::fromFloat(read_f32_le(p + 4));
+    bs.position.z                = math::Fixed64::fromFloat(read_f32_le(p + 8));
+    bs.velocity.x                = math::Fixed64::fromFloat(read_f32_le(p + 12));
+    bs.velocity.y                = math::Fixed64::fromFloat(read_f32_le(p + 16));
+    bs.velocity.z                = math::Fixed64::fromFloat(read_f32_le(p + 20));
+    // Bytes p+24..27 = ball spin: reserved in Slice 15, not surfaced in-memory.
+    // Bytes p+28..29 = ball owner slot: reserved in Slice 15 (always kBallOwnerLoose).
+    bs.heading                   = math::Fixed64::zero();
+    bs.motion                    = MotionState::Idle;
+    ball.flags.is_ball           = true;
+    ball.flags.active            = true;
+    ball.flags.human_controlled  = false;
+
+    // Insert at index 0 to match Slice 15.2 in-memory shape (ball first,
+    // then player entities in ascending slot_id).
+    snap.entities.insert(snap.entities.begin(), ball);
+
+    // Bytes [kBallRegionBytes .. trailer_len) are reserved for future ball
+    // fields (e.g. spin_axis, temperature); v1.1 readers ignore them so a
+    // v1.2 sender remains understandable.
 
     return snap;
 }

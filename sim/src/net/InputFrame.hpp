@@ -64,19 +64,26 @@ std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
                                            bool          wants_walk = false);
 
 // -----------------------------------------------------------------------
-// HELLO_ACK payload (§7.1): 14 bytes
+// HELLO_ACK payload (§7.1 + Slice 15.4 addendum): 16 bytes
 //   [u64 match_id]
 //   [u16 your_slot_or_0]
 //   [u32 tick_hz]
+//   [u16 wire_capability_bits]     // Slice 15.4 (§7.1 addendum)
 // -----------------------------------------------------------------------
-inline constexpr std::size_t kHelloAckPayloadBytes = 14;
-inline constexpr std::size_t kHelloAckFrameBytes   = kFrameHeaderBytes + kHelloAckPayloadBytes;   // 18
+inline constexpr std::size_t kHelloAckPayloadBytes = 16;
+inline constexpr std::size_t kHelloAckFrameBytes   = kFrameHeaderBytes + kHelloAckPayloadBytes;   // 20
 
 // Encode a HELLO_ACK message ready to hand to the transport's send().
-// Returns exactly kHelloAckFrameBytes (18) bytes. `your_slot` is 0 if the
+// Returns exactly kHelloAckFrameBytes (20) bytes. `your_slot` is 0 if the
 // client is spectator-only (no slot was assigned).
+//
+// `wire_capability_bits` advertises which optional wire features this
+// server will emit for the session — see WireFormat.hpp §7.1 addendum
+// for bit assignments. Defaults to 0 (bare M0 wire) so any legacy caller
+// remains functional at the C++ API level.
 std::vector<std::uint8_t> encodeHelloAckFrame(std::uint64_t match_id,
                                               std::uint16_t your_slot,
-                                              std::uint32_t tick_hz);
+                                              std::uint32_t tick_hz,
+                                              std::uint16_t wire_capability_bits = 0);
 
 } // namespace fh::sim::net

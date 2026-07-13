@@ -167,7 +167,11 @@ void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& claims)
         }
     }
 
-    const auto ack = net::encodeHelloAckFrame(cfg_.match_id, slot, cfg_.tick_hz);
+    // Slice 15.4: advertise the v1.1 wire capabilities this server emits.
+    // Bit 0 (kWireCapSnapshotBallTrailer) tells the client to expect the ball
+    // region trailer on SNAPSHOTs when a ball is present in the match.
+    const auto ack = net::encodeHelloAckFrame(cfg_.match_id, slot, cfg_.tick_hz,
+                                              net::kWireCapSnapshotBallTrailer);
     (void)transport_->send(cid, ack);
 }
 
