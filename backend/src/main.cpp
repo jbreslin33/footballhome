@@ -56,6 +56,8 @@
 #include "controllers/SimLobbyController.h"
 #include "controllers/SimDebugController.h"
 #include "controllers/TrailTestController.h"
+#include "orchestration/SimOrchestrator.h"
+#include "core/HttpClient.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
 
@@ -192,7 +194,44 @@ public:
                           << e.what() << std::endl;
             }
         }).detach();
-        
+
+        // Slice 14.1 — SimOrchestrator podman-surface boot smoke check.
+        //
+        // Non-fatal: if FH_SIM_ORCHESTRATOR_ENABLED is unset/0 we log a
+        // one-liner and move on. If it's on but the podman socket isn't
+        // reachable, we log a warning and continue booting — the
+        // orchestrator's callers (SimLobbyController.handleCreateMatch,
+        // coming in slice 14.3) are what actually gate on this. Boot
+        // must never fail on orchestrator init because in a production
+        // deploy the socket may be intentionally unmounted.
+        //
+        // Local scope: HttpClient is stateless-per-call and no
+        // controller depends on SimOrchestrator yet (that comes with
+        // 14.3), so we don't promote either to a HttpServer member here.
+        {
+            HttpClient probe;
+            fh::orchestration::SimOrchestrator orchestrator(
+                fh::orchestration::loadConfigFromEnv(), probe);
+            auto ping = orchestrator.pingPodman();
+            if (ping.ok) {
+                std::cout << "[sim-orchestrator] podman ready — version "
+                          << ping.podman_version
+                          << " (api " << ping.api_version << ") via "
+                          << orchestrator.config().podman_socket_path
+                          << std::endl;
+            } else if (!orchestrator.config().enabled) {
+                std::cout << "[sim-orchestrator] disabled "
+                             "(FH_SIM_ORCHESTRATOR_ENABLED=0)" << std::endl;
+            } else {
+                std::cerr << "[sim-orchestrator] WARNING podman probe failed: "
+                          << ping.error
+                          << " — multi-match orchestration will error at "
+                             "match-create time. Socket path: "
+                          << orchestrator.config().podman_socket_path
+                          << std::endl;
+            }
+        }
+
         // Create socket
         if (!createSocket()) {
             return false;

@@ -40,24 +40,35 @@ public:
     HttpClient& operator=(const HttpClient&) = delete;
 
     // Plain GET.
-    Response get(const std::string& url, const Headers& headers = {});
+    //
+    // `unixSocketPath` (optional): when non-empty, libcurl routes the
+    // request over that UNIX-domain socket instead of resolving the URL
+    // host in DNS. The URL still needs a scheme+host (any dummy will do —
+    // convention is "http://d/…"). Used by SimOrchestrator to talk to
+    // podman's REST API at /run/podman/podman.sock (Slice 14, §16.7).
+    Response get(const std::string& url,
+                 const Headers& headers = {},
+                 const std::string& unixSocketPath = "");
 
     // POST with explicit body + content-type.
     Response post(const std::string& url,
                   const std::string& body,
                   const std::string& contentType,
-                  const Headers& headers = {});
+                  const Headers& headers = {},
+                  const std::string& unixSocketPath = "");
 
     // application/x-www-form-urlencoded convenience.  Caller is responsible
     // for url-encoding the body (e.g. via urlEncode below).
     Response postForm(const std::string& url,
                       const std::string& formBody,
-                      const Headers& headers = {});
+                      const Headers& headers = {},
+                      const std::string& unixSocketPath = "");
 
     // application/json convenience.
     Response postJson(const std::string& url,
                       const std::string& jsonBody,
-                      const Headers& headers = {});
+                      const Headers& headers = {},
+                      const std::string& unixSocketPath = "");
 
     // RFC 3986 unreserved encoding.  Pure utility; doesn't touch the wire.
     static std::string urlEncode(const std::string& in);
@@ -65,11 +76,13 @@ public:
 private:
     // Single performer used by all of the public methods.  `method` is
     // "GET" or "POST"; pass empty body+contentType for GET.
+    // `unixSocketPath` empty ⇒ normal TCP+DNS; non-empty ⇒ CURLOPT_UNIX_SOCKET_PATH.
     Response perform(const std::string& url,
                      const std::string& method,
                      const std::string& body,
                      const std::string& contentType,
-                     const Headers& headers);
+                     const Headers& headers,
+                     const std::string& unixSocketPath);
 
     // libcurl write callback — appends to a std::string passed via userp.
     static size_t writeCallback(void* contents, size_t size, size_t nmemb, void* userp);

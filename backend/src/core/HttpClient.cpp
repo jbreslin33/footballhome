@@ -42,35 +42,41 @@ std::string HttpClient::urlEncode(const std::string& in) {
     return out.str();
 }
 
-HttpClient::Response HttpClient::get(const std::string& url, const Headers& headers) {
-    return perform(url, "GET", {}, {}, headers);
+HttpClient::Response HttpClient::get(const std::string& url,
+                                     const Headers& headers,
+                                     const std::string& unixSocketPath) {
+    return perform(url, "GET", {}, {}, headers, unixSocketPath);
 }
 
 HttpClient::Response HttpClient::post(const std::string& url,
                                       const std::string& body,
                                       const std::string& contentType,
-                                      const Headers& headers) {
-    return perform(url, "POST", body, contentType, headers);
+                                      const Headers& headers,
+                                      const std::string& unixSocketPath) {
+    return perform(url, "POST", body, contentType, headers, unixSocketPath);
 }
 
 HttpClient::Response HttpClient::postForm(const std::string& url,
                                           const std::string& formBody,
-                                          const Headers& headers) {
+                                          const Headers& headers,
+                                          const std::string& unixSocketPath) {
     return perform(url, "POST", formBody,
-                   "application/x-www-form-urlencoded", headers);
+                   "application/x-www-form-urlencoded", headers, unixSocketPath);
 }
 
 HttpClient::Response HttpClient::postJson(const std::string& url,
                                           const std::string& jsonBody,
-                                          const Headers& headers) {
-    return perform(url, "POST", jsonBody, "application/json", headers);
+                                          const Headers& headers,
+                                          const std::string& unixSocketPath) {
+    return perform(url, "POST", jsonBody, "application/json", headers, unixSocketPath);
 }
 
 HttpClient::Response HttpClient::perform(const std::string& url,
                                          const std::string& method,
                                          const std::string& body,
                                          const std::string& contentType,
-                                         const Headers& headers) {
+                                         const Headers& headers,
+                                         const std::string& unixSocketPath) {
     Response resp;
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -96,6 +102,10 @@ HttpClient::Response HttpClient::perform(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);          // signal-safe under threads
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp.body);
+
+    if (!unixSocketPath.empty()) {
+        curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, unixSocketPath.c_str());
+    }
 
     if (slist) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);

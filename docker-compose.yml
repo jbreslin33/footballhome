@@ -61,6 +61,25 @@ services:
       # it flows in from `env_file: ./env` above so we don't override
       # it to empty when the shell environment doesn't export it.
       FH_SIM_ADMIN_URL: ${FH_SIM_ADMIN_URL:-http://footballhome_sim:9101}
+      # Slice 14.1 — SimOrchestrator.
+      #
+      # FH_SIM_ORCHESTRATOR_ENABLED is deliberately NOT declared here
+      # (unlike other flags above) — it flows in via `env_file: ./env`.
+      # If we set `${FH_SIM_ORCHESTRATOR_ENABLED:-0}` here, podman-compose
+      # would substitute the SHELL env at compose time (usually unset →
+      # "0") and then pass `-e FH_SIM_ORCHESTRATOR_ENABLED=0` to the
+      # container, which stomps the env-file value. Leaving it off the
+      # `environment:` block means env_file wins. Set it to 1 in
+      # ./env for dev deployments that want the boot probe.
+      #
+      # SIM_PODMAN_SOCKET is the path *inside this container* — must
+      # match the target of the bind mount below.
+      #
+      # WARNING: mounting the host's rootful podman socket into this
+      # container grants root-equivalent access to the host podman
+      # daemon. Only leave the volume mount in place on hosts where
+      # the backend is trusted with that authority.
+      SIM_PODMAN_SOCKET: /run/podman/podman.sock
     ports:
       - "3001:3001"
     dns:
@@ -78,6 +97,12 @@ services:
       # reconciliation.  Read-only — same key file the Python sync scripts
       # used to share with the (now-removed) meta-leads-webhook container.
       - ./config:/app/config:ro
+      # Slice 14.1 — rootful podman REST API socket. Mounted read-write
+      # so SimOrchestrator can create/start/stop per-match sim daemons
+      # (slices 14.3 / 14.5). Disabled by default at the code level via
+      # FH_SIM_ORCHESTRATOR_ENABLED=0 — the mount is harmless when the
+      # env flag is off. See sim/DESIGN.md §16.7 / draft ADR §22.19.
+      - /run/podman/podman.sock:/run/podman/podman.sock:rw
     networks:
       - footballhome_network
     depends_on:

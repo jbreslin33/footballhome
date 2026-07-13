@@ -102,6 +102,7 @@ set(SOURCES
     src/controllers/SimLobbyController.cpp
     src/controllers/SimDebugController.cpp
     src/controllers/TrailTestController.cpp
+    src/orchestration/SimOrchestrator.cpp
     src/services/RsvpMaterialization.cpp)
 
 # Create executable
