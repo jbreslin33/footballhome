@@ -162,40 +162,10 @@ class PausedMembersScreen extends Screen {
         this._load();
         return;
       }
-      // Chip row — two chip types.  User directive 2026-07-12: every
-      // chip click MUST re-sync from LeagueApps first (so the DB
-      // reflects the current LA console for that scope) before we
-      // re-query the DB and re-render.  No client-side-only filtering
-      // anymore.  Sync scope is narrower than the global initial load:
-      //   • program chip  → sync just that (variant, category) pair
-      //   • category chip → sync all variants for that category
-      //   • "All" chip    → full sync (variant=all)
-      const chip = e.target.closest('[data-program-chip]');
-      if (chip) {
-        const pid = chip.getAttribute('data-program-chip');
-        this.programId = (pid === 'all') ? null : Number(pid);
-        this.categoryFilter = null;
-        let scope = {};
-        if (this.programId != null) {
-          const g = (this._groups || []).find(x => Number(x.program_id) === this.programId);
-          if (g) scope = {
-            syncVariant:  String(g.variant  || '').toLowerCase(),
-            syncCategory: String(g.category || '').toLowerCase(),
-          };
-        }
-        this._load(scope);
-        return;
-      }
-      const catChip = e.target.closest('[data-category-chip]');
-      if (catChip) {
-        this.categoryFilter = catChip.getAttribute('data-category-chip') || null;
-        this.programId = null;
-        this._load({
-          syncVariant:  '',                   // both variants (Club + Pickup)
-          syncCategory: this.categoryFilter,  // narrow to this gender
-        });
-        return;
-      }
+      // Chip clicks are handled by the FilterBar component
+      // (see `_ensureFilterBar` + `_rebuildFilterBar`).  Its `onSelect`
+      // callbacks call `this._load(scope)` with the narrow sync scope
+      // so LA → DB → render fires on every filter change.
       // Sort pill row — re-orders cards inside each sub-program group.
       // Clicking the currently active "Reg date" pill toggles between
       // newest-first (default) and oldest-first so admins can also flip
@@ -699,6 +669,16 @@ class PausedMembersScreen extends Screen {
     // new category as we walk `this._groups`, and its count is the sum
     // of every program in that category (Club + Pickup, de-duplicated
     // by person_id — a person enrolled in both variants counts once).
+    //
+    // Rendering + click plumbing is delegated to the shared `FilterBar`
+    // component (`frontend/js/components/FilterBar.js`) so this screen
+    // and Payments share identical chip styling / behaviour.  The two
+    // rows are:
+    //   • categories — 'all' + one aggregate chip per gender
+    //     (mutually exclusive with the programs row; picking a
+    //      category chip clears the program selection).
+    //   • programs   — one chip per LA sub-program (grouped visually
+    //     by leading emoji).  Picking a program clears the category.
     const emoji = (cat) => ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
     const catLabel = (cat) => ({ men:'All Men', women:'All Women', boys:'All Boys', girls:'All Girls' }[cat] || `All ${cat}`);
 
@@ -709,54 +689,95 @@ class PausedMembersScreen extends Screen {
     }
     const totalAll = allSeen.size;
 
-    // Per-category unique-person counts (dedupe across Club + Pickup).
-    const catSeen = new Map(); // cat -> Set(person_id)
+    // Per-category unique-person counts (dedupe across Club + Pickup),
+    // preserving the order that categories appear in `this._groups`.
+    const catOrder = [];
+    const catSeen  = new Map(); // cat -> Set(person_id)
     for (const g of this._groups) {
       const cat = String(g.category || '').toLowerCase();
       if (!cat) continue;
-      let set = catSeen.get(cat);
-      if (!set) { set = new Set(); catSeen.set(cat, set); }
-      for (const m of (g.members || [])) set.add(m.person_id);
+      if (!catSeen.has(cat)) { catSeen.set(cat, new Set()); catOrder.push(cat); }
+      for (const m of (g.members || [])) catSeen.get(cat).add(m.person_id);
     }
 
-    const pillBase = 'padding:6px 12px; border-radius:999px; cursor:pointer;'
-      + ' font-weight:600; font-size:0.85rem; border:1px solid var(--color-border);';
-    const pillActive   = 'background:var(--color-primary, #2563eb); color:white;';
-    const pillInactive = 'background:var(--bg-secondary); color:var(--text-primary);';
+    // ── Build FilterBar rows ──
+    // Category row: [All] + one chip per gender.
+    const categoryChips = [{ id: 'all', label: '👥 All', count: totalAll }];
+    for (const cat of catOrder) {
+      categoryChips.push({
+        id:    cat,
+        label: `${emoji(cat)} ${catLabel(cat)}`,
+        count: (catSeen.get(cat) || new Set()).size,
+      });
+    }
 
-    const programChip = (pid, text, count, active) => `
-      <button data-program-chip="${pid}"
-              style="${pillBase} ${active ? pillActive : pillInactive}">
-        ${text} <span style="opacity:0.7; font-weight:400;">(${count})</span>
-      </button>`;
-
-    const categoryChip = (cat, count, active) => `
-      <button data-category-chip="${cat}"
-              style="${pillBase} ${active ? pillActive : pillInactive}">
-        ${emoji(cat)} ${catLabel(cat)} <span style="opacity:0.7; font-weight:400;">(${count})</span>
-      </button>`;
-
-    const chips = [
-      programChip('all', '👥 All', totalAll,
-                  this.programId == null && !this.categoryFilter),
-    ];
-    let seenCat = null;
-    for (const g of this._groups) {
+    // Program row: one chip per LA sub-program.
+    const programChips = this._groups.map((g) => {
       const cat = String(g.category || '').toLowerCase();
-      if (cat && cat !== seenCat) {
-        // Insert the aggregate chip the first time we see this category.
-        chips.push(categoryChip(cat,
-                                (catSeen.get(cat) || new Set()).size,
-                                this.categoryFilter === cat));
-        seenCat = cat;
-      }
       const label = `${emoji(cat)} ${g.label || g.program_name || 'Club'}`;
-      const count = (g.members || []).length;
-      chips.push(programChip(g.program_id, label, count,
-                             Number(g.program_id) === this.programId));
-    }
+      return {
+        id:    String(g.program_id),
+        label,
+        count: (g.members || []).length,
+        // Stash sync scope so the click handler can pass it to _load().
+        _scope: {
+          syncVariant:  String(g.variant  || '').toLowerCase(),
+          syncCategory: cat,
+        },
+      };
+    });
 
-    el.innerHTML = chips.join(' ');
+    // Selected values for each row.  `categoryFilter` == null AND
+    // `programId` == null → the 'all' category chip is selected.
+    const catSelected = (this.programId == null)
+      ? (this.categoryFilter || 'all')
+      : null;
+    const progSelected = (this.programId != null)
+      ? String(this.programId)
+      : null;
+
+    if (!this._filterBar) {
+      this._filterBar = new FilterBar({ host: el });
+    }
+    this._filterBar.setRows([
+      {
+        name:     'category',
+        chips:    categoryChips,
+        selected: catSelected,
+        clears:   ['program'],
+        onSelect: (id) => {
+          if (id === 'all' || id == null) {
+            this.categoryFilter = null;
+            this.programId = null;
+            this._load({ syncVariant: 'all', syncCategory: '' });
+            return;
+          }
+          this.categoryFilter = id;
+          this.programId = null;
+          this._load({ syncVariant: '', syncCategory: id });
+        },
+      },
+      {
+        name:     'program',
+        chips:    programChips,
+        selected: progSelected,
+        clears:   ['category'],
+        onSelect: (id, row) => {
+          if (id == null) {
+            // Toggle-off → back to "All".
+            this.programId = null;
+            this.categoryFilter = null;
+            this._load({ syncVariant: 'all', syncCategory: '' });
+            return;
+          }
+          const chip = row.chips.find(c => c.id === id);
+          const scope = (chip && chip._scope) || {};
+          this.programId = Number(id);
+          this.categoryFilter = null;
+          this._load(scope);
+        },
+      },
+    ]);
   }
 
   // Backward-compat shim for any legacy call sites that still use the
