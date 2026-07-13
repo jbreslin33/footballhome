@@ -57,6 +57,7 @@
 #include "controllers/SimDebugController.h"
 #include "controllers/TrailTestController.h"
 #include "orchestration/SimOrchestrator.h"
+#include "orchestration/SimReaper.h"
 #include "core/HttpClient.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
@@ -231,6 +232,14 @@ public:
                           << std::endl;
             }
         }
+
+        // Slice 14.6 — start the reaper. Runs a synchronous startup
+        // sweep (cleaning up detritus from any previous backend crash)
+        // BEFORE the socket accepts connections, then spawns the
+        // 5-minute-interval background thread. No-op when the
+        // orchestrator feature flag is off. See SimReaper.h for the
+        // reconciliation contract.
+        fh::orchestration::SimReaper::getInstance().start();
 
         // Create socket
         if (!createSocket()) {
