@@ -428,11 +428,17 @@ Implementation lands with M1's first constrained scenario; the enum ships now so
 ```cpp
 struct Slot {
     SlotId slot_id;
-    std::unique_ptr<IPlayerController> controller;
     EntityId entity;
+    std::unique_ptr<IPlayerController> controller;
     PlayerProfile profile;
-    std::optional<ClientId> owner;   // set if human, empty if AI
+    std::optional<ClientId> owner;   // set if human, empty if AI (session-scoped)
+    std::optional<PersonId> person;  // set if human (persistent identity;
+                                     //   Slice 13 addition — the key that
+                                     //   ProfileStore::loadOrCreate uses)
     Role role;
+    Fixed64 stamina;                 // gameplay pool, not physics; starts at
+                                     //   Fixed64::one(), drained by Mechanics
+                                     //   sprint and recovered while walking
 };
 
 class MatchClock {
@@ -639,7 +645,10 @@ Multi-byte fields are **little-endian**.
 [u32 tick_num]
 [u32 match_time_ms]
 [u16 num_entities]
-[Entity entities[num_entities]]     // 30 bytes each
+[Entity entities[num_entities]]     // 30 bytes each (players only — the ball
+                                    //   is siphoned to the trailer, §7.2.1)
+[u16 trailer_len]                   // v1.1 (Slice 15.4): 0 (no ball) or ≥ 30
+[trailer_len bytes]                 // v1.1 ball region — see §7.2.1
 ```
 
 **Entity record (30 bytes)**:
@@ -657,7 +666,27 @@ Multi-byte fields are **little-endian**.
 [u8  reserved]
 ```
 
-**Milestone 0 snapshot size (payload)**: 10 (header) + 12 slots × 30 = **370 bytes**. Add the 4-byte frame header (§7) = **374 bytes on the wire**. At 20 Hz ≈ 7.30 KB/s per client.
+**Milestone 0 snapshot size (payload, pre-trailer)**: 10 (header) + 12 slots × 30 = **370 bytes**. Add the 4-byte frame header (§7) = **374 bytes on the wire**. At 20 Hz ≈ 7.30 KB/s per client.
+
+**Slice 15.4 wire v1.1 update**: every SNAPSHOT payload gains a `[u16 trailer_len]` suffix; `trailer_len = 0` for ball-less scenarios keeps snapshots byte-identical to M0 (canonical golden `0x4937890abb4edfb6` preserved, locked by `test_binary_v1_serializer.cpp::no_ball_snapshot_omits_trailer`). A ball adds 2 + 30 = 32 bytes. The server advertises capability via HELLO_ACK's `kWireCapSnapshotBallTrailer` bit (§7.1); older clients that don't set the capability bit still receive the trailer bytes but MAY treat them as opaque (v1.1 additive rule). See ADR §22.20.
+
+#### 7.2.1 Ball trailer (v1.1, Slice 15.4)
+
+```
+[u16 trailer_len]        // 0 = no ball; ≥ 30 = ball region follows
+[if trailer_len ≥ 30:]
+  [f32 pos_x][f32 pos_y][f32 pos_z]     // offset 0..11
+  [f32 vel_x][f32 vel_y][f32 vel_z]     // offset 12..23
+  [f32 spin]                             // offset 24..27  (reserved; 0 in M1)
+  [u16 owner_slot]                       // offset 28..29
+                                         //   `kBallOwnerLoose = 0xFFFF` if unowned
+                                         //   real SlotId if dribbled (Slice 16.3+)
+  [remaining bytes reserved for future ball fields, ignored by v1.1 readers]
+```
+
+**Multiple balls per snapshot is a hard error.** M1 ships one ball per match; the encoder returns `{}` if `Snapshot::entities` contains more than one entity with `flags.is_ball = true` — surfaces the invariant loudly rather than encoding a garbled frame. See ADR §22.20 for the additive-extension rationale + revisit conditions.
+
+**Semantic quiet change from M0**: `num_entities` now counts players only, not the ball. Callers that used `num_entities` to preallocate render arrays must add 1 if the trailer indicates a ball is present. Downstream mirror: [frontend/js/sim/interpolator.js](frontend/js/sim/interpolator.js) tracks the trailer's ball as a first-class object separate from the entities array.
 
 ### 7.3 INPUT payload
 
@@ -665,11 +694,14 @@ Multi-byte fields are **little-endian**.
 [u32 client_tick]
 [f32 desired_dir_x]     // normalized; zero if no movement
 [f32 desired_dir_y]
-[u8  flags]             // bit 0 = wants_sprint, bit 1 = wants_walk
+[u8  flags]             // bit 0 = wants_sprint,
+                        // bit 1 = wants_walk,
+                        // bit 2 = wants_dribble    (Slice 16.2),
+                        // bit 3 = wants_release    (Slice 16.4)
 [u8  reserved[3]]
 ```
 
-**16 bytes per input.** Sent at ~30 Hz or on change.
+**16 bytes per input.** Sent at ~30 Hz or on change. Bits 2 and 3 default false in older clients (M0 mask was `wants_sprint | wants_walk`) — the server's `Intent` initialiser preserves that so an M0 client running against an M1 server never triggers dribble/release semantics. Wire-format mirror: [sim/src/net/InputFrame.hpp](sim/src/net/InputFrame.hpp).
 
 ### 7.4 SCENARIO_META payload (Slice 17.7a)
 
@@ -1080,7 +1112,11 @@ Recognition rolls happen inside `RecognitionSystem::apply(worldView, profile, se
    returns { match_id, ws_url }.
 
 2. Client opens WebSocket to ws_url with JWT in subprotocol header.
-   Sim server accepts, sends HELLO_ACK { match_id, your_slot_or_0, tick_hz }.
+   Sim server accepts, sends HELLO_ACK { match_id, your_slot_or_0, tick_hz,
+                                          wire_capability_bits }.
+   Immediately after HELLO_ACK, if bit `kWireCapScenarioMeta` is set, the
+   server also sends one SCENARIO_META frame with the match's playable-area
+   polygon + constraint mode (§7.4, Slice 17.7a).
 
 3. Client sends CLAIM_SLOT { slot_id }.
    If slot's current controller is AI, sim swaps → HumanController(clientId).
