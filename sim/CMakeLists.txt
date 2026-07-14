@@ -230,6 +230,7 @@ add_library(sim_gameplay STATIC
     src/scenario/EmptyPitchScenario.cpp
     src/scenario/BallOnPitchScenario.cpp
     src/scenario/HalfPitchScenario.cpp
+    src/scenario/SoftDrillScenario.cpp
     src/match/MatchClock.cpp
     src/match/Mechanics.cpp
     src/match/Match.cpp
