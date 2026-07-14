@@ -69,6 +69,19 @@ std::string canonicalDump(const Snapshot& snap)
         out.append(") h=");    appendHex(out, e.state.heading);
         out.append("\n");
     }
+
+    // Slice 16.6: append ball_owner ONLY when set, so scenarios that
+    // never establish ownership (M0 wander, Slice 15.6 loose-ball
+    // rolls) produce byte-identical dumps to their pre-Slice-16.6
+    // form — their golden hashes remain valid. Any scenario where a
+    // slot has actually claimed the ball emits a trailing line whose
+    // presence + slot number are locked into the cross-arch hash.
+    if (snap.ball_owner.has_value()) {
+        char buf[48];
+        std::snprintf(buf, sizeof(buf), "ball_owner=%u\n",
+                      static_cast<unsigned>(*snap.ball_owner));
+        out.append(buf);
+    }
     return out;
 }
 
