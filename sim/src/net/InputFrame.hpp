@@ -33,6 +33,7 @@ namespace fh::sim::net {
 //   [u8  flags]              // bit 0 = wants_sprint,
 //                            // bit 1 = wants_walk,
 //                            // bit 2 = wants_dribble    (Slice 16.2)
+//                            // bit 3 = wants_release    (Slice 16.4)
 //   [u8  reserved[3]]
 //
 // Additive-only rule: existing bits keep their meaning forever; new
@@ -40,13 +41,16 @@ namespace fh::sim::net {
 // (they mask `flags & kInputFlagWantsSprint | kInputFlagWantsWalk`);
 // new servers reading an old client's frame see bit 2 = 0, i.e. "no
 // explicit dribble request" — HumanController still auto-emits on
-// ball-proximity so UX is preserved.
+// ball-proximity so UX is preserved. Same story for bit 3: old clients
+// never set wants_release, and Slice 16.4 semantics only kick in when
+// a caller (or, eventually, a client UI) explicitly sends it.
 // -----------------------------------------------------------------------
 inline constexpr std::size_t   kInputPayloadBytes  = 16;
 inline constexpr std::size_t   kInputFrameBytes    = kFrameHeaderBytes + kInputPayloadBytes;   // 20
 inline constexpr std::uint8_t  kInputFlagWantsSprint  = 1u << 0;
 inline constexpr std::uint8_t  kInputFlagWantsWalk    = 1u << 1;
 inline constexpr std::uint8_t  kInputFlagWantsDribble = 1u << 2;   // Slice 16.2
+inline constexpr std::uint8_t  kInputFlagWantsRelease = 1u << 3;   // Slice 16.4
 
 struct DecodedInput {
     std::uint32_t client_tick   = 0;
@@ -55,6 +59,7 @@ struct DecodedInput {
     bool          wants_sprint  = false;
     bool          wants_walk    = false;
     bool          wants_dribble = false;   // Slice 16.2
+    bool          wants_release = false;   // Slice 16.4
 };
 
 // Decode a client-sent INPUT message (frame header + payload). Returns
@@ -68,14 +73,16 @@ std::optional<DecodedInput> decodeInputFrame(std::span<const std::uint8_t> frame
 // kInputFrameBytes (20) bytes.
 //
 // `wants_walk` sets bit 1 of the flags byte, `wants_dribble` sets bit 2
-// (Slice 16.2). Both are exposed as defaulted args so older callers
-// (pre-Slice 16.2) keep compiling unchanged with bit 2 = 0.
+// (Slice 16.2), `wants_release` sets bit 3 (Slice 16.4). All defaulted
+// so older callers (pre-Slice-16.2 / pre-Slice-16.4) keep compiling
+// unchanged with those bits = 0.
 std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
                                            float         desired_dir_x,
                                            float         desired_dir_y,
                                            bool          wants_sprint,
                                            bool          wants_walk    = false,
-                                           bool          wants_dribble = false);
+                                           bool          wants_dribble = false,
+                                           bool          wants_release = false);
 
 // -----------------------------------------------------------------------
 // HELLO_ACK payload (§7.1 + Slice 15.4 addendum): 16 bytes

@@ -19,6 +19,7 @@ using fh::sim::net::kHelloAckPayloadBytes;
 using fh::sim::net::kInputFlagWantsSprint;
 using fh::sim::net::kInputFlagWantsWalk;
 using fh::sim::net::kInputFlagWantsDribble;
+using fh::sim::net::kInputFlagWantsRelease;
 using fh::sim::net::kInputFrameBytes;
 using fh::sim::net::kInputPayloadBytes;
 using fh::sim::net::kWireCapSnapshotBallTrailer;
@@ -129,6 +130,50 @@ FH_TEST(decode_input_bit_value_locked) {
     FH_EXPECT_EQ(kInputFlagWantsSprint,  static_cast<std::uint8_t>(1u << 0));
     FH_EXPECT_EQ(kInputFlagWantsWalk,    static_cast<std::uint8_t>(1u << 1));
     FH_EXPECT_EQ(kInputFlagWantsDribble, static_cast<std::uint8_t>(1u << 2));   // Slice 16.2
+    FH_EXPECT_EQ(kInputFlagWantsRelease, static_cast<std::uint8_t>(1u << 3));   // Slice 16.4
+}
+
+// Slice 16.4: bit 3 = wants_release. Decoding must recognise it (isolated
+// and combined with dribble/sprint), and older frames with bit 3 unset
+// continue to decode as wants_release = false.
+FH_TEST(decode_input_release_flag) {
+    auto bytes = buildInputFrame(42, -1.0F, 2.5F,
+                                       static_cast<std::uint8_t>(kInputFlagWantsRelease));
+    const auto d = decodeInputFrame(std::span<const std::uint8_t>(bytes));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(!d->wants_sprint);
+    FH_EXPECT(!d->wants_walk);
+    FH_EXPECT(!d->wants_dribble);
+    FH_EXPECT(d->wants_release);
+}
+
+FH_TEST(decode_input_release_combined_with_dribble) {
+    // wants_release AND wants_dribble on the same frame is legal at the
+    // wire level — HumanController::decide is where the release-wins
+    // semantic collapses wants_dribble to false. The wire decoder just
+    // reports both bits faithfully.
+    auto bytes = buildInputFrame(1, 0.0F, 0.0F,
+                                       static_cast<std::uint8_t>(kInputFlagWantsDribble
+                                                                | kInputFlagWantsRelease));
+    const auto d = decodeInputFrame(std::span<const std::uint8_t>(bytes));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(d->wants_dribble);
+    FH_EXPECT(d->wants_release);
+}
+
+FH_TEST(encode_input_release_bit_written) {
+    // Round-trip: wants_release argument must appear as bit 3 of the
+    // encoded flags byte and re-decode as true.
+    const auto bytes = encodeInputFrame(/*tick*/ 7,
+                                        /*dx*/ 0.0F, /*dy*/ 0.0F,
+                                        /*sprint*/ false, /*walk*/ false,
+                                        /*dribble*/ false, /*release*/ true);
+    FH_EXPECT_EQ(bytes.size(), static_cast<std::size_t>(kInputFrameBytes));
+    FH_EXPECT_EQ(bytes[kFrameHeaderBytes + 12] & kInputFlagWantsRelease,
+                 static_cast<std::uint8_t>(kInputFlagWantsRelease));
+    const auto d = decodeInputFrame(std::span<const std::uint8_t>(bytes));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(d->wants_release);
 }
 
 FH_TEST(decode_input_rejects_wrong_version) {

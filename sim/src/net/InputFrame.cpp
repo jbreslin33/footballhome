@@ -29,6 +29,7 @@ std::optional<DecodedInput> decodeInputFrame(std::span<const std::uint8_t> frame
     di.wants_sprint  = (flags & kInputFlagWantsSprint)  != 0;
     di.wants_walk    = (flags & kInputFlagWantsWalk)    != 0;
     di.wants_dribble = (flags & kInputFlagWantsDribble) != 0;   // Slice 16.2
+    di.wants_release = (flags & kInputFlagWantsRelease) != 0;   // Slice 16.4
     // p[13..15] reserved — ignored per spec.
     return di;
 }
@@ -38,7 +39,8 @@ std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
                                            float         desired_dir_y,
                                            bool          wants_sprint,
                                            bool          wants_walk,
-                                           bool          wants_dribble)
+                                           bool          wants_dribble,
+                                           bool          wants_release)
 {
     std::vector<std::uint8_t> out(kInputFrameBytes);
     std::uint8_t* p = out.data();
@@ -53,6 +55,7 @@ std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
     if (wants_sprint)  { flags |= kInputFlagWantsSprint; }
     if (wants_walk)    { flags |= kInputFlagWantsWalk; }
     if (wants_dribble) { flags |= kInputFlagWantsDribble; }   // Slice 16.2
+    if (wants_release) { flags |= kInputFlagWantsRelease; }   // Slice 16.4
     write_u8(p + 12, flags);
     // p[13..15] reserved — zero by vector-init.
     return out;

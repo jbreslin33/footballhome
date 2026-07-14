@@ -79,6 +79,16 @@ public:
     void releaseSlot(SlotId slot);
     void applyInput(ClientId client, const controller::Intent& intent);
 
+    // Slice 16.4: mark the match as ended. Subsequent tick() calls
+    // return immediately (no physics step, no BallControl pass, no
+    // snapshot mutation). Also clears ball_owner_ so a final snapshot
+    // emitted after end() shows the ball as loose (owner_slot on the
+    // wire trailer decodes to kBallOwnerLoose = 0xFFFF), matching the
+    // §23.3 Slice 16.4 rule "owner releases ball on match end".
+    //
+    // Idempotent: safe to call multiple times.
+    void end() noexcept;
+
     // Read -----------------------------------------------------------------
     MatchId                       id() const noexcept  { return id_; }
     TickNum                       tick_num() const noexcept;

@@ -88,6 +88,7 @@ decodePayloadToIntent(const std::vector<std::byte>& payload)
     intent.wants_sprint  = di->wants_sprint;
     intent.wants_walk    = di->wants_walk;
     intent.wants_dribble = di->wants_dribble;   // Slice 16.2
+    intent.wants_release = di->wants_release;   // Slice 16.4
     return intent;
 }
 

@@ -59,7 +59,13 @@ Intent HumanController::decide(const awareness::AwarenessView& view,
     // kBallAutoDribbleRadius (horizontally), suggest wants_dribble.
     // BallControl (Slice 16.3) is still the sole authority on who
     // actually owns the ball each tick — this only sets the *hint*.
-    if (view.ball.has_value()) {
+    //
+    // Slice 16.4: the auto-hint is SUPPRESSED when the client
+    // explicitly signals wants_release. Otherwise a human who's
+    // standing on top of a loose (or their own) ball would never be
+    // able to let go — the auto-hint would re-set wants_dribble every
+    // tick. The explicit release bit is the escape hatch.
+    if (view.ball.has_value() && !out.wants_release) {
         const EntityState* self_state = findEntityBySlot(view, self);
         const EntityState* ball_state = findEntityById(view, *view.ball);
         if (self_state != nullptr && ball_state != nullptr) {
@@ -69,6 +75,15 @@ Intent HumanController::decide(const awareness::AwarenessView& view,
                                    * kBallAutoDribbleRadius;
             if (d2 <= r2) { out.wants_dribble = true; }
         }
+    }
+
+    // Slice 16.4: release ALWAYS wins over wants_dribble, whether the
+    // dribble bit was set by the wire or by the auto-hint above.
+    // Collapsing to wants_dribble=false here means BallControl's Rule
+    // 2 (owner retention) fails naturally with no BallControl-side
+    // awareness of the release bit needed.
+    if (out.wants_release) {
+        out.wants_dribble = false;
     }
 
     return out;

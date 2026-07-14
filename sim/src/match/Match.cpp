@@ -341,6 +341,17 @@ void Match::applyInput(ClientId client, const controller::Intent& intent)
     }
 }
 
+void Match::end() noexcept
+{
+    // Idempotent — repeated calls just re-clear ownership.
+    ended_       = true;
+    // Slice 16.4: match-end is one of the three release conditions
+    // (§23.3 Slice 16.4). Clearing here means a snapshot taken after
+    // end() shows the ball as loose on the wire, and a hypothetical
+    // post-end resume (M2+) would start with no stale ownership.
+    ball_owner_.reset();
+}
+
 TickNum Match::tick_num() const noexcept
 {
     return clock_->current();

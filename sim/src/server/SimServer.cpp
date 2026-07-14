@@ -229,6 +229,7 @@ void SimServer::handleMessage(ClientId cid, std::span<const std::uint8_t> bytes)
             intent.wants_sprint  = di->wants_sprint;
             intent.wants_walk    = di->wants_walk;
             intent.wants_dribble = di->wants_dribble;   // Slice 16.2
+            intent.wants_release = di->wants_release;   // Slice 16.4
             match_->applyInput(cid, intent);
 
             // Input log (§16.6 task 8): record the accepted wire frame

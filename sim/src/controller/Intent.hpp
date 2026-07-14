@@ -40,6 +40,25 @@ struct Intent {
     //     lower SlotId). `wants_dribble` is a *hint*, not a claim.
     bool       wants_dribble{false};
 
+    // Slice 16.4: explicit "release the ball" signal. When true, it
+    // ALWAYS wins over `wants_dribble` (both the wire-set bit and the
+    // HumanController auto-hint). This is the only escape hatch a human
+    // has to release a ball they're currently controlling — otherwise
+    // the auto-hint would re-grab it every tick as long as they're
+    // standing near it. Wire bit 3 of INPUT flags (§7.3).
+    //
+    // Semantic layering (§23.3 Slice 16.4 release conditions):
+    //   * wants_release && wants_dribble  → release wins (drop the ball)
+    //   * wants_release && auto-hint      → release wins (auto-hint suppressed)
+    //   * wants_release==false            → normal dribble semantics apply
+    //
+    // Implementation lives in HumanController::decide, which forces
+    // `wants_dribble = false` before returning if `wants_release` is
+    // set on the wire input. BallControl doesn't need to know about
+    // this bit directly — the collapse to `wants_dribble=false` is
+    // sufficient to fail Rule 2 (owner retention).
+    bool       wants_release{false};
+
     // Reserved for M1+: pass, shoot, tackle, etc.
     // std::uint8_t action_bits{0};
 };

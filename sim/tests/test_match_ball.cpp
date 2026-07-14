@@ -192,4 +192,48 @@ FH_TEST(rolling_ball_eventually_freezes) {
     FH_EXPECT_EQ(s2.entities[0].state.velocity.x, Fixed64::zero());
 }
 
+// ---------------------------------------------------------------------------
+// Slice 16.4: Match::end() halts ticks AND clears ball ownership so the
+// wire trailer emitted after end() reports a loose ball.
+// ---------------------------------------------------------------------------
+
+FH_TEST(match_end_stops_further_ticks_and_clears_ball_owner) {
+    BallSpawn bs;
+    bs.position = Vec3{};
+    bs.velocity = Vec3{Fixed64::fromInt(2), Fixed64::zero(), Fixed64::zero()};
+    auto m = makeMatch(bs);
+
+    // Tick once so the ball advances.
+    m->tick();
+    const Snapshot pre = m->snapshot();
+    const Fixed64 pre_x = pre.entities[0].state.position.x;
+
+    m->end();
+    FH_EXPECT(m->ended());
+
+    // Snapshot immediately after end() must have ball_owner = nullopt
+    // (Match::ball_owner_ cleared). This is the "match end" release
+    // condition per §23.3 Slice 16.4.
+    const Snapshot post = m->snapshot();
+    FH_EXPECT(!post.ball_owner.has_value());
+
+    // Additional ticks after end() must be no-ops — ball position
+    // frozen at whatever end() saw.
+    for (int i = 0; i < 5; ++i) { m->tick(); }
+    const Snapshot post_more = m->snapshot();
+    FH_EXPECT_EQ(post_more.entities[0].state.position.x, pre_x);
+}
+
+FH_TEST(match_end_is_idempotent) {
+    BallSpawn bs;
+    bs.position = Vec3{};
+    bs.velocity = Vec3{};
+    auto m = makeMatch(bs);
+
+    m->end();
+    m->end();   // must not throw / crash / do anything visible.
+    FH_EXPECT(m->ended());
+    FH_EXPECT(!m->snapshot().ball_owner.has_value());
+}
+
 FH_TEST_MAIN()

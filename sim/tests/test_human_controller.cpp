@@ -210,4 +210,80 @@ FH_TEST(auto_dribble_does_not_fire_if_self_slot_missing_from_view) {
     FH_EXPECT(!out.wants_dribble);
 }
 
+// ---------------------------------------------------------------------------
+// Slice 16.4: wants_release overrides both the wire-set wants_dribble
+// AND the auto-hint. Without this, a human standing on top of a ball
+// they own would never be able to let go — the auto-hint would re-set
+// wants_dribble every tick.
+// ---------------------------------------------------------------------------
+
+FH_TEST(release_forces_dribble_false_even_when_wire_set_it_true) {
+    HumanController c{ClientId{1}};
+
+    // Wire asked for dribble AND release simultaneously. Release wins.
+    Intent in;
+    in.wants_dribble = true;
+    in.wants_release = true;
+    c.updateInput(in);
+
+    // Ball is 50 m away so the auto-hint is irrelevant to this test.
+    AwarenessView v;
+    v.entities.push_back(makeEntity(EntityId{0}, SlotId{0},
+                                    Vec3{Fixed64::fromInt(50), Fixed64::zero(),
+                                         Fixed64::zero()}));
+    v.entities.push_back(makeEntity(EntityId{5}, SlotId{3},
+                                    Vec3{Fixed64::zero(), Fixed64::zero(),
+                                         Fixed64::zero()}));
+    v.ball = EntityId{0};
+
+    const Intent out = c.decide(v, SlotId{3});
+    FH_EXPECT(!out.wants_dribble);
+    FH_EXPECT(out.wants_release);
+}
+
+FH_TEST(release_suppresses_auto_hint_when_close_to_ball) {
+    HumanController c{ClientId{1}};
+
+    // No wire dribble, just wants_release. Standing on top of the ball
+    // (auto-hint radius), so pre-Slice-16.4 the auto-hint would have
+    // OR'd wants_dribble to true. With Slice 16.4, release SUPPRESSES
+    // the auto-hint entirely — dribble stays false.
+    Intent in;
+    in.wants_release = true;
+    c.updateInput(in);
+
+    AwarenessView v;
+    v.entities.push_back(makeEntity(EntityId{0}, SlotId{0},
+                                    Vec3{Fixed64::zero(), Fixed64::zero(),
+                                         Fixed64::zero()}));
+    v.entities.push_back(makeEntity(EntityId{5}, SlotId{3},
+                                    Vec3{Fixed64::fromFraction(1, 10),
+                                         Fixed64::zero(), Fixed64::zero()}));
+    v.ball = EntityId{0};
+
+    const Intent out = c.decide(v, SlotId{3});
+    FH_EXPECT(!out.wants_dribble);
+    FH_EXPECT(out.wants_release);
+}
+
+FH_TEST(release_default_false_leaves_auto_hint_intact) {
+    HumanController c{ClientId{1}};
+
+    // Ensure adding the wants_release plumbing didn't accidentally
+    // regress the Slice 16.2 baseline: no release + close to ball →
+    // auto-hint still fires as before.
+    AwarenessView v;
+    v.entities.push_back(makeEntity(EntityId{0}, SlotId{0},
+                                    Vec3{Fixed64::zero(), Fixed64::zero(),
+                                         Fixed64::zero()}));
+    v.entities.push_back(makeEntity(EntityId{5}, SlotId{3},
+                                    Vec3{Fixed64::fromFraction(1, 10),
+                                         Fixed64::zero(), Fixed64::zero()}));
+    v.ball = EntityId{0};
+
+    const Intent out = c.decide(v, SlotId{3});
+    FH_EXPECT(out.wants_dribble);
+    FH_EXPECT(!out.wants_release);
+}
+
 FH_TEST_MAIN()
