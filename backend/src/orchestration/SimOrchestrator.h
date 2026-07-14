@@ -71,6 +71,13 @@ struct PingResult {
 struct LaunchOptions {
     long long match_id = 0;   // required, > 0
     long long seed     = 0;   // required (sim also accepts 0 → treats as fallback)
+    // Slice 18.x bugfix: which scenario the per-match sim daemon should
+    // load. Maps to SIM_SCENARIO env var; sim/src/main.cpp resolves it to
+    // a scenario_id and constructs the matching Scenario. Empty string
+    // ⇒ let the daemon fall back to its own default ("empty_pitch").
+    // Values must match sim_scenarios.code_id (empty_pitch, ball_on_pitch,
+    // half_pitch_hard, soft_drill).
+    std::string scenario_code;
 };
 
 struct LaunchResult {

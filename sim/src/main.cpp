@@ -36,6 +36,8 @@
 #include "registry/PatternRegistry.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
+#include "scenario/HalfPitchScenario.hpp"
+#include "scenario/SoftDrillScenario.hpp"
 #include "server/SimServer.hpp"
 
 #include <atomic>
@@ -124,12 +126,15 @@ int main(int /*argc*/, char** /*argv*/)
     // Slice 15 ball trailer end-to-end.
     const std::string scenario_name{envOr("SIM_SCENARIO", "empty_pitch")};
     std::int16_t scenario_id = 0;
-    if      (scenario_name == "empty_pitch")   { scenario_id = 0; }
-    else if (scenario_name == "ball_on_pitch") { scenario_id = 1; }
+    if      (scenario_name == "empty_pitch")     { scenario_id = 0; }
+    else if (scenario_name == "ball_on_pitch")   { scenario_id = 1; }
+    else if (scenario_name == "half_pitch_hard") { scenario_id = 2; }
+    else if (scenario_name == "soft_drill")      { scenario_id = 3; }
     else {
         std::fprintf(stderr,
                      "footballhome_sim: unknown SIM_SCENARIO=\"%s\" — "
-                     "expected one of: empty_pitch, ball_on_pitch\n",
+                     "expected one of: empty_pitch, ball_on_pitch, "
+                     "half_pitch_hard, soft_drill\n",
                      scenario_name.c_str());
         return 2;
     }
@@ -358,13 +363,24 @@ int main(int /*argc*/, char** /*argv*/)
     mcfg.seed           = seed;
     mcfg.server_version = FH_SIM_GIT_DESCRIBE;
     mcfg.physics  = std::make_unique<fh::sim::physics::StubPhysics>();
-    // Slice 15.5: pick the Scenario matching the resolved scenario_id.
-    // Keep this switch in lock-step with sim/src/tools/Replay.cpp::makeScenario
-    // and sim_scenarios.code_id (see database/migrations/207-*).
-    if (scenario_id == 1) {
-        mcfg.scenario = std::make_unique<fh::sim::scenario::BallOnPitchScenario>();
-    } else {
-        mcfg.scenario = std::make_unique<fh::sim::scenario::EmptyPitchScenario>();
+    // Slice 15.5 + Slice 18.x bugfix: pick the Scenario matching the
+    // resolved scenario_id. Keep this switch in lock-step with
+    // sim/src/tools/Replay.cpp::makeScenario and sim_scenarios.code_id
+    // (see database/migrations/207/212/213).
+    switch (scenario_id) {
+        case 1:
+            mcfg.scenario = std::make_unique<fh::sim::scenario::BallOnPitchScenario>();
+            break;
+        case 2:
+            mcfg.scenario = std::make_unique<fh::sim::scenario::HalfPitchScenario>();
+            break;
+        case 3:
+            mcfg.scenario = std::make_unique<fh::sim::scenario::SoftDrillScenario>();
+            break;
+        case 0:
+        default:
+            mcfg.scenario = std::make_unique<fh::sim::scenario::EmptyPitchScenario>();
+            break;
     }
     mcfg.clock    = std::make_unique<fh::sim::match::RealtimeClock>(20);
     auto match = std::make_unique<fh::sim::match::Match>(std::move(mcfg));

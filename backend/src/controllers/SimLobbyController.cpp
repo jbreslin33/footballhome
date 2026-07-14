@@ -409,11 +409,31 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
     //    call so a fresh instance here matches how every other
     //    outbound-HTTP path in this codebase looks.
     // -----------------------------------------------------------------
+    // Resolve scenario_id → code_id (e.g. 1 → "ball_on_pitch"). The DB
+    // is the single source of truth (see sim_scenarios in migrations
+    // 200/204/207/212/213 and sim/src/main.cpp's SIM_SCENARIO parser).
+    // Empty on lookup miss ⇒ orchestrator omits SIM_SCENARIO ⇒ sim
+    // daemon falls back to empty_pitch.
+    std::string scenario_code;
+    try {
+        auto rows = db_->query(
+            "SELECT code_id FROM sim_scenarios WHERE id = $1::smallint LIMIT 1",
+            {std::to_string(scenario_id)});
+        if (!rows.empty() && !rows[0]["code_id"].is_null()) {
+            scenario_code = rows[0]["code_id"].as<std::string>();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[sim-lobby] scenario_id lookup failed (scenario_id="
+                  << scenario_id << "): " << e.what() << std::endl;
+        // Non-fatal — fall through with empty code_id.
+    }
+
     HttpClient http;
     fh::orchestration::SimOrchestrator orchestrator(cfg, http);
     fh::orchestration::LaunchOptions opts;
-    opts.match_id = match_id;
-    opts.seed     = seed;
+    opts.match_id      = match_id;
+    opts.seed          = seed;
+    opts.scenario_code = scenario_code;
     fh::orchestration::LaunchResult launch = orchestrator.launchMatch(opts);
 
     if (!launch.ok) {

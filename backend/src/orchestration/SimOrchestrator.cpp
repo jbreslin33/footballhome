@@ -162,9 +162,17 @@ std::string envOrDefault(const char* name, const std::string& fallback) {
 std::vector<std::string> buildSimEnv(const LaunchOptions& opts) {
     std::vector<std::string> env;
 
-    // Per-match (only two values that vary):
+    // Per-match (values that vary):
     env.push_back("SIM_MATCH_ID=" + std::to_string(opts.match_id));
     env.push_back("SIM_MATCH_SEED=" + std::to_string(opts.seed));
+    // Slice 18.x bugfix: without this, every per-match container fell back
+    // to sim/src/main.cpp's default of empty_pitch — the "Ball on Pitch"
+    // (and future) launcher tiles would spawn a match with no ball. The
+    // sim daemon accepts an unset SIM_SCENARIO (treats as empty_pitch)
+    // so we only emit it when the caller actually specified a scenario.
+    if (!opts.scenario_code.empty()) {
+        env.push_back("SIM_SCENARIO=" + opts.scenario_code);
+    }
 
     // Static (matches docker-compose.yml `footballhome_sim` service):
     env.push_back("SIM_BIND_ADDRESS=0.0.0.0");
