@@ -2225,6 +2225,64 @@ Migration 205 is guarded: a `DO $$ ... RAISE EXCEPTION ... $$` block refuses to 
 
 ---
 
+### 22.20 [2026-07-13] Wire v1.1 extension format — length-prefixed ball trailer + HELLO_ACK capability bits
+
+**Status**: accepted 2026-07-13. Landed as commit `3156d4d7` (Slice 15.4) — see [sim/src/net/WireFormat.hpp](sim/src/net/WireFormat.hpp) (constants), [sim/src/net/BinaryV1Serializer.cpp](sim/src/net/BinaryV1Serializer.cpp) (encoder split + trailer decode), [sim/src/net/InputFrame.{hpp,cpp}](sim/src/net/InputFrame.hpp) (HELLO_ACK payload widened 14 → 16 bytes with `wire_capability_bits`), [sim/src/server/SimServer.cpp](sim/src/server/SimServer.cpp) (server advertises `kWireCapSnapshotBallTrailer` on connect), and [frontend/js/sim/wire.js](frontend/js/sim/wire.js) (JS decoder mirror). Golden byte-layout tests added in [sim/tests/test_binary_v1_serializer.cpp](sim/tests/test_binary_v1_serializer.cpp) and [sim/tests/test_input_frame.cpp](sim/tests/test_input_frame.cpp). Reserved slot **§22.19 (Slice 14 podman surface) remains unfilled** — Slice 14 shipped without landing its ADR; per the §22.0 append-only rule the number stays reserved and this Slice-15 ADR takes the next slot §22.20 as originally drafted in §23.7.
+
+**Context**: Slice 15 introduces a ball entity into `Match::snapshot()`. The M0 wire spec (§7.2) is a fixed-layout SNAPSHOT payload — `[u32 tick][u32 match_time_ms][u16 num_entities][entity[N]]` with each entity a 30-byte record. There is no room in a 30-byte entity record for ball-specific fields (spin, current owner) that make sense *only* for a ball, and there is nowhere in the payload header to signal "this frame carries a ball" without silently overloading a bit somewhere. Two clean extension paths exist:
+
+- **A — length-prefixed extensible trailer.** Add bytes AFTER the entities region. Guard with a length prefix so v1.1 encoders that later add more ball fields (e.g. temperature, spin_axis) grow the region without breaking v1.1 decoders — the decoder consumes exactly `trailer_len` bytes and ignores what it doesn't understand at the tail. Backward-compat: no-ball snapshots emit NO trailer, so payload_sz stays exactly `header + entities_bytes` and old M0 decoders keep working byte-for-byte.
+- **B — bump wire version byte in the frame header (v1 → v2).** Cleaner "types" story: two disjoint payload shapes tagged by a version integer. But every new field requires all clients to upgrade in lockstep — a v1 client rejects a v2 frame outright — and the encoder branches on version at every field, muddying the single-encoder simplicity M0 shipped with.
+
+Additional context that accumulated between §22.18 (2026-07-13, profile normalization) and this ADR:
+
+- **HTTP/1.1's success as an "additive extension" wire protocol** (arbitrary optional headers over a fixed request line + fixed status line) is the precedent Slice 15's design borrowed from. HTTP never bumped its major version to add new headers.
+- **Slice 15's ball state fits in ~30 bytes** — position (3×f32), velocity (3×f32), spin (f32, reserved for M1), owner_slot (u16, `kBallOwnerLoose = 0xFFFF` for M1). Small enough that carrying it as a fixed extra 30-byte block after entities is almost the same cost as adding one more entity to the entities region — but with the semantic-clarity win that "this is the ball" is unambiguous at parse time (no need for downstream code to grep for `flags.is_ball` in the entities region).
+- **The client capability negotiation channel (HELLO_ACK) is already round-trip** — server sends HELLO_ACK immediately after HELLO — so appending a `wire_capability_bits` u16 to its payload is free at the transport layer and gives the client an explicit "yes/no this server sends the ball trailer" signal before any SNAPSHOT arrives. Beats out-of-band signalling (URL query params, sub-protocol strings) which don't compose across future extensions.
+
+**Decision**: Path A. Extend fh-sim.v1 additively to v1.1:
+
+1. **SNAPSHOT payload gains an optional trailer** immediately after the entities region:
+   ```
+   [existing v1.0 payload: u32 tick | u32 match_time_ms | u16 num_entities | entity[N]]
+   [u16 trailer_len]                      // Slice 15.4: 0 or ≥30
+   [if trailer_len ≥ 30:]
+     [f32 pos_x][f32 pos_y][f32 pos_z]    // offset 0..11
+     [f32 vel_x][f32 vel_y][f32 vel_z]    // offset 12..23
+     [f32 spin]                           // offset 24..27  (reserved; 0 in M1)
+     [u16 owner_slot]                     // offset 28..29  (`kBallOwnerLoose = 0xFFFF` in M1)
+     [remaining bytes reserved for future ball fields, ignored by v1.1 readers]
+   ```
+   `kSnapshotTrailerLenBytes = 2`, `kBallRegionBytes = 30`, `kBallOwnerLoose = 0xFFFFu`. The u16 prefix is the forward-compat hook: a hypothetical v1.2 growing the ball region to 34 bytes remains readable by v1.1 receivers, which parse the first 30 bytes they know and skip the tail.
+
+2. **HELLO_ACK payload widens 14 → 16 bytes**, appending `[u16 wire_capability_bits]`. Bit 0 = `kWireCapSnapshotBallTrailer` — server MAY emit the ball trailer in SNAPSHOT payloads. `SimServer::handleConnect` sets this bit unconditionally in Slice 15.4. The encoder signature `encodeHelloAckFrame(match_id, slot, tick_hz, wire_capability_bits = 0)` uses a defaulted 4th arg so any legacy caller that hadn't been touched compiles unchanged (there was only one — [SimServer.cpp:170](sim/src/server/SimServer.cpp)).
+
+3. **Encoder splits `Snapshot::entities` on serialize.** Match::snapshot() already emits the ball as `entities[0]` with `flags.is_ball = true` (Slice 15.2). The wire encoder iterates once: player entities go into the entities region (with `num_entities` counting players only), any ball-flagged entity is siphoned into the trailer. If multiple ball-flagged entities appear in one snapshot the encoder returns `{}` — hard error, not silent drop.
+
+4. **Decoder relaxes the strict payload-length check.** The M0 decoder rejected any `payload_sz != kSnapshotHeaderBytes + entities_bytes`. It now rejects only `payload_sz < kSnapshotHeaderBytes + entities_bytes` — excess bytes are the trailer. If any bytes remain after entities, they MUST form a well-formed `[u16 trailer_len][trailer_len bytes]` block or the frame is rejected outright (three new rejection tests exercise the boundary conditions). The reconstructed ball is inserted at `entities[0]` so the in-memory shape matches Match::snapshot()'s output byte-for-byte.
+
+Backward-compat guarantee locked by test `no_ball_snapshot_omits_trailer`: any snapshot with zero balls encodes to bytes that are byte-identical to what M0 would have produced. The canonical golden hash `0x4937890abb4edfb6` for `canonicalSnapshot()` (two players, no ball) is unchanged from M0.
+
+**Consequences**:
++ **Additive, HTTP-1.1-style extensibility.** Slice 16's dribble mechanics will add `owner_slot` semantics (real player id instead of `kBallOwnerLoose`) without wire-format changes. A future spin_axis or ball_temperature field grows the trailer's ball region while old v1.1 decoders keep parsing the first 30 bytes they recognise.
++ **Single wire version.** The frame header's version byte stays at `0x01` forever unless we take path B for some future breaking change. Encoders and decoders don't branch on version at any field — only on message type — so the codec stays lean.
++ **Server ↔ client capability negotiation channel is now real** via HELLO_ACK. Bit-flag design mirrors HTTP `Accept-Encoding` / `Content-Encoding`: server declares what it *may* emit, client parses opportunistically. Future bits (bit 1 = collision events, bit 2 = playable-area state, …) slot in without another payload widening.
++ **Golden byte-layout tests catch drift immediately.** 8 new subtests in `test_binary_v1_serializer` lock the offset of every ball-region field; 4 new subtests in `test_input_frame` lock the capability-bits offset. Any well-meaning field-order shuffle breaks the tests before it breaks a client.
++ **Frontend + backend deploy independently.** M0 sim ↔ M0 frontend still work byte-for-byte because no-ball snapshots emit no trailer. M1 sim ↔ M0 frontend works too *when no ball is present* — as soon as a match spawns a ball, an M0 frontend would reject the SNAPSHOT because its strict `payloadLen !== expected` check hasn't been relaxed. In practice fh deploys sim + frontend together, so the frontend was updated in the same slice (Slice 15.5, commit `4aba3b09`) to parse the trailer.
+− **Multiple balls per snapshot is a hard error.** M1 has one ball per match by design; if we ever want to support "warmup balls" or a hypothetical multi-ball training mode, we'd need a v1.2 that either extends the trailer with a count prefix or adds a second trailer region. The current encoder returns `{}` (empty vector) rather than encoding a garbled frame — surfaces the design constraint loudly at write time.
+− **HELLO_ACK payload widened 14 → 16 bytes.** Any external tooling that hardcoded 14 (rather than using `kHelloAckPayloadBytes`) breaks. Only one external consumer existed: [frontend/js/sim/wire.js](frontend/js/sim/wire.js), updated in the same slice. `test_sim_server`'s strict frame-size assertions used the symbolic constant and auto-adjusted.
+− **`num_entities` on the wire now counts players only, not the ball.** This is a semantic quiet change from M0 (where `num_entities` counted every entity in `Snapshot::entities`). Callers who used `num_entities` to preallocate render arrays now need to add 1 if the trailer indicates a ball is present. Downstream `frontend/js/sim/interpolator.js` was updated to track the trailer's ball as a first-class object separate from the entities array (Slice 15.5).
+
+**Revisit if / when**:
+- **A third wire-payload extension appears that doesn't fit the "single length-prefixed trailer" shape** — e.g. two orthogonal optional regions (collision events + playable area) both wanting to sit after entities. At that point either (a) generalise the trailer into a TLV chain `[u8 region_type][u16 region_len][region_bytes]…` (breaking change for the ball trailer's implicit "there is at most one trailer" contract, but expressible as a v1.2 by adding a new bit to `wire_capability_bits`), or (b) accept a small proliferation of length-prefixed trailers appended in a documented order. Prefer (a) if we cross ~3 trailer types; below that, ordered appended trailers keep the decoder trivial.
+- **M4 WASM lockstep client (§20) forces Fixed64 words on the wire.** That's the natural v2 boundary — a version-byte bump becomes justified because f32→Fixed64 changes the encoding of *every field*, not just adds new ones. Path B was the wrong choice for Slice 15 (adds bytes to one field) but the right choice for the M4 pivot (rewrites every field). This ADR does not close that door.
+- **Any client outside frontend/js/sim/ starts consuming SNAPSHOT frames** (e.g. an admin tool, a replay analyzer, a stats scraper). Its parser needs to speak v1.1 or explicitly filter out the trailer via `payload_sz != header + entities_bytes` → skip. Document this in the wire-protocol reference (§7) if / when it becomes a real concern.
+- **`kWireCapSnapshotBallTrailer` becomes conditional per-match** (e.g. some match types don't have a ball). The current server sets it unconditionally on connect; a future match-type switch would need the server to inspect the running match before ACKing. Not needed for M1.
+
+**Refs**: §7 (wire protocol — v1.1 addendum is this ADR), §7.1 (HELLO_ACK format — payload widened here), §7.2 (SNAPSHOT format — trailer added here), §22.0 (ADR append-only rule — §22.19 slot for Slice 14 remains reserved and unfilled), §23.3 Slice 15.4 (draft that this ADR realises), §23.7 (draft ADR predictions — this row is now landed), commit `3156d4d7`, commit `4aba3b09` (frontend mirror).
+
+---
+
 Added 2026-07-13 as the resolution of Task B in the 5-task follow-up sequence (C→D→E→A→B). Mirrors §16's structure for M0. §22 (ADRs) is a growing log that lives after §17–§22 by convention, but M1 is a *milestone* section, so it takes the next available top-level number rather than nesting into §22.
 
 ### 23.1 M1 scope recap
@@ -2242,7 +2300,7 @@ From [§15](#15-milestone-plan) (milestone plan): **"Ball entity + dribble physi
 - Slice numbering continues from Slice 13 (M0 close-out) — first M1 slice is Slice 14.
 - Each slice ends with a green ctest gate on the sim side AND a working end-to-end demo reachable from the frontend Tactical Games hub tile (or a new M1-scoped tile).
 - Every determinism gate (§22.1 bit-exact, §22.2 Fixed64, §22.9 registry ID stability, §22.14 write policy, ADR §22.18 profile-row storage, Task D's boot-time drift guard) MUST continue to pass at the end of every slice — no slice is allowed to green-light while breaking any of them.
-- New ADRs land as `§22.19`, `§22.20`, … in chronological order — never re-numbered (§22.0 rule). ADRs §22.15/§22.16/§22.17 originally reserved for M1 draft slots (see §23.7) are unused; §22.18 landed 2026-07-13 out of that sequence (profile-row normalization) — chronological rule prevails, next ADR is §22.19.
+- New ADRs land as `§22.19`, `§22.20`, … in chronological order — never re-numbered (§22.0 rule). ADRs §22.15/§22.16/§22.17 originally reserved for M1 draft slots (see §23.7) are unused; §22.18 landed 2026-07-13 out of that sequence (profile-row normalization), followed by §22.20 (2026-07-13, wire v1.1 — Slice 15.4). §22.19 remains reserved for the pending Slice 14 podman-surface ADR (drafted, not yet landed); next available integer is §22.21.
 - SQL migrations continue the sim-scoped numbering: next available is `206-sim-*.sql` (205 landed 2026-07-13 as `205-sim-normalize-profiles.sql` per ADR §22.18).
 - CI lint gate ([sim/Dockerfile](sim/Dockerfile)) gets a new script per invariant added (grep-based, same shape as the four M0 checks).
 
@@ -2320,14 +2378,14 @@ Landed FIRST because Slices 15–17 need to spawn fresh matches to test ball sce
 
 Ball can be spawned into a match at scenario-defined position and rolls with friction until it stops. No player-ball interaction yet — ball is a passive kinematic entity that other subsystems must not touch.
 
-- 15.1 `Ball` struct + `BallPhysics` integrator + unit test for rolling-to-rest under friction.
-- 15.2 `Match` gains optional ball, reads from `Scenario::ballSpawn()`.
-- 15.3 `BallOnPitchScenario` (new) — empty pitch with ball at center circle, initial velocity zero.
-- 15.4 Wire v1.1 snapshot extension: length-prefixed ball region; HELLO_ACK `wire_capability_bits`. Backward-compat: M0 clients receiving v1.1 frames ignore the extension.
-- 15.5 Client renders ball as filled circle at wire position.
-- 15.6 Determinism test: fixed seed + ball with initial velocity ⇒ identical trajectory across arches.
+- [x] 15.1 `Ball` struct + `BallPhysics` integrator + unit test for rolling-to-rest under friction. *(`ff068879`)*
+- [x] 15.2 `Match` gains optional ball, reads from `Scenario::ballSpawn()`. *(`8cc1cbba`)*
+- [x] 15.3 `BallOnPitchScenario` (new) — empty pitch with ball at center circle, initial velocity zero. Migration 207 registers `code_id='ball_on_pitch'` at `id=1` per §22.9 stable-ID pattern; `Replay::makeScenario()` branches on scenario_id → `BallOnPitchScenario`. *(`95cabac4`)*
+- [x] 15.4 Wire v1.1 snapshot extension: length-prefixed ball trailer (30-byte region: pos + vel + spin + owner); HELLO_ACK `wire_capability_bits` (bit 0 = `kWireCapSnapshotBallTrailer`). Backward-compat: no-ball snapshots are byte-identical to M0 (canonical golden hash `0x4937890abb4edfb6` preserved). See ADR §22.20. *(`3156d4d7`)*
+- [x] 15.5 Client renders ball as filled circle at wire position; `SIM_SCENARIO=ball_on_pitch` env var selects the scenario at boot. *(`4aba3b09`)*
+- [x] 15.6 Determinism test: fixed seed + ball with initial velocity ⇒ identical trajectory across arches. Golden canonical hash `0x7c3932be60cba2aa` for `ball_roll_east_400_ticks_seed_42` (20 m/s east, seed 42). *(`47c53673`)*
 
-**Slice 15 exit gate**: `BallOnPitchScenario` shows a ball rolling from a stationary start (visual test) and from a scripted initial velocity (deterministic test). No slot claims required; empty match with a rolling ball is a legitimate demo.
+**Slice 15 exit gate**: `BallOnPitchScenario` shows a ball rolling from a stationary start (visual test) and from a scripted initial velocity (deterministic test). No slot claims required; empty match with a rolling ball is a legitimate demo. *(Shipped 2026-07-13; final commit `47c53673`. Migration 207 applied. Container demo: `SIM_SCENARIO=ball_on_pitch make sim-restart`, then open `frontend/sim.html`.)*
 
 **Slice 16 — Dribble mechanics + first-touch**
 
@@ -2409,8 +2467,8 @@ Placeholder for ADRs that will formalize decisions Slice 14–18 forces. Each AD
 
 **ADR numbering note (2026-07-13)**: the §22.15/§22.16/§22.17 slots reserved below were never used — ADR §22.18 landed first (out-of-sequence, profile-row normalization) on 2026-07-13. Per the §22.0 append-only rule, ADRs land at the next available integer at write time. The three draft ADRs below will therefore land as §22.19 (Slice 14 podman surface), §22.20 (Slice 15 wire v1.1), §22.21 (Slice 16 dribble_efficiency) in *slice-completion order*, not in the order drafted here.
 
-- **§22.19 (Slice 14, was drafted as §22.17)** — Backend → podman API access surface (UNIX socket vs `podman run` shell-out vs REST API). Draft: `podman run` shell-out for M1 (simplest ops surface, matches every debugging incantation in [.github/copilot-instructions.md](.github/copilot-instructions.md)); revisit if launch latency measurements from Slice 14.7 push us toward the UNIX-socket API.
-- **§22.20 (Slice 15, was drafted as §22.16)** — Wire v1.1 extension format (length-prefixed extensible regions vs fixed-layout new fields). Draft: length-prefixed with client capability negotiation via HELLO_ACK — same shape as HTTP/1.1 extension headers. Rejected alternative: fixed-layout with version byte in frame header (breaks the "same wire encoder for v1 and v1.1" simplicity).
+- **§22.19 (Slice 14, was drafted as §22.17)** — Backend → podman API access surface (UNIX socket vs `podman run` shell-out vs REST API). Draft: `podman run` shell-out for M1 (simplest ops surface, matches every debugging incantation in [.github/copilot-instructions.md](.github/copilot-instructions.md)); revisit if launch latency measurements from Slice 14.7 push us toward the UNIX-socket API. **Slot reserved; ADR not yet landed** (Slice 14 shipped `ef872341` without formalising the decision).
+- **§22.20 (Slice 15, was drafted as §22.16)** — Wire v1.1 extension format (length-prefixed extensible regions vs fixed-layout new fields). **Landed 2026-07-13 as ADR §22.20 above** (commit `3156d4d7`); decision matched the draft: length-prefixed with client capability negotiation via HELLO_ACK — same shape as HTTP/1.1 extension headers. Rejected alternative: fixed-layout with version byte in frame header (breaks the "same wire encoder for v1 and v1.1" simplicity).
 - **§22.21 (Slice 16, was drafted as §22.15)** — `physical.dribble_efficiency` as a new attribute vs a hardcoded constant in `BallControl`. Draft: introduce it as a first-class attribute to keep the "profile drives mechanics" invariant (§22.9 stability + §22.14 write policy inherit unchanged, and §22.18 row-set storage makes the new row appear in `sim_player_attribute` alongside existing physical rows), even though M1's `m0::defaultPhysical()` gives every player the same default value.
 
 ### 23.8 Reference cross-links
