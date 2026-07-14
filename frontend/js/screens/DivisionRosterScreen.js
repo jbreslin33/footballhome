@@ -91,7 +91,9 @@ class DivisionRosterScreen extends Screen {
               <div>
                 <h3 style="margin: 0;">${p.first_name} ${p.last_name}</h3>
               </div>
-              <button class="btn btn-sm btn-secondary view-player-btn" data-player-id="${p.player_id}">Edit</button>
+              <div style="display:flex; gap:6px; align-items:center;">
+                ${window.PersonActions ? window.PersonActions.buttonsHtml({ personId: p.player_id, firstName: p.first_name, fullName: `${p.first_name || ''} ${p.last_name || ''}`.trim() }, { returnTo: 'divisionRoster', size: 'md' }) : ''}
+              </div>
             </div>
           </div>
         `,

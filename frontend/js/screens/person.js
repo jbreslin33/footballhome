@@ -271,6 +271,11 @@ class PersonScreen extends Screen {
     this.leagueAppsUserId = raw != null ? String(raw) : null;
     this._returnTo = params?.returnTo || null;
     this._returnToParams = params?.returnToParams || null;
+    // `edit=1` is set by the shared PersonActions ✎ EDIT button.  We
+    // don't have a distinct edit tab yet — for now we just remember
+    // the intent so a future edit UI can pick it up without any of
+    // the ~20 callers needing to change how they navigate here.
+    this._editMode = params?.edit === '1' || params?.edit === true;
 
     if (!this.leagueAppsUserId) {
       this._showError('No leagueAppsUserId provided');

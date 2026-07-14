@@ -88,23 +88,14 @@ class BoysRosterScreen extends Screen {
         this._handlePayClickRefresh(payLog, e);
         return;
       }
-      // Dedicated 👤 PROFILE button → open the universal PersonScreen.
-      // Whole-card click drill-down was removed 2026-07-14 because it
-      // fired on drag-release + on tap-anywhere, hijacking every
-      // move-a-player interaction.  Keep the button-only path so the
-      // rest of the card (name, DOB, chips, empty space) is inert and
-      // safe to drag / click without side-effects.
-      const profileBtn = e.target.closest('.br-profile[data-la-user-id]');
-      if (profileBtn) {
-        const laUid = profileBtn.getAttribute('data-la-user-id');
-        if (laUid) {
-          this.navigation.goTo('person', {
-            leagueAppsUserId: laUid,
-            returnTo: 'boys-roster',
-          });
-        }
-        return;
-      }
+      // 👤 PROFILE / ✎ EDIT buttons are now rendered by the shared
+      // PersonActions component (components/PersonActions.js) and
+      // routed globally by a delegated document-level click handler
+      // installed once at app bootstrap (see app.js).  No per-screen
+      // wiring needed here — the buttons carry data-la-user-id +
+      // data-return-to and land on the universal PersonScreen.  The
+      // whole-card click drill-down was removed 2026-07-14 to stop
+      // it hijacking drag-and-drop moves.
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -173,40 +164,16 @@ class BoysRosterScreen extends Screen {
       if (loading) loading.style.display = 'none';
       if (list)    list.style.display    = '';
 
-      // Extend the banner with delinquency headline numbers so the coach
-      // knows the state of the club before scanning columns.  Backend
-      // exposes these under top-level `data.delinquency`.
-      const dq = data.delinquency || {};
-      // Fallback (2026-07-07): youth backend doesn't populate a delinquency
-      // summary yet, so compute a proxy client-side from `outstandingBalance`
-      // + `paymentStatus` on each player row.  Marks a player as "overdue"
-      // when either LA reports an open balance OR paymentStatus is UNPAID.
-      let overdueCount = dq.overdueCount || 0;
-      let duesOwedCount = dq.duesOwedCount || 0;
-      if (!dq.overdueCount && !dq.duesOwedCount) {
-        const seen = new Set();
-        const walk = (arr) => {
-          for (const p of arr || []) {
-            const uid = p.leagueAppsUserId;
-            if (uid == null || seen.has(uid)) continue;
-            seen.add(uid);
-            const bal = Number(p.outstandingBalance || 0);
-            const unpaid = String(p.paymentStatus || '').toUpperCase() === 'UNPAID';
-            if (bal > 0 || unpaid) overdueCount++;
-          }
-        };
-        walk(data.unassigned);
-        for (const b of Object.values(data.buckets || {})) walk(b);
-      }
-      const overduePct = data.total > 0
-        ? Math.round((overdueCount / data.total) * 100)
-        : 0;
-      const dqText = (overdueCount > 0 || duesOwedCount > 0)
-        ? ` · ⚠ ${overdueCount}/${data.total} overdue (${overduePct}%) · 🚨 ${duesOwedCount} dues owed`
-        : '';
+      // Banner intentionally shows ONLY roster-pertinent counts.
+      // Financial roll-ups (overdue count, dues owed) were removed
+      // 2026-07-14 per user directive: "the financial stuff can be
+      // on payments screen or in player card when we click edit".
+      // Per-card overdue signal is retained via the tiny status
+      // pill on each player card; the club-wide aggregate lives on
+      // the dedicated /payments screen where it belongs.
       this.setBanner({
         icon: '✓',
-        text: `${data.total} player${data.total === 1 ? '' : 's'} loaded in ${elapsed}s · ${data.unassignedCount} unassigned${dqText}`,
+        text: `${data.total} player${data.total === 1 ? '' : 's'} loaded in ${elapsed}s · ${data.unassignedCount} unassigned`,
         showRefresh: true,
       });
       this.renderRoster(data);
@@ -306,13 +273,10 @@ class BoysRosterScreen extends Screen {
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
       : renderList(players);
 
-    // Column-level dues risk: how many players in this column are
-    // currently overdue.  Coach uses this to spot at-a-glance which
-    // rosters need attention.
-    const overdueInCol = players.filter(p => (p.daysOverdue || 0) >= 1).length;
-    const overdueHtml = overdueInCol > 0
-      ? `<div style="margin-bottom:6px; padding:3px 6px; background:#3a1f1f; color:#fca5a5; border:1px solid #7f1d1d; border-radius:3px; font-size:0.65rem; font-weight:700; letter-spacing:0.05em; text-align:center;">⚠ ${overdueInCol} OVERDUE</div>`
-      : '';
+    // Column-header financial roll-up ("⚠ N OVERDUE") was removed
+    // 2026-07-14 — belongs on the /payments screen, not here.  The
+    // per-card overdue pill keeps the signal at the row level where
+    // it's actionable for roster picks.
 
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:0;">
@@ -320,7 +284,6 @@ class BoysRosterScreen extends Screen {
           <strong style="font-size:0.85rem;">${col.label}</strong>
           ${countHtml}
         </div>
-        ${overdueHtml}
         <div class="br-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:0;">
           ${body}
@@ -497,14 +460,14 @@ class BoysRosterScreen extends Screen {
     // universal PersonScreen.  Replaces the old "click anywhere on the
     // card" wiring which hijacked drag-and-drop moves.  Kept small and
     // right next to LA so the two "look up this person" buttons live
-    // together.
-    const profileBtn = p.leagueAppsUserId
-      ? `<button class="br-profile" type="button"
-                 data-la-user-id="${p.leagueAppsUserId}"
-                 title="Open profile for ${this.escape(p.firstName || 'this player')}"
-                 style="${btnBase} border:none; cursor:pointer; background:#0284c7; color:#fff;">
-           👤
-         </button>`
+    // together.  As of 2026-07-14 the actions are produced by the
+    // shared PersonActions component so every screen renders the same
+    // 👤 PROFILE / ✎ EDIT pair with consistent behaviour.
+    const profileBtn = (window.PersonActions && p.leagueAppsUserId)
+      ? window.PersonActions.buttonsHtml(p, {
+          returnTo: 'boys-roster',
+          btnBaseStyle: '',
+        })
       : '';
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth

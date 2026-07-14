@@ -586,6 +586,7 @@ class MatchRSVPManagementScreen extends Screen {
         </div>
         <div style="display: flex; align-items: center; gap: 4px;">
           ${remindBtn}
+          ${window.PersonActions ? window.PersonActions.buttonsHtml({ personId: player.personId || player.id, firstName: name, fullName: name }, { returnTo: 'matchRSVPManagement' }) : ''}
           <span style="color: ${LH_NAVY}; font-size: 1.2em; opacity: 0.6;">›</span>
         </div>
       </div>

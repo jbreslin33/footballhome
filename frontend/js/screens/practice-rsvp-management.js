@@ -387,6 +387,7 @@ class PracticeRSVPManagementScreen extends Screen {
           <span style="font-size: 1.05em;">${name}</span>
         </div>
         <div style="display: flex; align-items: center; gap: var(--space-2);">
+          ${window.PersonActions ? window.PersonActions.buttonsHtml({ personId: player.personId || player.id, firstName: name, fullName: name }, { returnTo: 'practiceRSVPManagement' }) : ''}
           <span style="color: var(--color-text-secondary); font-size: 1.2em;">›</span>
         </div>
       </div>

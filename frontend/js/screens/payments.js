@@ -934,7 +934,7 @@ class PaymentsScreen extends Screen {
           </div>
           ${recentHtml}
         </div>
-        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${pauseBtn}${flagBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${pauseBtn}${flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
       </div>
     `;
   }

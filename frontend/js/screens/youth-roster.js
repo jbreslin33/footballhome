@@ -333,7 +333,7 @@ class YouthRosterScreen extends Screen {
         ${p.parentEmail ? `<div style="font-size:0.8rem; opacity:0.85;">${this.escape(p.parentEmail)}</div>` : ''}
         ${formattedPhone ? `<div style="font-size:0.85rem; font-weight:500; opacity:0.95;">${formattedPhone}</div>` : ''}
         ${billingBadge ? `<div style="margin-top:6px;">${billingBadge}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${smsBtn}${telBtn}${payBtn}${vcardBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${smsBtn}${telBtn}${payBtn}${vcardBtn}${window.PersonActions ? window.PersonActions.buttonsHtml(p, { returnTo: 'youth-roster' }) : ''}</div>
       </div>
     `;
   }

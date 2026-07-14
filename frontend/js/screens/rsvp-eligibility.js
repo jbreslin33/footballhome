@@ -593,6 +593,7 @@ class RsvpEligibilityScreen extends Screen {
         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top: var(--space-1);">
           ${eligChips}
         </div>
+        ${window.PersonActions ? `<div style="display:flex; gap:6px; margin-top: var(--space-1);">${window.PersonActions.buttonsHtml({ leagueAppsUserId: uid, personId: m.person_id, firstName: m.first_name, fullName: name }, { returnTo: 'rsvpEligibility' })}</div>` : ''}
       </div>
     `;
   }

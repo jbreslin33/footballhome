@@ -360,7 +360,7 @@ class MensEventsRemindersScreen extends Screen {
           ${name}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:nowrap;">
-          ${emailPlainBtn}${smsPlainBtn}${emailMagicBtn}${smsMagicBtn}
+          ${emailPlainBtn}${smsPlainBtn}${emailMagicBtn}${smsMagicBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: p.leagueapps_user_id || p.la_user_id, personId: p.person_id, firstName: p.first_name, fullName: `${p.first_name || ''} ${p.last_name || ''}`.trim() }, { returnTo: 'mensEventsReminders' }) : ''}
         </div>
       </div>
     `;

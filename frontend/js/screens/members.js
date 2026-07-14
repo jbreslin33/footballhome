@@ -1239,6 +1239,20 @@ class MembersScreen extends Screen {
                         font-size:0.75rem; font-weight:700;">👤 Save</button>`
       );
     }
+    // 👤 PROFILE / ✎ EDIT — shared component (2026-07-14).  Same
+    // markup + behaviour as every other person card on the site.
+    if (window.PersonActions) {
+      const actions = window.PersonActions.buttonsHtml(
+        {
+          leagueAppsUserId: m.leagueapps_user_id,
+          personId:         m.person_id,
+          firstName:        m.first_name,
+          fullName:         `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+        },
+        { returnTo: 'members', size: 'md' }
+      );
+      if (actions) buttons.push(actions);
+    }
     const btnRow = buttons.length
       ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${buttons.join('')}</div>`
       : '';

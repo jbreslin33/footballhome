@@ -5,6 +5,15 @@ class App {
     this.auth = new Auth(); // Empty apiBase = nginx proxies /api
     this.screenManager = new ScreenManager('app');
     this.navigation = new NavigationStateMachine(this.screenManager, this.auth);
+
+    // Install the delegated click handler that routes every
+    // `.person-action` button (rendered by any card, on any screen,
+    // via the shared PersonActions component) through
+    // `navigation.goTo('person', …)`.  Idempotent — safe if this
+    // constructor ever runs twice.
+    if (window.PersonActions && typeof window.PersonActions.installGlobalHandler === 'function') {
+      window.PersonActions.installGlobalHandler(this.navigation);
+    }
     
     // Create all screen instances
     this.screens = {

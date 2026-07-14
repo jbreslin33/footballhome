@@ -661,6 +661,10 @@ class TeamDashboardScreen extends Screen {
         </div>
         <div class="roster-card-right">
           ${badges.join(' ')}
+          ${window.PersonActions ? window.PersonActions.buttonsHtml(
+            { leagueAppsUserId: player.leagueAppsUserId, personId: player.personId || player.id, firstName: player.name, fullName: player.name },
+            { returnTo: 'teamDashboard' }
+          ) : ''}
         </div>
       </div>`;
   }
