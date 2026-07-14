@@ -34,6 +34,7 @@
 #include "registry/AttributeRegistry.hpp"
 #include "registry/ConceptRegistry.hpp"
 #include "registry/PatternRegistry.hpp"
+#include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "server/SimServer.hpp"
 
@@ -115,6 +116,23 @@ int main(int /*argc*/, char** /*argv*/)
     const std::uint16_t port     = parsePort(envOr("SIM_PORT", "9100"));
     const std::uint64_t match_id = parseU64(std::getenv("SIM_MATCH_ID"),   1);
     const std::uint64_t seed     = parseU64(std::getenv("SIM_MATCH_SEED"), 42);
+
+    // Slice 15.5: scenario selection. Values map to sim_scenarios.code_id;
+    // Replay.cpp::makeScenario is the single source of truth for the runtime
+    // side of the id -> Scenario mapping — keep them in lock-step. Default
+    // stays empty_pitch (M0 behaviour); switch to ball_on_pitch to demo the
+    // Slice 15 ball trailer end-to-end.
+    const std::string scenario_name{envOr("SIM_SCENARIO", "empty_pitch")};
+    std::int16_t scenario_id = 0;
+    if      (scenario_name == "empty_pitch")   { scenario_id = 0; }
+    else if (scenario_name == "ball_on_pitch") { scenario_id = 1; }
+    else {
+        std::fprintf(stderr,
+                     "footballhome_sim: unknown SIM_SCENARIO=\"%s\" — "
+                     "expected one of: empty_pitch, ball_on_pitch\n",
+                     scenario_name.c_str());
+        return 2;
+    }
 
     // ------------------------------------------------------------------
     // Registry catalog: connect to Postgres, load the three sim registries,
@@ -254,14 +272,15 @@ int main(int /*argc*/, char** /*argv*/)
     // event_type observer sees a coherent "row exists, then it began".
     // ------------------------------------------------------------------
     try {
-        constexpr std::int16_t kM0ScenarioId = 0;  // EmptyPitchScenario;
-                                                   // see Replay.cpp::makeScenario
+        // Slice 15.5: scenario_id now comes from SIM_SCENARIO (resolved above)
+        // rather than being a hardcoded 0. Keep the drift check strict — the
+        // deterministic replay contract still hinges on all three fields.
         constexpr std::int16_t kTickHz       = 20;
 
         const auto existing = db->getMatch(match_id);
         if (existing.has_value()) {
             const bool drift =
-                existing->scenario_id != kM0ScenarioId
+                existing->scenario_id != scenario_id
                 || existing->seed     != seed
                 || existing->tick_hz  != kTickHz;
             if (drift) {
@@ -283,7 +302,7 @@ int main(int /*argc*/, char** /*argv*/)
                     static_cast<unsigned long long>(existing->seed),
                     static_cast<int>(existing->tick_hz),
                     existing->server_version.c_str(),
-                    static_cast<int>(kM0ScenarioId),
+                    static_cast<int>(scenario_id),
                     static_cast<unsigned long long>(seed),
                     static_cast<int>(kTickHz),
                     static_cast<unsigned long long>(match_id));
@@ -293,7 +312,7 @@ int main(int /*argc*/, char** /*argv*/)
 
         fh::sim::persistence::MatchRow mrow;
         mrow.id             = match_id;
-        mrow.scenario_id    = kM0ScenarioId;
+        mrow.scenario_id    = scenario_id;
         mrow.seed           = seed;
         mrow.tick_hz        = kTickHz;
         mrow.server_version = FH_SIM_GIT_DESCRIBE;
@@ -339,7 +358,14 @@ int main(int /*argc*/, char** /*argv*/)
     mcfg.seed           = seed;
     mcfg.server_version = FH_SIM_GIT_DESCRIBE;
     mcfg.physics  = std::make_unique<fh::sim::physics::StubPhysics>();
-    mcfg.scenario = std::make_unique<fh::sim::scenario::EmptyPitchScenario>();
+    // Slice 15.5: pick the Scenario matching the resolved scenario_id.
+    // Keep this switch in lock-step with sim/src/tools/Replay.cpp::makeScenario
+    // and sim_scenarios.code_id (see database/migrations/207-*).
+    if (scenario_id == 1) {
+        mcfg.scenario = std::make_unique<fh::sim::scenario::BallOnPitchScenario>();
+    } else {
+        mcfg.scenario = std::make_unique<fh::sim::scenario::EmptyPitchScenario>();
+    }
     mcfg.clock    = std::make_unique<fh::sim::match::RealtimeClock>(20);
     auto match = std::make_unique<fh::sim::match::Match>(std::move(mcfg));
 

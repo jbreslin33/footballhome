@@ -94,10 +94,31 @@ class FhSimInterpolator {
             }
             // Entities that vanish are dropped.
         }
+        // Slice 15.4: the ball rides on `snap.ball` (separate from entities).
+        // Blend when both frames have it; otherwise pass through whichever
+        // side has one so a newly-spawned ball still renders on the first tick.
+        let ball = null;
+        if (a.ball && b.ball) {
+            ball = {
+                posX:      a.ball.posX + (b.ball.posX - a.ball.posX) * t,
+                posY:      a.ball.posY + (b.ball.posY - a.ball.posY) * t,
+                posZ:      a.ball.posZ + (b.ball.posZ - a.ball.posZ) * t,
+                velX:      b.ball.velX,
+                velY:      b.ball.velY,
+                velZ:      b.ball.velZ,
+                spin:      b.ball.spin,
+                ownerSlot: b.ball.ownerSlot,
+            };
+        } else if (b.ball) {
+            ball = { ...b.ball };
+        } else if (a.ball) {
+            ball = { ...a.ball };
+        }
         return {
             tick: b.tick,
             matchTimeMs: Math.round(a.matchTimeMs + (b.matchTimeMs - a.matchTimeMs) * t),
             entities: out,
+            ball,
         };
     }
 }

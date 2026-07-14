@@ -166,6 +166,49 @@ class FhSimRenderer {
         }
     }
 
+    // Slice 15.5: draw the ball, when present, as a filled white circle
+    // with a thin black outline. Real football is 22 cm diameter; at typical
+    // pxPerM the geometric size is ~2 px, which is invisible at a glance, so
+    // we clamp to a minimum 4 px radius the way FIFA/PES do for readability.
+    // Draw AFTER entities so the ball floats on top during possession /
+    // near-player situations (in M1 the ball is always loose, so overlap
+    // is rare — but the order is the correct one for future slices).
+    drawBall(snap) {
+        if (!snap || !snap.ball) return;
+        const ctx = this.ctx;
+        const ball = snap.ball;
+
+        const px = this._wx(ball.posX);
+        const py = this._wy(ball.posY);
+
+        // Real ball radius = 0.11 m. Clamp to a minimum visible size.
+        const geomR = 0.11 * this.pxPerM;
+        const r     = Math.max(4, geomR);
+
+        // Optional velocity tick (short line) — helps visualize decay.
+        // Only when the ball is actually moving (avoid a lonely dot).
+        const speed = Math.hypot(ball.velX, ball.velY);
+        if (speed > 0.05) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+            ctx.lineWidth   = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            // Scale so a 1 m/s ball draws a 1 m tick — proportional to speed.
+            ctx.lineTo(px + ball.velX * this.pxPerM,
+                       py - ball.velY * this.pxPerM);
+            ctx.stroke();
+        }
+
+        // Ball body: white fill, thin dark rim so it pops against pitch green.
+        ctx.fillStyle   = '#ffffff';
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth   = 1.5;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
     drawHud(status) {
         const ctx = this.ctx;
         ctx.font = '12px monospace';
@@ -191,6 +234,7 @@ class FhSimRenderer {
         this.clear();
         this.drawPitch();
         this.drawEntities(snap);
+        this.drawBall(snap);
         this.drawHud(status || {});
     }
 }
