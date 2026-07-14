@@ -822,12 +822,26 @@ class PaymentsScreen extends Screen {
                         font-size:0.75rem; font-weight:700;">🔗 Open in LA</button>`
       : '';
 
-    // Contact action buttons — mailto / sms / tel.  SMS + Call only appear
-    // when the phone row is flagged to receive that channel.
+    // Contact action buttons — Gmail compose / sms: / tel:.  SMS + Call
+    // only appear when the phone row is flagged to receive that channel.
+    // Email opens Gmail's compose URL (not mailto:) so the operator's
+    // Gmail tab handles it — matches the Members screen pattern.
     const contactBtns = [];
     if (m.email) {
+      const first   = (m.firstName || '').trim() || 'there';
+      const subject = `Football Home — checking in`;
+      const body    =
+        `Hey ${first},\n\n` +
+        `Just checking in — please reply and let me know you got this so ` +
+        `I know I have the right email for you.\n\n` +
+        `--James Breslin\nSoccer Director at Lighthouse`;
+      const gmailUrl =
+        `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
+        `&to=${encodeURIComponent(m.email)}` +
+        `&su=${encodeURIComponent(subject)}` +
+        `&body=${encodeURIComponent(body)}`;
       contactBtns.push(
-        `<a href="mailto:${this.escape(m.email)}"
+        `<a href="${gmailUrl}" target="_blank" rel="noopener"
              style="padding:6px 10px; border-radius:4px; text-decoration:none;
                     background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
                     font-size:0.75rem; font-weight:700;">✉️ Email</a>`
@@ -881,6 +895,20 @@ class PaymentsScreen extends Screen {
                                      background:#3a2e05; color:#fde68a; border:1px solid #d97706;
                                      font-size:0.75rem; font-weight:700;">📋 Copy Pause Warning</button>`;
 
+    // Projected prorate — shared BillingBadge helper.  Mid-cycle signups
+    // owe a partial-cycle charge; showing the amount inline lets the
+    // operator adjust the auto-generated LA invoice to match instead of
+    // hunting through the roster screen.  BillingBadge.projectedProrate
+    // expects `laRegisteredAt` + `paymentsWindow` on the shape it's
+    // given, so we pass a tiny adapter object.
+    const prorateCell =
+      (window.BillingBadge && typeof window.BillingBadge.renderProrateCell === 'function')
+        ? window.BillingBadge.renderProrateCell({
+            laRegisteredAt: m.laRegisteredAt || null,
+            paymentsWindow: m.recentTransactions || [],
+          })
+        : '';
+
     return `
       <div class="pay-member-card"
            data-la-user-id="${m.laUserId || ''}"
@@ -889,7 +917,7 @@ class PaymentsScreen extends Screen {
                   ${m.laUserId ? 'cursor:pointer;' : ''}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="font-weight:700; font-size:1rem;">${name}</div>
-          ${badge}
+          <div style="display:flex; align-items:center; gap:6px;">${prorateCell}${badge}</div>
         </div>
         ${dobLine}
         ${contactLine}

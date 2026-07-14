@@ -88,23 +88,68 @@
         <!-- App will be rendered here by JavaScript -->
     </div>
 
-    <!-- ── Auto-reload on new deploy (2026-07-07) ──────────────────────
-         Server-driven page refresh.  On every deploy, nginx serves
-         `index.html` with a fresh `Last-Modified` header (auto-derived
-         from the file's mtime on the bind-mount host).  This IIFE:
-           1) Captures the Last-Modified of `/` on page load as the
-              baseline.
-           2) Polls HEAD / every 30 s (also on tab-visibility change).
-           3) If the returned Last-Modified differs from the baseline,
-              calls `location.reload()`.
-         Result: within ~30 s of any deploy, every open tab reloads
-         itself — no manual hard-reload, no "did I clear cache?" ever
-         again.  Cost: one tiny HEAD request per tab per 30 s.
-         Loaded BEFORE the rest of the app so the reload can happen
-         even if a bug in the newest code would otherwise break the
-         page and strand the user on the last-good version. -->
+    <!-- ── Freshness guarantee (dev-first, 2026-07-14) ─────────────────
+         Owner directive: "footballhome should be efficient enough that
+         this does not cost us at least during dev phase" — i.e. burn
+         whatever bandwidth is required to guarantee the user is
+         ALWAYS on the latest deployed code, no manual hard-reloads.
+
+         This single IIFE does four things, in order:
+           1) NUKE on load — proactively unregister every service
+              worker and delete every Cache Storage bucket the browser
+              owns for this origin.  `sw.js` also self-unregisters,
+              but doing it here too covers the case where the browser
+              has an old SW registration that never got a chance to
+              activate.  Runs on every page load before any app JS.
+           2) BASELINE — capture the current `/` `Last-Modified`
+              header as the "code version I'm running".
+           3) POLL — recheck every 5 s (down from the old 30 s;
+              trivial cost, ~1 KB per request, and it means new
+              deploys land within seconds instead of half a minute).
+              Also recheck instantly on tab-visibility restore.
+           4) FORCE-RELOAD API + hotkey — expose `window.forceReload()`
+              and a `Ctrl+Alt+R` (or `Cmd+Alt+R` on Mac) keyboard
+              shortcut that nukes SW/cache/storage AND reloads.  Use
+              this from the console when you want to *know* the tab
+              is on the newest code, no questions asked.
+
+         Loaded BEFORE the rest of the app scripts so the cleanup +
+         reload wiring is live even if a bug in the newest code would
+         otherwise break the page and strand the user. -->
     <script>
       (function () {
+        // ── 1) NUKE on every page load ───────────────────────────
+        function nukeCaches() {
+          var promises = [];
+          if ('serviceWorker' in navigator) {
+            promises.push(
+              navigator.serviceWorker.getRegistrations()
+                .then(function (regs) {
+                  return Promise.all(regs.map(function (r) {
+                    console.log('[freshness] unregistering SW ' + r.scope);
+                    return r.unregister().catch(function () {});
+                  }));
+                })
+                .catch(function () {})
+            );
+          }
+          if (typeof caches !== 'undefined' && caches.keys) {
+            promises.push(
+              caches.keys()
+                .then(function (names) {
+                  return Promise.all(names.map(function (n) {
+                    console.log('[freshness] deleting cache ' + n);
+                    return caches.delete(n).catch(function () {});
+                  }));
+                })
+                .catch(function () {})
+            );
+          }
+          return Promise.all(promises);
+        }
+        nukeCaches();
+
+        // ── 2/3) Baseline + poll for new deploys ─────────────────
         var baseline = null;
         function poll() {
           fetch('/', { method: 'HEAD', cache: 'no-store' })
@@ -119,10 +164,36 @@
             })
             .catch(function () { /* offline; try again next tick */ });
         }
-        poll();                          // capture baseline
-        setInterval(poll, 30000);        // recheck every 30 s
+        poll();                         // capture baseline
+        setInterval(poll, 5000);        // recheck every 5 s (dev-first)
         document.addEventListener('visibilitychange', function () {
-          if (!document.hidden) poll();  // instant recheck when tab regains focus
+          if (!document.hidden) poll(); // instant recheck when tab regains focus
+        });
+
+        // ── 4) Force-reload API + keyboard shortcut ──────────────
+        // window.forceReload() — call from console to hard-reset:
+        //   * unregister every service worker
+        //   * delete every cache bucket
+        //   * reload with a fresh URL to defeat bfcache
+        window.forceReload = function () {
+          console.log('[force-reload] nuking everything…');
+          nukeCaches().finally(function () {
+            // Add a cache-buster query so bfcache can't restore an
+            // old snapshot.  `location.reload(true)` is deprecated;
+            // this is the modern equivalent.
+            var u = new URL(window.location.href);
+            u.searchParams.set('_r', Date.now());
+            window.location.replace(u.toString());
+          });
+        };
+        window.addEventListener('keydown', function (e) {
+          // Ctrl+Alt+R (or Cmd+Alt+R on Mac) — hard force-reload.
+          // Ctrl+Shift+R is already the browser's own hard-refresh
+          // and we don't want to conflict with it.
+          if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'r' || e.key === 'R')) {
+            e.preventDefault();
+            window.forceReload();
+          }
         });
       })();
     </script>

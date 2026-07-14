@@ -226,6 +226,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["phone"]         = m.phone.empty() ? json(nullptr) : json(m.phone);
         row["phoneSms"]      = m.phoneSms;
         row["phoneCall"]     = m.phoneCall;
+        row["laRegisteredAt"] = m.laRegisteredAt.empty() ? json(nullptr) : json(m.laRegisteredAt);
         row["status"]        = m.status;
         row["totalPaid"]     = m.totalPaid;
         row["totalRefunded"] = m.totalRefunded;

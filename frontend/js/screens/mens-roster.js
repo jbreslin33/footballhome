@@ -58,8 +58,8 @@ class MensRosterScreen extends Screen {
         <p class="subtitle">Live from LeagueApps — dues-aware roster selection with per-team overdue counts</p>
       </div>
 
-      <div style="padding: var(--space-4);">
-        <div id="mr-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
+      <div style="padding: var(--space-2) 0;">
+        <div id="mr-banner" style="margin: 0 var(--space-2) var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="mr-banner-icon" style="font-size: 16px;">⏳</span>
           <span id="mr-banner-text" style="flex:1; min-width: 200px;">Pulling latest registrations from LeagueApps…</span>
           <button id="mr-refresh" class="btn btn-secondary" title="Force a fresh pull from LeagueApps (registrations + payments)" style="padding: 4px 10px; font-size: 13px;">🔄 Refresh</button>
@@ -102,17 +102,15 @@ class MensRosterScreen extends Screen {
         this._handlePayClickRefresh(payLog, e);
         return;
       }
-      // Card body → open the universal PersonScreen.  Skip when the
-      // click landed on an interactive control (buttons, anchors,
-      // selects) so drag/drop, moves, payments, and LA-open buttons
-      // stay in charge.  Also skip during an active drag so the mouse
-      // sequence doesn't accidentally navigate on drop-release.
-      if (this._dragSourceUserId) return;
-      const interactive = e.target.closest('a, button, input, textarea, select, label');
-      if (interactive) return;
-      const card = e.target.closest('.mr-card[data-la-user-id]');
-      if (card) {
-        const laUid = card.getAttribute('data-la-user-id');
+      // Dedicated 👤 PROFILE button → open the universal PersonScreen.
+      // Whole-card click drill-down was removed 2026-07-14 because it
+      // fired on drag-release + on tap-anywhere, hijacking every
+      // move-a-player interaction.  Keep the button-only path so the
+      // rest of the card (name, DOB, chips, empty space) is inert and
+      // safe to drag / click without side-effects.
+      const profileBtn = e.target.closest('.mr-profile[data-la-user-id]');
+      if (profileBtn) {
+        const laUid = profileBtn.getAttribute('data-la-user-id');
         if (laUid) {
           this.navigation.goTo('person', {
             leagueAppsUserId: laUid,
@@ -239,7 +237,7 @@ class MensRosterScreen extends Screen {
     ];
 
     container.innerHTML = `
-      <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
+      <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Columns:</span>
         ${cols.map(c => {
           const count = c.isUnassigned ? c.count : ((data.buckets[String(c.teamId)] || []).length);
@@ -251,8 +249,8 @@ class MensRosterScreen extends Screen {
         }).join('')}
       </div>
 
-      <div style="overflow-x:auto; padding-bottom:var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(${cols.length}, minmax(${this.colMinWidth(cols.length)}, 1fr)); gap:var(--space-2); align-items:start;">
+      <div style="overflow-x:hidden; padding: 0 var(--space-2) var(--space-2);">
+        <div style="display:grid; grid-template-columns: repeat(${cols.length}, minmax(0, 1fr)); gap:var(--space-2); align-items:start;">
           ${cols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>
@@ -261,10 +259,16 @@ class MensRosterScreen extends Screen {
 
   // Cards get thinner when there are few columns (lots of room per col) and
   // wider when there are many (so the big move buttons still fit).
+  // Tightened 2026-07-14 so more columns fit before overflow-x kicks in —
+  // user complaint: "cut off on sides and uses scroll side to side even
+  // though there is space".  Cards happily flex-wrap their internal
+  // button row, so a narrower column just means a taller card, not a
+  // broken one.
   colMinWidth(n) {
-    if (n <= 4) return '155px';
-    if (n <= 6) return '145px';
-    return '155px';
+    if (n <= 4) return '150px';
+    if (n <= 6) return '130px';
+    if (n <= 8) return '120px';
+    return '110px';
   }
 
   renderColumn(col, data) {
@@ -305,14 +309,14 @@ class MensRosterScreen extends Screen {
       : '';
 
     return `
-      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color};">
+      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:0;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:6px;">
           <strong style="font-size:0.85rem;">${col.label}</strong>
           ${countHtml}
         </div>
         ${overdueHtml}
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
-             style="display:flex; flex-direction:column; gap:8px; min-height:8px;">
+             style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:0;">
           ${body}
         </div>
       </div>
@@ -457,6 +461,19 @@ class MensRosterScreen extends Screen {
                  title="Open ${this.escape(p.firstName || 'player')} in LA Manager"
                  style="${btnBase} border:none; cursor:pointer; background:#7c3aed; color:#fff;">
            LA
+         </button>`
+      : '';
+    // 👤 PROFILE button (2026-07-14) — dedicated drill-down into the
+    // universal PersonScreen.  Replaces the old "click anywhere on the
+    // card" wiring which hijacked drag-and-drop moves.  Kept small and
+    // right next to LA so the two "look up this person" buttons live
+    // together.
+    const profileBtn = p.leagueAppsUserId
+      ? `<button class="mr-profile" type="button"
+                 data-la-user-id="${p.leagueAppsUserId}"
+                 title="Open profile for ${this.escape(p.firstName || 'this player')}"
+                 style="${btnBase} border:none; cursor:pointer; background:#0284c7; color:#fff;">
+           👤
          </button>`
       : '';
     // RSVP-eligibility popup trigger (2026-07-07).  Small button next
@@ -745,15 +762,19 @@ class MensRosterScreen extends Screen {
     const laUidAttr = p.leagueAppsUserId
       ? `data-la-user-id="${p.leagueAppsUserId}"`
       : '';
-    const cardCursor = p.leagueAppsUserId ? 'cursor:pointer;' : '';
+    // Whole-card cursor:pointer was removed 2026-07-14 — clicking the
+    // card no longer navigates (that job now belongs to the dedicated
+    // 👤 PROFILE button).  Keeping the default cursor makes it visually
+    // obvious that the card body is inert / drag-safe.
     return `
-      <div id="${cardId}" class="mr-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow} ${cardCursor}">
+      <div id="${cardId}" class="mr-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow} min-width:0;">
         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px; row-gap:3px;">
           ${posChip}
           <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>
           ${dobShort ? `<span style="font-size:0.85rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
           ${moveSelect}
           ${laBtn}
+          ${profileBtn}
           ${rsvpEligBtn}
           ${delinqBtns}
           ${contactBtns}

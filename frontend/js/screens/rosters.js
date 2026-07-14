@@ -132,7 +132,7 @@ class RostersScreen extends Screen {
         <h1>🎽 Rosters</h1>
         <p class="subtitle">Assign members to teams — pick a club, or view all side-by-side</p>
       </div>
-      <div style="padding: var(--space-3); max-width: 1600px; margin: 0 auto;">
+      <div style="padding: var(--space-3) var(--space-2);">
         <div id="rosters-filters" style="margin-bottom: var(--space-3);"></div>
         <div id="rosters-host" style="min-height: 200px;">
           <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
@@ -367,6 +367,14 @@ class RostersScreen extends Screen {
       el.classList.remove('screen');
       const childHeader = el.querySelector('.screen-header');
       if (childHeader) childHeader.remove();
+      // Apply the base-class layout policy to child too — otherwise
+      // its inline max-widths / auto margins survive when mounted
+      // outside ScreenManager (which does this automatically for
+      // top-level screens).
+      if (typeof child.applyLayoutRules === 'function') {
+        try { child.applyLayoutRules(el); }
+        catch (e) { console.warn('[rosters] applyLayoutRules on child failed', e); }
+      }
       wrap.innerHTML = '';
       wrap.appendChild(el);
       this._mountedChildren.push(child);

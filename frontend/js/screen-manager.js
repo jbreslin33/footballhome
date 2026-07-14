@@ -55,7 +55,19 @@ class ScreenManager {
         this.isTransitioning = false;
         return;
       }
-      
+
+      // Apply the base-class layout policy (2026-07-14 user directive)
+      // — strips container-level max-widths + horizontal auto-margins
+      // so every screen goes edge-to-edge by default.  Individual
+      // elements opt out with class `narrow` or `js-keep-width`.
+      try {
+        if (typeof screen.applyLayoutRules === 'function') {
+          screen.applyLayoutRules(element);
+        }
+      } catch (layoutError) {
+        console.warn('applyLayoutRules failed (non-fatal):', layoutError);
+      }
+
       // Append to DOM
       this.container.appendChild(element);
       

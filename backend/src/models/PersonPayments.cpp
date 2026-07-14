@@ -483,25 +483,36 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "   WHERE pp.la_registration_id IS NOT NULL"
         "   GROUP BY pp.la_registration_id"
         "),"
-        // Per-payment coverage window.  For a $35+ non-refund payment
-        // made in cycle C, the window covers cycles [C, C + N-1] where
-        // N = ROUND(amount / 35), min 1.  We compute (pay_cycle_start,
-        // pay_cycle_end) so downstream CTEs can check whether a given
-        // reference cycle-start T falls in [pay_cycle_start, pay_cycle_end).
+        // Per-cycle coverage window.  Payments are summed by
+        // (la_registration_id, pay_cycle_start) BEFORE we compute how
+        // many cycles they cover — the $1 reg fee + $34 prorate paid
+        // in the same cycle sum to $35 and cover 1 cycle (2026-07-13
+        // per owner directive; the previous per-transaction check
+        // required a single ≥ $35 payment and dropped valid prorate
+        // signups to 'overdue').  For a cycle-sum of $A, the window
+        // covers cycles [C, C + N-1] where N = ROUND($A / $35), min 1.
+        // Threshold $28 excludes lone $1 reg fees while accepting the
+        // shortest realistic prorate (Feb 28-day cycles).
         //   pay_cycle_start = 15th-of-month for the cycle the payment
         //                     falls in.  Derived as:
         //                       date_trunc('month', paid_at - 14d) + 14d
         //                     (paid Apr 20 → Apr 15; paid Apr 5 → Mar 15).
         //   pay_cycle_end   = pay_cycle_start + N months  (exclusive).
         "payment_coverage AS ("
-        "  SELECT pp.la_registration_id,"
-        "         (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days') AS pay_cycle_start,"
-        "         (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days')"
-        "           + (GREATEST(1, ROUND(pp.amount / 35.0)::int) * interval '1 month') AS pay_cycle_end"
-        "    FROM person_payments pp"
-        "   WHERE pp.la_registration_id IS NOT NULL"
-        "     AND pp.txn_type NOT IN ('Refund','Partial Refund')"
-        "     AND pp.amount >= 35"
+        "  SELECT la_registration_id, pay_cycle_start,"
+        "         pay_cycle_start"
+        "           + (GREATEST(1, ROUND(cycle_paid / 35.0)::int) * interval '1 month') AS pay_cycle_end"
+        "    FROM ("
+        "      SELECT pp.la_registration_id,"
+        "             (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days') AS pay_cycle_start,"
+        "             SUM(pp.amount) AS cycle_paid"
+        "        FROM person_payments pp"
+        "       WHERE pp.la_registration_id IS NOT NULL"
+        "         AND pp.txn_type NOT IN ('Refund','Partial Refund')"
+        "       GROUP BY pp.la_registration_id,"
+        "                (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days')"
+        "    ) per_cycle"
+        "   WHERE cycle_paid >= 28"
         "),"
         "covers_current AS ("
         "  SELECT DISTINCT pc.la_registration_id"
@@ -548,6 +559,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       COALESCE(ph.can_receive_calls, FALSE) AS phone_call,"
         "       a.la_user_id,"
         "       m.la_registration_id      AS la_registration_id,"
+        "       TO_CHAR(m.la_registered_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS la_registered_iso,"
         "       COALESCE(agg.total_paid,     0) AS total_paid,"        "       COALESCE(agg.total_refunded, 0) AS total_refunded,"
         "       COALESCE(agg.txn_count,      0) AS txn_count,"
         "       TO_CHAR(agg.first_paid_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS first_paid_iso,"
@@ -597,6 +609,8 @@ PersonPayments::loadMembersForProgram(long long programId) {
         if (!r["phone"].is_null())      m.phone     = r["phone"].c_str();
         if (!r["phone_sms"].is_null())  m.phoneSms  = r["phone_sms"].as<bool>();
         if (!r["phone_call"].is_null()) m.phoneCall = r["phone_call"].as<bool>();
+        if (!r["la_registered_iso"].is_null())
+            m.laRegisteredAt = r["la_registered_iso"].c_str();
         if (!r["status"].is_null())     m.status    = r["status"].c_str();
         if (!r["total_paid"].is_null())      m.totalPaid     = r["total_paid"].as<double>();
         if (!r["total_refunded"].is_null())  m.totalRefunded = r["total_refunded"].as<double>();
