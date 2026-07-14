@@ -12,11 +12,13 @@
 
 using fh::sim::net::decodeInputFrame;
 using fh::sim::net::encodeHelloAckFrame;
+using fh::sim::net::encodeInputFrame;
 using fh::sim::net::kFrameHeaderBytes;
 using fh::sim::net::kHelloAckFrameBytes;
 using fh::sim::net::kHelloAckPayloadBytes;
 using fh::sim::net::kInputFlagWantsSprint;
 using fh::sim::net::kInputFlagWantsWalk;
+using fh::sim::net::kInputFlagWantsDribble;
 using fh::sim::net::kInputFrameBytes;
 using fh::sim::net::kInputPayloadBytes;
 using fh::sim::net::kWireCapSnapshotBallTrailer;
@@ -94,6 +96,39 @@ FH_TEST(decode_input_no_flags) {
     FH_EXPECT(d.has_value());
     FH_EXPECT(!d->wants_sprint);
     FH_EXPECT(!d->wants_walk);
+    FH_EXPECT(!d->wants_dribble);
+}
+
+// Slice 16.2: bit 2 = wants_dribble. Decoding must recognise it (isolated
+// and combined with other flags) and legacy frames with bit 2 = 0 must
+// continue to decode as wants_dribble = false.
+FH_TEST(decode_input_dribble_flag) {
+    const auto bytes = buildInputFrame(9, 0.0F, 0.0F,
+                                       static_cast<std::uint8_t>(kInputFlagWantsDribble));
+    const auto d = decodeInputFrame(bytes);
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(!d->wants_sprint);
+    FH_EXPECT(!d->wants_walk);
+    FH_EXPECT(d->wants_dribble);
+}
+
+FH_TEST(decode_input_dribble_combined_with_sprint) {
+    const auto bytes = buildInputFrame(9, 0.0F, 0.0F,
+                                       static_cast<std::uint8_t>(kInputFlagWantsSprint
+                                                                | kInputFlagWantsDribble));
+    const auto d = decodeInputFrame(bytes);
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(d->wants_sprint);
+    FH_EXPECT(!d->wants_walk);
+    FH_EXPECT(d->wants_dribble);
+}
+
+FH_TEST(decode_input_bit_value_locked) {
+    // The wire spec (§7.3) numbers bits explicitly; any renumbering would
+    // corrupt sim_match_inputs.payload replay across sim versions.
+    FH_EXPECT_EQ(kInputFlagWantsSprint,  static_cast<std::uint8_t>(1u << 0));
+    FH_EXPECT_EQ(kInputFlagWantsWalk,    static_cast<std::uint8_t>(1u << 1));
+    FH_EXPECT_EQ(kInputFlagWantsDribble, static_cast<std::uint8_t>(1u << 2));   // Slice 16.2
 }
 
 FH_TEST(decode_input_rejects_wrong_version) {
@@ -195,6 +230,56 @@ FH_TEST(encode_hello_ack_capability_bits_are_bitfield) {
                                          static_cast<std::uint16_t>(kAllKnown | kFuture));
     FH_EXPECT_EQ(read_u16_le(out.data() + kFrameHeaderBytes + 14),
                  static_cast<std::uint16_t>(kAllKnown | kFuture));
+}
+
+// ---------------------------------------------------------------------------
+// INPUT encoder — Slice 16.2 wants_dribble round-trip
+// ---------------------------------------------------------------------------
+FH_TEST(encode_input_default_args_have_no_dribble_or_walk) {
+    // Legacy 4-arg callers get wants_walk = wants_dribble = false via
+    // default args → flags byte should only reflect wants_sprint.
+    const auto out = encodeInputFrame(1u, 0.0F, 0.0F, /*wants_sprint=*/true);
+    FH_EXPECT_EQ(out.size(), kInputFrameBytes);
+    const std::uint8_t flags = out[kFrameHeaderBytes + 12];
+    FH_EXPECT_EQ(flags, kInputFlagWantsSprint);
+}
+
+FH_TEST(encode_input_wants_dribble_sets_bit_2) {
+    const auto out = encodeInputFrame(1u, 0.0F, 0.0F,
+                                      /*wants_sprint=*/false,
+                                      /*wants_walk=*/false,
+                                      /*wants_dribble=*/true);
+    FH_EXPECT_EQ(out.size(), kInputFrameBytes);
+    const std::uint8_t flags = out[kFrameHeaderBytes + 12];
+    FH_EXPECT_EQ(flags, kInputFlagWantsDribble);
+}
+
+FH_TEST(encode_input_all_flags_combined) {
+    const auto out = encodeInputFrame(42u, 0.5F, -0.25F,
+                                      /*wants_sprint=*/true,
+                                      /*wants_walk=*/true,
+                                      /*wants_dribble=*/true);
+    const std::uint8_t flags = out[kFrameHeaderBytes + 12];
+    FH_EXPECT_EQ(flags, static_cast<std::uint8_t>(kInputFlagWantsSprint
+                                                 | kInputFlagWantsWalk
+                                                 | kInputFlagWantsDribble));
+    // Reserved bytes stay zero (spec §7.3: `[u8 reserved[3]]`).
+    FH_EXPECT_EQ(out[kFrameHeaderBytes + 13], 0u);
+    FH_EXPECT_EQ(out[kFrameHeaderBytes + 14], 0u);
+    FH_EXPECT_EQ(out[kFrameHeaderBytes + 15], 0u);
+}
+
+FH_TEST(encode_input_decode_roundtrip_with_dribble) {
+    const auto out = encodeInputFrame(123u, 0.75F, -0.5F,
+                                      /*wants_sprint=*/false,
+                                      /*wants_walk=*/true,
+                                      /*wants_dribble=*/true);
+    const auto d = decodeInputFrame(out);
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->client_tick, 123u);
+    FH_EXPECT(!d->wants_sprint);
+    FH_EXPECT(d->wants_walk);
+    FH_EXPECT(d->wants_dribble);
 }
 
 FH_TEST_MAIN()

@@ -28,6 +28,18 @@ struct Intent {
     bool       wants_sprint{false};
     bool       wants_walk{false};
 
+    // Slice 16.2: signal to BallControl (Slice 16.3+) that this player
+    // wants to take / keep control of the ball. Interpretation:
+    //   * Set by the wire (bit 2 of INPUT flags, §7.3) when a client
+    //     explicitly requests dribble.
+    //   * Also auto-set by HumanController::decide when the player is
+    //     within `kBallAutoDribbleRadius` of the ball, so joystick-only
+    //     UX works without adding a dribble button.
+    //   * BallControl still decides who ACTUALLY owns the ball each tick
+    //     (§16.3 first-touch: closest-of-those-wanting, ties broken by
+    //     lower SlotId). `wants_dribble` is a *hint*, not a claim.
+    bool       wants_dribble{false};
+
     // Reserved for M1+: pass, shoot, tackle, etc.
     // std::uint8_t action_bits{0};
 };

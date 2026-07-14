@@ -30,13 +30,23 @@ namespace fh::sim::net {
 //   [u32 client_tick]
 //   [f32 desired_dir_x]
 //   [f32 desired_dir_y]
-//   [u8  flags]              // bit 0 = wants_sprint, bit 1 = wants_walk
+//   [u8  flags]              // bit 0 = wants_sprint,
+//                            // bit 1 = wants_walk,
+//                            // bit 2 = wants_dribble    (Slice 16.2)
 //   [u8  reserved[3]]
+//
+// Additive-only rule: existing bits keep their meaning forever; new
+// features consume the next free bit. Old servers ignore unknown bits
+// (they mask `flags & kInputFlagWantsSprint | kInputFlagWantsWalk`);
+// new servers reading an old client's frame see bit 2 = 0, i.e. "no
+// explicit dribble request" — HumanController still auto-emits on
+// ball-proximity so UX is preserved.
 // -----------------------------------------------------------------------
 inline constexpr std::size_t   kInputPayloadBytes  = 16;
 inline constexpr std::size_t   kInputFrameBytes    = kFrameHeaderBytes + kInputPayloadBytes;   // 20
-inline constexpr std::uint8_t  kInputFlagWantsSprint = 1u << 0;
-inline constexpr std::uint8_t  kInputFlagWantsWalk   = 1u << 1;
+inline constexpr std::uint8_t  kInputFlagWantsSprint  = 1u << 0;
+inline constexpr std::uint8_t  kInputFlagWantsWalk    = 1u << 1;
+inline constexpr std::uint8_t  kInputFlagWantsDribble = 1u << 2;   // Slice 16.2
 
 struct DecodedInput {
     std::uint32_t client_tick   = 0;
@@ -44,6 +54,7 @@ struct DecodedInput {
     float         desired_dir_y = 0.0F;
     bool          wants_sprint  = false;
     bool          wants_walk    = false;
+    bool          wants_dribble = false;   // Slice 16.2
 };
 
 // Decode a client-sent INPUT message (frame header + payload). Returns
@@ -54,14 +65,17 @@ std::optional<DecodedInput> decodeInputFrame(std::span<const std::uint8_t> frame
 // Encode an INPUT message ready to hand to the transport's send(). Used
 // by tests + the debug/replay path to synthesize wire-shape input rows
 // with the same byte layout the live server accepts. Returns exactly
-// kInputFrameBytes (20) bytes. `wants_walk` currently sets bit 1 of the
-// flags byte; both flag bits are exposed even though the M0 mechanics
-// only look at sprint.
+// kInputFrameBytes (20) bytes.
+//
+// `wants_walk` sets bit 1 of the flags byte, `wants_dribble` sets bit 2
+// (Slice 16.2). Both are exposed as defaulted args so older callers
+// (pre-Slice 16.2) keep compiling unchanged with bit 2 = 0.
 std::vector<std::uint8_t> encodeInputFrame(std::uint32_t client_tick,
                                            float         desired_dir_x,
                                            float         desired_dir_y,
                                            bool          wants_sprint,
-                                           bool          wants_walk = false);
+                                           bool          wants_walk    = false,
+                                           bool          wants_dribble = false);
 
 // -----------------------------------------------------------------------
 // HELLO_ACK payload (§7.1 + Slice 15.4 addendum): 16 bytes

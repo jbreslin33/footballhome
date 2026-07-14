@@ -226,8 +226,9 @@ void SimServer::handleMessage(ClientId cid, std::span<const std::uint8_t> bytes)
                 math::Fixed64::fromFloat(di->desired_dir_y),
                 math::Fixed64::zero()
             };
-            intent.wants_sprint = di->wants_sprint;
-            intent.wants_walk   = di->wants_walk;
+            intent.wants_sprint  = di->wants_sprint;
+            intent.wants_walk    = di->wants_walk;
+            intent.wants_dribble = di->wants_dribble;   // Slice 16.2
             match_->applyInput(cid, intent);
 
             // Input log (§16.6 task 8): record the accepted wire frame

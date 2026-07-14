@@ -85,8 +85,9 @@ decodePayloadToIntent(const std::vector<std::byte>& payload)
         math::Fixed64::fromFloat(di->desired_dir_y),
         math::Fixed64::zero()
     };
-    intent.wants_sprint = di->wants_sprint;
-    intent.wants_walk   = di->wants_walk;
+    intent.wants_sprint  = di->wants_sprint;
+    intent.wants_walk    = di->wants_walk;
+    intent.wants_dribble = di->wants_dribble;   // Slice 16.2
     return intent;
 }
 
