@@ -134,6 +134,15 @@ class FhSimRenderer {
         const aiColor    = '#e94a4a';
         const myColor    = '#4ac8ff';
 
+        // Slice 16.5: which slot currently owns the ball? Wire trailer
+        // reports 0xFFFF for a loose ball; anything else is the owning
+        // player's SlotId. When a match has no ball trailer at all
+        // (`snap.ball === null`), no ring is ever drawn.
+        const ownerSlot = (snap.ball &&
+                           snap.ball.ownerSlot !== FhSimWire.BALL_OWNER_LOOSE)
+                          ? snap.ball.ownerSlot
+                          : null;
+
         for (const e of snap.entities) {
             const isHuman = (e.flags & FhSimWire.ENTITY_FLAG.HUMAN) !== 0;
             const isMe    = isHuman && e.slotId === this.mySlot;
@@ -156,6 +165,20 @@ class FhSimRenderer {
             ctx.beginPath();
             ctx.arc(px, py, isMe ? 8 : 6, 0, Math.PI * 2);
             ctx.fill();
+
+            // Slice 16.5: owner ring. Drawn UNDER the slot label but
+            // OVER the player dot. Purely cosmetic — the ownership
+            // truth lives on the server; the client just renders it.
+            // Ring is offset outside the player dot so a self-owned
+            // ball doesn't visually merge with the "me" cyan dot.
+            if (ownerSlot !== null && e.slotId === ownerSlot) {
+                const ringR = (isMe ? 8 : 6) + 4;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth   = 2;
+                ctx.beginPath();
+                ctx.arc(px, py, ringR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
 
             // Slot number label
             ctx.fillStyle = '#000';
