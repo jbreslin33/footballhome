@@ -1,10 +1,14 @@
 # sim/scripts/gen_registry_header.awk
 #
-# Reads database/migrations/200-sim-registries.sql on stdin (or as an
-# argument) and emits sim/src/common/M0Registry.generated.hpp on stdout.
+# Reads one OR MORE sim registry-seed migration files (via awk's built-in
+# multi-file input) and emits sim/src/common/M0Registry.generated.hpp on
+# stdout.
 #
-# Extracts INSERT INTO sim_attribute_registry (id, key, category, ...) VALUES
-# blocks and the corresponding sim_concept_registry block, then emits:
+# Extracts every INSERT INTO sim_attribute_registry (id, key, category, ...)
+# VALUES and every INSERT INTO sim_concept_registry (...) VALUES block
+# across all input files (in argument order — file boundaries are invisible
+# to the parser: mode is per-INSERT, ended by ON CONFLICT / bare `;`), then
+# emits:
 #
 #   * inline constexpr AttrId    k... = N;   for every attribute row
 #   * inline constexpr ConceptId k... = N;   for every concept row
@@ -19,11 +23,19 @@
 #   physical.max_walk_speed (cat physical) -> kMaxWalkSpeed
 #   run_to_point            (cat movement) -> kRunToPoint
 #
-# Errors out (exit 1) if two rows would produce the same C++ identifier.
+# Errors out (exit 1) if two rows would produce the same C++ identifier
+# (per-registry uniqueness). Duplicate id values are NOT detected here —
+# the DB PK enforces that when the migration is applied.
 #
-# Usage:
+# Usage (single migration — the M0 baseline):
 #   awk -f sim/scripts/gen_registry_header.awk \
 #       database/migrations/200-sim-registries.sql \
+#       > sim/src/common/M0Registry.generated.hpp
+#
+# Usage (M0 + extending migrations, in id order):
+#   awk -f sim/scripts/gen_registry_header.awk \
+#       database/migrations/200-sim-registries.sql \
+#       database/migrations/208-sim-attr-dribble-efficiency.sql \
 #       > sim/src/common/M0Registry.generated.hpp
 #
 # Design refs: DESIGN.md §21.1 (ship-blocker item 3), §22.11 (this ADR).
@@ -180,9 +192,13 @@ from migration file. Migration format may have changed." > "/dev/stderr"
 
     print "// AUTO-GENERATED - do not edit."
     print "// Source:    database/migrations/200-sim-registries.sql"
+    print "//        +   database/migrations/208-sim-attr-dribble-efficiency.sql"
     print "// Generator: sim/scripts/gen_registry_header.awk"
-    print "// Regenerate on host:"
-    print "//   awk -f sim/scripts/gen_registry_header.awk <migration> > <this file>"
+    print "// Regenerate on host (single line, wrapped for readability only):"
+    print "//   awk -f sim/scripts/gen_registry_header.awk"
+    print "//       database/migrations/200-sim-registries.sql"
+    print "//       database/migrations/208-sim-attr-dribble-efficiency.sql"
+    print "//       > sim/src/common/M0Registry.generated.hpp"
     print "// See sim/DESIGN.md section 22.11."
     print ""
     print "#pragma once"

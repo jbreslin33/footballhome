@@ -104,6 +104,14 @@ endif()
 # -----------------------------------------------------------------------------
 set(SIM_MIGRATION_FILE
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/200-sim-registries.sql)
+# Additional migration files that extend the two registry tables (each
+# added the same way: hand-managed stable integer id, INSERT ... ON
+# CONFLICT DO NOTHING). The awk generator concatenates every INSERT
+# INTO sim_attribute_registry / sim_concept_registry block it finds
+# across the input files in the order they're passed.
+#   208 = physical.dribble_efficiency (Slice 16.1)
+set(SIM_MIGRATION_EXTRA_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/208-sim-attr-dribble-efficiency.sql)
 set(SIM_GEN_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/M0Registry.generated.hpp)
 set(SIM_GEN_SCRIPT
@@ -111,12 +119,12 @@ set(SIM_GEN_SCRIPT
 
 if(EXISTS ${SIM_MIGRATION_FILE})
     message(STATUS
-        "sim: registry codegen wired against ${SIM_MIGRATION_FILE}")
+        "sim: registry codegen wired against ${SIM_MIGRATION_FILE} + ${SIM_MIGRATION_EXTRA_FILES}")
     add_custom_command(
         OUTPUT  ${SIM_GEN_HEADER}
-        COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} > ${SIM_GEN_HEADER}
-        DEPENDS ${SIM_MIGRATION_FILE} ${SIM_GEN_SCRIPT}
-        COMMENT "Regenerating M0Registry.generated.hpp from migration 200"
+        COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} > ${SIM_GEN_HEADER}
+        DEPENDS ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} ${SIM_GEN_SCRIPT}
+        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208"
         VERBATIM)
     add_custom_target(gen_m0_registry ALL DEPENDS ${SIM_GEN_HEADER})
 else()
@@ -128,6 +136,7 @@ else()
             "  Pre-generate on the host before building the sim container:\n"
             "    awk -f sim/scripts/gen_registry_header.awk \\\n"
             "        database/migrations/200-sim-registries.sql \\\n"
+            "        database/migrations/208-sim-attr-dribble-efficiency.sql \\\n"
             "        > sim/src/common/M0Registry.generated.hpp")
     endif()
     message(STATUS

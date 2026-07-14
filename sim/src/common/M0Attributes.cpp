@@ -19,6 +19,11 @@ profile::AttributeSet defaultPhysical()
     a.set(kStaminaMax,          math::Fixed64::fromDouble(1.0));
     a.set(kStaminaDrainRate,    math::Fixed64::fromDouble(0.10));
     a.set(kStaminaRecoveryRate, math::Fixed64::fromDouble(0.05));
+    // Slice 16.1 (§23.3): dribble_efficiency scales walk-speed cap while
+    // carrying the ball. Read by BallControl in Slice 16.3; not consumed
+    // by MechanicsParams::fromPhysical, so the M0 canonical-hash gold
+    // and the Slice 15.6 ball-trajectory gold stay byte-identical.
+    a.set(kDribbleEfficiency,   math::Fixed64::fromDouble(0.85));
     return a;
 }
 

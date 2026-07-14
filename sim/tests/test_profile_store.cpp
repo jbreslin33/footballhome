@@ -35,7 +35,7 @@ FH_TEST(load_or_create_materialises_m0_baseline_on_first_touch)
 
     // Every physical AttrId from the M0 catalog is present and equals
     // the value produced by defaultPhysical(). We check three of the
-    // nine — a full sweep is redundant given the encode/decode path is
+    // ten — a full sweep is redundant given the encode/decode path is
     // exercised by the round-trip test below.
     const auto baseline = fh::sim::m0::defaultPhysical();
     FH_EXPECT_EQ(p.physical.get(fh::sim::m0::kMaxWalkSpeed).raw,
@@ -44,6 +44,13 @@ FH_TEST(load_or_create_materialises_m0_baseline_on_first_touch)
                  baseline.get(fh::sim::m0::kMaxSprintSpeed).raw);
     FH_EXPECT_EQ(p.physical.get(fh::sim::m0::kStaminaRecoveryRate).raw,
                  baseline.get(fh::sim::m0::kStaminaRecoveryRate).raw);
+    // Slice 16.1: dribble_efficiency landed at 0.85 (see M0Attributes.cpp).
+    // Assert both that defaultPhysical() has it AND that first-touch
+    // materialisation round-trips the value through the DB.
+    FH_EXPECT_EQ(baseline.get(fh::sim::m0::kDribbleEfficiency).raw,
+                 Fixed64::fromDouble(0.85).raw);
+    FH_EXPECT_EQ(p.physical.get(fh::sim::m0::kDribbleEfficiency).raw,
+                 baseline.get(fh::sim::m0::kDribbleEfficiency).raw);
 
     // First-touch must ALSO persist so subsequent loads read from DB,
     // not re-materialise from code.

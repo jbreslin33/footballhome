@@ -141,13 +141,21 @@ echo ""
 # STEP 1: BUILD
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Regenerate the sim registry catalog header from migration 200. The sim
-# container build context is ./sim, so the migration file (which lives in
-# ./database/) is not visible during `podman build` — the header must be
-# produced on the host first. See sim/DESIGN.md section 22.11.
-echo -e "${YELLOW}🔧 Regenerating sim registry header from migration 200...${NC}"
+# Regenerate the sim registry catalog header from the registry-seeding
+# migrations. The sim container build context is ./sim, so the migration
+# files (which live in ./database/) are not visible during `podman build`
+# — the header must be produced on the host first. See sim/DESIGN.md
+# section 22.11.
+#
+# Migration sources (order = registry-id order; awk processes each
+# INSERT INTO sim_attribute_registry / sim_concept_registry block it
+# encounters, independent of file boundaries):
+#   200 = baseline (attrs 1..9 + run_to_point concept + empty_pitch scenario)
+#   208 = physical.dribble_efficiency (attr 10, Slice 16.1)
+echo -e "${YELLOW}🔧 Regenerating sim registry header from migrations 200 + 208...${NC}"
 awk -f sim/scripts/gen_registry_header.awk \
     database/migrations/200-sim-registries.sql \
+    database/migrations/208-sim-attr-dribble-efficiency.sql \
     > sim/src/common/M0Registry.generated.hpp
 echo -e "${GREEN}✓ sim/src/common/M0Registry.generated.hpp regenerated${NC}"
 echo ""

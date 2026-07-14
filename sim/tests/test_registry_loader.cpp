@@ -30,15 +30,16 @@ namespace {
 std::vector<RegistryRow> canonicalM0Attrs()
 {
     return {
-        {1, "physical.max_walk_speed",        "physical"},
-        {2, "physical.max_jog_speed",         "physical"},
-        {3, "physical.max_sprint_speed",      "physical"},
-        {4, "physical.acceleration",          "physical"},
-        {5, "physical.deceleration",          "physical"},
-        {6, "physical.agility",               "physical"},
-        {7, "physical.stamina_max",           "physical"},
-        {8, "physical.stamina_drain_rate",    "physical"},
-        {9, "physical.stamina_recovery_rate", "physical"},
+        {1,  "physical.max_walk_speed",        "physical"},
+        {2,  "physical.max_jog_speed",         "physical"},
+        {3,  "physical.max_sprint_speed",      "physical"},
+        {4,  "physical.acceleration",          "physical"},
+        {5,  "physical.deceleration",          "physical"},
+        {6,  "physical.agility",               "physical"},
+        {7,  "physical.stamina_max",           "physical"},
+        {8,  "physical.stamina_drain_rate",    "physical"},
+        {9,  "physical.stamina_recovery_rate", "physical"},
+        {10, "physical.dribble_efficiency",    "physical"},
     };
 }
 
@@ -61,7 +62,7 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     AttributeRegistry reg;
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{9});
+    FH_EXPECT_EQ(reg.size(), std::size_t{10});
     // Round-trip lookup by id.
     const auto* e = reg.find(static_cast<fh::sim::AttrId>(3));
     FH_EXPECT(e != nullptr);
@@ -70,6 +71,10 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     const auto id = reg.lookup("physical.agility");
     FH_EXPECT(id.has_value());
     FH_EXPECT_EQ(*id, fh::sim::AttrId{6});
+    // New in Slice 16.1: dribble_efficiency at the tail (id=10).
+    const auto did = reg.lookup("physical.dribble_efficiency");
+    FH_EXPECT(did.has_value());
+    FH_EXPECT_EQ(*did, fh::sim::AttrId{10});
 }
 
 FH_TEST(load_attribute_registry_clears_prior_contents)
@@ -83,7 +88,7 @@ FH_TEST(load_attribute_registry_clears_prior_contents)
     reg.addEntry(static_cast<fh::sim::AttrId>(999), "junk.key", "junk");
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{9});
+    FH_EXPECT_EQ(reg.size(), std::size_t{10});
     FH_EXPECT(reg.find(static_cast<fh::sim::AttrId>(999)) == nullptr);
 }
 
@@ -168,7 +173,7 @@ FH_TEST(verify_passes_when_db_matches_compile_time_catalog)
 FH_TEST(verify_throws_on_missing_attribute_row)
 {
     auto rows = canonicalM0Attrs();
-    rows.pop_back();   // drop kStaminaRecoveryRate (id=9)
+    rows.pop_back();   // drop kDribbleEfficiency (id=10)
 
     InMemoryPgClient db;
     db.seedAttributeRegistry(std::move(rows));
@@ -186,7 +191,7 @@ FH_TEST(verify_throws_on_missing_attribute_row)
         threw = true;
         FH_EXPECT(e.context() == "verifyM0RegistryConsistency");
         const std::string msg{e.what()};
-        FH_EXPECT(msg.find("id=9") != std::string::npos);
+        FH_EXPECT(msg.find("id=10") != std::string::npos);
         FH_EXPECT(msg.find("missing") != std::string::npos);
     }
     FH_EXPECT(threw);
