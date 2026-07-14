@@ -123,6 +123,15 @@ private:
     awareness::RecognitionSystem                recognition_;
     math::RngDet                                rng_;
 
+    // Slice 17.3: cached playable-area constraint from
+    // scenario_->playableArea() at construction time. Held by value
+    // (small struct: vector<Vec3> + mode enum + zoom hint) so tick()
+    // can hot-path the polygon without a virtual dispatch per tick.
+    // Mode == Advisory (M0/M1 default) or an empty polygon → tick()
+    // skips constraint work entirely, preserving the canonical hash
+    // for the baseline scenarios.
+    scenario::PlayableArea                      playable_area_;
+
     std::vector<Slot>                           slots_;
     std::vector<MechanicsParams>                params_by_slot_;   // 1:1 with slots_
     std::optional<EntityId>                     ball_{std::nullopt};

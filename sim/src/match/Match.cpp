@@ -10,12 +10,30 @@
 #include "controller/WanderController.hpp"
 #include "mechanics/BallControl.hpp"
 #include "physics/BallPhysics.hpp"
+#include "physics/PlayableAreaConstraint.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <utility>
 
 namespace fh::sim::match {
+
+namespace {
+
+// Slice 17.3: default spring stiffness (1/s) for Soft-mode playable-area
+// scenarios. No scenario shipped in Slice 17.3 uses Soft mode yet — the
+// first will land in Slice 17.5 (SoftDrillScenario). At that point this
+// value may either stay as-is (a single global default) or migrate to a
+// per-scenario field on `scenario::PlayableArea`, depending on whether
+// M2 introduces multiple distinct soft-mode drills. Chosen so a 1 m
+// penetration produces a 4 m/s inward velocity delta — bounces the
+// player back inside within ~0.25 s at the M1 tick rate (20 Hz).
+inline math::Fixed64 defaultSoftStiffness() noexcept
+{
+    return math::Fixed64::fromInt(4);
+}
+
+} // namespace
 
 Match::Match(MatchConfig cfg)
     : id_(cfg.id)
@@ -34,6 +52,11 @@ void Match::spawnInitialSlots()
 {
     const scenario::PitchSpec pitch    = scenario_->pitch();
     const auto                spawns   = scenario_->initialSpawns();
+
+    // Slice 17.3: cache the playable-area constraint once. Scenarios are
+    // required to be declarative (§5.6) — playableArea() returns the same
+    // value every call — so we only need to fetch it here at match setup.
+    playable_area_ = scenario_->playableArea();
 
     slots_.reserve(spawns.size());
     params_by_slot_.reserve(spawns.size());
@@ -254,9 +277,61 @@ void Match::tick()
     }
 
     // -----------------------------------------------------------------
+    // Playable-area Soft pass (Slice 17.3).
+    //
+    // Soft mode applies an inward-facing velocity delta BEFORE
+    // integration so the next physics.step() naturally advects the
+    // player back toward the polygon. Advisory mode (M0/M1 baseline)
+    // and empty polygons are both no-ops — the mode check gates the
+    // entire loop so the canonical hash for baseline scenarios is
+    // preserved byte-identically.
+    //
+    // Applied to slots only. The ball is intentionally excluded from
+    // constraint passes for now: ball out-of-play handling (goals,
+    // throw-ins, corners) is a scenario-level event landing later,
+    // not a boundary clamp — see DESIGN.md §2.4.
+    //
+    // TODO(M1 §5.6): soft-mode stiffness `k` will move from the
+    // per-tick hard-coded default (kDefaultSoftStiffness) to a
+    // scenario- or profile-provided parameter once the first drill
+    // scenario surfaces it. For now every soft-mode scenario shares
+    // this default.
+    // -----------------------------------------------------------------
+    if (playable_area_.constraint_mode == scenario::PlayableArea::Mode::Soft
+        && !playable_area_.polygon.empty())
+    {
+        for (const Slot& s : slots_) {
+            EntityState st = physics_->get(s.entity);
+            physics::apply_soft(st.position, st.velocity,
+                                playable_area_.polygon,
+                                defaultSoftStiffness());
+            physics_->setVelocity(s.entity, st.velocity);
+        }
+    }
+
+    // -----------------------------------------------------------------
     // Integrate positions.
     // -----------------------------------------------------------------
     physics_->step(dt);
+
+    // -----------------------------------------------------------------
+    // Playable-area Hard pass (Slice 17.3).
+    //
+    // Hard mode runs AFTER integration so any position that escaped
+    // the polygon this step is snapped back and its outward velocity
+    // is zeroed. Same Advisory-is-no-op guarantee as the Soft pass.
+    // -----------------------------------------------------------------
+    if (playable_area_.constraint_mode == scenario::PlayableArea::Mode::Hard
+        && !playable_area_.polygon.empty())
+    {
+        for (const Slot& s : slots_) {
+            EntityState st = physics_->get(s.entity);
+            physics::apply_hard(st.position, st.velocity,
+                                playable_area_.polygon);
+            physics_->setPosition(s.entity, st.position);
+            physics_->setVelocity(s.entity, st.velocity);
+        }
+    }
 
     // -----------------------------------------------------------------
     // Scenario checks — M0 EmptyPitchScenario returns false for both,
