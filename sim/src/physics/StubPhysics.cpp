@@ -52,6 +52,14 @@ void StubPhysics::setMotion(EntityId id, MotionState motion)
     }
 }
 
+void StubPhysics::setPosition(EntityId id, math::Vec3 pos)
+{
+    const auto it = entities_.find(id);
+    if (it != entities_.end()) {
+        it->second.position = pos;
+    }
+}
+
 void StubPhysics::applyImpulse(EntityId id, math::Vec3 impulse)
 {
     // M0 has no mass model — impulse is just an additive velocity change.

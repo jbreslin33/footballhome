@@ -232,6 +232,7 @@ add_library(sim_gameplay STATIC
     src/match/Mechanics.cpp
     src/match/Match.cpp
     src/match/CanonicalHash.cpp
+    src/mechanics/BallControl.cpp
 )
 target_include_directories(sim_gameplay PUBLIC src)
 target_link_libraries(sim_gameplay PUBLIC sim_data sim_flags)

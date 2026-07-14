@@ -13,6 +13,7 @@
 #include "math/Fixed64.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace fh::sim::match {
@@ -43,6 +44,12 @@ struct Snapshot {
     // Match time in milliseconds since tick 0. Fits u32 easily (90 min = 5.4M).
     std::uint32_t                 match_time_ms{0};
     std::vector<SnapshotEntity>   entities;   // sorted by slot_id ascending
+
+    // Slice 16.3: SlotId of the ball's current owner, if any. nullopt
+    // when the ball is loose (or absent). Populated by Match::snapshot
+    // from Match::ball_owner_ and serialised into the v1.1 wire
+    // trailer's owner field (kBallOwnerLoose = 0xFFFF when nullopt).
+    std::optional<SlotId>         ball_owner{std::nullopt};
 };
 
 } // namespace fh::sim::match

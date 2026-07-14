@@ -110,9 +110,13 @@ std::vector<std::uint8_t> BinaryV1Serializer::serialize(const Snapshot& snap)
         write_f32_le(p + 20, s.velocity.z.toFloat());
         // Ball spin (offset 24..27): reserved in Slice 15, always 0.
         write_f32_le(p + 24, 0.0f);
-        // Ball owner slot (offset 28..29): kBallOwnerLoose until possession
-        // is implemented in a later slice.
-        write_u16_le(p + 28, kBallOwnerLoose);
+        // Ball owner slot (offset 28..29): raw SlotId when the ball is
+        // controlled (Slice 16.3), kBallOwnerLoose (0xFFFF) otherwise.
+        // Both cases fit in u16 because SlotId is a strong u16 alias.
+        const std::uint16_t owner_u16 = snap.ball_owner.has_value()
+            ? static_cast<std::uint16_t>(*snap.ball_owner)
+            : kBallOwnerLoose;
+        write_u16_le(p + 28, owner_u16);
         p += kBallRegionBytes;
     }
 
@@ -229,7 +233,13 @@ Snapshot BinaryV1Serializer::deserialize(std::span<const std::uint8_t> bytes)
     bs.velocity.y                = math::Fixed64::fromFloat(read_f32_le(p + 16));
     bs.velocity.z                = math::Fixed64::fromFloat(read_f32_le(p + 20));
     // Bytes p+24..27 = ball spin: reserved in Slice 15, not surfaced in-memory.
-    // Bytes p+28..29 = ball owner slot: reserved in Slice 15 (always kBallOwnerLoose).
+    // Bytes p+28..29 = ball owner slot: kBallOwnerLoose = loose (Slice 15
+    //                                   default), any other value = SlotId
+    //                                   of the controlling player (Slice 16.3).
+    const std::uint16_t owner_u16 = read_u16_le(p + 28);
+    if (owner_u16 != kBallOwnerLoose) {
+        snap.ball_owner = SlotId{owner_u16};
+    }
     bs.heading                   = math::Fixed64::zero();
     bs.motion                    = MotionState::Idle;
     ball.flags.is_ball           = true;

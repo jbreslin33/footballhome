@@ -49,6 +49,14 @@ public:
     virtual void     setHeading(EntityId id, math::Fixed64 rad) = 0;
     virtual void     setMotion(EntityId id, MotionState motion) = 0;
 
+    // Teleport an entity to an absolute position, bypassing velocity
+    // integration. Slice 16.3 uses this to glue the ball to the owner
+    // (pre-step): setPosition on the ball each tick to owner + heading
+    // offset, then setVelocity(owner_vel) so physics.step integrates
+    // both consistently. Also useful for M2+ kickoff / throw-in resets.
+    // Silently no-ops if id is unknown, matching the other setters.
+    virtual void     setPosition(EntityId id, math::Vec3 pos) = 0;
+
     // Reserved for M1+ (impulse-based ball response). StubPhysics
     // implements it as an additive setVelocity so the interface is
     // stable from day 1.

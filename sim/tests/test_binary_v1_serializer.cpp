@@ -464,6 +464,79 @@ FH_TEST(ball_roundtrip_preserves_position_and_velocity) {
     FH_EXPECT_EQ(b.state.velocity.z.raw, in.entities[0].state.velocity.z.raw);
 }
 
+// ---------------------------------------------------------------------------
+// Slice 16.3: ball_owner surfacing in the trailer.
+// ---------------------------------------------------------------------------
+
+FH_TEST(no_owner_defaults_to_ball_owner_loose_on_wire) {
+    // Snapshot with a ball but ball_owner = nullopt → trailer's owner
+    // slot MUST be kBallOwnerLoose (0xFFFF). This is the invariant
+    // that guarantees pre-Slice-16.3 clients (which treat 0xFFFF as
+    // "no owner ring") continue to work with mid-flight snapshots.
+    Snapshot in;
+    in.tick = TickNum{3};
+    in.entities.push_back(makeBallEntity(
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero(),
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero()));
+    // in.ball_owner intentionally left nullopt.
+
+    BinaryV1Serializer s;
+    const auto bytes = s.serialize(in);
+    const std::uint8_t* trailer = bytes.data()
+                                + kFrameHeaderBytes
+                                + kSnapshotHeaderBytes
+                                + kSnapshotTrailerLenBytes;
+    FH_EXPECT_EQ(read_u16_le(trailer + 28), kBallOwnerLoose);
+}
+
+FH_TEST(owner_slot_id_written_to_trailer) {
+    // ball_owner = SlotId{5} → trailer's owner slot MUST be 5, not
+    // kBallOwnerLoose. Locks the Slice 16.3 wire behaviour that
+    // Slice 16.5's client-side owner-ring renderer will depend on.
+    Snapshot in;
+    in.tick = TickNum{7};
+    in.entities.push_back(makeBallEntity(
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero(),
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero()));
+    in.ball_owner = SlotId{5};
+
+    BinaryV1Serializer s;
+    const auto bytes = s.serialize(in);
+    const std::uint8_t* trailer = bytes.data()
+                                + kFrameHeaderBytes
+                                + kSnapshotHeaderBytes
+                                + kSnapshotTrailerLenBytes;
+    FH_EXPECT_EQ(read_u16_le(trailer + 28), static_cast<std::uint16_t>(5));
+}
+
+FH_TEST(ball_owner_roundtrip_owned_and_loose) {
+    // Owned round-trip: encode → decode → same ball_owner.
+    Snapshot owned;
+    owned.tick = TickNum{1};
+    owned.entities.push_back(makeBallEntity(
+        Fixed64::one(), Fixed64::zero(), Fixed64::zero(),
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero()));
+    owned.ball_owner = SlotId{9};
+
+    BinaryV1Serializer s;
+    const auto owned_out = s.deserialize(s.serialize(owned));
+    FH_EXPECT(owned_out.ball_owner.has_value());
+    FH_EXPECT_EQ(static_cast<std::uint16_t>(*owned_out.ball_owner), 9u);
+
+    // Loose round-trip: kBallOwnerLoose in the trailer must decode
+    // back to nullopt, not to SlotId{0xFFFF}. Otherwise the client
+    // would keep drawing a stale owner ring on the "loose" slot 65535.
+    Snapshot loose;
+    loose.tick = TickNum{1};
+    loose.entities.push_back(makeBallEntity(
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero(),
+        Fixed64::zero(), Fixed64::zero(), Fixed64::zero()));
+    // loose.ball_owner stays nullopt.
+
+    const auto loose_out = s.deserialize(s.serialize(loose));
+    FH_EXPECT(!loose_out.ball_owner.has_value());
+}
+
 FH_TEST(decode_rejects_trailer_len_smaller_than_ball_region) {
     // Hand-craft a snapshot whose trailer_len says 20 (< kBallRegionBytes=30).
     // Payload_sz would be 10 (snap hdr) + 0 (entities) + 2 (trailer len) + 20

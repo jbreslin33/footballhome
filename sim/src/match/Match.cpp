@@ -8,6 +8,7 @@
 #include "common/M0Attributes.hpp"
 #include "controller/HumanController.hpp"
 #include "controller/WanderController.hpp"
+#include "mechanics/BallControl.hpp"
 #include "physics/BallPhysics.hpp"
 
 #include <algorithm>
@@ -149,6 +150,16 @@ void Match::tick()
     // -----------------------------------------------------------------
     const awareness::WorldView world = buildWorldView();
 
+    // Slice 16.3: harvest per-slot Intent + post-mechanics velocity/heading
+    // for the BallControl pass below. Only populated when a ball exists —
+    // ball-less scenarios (EmptyPitchScenario) skip the alloc entirely,
+    // preserving the M0 canonical hash by leaving the tick loop's
+    // observable shape identical for them.
+    std::vector<mechanics::BallControlSlot> bc_slots;
+    if (ball_.has_value()) {
+        bc_slots.reserve(slots_.size());
+    }
+
     for (std::size_t i = 0; i < slots_.size(); ++i) {
         Slot&                     slot = slots_[i];
         const MechanicsParams&    mech = params_by_slot_[i];
@@ -166,6 +177,59 @@ void Match::tick()
         physics_->setHeading (slot.entity, res.new_heading);
         physics_->setMotion  (slot.entity, res.new_motion);
         slot.stamina = res.new_stamina;
+
+        if (ball_.has_value()) {
+            mechanics::BallControlSlot bcs;
+            bcs.slot_id            = slot.slot_id;
+            bcs.position           = current.position;
+            bcs.new_velocity       = res.new_velocity;
+            bcs.heading            = res.new_heading;
+            bcs.wants_dribble      = intent.wants_dribble;
+            bcs.dribble_efficiency = mech.dribble_efficiency;
+            bcs.params             = &mech;
+            bc_slots.push_back(bcs);
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Ball control pass (Slice 16.3).
+    //
+    // Runs BETWEEN the per-slot mechanics loop and the ball friction
+    // pass so an owned ball can (a) override the owner's velocity to
+    // the dribble-capped magnitude, (b) glue the ball's position + vel
+    // to the owner's for coherent physics.step integration, and (c)
+    // suppress friction (a rolling ball obeys friction; a dribbled
+    // ball moves with the player).
+    //
+    // Rules live in mechanics/BallControl.hpp. This code just wires
+    // the mechanic's result back into physics.
+    // -----------------------------------------------------------------
+    bool ball_is_owned = false;
+    if (ball_.has_value()) {
+        const EntityState ball_state = physics_->get(*ball_);
+        const auto bc = mechanics::resolveBallControl(
+            ball_owner_, ball_state.position,
+            bc_slots.data(), bc_slots.size());
+
+        ball_owner_ = bc.owner;
+        if (bc.owner.has_value()) {
+            ball_is_owned = true;
+            // Overwrite the owner slot's velocity with the dribble-capped
+            // magnitude. Linear scan is fine — slots_ is small and this
+            // runs at most once per tick.
+            for (const Slot& s : slots_) {
+                if (s.slot_id == *bc.owner) {
+                    physics_->setVelocity(s.entity, bc.owner_capped_velocity);
+                    break;
+                }
+            }
+            // Teleport ball to the glue point PRE-step, then set its
+            // velocity equal to the owner's capped velocity. physics.step
+            // integrates both by the same delta, so post-step the ball is
+            // at owner.new_position + kBallOwnerLeadDistance*(cos h, sin h).
+            physics_->setPosition(*ball_, bc.ball_target_position);
+            physics_->setVelocity(*ball_, bc.ball_target_velocity);
+        }
     }
 
     // -----------------------------------------------------------------
@@ -177,8 +241,11 @@ void Match::tick()
     // Slice 16 kick mechanic can setVelocity() on the ball first and
     // still get its friction applied this same tick (kick → decay →
     // integrate — kick propagates immediately, one-tick lag on decay).
+    //
+    // Slice 16.3: SKIPPED when the ball has an owner. A dribbled ball
+    // is dictated by the owner's motion, not by passive rolling.
     // -----------------------------------------------------------------
-    if (ball_.has_value()) {
+    if (ball_.has_value() && !ball_is_owned) {
         EntityState ball = physics_->get(*ball_);
         physics::tickBall(ball,
                           physics::kDefaultBallDecayPerTick,
@@ -303,6 +370,10 @@ Snapshot Match::snapshot() const
     snap.match_time_ms = ms_u32;
 
     snap.entities.reserve(slots_.size() + (ball_.has_value() ? 1u : 0u));
+
+    // Slice 16.3: surface current ball ownership so the wire trailer
+    // can carry it to clients (used by Slice 16.5 for the owner ring).
+    snap.ball_owner = ball_owner_;
 
     // Ball first — SlotId{0} sorts ahead of every player slot (1..N),
     // so this keeps the "sorted by slot_id ascending" invariant §5.7

@@ -55,6 +55,9 @@ MechanicsParams MechanicsParams::fromPhysical(const profile::AttributeSet& physi
     p.stamina_max           = get(m0::kStaminaMax);
     p.stamina_drain_rate    = get(m0::kStaminaDrainRate);
     p.stamina_recovery_rate = get(m0::kStaminaRecoveryRate);
+    // Slice 16.3: cached for BallControl. Read-only for applyIntent
+    // (which never touches it), so both canonical goldens stay put.
+    p.dribble_efficiency    = get(m0::kDribbleEfficiency);
     return p;
 }
 

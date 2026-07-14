@@ -34,6 +34,14 @@ struct MechanicsParams {
     math::Fixed64 stamina_drain_rate;   // /s while actually sprinting
     math::Fixed64 stamina_recovery_rate;// /s while idle or walking
 
+    // Slice 16.3: dribble_efficiency in [0,1]. Read by BallControl to
+    // compute the walk-speed cap while a player owns the ball. NOT
+    // consumed by applyIntent — the M0 canonical hash and the Slice
+    // 15.6 ball-golden hash are only stable because this attribute
+    // stays out of the movement math. If a future slice starts
+    // reading this in applyIntent, both golden hashes need refresh.
+    math::Fixed64 dribble_efficiency;
+
     // Extract M0 params from a physical AttributeSet. Missing attrs fall
     // back to the M0 defaults from §16.2 so tests can pass minimal profiles.
     static MechanicsParams fromPhysical(const profile::AttributeSet& physical);

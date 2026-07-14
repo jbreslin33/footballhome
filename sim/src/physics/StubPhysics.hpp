@@ -26,6 +26,7 @@ public:
     void     setVelocity(EntityId id, math::Vec3 v) override;
     void     setHeading(EntityId id, math::Fixed64 rad) override;
     void     setMotion(EntityId id, MotionState motion) override;
+    void     setPosition(EntityId id, math::Vec3 pos) override;
     void     applyImpulse(EntityId id, math::Vec3 impulse) override;
 
     EntityState              get(EntityId id) const override;

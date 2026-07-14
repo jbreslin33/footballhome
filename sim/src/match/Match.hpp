@@ -117,6 +117,12 @@ private:
     std::vector<MechanicsParams>                params_by_slot_;   // 1:1 with slots_
     std::optional<EntityId>                     ball_{std::nullopt};
 
+    // Slice 16.3: which slot currently controls the ball, if any.
+    // Set/cleared by BallControl each tick (see mechanics/BallControl.hpp).
+    // Also surfaced through snapshot() so the wire trailer's owner
+    // field can convey it to clients for the Slice 16.5 indicator ring.
+    std::optional<SlotId>                       ball_owner_{std::nullopt};
+
     bool                                        ended_{false};
 };
 
