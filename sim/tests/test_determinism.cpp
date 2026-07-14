@@ -26,6 +26,8 @@
 #include "physics/StubPhysics.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
+#include "scenario/HalfPitchScenario.hpp"
+#include "scenario/SoftDrillScenario.hpp"
 #include "scenario/Scenario.hpp"
 #include "controller/Intent.hpp"
 #include "common/M0Attributes.hpp"
@@ -55,6 +57,8 @@ using fh::sim::physics::StubPhysics;
 using fh::sim::scenario::BallOnPitchScenario;
 using fh::sim::scenario::BallSpawn;
 using fh::sim::scenario::EmptyPitchScenario;
+using fh::sim::scenario::HalfPitchScenario;
+using fh::sim::scenario::SoftDrillScenario;
 
 namespace {
 
@@ -153,6 +157,32 @@ constexpr std::uint64_t kExpectedHashDribble200 = 0xad857d3402f4a975ULL;
 // slot's motion still gets recorded, so the hash locks BOTH ownership
 // AND the tie-breaker rule.
 constexpr std::uint64_t kExpectedHashFirstTouch200 = 0xdb8d91b26222ddaaULL;
+
+// Slice 17.6: cross-arch golden for HalfPitchScenario in Hard mode.
+// SlotId{1} spawns at (10, 0) (declared by the scenario) and gets
+// claimed + fed a sprint-east intent. Around tick 25-30 (~1.5 s at
+// 20 Hz) it reaches the east wall at x = 52.5 m; from then on the
+// Hard clamp fires every tick, snapping x back to 52.5 and zeroing
+// the outward +x velocity. 400 ticks (20 s) locks in the whole
+// approach + long tail of "player pressed against the wall".
+// SlotId{2} is unclaimed → WanderController → also exercises the
+// boundary passively. Final snapshot shows slot 1 at exactly
+// pos.x = 0x3480000000 raw = 52.5 m with vel.x = 0 — the fingerprint
+// of apply_hard doing its job at the wall.
+constexpr std::uint64_t kExpectedHashHalfPitchHard400 = 0x489acd31dddb4587ULL;
+
+// Slice 17.6: cross-arch golden for SoftDrillScenario in Soft mode.
+// SlotId{1} spawns at (0, 0) (drill-zone centre) and gets claimed +
+// fed a sprint-east intent. Around tick 15-20 it crosses the +20
+// boundary. From then on Soft pushback adds an inward-facing
+// velocity delta = penetration × k (k = 4/s default in Match.cpp)
+// which decelerates the sprint and eventually reverses it. 400
+// ticks (20 s) captures the full leave-drift-return cycle. Locks
+// apply_soft's Fixed64 math AND the k=4 default stiffness constant.
+// Final snapshot shows slot 1 oscillating near x ≈ 18.96 m with
+// vel.x ≈ 7.47 m/s east — mid-cycle, about to cross the boundary
+// again.
+constexpr std::uint64_t kExpectedHashSoftDrill400 = 0x700808840ecc3183ULL;
 
 } // namespace
 
@@ -353,6 +383,96 @@ FH_TEST(two_humans_first_touch_tie_break_200_ticks_seed_42) {
             static_cast<unsigned long>(kExpectedHashFirstTouch200));
     }
     FH_EXPECT_EQ(h, kExpectedHashFirstTouch200);
+}
+
+// Slice 17.6: cross-arch determinism proof for HalfPitchScenario (Hard
+// mode). A sprint-east intent drives SlotId{1} into the east wall
+// at x = 52.5. The Hard clamp fires every tick from then on. Any drift
+// in apply_hard's Fixed64 math or in the Match wiring order (Soft
+// pre-step, integrate, Hard post-step) trips the hash.
+FH_TEST(half_pitch_hard_sprint_east_400_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<HalfPitchScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile profile;
+    profile.physical = fh::sim::m0::defaultPhysical();
+    profile.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{7}, PersonId{7}, std::move(profile));
+
+    Intent in;
+    in.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    in.wants_sprint = true;
+    m->applyInput(ClientId{7}, in);
+
+    for (int i = 0; i < 400; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== half_pitch_hard_sprint_east_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashHalfPitchHard400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashHalfPitchHard400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(kExpectedHashHalfPitchHard400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashHalfPitchHard400);
+}
+
+// Slice 17.6: cross-arch determinism proof for SoftDrillScenario (Soft
+// mode). SlotId{1} spawns at (0, 0) and gets a sprint-east intent, so
+// it exits the drill zone at x = 20 quickly and then experiences the
+// Soft pushback. The canonical dump after 400 ticks locks
+// apply_soft's Fixed64 math, the k = 4/s default stiffness constant,
+// AND the Soft-pre-step / integrate / (no Hard post-step) tick
+// ordering.
+FH_TEST(soft_drill_sprint_east_400_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<SoftDrillScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile profile;
+    profile.physical = fh::sim::m0::defaultPhysical();
+    profile.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{7}, PersonId{7}, std::move(profile));
+
+    Intent in;
+    in.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    in.wants_sprint = true;
+    m->applyInput(ClientId{7}, in);
+
+    for (int i = 0; i < 400; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== soft_drill_sprint_east_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashSoftDrill400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashSoftDrill400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(kExpectedHashSoftDrill400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashSoftDrill400);
 }
 
 FH_TEST_MAIN()
