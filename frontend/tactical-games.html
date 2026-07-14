@@ -77,6 +77,31 @@
     }
     .game .chev { color: var(--muted); font-size: 1.6rem; }
 
+    /* Slice 18.1: launcher tiles (M1). Same shell as static .game links
+       but activated via JS click handler so we can POST /api/sim/matches
+       before redirecting. Extra hooks: pending state disables the tile
+       while podman spins the container up (< 2 s per §23.4 exit gate),
+       error state surfaces launch failure inline instead of a silent no-op. */
+    .game--launch { cursor: pointer; }
+    .game--launch[aria-busy="true"] {
+        opacity: 0.55;
+        pointer-events: none;
+    }
+    .game--launch[aria-busy="true"] .chev::before {
+        content: "…";
+    }
+    .game--launch[data-error] {
+        border-color: #ff6a6a;
+        background: rgba(255, 106, 106, 0.08);
+    }
+    .game--launch[data-error] .desc::after {
+        content: attr(data-error);
+        display: block;
+        margin-top: 6px;
+        color: #ff9b9b;
+        font-size: 0.8rem;
+    }
+
     .footer-note {
       margin-top: 22px; color: var(--muted); font-size: 0.8rem;
       line-height: 1.5;
@@ -103,6 +128,54 @@
     <div class="chev">›</div>
   </a>
 
+  <!--
+    Slice 18.1 (M1): scenario-launcher tiles. Each tile POSTs
+    /api/sim/matches with the desired scenario_id, gets back
+    {id, ws_url, ...} from SimOrchestrator, then redirects to
+    /sim.html?match=${id}. Auth is Bearer JWT (localStorage.token)
+    + fh_sess cookie — SimLobbyController::resolveCallerPersonId
+    accepts either. See sim/DESIGN.md §23.3 Slice 18.1.
+
+    scenario_id lookup (sim_scenarios table, seeded by migrations
+    202/207/212/213):
+      0 = empty_pitch      (no ball, no constraint  — M0 default)
+      1 = ball_on_pitch    (rolling ball, no constraint — Slice 15)
+      2 = half_pitch_hard  (no ball, Hard constraint east half — Slice 17.4)
+      3 = soft_drill       (no ball, Soft constraint drill zone — Slice 17.5)
+  -->
+  <div class="game game--launch" role="link" tabindex="0"
+       data-scenario-id="1"
+       data-scenario-label="Ball on Pitch">
+    <div class="icon">🎾</div>
+    <div class="body">
+      <div class="title">Ball on Pitch <span class="badge">M1 · Ball physics</span></div>
+      <div class="desc">Empty pitch with one rolling ball. Ball obeys friction and eventually stops. Test that Slice 15's passive ball physics works end-to-end.</div>
+    </div>
+    <div class="chev">›</div>
+  </div>
+
+  <div class="game game--launch" role="link" tabindex="0"
+       data-scenario-id="2"
+       data-scenario-label="Half-Pitch Constraint">
+    <div class="icon">🚧</div>
+    <div class="body">
+      <div class="title">Half-Pitch Constraint <span class="badge">M1 · Hard boundary</span></div>
+      <div class="desc">Solid red rectangle on the east half of the pitch. Try to walk past the halfway line — the server clamps you. Test that Slice 17.4's Hard playable-area constraint works and that the client draws the overlay correctly.</div>
+    </div>
+    <div class="chev">›</div>
+  </div>
+
+  <div class="game game--launch" role="link" tabindex="0"
+       data-scenario-id="3"
+       data-scenario-label="Soft Drill Zone">
+    <div class="icon">🎯</div>
+    <div class="body">
+      <div class="title">Soft Drill Zone <span class="badge">M1 · Soft boundary</span></div>
+      <div class="desc">Dotted cyan 40×30 m rectangle at pitch center. Walk out and the server gently pushes you back — you can leave briefly but a spring pulls you home. Test that Slice 17.5's Soft playable-area constraint works.</div>
+    </div>
+    <div class="chev">›</div>
+  </div>
+
   <a class="game" href="/trail-test.html">
     <div class="icon">🧠</div>
     <div class="body">
@@ -115,5 +188,80 @@
   <p class="footer-note">
     Tactical Games are experimental. Scores are for internal progress tracking, not clinical assessment.
   </p>
+
+  <script>
+    // Slice 18.1: scenario-launcher click handler. Kept inline (no
+    // separate js/ file) because tactical-games.html has no build step
+    // and this is ~30 lines of glue that's tightly coupled to the
+    // DOM above. See sim/DESIGN.md §23.3 Slice 18.1.
+    (function () {
+        'use strict';
+
+        function readLoginJwt() {
+            try { return localStorage.getItem('token') || ''; } catch (_e) { return ''; }
+        }
+
+        async function launchScenario(tile) {
+            const scenarioId = parseInt(tile.getAttribute('data-scenario-id'), 10);
+            if (!Number.isFinite(scenarioId) || scenarioId < 0) return;
+
+            tile.setAttribute('aria-busy', 'true');
+            tile.removeAttribute('data-error');
+
+            const headers = {
+                'Accept':        'application/json',
+                'Content-Type':  'application/json',
+                'Cache-Control': 'no-store',
+            };
+            const jwt = readLoginJwt();
+            if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
+
+            try {
+                const resp = await fetch('/api/sim/matches', {
+                    method:      'POST',
+                    cache:       'no-store',
+                    credentials: 'same-origin',
+                    headers:     headers,
+                    body:        JSON.stringify({ scenario_id: scenarioId }),
+                });
+                if (!resp.ok) {
+                    let msg = 'HTTP ' + resp.status;
+                    try {
+                        const err = await resp.json();
+                        if (err && err.error) msg = err.error;
+                    } catch (_e) { /* ignore */ }
+                    tile.setAttribute('data-error', ' · launch failed: ' + msg);
+                    tile.setAttribute('aria-busy', 'false');
+                    return;
+                }
+                const body = await resp.json();
+                if (!body || typeof body.id !== 'number') {
+                    tile.setAttribute('data-error', ' · malformed launch response');
+                    tile.setAttribute('aria-busy', 'false');
+                    return;
+                }
+                // Redirect. sim.html's client.js reads ?match=N and
+                // calls /api/sim/matches/${N}/join for the actual JWT.
+                location.href = '/sim.html?match=' + body.id;
+            } catch (err) {
+                tile.setAttribute('data-error',
+                    ' · network error: ' + (err && err.message ? err.message : err));
+                tile.setAttribute('aria-busy', 'false');
+            }
+        }
+
+        function bind(tile) {
+            tile.addEventListener('click', () => launchScenario(tile));
+            tile.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    launchScenario(tile);
+                }
+            });
+        }
+
+        document.querySelectorAll('.game--launch').forEach(bind);
+    })();
+  </script>
 </body>
 </html>
