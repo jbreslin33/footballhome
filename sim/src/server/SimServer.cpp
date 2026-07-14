@@ -7,12 +7,14 @@
 #include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
 #include "net/InputFrame.hpp"
+#include "net/ScenarioMetaFrame.hpp"
 #include "net/WireFormat.hpp"
 #include "persistence/IPgClient.hpp"
 
 #include <chrono>
 #include <cstdio>
 #include <utility>
+#include <vector>
 
 namespace fh::sim::server {
 
@@ -170,9 +172,35 @@ void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& claims)
     // Slice 15.4: advertise the v1.1 wire capabilities this server emits.
     // Bit 0 (kWireCapSnapshotBallTrailer) tells the client to expect the ball
     // region trailer on SNAPSHOTs when a ball is present in the match.
+    // Slice 17.7a: bit 1 (kWireCapScenarioMeta) tells the client to expect
+    // exactly one SCENARIO_META frame immediately after HELLO_ACK carrying
+    // the scenario's playable-area polygon + constraint mode.
+    constexpr std::uint16_t kSessionCaps =
+        net::kWireCapSnapshotBallTrailer | net::kWireCapScenarioMeta;
     const auto ack = net::encodeHelloAckFrame(cfg_.match_id, slot, cfg_.tick_hz,
-                                              net::kWireCapSnapshotBallTrailer);
+                                              kSessionCaps);
     (void)transport_->send(cid, ack);
+
+    // Slice 17.7a: SCENARIO_META fires exactly once, immediately after
+    // HELLO_ACK, so the client can render the playable-area overlay
+    // before the first SNAPSHOT arrives. Sent unconditionally when the
+    // capability bit is advertised — an Advisory + empty-polygon scenario
+    // decodes to "no overlay, no clamp", which is a legitimate answer,
+    // not a missing message. See ADR §22.22.
+    const auto& pa = match_->playableArea();
+    std::vector<net::ScenarioMetaVertex> verts;
+    verts.reserve(pa.polygon.size());
+    for (const auto& v : pa.polygon) {
+        net::ScenarioMetaVertex sv;
+        sv.x = v.x.toFloat();
+        sv.y = v.y.toFloat();
+        verts.push_back(sv);
+    }
+    const auto meta = net::encodeScenarioMetaFrame(
+        static_cast<std::uint8_t>(pa.constraint_mode), verts);
+    if (!meta.empty()) {
+        (void)transport_->send(cid, meta);
+    }
 }
 
 void SimServer::handleDisconnect(ClientId cid)

@@ -22,6 +22,7 @@ using fh::sim::net::kInputFlagWantsDribble;
 using fh::sim::net::kInputFlagWantsRelease;
 using fh::sim::net::kInputFrameBytes;
 using fh::sim::net::kInputPayloadBytes;
+using fh::sim::net::kWireCapScenarioMeta;
 using fh::sim::net::kWireCapSnapshotBallTrailer;
 using fh::sim::net::kWireVersionV1;
 using fh::sim::net::MsgType;
@@ -269,12 +270,23 @@ FH_TEST(encode_hello_ack_writes_capability_bits) {
 
 FH_TEST(encode_hello_ack_capability_bits_are_bitfield) {
     // Verify multiple bits can be OR'd together — the encoder is a passthrough.
-    constexpr std::uint16_t kAllKnown = kWireCapSnapshotBallTrailer;
+    constexpr std::uint16_t kAllKnown =
+        static_cast<std::uint16_t>(kWireCapSnapshotBallTrailer
+                                   | kWireCapScenarioMeta);
     constexpr std::uint16_t kFuture   = 1u << 15;
     const auto out = encodeHelloAckFrame(1ull, 2u, 20u,
                                          static_cast<std::uint16_t>(kAllKnown | kFuture));
     FH_EXPECT_EQ(read_u16_le(out.data() + kFrameHeaderBytes + 14),
                  static_cast<std::uint16_t>(kAllKnown | kFuture));
+}
+
+// Slice 17.7a: the ScenarioMeta capability bit MUST occupy bit 1
+// specifically. Any renumbering silently breaks the JS decoder mirror
+// (which hard-codes the bit position too) — pin the value.
+FH_TEST(scenario_meta_capability_bit_is_bit_one) {
+    FH_EXPECT_EQ(kWireCapScenarioMeta, static_cast<std::uint16_t>(1u << 1));
+    // Must not collide with the Slice 15.4 bit-0 cap.
+    FH_EXPECT((kWireCapSnapshotBallTrailer & kWireCapScenarioMeta) == 0u);
 }
 
 // ---------------------------------------------------------------------------

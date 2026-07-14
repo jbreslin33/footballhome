@@ -95,6 +95,7 @@ fh_add_net_test(test_websocket_frame)
 fh_add_net_test(test_websocket_handshake)
 fh_add_net_test(test_websocket_transport)
 fh_add_net_test(test_input_frame)
+fh_add_net_test(test_scenario_meta_frame)
 
 fh_add_auth_test(test_jwt_verifier)
 

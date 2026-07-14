@@ -24,6 +24,8 @@ inline constexpr std::size_t   kFrameHeaderBytes = 4;   // ver + type + u16 len
 enum class MsgType : std::uint8_t {
     Hello        = 0x01,
     HelloAck     = 0x02,
+    ScenarioMeta = 0x03,   // Slice 17.7a (§7.4): scenario metadata, once
+                           //                     immediately after HELLO_ACK
     Snapshot     = 0x10,
     Input        = 0x20,
     ClaimSlot    = 0x30,
@@ -95,8 +97,46 @@ inline constexpr std::uint16_t kBallOwnerLoose          = 0xFFFFu;
 //
 // Bit assignments:
 //   bit 0 = SnapshotBallTrailer   // SNAPSHOT may carry the v1.1 ball trailer
+//   bit 1 = ScenarioMeta          // Server WILL emit SCENARIO_META once,
+//                                 // immediately after HELLO_ACK (Slice 17.7a)
 // -----------------------------------------------------------------------
 inline constexpr std::uint16_t kWireCapSnapshotBallTrailer = 1u << 0;
+inline constexpr std::uint16_t kWireCapScenarioMeta        = 1u << 1;
+
+// -----------------------------------------------------------------------
+// SCENARIO_META payload layout (§7.4, Slice 17.7a).
+//
+// Sent exactly once per session, immediately after HELLO_ACK, when the
+// server advertises kWireCapScenarioMeta. Carries the playable-area
+// polygon + constraint mode declared by the match's scenario at
+// construction time (see scenario::PlayableArea). The client uses this
+// to render a visual overlay for the constrained region.
+//
+// Payload (variable, min 3, max kMaxPayloadBytes):
+//   [u8  mode]                    // matches scenario::PlayableArea::Mode:
+//                                 //   0 = Hard, 1 = Soft, 2 = Advisory
+//   [u16 num_vertices]            // 0 = no polygon (baseline scenarios)
+//   [vertex[num_vertices]]        // kScenarioMetaVertexBytes each
+//
+// Per-vertex record (8 bytes, XY only — z=0 by convention since the
+// scenario polygon is defined on the ground plane):
+//   [f32 x][f32 y]
+//
+// Mode-byte value asserts live next to scenario::PlayableArea::Mode
+// so any renumbering there fails the build (see ScenarioMetaFrame.hpp).
+//
+// Send-once-per-session semantics mean the frame is NOT a mid-match
+// mutation channel; scenarios that intend to change their playable area
+// during a match will need a new msg_type (e.g. SCENARIO_META_DELTA).
+// See DESIGN.md §22.22 (ADR: separate metadata channel over
+// HELLO_ACK-appended payload).
+// -----------------------------------------------------------------------
+inline constexpr std::size_t   kScenarioMetaHeaderBytes = 1 + 2;   // mode + count
+inline constexpr std::size_t   kScenarioMetaVertexBytes = 4 + 4;   // f32 x + f32 y
+
+inline constexpr std::uint8_t  kScenarioModeHard     = 0;
+inline constexpr std::uint8_t  kScenarioModeSoft     = 1;
+inline constexpr std::uint8_t  kScenarioModeAdvisory = 2;
 
 // Payload has a 16-bit length field in the frame — any single message
 // payload must fit in u16.
@@ -106,5 +146,9 @@ inline constexpr std::size_t kMaxPayloadBytes = 0xFFFFu;
 // for early sanity-checks on both encode and decode paths.
 inline constexpr std::size_t kMaxSnapshotEntities =
     (kMaxPayloadBytes - kSnapshotHeaderBytes) / kEntityRecordBytes;
+
+// Max vertices that fit in one SCENARIO_META under the u16 payload cap.
+inline constexpr std::size_t kMaxScenarioMetaVertices =
+    (kMaxPayloadBytes - kScenarioMetaHeaderBytes) / kScenarioMetaVertexBytes;
 
 } // namespace fh::sim::net

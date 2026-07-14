@@ -97,6 +97,14 @@ public:
     Snapshot                      snapshot() const;
     const std::vector<Slot>&      slots() const noexcept { return slots_; }
 
+    // Slice 17.7a: exposed so SimServer can encode SCENARIO_META right
+    // after HELLO_ACK. Cached at construction from
+    // scenario_->playableArea(); never mutated after that (playable-area
+    // deltas mid-match need a new msg_type — see §22.22).
+    const scenario::PlayableArea& playableArea() const noexcept {
+        return playable_area_;
+    }
+
     // Test-only accessor. Kept out of hot paths.
     physics::IPhysicsWorld*       physics_for_tests() noexcept { return physics_.get(); }
 

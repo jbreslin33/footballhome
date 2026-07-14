@@ -623,7 +623,8 @@ Multi-byte fields are **little-endian**.
 | type | name | direction | payload |
 |-----:|------|-----------|---------|
 | 0x01 | HELLO | client → server | u32 client_capabilities |
-| 0x02 | HELLO_ACK | server → client | u64 match_id, u16 your_slot_or_0, u32 tick_hz |
+| 0x02 | HELLO_ACK | server → client | u64 match_id, u16 your_slot_or_0, u32 tick_hz, u16 wire_capability_bits (§7.1 addendum, Slice 15.4) |
+| 0x03 | SCENARIO_META | server → client | see 7.4 — sent once immediately after HELLO_ACK when `wire_capability_bits & kWireCapScenarioMeta` is set (Slice 17.7a) |
 | 0x10 | SNAPSHOT | server → client | see 7.2 |
 | 0x20 | INPUT | client → server | see 7.3 |
 | 0x30 | CLAIM_SLOT | client → server | u16 slot_id |
@@ -670,7 +671,26 @@ Multi-byte fields are **little-endian**.
 
 **16 bytes per input.** Sent at ~30 Hz or on change.
 
-### 7.4 WebSocket handshake
+### 7.4 SCENARIO_META payload (Slice 17.7a)
+
+```
+[u8  mode]              // 0 = Hard, 1 = Soft, 2 = Advisory
+                        //   — matches scenario::PlayableArea::Mode
+                        //     (compile-time asserts in ScenarioMetaFrame.hpp
+                        //      lock the numbering)
+[u16 num_vertices]      // 0 = no polygon (baseline scenarios)
+[vertex[num_vertices]]  // 8 bytes each: [f32 x][f32 y]
+```
+
+**Variable size**: `3 + 8 × num_vertices` bytes. Sent exactly once per session, immediately after `HELLO_ACK`, when the server advertises `kWireCapScenarioMeta` (bit 1) in the HELLO_ACK's `wire_capability_bits`. Carries the playable-area polygon + constraint mode declared by the match's scenario at construction time (see `scenario::PlayableArea`). The client uses this to render a visual overlay for the constrained region (dashed for Advisory, solid for Hard, dotted for Soft — see Slice 17.7b).
+
+**XY only.** The polygon is defined on the ground plane; `z` is not transmitted. Vertices are in world metres with the same coordinate convention as SNAPSHOT positions (origin at pitch center, +x = length, +y = width).
+
+**Send-once semantics.** SCENARIO_META is not a mid-match mutation channel — scenarios that need to change their playable area during a match will land a new msg_type (e.g. SCENARIO_META_DELTA) rather than re-sending SCENARIO_META. See ADR §22.22.
+
+**Advisory + empty polygon is legitimate.** M0 baseline scenarios (EmptyPitchScenario, BallOnPitchScenario) send `mode=2, num_vertices=0` — a 3-byte payload. The client decodes this as "no overlay to draw, no clamp behaviour to expect" rather than treating the message as absent.
+
+### 7.5 WebSocket handshake
 
 - Path: `/sim` (proxied through nginx to `footballhome_sim:9100`)
 - Subprotocol header: `Sec-WebSocket-Protocol: fh-sim.v1.bearer.<JWT>`
@@ -1823,7 +1843,7 @@ Refs:         §X, §Y, §21.Z (cross-refs to doc sections and open items)
 
 **Revisit if**: (a) the sim opens to non-fh-member traffic (public spectators, third-party embed) → attack surface changes, lib audit is cheaper than an in-house audit, OR (b) at M4+ if bandwidth demand requires compression, OR (c) at multi-match scale if `poll` becomes a measured bottleneck.
 
-**Refs**: §7.4, §5.8, §21.4 (bespoke WS entry).
+**Refs**: §7.5, §5.8, §21.4 (bespoke WS entry).
 
 ---
 
@@ -2281,6 +2301,47 @@ Backward-compat guarantee locked by test `no_ball_snapshot_omits_trailer`: any s
 
 **Refs**: §7 (wire protocol — v1.1 addendum is this ADR), §7.1 (HELLO_ACK format — payload widened here), §7.2 (SNAPSHOT format — trailer added here), §22.0 (ADR append-only rule — §22.19 slot for Slice 14 remains reserved and unfilled), §23.3 Slice 15.4 (draft that this ADR realises), §23.7 (draft ADR predictions — this row is now landed), commit `3156d4d7`, commit `4aba3b09` (frontend mirror).
 
+### 22.22 [2026-07-14] SCENARIO_META as a separate one-shot message, not a HELLO_ACK-appended payload
+
+**Status**: accepted 2026-07-14. Landed as Slice 17.7a — see [sim/src/net/WireFormat.hpp](sim/src/net/WireFormat.hpp) (msg-type + cap-bit + region constants), [sim/src/net/ScenarioMetaFrame.hpp](sim/src/net/ScenarioMetaFrame.hpp) + [ScenarioMetaFrame.cpp](sim/src/net/ScenarioMetaFrame.cpp) (encoder + decoder), [sim/src/match/Match.hpp](sim/src/match/Match.hpp) (`Match::playableArea()` accessor added), and [sim/src/server/SimServer.cpp](sim/src/server/SimServer.cpp) (server sets `kWireCapScenarioMeta` in HELLO_ACK and sends one SCENARIO_META frame immediately after). Unit tests in [sim/tests/test_scenario_meta_frame.cpp](sim/tests/test_scenario_meta_frame.cpp) (11 subtests: byte layout, roundtrip, malformed-input rejection, u16-cap overflow); integration test `scenario_meta_sent_immediately_after_hello_ack` in [sim/tests/test_sim_server.cpp](sim/tests/test_sim_server.cpp) proves the two frames arrive in order on the wire with the correct cap bit and payload. Frontend mirror + renderer overlay ship in Slice 17.7b.
+
+**Problem**: Slice 17 landed `Hard` / `Soft` playable-area constraint modes on the server (Slices 17.1–17.5) plus cross-arch determinism goldens (17.6). The client-side deliverable (Slice 17.7) requires the browser to render the polygon overlay with a mode-specific line style. Nothing in the M0/M1 wire currently carries polygon or mode data — the renderer only knows about the fixed 105 × 68 m pitch drawn from JS constants.
+
+**Options considered**:
+
+1. **Extend HELLO_ACK with an appended variable-length trailer** — reuse the Slice 15.4 pattern (§22.20). HELLO_ACK is currently a fixed 16 bytes; extending it means every future addition of session-scope metadata piles up in the same message. Also changes the fixed-length semantic of HELLO_ACK, which is currently trivially validated with `payload_len == kHelloAckPayloadBytes`.
+2. **A new one-shot message SCENARIO_META (0x03) sent immediately after HELLO_ACK, gated on `kWireCapScenarioMeta` in HELLO_ACK's cap bits**.
+3. **Fetch playable-area metadata via HTTP** (e.g. `GET /api/sim/matches/{id}/scenario-meta` from the frontend) — completely orthogonal to the WebSocket lifecycle.
+4. **Embed the polygon in the SCENARIO_META room of every SNAPSHOT** — mid-match mutation channel, per-tick overhead.
+
+**Chosen**: Option 2 — new message type, one-shot, capability-bit-gated.
+
+**Rationale**:
+
++ **Session-scope metadata is genuinely orthogonal to HELLO_ACK's connection-scope semantics.** HELLO_ACK answers "your slot + tick rate + which optional features I speak". SCENARIO_META answers "here is the world-space geometry your renderer needs". Piling both into a single message forces the wire's fixed-length invariant (HELLO_ACK = 16) to become variable, which breaks the trivial length check. A separate message type keeps each frame's contract crisp: HELLO_ACK stays fixed-16-byte, SCENARIO_META declares itself variable.
++ **Send-once is genuinely different from mid-match mutation.** M1 scenarios declare their playable area at construction and never mutate it. Sending SCENARIO_META once, immediately after HELLO_ACK, matches this contract exactly. If a future scenario ever needs the polygon to move (e.g. a shrinking play zone), that's a new msg_type (SCENARIO_META_DELTA), not a schema tweak here.
++ **Capability-bit gating stays uniform.** Slice 15.4 established the pattern: server advertises optional features in HELLO_ACK's `wire_capability_bits`, client keys off the bits to decide what to expect. Adding bit 1 for SCENARIO_META lets an older client (pre-Slice-17.7) that doesn't understand the bit safely ignore the incoming 0x03 frame — the transport-level dispatch drops unknown msg_types per §7.
++ **HTTP fetch (option 3) violates the "one connection, one source of truth" contract.** Every M0/M1 client interaction with a match goes through the WebSocket. Adding a parallel HTTP path introduces a second failure mode (WS connects but HTTP fetch fails), a second auth flow, and a "which arrives first" race. All negative for a metadata channel that is trivially small (< 100 bytes for typical polygons).
++ **Per-SNAPSHOT embedding (option 4) wastes 3–500 bytes per tick.** At 20 Hz × 20 clients per host that's 12–200 KB/s per host of pure duplicate metadata. M1 has one ball-related trailer per SNAPSHOT already; layering static polygon data on top of that is strictly worse.
+
+**Trade-offs**:
+
++ **A second post-HELLO_ACK frame is now sent unconditionally per session.** Small (7-byte payload minimum for Advisory + empty polygon, up to ~100 bytes for a typical drill-zone rectangle). Never revisited.
++ **The client MUST parse SCENARIO_META before the first SNAPSHOT to render the overlay correctly.** In practice the server sends both frames in the same handleConnect call so they arrive back-to-back — the JS transport's message-dispatch loop naturally handles SCENARIO_META before the first tick's SNAPSHOT.
++ **Mode byte is a direct cast of `scenario::PlayableArea::Mode`**, locked by three `static_assert`s in `ScenarioMetaFrame.hpp`. Any renumbering of the enum fails the build immediately.
++ **XY-only** (no z). The scenario polygon is defined on the ground plane; z-lifted overlays are out of M1 scope. If a future scenario needs a 3D playable region (e.g. air-corridor volumes) it's a new msg_type or a new capability bit + region extension.
+− **Send-once semantics means dynamic playable-area mutation requires a new msg_type.** This ADR does not close that door; §22.22.next-ADR would be SCENARIO_META_DELTA.
+− **The client must track "have I received SCENARIO_META yet?" state.** In practice this is trivial: null until decoded, then populated for the session's lifetime. The renderer no-ops on null.
+
+**Revisit if / when**:
+
+- **A scenario needs to mutate its playable area mid-match** — e.g. shrinking play zone, a drill that progressively narrows. Add SCENARIO_META_DELTA as a new msg_type with a delta-encoded payload (e.g. add/remove vertices, mode change). Reusing SCENARIO_META for both the initial state and mid-match deltas would break the "send-once, session-scope" invariant this ADR establishes.
+- **Multiple scenario-scope metadata channels appear** — e.g. lighting, weather, spectator seating. At ~3 channels, consider generalising SCENARIO_META into a TLV chain `[u8 field_type][u16 field_len][field_bytes]…` inside a single "scenario snapshot" message. Below that count, separate msg_types keep the decoder trivial.
+- **A polygon exceeds the u16 payload cap** (~8191 vertices). Not remotely a concern for M1 rectangles (4 vertices each). If we ever ship a polygon with > 8k vertices, either compress or migrate to a chunked message type.
+- **Client capability negotiation becomes asymmetric** — e.g. the client wants to opt into SCENARIO_META independently of ball trailer. Today it's server-side unconditional; if we ever need per-client scope, the client's HELLO can start carrying capability bits too (currently reserved u32 in the HELLO payload).
+
+**Refs**: §7.1 (message type 0x03 row added here), §7.4 (SCENARIO_META payload format added here), §22.20 (Slice 15.4 wire-cap-bits pattern this ADR reuses), §22.19 (Slice 14 reserved slot remains unfilled), §23.3 Slice 17.7a (this ADR's implementation), §23.3 Slice 17.7b (frontend mirror + renderer overlay, pending).
+
 ---
 
 Added 2026-07-13 as the resolution of Task B in the 5-task follow-up sequence (C→D→E→A→B). Mirrors §16's structure for M0. §22 (ADRs) is a growing log that lives after §17–§22 by convention, but M1 is a *milestone* section, so it takes the next available top-level number rather than nesting into §22.
@@ -2410,7 +2471,9 @@ One player can pick up + move the ball. Ball follows the owning player at `headi
 - 17.4 `HalfPitchScenario` (new) — uses `Hard` mode on the halfway line to demo the constraint in a drill setting. Landed 2026-07-14: [sim/src/scenario/HalfPitchScenario.{hpp,cpp}](sim/src/scenario/HalfPitchScenario.hpp) + migration [database/migrations/212-sim-scenarios-half-pitch-hard.sql](database/migrations/212-sim-scenarios-half-pitch-hard.sql) + Replay branch. Polygon = east half of the 105×68 m pitch: axis-aligned CCW rectangle `(0,-34) → (52.5,-34) → (52.5,+34) → (0,+34)`. Two demo slots spawn at (10, 0) and (40, 0), inside the polygon so a claiming client can walk toward either wall. Scenario id=2, code_id='half_pitch_hard' (id assignments: 0=empty_pitch, 1=ball_on_pitch, 2=half_pitch_hard). Migration applied to live DB 2026-07-14. Unit test [sim/tests/test_half_pitch_scenario.cpp](sim/tests/test_half_pitch_scenario.cpp) covers declarative shape (id/pitch/polygon/mode/spawns/no-ball) plus two integration checks: slots stay inside across 100 wander ticks, and a slot forcibly translated outside via `physics_for_tests()->setPosition(...)` is snapped back on the next tick.
 - 17.5 `SoftDrillScenario` (new) — uses `Soft` mode on a rectangle inside the pitch to demo the pushback feel for the "coach can wander outside the drill zone but is bounced back" UX. Landed 2026-07-14: [sim/src/scenario/SoftDrillScenario.{hpp,cpp}](sim/src/scenario/SoftDrillScenario.hpp) + migration [database/migrations/213-sim-scenarios-soft-drill.sql](database/migrations/213-sim-scenarios-soft-drill.sql) + Replay branch. Polygon = 40×30 m drill-zone rectangle centred at the pitch origin: axis-aligned CCW `(-20,-15) → (+20,-15) → (+20,+15) → (-20,+15)`. One demo slot at (0, 0). Uses the Match-level default stiffness `k = 4/s` (Slice 17.3 note) — kept as the single global default for M1; no per-scenario override needed yet. Scenario id=3, code_id='soft_drill' (id assignments: 0=empty_pitch, 1=ball_on_pitch, 2=half_pitch_hard, 3=soft_drill). Migration applied to live DB 2026-07-14. Unit test [sim/tests/test_soft_drill_scenario.cpp](sim/tests/test_soft_drill_scenario.cpp) covers declarative shape (id/pitch/polygon/mode/spawns/no-ball) plus a Soft-mode round-trip: poke slot to (50, 0), verify next tick still outside (Soft never snaps), then verify it bounces back inside within 100 ticks (spring pulls it back).
 - 17.6 Tests: `test_playable_area_hard.cpp` (clamp + velocity-zeroing), `test_playable_area_soft.cpp` (force magnitude matches `k × penetration_depth`), determinism cross-arch for both. Landed 2026-07-14: [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp) gains two goldens — `half_pitch_hard_sprint_east_400_ticks_seed_42` (`0x489acd31dddb4587`) claims SlotId{1} at (10, 0) in `HalfPitchScenario`, drives it sprint-east into the east wall, and locks 400 ticks (20 s) of "approach + pinned-against-wall" behaviour; the canonical dump shows slot 1 at exactly `pos.x = 0x3480000000` raw (52.5 m) with `vel.x = 0` — the fingerprint of `apply_hard` snapping + zeroing outward velocity every tick. `soft_drill_sprint_east_400_ticks_seed_42` (`0x700808840ecc3183`) claims SlotId{1} at (0, 0) in `SoftDrillScenario`, drives it sprint-east across the +20 m boundary, and locks 400 ticks of Soft leave-drift-return behaviour; the final snapshot catches slot 1 mid-cycle at x ≈ 18.96 m with vel.x ≈ 7.47 m/s east — proving both `apply_soft`'s Fixed64 math AND the `k = 4/s` default stiffness constant in `Match.cpp`. Includes + using-decls for `HalfPitchScenario` and `SoftDrillScenario` added to the fixture. Unit-level determinism (17.1/17.2 helpers exercised over any polygon by their own tests) plus integration-level determinism (17.3 Match wiring exercised by `test_match_playable_area.cpp`) plus these two full-tick cross-arch goldens cover the "byte-identical amd64 vs arm64" exit-gate for §17.
-- 17.7 Client renders the polygon overlay based on `PlayableArea::Mode` — dashed for `Advisory` (existing M0 behavior), solid for `Hard`, dotted for `Soft`.
+- 17.7 Client renders the polygon overlay based on `PlayableArea::Mode` — dashed for `Advisory` (existing M0 behavior), solid for `Hard`, dotted for `Soft`. Scope-split 2026-07-14 into two sub-slices to keep commits small and reviewable (per ADR §22.22 problem statement):
+  - 17.7a — Wire schema + server encode + tests. Landed 2026-07-14: new msg_type `MsgType::ScenarioMeta = 0x03` + capability bit `kWireCapScenarioMeta = 1u << 1` in [sim/src/net/WireFormat.hpp](sim/src/net/WireFormat.hpp); encoder/decoder pair in [sim/src/net/ScenarioMetaFrame.hpp](sim/src/net/ScenarioMetaFrame.hpp) + [ScenarioMetaFrame.cpp](sim/src/net/ScenarioMetaFrame.cpp); `Match::playableArea()` public accessor in [sim/src/match/Match.hpp](sim/src/match/Match.hpp); `SimServer::handleConnect` in [sim/src/server/SimServer.cpp](sim/src/server/SimServer.cpp) now advertises `kWireCapScenarioMeta` in HELLO_ACK's cap bits and sends one SCENARIO_META frame immediately after HELLO_ACK, carrying the match's `PlayableArea::mode` (u8) + polygon vertices (u16 count + `{f32 x, f32 y}` × N). Compile-time `static_assert`s in `ScenarioMetaFrame.hpp` lock `scenario::PlayableArea::Mode::{Hard,Soft,Advisory}` to wire values 0/1/2. Tests: new [sim/tests/test_scenario_meta_frame.cpp](sim/tests/test_scenario_meta_frame.cpp) (11 subtests — mode-value pins, constants pins, encode empty Advisory / CCW-rectangle Hard / drill-zone Soft, roundtrip empty + populated, decode rejects wrong-version / wrong-msg_type / short-header / truncated-vertex-region / payload-length-mismatch, encoder returns empty on `> kMaxScenarioMetaVertices` overflow); expanded [sim/tests/test_input_frame.cpp](sim/tests/test_input_frame.cpp) with `scenario_meta_capability_bit_is_bit_one` (locks bit 1 position + no collision with bit 0) and updated `encode_hello_ack_capability_bits_are_bitfield` to OR both cap bits; expanded [sim/tests/test_sim_server.cpp](sim/tests/test_sim_server.cpp) with integration test `scenario_meta_sent_immediately_after_hello_ack` (fixture spins up EmptyPitchScenario → Advisory + empty polygon, connects a client via `handshake(...)`, extracts frames from the response byte stream, asserts frames[0] = HELLO_ACK with cap bits including `kWireCapScenarioMeta`, frames[1] = SCENARIO_META decoding to `mode=Advisory, vertices.empty()`). Also fixed an incidental test-harness bug: the conditional second `pumpUntil` call in the new test was overwriting `hs.bytes` with an empty vector because all data had already been drained by the primary `handshake()` pump — removed the redundant secondary pump entirely (`extra_bytes=128` in `handshake()` already fetches well past both frames' combined 31 wire bytes). Full container build: 145/145 compile, 46/46 ctests green, 4/4 lint gates OK. See ADR §22.22 for the design decision (separate msg_type vs. HELLO_ACK-appended payload).
+  - 17.7b — Frontend decode + renderer + ADR closeout. **Pending** — add `MSG.SCENARIO_META = 0x03` + `WIRE_CAP.SCENARIO_META = 0x0002` + `decodeScenarioMeta(bytes)` mirror in [frontend/js/sim/wire.js](frontend/js/sim/wire.js); dispatch in [frontend/js/sim/transport.js](frontend/js/sim/transport.js) (add `onScenarioMeta` callback slot); state hook in [frontend/js/sim/client.js](frontend/js/sim/client.js) (store decoded meta on client state); `drawPlayableArea(meta)` overlay in [frontend/js/sim/renderer.js](frontend/js/sim/renderer.js) with per-mode line-dash style (Advisory=dashed, Hard=solid, Soft=dotted); manual smoke test against `HalfPitchScenario` + `SoftDrillScenario`; final commit backfills ADR §22.22 with the 17.7b landing commit.
 
 **Slice 17 exit gate**: `HalfPitchScenario` visibly prevents a dribbling player from crossing the halfway line; `SoftDrillScenario` visibly pushes back a player who tries to leave the drill zone; both replays are byte-identical amd64 vs arm64.
 

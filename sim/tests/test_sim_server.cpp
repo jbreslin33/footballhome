@@ -15,6 +15,7 @@
 #include "net/BinaryV1Serializer.hpp"
 #include "net/InputFrame.hpp"
 #include "net/LeCodec.hpp"
+#include "net/ScenarioMetaFrame.hpp"
 #include "net/WebSocketFrame.hpp"
 #include "net/WebSocketTransport.hpp"
 #include "net/WireFormat.hpp"
@@ -40,6 +41,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -52,12 +54,16 @@ using fh::sim::match::Match;
 using fh::sim::match::MatchConfig;
 using fh::sim::match::RealtimeClock;
 using fh::sim::net::BinaryV1Serializer;
+using fh::sim::net::decodeScenarioMetaFrame;
 using fh::sim::net::kFrameHeaderBytes;
 using fh::sim::net::kHelloAckFrameBytes;
 using fh::sim::net::kHelloAckPayloadBytes;
 using fh::sim::net::kInputFlagWantsSprint;
 using fh::sim::net::kInputFrameBytes;
 using fh::sim::net::kInputPayloadBytes;
+using fh::sim::net::kScenarioModeAdvisory;
+using fh::sim::net::kWireCapScenarioMeta;
+using fh::sim::net::kWireCapSnapshotBallTrailer;
 using fh::sim::net::kWireVersionV1;
 using fh::sim::net::MsgType;
 using fh::sim::net::read_u16_le;
@@ -589,6 +595,48 @@ FH_TEST(client_disconnect_releases_slot) {
         if (s.owner.has_value()) { ++owned_after; }
     }
     FH_EXPECT_EQ(owned_after, 0u);
+}
+
+// Slice 17.7a: HELLO_ACK is followed immediately by SCENARIO_META. The
+// server MUST advertise kWireCapScenarioMeta in the HELLO_ACK payload,
+// then send exactly one SCENARIO_META frame. Fixture uses
+// EmptyPitchScenario (Advisory + empty polygon) so the payload is the
+// minimum 3 bytes: [mode=Advisory][num_vertices=0].
+FH_TEST(scenario_meta_sent_immediately_after_hello_ack) {
+    Fixture fx;
+    const int cfd = connectLoopback(fx.port());
+    FH_EXPECT(cfd >= 0);
+
+    // Both frames should arrive well within 128 extra bytes: HELLO_ACK
+    // = 22 wire bytes, SCENARIO_META = 9 wire bytes (WS header + 7-byte
+    // payload). handshake()'s 1500 ms pump already drains both.
+    auto hs = handshake(fx, cfd, /*person_id=*/151, /*extra_bytes=*/128);
+    const auto frames = extractBinaryPayloads(hs.bytes, hs.header_end);
+    FH_EXPECT(frames.size() >= 2u);
+
+    // Frame 0 = HELLO_ACK. Cap bits must include the ScenarioMeta bit
+    // (and the pre-existing SnapshotBallTrailer bit — Slice 15.4).
+    const auto& ack = frames[0];
+    FH_EXPECT_EQ(ack.size(), kHelloAckFrameBytes);
+    FH_EXPECT_EQ(ack[1], static_cast<std::uint8_t>(MsgType::HelloAck));
+    const std::uint16_t caps =
+        read_u16_le(ack.data() + kFrameHeaderBytes + 14);
+    FH_EXPECT((caps & kWireCapScenarioMeta) != 0u);
+    FH_EXPECT((caps & kWireCapSnapshotBallTrailer) != 0u);
+
+    // Frame 1 = SCENARIO_META. Fixture is EmptyPitchScenario → Advisory
+    // + empty polygon.
+    const auto& meta = frames[1];
+    FH_EXPECT_EQ(meta[1],
+                 static_cast<std::uint8_t>(MsgType::ScenarioMeta));
+    const auto decoded = decodeScenarioMetaFrame(
+        std::span<const std::uint8_t>(meta.data(), meta.size()));
+    FH_EXPECT(decoded.has_value());
+    FH_EXPECT_EQ(decoded->mode, kScenarioModeAdvisory);
+    FH_EXPECT(decoded->vertices.empty());
+
+    ::close(cfd);
+    driveServer(*fx.server, 200);
 }
 
 FH_TEST_MAIN()
