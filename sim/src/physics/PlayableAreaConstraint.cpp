@@ -1,6 +1,7 @@
 // footballhome sim - PlayableAreaConstraint (impl)
 //
 // Slice 17.1: apply_hard boundary clamp for convex polygons.
+// Slice 17.2: apply_soft inward spring for convex polygons.
 //
 // See PlayableAreaConstraint.hpp for the contract.
 
@@ -26,11 +27,6 @@ inline Fixed64 cross2d(const Vec3& a, const Vec3& b, const Vec3& c) noexcept
     return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 
-inline Fixed64 dot2d(const Vec3& a, const Vec3& b) noexcept
-{
-    return a.x * b.x + a.y * b.y;
-}
-
 // Closest point on the segment [a, b] to point p, considering only
 // the XY components. Returns a Vec3 with z = 0 (caller preserves the
 // original pos.z separately).
@@ -51,19 +47,34 @@ Vec3 closestPointOnSegment(const Vec3& a, const Vec3& b, const Vec3& p) noexcept
     return Vec3{a.x + ab.x * t, a.y + ab.y * t, Fixed64::zero()};
 }
 
-} // namespace
+// Result of the shared "find nearest boundary point + outward normal"
+// step used by both apply_hard and apply_soft. `outside` is false when
+// the point is inside or on the polygon boundary (in which case the
+// other fields are unspecified and callers should short-circuit).
+struct BoundaryHit {
+    bool    outside;
+    Vec3    closest_pt;     // z = 0
+    Vec3    outward_normal; // unit vector, z = 0
+    Fixed64 penetration;    // 0 if !outside; else |p - closest_pt|
+};
 
-void apply_hard(math::Vec3& pos,
-                math::Vec3& vel,
-                const std::vector<math::Vec3>& polygon) noexcept
+// Shared engine for apply_hard and apply_soft. Handles:
+//   1. Defensive no-op for empty / <3-vertex / all-collinear polygons.
+//   2. Point-in-convex-polygon test.
+//   3. Nearest-edge projection + outward-normal computation.
+//
+// Returns { outside=false } when the point is inside (or the polygon
+// is degenerate) — caller must no-op.
+BoundaryHit findBoundary(const Vec3& p_xy,
+                         const std::vector<Vec3>& polygon) noexcept
 {
-    const std::size_t n = polygon.size();
-    if (n < 3) { return; }   // no constraint
+    BoundaryHit hit{};
+    hit.outside = false;
 
-    // Winding sign: pick the first non-zero cross product from consecutive
-    // vertex triples. For a convex polygon this fixes the "which side is
-    // inside" question globally. If all triples are collinear the polygon
-    // is degenerate — treat as no-op.
+    const std::size_t n = polygon.size();
+    if (n < 3) { return hit; }
+
+    // Winding sign from the first non-collinear vertex triple.
     Fixed64 winding = Fixed64::zero();
     for (std::size_t i = 0; i < n; ++i) {
         const Vec3& a = polygon[i];
@@ -72,18 +83,14 @@ void apply_hard(math::Vec3& pos,
         const Fixed64 s = cross2d(a, b, c);
         if (s.raw != 0) { winding = s; break; }
     }
-    if (winding.raw == 0) { return; }
+    if (winding.raw == 0) { return hit; }   // degenerate polygon
 
-    // Point-in-convex-polygon: for each edge (v[i], v[i+1]), check that
-    // cross2d(v[i], v[i+1], p) has the same sign as winding (allowing
-    // zero → on the edge counts as inside).
-    const Vec3 p2d{pos.x, pos.y, Fixed64::zero()};
+    // Point-in-convex-polygon test.
     bool inside = true;
     for (std::size_t i = 0; i < n; ++i) {
         const Vec3& a = polygon[i];
         const Vec3& b = polygon[(i + 1) % n];
-        const Fixed64 s = cross2d(a, b, p2d);
-        // s and winding must have the same sign (or s == 0).
+        const Fixed64 s = cross2d(a, b, p_xy);
         if (s.raw != 0 &&
             ((s.raw > 0) != (winding.raw > 0)))
         {
@@ -91,12 +98,9 @@ void apply_hard(math::Vec3& pos,
             break;
         }
     }
-    if (inside) { return; }
+    if (inside) { return hit; }
 
-    // Outside: find the nearest boundary point. Iterate all edges,
-    // project p2d onto each, track the minimum squared distance.
-    // Tie-break: first winning edge in iteration order — deterministic
-    // because iteration order is fixed by the polygon vertex sequence.
+    // Find nearest boundary point (per-edge projection).
     std::size_t best_i = 0;
     Vec3        best_pt{};
     Fixed64     best_dsq{Fixed64::fromRaw(std::int64_t{0x7fffffffffffffffLL})};
@@ -104,9 +108,9 @@ void apply_hard(math::Vec3& pos,
     for (std::size_t i = 0; i < n; ++i) {
         const Vec3& a = polygon[i];
         const Vec3& b = polygon[(i + 1) % n];
-        const Vec3  q = closestPointOnSegment(a, b, p2d);
-        const Fixed64 dx = p2d.x - q.x;
-        const Fixed64 dy = p2d.y - q.y;
+        const Vec3  q = closestPointOnSegment(a, b, p_xy);
+        const Fixed64 dx = p_xy.x - q.x;
+        const Fixed64 dy = p_xy.y - q.y;
         const Fixed64 dsq = dx * dx + dy * dy;
         if (dsq.raw < best_dsq.raw) {
             best_dsq = dsq;
@@ -115,19 +119,7 @@ void apply_hard(math::Vec3& pos,
         }
     }
 
-    // Snap position (XY only; z preserved).
-    pos.x = best_pt.x;
-    pos.y = best_pt.y;
-
-    // Compute the outward-pointing unit normal for the winning edge.
-    // Edge tangent t = (v[i+1] - v[i]). The two perpendiculars are
-    // (t.y, -t.x) and (-t.y, t.x). The one that points AWAY from the
-    // polygon interior is the outward normal.
-    //
-    // For a polygon whose winding sign is positive (CCW), the interior
-    // lies on the LEFT of each edge, so the outward normal is (t.y, -t.x).
-    // For negative winding (CW), interior is on the RIGHT, so outward is
-    // (-t.y, t.x). We branch on the sign of `winding` computed above.
+    // Outward-pointing unit normal of the winning edge.
     const Vec3&   a = polygon[best_i];
     const Vec3&   b = polygon[(best_i + 1) % n];
     const Fixed64 tx = b.x - a.x;
@@ -139,23 +131,67 @@ void apply_hard(math::Vec3& pos,
     } else {
         outward_dir = Vec3{-ty, tx, Fixed64::zero()};
     }
-    // Normalize (safe: winning edge has non-zero length or
-    // closestPointOnSegment would have returned a and dsq would still be
-    // well-defined; but we filter zero-length edges defensively).
     const Fixed64 nlen = math::fx_hypot(outward_dir.x, outward_dir.y);
-    if (nlen.raw == 0) { return; }
-    const Vec3 n_out{outward_dir.x / nlen, outward_dir.y / nlen,
-                     Fixed64::zero()};
+    if (nlen.raw == 0) { return hit; }   // zero-length winning edge
+
+    hit.outside        = true;
+    hit.closest_pt     = best_pt;
+    hit.outward_normal = Vec3{outward_dir.x / nlen, outward_dir.y / nlen,
+                              Fixed64::zero()};
+    // Penetration depth = |p - closest_pt|. Reuse dx/dy from the winning
+    // iteration would require plumbing them out — cheaper to just recompute
+    // here since we already know the winning point.
+    const Fixed64 pdx = p_xy.x - best_pt.x;
+    const Fixed64 pdy = p_xy.y - best_pt.y;
+    hit.penetration    = math::fx_hypot(pdx, pdy);
+    return hit;
+}
+
+} // namespace
+
+void apply_hard(math::Vec3& pos,
+                math::Vec3& vel,
+                const std::vector<math::Vec3>& polygon) noexcept
+{
+    const Vec3 p_xy{pos.x, pos.y, Fixed64::zero()};
+    const BoundaryHit hit = findBoundary(p_xy, polygon);
+    if (!hit.outside) { return; }
+
+    // Snap position (XY only; z preserved).
+    pos.x = hit.closest_pt.x;
+    pos.y = hit.closest_pt.y;
 
     // Zero the outward-facing component of vel only if it is > 0.
     // Tangential and inward-facing components are preserved so the
     // player can slide along the wall and move back into the polygon.
-    const Fixed64 outward_dot = vel.x * n_out.x + vel.y * n_out.y;
+    const Fixed64 outward_dot =
+        vel.x * hit.outward_normal.x + vel.y * hit.outward_normal.y;
     if (outward_dot.raw > 0) {
-        vel.x = vel.x - n_out.x * outward_dot;
-        vel.y = vel.y - n_out.y * outward_dot;
+        vel.x = vel.x - hit.outward_normal.x * outward_dot;
+        vel.y = vel.y - hit.outward_normal.y * outward_dot;
     }
     // vel.z is preserved (grounded game — z reserved).
+}
+
+void apply_soft(math::Vec3& pos,
+                math::Vec3& vel,
+                const std::vector<math::Vec3>& polygon,
+                math::Fixed64 k) noexcept
+{
+    const Vec3 p_xy{pos.x, pos.y, Fixed64::zero()};
+    const BoundaryHit hit = findBoundary(p_xy, polygon);
+    if (!hit.outside) { return; }
+
+    // Inward normal = -outward_normal. Apply the velocity delta
+    // proportional to penetration depth × k.
+    //
+    // Position is NOT clamped: the player is allowed to briefly leave
+    // the polygon; the accumulating inward velocity delta over
+    // subsequent ticks bounces them back.
+    const Fixed64 mag = hit.penetration * k;
+    vel.x = vel.x - hit.outward_normal.x * mag;
+    vel.y = vel.y - hit.outward_normal.y * mag;
+    // vel.z is preserved.
 }
 
 } // namespace fh::sim::physics

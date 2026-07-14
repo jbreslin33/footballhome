@@ -1,7 +1,7 @@
 // footballhome sim - PlayableAreaConstraint
 //
-// Slice 17.1: Hard-mode boundary clamp. Slice 17.2 will add Soft-mode
-// (inward repulsive force proportional to outward penetration depth).
+// Slice 17.1: Hard-mode boundary clamp.
+// Slice 17.2: Soft-mode inward force proportional to outward penetration.
 //
 // Contract:
 //
@@ -36,18 +36,46 @@
 //     polygon's boundary or interior, and vel has no outward-facing
 //     component perpendicular to the winning edge.
 //
-// Determinism:
-//   Everything runs in Fixed64. Point-in-polygon uses signed 2D cross
-//   products (no sqrt). Edge projection uses one Fixed64 divide per edge
-//   (edge_length_squared > 0 is guaranteed by the convex-polygon assumption
-//   plus a zero-length-edge defensive skip). All ordering (edge iteration,
-//   tie-breaking on equal distances) is deterministic and independent of
-//   host arch.
+//   apply_soft(pos, vel, polygon, k)
+//     Same polygon assumptions as apply_hard (convex, ≥3 vertices; XY
+//     only). If the (x, y) point lies inside the polygon (or on its
+//     boundary), pos and vel are left untouched.
 //
-// See DESIGN.md §5.6 (PlayableArea semantics), §23.3 Slice 17.1.
+//     Otherwise:
+//
+//       1. Find the closest point on the polygon boundary (same routine
+//          as apply_hard).
+//       2. Compute penetration depth = |p - closest_point|.
+//       3. Compute the inward-pointing unit normal (opposite of the
+//          outward normal used by apply_hard).
+//       4. Apply an inward-facing velocity delta:
+//            vel += inward_normal * (penetration_depth * k)
+//          The delta is added BEFORE position integration, so the next
+//          physics step naturally advects the player back toward the
+//          polygon. `k` has units of 1/s (spring stiffness). Higher `k`
+//          → sharper snap-back; lower `k` → gentler drift.
+//       5. **Position is NOT clamped**. Soft mode explicitly allows the
+//          player to briefly leave the polygon (a lunging tackle, an
+//          over-run) — the accumulating inward velocity delta over
+//          multiple ticks bounces them back.
+//
+//     After apply_soft, the (x, y) point is unchanged and vel has an
+//     extra inward-facing component sized to the penetration depth.
+//
+// Determinism:
+//   Everything runs in Fixed64. apply_hard uses signed 2D cross products
+//   for the point-in-polygon test (no sqrt). apply_soft additionally
+//   evaluates one fx_hypot for the penetration depth. Edge projection
+//   uses one Fixed64 divide per edge (edge_length_squared > 0 is
+//   guaranteed by the convex-polygon assumption plus a zero-length-edge
+//   defensive skip). All ordering (edge iteration, tie-breaking on equal
+//   distances) is deterministic and independent of host arch.
+//
+// See DESIGN.md §5.6 (PlayableArea semantics), §23.3 Slice 17.1, 17.2.
 
 #pragma once
 
+#include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
 
 #include <vector>
@@ -58,5 +86,11 @@ namespace fh::sim::physics {
 void apply_hard(math::Vec3& pos,
                 math::Vec3& vel,
                 const std::vector<math::Vec3>& polygon) noexcept;
+
+// Slice 17.2 — Soft-mode inward spring. See file header for contract.
+void apply_soft(math::Vec3& pos,
+                math::Vec3& vel,
+                const std::vector<math::Vec3>& polygon,
+                math::Fixed64 k) noexcept;
 
 } // namespace fh::sim::physics
