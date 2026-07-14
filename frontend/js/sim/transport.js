@@ -13,23 +13,30 @@
 
 class FhSimTransport {
     // opts:
-    //   url:              WebSocket URL (e.g. "wss://host/sim")
-    //   jwt:              signed JWT string
-    //   onOpen():         connection open + subprotocol accepted
-    //   onHelloAck(ack):  { matchId: BigInt, slot, tickHz }
-    //   onSnapshot(snap): { tick, matchTimeMs, entities: [...] }
-    //   onEvent(bytes):   raw EVENT payload (M1+ — kept as a hook)
-    //   onClose(evt):     WebSocket CloseEvent
-    //   onError(err):     transport-level error string
+    //   url:                  WebSocket URL (e.g. "wss://host/sim")
+    //   jwt:                  signed JWT string
+    //   onOpen():             connection open + subprotocol accepted
+    //   onHelloAck(ack):      { matchId: BigInt, slot, tickHz,
+    //                           wireCapabilityBits }
+    //   onScenarioMeta(meta): { mode: 0|1|2, vertices: [{x,y},...] }
+    //                         — Slice 17.7a; arrives once, right after
+    //                           HELLO_ACK, when server advertises
+    //                           WIRE_CAP.SCENARIO_META
+    //   onSnapshot(snap):     { tick, matchTimeMs, entities: [...],
+    //                           ball: null | {...} }
+    //   onEvent(bytes):       raw EVENT payload (M1+ — kept as a hook)
+    //   onClose(evt):         WebSocket CloseEvent
+    //   onError(err):         transport-level error string
     constructor(opts) {
         this.url = opts.url;
         this.jwt = opts.jwt;
-        this.onOpen      = opts.onOpen      || function () {};
-        this.onHelloAck  = opts.onHelloAck  || function () {};
-        this.onSnapshot  = opts.onSnapshot  || function () {};
-        this.onEvent     = opts.onEvent     || function () {};
-        this.onClose     = opts.onClose     || function () {};
-        this.onError     = opts.onError     || function () {};
+        this.onOpen         = opts.onOpen         || function () {};
+        this.onHelloAck     = opts.onHelloAck     || function () {};
+        this.onScenarioMeta = opts.onScenarioMeta || function () {};
+        this.onSnapshot     = opts.onSnapshot     || function () {};
+        this.onEvent        = opts.onEvent        || function () {};
+        this.onClose        = opts.onClose        || function () {};
+        this.onError        = opts.onError        || function () {};
 
         this.ws = null;
         this._closed = false;
@@ -74,6 +81,11 @@ class FhSimTransport {
             case FhSimWire.MSG.HELLO_ACK: {
                 const ack = FhSimWire.decodeHelloAck(dv);
                 if (ack) this.onHelloAck(ack);
+                return;
+            }
+            case FhSimWire.MSG.SCENARIO_META: {
+                const meta = FhSimWire.decodeScenarioMeta(dv);
+                if (meta) this.onScenarioMeta(meta);
                 return;
             }
             case FhSimWire.MSG.SNAPSHOT: {

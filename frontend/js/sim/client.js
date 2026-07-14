@@ -181,6 +181,12 @@ async function resolveSimJwt(matchId) {
         snaps:     0,
         lastSnapEntities: 0,
         myPos:     null,
+        // Slice 17.7b: playable-area overlay metadata. Populated once
+        // per session by the SCENARIO_META frame right after HELLO_ACK
+        // when the server advertises WIRE_CAP.SCENARIO_META. Stays null
+        // for legacy servers that don't send the frame — renderer.
+        // drawPlayableArea() no-ops on null.
+        scenarioMeta: null,
     };
 
     // Resize handling – recompute pixel scale on rotation/DPR change.
@@ -218,6 +224,16 @@ async function resolveSimJwt(matchId) {
             state.helloAcks++;
             interpolator.setTickHz(state.tickHz);
             renderer.setMySlot(ack.slot);
+        },
+
+        onScenarioMeta: (meta) => {
+            // Slice 17.7b: stash + push to renderer. `meta.mode` is one
+            // of FhSimWire.SCENARIO_MODE.{HARD,SOFT,ADVISORY}; `meta.
+            // vertices` is an ordered polygon (CCW for scenarios shipped
+            // with M1). Advisory + empty polygon is the M0 baseline —
+            // renderer.drawPlayableArea() no-ops on < 3 vertices.
+            state.scenarioMeta = meta;
+            renderer.setScenarioMeta(meta);
         },
 
         onSnapshot: (snap) => {

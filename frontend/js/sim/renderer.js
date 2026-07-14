@@ -32,10 +32,23 @@ class FhSimRenderer {
         // The slot id owned by this client, if any — highlighted in HUD.
         this.mySlot = 0;
 
+        // Slice 17.7b: SCENARIO_META polygon overlay. Null until the
+        // server sends a SCENARIO_META frame right after HELLO_ACK.
+        // Shape: { mode: 0|1|2, vertices: [{x,y}, ...] } — see wire.js
+        // decodeScenarioMeta. drawPlayableArea() no-ops on null / <3
+        // vertices (Advisory + empty polygon is the M0 baseline).
+        this.scenarioMeta = null;
+
         this.resize();
     }
 
     setMySlot(slot) { this.mySlot = slot | 0; }
+
+    setScenarioMeta(meta) {
+        // Accept null explicitly (unset). Anything else stored verbatim;
+        // renderer reads mode + vertices at draw time.
+        this.scenarioMeta = meta || null;
+    }
 
     resize() {
         const rect = this.canvas.getBoundingClientRect();
@@ -125,6 +138,60 @@ class FhSimRenderer {
         ctx.beginPath();
         ctx.arc(this._wx(0), this._wy(0), 3, 0, Math.PI * 2);
         ctx.fill();
+    }
+
+    // Slice 17.7b: draw the scenario's playable-area polygon as a
+    // mode-specific line-dash overlay on top of the pitch. Drawn AFTER
+    // drawPitch() (so it sits over the mown stripes) and BEFORE
+    // drawEntities() / drawBall() (so player + ball dots stay on top
+    // and remain legible). No-ops when:
+    //   * setScenarioMeta() never got a frame (this.scenarioMeta null)
+    //   * polygon has < 3 vertices (M0 baseline: Advisory + empty)
+    //
+    // Line style by mode (see FhSimWire.SCENARIO_MODE):
+    //   HARD (0)     → solid warm red — server clamps position AND
+    //                  zeros outward velocity every tick; visually a
+    //                  hard wall.
+    //   SOFT (1)     → dotted cyan — server applies inward velocity
+    //                  delta proportional to penetration depth;
+    //                  visually a springy fence.
+    //   ADVISORY (2) → dashed faint yellow — server does NOT constrain
+    //                  motion; overlay is purely informational (e.g.
+    //                  "drill zone" hint for the user).
+    drawPlayableArea() {
+        const meta = this.scenarioMeta;
+        if (!meta || !meta.vertices || meta.vertices.length < 3) return;
+
+        const ctx = this.ctx;
+        ctx.save();
+        switch (meta.mode) {
+            case FhSimWire.SCENARIO_MODE.HARD:
+                ctx.strokeStyle = 'rgba(255, 90, 60, 0.95)';
+                ctx.setLineDash([]);          // solid
+                ctx.lineWidth = 3;
+                break;
+            case FhSimWire.SCENARIO_MODE.SOFT:
+                ctx.strokeStyle = 'rgba(90, 210, 255, 0.9)';
+                ctx.setLineDash([2, 6]);      // dotted (short dash + long gap)
+                ctx.lineWidth = 2.5;
+                break;
+            case FhSimWire.SCENARIO_MODE.ADVISORY:
+            default:
+                ctx.strokeStyle = 'rgba(255, 220, 90, 0.7)';
+                ctx.setLineDash([10, 6]);     // dashed
+                ctx.lineWidth = 2;
+                break;
+        }
+        ctx.beginPath();
+        const v0 = meta.vertices[0];
+        ctx.moveTo(this._wx(v0.x), this._wy(v0.y));
+        for (let i = 1; i < meta.vertices.length; ++i) {
+            const v = meta.vertices[i];
+            ctx.lineTo(this._wx(v.x), this._wy(v.y));
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
     }
 
     drawEntities(snap) {
@@ -256,6 +323,7 @@ class FhSimRenderer {
     render(snap, status) {
         this.clear();
         this.drawPitch();
+        this.drawPlayableArea();
         this.drawEntities(snap);
         this.drawBall(snap);
         this.drawHud(status || {});

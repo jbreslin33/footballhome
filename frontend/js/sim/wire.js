@@ -26,15 +26,16 @@
 const WIRE_VERSION = 1;
 
 const MSG = Object.freeze({
-    HELLO:        0x01,
-    HELLO_ACK:    0x02,
-    SNAPSHOT:     0x10,
-    INPUT:        0x20,
-    CLAIM_SLOT:   0x30,
-    RELEASE_SLOT: 0x31,
-    EVENT:        0x40,
-    PING:         0x50,
-    PONG:         0x51,
+    HELLO:         0x01,
+    HELLO_ACK:     0x02,
+    SCENARIO_META: 0x03,   // Slice 17.7a
+    SNAPSHOT:      0x10,
+    INPUT:         0x20,
+    CLAIM_SLOT:    0x30,
+    RELEASE_SLOT:  0x31,
+    EVENT:         0x40,
+    PING:          0x50,
+    PONG:          0x51,
 });
 
 const ENTITY_FLAG = Object.freeze({
@@ -57,8 +58,20 @@ const MOTION_STATE = Object.freeze({
 
 // Slice 15.4 (§7.1 addendum): wire_capability_bits in HELLO_ACK.
 // Bit 0 = server may append the v1.1 ball trailer to SNAPSHOT payloads.
+// Bit 1 = server will send one SCENARIO_META frame immediately after
+//         HELLO_ACK (Slice 17.7a).
 const WIRE_CAP = Object.freeze({
     SNAPSHOT_BALL_TRAILER: 0x0001,
+    SCENARIO_META:         0x0002,
+});
+
+// Slice 17.7a (§7.4): SCENARIO_META mode enum. Wire values are frozen
+// in sim/src/net/ScenarioMetaFrame.hpp via static_assert against
+// scenario::PlayableArea::Mode — keep in lock-step.
+const SCENARIO_MODE = Object.freeze({
+    HARD:     0,
+    SOFT:     1,
+    ADVISORY: 2,
 });
 
 // Slice 15.4 (§7.2 addendum): loose-ball sentinel for the ball region's
@@ -72,6 +85,8 @@ const SNAPSHOT_HEADER      = 10;
 const ENTITY_BYTES         = 30;
 const SNAPSHOT_TRAILER_LEN_BYTES = 2;   // u16 length prefix
 const BALL_REGION_BYTES    = 30;
+const SCENARIO_META_HEADER_BYTES = 3;   // u8 mode + u16 count
+const SCENARIO_META_VERTEX_BYTES = 8;   // f32 x + f32 y
 
 // ---------------------------------------------------------------------------
 // Encoders
@@ -210,6 +225,44 @@ function decodeSnapshot(bytes) {
     return { tick, matchTimeMs, entities, ball };
 }
 
+// Decode a SCENARIO_META message (Slice 17.7a, §7.4). Returns:
+//   { mode: 0|1|2, vertices: [{x, y}, ...] }
+// or null on malformed input. See sim/src/net/ScenarioMetaFrame.cpp for
+// the reference C++ decoder — the byte layout must stay byte-identical.
+//
+// Layout:
+//   [frame hdr 4][u8 mode][u16 num_vertices][{f32 x, f32 y} × num_vertices]
+//
+// An `Advisory + num_vertices=0` message (3-byte payload) is legitimate:
+// baseline scenarios (EmptyPitchScenario, BallOnPitchScenario) send this to
+// tell the client "no overlay to draw, no clamp behaviour to expect".
+function decodeScenarioMeta(bytes) {
+    const hdr = peekFrameHeader(bytes);
+    if (!hdr || hdr.msgType !== MSG.SCENARIO_META) return null;
+    if (hdr.payloadLen < SCENARIO_META_HEADER_BYTES) return null;
+
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const base = FRAME_HEADER_BYTES;
+    const mode = dv.getUint8(base + 0);
+    const numVertices = dv.getUint16(base + 1, true);
+
+    const expectedPayload = SCENARIO_META_HEADER_BYTES
+        + numVertices * SCENARIO_META_VERTEX_BYTES;
+    if (hdr.payloadLen !== expectedPayload) return null;
+    if (bytes.byteLength !== FRAME_HEADER_BYTES + expectedPayload) return null;
+
+    const vertices = new Array(numVertices);
+    let off = base + SCENARIO_META_HEADER_BYTES;
+    for (let i = 0; i < numVertices; ++i) {
+        vertices[i] = {
+            x: dv.getFloat32(off + 0, true),
+            y: dv.getFloat32(off + 4, true),
+        };
+        off += SCENARIO_META_VERTEX_BYTES;
+    }
+    return { mode, vertices };
+}
+
 // Export as a global namespace so classic <script> tags can consume it
 // without ES-module glue (matches the rest of frontend/js/*).
 window.FhSimWire = Object.freeze({
@@ -219,6 +272,7 @@ window.FhSimWire = Object.freeze({
     INPUT_FLAG,
     MOTION_STATE,
     WIRE_CAP,
+    SCENARIO_MODE,
     BALL_OWNER_LOOSE,
     FRAME_HEADER_BYTES,
     HELLO_ACK_PAYLOAD,
@@ -227,8 +281,11 @@ window.FhSimWire = Object.freeze({
     ENTITY_BYTES,
     SNAPSHOT_TRAILER_LEN_BYTES,
     BALL_REGION_BYTES,
+    SCENARIO_META_HEADER_BYTES,
+    SCENARIO_META_VERTEX_BYTES,
     encodeInput,
     peekFrameHeader,
     decodeHelloAck,
     decodeSnapshot,
+    decodeScenarioMeta,
 });
