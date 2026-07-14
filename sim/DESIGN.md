@@ -2404,7 +2404,7 @@ One player can pick up + move the ball. Ball follows the owning player at `headi
 
 `Hard` and `Soft` modes from §5.6 semantics land. First constrained-area scenario demos both.
 
-- 17.1 `PlayableAreaConstraint::apply_hard(Vec3& pos, Vec3& vel, const std::vector<Vec3>& polygon)` — clamp position to polygon edge, zero velocity component perpendicular to the edge.
+- 17.1 `PlayableAreaConstraint::apply_hard(Vec3& pos, Vec3& vel, const std::vector<Vec3>& polygon)` — clamp position to polygon edge, zero velocity component perpendicular to the edge. Landed 2026-07-14: [sim/src/physics/PlayableAreaConstraint.{hpp,cpp}](sim/src/physics/PlayableAreaConstraint.hpp). Convex polygons only for M1 (winding sign inferred from first non-collinear vertex triple; empty / <3-vertex polygons are defensive no-ops). XY-only clamp; pos.z + vel.z preserved. Asymmetric velocity contract: only the outward-facing normal component is removed, so a player who is being clamped and pushing inward is not stranded. Unit test [sim/tests/test_playable_area_hard.cpp](sim/tests/test_playable_area_hard.cpp) covers empty/degenerate no-ops, interior/on-edge preservation, all 4 cardinal clamps, corner clamp, CW-winding branch, and inward-velocity preservation.
 - 17.2 `PlayableAreaConstraint::apply_soft(Vec3& pos, Vec3& vel, const std::vector<Vec3>& polygon, Fixed64 k)` — outward-penetration depth × `k` applied as inward velocity delta before position integration.
 - 17.3 `Match::spawnInitialSlots` reads `scenario_->playableArea()` and stashes the constraint; `Match::tick` applies it every physics step.
 - 17.4 `HalfPitchScenario` (new) — uses `Hard` mode on the halfway line to demo the constraint in a drill setting.

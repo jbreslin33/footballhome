@@ -82,6 +82,7 @@ fh_add_gameplay_test(test_stamina)
 fh_add_gameplay_test(test_match_tick)
 fh_add_gameplay_test(test_match_ball)
 fh_add_gameplay_test(test_ball_control)
+fh_add_gameplay_test(test_playable_area_hard)
 fh_add_gameplay_test(test_determinism)
 fh_add_gameplay_test(test_canonical_hash)
 
