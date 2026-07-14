@@ -85,6 +85,7 @@ fh_add_gameplay_test(test_ball_control)
 fh_add_gameplay_test(test_playable_area_hard)
 fh_add_gameplay_test(test_playable_area_soft)
 fh_add_gameplay_test(test_match_playable_area)
+fh_add_gameplay_test(test_half_pitch_scenario)
 fh_add_gameplay_test(test_determinism)
 fh_add_gameplay_test(test_canonical_hash)
 
