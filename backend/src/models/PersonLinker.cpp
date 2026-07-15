@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 using nlohmann::json;
 
@@ -326,13 +327,21 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
 
 void PersonLinker::recordMembership(int personId,
                                     long long programId,
-                                    long long registrationId) {
+                                    long long registrationId,
+                                    const std::string& registeredAtIso) {
     if (personId <= 0 || programId <= 0) return;
     try {
         // 1. Person already has an OPEN row for THIS program?
         //    Backfill `la_registration_id` if we now know it and the row
         //    doesn't have one yet (also refresh if LA reports a different
         //    id — a re-registration mid-season replaces the old reg-id).
+        //    Also backfill `la_registered_at` if we now know it and the
+        //    row doesn't have one yet — this is the auto-population
+        //    path that makes the projected-prorate cell work for
+        //    mid-cycle signups without an operator hitting the manual
+        //    /api/billing/la-reg-backfill endpoint (never overwrites
+        //    an existing non-NULL value; see BillingController's same
+        //    rule).
         auto hit = db_->query(
             "SELECT 1 FROM person_la_memberships "
             " WHERE person_id = $1::int AND la_program_id = $2::bigint AND ended_at IS NULL "
@@ -349,6 +358,17 @@ void PersonLinker::recordMembership(int personId,
                     {std::to_string(personId),
                      std::to_string(programId),
                      std::to_string(registrationId)});
+            }
+            if (!registeredAtIso.empty()) {
+                db_->query(
+                    "UPDATE person_la_memberships "
+                    "   SET la_registered_at = $3::timestamptz, updated_at = now() "
+                    " WHERE person_id = $1::int AND la_program_id = $2::bigint "
+                    "   AND ended_at IS NULL "
+                    "   AND la_registered_at IS NULL",
+                    {std::to_string(personId),
+                     std::to_string(programId),
+                     registeredAtIso});
             }
             return;
         }
@@ -371,19 +391,29 @@ void PersonLinker::recordMembership(int personId,
         //    opens; deprovisioning is a manual admin task).
 
         // 3. Insert the new open row.
+        //    Build INSERT dynamically so the four (registrationId,
+        //    registeredAtIso) combinations all populate the columns
+        //    they know and leave the rest NULL — no need for four
+        //    separate literal statements.
+        std::vector<std::string> cols  = {"person_id", "la_program_id"};
+        std::vector<std::string> phs   = {"$1::int",   "$2::bigint"};
+        std::vector<std::string> vals  = {std::to_string(personId), std::to_string(programId)};
         if (registrationId > 0) {
-            db_->query(
-                "INSERT INTO person_la_memberships (person_id, la_program_id, la_registration_id) "
-                "VALUES ($1::int, $2::bigint, $3::bigint)",
-                {std::to_string(personId),
-                 std::to_string(programId),
-                 std::to_string(registrationId)});
-        } else {
-            db_->query(
-                "INSERT INTO person_la_memberships (person_id, la_program_id) "
-                "VALUES ($1::int, $2::bigint)",
-                {std::to_string(personId), std::to_string(programId)});
+            cols.push_back("la_registration_id");
+            phs.push_back("$" + std::to_string(vals.size() + 1) + "::bigint");
+            vals.push_back(std::to_string(registrationId));
         }
+        if (!registeredAtIso.empty()) {
+            cols.push_back("la_registered_at");
+            phs.push_back("$" + std::to_string(vals.size() + 1) + "::timestamptz");
+            vals.push_back(registeredAtIso);
+        }
+        std::string sql = "INSERT INTO person_la_memberships (";
+        for (size_t i = 0; i < cols.size(); ++i) { if (i) sql += ", "; sql += cols[i]; }
+        sql += ") VALUES (";
+        for (size_t i = 0; i < phs.size(); ++i)  { if (i) sql += ", "; sql += phs[i]; }
+        sql += ")";
+        db_->query(sql, vals);
     } catch (const std::exception& e) {
         std::cerr << "[PersonLinker::recordMembership] " << e.what()
                   << " (personId=" << personId << ", programId=" << programId

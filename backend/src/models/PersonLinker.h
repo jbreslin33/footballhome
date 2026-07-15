@@ -55,10 +55,23 @@ public:
     // pair — the same id that appears on transactions.  It is the correct
     // join key from `person_payments` back to a member for youth (whose
     // payer/`la_user_id` is the parent, not the child).  Pass 0 to skip.
+    //
+    // `registeredAtIso` is the LA-authoritative moment the person
+    // registered for this program (extracted from LA fields like
+    // registrationDate / dateRegistered / signupDate — see
+    // LaProgramSync::extractRegisteredIso).  Populated on INSERT and
+    // back-filled on the update-existing branch when the column is
+    // still NULL.  Never overwrites an existing non-NULL value (the
+    // BillingController manual backfill has the same rule).  Pass ""
+    // when unknown.  The projected-prorate math (billing-badge.js)
+    // silently returns $0 without it, so populating this from the
+    // primary sync path is what makes mid-cycle signups auto-prorate
+    // without an operator hitting /api/billing/la-reg-backfill.
     // Best-effort: logs + swallows on DB errors (does not throw).
     void recordMembership(int personId,
                           long long programId,
-                          long long registrationId = 0);
+                          long long registrationId = 0,
+                          const std::string& registeredAtIso = std::string());
 
     // End-of-sync sweep: for LA sub-program `programId`, close (set
     // ended_at = now()) every OPEN person_la_memberships row whose person

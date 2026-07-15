@@ -1,6 +1,8 @@
 #include "LaProgramSync.h"
 
 #include <cctype>
+#include <cstdio>
+#include <ctime>
 #include <iostream>
 
 #include "../models/PersonLinker.h"
@@ -48,6 +50,57 @@ long long extractRegistrationId(const nlohmann::json& rec) {
         catch (...) { return 0; }
     }
     return 0;
+}
+
+// Extract a plausible "registered at" ISO timestamp (UTC) from a raw LA
+// registration record.  LA payloads have carried the field under several
+// names depending on program vintage / API version; try the common
+// suspects in a defined priority order and normalise to ISO.
+//
+// KEEP IN SYNC with BillingController::extractRegisteredIso — that
+// endpoint (POST /api/billing/la-reg-backfill) does the same job for
+// pre-existing NULL rows; the two extractors must agree so the manual
+// backfill and this primary-path write always resolve to the same
+// value.  Returns "" when nothing matches (recordMembership then
+// leaves la_registered_at NULL, and projected-prorate silently shows
+// $0 as before).
+std::string extractRegisteredIso(const nlohmann::json& rec) {
+    static const char* kCandidates[] = {
+        "registrationDate",
+        "registrationCreatedAt",
+        "dateRegistered",
+        "signupDate",
+        "createdOn",
+        "dateCreated",
+        "created",
+        "lastUpdated",
+    };
+
+    for (const char* key : kCandidates) {
+        auto it = rec.find(key);
+        if (it == rec.end() || it->is_null()) continue;
+
+        if (it->is_number()) {
+            const double v = it->get<double>();
+            if (v < 1'000'000'000'000.0) continue;   // implausibly small for millis
+            const long long millis = static_cast<long long>(v);
+            const std::time_t secs = static_cast<std::time_t>(millis / 1000);
+            struct tm buf;
+            gmtime_r(&secs, &buf);
+            char out[32];
+            std::snprintf(out, sizeof(out),
+                          "%04d-%02d-%02dT%02d:%02d:%02dZ",
+                          buf.tm_year + 1900, buf.tm_mon + 1, buf.tm_mday,
+                          buf.tm_hour, buf.tm_min, buf.tm_sec);
+            return out;
+        }
+        if (it->is_string()) {
+            const std::string s = it->get<std::string>();
+            if (s.size() < 10) continue;
+            return s;   // Postgres TIMESTAMPTZ is forgiving with ISO strings.
+        }
+    }
+    return {};
 }
 
 } // namespace
@@ -130,7 +183,17 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                           << "] linkLa skipped userId=" << uid
                           << ": " << r.skipReason << std::endl;
             } else if (r.personId > 0 && isMember) {
-                linker.recordMembership(r.personId, programId, regId);
+                // Pull LA's authoritative registration timestamp so
+                // recordMembership can populate person_la_memberships
+                // .la_registered_at on INSERT (and backfill if NULL on
+                // update).  Without this, mid-cycle signups land with a
+                // NULL reg-date and billing-badge.projectedProrate
+                // returns $0 (tooltip: "no LA registration date on
+                // record") until an operator manually hits
+                // /api/billing/la-reg-backfill.  See PersonLinker.h
+                // recordMembership doc + billing-badge.js.
+                const std::string regIso = extractRegisteredIso(rec);
+                linker.recordMembership(r.personId, programId, regId, regIso);
             }
         } catch (const std::exception& e) {
             std::cerr << "[la-sync program=" << programId
