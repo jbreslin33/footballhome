@@ -116,8 +116,7 @@ std::unique_ptr<Match> makeBallMatch(std::uint64_t seed,
     cfg.seed     = seed;
     cfg.physics  = std::make_unique<StubPhysics>();
     BallSpawn spawn{pos, vel};
-    cfg.scenario = std::make_unique<BallOnPitchScenario>(
-        std::optional<BallSpawn>{spawn});
+    cfg.scenario = std::make_unique<BallOnPitchScenario>(spawn);
     cfg.clock    = std::make_unique<RealtimeClock>(20);
     return std::make_unique<Match>(std::move(cfg));
 }

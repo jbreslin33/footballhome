@@ -287,9 +287,15 @@ async function resolveSimJwt(matchId) {
 
     // Render loop ----------------------------------------------------------
     let raf = 0;
+    state.lastBall = null;
+    state.ballFrames = 0;
     const step = () => {
         const now = performance.now();
         const snap = interpolator.sample(now);
+        if (snap && snap.ball) {
+            state.lastBall = { x: snap.ball.posX, y: snap.ball.posY, owner: snap.ball.ownerSlot };
+            state.ballFrames++;
+        }
         const hudStatus = {
             matchId: state.matchId,
             slot:    state.slot,
@@ -334,6 +340,10 @@ async function resolveSimJwt(matchId) {
             me: state.myPos
                 ? state.myPos.x.toFixed(1) + ',' + state.myPos.y.toFixed(1) + ',0x' + state.myPos.flags.toString(16)
                 : 'null',
+            ball: state.lastBall
+                ? state.lastBall.x.toFixed(2) + ',' + state.lastBall.y.toFixed(2) + ',o=0x' + state.lastBall.owner.toString(16)
+                : 'null',
+            bframes: String(state.ballFrames),
         });
         // Fire-and-forget. Even a 404 is fine — we just need the URL logged.
         fetch('/_fh_diag?' + q.toString(), { cache: 'no-store' }).catch(() => {});

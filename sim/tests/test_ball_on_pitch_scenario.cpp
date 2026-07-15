@@ -27,8 +27,26 @@ FH_TEST(pitch_is_regulation) {
     FH_EXPECT_EQ(p.width_m,  Fixed64::fromInt(68));
 }
 
-FH_TEST(no_player_slots) {
+FH_TEST(default_ctor_spawns_one_slot_west_of_ball) {
+    // Interactive mode: SlotId{1} at (-5, 0) facing east so a claiming
+    // client walks toward the centre-spot ball and picks it up via
+    // BallControl first-touch.
     BallOnPitchScenario s;
+    const auto spawns = s.initialSpawns();
+    FH_EXPECT_EQ(spawns.size(), 1u);
+    FH_EXPECT(spawns[0].slot == fh::sim::SlotId{1});
+    FH_EXPECT_EQ(spawns[0].position.x, Fixed64::fromInt(-5));
+    FH_EXPECT_EQ(spawns[0].position.y, Fixed64::zero());
+    FH_EXPECT_EQ(spawns[0].heading,    Fixed64::zero());
+}
+
+FH_TEST(scripted_ctor_has_no_player_slots) {
+    // Scripted mode: preserves the Slice 15.6 golden by ensuring the
+    // RNG stream isn't perturbed by an interactive slot's WanderController.
+    BallSpawn spawn;
+    spawn.position = Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()};
+    spawn.velocity = Vec3{Fixed64::fromInt(20), Fixed64::zero(), Fixed64::zero()};
+    BallOnPitchScenario s(spawn);
     FH_EXPECT_EQ(s.initialSpawns().size(), 0u);
 }
 
