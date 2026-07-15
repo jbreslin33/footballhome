@@ -135,6 +135,12 @@ async function resolveSimJwt(matchId) {
     const stickCvs  = document.getElementById('sim-joystick');
     const sprintPad = document.getElementById('sim-sprint-pad');
     const statusEl  = document.getElementById('sim-status');
+    // Slice 25.3: gear + owns-ball HUD refs. Non-critical (page still
+    // works without them), so we don't bail from the required-elements
+    // guard below when they're missing. A stale sim.html without the
+    // new markup will just skip the HUD updates in the render loop.
+    const gearMotionEl = document.getElementById('sim-gear-motion');
+    const gearBallEl   = document.getElementById('sim-gear-ball');
 
     if (!canvas || !stickCvs || !sprintPad || !statusEl) {
         console.error('sim.html: required DOM elements missing');
@@ -320,6 +326,37 @@ async function resolveSimJwt(matchId) {
             parts.push('me=(' + state.myPos.x.toFixed(1) + ',' + state.myPos.y.toFixed(1) + ',f=0x' + state.myPos.flags.toString(16) + ')');
         }
         statusEl.textContent = parts.join(' | ');
+
+        // Slice 25.3: gear + owns-ball HUD. Reads the local player's
+        // MotionState from the entity list and ball ownership from the
+        // ball trailer. Purpose is playtest feedback for the Slice 25.2
+        // carry-speed hierarchy: SPRINT badge visible means the wire
+        // sprint bit is being honoured; BALL badge visible means the
+        // owner-cap branch of BallControl::fillOwnedFields is active,
+        // so a lit SPRINT+BALL together means the human is on the
+        // max_carry_sprint_speed × dribble_efficiency (5.1 m/s) branch.
+        if (gearMotionEl && state.slot != null && state.slot !== 0 && snap) {
+            const meEnt = snap.entities.find((e) => e.slotId === state.slot);
+            const motionCode = meEnt ? meEnt.motion : 0;
+            const MS = FhSimWire.MOTION_STATE;
+            let label = 'IDLE', cls = 'gear-idle';
+            switch (motionCode) {
+                case MS.WALK:   label = 'WALK';   cls = 'gear-walk';   break;
+                case MS.JOG:    label = 'JOG';    cls = 'gear-jog';    break;
+                case MS.SPRINT: label = 'SPRINT'; cls = 'gear-sprint'; break;
+                default:        label = 'IDLE';   cls = 'gear-idle';   break;
+            }
+            if (gearMotionEl.textContent !== label) gearMotionEl.textContent = label;
+            if (gearMotionEl.className   !== cls)   gearMotionEl.className   = cls;
+            if (gearBallEl) {
+                const ownerSlot = (snap.ball && snap.ball.ownerSlot != null)
+                    ? snap.ball.ownerSlot
+                    : FhSimWire.BALL_OWNER_LOOSE;
+                const owns = (ownerSlot === state.slot);
+                if (gearBallEl.hidden !== !owns) gearBallEl.hidden = !owns;
+            }
+        }
+
         raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);

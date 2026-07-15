@@ -17,6 +17,15 @@
     <canvas id="sim-canvas"   aria-label="pitch view"></canvas>
     <canvas id="sim-joystick" aria-label="virtual joystick"></canvas>
     <div id="sim-sprint-pad" role="button" aria-label="sprint">RUN</div>
+    <!-- Slice 25.3: gear + owns-ball indicator. Reads the local
+         human's MotionState and ball ownership every render frame.
+         Purpose is playtest feedback for the Slice 25.2 carry-speed
+         hierarchy: without a visible SPRINT/JOG/WALK label a human
+         tester can't tell whether the Shift bit is taking effect. -->
+    <div id="sim-gear" aria-live="polite" aria-label="gear indicator">
+        <span id="sim-gear-motion" class="gear-idle">IDLE</span>
+        <span id="sim-gear-ball" hidden>BALL</span>
+    </div>
     <a id="sim-back" href="/tactical-games.html" aria-label="back to Tactical Games">‹ Back</a>
     <div id="sim-status">connecting…</div>
 </div>

@@ -107,3 +107,36 @@ html, body {
     background: rgba(150, 30, 30, 0.85);
     color: #fff;
 }
+
+/* Slice 25.3: gear + owns-ball indicator. Top-right, above the sprint
+ * pad on touch, out of the way of the back link on the left. Each
+ * badge is a fixed-width monospace pill so a rapid flip between gears
+ * doesn't reflow neighbouring elements. Colours mirror the
+ * physiological effort of the gear: green (walk, easy), yellow (jog,
+ * default), orange (sprint, expensive). Blue for the ball badge is
+ * intentionally cool to contrast against the warm gear colours. */
+#sim-gear {
+    position: absolute;
+    right: max(8px, env(safe-area-inset-right));
+    top:   max(8px, env(safe-area-inset-top));
+    display: flex;
+    gap: 6px;
+    z-index: 3;
+    pointer-events: none;
+}
+#sim-gear span {
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 4px;
+    font: bold 12px monospace;
+    color: #fff;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    min-width: 44px;
+    text-align: center;
+}
+#sim-gear-motion.gear-idle   { background: rgba(70,  70,  70,  0.65); }
+#sim-gear-motion.gear-walk   { background: rgba(120, 180, 120, 0.80); }
+#sim-gear-motion.gear-jog    { background: rgba(255, 213, 74,  0.80); color: #111; text-shadow: none; }
+#sim-gear-motion.gear-sprint { background: rgba(240, 120, 60,  0.90); }
+#sim-gear-ball               { background: rgba(70,  130, 255, 0.90); }
