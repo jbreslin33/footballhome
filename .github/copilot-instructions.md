@@ -36,13 +36,33 @@ Before running commands or making changes, in this order:
 3. `sudo podman ps` — confirm what containers are running.
 4. Read the relevant existing file — do not overwrite unread files.
 
-### Membership Data Flow (STRICT — user directive)
-**Any view showing LeagueApps membership MUST follow: LA API → update DB → query DB → render. Never skip.**
-- On page load AND on every tab / chip / filter change, POST `/api/admin/membership/sync` FIRST (narrow scope where possible: `?variant=X&category=Y`), then GET `/api/admin/members`.
-- Client-side-only tab switching (filtering already-fetched groups) is BANNED for membership views.
-- A person is a member of an LA program **only** when their `registrationStatus` is one of: `SPOT_RESERVED`, `SPOT_PENDING`, `WAITING_LIST`. Every other status (DROPPED, CANCELED, DECLINED, REFUNDED, …) means NOT a member of that program.
-- After sync, `LaProgramSync` closes (`ended_at = now()`) any open `person_la_memberships` row for the synced program whose person is no longer in the LA-returned "still a member" set. DB after sync == LA console at sync time.
-- Rule of thumb: if you're rendering membership from `person_la_memberships` without a preceding LA sync in the same code path, you're wrong.
+### Membership Data Flow (STRICT — user directive, non-negotiable)
+
+**LeagueApps is the sole source of truth for who is a member. The database is a CACHE of LA, never the authority. If it disagrees with LA, LA wins.**
+
+**Every endpoint that renders anything derived from LA membership (rosters, member lists, pool, lineups, payments, RSVP eligibility, profile membership badges, everything) MUST do, in this order, on every request:**
+
+1. **LA API** — call `LaProgramSync::run(programId)` for every LA program the response depends on. This is the ONLY way membership state is allowed to enter the response path.
+2. **DB update** — `LaProgramSync` upserts persons/aliases/memberships and closes (`ended_at = now()`) any open `person_la_memberships` row whose person LA no longer returns as a member for that program.
+3. **DB query** — read the response payload from Postgres (typically `person_la_memberships` joined to `leagueapps_programs`). NEVER shape response cards from the in-memory LA response.
+4. **Render**.
+
+**A person is a member of an LA program only when `registrationStatus` is `SPOT_RESERVED`, `SPOT_PENDING`, or `WAITING_LIST`. Anything else (DROPPED, CANCELED, DECLINED, REFUNDED, …) means NOT a member.**
+
+**Two LA sub-programs per category (2026-07-14):**
+- `active` variant (e.g. `5039300` Men, `5039250` Women, `5039252` Boys, `5039251` Girls) = full **Members** roster.
+- `pickup` variant (e.g. `5070075` Men Pickup, `5064686` Women Pickup, `5064618` Boys Pickup, `5064662` Girls Pickup) = **Pickup Members** roster.
+- The two are populated independently on the LA console. A person can be in one, the other, both, or neither. The Members roster == active variant members; the Pickup roster == pickup variant members. **Do not filter one based on the presence of the other.** No "if in pickup, hide from Members" hacks. Ever.
+
+**BANNED patterns (all previously bit us):**
+- ❌ Shaping response objects from `LeagueAppsService::fetchProgramRegistrations` return value directly. (Read from DB after `LaProgramSync::run` instead.)
+- ❌ Any "if this person is in pickup, exclude them from members" DB filter, or the reverse. LA sub-group membership IS the filter.
+- ❌ Any in-memory cached LA snapshot on a controller/model singleton used to skip the LA fetch on subsequent requests. Fetch every request.
+- ❌ Client-side-only tab / chip / pill switching that filters an already-fetched payload without re-running the LA sync scoped to that tab.
+- ❌ Reading `person_la_memberships` without a preceding `LaProgramSync::run` in the same code path.
+- ❌ Trusting `is_pool`, `is_pickup`, `is_member`, or any DB-side boolean as the membership check. The check is always "does an open `person_la_memberships` row exist for `(person_id, la_program_id)` after LA sync?".
+
+**Rule of thumb:** if the code path that produced a response did not call `LaProgramSync::run` for every LA program that feeds it, the code is wrong. No exceptions for rosters, no exceptions for admin screens, no exceptions for "just a badge", no exceptions for "the sync job runs every 5 min anyway".
 
 ### Terminal Command Rules
 **User must see FULL, UNFILTERED output of every command you run — no exceptions.**

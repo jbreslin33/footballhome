@@ -20,6 +20,7 @@
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
 #include "../database/Database.h"
+#include "../services/LaProgramSync.h"
 #include "../services/LeagueAppsService.h"
 
 using nlohmann::json;
@@ -253,52 +254,37 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         return out;
     }
 
-    // ── LA registrant snapshot (cached) ──────────────────────────────
+    // ── LA registrant snapshot (via LaProgramSync — LA is source of truth) ─
     //
-    // Historically every GET /api/mens-roster hit LeagueApps twice
-    // (fetchProgramRegistrations + syncFromLa).  A transient LA 5xx
-    // would break the whole page — including the redraw after a
-    // move-player action, which does NOT need fresh LA data.  So we
-    // now keep an in-memory snapshot on the singleton model and only
-    // refetch when the caller explicitly asks for it (initial screen
-    // load or the "Refresh" button in the UI).
+    // STRICT RULE (see .github/copilot-instructions.md "Membership Data
+    // Flow" and /memories/repo/membership-source-of-truth.md):
+    // every request MUST call LaProgramSync::run(programId) so that
+    //   1) LA is fetched live,
+    //   2) persons + aliases + person_la_memberships are upserted, and
+    //   3) any open membership row for a person LA no longer returns is
+    //      closed (ended_at = now()).
+    // NO cached snapshot, NO direct fetchProgramRegistrations shortcut,
+    // NO cross-sub-program pickup exclusion (2026-07-14: removed after
+    // it silently dropped active members like Mars Milligan who were
+    // ALSO enrolled in the pickup sub-program).
+    //
+    // A transport failure surfaces as a 502 to the caller (via the
+    // controller's catch) — better a loud error than silently stale data.
+    (void)refreshLa;  // no-op: LaProgramSync always runs regardless
     std::vector<nlohmann::json> recs;
     {
-        std::lock_guard<std::mutex> lk(cacheMutex_);
-        // Source-of-truth rule (2026-07-09): LeagueApps is authoritative
-        // for membership.  Every /api/mens-roster load MUST hit LA live
-        // so a fresh signup (e.g. Mars Milligan today) shows up in
-        // Unassigned without waiting for the background LA-sync job.
-        // If LA errors out we degrade to the cached snapshot below.
-        (void)refreshLa;
-        const bool needFetch = true;
-        if (needFetch) {
-            try {
-                cachedRecs_ = LeagueAppsService::getInstance()
-                                  .fetchProgramRegistrations(mensProgramId_);
-                cacheValid_ = true;
-                // Payment sync piggy-backs on refresh so the cards reflect
-                // the freshest transactions when the operator clicks
-                // Refresh.  Sync failure is non-fatal.
-                try {
-                    payments_->syncFromLa();
-                } catch (const std::exception& e) {
-                    std::cerr << "[MensRoster] payment sync failed: "
-                              << e.what() << std::endl;
-                }
-            } catch (const std::exception& e) {
-                if (cacheValid_) {
-                    // Warm cache — degrade gracefully, log and reuse.
-                    std::cerr << "[MensRoster] LA refresh failed, serving "
-                                 "cached snapshot: " << e.what() << std::endl;
-                } else {
-                    // No cache yet — propagate to the controller which
-                    // will surface a 502 to the browser.
-                    throw;
-                }
-            }
-        }
-        recs = cachedRecs_;
+        LaProgramSync sync;
+        auto syncResult = sync.run(mensProgramId_);
+        recs = std::move(syncResult.recs);
+    }
+
+    // Payment sync piggy-backs on the load so the cards reflect the
+    // freshest transactions.  Non-fatal on failure (cards still render).
+    try {
+        payments_->syncFromLa();
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] payment sync failed: "
+                  << e.what() << std::endl;
     }
     auto lastPaidByReg = payments_->loadLastPositiveByProgramByRegistration(mensProgramId_);
     auto recentByReg   = payments_->loadRecentByProgramByRegistration(mensProgramId_, 3);
@@ -582,270 +568,44 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         return j;
     };
 
-    // ── Pickup exclusion (2026-07-09, universal rule) ────────────────
+    // ── Pickup exclusion REMOVED (2026-07-14) ────────────────────────
     //
-    // Owner directive 2026-07-09: "DO NOT SHOW ANYONE NOT IN LA
-    // member(not pickup) for boys girls women or men IN THE ROSSTERS IN
-    // ANY CATEGORY".  A person holding an active pickup-variant LA
-    // membership (5064618 boys / 5064662 girls / 5070075 mens /
-    // 5064686 womens) MUST NOT appear on any roster page — even if they
-    // ALSO hold an active non-pickup membership in the same category.
-    // Applied here for /api/mens-roster; the same filter is applied on
-    // /api/boys-roster and /api/youth-roster.
-    std::unordered_set<std::string> pickupUids;
-    try {
-        auto* db = Database::getInstance();
-        pqxx::result rows = db->query(
-            "SELECT DISTINCT epa.external_user_id AS uid "
-            "  FROM person_la_memberships plm "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = plm.person_id "
-            "   AND epa.provider  = 'leagueapps' "
-            "  JOIN leagueapps_programs lp "
-            "    ON lp.program_id = plm.la_program_id "
-            " WHERE plm.ended_at IS NULL "
-            "   AND lp.variant   = 'pickup' "
-            "   AND epa.external_user_id IS NOT NULL"
-        );
-        for (const auto& r : rows) {
-            if (!r["uid"].is_null()) pickupUids.insert(r["uid"].c_str());
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "[MensRoster] pickup exclusion load failed: "
-                  << e.what() << std::endl;
-    }
+    // The old "if user is in pickup-variant, drop them from roster"
+    // filter is BANNED (see copilot-instructions.md Membership Data
+    // Flow section).  Members vs Pickup are TWO INDEPENDENT LA sub-
+    // programs — a person can be in one, the other, both, or neither.
+    // Whether they appear on the Members roster is decided purely by
+    // whether LA returns them as an active member of the Members
+    // sub-program (5039300 for men) — which is exactly what `recs`
+    // (freshly synced above) already reflects.
 
     std::vector<json> all;
     all.reserve(recs.size());
     for (const auto& r : recs) {
         if (!isActive(r, includeAll)) continue;
-        json p = shapeMensPlayer(r);
-        const std::string u = userIdString(p.at("leagueAppsUserId"));
-        if (!u.empty() && pickupUids.count(u)) {
-            // Active pickup member — excluded universally.
-            continue;
-        }
-        all.push_back(std::move(p));
+        all.push_back(shapeMensPlayer(r));
     }
 
-    // ── Union in mens-team members NOT in the mens LA program (2026-07-07) ─
+    // ── Synthesis blocks REMOVED (2026-07-15) ────────────────────────
     //
-    // Adult League (team 122) and pickup-only members are registered
-    // only in OTHER LA programs (e.g. 5039252 "1897 Membership" or
-    // 5070075 "Men's Club Pickup Membership"), so they never appear in
-    // `recs` (the mens program 5039300 registrations).  Before
-    // migration 107 they were invisible on the mens board — the Adult
-    // column was permanently empty.  Now that assignmentMap comes from
-    // v_team_members, we synthesize minimal shapeMensPlayer rows from
-    // persons + external_person_aliases for any assigned uid missing
-    // from `all`.  LA-only fields (paymentStatus, outstandingBalance,
-    // registrationStatus, jersey*) are null on these rows; they render
-    // as no-payment-badge cards on the board.
-    std::unordered_map<std::string, long long> personIdByUid;  // fallback for personIdFor
-    {
-        std::unordered_set<std::string> haveUid;
-        haveUid.reserve(all.size());
-        for (const auto& p : all) {
-            const std::string u = userIdString(p.at("leagueAppsUserId"));
-            if (!u.empty()) haveUid.insert(u);
-        }
-        std::vector<std::string> missingUids;
-        missingUids.reserve(assignmentMap.size());
-        for (const auto& kv : assignmentMap) {
-            const std::string& uid = kv.first;
-            if (uid.empty() || haveUid.count(uid)) continue;
-            // Universal pickup exclusion — see rule above.
-            if (pickupUids.count(uid)) continue;
-            // Guard: uid must be all digits (comes from bigint column, but
-            // belt-and-suspenders since we splice it into a text[] literal).
-            bool ok = !uid.empty();
-            for (char c : uid) { if (c < '0' || c > '9') { ok = false; break; } }
-            if (ok) missingUids.push_back(uid);
-        }
-        if (!missingUids.empty()) {
-            try {
-                std::string arrLit = "{";
-                for (size_t i = 0; i < missingUids.size(); ++i) {
-                    if (i) arrLit += ",";
-                    arrLit += missingUids[i];
-                }
-                arrLit += "}";
-                auto* db = Database::getInstance();
-                pqxx::result rows = db->query(
-                    "SELECT epa.external_user_id AS uid, "
-                    "       p.id                 AS person_id, "
-                    "       p.first_name, p.last_name, "
-                    "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date_iso, "
-                    "       (SELECT email FROM person_emails "
-                    "         WHERE person_id = p.id "
-                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS email, "
-                    "       (SELECT phone_number FROM person_phones "
-                    "         WHERE person_id = p.id "
-                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone "
-                    "  FROM external_person_aliases epa "
-                    "  JOIN persons p ON p.id = epa.person_id "
-                    " WHERE epa.provider = 'leagueapps' "
-                    "   AND epa.external_user_id = ANY($1::text[])",
-                    {arrLit});
-                for (const auto& r : rows) {
-                    if (r["uid"].is_null()) continue;
-                    const std::string uid = r["uid"].c_str();
-                    json p = json::object();
-                    p["registrationId"] = nullptr;
-                    try { p["leagueAppsUserId"] = std::stoll(uid); }
-                    catch (...) { p["leagueAppsUserId"] = uid; }
-                    const std::string fn = r["first_name"].is_null() ? "" : r["first_name"].as<std::string>();
-                    const std::string ln = r["last_name"].is_null()  ? "" : r["last_name"].as<std::string>();
-                    p["firstName"] = fn;
-                    p["lastName"]  = ln;
-                    p["fullName"]  = trim(fn + " " + ln);
-                    if (!r["birth_date_iso"].is_null()) {
-                        const std::string bd = r["birth_date_iso"].as<std::string>();
-                        p["birthDate"] = bd;
-                        try { p["birthYear"] = std::stoi(bd.substr(0, 4)); }
-                        catch (...) { p["birthYear"] = nullptr; }
-                    } else {
-                        p["birthDate"] = nullptr;
-                        p["birthYear"] = nullptr;
-                    }
-                    p["gender"]             = "Male";
-                    p["email"]              = r["email"].is_null() ? json(nullptr) : json(r["email"].as<std::string>());
-                    p["phone"]              = r["phone"].is_null() ? json(nullptr) : json(r["phone"].as<std::string>());
-                    p["paymentStatus"]      = nullptr;
-                    p["outstandingBalance"] = 0;
-                    p["registrationStatus"] = nullptr;
-                    p["role"]               = nullptr;
-                    p["season"]             = nullptr;
-                    p["jerseyNumber"]       = nullptr;
-                    p["jerseySize"]         = nullptr;
-                    if (!r["person_id"].is_null()) {
-                        personIdByUid[uid] = r["person_id"].as<long long>();
-                    }
-                    all.push_back(std::move(p));
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "[MensRoster] union-in v_team_members query failed: "
-                          << e.what() << std::endl;
-            }
-        }
-    }
-
-    // ── Union in mens-program payers NOT yet in `all` (2026-07-09) ─
+    // Two "union in" blocks used to run here:
+    //   (1) v_team_members synthesis  — added anyone with a mens_team
+    //       assignment row who wasn't in the LA Members program.  This
+    //       pulled pickup-only members (LA program 5070075) onto the
+    //       Members roster because they had historical assignments.
+    //   (2) person_payments synthesis — added anyone who ever paid into
+    //       the mens program or the legacy umbrella (5005948).  Payment
+    //       is NOT membership; someone who paid the pickup program is
+    //       a pickup member, not a Members-roster member.
     //
-    // Owner directive 2026-07-09: "we need to always grab all members
-    // from LA and show them in rosters at least in unassigned
-    // initially ... we need to always on all loads do a check we have
-    // accounted for in roster page all la members".
-    //
-    // Belt-and-suspenders pass.  The two prior sources of players are:
-    //   (a) LA API registrations for the mens program → `recs` → `all`
-    //   (b) v_team_members mens-team assignments not in (a)      → `all`
-    //
-    // Both can miss someone.  Case (a) misses if the LA registrations
-    // endpoint is stale, paginated wrong, or the player registered in
-    // a related mens-payment program (5070075 pickup / 5005948 legacy
-    // umbrella / …) but not the primary program.  Case (b) misses if
-    // no coach has dragged them onto any mens team yet.  Anyone with
-    // a real mens-program payment (already loaded into `allPayByUser`
-    // above) is unambiguously a mens member and must render at least
-    // in Unassigned so the coach can see + place them.
-    //
-    // Synthesize a minimal row from persons + external_person_aliases,
-    // same shape as the v_team_members union.  If the LA user id has
-    // no FH alias yet, use the first_name/last_name captured on the
-    // person_payments row itself so the card still labels correctly.
-    {
-        std::unordered_set<std::string> haveUid;
-        haveUid.reserve(all.size());
-        for (const auto& p : all) {
-            const std::string u = userIdString(p.at("leagueAppsUserId"));
-            if (!u.empty()) haveUid.insert(u);
-        }
-        std::vector<std::string> missingUids;
-        missingUids.reserve(allPayByUser.size());
-        for (const auto& kv : allPayByUser) {
-            const std::string uid = std::to_string(kv.first);
-            if (uid.empty() || haveUid.count(uid)) continue;
-            // Universal pickup exclusion — see rule above.
-            if (pickupUids.count(uid)) continue;
-            missingUids.push_back(uid);
-        }
-        if (!missingUids.empty()) {
-            try {
-                std::string arrLit = "{";
-                for (size_t i = 0; i < missingUids.size(); ++i) {
-                    if (i) arrLit += ",";
-                    arrLit += missingUids[i];
-                }
-                arrLit += "}";
-                auto* db = Database::getInstance();
-                // Left-join persons via alias so we still get a row for
-                // LA users with no FH alias yet (fall back to name /
-                // email captured on person_payments itself).
-                pqxx::result rows = db->query(
-                    "SELECT pp.la_user_id::text AS uid, "
-                    "       p.id                AS person_id, "
-                    "       COALESCE(p.first_name, pp.first_name) AS first_name, "
-                    "       COALESCE(p.last_name,  pp.last_name)  AS last_name, "
-                    "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date_iso, "
-                    "       (SELECT email FROM person_emails "
-                    "         WHERE person_id = p.id "
-                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS email, "
-                    "       (SELECT phone_number FROM person_phones "
-                    "         WHERE person_id = p.id "
-                    "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone "
-                    "  FROM (SELECT DISTINCT ON (la_user_id) "
-                    "               la_user_id, first_name, last_name "
-                    "          FROM person_payments "
-                    "         WHERE la_user_id::text = ANY($1::text[]) "
-                    "         ORDER BY la_user_id, paid_at DESC) pp "
-                    "  LEFT JOIN external_person_aliases epa "
-                    "    ON epa.provider = 'leagueapps' "
-                    "   AND epa.external_user_id = pp.la_user_id::text "
-                    "  LEFT JOIN persons p ON p.id = epa.person_id",
-                    {arrLit});
-                for (const auto& r : rows) {
-                    if (r["uid"].is_null()) continue;
-                    const std::string uid = r["uid"].c_str();
-                    json p = json::object();
-                    p["registrationId"] = nullptr;
-                    try { p["leagueAppsUserId"] = std::stoll(uid); }
-                    catch (...) { p["leagueAppsUserId"] = uid; }
-                    const std::string fn = r["first_name"].is_null() ? "" : r["first_name"].as<std::string>();
-                    const std::string ln = r["last_name"].is_null()  ? "" : r["last_name"].as<std::string>();
-                    p["firstName"] = fn;
-                    p["lastName"]  = ln;
-                    p["fullName"]  = trim(fn + " " + ln);
-                    if (!r["birth_date_iso"].is_null()) {
-                        const std::string bd = r["birth_date_iso"].as<std::string>();
-                        p["birthDate"] = bd;
-                        try { p["birthYear"] = std::stoi(bd.substr(0, 4)); }
-                        catch (...) { p["birthYear"] = nullptr; }
-                    } else {
-                        p["birthDate"] = nullptr;
-                        p["birthYear"] = nullptr;
-                    }
-                    p["gender"]             = "Male";
-                    p["email"]              = r["email"].is_null() ? json(nullptr) : json(r["email"].as<std::string>());
-                    p["phone"]              = r["phone"].is_null() ? json(nullptr) : json(r["phone"].as<std::string>());
-                    p["paymentStatus"]      = nullptr;
-                    p["outstandingBalance"] = 0;
-                    p["registrationStatus"] = nullptr;
-                    p["role"]               = nullptr;
-                    p["season"]             = nullptr;
-                    p["jerseyNumber"]       = nullptr;
-                    p["jerseySize"]         = nullptr;
-                    if (!r["person_id"].is_null()) {
-                        personIdByUid[uid] = r["person_id"].as<long long>();
-                    }
-                    all.push_back(std::move(p));
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "[MensRoster] union-in person_payments query failed: "
-                          << e.what() << std::endl;
-            }
-        }
-    }
+    // Both violated the Membership Data Flow rule (see copilot-
+    // instructions.md): the ONLY thing that makes a person a Members-
+    // roster member is presence in the Members LA sub-program on the
+    // LA console.  If someone isn't there, they don't render here.
+    // `recs` (from LaProgramSync::run(mensProgramId_)) is the sole
+    // truth.  Adult League / pickup-only members belong on the Pickup
+    // Members roster (their own sub-program), not this one.
+    std::unordered_map<std::string, long long> personIdByUid;  // fallback for personIdFor (empty by design)
 
     // ── Delinquency computation (2026-07-04) ─────────────────────────
     // Reads DUES_OWED_HOLD_DAYS (default 7).  For each active player:

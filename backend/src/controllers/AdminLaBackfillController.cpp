@@ -473,6 +473,26 @@ static Response respondMembers(const std::string& variant,
             "         pph.person_id, pph.phone_number, pph.can_receive_sms, pph.can_receive_calls "
             "    FROM person_phones pph "
             "   ORDER BY pph.person_id, pph.is_primary DESC NULLS LAST, pph.created_at DESC NULLS LAST, pph.id DESC "
+            "), pickup_membership AS ( "
+            // (person, category) pairs that currently hold an open
+            // pickup-variant LA membership.  Used to derive `has_pickup`
+            // on every "active" row so the Members screen can flag
+            // "active member NOT enrolled in pickup" — the manual
+            // LA-console copy workflow the admin does by hand.
+            "  SELECT DISTINCT plm2.person_id, lp2.category "
+            "    FROM person_la_memberships plm2 "
+            "    JOIN leagueapps_programs lp2 ON lp2.program_id = plm2.la_program_id "
+            "   WHERE plm2.ended_at IS NULL AND lp2.variant = 'pickup' "
+            "), active_membership AS ( "
+            // Symmetric to pickup_membership: (person, category) pairs
+            // that currently hold an open active-variant LA membership.
+            // Used to derive `has_active` — shown on pickup-variant
+            // cards so the admin can see at a glance whether a pickup
+            // member is ALSO a full club member.
+            "  SELECT DISTINCT plm3.person_id, lp3.category "
+            "    FROM person_la_memberships plm3 "
+            "    JOIN leagueapps_programs lp3 ON lp3.program_id = plm3.la_program_id "
+            "   WHERE plm3.ended_at IS NULL AND lp3.variant = 'active' "
             ") "
             // Youth (boys/girls) rarely have their own contact info —
             // parent-managed LA imports put email/phone on the parent
@@ -513,7 +533,17 @@ static Response respondMembers(const std::string& variant,
             "       CASE WHEN u.last_seen_at IS NULL THEN NULL "
             "            ELSE GREATEST(0, "
             "                 EXTRACT(EPOCH FROM (NOW() - u.last_seen_at))::bigint / 86400) "
-            "       END AS days_since_activity "
+            "       END AS days_since_activity, "
+            // has_pickup: does this person hold an OPEN pickup-variant
+            // membership in the same category as the current row?  On
+            // active-variant rows this powers the "missing pickup"
+            // flag on the Members screen.  On pickup-variant rows it's
+            // trivially true (self-match) — frontend ignores the field
+            // outside the active tab.
+            "       (pkm.person_id IS NOT NULL) AS has_pickup, "
+            // has_active: symmetric — powers the "in club too" chip
+            // on pickup-variant cards.
+            "       (acm.person_id IS NOT NULL) AS has_active "
             "  FROM person_la_memberships plm "
             "  JOIN leagueapps_programs lp     ON lp.program_id = plm.la_program_id "
             "  JOIN persons pe                 ON pe.id         = plm.person_id "
@@ -529,6 +559,8 @@ static Response respondMembers(const std::string& variant,
             "        AND epa.external_user_id IS NOT NULL "
             "        AND epa.external_user_id <> '' "
             "  LEFT JOIN users u               ON u.person_id   = pe.id "
+            "  LEFT JOIN pickup_membership pkm ON pkm.person_id = pe.id AND pkm.category = lp.category "
+            "  LEFT JOIN active_membership acm ON acm.person_id = pe.id AND acm.category = lp.category "
             " WHERE plm.ended_at IS NULL "
             "   AND ($1 = '' OR lp.variant  = $1) "
             "   AND ($2 = '' OR lp.category = $2) "
@@ -614,6 +646,8 @@ static Response respondMembers(const std::string& variant,
             const std::string joinedAt  = row["joined_at"].is_null() ? "" : row["joined_at"].c_str();
             const std::string laUserId  = row["leagueapps_user_id"].is_null() ? "" : row["leagueapps_user_id"].c_str();
             const bool        hasAccount  = !row["has_fh_account"].is_null() && row["has_fh_account"].as<bool>();
+            const bool        hasPickup   = !row["has_pickup"].is_null()     && row["has_pickup"].as<bool>();
+            const bool        hasActive   = !row["has_active"].is_null()     && row["has_active"].as<bool>();
             // `days_since_activity` is NULL when the user has never made
             // an authenticated request (or has no FH account at all).
             // We surface it as JSON `null` so the frontend can render a
@@ -639,6 +673,8 @@ static Response respondMembers(const std::string& variant,
                 << ",\"joined_at\":"         << jsonEscape(joinedAt)
                 << ",\"leagueapps_user_id\":" << (laUserId.empty() ? std::string("null") : jsonEscape(laUserId))
                 << ",\"has_fh_account\":"    << (hasAccount ? "true" : "false")
+                << ",\"has_pickup\":"        << (hasPickup ? "true" : "false")
+                << ",\"has_active\":"        << (hasActive ? "true" : "false")
                 << ",\"days_since_activity\":" << daysStr
                 << "}";
         }

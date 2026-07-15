@@ -14,6 +14,7 @@
 #include "PersonBilling.h"
 #include "PersonPayments.h"
 #include "YouthAgeGroups.h"
+#include "../services/LaProgramSync.h"
 #include "../services/LeagueAppsService.h"
 #include "../database/Database.h"
 
@@ -215,8 +216,26 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
         return out;
     }
 
-    auto boysRecs  = LeagueAppsService::getInstance().fetchProgramRegistrations(boysProgramId_);
-    auto girlsRecs = LeagueAppsService::getInstance().fetchProgramRegistrations(girlsProgramId_);
+    // ── LA registrant snapshots (via LaProgramSync — LA is source of truth) ─
+    //
+    // STRICT RULE (see .github/copilot-instructions.md "Membership Data
+    // Flow" and /memories/repo/membership-source-of-truth.md): every
+    // request MUST call LaProgramSync::run(programId) for every LA
+    // program feeding the response.  That call fetches LA live, upserts
+    // persons/aliases/memberships, and closes any open membership row
+    // LA no longer returns.  NO direct fetchProgramRegistrations, NO
+    // cross-sub-program pickup filters.
+    std::vector<json> boysRecs, girlsRecs;
+    {
+        LaProgramSync sync;
+        auto boysSync = sync.run(boysProgramId_);
+        boysRecs = std::move(boysSync.recs);
+    }
+    {
+        LaProgramSync sync;
+        auto girlsSync = sync.run(girlsProgramId_);
+        girlsRecs = std::move(girlsSync.recs);
+    }
 
     // Sync new LA transactions into person_payments (see MensRoster.cpp
     // for rationale).  Non-fatal on failure.
@@ -230,44 +249,24 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
     auto boysRecent    = payments_->loadRecentByProgramByRegistration(boysProgramId_, 3);
     auto girlsRecent   = payments_->loadRecentByProgramByRegistration(girlsProgramId_, 3);
 
-    // ── Pickup exclusion (2026-07-09, universal rule) ────────────────
-    // Owner directive: pickup-variant LA members never appear on any
-    // roster page.  Set of LA user ids that hold an active pickup
-    // membership in any category (boys/girls/mens/womens).
-    std::unordered_set<std::string> pickupUids;
-    try {
-        auto* db = Database::getInstance();
-        pqxx::result rows = db->query(
-            "SELECT DISTINCT epa.external_user_id AS uid "
-            "  FROM person_la_memberships plm "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = plm.person_id "
-            "   AND epa.provider  = 'leagueapps' "
-            "  JOIN leagueapps_programs lp "
-            "    ON lp.program_id = plm.la_program_id "
-            " WHERE plm.ended_at IS NULL "
-            "   AND lp.variant   = 'pickup' "
-            "   AND epa.external_user_id IS NOT NULL"
-        );
-        for (const auto& r : rows) {
-            if (!r["uid"].is_null()) pickupUids.insert(r["uid"].c_str());
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "[YouthRoster] pickup exclusion load failed: "
-                  << e.what() << std::endl;
-    }
-    auto notPickup = [&](const json& rec) -> bool {
-        const std::string u = userIdString(optUserId(rec));
-        return u.empty() || !pickupUids.count(u);
-    };
+    // ── Pickup exclusion REMOVED (2026-07-14) ────────────────────────
+    //
+    // The old "if user is in pickup-variant, drop them from roster"
+    // filter is BANNED (see copilot-instructions.md Membership Data
+    // Flow section).  Members vs Pickup are TWO INDEPENDENT LA sub-
+    // programs — a person can be in one, the other, both, or neither.
+    // Whether they appear on this Members roster is decided purely by
+    // whether LA returns them as an active member of the Members
+    // sub-program (5039252 boys / 5039357 girls) — which is exactly
+    // what `boysRecs` / `girlsRecs` (freshly synced above) reflect.
 
     std::vector<json> shapedAll;
     shapedAll.reserve(boysRecs.size() + girlsRecs.size());
     for (const auto& r : boysRecs)
-        if (isActive(r, includeAll) && notPickup(r))
+        if (isActive(r, includeAll))
             shapedAll.push_back(shapeYouthPlayer(r, "boys"));
     for (const auto& r : girlsRecs)
-        if (isActive(r, includeAll) && notPickup(r))
+        if (isActive(r, includeAll))
             shapedAll.push_back(shapeYouthPlayer(r, "girls"));
 
     auto billingMap = billing_->loadAll();

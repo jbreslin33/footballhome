@@ -1130,8 +1130,9 @@ class MembersScreen extends Screen {
       const count = members.length;
       // Verb used in the "since" line — per-group so "Pickup since" only
       // appears for pickup-variant sub-programs.
-      const sinceLabel = (String(g.variant || '').toLowerCase() === 'pickup') ? 'Pickup since' : 'Joined';
-      const cards = members.map(m => this._renderCard(m, sinceLabel)).join('');
+      const groupVariant = String(g.variant || '').toLowerCase();
+      const sinceLabel = (groupVariant === 'pickup') ? 'Pickup since' : 'Joined';
+      const cards = members.map(m => this._renderCard(m, sinceLabel, groupVariant)).join('');
 
       // Skip empty groups when filtering.
       if (filter && count === 0) return '';
@@ -1155,7 +1156,7 @@ class MembersScreen extends Screen {
     groupsEl.innerHTML = html || `<div style="opacity:0.6; text-align:center; padding: var(--space-4);">No matches.</div>`;
   }
 
-  _renderCard(m, sinceLabel) {
+  _renderCard(m, sinceLabel, groupVariant) {
     const name  = `${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)';
     const email = m.email || '';
     const phone = m.phone || '';
@@ -1165,6 +1166,12 @@ class MembersScreen extends Screen {
     // Dormancy chip — sits right under the name so it's the first
     // thing an admin scans.  See `_activityChip` for the color bands.
     const activityChip = this._activityChip(m);
+    // Cross-membership chip — flags whether the person is ALSO
+    // enrolled in the sibling program (pickup ↔ active) within the
+    // same category (men / women / boys / girls).  Admin manually
+    // copies active members into pickup on the LA console; this chip
+    // is the visual signal for who still needs that copy.
+    const crossChip = this._crossMembershipChip(m, groupVariant);
     // "Next step" widget — sends the right onboarding message for the
     // person's current state (no account / never logged in / done).
     // See `_onboardingSection` for the copy per state.
@@ -1268,6 +1275,7 @@ class MembersScreen extends Screen {
             ${m.leagueapps_user_id ? 'cursor:pointer;' : ''}">
         <div style="font-weight:600;">${this._esc(name)}</div>
         ${activityChip}
+        ${crossChip}
         ${onboardingSection}
         ${dobLine}
         ${emailLine}
@@ -1396,6 +1404,42 @@ class MembersScreen extends Screen {
         ${noContactHint}
       </div>
     `;
+  }
+
+  // ── Cross-membership chip ────────────────────────────────────────
+  // Shown right under the activity chip.  Answers "is this person
+  // ALSO enrolled in the sibling program in the same category?".
+  //
+  //   Group variant    Chip when has_pickup=true     Chip when false
+  //   active           ✓ Also in Pickup (green)      ⚠ Not in Pickup (amber)
+  //
+  //   Group variant    Chip when has_active=true     Chip when false
+  //   pickup           ✓ Also in Club (green)        Pickup only (grey)
+  //
+  // The amber "Not in Pickup" is the primary actionable state — admin
+  // needs to manually add the person on the LA console.  Everything
+  // else is informational.  Missing fields (older API payloads) →
+  // no chip at all so nothing regresses.
+  _crossMembershipChip(m, groupVariant) {
+    const chip = (bg, fg, border, text) =>
+      `<div style="display:inline-flex; align-items:center; gap:4px;
+                   align-self:flex-start; padding:2px 8px; border-radius:999px;
+                   font-size:0.7rem; font-weight:700;
+                   background:${bg}; color:${fg}; border:1px solid ${border};">${text}</div>`;
+    const variant = String(groupVariant || '').toLowerCase();
+    if (variant === 'active') {
+      if (typeof m.has_pickup !== 'boolean') return '';
+      return m.has_pickup
+        ? chip('#0b3a2e', '#a7f3d0', '#10b981', '✓ Also in Pickup')
+        : chip('#3a2e05', '#fde68a', '#d97706', '⚠ Not in Pickup');
+    }
+    if (variant === 'pickup') {
+      if (typeof m.has_active !== 'boolean') return '';
+      return m.has_active
+        ? chip('#0b3a2e', '#a7f3d0', '#10b981', '✓ Also in Club')
+        : chip('#1f2937', '#9ca3af', '#374151', 'Pickup only');
+    }
+    return '';
   }
 
   // ── Activity chip ────────────────────────────────────────────────

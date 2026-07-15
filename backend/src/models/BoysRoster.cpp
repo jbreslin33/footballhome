@@ -17,6 +17,7 @@
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
 #include "../database/Database.h"
+#include "../services/LaProgramSync.h"
 #include "../services/LeagueAppsService.h"
 
 using nlohmann::json;
@@ -229,33 +230,26 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
         return out;
     }
 
-    // ── LA registrant snapshots (boys + girls, cached) ───────────────
+    // ── LA registrant snapshots (via LaProgramSync — LA is source of truth) ─
+    //
+    // STRICT RULE (see .github/copilot-instructions.md "Membership Data
+    // Flow" and /memories/repo/membership-source-of-truth.md): every
+    // request MUST call LaProgramSync::run(programId) for every LA
+    // program feeding the response.  That call fetches LA live, upserts
+    // persons/aliases/memberships, and closes any open membership row
+    // LA no longer returns.  NO cached snapshot, NO direct
+    // fetchProgramRegistrations, NO cross-sub-program pickup filters.
+    (void)refreshLa;  // no-op: LaProgramSync always runs regardless
     std::vector<json> boysRecs, girlsRecs;
     {
-        std::lock_guard<std::mutex> lk(cacheMutex_);
-        // Source-of-truth rule (2026-07-09): LA is authoritative for
-        // membership — every load hits LA live so a brand-new signup
-        // shows in Unassigned immediately.  Cache is fallback on error.
-        (void)refreshLa;
-        const bool needFetch = true;
-        if (needFetch) {
-            try {
-                cachedBoys_ = LeagueAppsService::getInstance()
-                                  .fetchProgramRegistrations(boysProgramId_);
-                cachedGirls_ = LeagueAppsService::getInstance()
-                                   .fetchProgramRegistrations(girlsProgramId_);
-                cacheValid_ = true;
-            } catch (const std::exception& e) {
-                if (cacheValid_) {
-                    std::cerr << "[BoysRoster] LA refresh failed, serving cached snapshot: "
-                              << e.what() << std::endl;
-                } else {
-                    throw;
-                }
-            }
-        }
-        boysRecs  = cachedBoys_;
-        girlsRecs = cachedGirls_;
+        LaProgramSync sync;
+        auto boysSync  = sync.run(boysProgramId_);
+        boysRecs = std::move(boysSync.recs);
+    }
+    {
+        LaProgramSync sync;
+        auto girlsSync = sync.run(girlsProgramId_);
+        girlsRecs = std::move(girlsSync.recs);
     }
 
     // ── Payments sync + 3-month window load (2026-07-05) ─────────────
@@ -500,46 +494,24 @@ BoysRoster::Result BoysRoster::run(bool includeAll, bool refreshLa) {
 
     const int seasonEndYear = defaultSeasonEndYear();
 
-    // ── Pickup exclusion (2026-07-09, universal rule) ────────────────
+    // ── Pickup exclusion REMOVED (2026-07-14) ────────────────────────
     //
-    // Owner directive: "DO NOT SHOW ANYONE NOT IN LA member(not pickup)
-    // for boys girls women or men IN THE ROSSTERS IN ANY CATEGORY".
-    // Applied here on /api/boys-roster.  Same filter lives on the mens
-    // and youth (women) endpoints.
-    std::unordered_set<std::string> pickupUids;
-    try {
-        auto* db = Database::getInstance();
-        pqxx::result rows = db->query(
-            "SELECT DISTINCT epa.external_user_id AS uid "
-            "  FROM person_la_memberships plm "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = plm.person_id "
-            "   AND epa.provider  = 'leagueapps' "
-            "  JOIN leagueapps_programs lp "
-            "    ON lp.program_id = plm.la_program_id "
-            " WHERE plm.ended_at IS NULL "
-            "   AND lp.variant   = 'pickup' "
-            "   AND epa.external_user_id IS NOT NULL"
-        );
-        for (const auto& r : rows) {
-            if (!r["uid"].is_null()) pickupUids.insert(r["uid"].c_str());
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "[BoysRoster] pickup exclusion load failed: "
-                  << e.what() << std::endl;
-    }
-    auto notPickup = [&](const json& rec) -> bool {
-        const std::string u = userIdString(optUserId(rec));
-        return u.empty() || !pickupUids.count(u);
-    };
+    // The old "if user is in pickup-variant, drop them from roster"
+    // filter is BANNED (see copilot-instructions.md Membership Data
+    // Flow section).  Members vs Pickup are TWO INDEPENDENT LA sub-
+    // programs — a person can be in one, the other, both, or neither.
+    // Whether they appear on this Members roster is decided purely by
+    // whether LA returns them as an active member of the Members
+    // sub-program (5039252 boys / 5039357 girls) — which is exactly
+    // what `boysRecs` / `girlsRecs` (freshly synced above) reflect.
 
     std::vector<json> all;
     all.reserve(boysRecs.size() + girlsRecs.size());
     for (const auto& r : boysRecs)
-        if (isActive(r, includeAll) && notPickup(r))
+        if (isActive(r, includeAll))
             all.push_back(shapePlayer(r, "boys",  seasonEndYear));
     for (const auto& r : girlsRecs)
-        if (isActive(r, includeAll) && notPickup(r))
+        if (isActive(r, includeAll))
             all.push_back(shapePlayer(r, "girls", seasonEndYear));
 
     // ── Bucket per column (keyed by teamId-as-string) ────────────────
