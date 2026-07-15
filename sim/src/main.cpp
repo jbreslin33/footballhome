@@ -108,17 +108,16 @@ public:
         cv_.notify_all();
         return true;
     }
-    // Called by the main thread. Blocks until assign() succeeds.
-    // Never returns nullopt in the current wiring — the gate has no
-    // shutdown path yet (SIGTERM during the wait will kill the
-    // process outright; wiring a signal-driven wake-up path lands
-    // with sub-slice B alongside the runMatch() lambda refactor).
-    MatchAssignment waitForAssign()
-    {
-        std::unique_lock<std::mutex> lock(mu_);
-        cv_.wait(lock, [this]{ return assigned_.has_value(); });
-        return *assigned_;
-    }
+    // Called by the main thread. Blocks until either (a) assign()
+    // succeeds (returns the assignment) or (b) g_shutdown_requested
+    // becomes true (returns nullopt). Polls the shutdown flag every
+    // 100 ms because condition variables cannot be safely notified
+    // from an async signal handler (::pthread_mutex_lock is not
+    // async-signal-safe) — the handler just sets the atomic and this
+    // wait period observes it. 100 ms is a compromise between idle
+    // CPU (~10 wakeups/s per warm daemon) and observed SIGTERM
+    // shutdown latency; well below the 10 s podman-stop grace window.
+    std::optional<MatchAssignment> waitForAssign();
 private:
     std::mutex                     mu_;
     std::condition_variable        cv_;
@@ -137,10 +136,41 @@ AssignmentGate g_assignment_gate;
 // placeholder body and never touches this value.
 std::atomic<std::uint64_t> g_current_match_id{0};
 
+// §21.7 item 1 step 4B: signal-driven shutdown flag for the pre-
+// server-run boot windows (specifically the warm-boot gate wait).
+// std::atomic<bool> is guaranteed lock-free on every target platform,
+// so an atomic store is async-signal-safe — the extended handleSignal
+// below sets it from signal context, and AssignmentGate::waitForAssign
+// observes it via a 100 ms cv_.wait_for polling loop. The env-set path
+// never reaches waitForAssign so this flag is irrelevant to it; that
+// path continues to rely on the sigaction installed just before
+// server.run() to catch SIGTERM.
+std::atomic<bool> g_shutdown_requested{false};
+
 extern "C" void handleSignal(int /*sig*/) noexcept
 {
+    // §21.7 item 1 step 4B: also flag warm-boot shutdown so any pre-
+    // server-run wait (currently: AssignmentGate::waitForAssign) can
+    // observe and unblock cleanly. Setting the atomic is safe from
+    // async signal context; taking the gate's mutex to notify_all
+    // would not be, hence the polling loop on the wait side.
+    g_shutdown_requested.store(true, std::memory_order_relaxed);
     auto* srv = g_server.load(std::memory_order_relaxed);
     if (srv != nullptr) { srv->stop(); }
+}
+
+// Namespace-scope out-of-line definition (declaration inside
+// AssignmentGate above). Uses g_shutdown_requested defined just above.
+std::optional<MatchAssignment> AssignmentGate::waitForAssign()
+{
+    std::unique_lock<std::mutex> lock(mu_);
+    for (;;) {
+        if (assigned_.has_value()) { return *assigned_; }
+        if (g_shutdown_requested.load(std::memory_order_relaxed)) {
+            return std::nullopt;
+        }
+        cv_.wait_for(lock, std::chrono::milliseconds(100));
+    }
 }
 
 const char* envOr(const char* name, const char* fallback) noexcept
@@ -413,12 +443,39 @@ int main(int /*argc*/, char** /*argv*/)
     // flow straight through — byte-identical to pre-4A behaviour.
     // ------------------------------------------------------------------
     if (admin_enabled && !sim_match_id_env_set) {
+        // §21.7 item 1 step 4B: arm SIGINT/SIGTERM before the wait so
+        // an orchestrator retiring an idle warm daemon (e.g. pool
+        // shrink, host drain) can shut down cleanly instead of
+        // relying on SIGKILL. The env-set path continues to install
+        // sigaction just before server.run() further below — that
+        // install is idempotent, so re-running it in the env-unset
+        // path here is a harmless no-op re-registration.
+        struct sigaction sa{};
+        sa.sa_handler = handleSignal;
+        ::sigemptyset(&sa.sa_mask);
+        sa.sa_flags   = 0;
+        ::sigaction(SIGINT,  &sa, nullptr);
+        ::sigaction(SIGTERM, &sa, nullptr);
+
         std::fprintf(stderr,
                      "footballhome_sim: SIM_MATCH_ID unset — waiting for "
                      "POST /admin/assign_match on admin port %u...\n",
                      static_cast<unsigned>(
                          parsePort(envOr("SIM_ADMIN_PORT", "9101"))));
-        const auto a = g_assignment_gate.waitForAssign();
+        const auto maybe_a = g_assignment_gate.waitForAssign();
+        if (!maybe_a.has_value()) {
+            // Shutdown signal beat the assignment. Tear down the admin
+            // server (idempotent no-op if never started) and exit 0 —
+            // no match was ever taken, so there is nothing DB-side to
+            // finalise (no upsertMatch happened, no MatchStart event
+            // was written, no WS transport was bound).
+            std::fprintf(stderr,
+                         "footballhome_sim: shutdown requested before "
+                         "assignment — exiting cleanly\n");
+            if (admin_server) { admin_server->stop(); }
+            return 0;
+        }
+        const auto& a = *maybe_a;
         match_id    = a.match_id;
         seed        = a.seed;
         scenario_id = a.scenario_id;
