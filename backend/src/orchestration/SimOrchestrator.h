@@ -104,6 +104,44 @@ struct StopResult {
     std::string error;                // non-empty iff !ok
 };
 
+// §21.7 item 1 step 5B (2026-07-15) — inputs to postAssignMatch.
+//
+// container_name is the sim daemon's compose-network hostname (the same
+// string returned in LaunchResult::container_name from spawnWarm — e.g.
+// "footballhome_sim_warm_7"). Backend uses TCP+DNS (aardvark-dns on the
+// compose bridge) to reach the daemon's admin port 9101, NOT the podman
+// unix socket. This is the ONE orchestrator verb that talks to a sim
+// daemon directly rather than to podman.
+//
+// match_id / seed / scenario_id are the payload for the sim's
+// AssignmentGate (see sim/src/main.cpp step 4A landing). match_id must
+// be > 0 (sim rejects 0); seed accepts 0 (sim treats as fallback);
+// scenario_id must fit i16 non-negative range (0..32767) per the sim's
+// parseAssignMatchJson bounds check.
+struct AssignOptions {
+    std::string container_name; // required, non-empty (sim admin hostname)
+    long long   match_id = 0;   // required, > 0
+    long long   seed     = 0;   // required (0 legal)
+    int         scenario_id = 0; // 0..32767
+};
+
+// §21.7 item 1 step 5B (2026-07-15) — outputs from postAssignMatch.
+//
+// ok=true                    ⇒ sim returned HTTP 200 with {"assigned":true,...},
+//                              hot phase is engaging (registries load →
+//                              upsertMatch → WS bind → SimServer::run).
+// ok=false, already_assigned ⇒ sim returned HTTP 409 (gate was already
+//                              consumed by a prior assign). Pool must NOT
+//                              reuse this daemon — retire it and refill.
+// ok=false, other            ⇒ transport error, HTTP 4xx/5xx, malformed
+//                              response, or missing FH_SIM_ADMIN_TOKEN.
+//                              error contains the diagnostic detail.
+struct AssignResult {
+    bool        ok = false;
+    bool        already_assigned = false;
+    std::string error;   // non-empty iff !ok
+};
+
 class SimOrchestrator {
 public:
     // `http` is borrowed — the caller (HttpServer in main.cpp) owns the
@@ -144,9 +182,14 @@ public:
     // Same two-step podman create+start as launchMatch, differing only in:
     //   - Container name: `footballhome_sim_warm_${warm_id}` — namespaced
     //     to avoid colliding with launchMatch's `footballhome_sim_${match_id}`
-    //     names. A follow-up slice (5B) renames the container to the
-    //     canonical `footballhome_sim_${match_id}` at assign time so nginx's
-    //     `location ~ ^/sim/(\d+)$` regex block (Slice 14.4) can reach it.
+    //     names. The warm container's compose-network alias equals its
+    //     container name (aardvark-dns publishes it); the alias does NOT
+    //     re-flow on `podman container rename` (verified empirically
+    //     2026-07-15), so any routing layer that wants to reach the
+    //     warm-and-then-assigned daemon must either address it by its
+    //     warm_id-tagged name for its lifetime, or use a network
+    //     disconnect/reconnect flow to add a second alias. Both approaches
+    //     will be considered when the pool refactor (5C onwards) lands.
     //   - Env: SIM_MATCH_ID, SIM_MATCH_SEED, SIM_SCENARIO deliberately
     //     ABSENT. The sim daemon detects env-unset at boot (sim/src/main.cpp
     //     branch landed in step 4A) and blocks on AssignmentGate::waitForAssign
@@ -166,6 +209,40 @@ public:
     //
     // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
     LaunchResult spawnWarm(long long warm_id);
+
+    // §21.7 item 1 step 5B (2026-07-15) — post an assignment to a warm
+    // sim daemon's admin server, transitioning it from the AssignmentGate
+    // wait state (step 4A) into the hot phase (registries load → upsertMatch
+    // → WS bind → SimServer::run).
+    //
+    // Transport: HTTPS-flavored TCP+DNS over the compose bridge network
+    // (backend and sim share `footballhome_footballhome_network`), NOT
+    // the podman unix socket. HttpClient::postJson with an empty
+    // socketPath uses libcurl's default TCP resolver — aardvark-dns
+    // resolves the sim's container name to its bridge IP within the
+    // configured TTL. Bearer auth: FH_SIM_ADMIN_TOKEN sourced from the
+    // backend's own process env (same value the sim reads at boot).
+    //
+    // Response mapping:
+    //   HTTP 200 "assigned":true         ⇒ { ok=true }
+    //   HTTP 409 already-assigned        ⇒ { ok=false, already_assigned=true }
+    //   HTTP 401/400/500/transport error ⇒ { ok=false, error=<detail> }
+    //
+    // The already_assigned signal exists so the pool can distinguish
+    // "daemon consumed by a raced concurrent assign" (retire + refill)
+    // from "the daemon is broken" (retire + investigate).
+    //
+    // Precondition: FH_SIM_ADMIN_TOKEN must be set in the backend's
+    // process env. If empty, the call returns
+    // { ok=false, error="FH_SIM_ADMIN_TOKEN unset" } WITHOUT hitting
+    // the wire — an unauthenticated POST would only earn a 401 anyway.
+    //
+    // Concurrency: NO LaunchSemaphore permit is taken — this verb is a
+    // single lightweight HTTP request whose bottleneck is the sim's
+    // AssignmentGate (single-shot, so races produce 409, not overload).
+    //
+    // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
+    AssignResult postAssignMatch(const AssignOptions& opts);
 
     // Slice 14.5 — stop + remove a running per-match sim daemon container.
     //

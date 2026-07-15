@@ -581,6 +581,120 @@ LaunchResult SimOrchestrator::spawnWarm(long long warm_id) {
     return r;
 }
 
+// ---------------------------------------------------------------------------
+// postAssignMatch (§21.7 item 1 step 5B, 2026-07-15)
+//
+// Single POST to the target sim daemon's admin server. Uses HttpClient's
+// standard TCP+DNS path (empty socketPath) — the backend and every sim
+// daemon share the compose bridge network `footballhome_footballhome_network`
+// (verified by spawnWarm's NetworkingConfig EndpointsConfig aliases +
+// launchMatch's identical setup), and podman's aardvark-dns serves the
+// container_name → bridge-IP mapping.
+//
+// Bearer token sourced from FH_SIM_ADMIN_TOKEN in the backend's own
+// env — the same value the sim reads at boot (see buildSimEnv +
+// buildWarmSimEnv above). If it's unset in the backend env, the sim's
+// admin server would 401 the call anyway; we short-circuit with a
+// descriptive error rather than round-trip a definite failure.
+//
+// Body shape mirrors AdminHttpServer::parseAssignMatchJson (step 3 of
+// this fix chain) exactly — a three-field object with match_id, seed,
+// scenario_id. Wider match_id / seed types on the wire (u64 in the sim
+// parser) accept the entire long long range we might send from here.
+//
+// Response handling: three canonical outcomes distinguished for the
+// pool's benefit (per AssignResult docblock). All other cases collapse
+// into a generic error with the HTTP status + body for diagnosability.
+// ---------------------------------------------------------------------------
+AssignResult SimOrchestrator::postAssignMatch(const AssignOptions& opts) {
+    AssignResult r;
+
+    if (!cfg_.enabled) {
+        r.error = "orchestrator disabled (FH_SIM_ORCHESTRATOR_ENABLED unset)";
+        return r;
+    }
+    if (opts.container_name.empty()) {
+        r.error = "container_name required";
+        return r;
+    }
+    if (opts.match_id <= 0) {
+        r.error = "invalid match_id (must be > 0)";
+        return r;
+    }
+    if (opts.scenario_id < 0 || opts.scenario_id > 32767) {
+        r.error = "invalid scenario_id (must be 0..32767)";
+        return r;
+    }
+
+    const std::string bearer = envOrDefault("FH_SIM_ADMIN_TOKEN", "");
+    if (bearer.empty()) {
+        // Cheaper than round-tripping a guaranteed 401. Signals a config
+        // error in the backend's own env, not a sim-side problem.
+        r.error = "FH_SIM_ADMIN_TOKEN unset in backend env";
+        return r;
+    }
+
+    // Build the assign_match URL. Port 9101 matches buildWarmSimEnv()'s
+    // SIM_ADMIN_PORT — both sides of the wire must agree on this.
+    const std::string url = "http://" + opts.container_name
+                          + ":9101/admin/assign_match";
+
+    // Body per parseAssignMatchJson contract.
+    nlohmann::json body;
+    body["match_id"]    = opts.match_id;
+    body["seed"]        = opts.seed;
+    body["scenario_id"] = opts.scenario_id;
+
+    const HttpClient::Headers headers = {
+        { "Authorization", "Bearer " + bearer },
+    };
+
+    // Empty socketPath ⇒ HttpClient uses TCP+DNS via libcurl's default
+    // resolver, which points at aardvark-dns on the compose bridge.
+    HttpClient::Response resp = http_.postJson(url, body.dump(), headers,
+                                               /*unixSocketPath=*/ "");
+
+    if (!resp.error.empty()) {
+        r.error = "sim admin transport error: " + resp.error;
+        return r;
+    }
+
+    if (resp.status == 200) {
+        // Sanity-check the sim confirmed the assignment. The wire contract
+        // says the body carries `{"assigned":true,"match_id":...,...}` on
+        // success; a 200 with anything else means the sim's contract has
+        // drifted from ours and the pool should surface it rather than
+        // silently trust the status code.
+        try {
+            auto j = nlohmann::json::parse(resp.body);
+            if (j.contains("assigned") && j["assigned"].is_boolean()
+                && j["assigned"].get<bool>()) {
+                r.ok = true;
+                return r;
+            }
+            r.error = "sim admin 200 with unexpected body: " + resp.body;
+            return r;
+        } catch (const std::exception& e) {
+            r.error = std::string("sim admin 200 body not valid JSON: ")
+                    + e.what() + " (body=" + resp.body + ")";
+            return r;
+        }
+    }
+
+    if (resp.status == 409) {
+        // Race: the AssignmentGate was already consumed. Signal the pool
+        // so it can retire this daemon and refill rather than treat it
+        // as a hard failure.
+        r.already_assigned = true;
+        r.error = "sim admin returned 409: " + resp.body;
+        return r;
+    }
+
+    r.error = "sim admin returned HTTP " + std::to_string(resp.status)
+            + ": " + resp.body;
+    return r;
+}
+
 void SimOrchestrator::removeContainerBestEffort(const std::string& container_id) {
     // Rollback path from launchMatch. Reuses the full stopMatch flow
     // (stop-with-grace → delete) so a partial-launch failure leaves
