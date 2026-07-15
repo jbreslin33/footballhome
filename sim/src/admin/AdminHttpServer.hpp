@@ -133,6 +133,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -167,6 +168,22 @@ public:
         // Compared against `Authorization: Bearer <token>` in constant
         // time on every request.
         std::string   admin_token;
+
+        // §21.7 item 2 diagnostic (2026-07-14): if set, `GET /admin/tick_stats`
+        // invokes this callback and returns its string as the JSON
+        // response body verbatim. Left unset → the route returns 404.
+        //
+        // Callback contract: MUST return a valid JSON object as a
+        // string (no wrapping). AdminHttpServer wraps in HTTP 200 +
+        // Content-Type: application/json. Called on the accept-loop
+        // thread while a client fd is open; keep it non-blocking and
+        // safe to invoke concurrently with the sim tick loop (typical
+        // implementation reads a couple of std::atomic counters).
+        //
+        // Bearer auth is enforced identically to /admin/replay — a
+        // wrong or missing token yields 401/403 before the callback
+        // fires. See DESIGN.md §21.7 item 2.
+        std::function<std::string()> tick_stats_provider;
     };
 
     // Constructor is trivial — start() is where sockets open, threads

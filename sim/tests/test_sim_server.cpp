@@ -639,4 +639,24 @@ FH_TEST(scenario_meta_sent_immediately_after_hello_ack) {
     driveServer(*fx.server, 200);
 }
 
+// §21.7 item 2 diagnostic (2026-07-14): tickOnceForTest() must advance
+// the ticksExecuted() observable so operators can consume the counter
+// as a monotonic tick count from any thread. catchUpSkips() stays 0 in
+// this test because tickOnceForTest bypasses the fixed-cadence branch
+// where skips are counted; the skip counter's behavior is verified
+// live via /admin/tick_stats against a real daemon under load.
+FH_TEST(ticks_executed_counter_advances_on_each_tick)
+{
+    Fixture fx;
+    FH_EXPECT_EQ(fx.server->ticksExecuted(), static_cast<std::uint64_t>(0));
+    FH_EXPECT_EQ(fx.server->catchUpSkips(),  static_cast<std::uint32_t>(0));
+
+    fx.server->tickOnceForTest();
+    FH_EXPECT_EQ(fx.server->ticksExecuted(), static_cast<std::uint64_t>(1));
+
+    for (int i = 0; i < 9; ++i) { fx.server->tickOnceForTest(); }
+    FH_EXPECT_EQ(fx.server->ticksExecuted(), static_cast<std::uint64_t>(10));
+    FH_EXPECT_EQ(fx.server->catchUpSkips(),  static_cast<std::uint32_t>(0));
+}
+
 FH_TEST_MAIN()

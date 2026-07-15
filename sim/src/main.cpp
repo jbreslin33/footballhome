@@ -223,6 +223,32 @@ int main(int /*argc*/, char** /*argv*/)
         acfg.bind_address = envOr("SIM_ADMIN_BIND_ADDRESS", "0.0.0.0");
         acfg.port         = parsePort(envOr("SIM_ADMIN_PORT", "9101"));
         acfg.admin_token  = admin_token_c;
+        // §21.7 item 2 diagnostic (2026-07-14): expose the tick-loop
+        // health counters over GET /admin/tick_stats. The lambda reads
+        // the SimServer through the g_server atomic populated below
+        // just before server.run() — before that store completes (i.e.
+        // during the small boot window between AdminHttpServer::start()
+        // and g_server.store) the provider returns a placeholder body
+        // rather than nullptr-derefing. Counters are std::atomic on the
+        // sim side so this lambda is safe to invoke concurrently with
+        // the tick loop.
+        acfg.tick_stats_provider = [match_id]() -> std::string {
+            auto* srv = g_server.load(std::memory_order_relaxed);
+            if (srv == nullptr) {
+                return std::string{"{\"state\":\"booting\"}"};
+            }
+            char buf[256];
+            const int n = std::snprintf(buf, sizeof(buf),
+                "{\"match_id\":%llu,\"tick_hz\":20,"
+                "\"ticks_executed\":%llu,"
+                "\"catch_up_skips\":%u,"
+                "\"active_clients\":%u}",
+                static_cast<unsigned long long>(match_id),
+                static_cast<unsigned long long>(srv->ticksExecuted()),
+                static_cast<unsigned>(srv->catchUpSkips()),
+                static_cast<unsigned>(srv->activeClientCount()));
+            return std::string(buf, (n > 0 ? static_cast<std::size_t>(n) : 0));
+        };
         admin_server = std::make_unique<fh::sim::admin::AdminHttpServer>(
             acfg, *admin_db);
         if (!admin_server->start()) {

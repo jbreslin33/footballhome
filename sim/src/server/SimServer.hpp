@@ -90,6 +90,20 @@ public:
     match::Match&           match()     noexcept { return *match_; }
     std::size_t             activeClientCount() const noexcept { return client_slot_.size(); }
 
+    // Tick loop instrumentation (§21.7 item 2 diagnostic — 2026-07-14).
+    // `ticksExecuted()` counts every completed `match_->tick()` since
+    // `run()` started. `catchUpSkips()` counts every time the fixed-
+    // cadence scheduler in `run()` detected it was > 5 periods behind
+    // and reset `next_tick_at = after` (silently dropping the intervening
+    // ticks). A daemon reporting `catchUpSkips() == 0` at match-end is
+    // hitting its full tick budget; anything > 0 explains a shortfall in
+    // `MAX(sim_match_events.tick_num) / (ended_at - started_at)` vs the
+    // configured tick_hz. Both are monotonically increasing across the
+    // daemon's lifetime — safe to sample from any thread. See DESIGN.md
+    // §21.7 item 2.
+    std::uint64_t ticksExecuted()  const noexcept { return ticks_executed_.load(std::memory_order_relaxed); }
+    std::uint32_t catchUpSkips()   const noexcept { return catch_up_skips_.load(std::memory_order_relaxed); }
+
 private:
     // Transport callbacks (bound in constructor).
     void handleConnect(ClientId cid, const auth::JwtClaims& claims);
@@ -117,6 +131,12 @@ private:
 
     // ClientId → SlotId. 0 = spectator (no slot assigned).
     std::unordered_map<ClientId, SlotId>         client_slot_;
+
+    // Tick loop instrumentation (§21.7 item 2). Written only by run() on
+    // the tick thread; read from any thread via ticksExecuted() /
+    // catchUpSkips().
+    std::atomic<std::uint64_t>                   ticks_executed_{0};
+    std::atomic<std::uint32_t>                   catch_up_skips_{0};
 
     std::atomic<bool>                            running_{false};
 };

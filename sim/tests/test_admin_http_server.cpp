@@ -504,4 +504,132 @@ FH_TEST(e2e_stop_is_idempotent)
     FH_EXPECT(!srv.running());
 }
 
+// -----------------------------------------------------------------------
+// /admin/tick_stats — §21.7 item 2 diagnostic (2026-07-14).
+// -----------------------------------------------------------------------
+
+FH_TEST(e2e_tick_stats_returns_provider_body_when_wired)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.tick_stats_provider = []() {
+        return std::string{
+            "{\"ticks_executed\":1234,\"catch_up_skips\":7}"};
+    };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    const std::string req =
+        "GET /admin/tick_stats HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "\r\n";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 200"));
+    FH_EXPECT(contains(resp, "\"ticks_executed\":1234"));
+    FH_EXPECT(contains(resp, "\"catch_up_skips\":7"));
+    FH_EXPECT(contains(resp, "Content-Type: application/json"));
+}
+
+FH_TEST(e2e_tick_stats_route_hidden_when_provider_unset)
+{
+    // No provider wired → route must return 404 (indistinguishable
+    // from an unknown path) so the endpoint's existence is not
+    // discoverable to unauthenticated probes.
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    // cfg.tick_stats_provider deliberately left unset.
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    const std::string req =
+        "GET /admin/tick_stats HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "\r\n";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 404"));
+}
+
+FH_TEST(e2e_tick_stats_requires_bearer)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.tick_stats_provider = []() { return std::string{"{}"}; };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // No Authorization header at all → 401.
+    const std::string req =
+        "GET /admin/tick_stats HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "\r\n";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 401"));
+}
+
+FH_TEST(e2e_tick_stats_wrong_method_is_405)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.tick_stats_provider = []() { return std::string{"{}"}; };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // POST /admin/tick_stats — path is known but method wrong. Body
+    // required because the parser looks for Content-Length on POSTs.
+    const std::string req =
+        "POST /admin/tick_stats HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Content-Length: 0\r\n"
+        "\r\n";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 405"));
+}
+
+FH_TEST(e2e_tick_stats_provider_exception_becomes_500)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.tick_stats_provider = []() -> std::string {
+        throw std::runtime_error("provider go boom");
+    };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    const std::string req =
+        "GET /admin/tick_stats HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "\r\n";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 500"));
+    FH_EXPECT(contains(resp, "provider go boom"));
+}
+
 FH_TEST_MAIN()

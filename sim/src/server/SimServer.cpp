@@ -90,6 +90,7 @@ void SimServer::run(std::function<std::int64_t()> steady_now_ms)
         // Advance the sim and push the resulting snapshot to everyone.
         match_->tick();
         broadcastSnapshot();
+        ticks_executed_.fetch_add(1, std::memory_order_relaxed);
 
         // Fixed-step: schedule the next tick strictly by cadence. If we
         // fell behind (a stall > 5 periods), jump forward instead of
@@ -98,6 +99,22 @@ void SimServer::run(std::function<std::int64_t()> steady_now_ms)
         next_tick_at += period_ms;
         const std::int64_t after = steady_now_ms();
         if (next_tick_at + (period_ms * 5) < after) {
+            // §21.7 item 2 diagnostic: count and log each skip so an
+            // operator can distinguish "startup spike" (many skips
+            // clustered in first N ticks) from "uniform CFS jitter"
+            // (skips spread across the daemon's lifetime). Stderr is
+            // low-volume — a skip is by definition a > 250ms stall and
+            // will happen on the order of tens per match, not thousands.
+            const std::uint32_t skip_no =
+                catch_up_skips_.fetch_add(1, std::memory_order_relaxed) + 1u;
+            const std::int64_t behind_ms = after - next_tick_at;
+            std::fprintf(stderr,
+                         "sim: catch-up-skip #%u at tick=%llu, %lldms behind, "
+                         "resetting cadence\n",
+                         static_cast<unsigned>(skip_no),
+                         static_cast<unsigned long long>(
+                             ticks_executed_.load(std::memory_order_relaxed)),
+                         static_cast<long long>(behind_ms));
             next_tick_at = after;
         }
     }
@@ -107,6 +124,11 @@ void SimServer::tickOnceForTest()
 {
     match_->tick();
     broadcastSnapshot();
+    // Mirror run() so the §21.7 item 2 counters are testable without
+    // spinning up a virtual clock. Semantically both entry points
+    // advance the match by one tick; anything that counts as a tick
+    // for the sim also counts for the diagnostic.
+    ticks_executed_.fetch_add(1, std::memory_order_relaxed);
 }
 
 // ---------------------------------------------------------------------------

@@ -667,10 +667,24 @@ void AdminHttpServer::handleConnection(int client_fd) noexcept
     path_dash   = parsed->path;
 
     // ------------------------------------------------------------------
-    // Route.
+    // Route. §21.7 item 2 (2026-07-14) added GET /admin/tick_stats
+    // alongside the pre-existing POST /admin/replay. When
+    // Config::tick_stats_provider is unset the tick_stats route is
+    // treated as if it didn't exist (same 404 shape as any other
+    // unknown path) so unauthenticated probes can't learn whether the
+    // provider was wired.
     // ------------------------------------------------------------------
-    if (parsed->method != "POST" || parsed->path != "/admin/replay") {
-        if (parsed->path != "/admin/replay") {
+    const bool is_replay =
+        (parsed->method == "POST" && parsed->path == "/admin/replay");
+    const bool is_tick_stats =
+        (parsed->method == "GET"  && parsed->path == "/admin/tick_stats"
+         && static_cast<bool>(cfg_.tick_stats_provider));
+    if (!is_replay && !is_tick_stats) {
+        const bool known_path =
+            (parsed->path == "/admin/replay")
+         || (parsed->path == "/admin/tick_stats"
+             && static_cast<bool>(cfg_.tick_stats_provider));
+        if (!known_path) {
             sendAndLog(404, "Not Found", errorJson("not found"));
         } else {
             sendAndLog(405, "Method Not Allowed",
@@ -680,7 +694,7 @@ void AdminHttpServer::handleConnection(int client_fd) noexcept
     }
 
     // ------------------------------------------------------------------
-    // Auth.
+    // Auth (both routes require the same bearer).
     // ------------------------------------------------------------------
     constexpr std::string_view kBearer = "Bearer ";
     if (parsed->authorization.size() <= kBearer.size()
@@ -693,6 +707,22 @@ void AdminHttpServer::handleConnection(int client_fd) noexcept
         std::string_view{parsed->authorization}.substr(kBearer.size());
     if (!constantTimeEquals(token, cfg_.admin_token)) {
         sendAndLog(403, "Forbidden", errorJson("forbidden"));
+        return;
+    }
+
+    // ------------------------------------------------------------------
+    // /admin/tick_stats handler (auth already passed).
+    // ------------------------------------------------------------------
+    if (is_tick_stats) {
+        std::string body;
+        try {
+            body = cfg_.tick_stats_provider();
+        } catch (const std::exception& e) {
+            sendAndLog(500, "Internal Server Error",
+                       errorJson("internal error", e.what()));
+            return;
+        }
+        sendAndLog(200, "OK", body);
         return;
     }
 
