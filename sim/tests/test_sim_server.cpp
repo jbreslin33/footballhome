@@ -645,11 +645,22 @@ FH_TEST(scenario_meta_sent_immediately_after_hello_ack) {
 // this test because tickOnceForTest bypasses the fixed-cadence branch
 // where skips are counted; the skip counter's behavior is verified
 // live via /admin/tick_stats against a real daemon under load.
+//
+// §21.7 item 2 step 3 (2026-07-14 follow-up commit 49d8d4ae): the
+// sumBehindMs() / maxBehindMs() sub-skip jitter accumulators only fire
+// inside run()'s cadence branch (never in tickOnceForTest, which
+// bypasses the whole `next_tick_at` bookkeeping) — so we can only
+// verify they start at 0 and stay at 0 after N test-hook ticks. Live
+// non-zero values are verified via /admin/tick_stats against a real
+// daemon under load in sim/scripts/load_test_orchestrator.sh section
+// 5.6 (aggregation added same-day for the step-2 attribution run).
 FH_TEST(ticks_executed_counter_advances_on_each_tick)
 {
     Fixture fx;
     FH_EXPECT_EQ(fx.server->ticksExecuted(), static_cast<std::uint64_t>(0));
     FH_EXPECT_EQ(fx.server->catchUpSkips(),  static_cast<std::uint32_t>(0));
+    FH_EXPECT_EQ(fx.server->sumBehindMs(),   static_cast<std::uint64_t>(0));
+    FH_EXPECT_EQ(fx.server->maxBehindMs(),   static_cast<std::uint32_t>(0));
 
     fx.server->tickOnceForTest();
     FH_EXPECT_EQ(fx.server->ticksExecuted(), static_cast<std::uint64_t>(1));
@@ -657,6 +668,8 @@ FH_TEST(ticks_executed_counter_advances_on_each_tick)
     for (int i = 0; i < 9; ++i) { fx.server->tickOnceForTest(); }
     FH_EXPECT_EQ(fx.server->ticksExecuted(), static_cast<std::uint64_t>(10));
     FH_EXPECT_EQ(fx.server->catchUpSkips(),  static_cast<std::uint32_t>(0));
+    FH_EXPECT_EQ(fx.server->sumBehindMs(),   static_cast<std::uint64_t>(0));
+    FH_EXPECT_EQ(fx.server->maxBehindMs(),   static_cast<std::uint32_t>(0));
 }
 
 FH_TEST_MAIN()

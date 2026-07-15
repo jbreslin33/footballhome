@@ -104,6 +104,23 @@ public:
     std::uint64_t ticksExecuted()  const noexcept { return ticks_executed_.load(std::memory_order_relaxed); }
     std::uint32_t catchUpSkips()   const noexcept { return catch_up_skips_.load(std::memory_order_relaxed); }
 
+    // Sub-skip jitter counters (§21.7 item 2 step-3 — 2026-07-14 landing
+    // 49d8d4ae's follow-up). Attribute the effective-Hz deficit that
+    // survives after the catch-up-skip counter proved zero under 20-way
+    // load. Both bump per completed tick in `run()` and measure how far
+    // the tick loop was behind cadence AT THE MOMENT the tick completed
+    // (i.e. `max(0, after - next_tick_at)` after the tick executed and
+    // `next_tick_at` advanced by period_ms — a value in [0, 5*period_ms)
+    // because anything ≥ 5*period_ms is claimed by the skip branch and
+    // resets `next_tick_at` before we could accumulate it). Diagnostic
+    // math: `avg_stretch_ms = sumBehindMs() / ticksExecuted()` — the
+    // average per-tick slippage; if `total_ticks * period_ms + sum_behind_ms`
+    // approximates wall_ms then the loop's whole deficit is explained by
+    // steady jitter, not by outlier ticks. `maxBehindMs()` bounds the
+    // worst-case single-tick stall that stayed under the skip threshold.
+    std::uint64_t sumBehindMs() const noexcept { return sum_behind_ms_.load(std::memory_order_relaxed); }
+    std::uint32_t maxBehindMs() const noexcept { return max_behind_ms_.load(std::memory_order_relaxed); }
+
 private:
     // Transport callbacks (bound in constructor).
     void handleConnect(ClientId cid, const auth::JwtClaims& claims);
@@ -137,6 +154,13 @@ private:
     // catchUpSkips().
     std::atomic<std::uint64_t>                   ticks_executed_{0};
     std::atomic<std::uint32_t>                   catch_up_skips_{0};
+
+    // Sub-skip jitter (§21.7 item 2 step 3). Written only by run() on
+    // the tick thread; `sum_behind_ms_` is fetch_add per tick,
+    // `max_behind_ms_` is a CAS high-water mark. Both read from any
+    // thread via sumBehindMs() / maxBehindMs().
+    std::atomic<std::uint64_t>                   sum_behind_ms_{0};
+    std::atomic<std::uint32_t>                   max_behind_ms_{0};
 
     std::atomic<bool>                            running_{false};
 };

@@ -242,10 +242,14 @@ int main(int /*argc*/, char** /*argv*/)
                 "{\"match_id\":%llu,\"tick_hz\":20,"
                 "\"ticks_executed\":%llu,"
                 "\"catch_up_skips\":%u,"
+                "\"sum_behind_ms\":%llu,"
+                "\"max_behind_ms\":%u,"
                 "\"active_clients\":%u}",
                 static_cast<unsigned long long>(match_id),
                 static_cast<unsigned long long>(srv->ticksExecuted()),
                 static_cast<unsigned>(srv->catchUpSkips()),
+                static_cast<unsigned long long>(srv->sumBehindMs()),
+                static_cast<unsigned>(srv->maxBehindMs()),
                 static_cast<unsigned>(srv->activeClientCount()));
             return std::string(buf, (n > 0 ? static_cast<std::size_t>(n) : 0));
         };

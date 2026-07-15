@@ -116,6 +116,40 @@ void SimServer::run(std::function<std::int64_t()> steady_now_ms)
                              ticks_executed_.load(std::memory_order_relaxed)),
                          static_cast<long long>(behind_ms));
             next_tick_at = after;
+        } else {
+            // §21.7 item 2 step 3 (2026-07-14): sub-skip jitter. `after
+            // - next_tick_at` is by construction in [-period_ms,
+            // 5*period_ms) at this branch — negative means we finished
+            // the tick with time to spare before the next one; positive
+            // means the loop is behind cadence but not yet at skip
+            // threshold. Only the positive tail contributes to the
+            // effective-Hz deficit, so we clamp at 0 to avoid folding
+            // ahead-of-cadence ticks into the accumulator.
+            const std::int64_t behind_ms = after - next_tick_at;
+            if (behind_ms > 0) {
+                sum_behind_ms_.fetch_add(
+                    static_cast<std::uint64_t>(behind_ms),
+                    std::memory_order_relaxed);
+                // CAS high-water mark. Contention is by definition
+                // absent (single-threaded writer) so this compiles to
+                // a straight-line load + store on the fast path; the
+                // loop only iterates if a second thread happens to be
+                // reading and the compiler decided otherwise, which
+                // it can't (we're single-threaded here). Kept as CAS
+                // for pattern consistency with any future multi-tick-
+                // thread refactor.
+                std::uint32_t cur =
+                    max_behind_ms_.load(std::memory_order_relaxed);
+                const std::uint32_t bm =
+                    static_cast<std::uint32_t>(behind_ms);
+                while (bm > cur
+                       && !max_behind_ms_.compare_exchange_weak(
+                              cur, bm,
+                              std::memory_order_relaxed,
+                              std::memory_order_relaxed)) {
+                    // cur is updated by compare_exchange_weak on failure
+                }
+            }
         }
     }
 }

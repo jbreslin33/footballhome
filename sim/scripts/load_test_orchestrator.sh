@@ -708,16 +708,33 @@ else
     if command -v jq >/dev/null 2>&1; then
         jq -r '.catch_up_skips' "${TICK_STATS_FINAL}" > "${STATE_DIR}/skips.txt"
         jq -r '.ticks_executed' "${TICK_STATS_FINAL}" > "${STATE_DIR}/ticks.txt"
+        # sum_behind_ms / max_behind_ms are §21.7 item 2 step-3 fields
+        # (49d8d4ae follow-up). Older sim images that predate the step-3
+        # commit still return valid JSON without these keys — jq emits
+        # "null" for missing fields, which awk's `+0` coerces to 0, so
+        # section 5.6's aggregation degrades gracefully to reporting
+        # zero jitter (correct answer for a pre-step-3 image, which
+        # literally has no jitter data to report).
+        jq -r '.sum_behind_ms // 0' "${TICK_STATS_FINAL}" > "${STATE_DIR}/behind_sum.txt"
+        jq -r '.max_behind_ms // 0' "${TICK_STATS_FINAL}" > "${STATE_DIR}/behind_max.txt"
     else
         grep -oE '"catch_up_skips":[0-9]+' "${TICK_STATS_FINAL}" \
             | awk -F: '{print $2}' > "${STATE_DIR}/skips.txt"
         grep -oE '"ticks_executed":[0-9]+' "${TICK_STATS_FINAL}" \
             | awk -F: '{print $2}' > "${STATE_DIR}/ticks.txt"
+        # Same graceful-degrade behavior when jq is absent — pre-step-3
+        # payloads have no matching key so these files come out empty
+        # and awk's `sum` treats missing lines as zero.
+        grep -oE '"sum_behind_ms":[0-9]+' "${TICK_STATS_FINAL}" \
+            | awk -F: '{print $2}' > "${STATE_DIR}/behind_sum.txt"
+        grep -oE '"max_behind_ms":[0-9]+' "${TICK_STATS_FINAL}" \
+            | awk -F: '{print $2}' > "${STATE_DIR}/behind_max.txt"
     fi
 
     n_daemons="$(wc -l < "${STATE_DIR}/skips.txt")"
     total_skips="$(awk '{s+=$1} END {print s+0}' "${STATE_DIR}/skips.txt")"
     total_ticks="$(awk '{s+=$1} END {print s+0}' "${STATE_DIR}/ticks.txt")"
+    total_behind_ms="$(awk '{s+=$1} END {print s+0}' "${STATE_DIR}/behind_sum.txt")"
     zeros="$(awk '$1 == 0' "${STATE_DIR}/skips.txt" | wc -l)"
     nonzero=$(( n_daemons - zeros ))
     min_skips="$(sort -n "${STATE_DIR}/skips.txt" | head -n1)"
@@ -736,9 +753,34 @@ else
     info "skip distribution: min=${min_skips} p50=${p50_skips} max=${max_skips}"
     info "daemons with 0 skips: ${zeros}/${n_daemons}   with ≥1 skip: ${nonzero}/${n_daemons}"
 
+    # §21.7 item 2 step 3 (2026-07-14 follow-up): sub-skip jitter
+    # aggregation. avg_stretch_ms tells us the average per-tick
+    # slippage; global_max_behind_ms bounds the worst single-tick
+    # stall that stayed under the 250 ms skip threshold. Attribution:
+    #   - avg_stretch < 1 ms  → tick loop essentially clean, deficit
+    #     (if any) is inside the tick itself, not scheduling
+    #   - avg_stretch 1-10 ms → uniform low-grade CFS jitter (typical
+    #     dev-class host with N daemons > cores)
+    #   - avg_stretch > 10 ms → chunky sub-skip stalls; investigate
+    #     per-daemon max_behind_ms distribution for outliers
+    # Note: some daemons reporting sum_behind_ms=0 while others report
+    # non-zero is EXPECTED under an unevenly-loaded host — a daemon
+    # scheduled onto a lightly-contended core stays clean while a
+    # daemon on a hot core accumulates.
+    global_max_behind_ms="$(sort -n "${STATE_DIR}/behind_max.txt" | tail -n1)"
+    if [[ "${total_ticks}" -gt 0 ]]; then
+        avg_stretch_ms="$(awk -v s="${total_behind_ms}" -v t="${total_ticks}" \
+                              'BEGIN { printf "%.3f", s/t }')"
+    else
+        avg_stretch_ms="n/a"
+    fi
+    info "sub-skip jitter: total_behind_ms=${total_behind_ms} avg_stretch_ms=${avg_stretch_ms} global_max_behind_ms=${global_max_behind_ms}"
+
     # Rough attribution hint (attribution guidance only — not a gate):
-    if [[ "${total_skips}" -eq 0 ]]; then
-        info "attribution: zero skips — tick-loop clean, effective-Hz deficit (if any) is not from catch-up-skips"
+    if [[ "${total_skips}" -eq 0 && "${total_behind_ms}" -eq 0 ]]; then
+        info "attribution: zero skips + zero jitter — tick-loop clean, effective-Hz deficit (if any) is inside the tick itself (broadcastSnapshot / poll / match->tick), not the scheduler"
+    elif [[ "${total_skips}" -eq 0 ]]; then
+        info "attribution: zero skips + sub-skip jitter only → candidate (d) kernel scheduler stretching individual tick wakeups (§21.7 item 2 step 3). Remedy target: sub-250ms per-tick wakeup latency (cgroup CPU pinning / SCHED_FIFO / reduce daemon count to cores)."
     elif [[ "${max_skips}" -le 5 ]]; then
         info "attribution: skip counts bounded ≤5 per daemon → candidate (c) startup contention spike likely (§21.7 item 2)"
     else
