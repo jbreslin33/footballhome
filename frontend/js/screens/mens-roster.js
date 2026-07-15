@@ -368,23 +368,33 @@ class MensRosterScreen extends Screen {
 
     // ---- Move-to-roster buttons ----------------------------------------
     //
-    // Four hard-coded targets, all mutually exclusive at the DB level
-    // (mens-selection mutex_group on 35 / 120 / 121 — migrations 085 +
-    // 101).  APSL (35), Liga 1 (120), Liga 2 (121) are the real
-    // division teams; Unassigned (0) means "remove from whichever real
-    // team they're on".  Practice + Pickup are all-hands teams
-    // (backfilled server-side) so they never appear as buttons.
+    // Data-driven from `columns` (roster_columns rows with domain='mens',
+    // not archived — currently APSL 35, Liga 1 120, Liga 2 121, Lighthouse
+    // Adult League 122).  All non-Unassigned mens columns share
+    // mutex_group='mens-selection' (see migration 104), so the DB
+    // enforces "at most one active row per user across the mens-selection
+    // group".  MensTeamAssignments::addAssignment mirrors the mutex by
+    // atomically removing the sibling assignment on add — no extra
+    // client-side remove call needed.
+    //
+    // "Unassigned" (id 0) means "remove from whichever real column
+    // they're on".  Previously this list was hardcoded [35, 120, 121]
+    // which silently dropped team 122 (Lighthouse Adult League) added
+    // in migration 104 — fixed 2026-07-15.
     const assignedSet = new Set(p.teamIds || []);
-    const isOnApsl     = assignedSet.has(35);
-    const isOnLiga1    = assignedSet.has(120);
-    const isOnLiga2    = assignedSet.has(121);
-    const currentTeamId = isOnApsl ? 35 : isOnLiga1 ? 120 : isOnLiga2 ? 121 : 0;
+    const configuredIds = new Set((columns || []).map(c => c.teamId));
+    let currentTeamId = 0;
+    for (const tid of assignedSet) {
+      if (configuredIds.has(tid)) { currentTeamId = tid; break; }
+    }
 
     const targets = [
-      { id: 0,   label: 'Unassigned', color: '#475569' },
-      { id: 35,  label: 'APSL',       color: '#2563eb' },
-      { id: 120, label: 'Liga 1',     color: '#0891b2' },
-      { id: 121, label: 'Liga 2',     color: '#14b8a6' },
+      { id: 0, label: 'Unassigned', color: '#475569' },
+      ...(columns || []).map(c => ({
+        id:    c.teamId,
+        label: c.shortLabel || c.label || `Team ${c.teamId}`,
+        color: c.color || '#334155',
+      })),
     ];
     // Shared button style — as thin as legible.  Zero vertical padding
     // plus a tight line-height give ~11-12 px total height while the
