@@ -145,6 +145,84 @@ namespace fh::sim::admin {
 // body). Kept tight because the only known request shape is ~80 bytes.
 inline constexpr std::size_t kMaxRequestBytes = 16u * 1024u;
 
+// -----------------------------------------------------------------------
+// POST /admin/assign_match — §21.7 item 1 warm-daemon-pool scaffolding
+// (2026-07-15, follow-up of item 2's remedy).
+//
+// Wire protocol:
+//
+//   POST /admin/assign_match HTTP/1.1
+//   Authorization: Bearer <FH_SIM_ADMIN_TOKEN>
+//   Content-Type: application/json
+//
+//   {"match_id": 123, "seed": 42, "scenario_id": 0}
+//
+// All three fields are REQUIRED (the whole point of this endpoint is
+// to hand a warm-booted, match-agnostic sim daemon its identity — a
+// missing field means the caller doesn't actually know what to run,
+// and defaults would silently corrupt the deterministic replay
+// contract). Field validation is deliberately narrow at the parser
+// boundary — anything beyond syntactic parseability is the handler's
+// business, not the wire endpoint's.
+//
+//   match_id     u64,  REQUIRED, > 0
+//   seed         u64,  REQUIRED, any u64 value (0 legal)
+//   scenario_id  u64,  REQUIRED, ≤ 32767 (fits in std::int16_t; the
+//                                          handler is responsible for
+//                                          checking it names a real
+//                                          scenario for the current
+//                                          milestone)
+//
+// Responses:
+//
+//   200 OK         — assign_match_handler returned kOk. Response body
+//                    is the handler's `body_json` verbatim (must be a
+//                    valid JSON object; AdminHttpServer wraps with
+//                    Content-Type: application/json).
+//   400 Bad Req    — JSON parse / validation failed. Detail explains.
+//   401 Unauth.    — Missing Bearer header (same as /admin/replay).
+//   403 Forbidden  — Wrong bearer token (constant-time compare).
+//   404 Not Found  — assign_match_handler is unset. Same
+//                    undiscoverable-when-unwired shape as
+//                    tick_stats_provider — an unauthenticated probe
+//                    cannot learn whether the surface is wired.
+//   405 Not Allow. — Wrong method against a wired path.
+//   409 Conflict   — Handler returned kConflict (daemon already
+//                    assigned to a match; assignment is single-shot
+//                    per daemon lifetime).
+//   500 Internal   — Handler threw. Detail is exception::what().
+//
+// This slice ships the endpoint surface + handler contract only. The
+// main.cpp wiring that lets a warm-booted daemon *block* on this call
+// before running upsertMatch / opening the WS listener lands in the
+// follow-up slice (§21.7 item 1 step 4). Until then the endpoint is
+// callable but no wired daemon exists in production — this is
+// intentional: additive-only surface, zero behaviour change to the
+// existing SIM_MATCH_ID-env boot path.
+//
+// See DESIGN.md §21.7 item 1 and §16.7's warm-daemon-pool discussion.
+// -----------------------------------------------------------------------
+
+struct AssignMatchRequest {
+    MatchId       match_id{0};
+    std::uint64_t seed{0};
+    std::int16_t  scenario_id{0};
+};
+
+enum class AssignMatchOutcome : std::uint8_t {
+    kOk       = 0,   // -> 200 with AssignMatchResult::body_json verbatim
+    kConflict = 1,   // -> 409 (daemon already assigned)
+};
+
+struct AssignMatchResult {
+    AssignMatchOutcome outcome{AssignMatchOutcome::kOk};
+    // On outcome==kOk: used verbatim as the HTTP 200 body. Must be
+    // valid JSON (typically `{"assigned":true,"match_id":N}`).
+    // On outcome==kConflict: ignored — AdminHttpServer emits a
+    // canonical `{"error":"already assigned"}` body itself.
+    std::string body_json;
+};
+
 class AdminHttpServer {
 public:
     struct Config {
@@ -184,6 +262,23 @@ public:
         // wrong or missing token yields 401/403 before the callback
         // fires. See DESIGN.md §21.7 item 2.
         std::function<std::string()> tick_stats_provider;
+
+        // §21.7 item 1 warm-daemon-pool scaffolding (2026-07-15): if
+        // set, POST /admin/assign_match parses the body via
+        // parseAssignMatchJson and invokes this handler. Left unset →
+        // the route returns 404 (same undiscoverable-when-unwired
+        // shape as tick_stats_provider). See the wire-protocol block
+        // above this class for the full contract.
+        //
+        // Threading: invoked on the accept-loop thread while a client
+        // fd is open. Handlers that mutate process-wide state (a
+        // warm-boot main.cpp will flip an atomic that unblocks its
+        // deferred upsertMatch + WS bind path) must synchronise
+        // internally — AdminHttpServer holds no locks around the
+        // call. Bearer auth is enforced identically to /admin/replay
+        // (401/403 before the handler fires).
+        std::function<AssignMatchResult(const AssignMatchRequest&)>
+            assign_match_handler;
     };
 
     // Constructor is trivial — start() is where sockets open, threads
@@ -277,6 +372,29 @@ struct ReplayRequest {
 };
 std::optional<ReplayRequest>
 parseReplayJson(std::string_view body, std::string* reject_reason = nullptr);
+
+// Parses the JSON payload of /admin/assign_match. Same narrow-purpose
+// parser style as parseReplayJson: exact three-field object shape
+// ({"match_id":N,"seed":S,"scenario_id":C}) in any key order, with
+// insignificant whitespace tolerated. All three fields are REQUIRED;
+// missing any → std::nullopt with `reject_reason` populated. Validation:
+//
+//   * match_id      must be a positive u64 (> 0). Zero → reject.
+//   * seed          any u64 value (0 is legal — seed=0 is a valid
+//                   deterministic-replay seed).
+//   * scenario_id   parsed as u64, must be ≤ 32767 so it fits in
+//                   std::int16_t. Anything larger → reject as
+//                   out-of-range. The parser deliberately does NOT
+//                   validate that the value names a real scenario —
+//                   that's the handler's responsibility, so we don't
+//                   have to bump this parser every time a new
+//                   scenario id lands.
+//
+// Unknown fields → reject (fail-loud, mirrors parseReplayJson). No
+// support for trailing garbage after the closing '}'.
+std::optional<AssignMatchRequest>
+parseAssignMatchJson(std::string_view body,
+                     std::string* reject_reason = nullptr);
 
 // Constant-time byte comparison. Returns true iff a and b have the
 // same size and equal contents. Uses XOR-accumulate — no early exit,

@@ -49,6 +49,10 @@ using fh::sim::admin::AdminHttpServer;
 using fh::sim::admin::constantTimeEquals;
 using fh::sim::admin::parseHttpRequest;
 using fh::sim::admin::parseReplayJson;
+using fh::sim::admin::parseAssignMatchJson;
+using fh::sim::admin::AssignMatchRequest;
+using fh::sim::admin::AssignMatchResult;
+using fh::sim::admin::AssignMatchOutcome;
 using fh::sim::persistence::EventRow;
 using fh::sim::persistence::EventType;
 using fh::sim::persistence::InMemoryPgClient;
@@ -630,6 +634,343 @@ FH_TEST(e2e_tick_stats_provider_exception_becomes_500)
 
     FH_EXPECT(contains(resp, "HTTP/1.1 500"));
     FH_EXPECT(contains(resp, "provider go boom"));
+}
+
+// =======================================================================
+// parseAssignMatchJson — §21.7 item 1 warm-daemon-pool scaffolding
+// (2026-07-15). Same negative-test coverage as parseReplayJson: golden
+// path, ordering-agnostic, every required field checked, u64 overflow
+// / range guard, unknown field, trailing garbage.
+// =======================================================================
+
+FH_TEST(parse_assign_json_all_fields)
+{
+    const std::string body =
+        R"({"match_id": 42, "seed": 12345, "scenario_id": 2})";
+    auto r = parseAssignMatchJson(body);
+    FH_EXPECT(r.has_value());
+    FH_EXPECT_EQ(r->match_id,    static_cast<MatchId>(42));
+    FH_EXPECT_EQ(r->seed,        static_cast<std::uint64_t>(12345));
+    FH_EXPECT_EQ(r->scenario_id, static_cast<std::int16_t>(2));
+}
+
+FH_TEST(parse_assign_json_key_order_agnostic)
+{
+    const std::string body =
+        R"({"scenario_id":0,"seed":7,"match_id":9})";
+    auto r = parseAssignMatchJson(body);
+    FH_EXPECT(r.has_value());
+    FH_EXPECT_EQ(r->match_id,    static_cast<MatchId>(9));
+    FH_EXPECT_EQ(r->seed,        static_cast<std::uint64_t>(7));
+    FH_EXPECT_EQ(r->scenario_id, static_cast<std::int16_t>(0));
+}
+
+FH_TEST(parse_assign_json_seed_zero_is_valid)
+{
+    // seed=0 is a valid deterministic-replay seed (the wire parser
+    // MUST NOT reject it — only match_id=0 is a hard "not really a
+    // match id" signal). Anti-regression for the boundary case.
+    auto r = parseAssignMatchJson(R"({"match_id":1,"seed":0,"scenario_id":0})");
+    FH_EXPECT(r.has_value());
+    FH_EXPECT_EQ(r->seed, static_cast<std::uint64_t>(0));
+}
+
+FH_TEST(parse_assign_json_missing_match_id_rejected)
+{
+    std::string why;
+    auto r = parseAssignMatchJson(R"({"seed":1,"scenario_id":0})", &why);
+    FH_EXPECT(!r.has_value());
+    FH_EXPECT(contains(why, "match_id"));
+}
+
+FH_TEST(parse_assign_json_missing_seed_rejected)
+{
+    std::string why;
+    auto r = parseAssignMatchJson(R"({"match_id":1,"scenario_id":0})", &why);
+    FH_EXPECT(!r.has_value());
+    FH_EXPECT(contains(why, "seed"));
+}
+
+FH_TEST(parse_assign_json_missing_scenario_id_rejected)
+{
+    std::string why;
+    auto r = parseAssignMatchJson(R"({"match_id":1,"seed":1})", &why);
+    FH_EXPECT(!r.has_value());
+    FH_EXPECT(contains(why, "scenario_id"));
+}
+
+FH_TEST(parse_assign_json_match_id_zero_rejected)
+{
+    auto r = parseAssignMatchJson(R"({"match_id":0,"seed":1,"scenario_id":0})");
+    FH_EXPECT(!r.has_value());
+}
+
+FH_TEST(parse_assign_json_scenario_id_out_of_range)
+{
+    // 32768 doesn't fit in std::int16_t (max = 32767) → reject.
+    std::string why;
+    auto r = parseAssignMatchJson(
+        R"({"match_id":1,"seed":1,"scenario_id":32768})", &why);
+    FH_EXPECT(!r.has_value());
+    FH_EXPECT(contains(why, "scenario_id"));
+}
+
+FH_TEST(parse_assign_json_scenario_id_max_i16_accepted)
+{
+    // Anti-regression on the range boundary: 32767 (i16 max) MUST be
+    // accepted. Only 32768+ is out of range.
+    auto r = parseAssignMatchJson(
+        R"({"match_id":1,"seed":1,"scenario_id":32767})");
+    FH_EXPECT(r.has_value());
+    FH_EXPECT_EQ(r->scenario_id, static_cast<std::int16_t>(32767));
+}
+
+FH_TEST(parse_assign_json_unknown_field_rejected)
+{
+    std::string why;
+    auto r = parseAssignMatchJson(
+        R"({"match_id":1,"seed":1,"scenario_id":0,"visibility":0})", &why);
+    FH_EXPECT(!r.has_value());
+    FH_EXPECT(contains(why, "unknown"));
+}
+
+FH_TEST(parse_assign_json_trailing_garbage_rejected)
+{
+    auto r = parseAssignMatchJson(
+        R"({"match_id":1,"seed":1,"scenario_id":0}garbage)");
+    FH_EXPECT(!r.has_value());
+}
+
+// =======================================================================
+// /admin/assign_match — end-to-end over the real TCP loopback socket.
+// Same-shape coverage as /admin/tick_stats: hidden-when-unwired,
+// bearer required, wrong method, valid body, handler exception,
+// handler-returned conflict, malformed body.
+// =======================================================================
+
+FH_TEST(e2e_assign_match_route_hidden_when_handler_unset)
+{
+    // No handler wired → route must return 404 (indistinguishable
+    // from an unknown path) so the endpoint's existence is not
+    // discoverable to unauthenticated probes.
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    // cfg.assign_match_handler deliberately left unset.
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // Body {"match_id":1,"seed":1,"scenario_id":0} is 39 bytes.
+    const std::string req =
+        "POST /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 39\r\n"
+        "\r\n"
+        "{\"match_id\":1,\"seed\":1,\"scenario_id\":0}";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 404"));
+}
+
+FH_TEST(e2e_assign_match_requires_bearer)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.assign_match_handler = [](const AssignMatchRequest&) {
+        return AssignMatchResult{
+            AssignMatchOutcome::kOk,
+            std::string{"{\"assigned\":true}"}};
+    };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // No Authorization header → 401 (before the handler fires).
+    const std::string req =
+        "POST /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 39\r\n"
+        "\r\n"
+        "{\"match_id\":1,\"seed\":1,\"scenario_id\":0}";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 401"));
+}
+
+FH_TEST(e2e_assign_match_wrong_method_is_405)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.assign_match_handler = [](const AssignMatchRequest&) {
+        return AssignMatchResult{AssignMatchOutcome::kOk, "{}"};
+    };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // GET on a known path with a wired handler → 405 (not 404 — the
+    // route exists, the method is wrong).
+    const std::string req =
+        "GET /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "\r\n";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 405"));
+}
+
+FH_TEST(e2e_assign_match_bad_json_yields_400)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    bool handler_called = false;
+    cfg.assign_match_handler =
+        [&handler_called](const AssignMatchRequest&) {
+            handler_called = true;
+            return AssignMatchResult{AssignMatchOutcome::kOk, "{}"};
+        };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // Missing scenario_id → 400, handler MUST NOT fire.
+    // Body {"match_id":1,"seed":1} is 23 bytes.
+    const std::string req =
+        "POST /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 23\r\n"
+        "\r\n"
+        "{\"match_id\":1,\"seed\":1}";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 400"));
+    FH_EXPECT(contains(resp, "scenario_id"));
+    FH_EXPECT(!handler_called);
+}
+
+FH_TEST(e2e_assign_match_success_returns_handler_body_verbatim_and_passes_parsed_fields)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    // Capture the fields the handler was invoked with so the test can
+    // assert end-to-end wire → parse → handler correctness.
+    std::optional<AssignMatchRequest> captured;
+    cfg.assign_match_handler =
+        [&captured](const AssignMatchRequest& r) {
+            captured = r;
+            return AssignMatchResult{
+                AssignMatchOutcome::kOk,
+                std::string{"{\"assigned\":true,\"match_id\":777}"}};
+        };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    // Body {"match_id":777,"seed":999,"scenario_id":3} is 43 bytes.
+    const std::string req =
+        "POST /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 43\r\n"
+        "\r\n"
+        "{\"match_id\":777,\"seed\":999,\"scenario_id\":3}";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 200"));
+    // Handler body used verbatim.
+    FH_EXPECT(contains(resp, "\"assigned\":true"));
+    FH_EXPECT(contains(resp, "\"match_id\":777"));
+    FH_EXPECT(contains(resp, "Content-Type: application/json"));
+    // Handler received the parsed fields (wire→parse→dispatch coverage).
+    FH_EXPECT(captured.has_value());
+    FH_EXPECT_EQ(captured->match_id,    static_cast<MatchId>(777));
+    FH_EXPECT_EQ(captured->seed,        static_cast<std::uint64_t>(999));
+    FH_EXPECT_EQ(captured->scenario_id, static_cast<std::int16_t>(3));
+}
+
+FH_TEST(e2e_assign_match_conflict_yields_409_with_canonical_body)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    // Handler returns kConflict with a body_json that MUST be ignored
+    // (canonical wire body wins on conflict for stability).
+    cfg.assign_match_handler = [](const AssignMatchRequest&) {
+        return AssignMatchResult{
+            AssignMatchOutcome::kConflict,
+            std::string{"{\"handler_says\":\"ignored\"}"}};
+    };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    const std::string req =
+        "POST /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 39\r\n"
+        "\r\n"
+        "{\"match_id\":1,\"seed\":1,\"scenario_id\":0}";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 409"));
+    FH_EXPECT(contains(resp, "already assigned"));
+    // Handler body_json MUST NOT leak into the response — the wire
+    // shape on conflict is stable across handlers.
+    FH_EXPECT(!contains(resp, "handler_says"));
+}
+
+FH_TEST(e2e_assign_match_handler_exception_becomes_500)
+{
+    InMemoryPgClient db;
+    AdminHttpServer::Config cfg;
+    cfg.bind_address = "127.0.0.1";
+    cfg.port         = 0;
+    cfg.admin_token  = "T";
+    cfg.assign_match_handler =
+        [](const AssignMatchRequest&) -> AssignMatchResult {
+            throw std::runtime_error("assign handler go boom");
+        };
+    AdminHttpServer srv{cfg, db};
+    FH_EXPECT(srv.start());
+
+    const std::string req =
+        "POST /admin/assign_match HTTP/1.1\r\n"
+        "Host: sim\r\n"
+        "Authorization: Bearer T\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 39\r\n"
+        "\r\n"
+        "{\"match_id\":1,\"seed\":1,\"scenario_id\":0}";
+    const std::string resp = tcpSendRecv(srv.boundPort(), req);
+    srv.stop();
+
+    FH_EXPECT(contains(resp, "HTTP/1.1 500"));
+    FH_EXPECT(contains(resp, "assign handler go boom"));
 }
 
 FH_TEST_MAIN()

@@ -445,6 +445,74 @@ parseReplayJson(std::string_view body, std::string* reject_reason)
 }
 
 // -----------------------------------------------------------------------
+// Public: parseAssignMatchJson (§21.7 item 1 warm-daemon-pool
+// scaffolding, 2026-07-15). Same narrow parser shape as
+// parseReplayJson — three fields, any order, whitespace-tolerant, no
+// unknown fields, no trailing garbage.
+// -----------------------------------------------------------------------
+std::optional<AssignMatchRequest>
+parseAssignMatchJson(std::string_view body, std::string* reject_reason)
+{
+    auto reject = [&](std::string_view why) -> std::optional<AssignMatchRequest> {
+        if (reject_reason) { reject_reason->assign(why); }
+        return std::nullopt;
+    };
+
+    std::string_view s = body;
+    if (!jexpect(s, '{')) { return reject("expected '{'"); }
+
+    AssignMatchRequest out;
+    bool seen_match_id    = false;
+    bool seen_seed        = false;
+    bool seen_scenario_id = false;
+    bool first = true;
+    jskipWs(s);
+    while (!s.empty() && s.front() != '}') {
+        if (!first) {
+            if (!jexpect(s, ',')) { return reject("expected ','"); }
+        }
+        first = false;
+
+        auto key = jparseString(s);
+        if (!key)             { return reject("expected key"); }
+        if (!jexpect(s, ':')) { return reject("expected ':'"); }
+
+        if (*key == "match_id") {
+            auto v = jparseU64(s);
+            if (!v) { return reject("match_id must be a positive integer"); }
+            out.match_id = static_cast<MatchId>(*v);
+            seen_match_id = true;
+        } else if (*key == "seed") {
+            auto v = jparseU64(s);
+            if (!v) { return reject("seed must be a non-negative integer"); }
+            out.seed = *v;
+            seen_seed = true;
+        } else if (*key == "scenario_id") {
+            auto v = jparseU64(s);
+            if (!v) { return reject("scenario_id must be a non-negative integer"); }
+            // Wire parser only enforces i16 range; the handler is
+            // responsible for checking the value actually names a
+            // scenario for the current milestone.
+            if (*v > 32767ull) { return reject("scenario_id out of range"); }
+            out.scenario_id = static_cast<std::int16_t>(*v);
+            seen_scenario_id = true;
+        } else {
+            return reject(std::string{"unknown field: "} + *key);
+        }
+        jskipWs(s);
+    }
+    if (!jexpect(s, '}')) { return reject("expected '}'"); }
+    jskipWs(s);
+    if (!s.empty()) { return reject("trailing garbage after JSON object"); }
+
+    if (!seen_match_id)    { return reject("match_id is required"); }
+    if (!seen_seed)        { return reject("seed is required"); }
+    if (!seen_scenario_id) { return reject("scenario_id is required"); }
+    if (out.match_id == 0u) { return reject("match_id must be > 0"); }
+    return out;
+}
+
+// -----------------------------------------------------------------------
 // AdminHttpServer
 // -----------------------------------------------------------------------
 
@@ -526,9 +594,11 @@ bool AdminHttpServer::start()
     worker_ = std::thread{&AdminHttpServer::acceptLoop, this};
 
     std::fprintf(stderr,
-        "[sim-admin] listening on %s:%u  (POST /admin/replay)\n",
+        "[sim-admin] listening on %s:%u  (POST /admin/replay%s%s)\n",
         cfg_.bind_address.c_str(),
-        static_cast<unsigned>(bound_port_));
+        static_cast<unsigned>(bound_port_),
+        cfg_.tick_stats_provider    ? ", GET /admin/tick_stats"    : "",
+        cfg_.assign_match_handler   ? ", POST /admin/assign_match" : "");
     return true;
 }
 
@@ -668,22 +738,28 @@ void AdminHttpServer::handleConnection(int client_fd) noexcept
 
     // ------------------------------------------------------------------
     // Route. §21.7 item 2 (2026-07-14) added GET /admin/tick_stats
-    // alongside the pre-existing POST /admin/replay. When
-    // Config::tick_stats_provider is unset the tick_stats route is
-    // treated as if it didn't exist (same 404 shape as any other
-    // unknown path) so unauthenticated probes can't learn whether the
-    // provider was wired.
+    // alongside the pre-existing POST /admin/replay. §21.7 item 1
+    // (2026-07-15) added POST /admin/assign_match. When
+    // Config::tick_stats_provider or Config::assign_match_handler is
+    // unset the corresponding route is treated as if it didn't exist
+    // (same 404 shape as any other unknown path) so unauthenticated
+    // probes can't learn whether the surface was wired.
     // ------------------------------------------------------------------
     const bool is_replay =
         (parsed->method == "POST" && parsed->path == "/admin/replay");
     const bool is_tick_stats =
         (parsed->method == "GET"  && parsed->path == "/admin/tick_stats"
          && static_cast<bool>(cfg_.tick_stats_provider));
-    if (!is_replay && !is_tick_stats) {
+    const bool is_assign_match =
+        (parsed->method == "POST" && parsed->path == "/admin/assign_match"
+         && static_cast<bool>(cfg_.assign_match_handler));
+    if (!is_replay && !is_tick_stats && !is_assign_match) {
         const bool known_path =
             (parsed->path == "/admin/replay")
          || (parsed->path == "/admin/tick_stats"
-             && static_cast<bool>(cfg_.tick_stats_provider));
+             && static_cast<bool>(cfg_.tick_stats_provider))
+         || (parsed->path == "/admin/assign_match"
+             && static_cast<bool>(cfg_.assign_match_handler));
         if (!known_path) {
             sendAndLog(404, "Not Found", errorJson("not found"));
         } else {
@@ -723,6 +799,37 @@ void AdminHttpServer::handleConnection(int client_fd) noexcept
             return;
         }
         sendAndLog(200, "OK", body);
+        return;
+    }
+
+    // ------------------------------------------------------------------
+    // /admin/assign_match handler (auth already passed). §21.7 item 1
+    // warm-daemon-pool scaffolding (2026-07-15).
+    // ------------------------------------------------------------------
+    if (is_assign_match) {
+        auto req = parseAssignMatchJson(parsed->body, &why);
+        if (!req) {
+            sendAndLog(400, "Bad Request", errorJson("bad request", why));
+            return;
+        }
+        AssignMatchResult res;
+        try {
+            res = cfg_.assign_match_handler(*req);
+        } catch (const std::exception& e) {
+            sendAndLog(500, "Internal Server Error",
+                       errorJson("internal error", e.what()));
+            return;
+        }
+        if (res.outcome == AssignMatchOutcome::kConflict) {
+            // Canonical body — handler's body_json is intentionally
+            // ignored on conflict so the wire shape is stable across
+            // handlers.
+            sendAndLog(409, "Conflict",
+                       errorJson("already assigned"));
+            return;
+        }
+        // kOk: handler's body_json used verbatim.
+        sendAndLog(200, "OK", res.body_json);
         return;
     }
 
