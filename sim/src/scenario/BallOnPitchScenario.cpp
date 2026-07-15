@@ -2,6 +2,8 @@
 
 #include "scenario/BallOnPitchScenario.hpp"
 
+#include "math/FixedMath.hpp"
+
 namespace fh::sim::scenario {
 
 namespace {
@@ -20,9 +22,12 @@ void configurePitchAndPlayable(PitchSpec& pitch, PlayableArea& playable)
 
 } // namespace
 
-// Interactive default: centre-spot ball at rest + one demo slot 5 m west
-// facing east, so the tactical-games "🎾 Ball on Pitch" tile delivers
-// joystick control (BallControl first-touch fires after a short stroll).
+// Interactive default: centre-spot ball at rest + two demo slots
+// flanking the ball 5 m west and 5 m east. The tactical-games
+// "🎾 Ball on Pitch" tile delivers joystick control to whichever
+// slot(s) get claimed; unclaimed slot(s) render as AI dots under
+// WanderController. Two clients ⇒ symmetric 5 m race with Slice
+// 16.6's SlotId tie-break as the fallback for equidistant first-touch.
 BallOnPitchScenario::BallOnPitchScenario() noexcept
 {
     configurePitchAndPlayable(pitch_, playable_);
@@ -40,6 +45,15 @@ BallOnPitchScenario::BallOnPitchScenario() noexcept
     s1.heading  = math::Fixed64::zero();   // facing +x (east, toward the ball)
     s1.role     = Role::Any;
     spawns_.push_back(s1);
+
+    SlotSpawn s2;
+    s2.slot     = SlotId{2};
+    s2.position = math::Vec3{math::Fixed64::fromInt(5),
+                             math::Fixed64::zero(),
+                             math::Fixed64::zero()};
+    s2.heading  = math::FX_PI;             // facing -x (west, toward the ball)
+    s2.role     = Role::Any;
+    spawns_.push_back(s2);
 }
 
 // Scripted variant: caller-supplied ball state, ZERO slots. This is the
@@ -56,8 +70,10 @@ BallOnPitchScenario::BallOnPitchScenario(BallSpawn scripted_ball) noexcept
 std::vector<std::string> BallOnPitchScenario::hints() const
 {
     return {
-        "Ball on centre spot — walk east from the spawn point to dribble.",
-        "The ball rolls under passive friction and settles at rest.",
+        "Ball on centre spot — walk toward it to dribble.",
+        "Slot 1 spawns 5 m west facing east; Slot 2 spawns 5 m east facing west.",
+        "Solo play: your dot walks; the other flank wanders as an AI.",
+        "Two clients: symmetric first-touch race with lower-SlotId tie-break.",
         "Slice 15/16/18.1 demo (DESIGN.md §23.3).",
     };
 }

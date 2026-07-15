@@ -3,6 +3,7 @@
 #include "scenario/BallOnPitchScenario.hpp"
 #include "awareness/AwarenessView.hpp"
 #include "math/Fixed64.hpp"
+#include "math/FixedMath.hpp"
 #include "test_harness.hpp"
 
 #include <optional>
@@ -10,6 +11,7 @@
 
 using fh::sim::awareness::WorldView;
 using fh::sim::math::Fixed64;
+using fh::sim::math::FX_PI;
 using fh::sim::math::Vec3;
 using fh::sim::scenario::BallOnPitchScenario;
 using fh::sim::scenario::BallSpawn;
@@ -27,17 +29,24 @@ FH_TEST(pitch_is_regulation) {
     FH_EXPECT_EQ(p.width_m,  Fixed64::fromInt(68));
 }
 
-FH_TEST(default_ctor_spawns_one_slot_west_of_ball) {
-    // Interactive mode: SlotId{1} at (-5, 0) facing east so a claiming
-    // client walks toward the centre-spot ball and picks it up via
-    // BallControl first-touch.
+FH_TEST(default_ctor_spawns_two_slots_flanking_ball) {
+    // Interactive mode: SlotId{1} at (-5, 0) facing east AND SlotId{2}
+    // at (+5, 0) facing west so two clients contest for the centre-spot
+    // ball. Slice 16.6's lower-SlotId tie-break decides equidistant
+    // first-touch races; solo play sees the unclaimed slot wander as AI.
     BallOnPitchScenario s;
     const auto spawns = s.initialSpawns();
-    FH_EXPECT_EQ(spawns.size(), 1u);
+    FH_EXPECT_EQ(spawns.size(), 2u);
+
     FH_EXPECT(spawns[0].slot == fh::sim::SlotId{1});
     FH_EXPECT_EQ(spawns[0].position.x, Fixed64::fromInt(-5));
     FH_EXPECT_EQ(spawns[0].position.y, Fixed64::zero());
     FH_EXPECT_EQ(spawns[0].heading,    Fixed64::zero());
+
+    FH_EXPECT(spawns[1].slot == fh::sim::SlotId{2});
+    FH_EXPECT_EQ(spawns[1].position.x, Fixed64::fromInt(5));
+    FH_EXPECT_EQ(spawns[1].position.y, Fixed64::zero());
+    FH_EXPECT_EQ(spawns[1].heading,    FX_PI);
 }
 
 FH_TEST(scripted_ctor_has_no_player_slots) {
