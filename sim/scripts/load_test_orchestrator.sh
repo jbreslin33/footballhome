@@ -132,6 +132,17 @@ if [[ -z "${JWT_SECRET}" ]]; then
     exit 2
 fi
 
+# §21.7 item 2 diagnostic (2026-07-14): sections 3.6 / 3.7 / 5.6 poll
+# each spawned daemon's GET /admin/tick_stats to capture the
+# catch-up-skip distribution. Empty token skips those sections rather
+# than failing the whole test (the endpoint is optional in the sense
+# that older sim images that predate it will simply 404, and this test
+# should still function as a spawn/tick/tear-down smoke test).
+FH_SIM_ADMIN_TOKEN="$(grep -E '^FH_SIM_ADMIN_TOKEN=' "${env_file}" | tail -n1 | cut -d= -f2-)"
+if [[ -z "${FH_SIM_ADMIN_TOKEN}" ]]; then
+    info "FH_SIM_ADMIN_TOKEN empty in ${env_file} — will skip tick_stats capture (sections 3.6/3.7/5.6)"
+fi
+
 # Ping backend health-ish (any 2xx / 4xx is fine — 5xx or connect refused fails).
 # NOTE: on connect refused, curl writes "000" to stdout (from -w) *and*
 # exits non-zero. A trailing `|| echo 000` would concatenate to "000000"
@@ -434,6 +445,74 @@ else
     info "skipping — need ≥ 3 spawned matches, have ${spawned_count}"
 fi
 
+# --- 3.6) capture GET /admin/tick_stats per daemon --------------------------
+# §21.7 item 2 diagnostic (2026-07-14): snapshot the tick-loop health
+# counters from every spawned daemon while they're still running. Must
+# run BEFORE section 4 (parallel stop) because /stop removes the per-
+# match containers and the counters go with them.
+#
+# Each daemon exposes GET /admin/tick_stats on port 9101 inside the
+# podman network. We fetch by container IP rather than podman-exec+curl
+# because the runtime image is trixie-slim + a hand-picked minimal set
+# (libssl3, libpqxx-7.10, iproute2) and does NOT ship curl. Container
+# IPs are stable for a container's lifetime so a single inspect per
+# daemon is enough. Any daemon whose stats fetch fails (curl != 0 or
+# http != 200) is logged as info and produces no line in the jsonl
+# output — section 5.6 tolerates missing daemons and reports the
+# coverage explicitly.
+#
+# Payload shape (JSON one-line, ~120 bytes):
+#   {"match_id":N,"tick_hz":20,"ticks_executed":T,"catch_up_skips":S,
+#    "active_clients":A}
+# Written one-per-line to ${STATE_DIR}/tick_stats_final.jsonl. Section
+# 5.6 aggregates.
+say "3.6) capture tick_stats per daemon (§21.7 item 2 diagnostic)"
+
+TICK_STATS_FINAL="${STATE_DIR}/tick_stats_final.jsonl"
+: > "${TICK_STATS_FINAL}"
+
+if [[ -z "${FH_SIM_ADMIN_TOKEN}" ]]; then
+    info "skipping — FH_SIM_ADMIN_TOKEN unavailable (set it in ${env_file} to enable)"
+elif [[ ! -s "${MATCH_IDS_FILE}" ]]; then
+    info "skipping — no spawned matches to poll"
+else
+    stats_ok=0
+    stats_miss=0
+    while read -r mid; do
+        [[ -z "${mid}" ]] && continue
+        # First non-empty IPAddress across all networks the container
+        # is attached to — trixie's podman v4 keeps the primary IP in
+        # NetworkSettings.Networks.<name>.IPAddress and leaves the
+        # legacy top-level .NetworkSettings.IPAddress empty.
+        ip="$(sudo podman inspect "footballhome_sim_${mid}" \
+              --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null \
+              | awk '{print $1}')"
+        if [[ -z "${ip}" ]]; then
+            stats_miss=$((stats_miss + 1))
+            continue
+        fi
+        set +e
+        body="$(curl -sS -H "Authorization: Bearer ${FH_SIM_ADMIN_TOKEN}" \
+                     -w '\n%{http_code}' \
+                     --max-time 5 \
+                     "http://${ip}:9101/admin/tick_stats" 2>/dev/null)"
+        rc=$?
+        set -e
+        http="$(printf '%s' "${body}" | tail -n1)"
+        json="$(printf '%s' "${body}" | sed '$d')"
+        if [[ ${rc} -eq 0 && "${http}" == "200" && -n "${json}" ]]; then
+            printf '%s\n' "${json}" >> "${TICK_STATS_FINAL}"
+            stats_ok=$((stats_ok + 1))
+        else
+            stats_miss=$((stats_miss + 1))
+        fi
+    done < "${MATCH_IDS_FILE}"
+    info "tick_stats captured: ${stats_ok}/${spawned_count} daemons (missed=${stats_miss})"
+    if [[ "${stats_ok}" -eq 0 ]]; then
+        info "no daemons returned tick_stats — endpoint likely missing (pre-§21.7-item-2 sim image?)"
+    fi
+fi
+
 # --- 4) parallel stop ------------------------------------------------------
 say "4) stop ${spawned_count} matches in parallel"
 
@@ -599,6 +678,73 @@ if [[ -s "${MATCH_IDS_FILE}" ]]; then
             fi
         fi
     fi
+fi
+
+# --- 5.6) catch-up-skip distribution (§21.7 item 2 attribution) -------------
+# Aggregates the per-daemon counters captured in section 3.6. Reports:
+#   - total skips across all daemons
+#   - per-daemon distribution (min/p50/max, count of daemons with 0
+#     skips, count with ≥1)
+#   - lost-ticks estimate (each skip drops ~5 ticks at 250 ms behind ×
+#     20 Hz; a bounded lower-bound estimate — actual skip magnitude is
+#     stderr-logged as behind_ms per-skip and can be pulled from
+#     `podman logs footballhome_sim_${mid}` if a per-daemon histogram
+#     is needed)
+#
+# Diagnostic-only: never fails the test. Attribution guidance:
+#   - most daemons with 1–5 skips (bounded, near-uniform) → candidate
+#     (c) startup contention spike (§21.7 item 2). Remedy: warm-daemon-
+#     pool per §21.7 item 1 removes per-match startup work from the
+#     tick loop's critical path.
+#   - most daemons with >5 skips (scattered, high spread) → candidate
+#     (b) CFS scheduler jitter. Remedy: cgroup CPU pinning, SCHED_FIFO
+#     on the tick thread, or reducing daemon count to match host cores.
+say "5.6) catch-up-skip distribution (§21.7 item 2 attribution)"
+
+if [[ ! -s "${TICK_STATS_FINAL:-/dev/null}" ]]; then
+    info "no tick_stats data (section 3.6 skipped or empty) — nothing to aggregate"
+else
+    # Extract catch_up_skips column via jq if available, else awk-grep.
+    if command -v jq >/dev/null 2>&1; then
+        jq -r '.catch_up_skips' "${TICK_STATS_FINAL}" > "${STATE_DIR}/skips.txt"
+        jq -r '.ticks_executed' "${TICK_STATS_FINAL}" > "${STATE_DIR}/ticks.txt"
+    else
+        grep -oE '"catch_up_skips":[0-9]+' "${TICK_STATS_FINAL}" \
+            | awk -F: '{print $2}' > "${STATE_DIR}/skips.txt"
+        grep -oE '"ticks_executed":[0-9]+' "${TICK_STATS_FINAL}" \
+            | awk -F: '{print $2}' > "${STATE_DIR}/ticks.txt"
+    fi
+
+    n_daemons="$(wc -l < "${STATE_DIR}/skips.txt")"
+    total_skips="$(awk '{s+=$1} END {print s+0}' "${STATE_DIR}/skips.txt")"
+    total_ticks="$(awk '{s+=$1} END {print s+0}' "${STATE_DIR}/ticks.txt")"
+    zeros="$(awk '$1 == 0' "${STATE_DIR}/skips.txt" | wc -l)"
+    nonzero=$(( n_daemons - zeros ))
+    min_skips="$(sort -n "${STATE_DIR}/skips.txt" | head -n1)"
+    max_skips="$(sort -n "${STATE_DIR}/skips.txt" | tail -n1)"
+    mid_idx=$(( (n_daemons + 1) / 2 ))
+    p50_skips="$(sort -n "${STATE_DIR}/skips.txt" | sed -n "${mid_idx}p")"
+
+    # Lower-bound lost ticks: each skip resets next_tick_at (see
+    # SimServer.cpp catch-up branch) — at min the skip fired at
+    # exactly 250 ms behind (= 5 dropped ticks). Actual value ≥ this.
+    lost_ticks_min=$(( total_skips * 5 ))
+
+    info "daemons reporting: ${n_daemons}/${spawned_count}"
+    info "total ticks executed: ${total_ticks}"
+    info "total catch-up-skips: ${total_skips} (≥ ${lost_ticks_min} lost ticks lower bound)"
+    info "skip distribution: min=${min_skips} p50=${p50_skips} max=${max_skips}"
+    info "daemons with 0 skips: ${zeros}/${n_daemons}   with ≥1 skip: ${nonzero}/${n_daemons}"
+
+    # Rough attribution hint (attribution guidance only — not a gate):
+    if [[ "${total_skips}" -eq 0 ]]; then
+        info "attribution: zero skips — tick-loop clean, effective-Hz deficit (if any) is not from catch-up-skips"
+    elif [[ "${max_skips}" -le 5 ]]; then
+        info "attribution: skip counts bounded ≤5 per daemon → candidate (c) startup contention spike likely (§21.7 item 2)"
+    else
+        info "attribution: skip counts scattered (max=${max_skips}) → candidate (b) CFS scheduler jitter likely (§21.7 item 2)"
+    fi
+    info "raw per-daemon jsonl: ${TICK_STATS_FINAL} (dumped into test state dir — copy out before summary trap wipes ${STATE_DIR})"
 fi
 
 # Match IDs already reaped — clear the file so the cleanup trap doesn't
