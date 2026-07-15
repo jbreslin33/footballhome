@@ -74,6 +74,16 @@ class RostersScreen extends Screen {
   }
 
   render() {
+    // ScreenManager wipes container.innerHTML on every transition,
+    // so any DOM references cached on the instance (like a FilterBar
+    // bound to the previous mount's host element) are now detached
+    // garbage.  Reset them here so the next _buildFilterBar() call
+    // constructs a fresh one against the freshly-rendered host —
+    // otherwise the category pills quietly render into a dead node
+    // and vanish on the second visit.
+    this._filterBar = null;
+    this._mountedChildren = [];
+
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
@@ -244,8 +254,13 @@ class RostersScreen extends Screen {
     this._mountForChip();
   }
 
-  onLeave() {
+  // ScreenManager's lifecycle hook is `onExit` (not `onLeave`).  We
+  // also drop the cached FilterBar here so anything still holding a
+  // reference doesn't accidentally paint into the old host after we've
+  // been detached.
+  onExit() {
     this._unmountAll();
+    this._filterBar = null;
   }
 
   // ── Variant toggle ────────────────────────────────────────────────
