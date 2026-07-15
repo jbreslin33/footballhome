@@ -171,4 +171,22 @@ private:
     std::thread refill_thread_;
 };
 
+// §21.7 item 1 step 5E — env-driven pool config for HttpServer boot.
+//
+// Reads:
+//   FH_SIM_POOL_SIZE — int, default 0 (pool disabled). When 0 the
+//     caller should skip constructing a SimPool entirely rather than
+//     constructing one with target_size=0 (which is legal — the pool
+//     just never spawns anything — but wastes a background thread).
+//   FH_SIM_POOL_REFILL_BACKOFF_MS — int ms, default 2000. Ceiling
+//     between spawn retries after a spawnWarm failure.
+//   FH_SIM_POOL_REFILL_WAKE_MS    — int ms, default 30000. Fallback
+//     wake period for the refill thread when no take() has fired.
+//
+// Values ≤0 for the two intervals are clamped to 100 ms to prevent
+// accidental tight loops if an operator flips them to 0. target_size
+// is clamped to a non-negative int (bare int env parse; a garbage
+// value returns 0 = disabled).
+SimPoolConfig loadSimPoolConfigFromEnv();
+
 } // namespace fh::orchestration

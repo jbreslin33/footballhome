@@ -57,6 +57,7 @@
 #include "controllers/SimDebugController.h"
 #include "controllers/TrailTestController.h"
 #include "orchestration/SimOrchestrator.h"
+#include "orchestration/SimPool.h"
 #include "orchestration/SimReaper.h"
 #include "core/HttpClient.h"
 #include "services/MetaLeadsService.h"
@@ -112,6 +113,31 @@ private:
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
     std::shared_ptr<SimDebugController> sim_debug_controller_;
     std::shared_ptr<TrailTestController> trail_test_controller_;
+
+    // §21.7 item 1 step 5E — warm-daemon pool bundle. Owns the
+    // long-lived HttpClient + SimOrchestrator + SimPool trio needed
+    // by the pool's background refill thread. Populated in
+    // initialize() only when FH_SIM_ORCHESTRATOR_ENABLED=1 AND
+    // FH_SIM_POOL_SIZE > 0; stays nullptr otherwise (default state,
+    // matches pre-5E behavior). Ordered AFTER controllers so the
+    // destructor tears the bundle down BEFORE the controllers so
+    // sim_lobby_controller_->setSimPool(nullptr) fires while the
+    // controller shared_ptr is still alive. The bundle's own dtor
+    // runs pool.~SimPool() → SimPool::stop() → joins refill thread
+    // before orch/http go out of scope, so refill's spawnWarm can't
+    // dangle-deref the orchestrator's HttpClient reference.
+    struct SimPoolBundle {
+        HttpClient http;
+        fh::orchestration::SimOrchestrator orch;
+        fh::orchestration::SimPool pool;
+
+        SimPoolBundle(fh::orchestration::SimOrchestratorConfig ocfg,
+                      fh::orchestration::SimPoolConfig pcfg)
+            : http()
+            , orch(std::move(ocfg), http)
+            , pool(std::move(pcfg), orch) {}
+    };
+    std::unique_ptr<SimPoolBundle> sim_pool_bundle_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -241,6 +267,58 @@ public:
         // reconciliation contract.
         fh::orchestration::SimReaper::getInstance().start();
 
+        // §21.7 item 1 step 5E — wire the warm-daemon pool.
+        //
+        // Sourced from FH_SIM_ORCHESTRATOR_ENABLED (must be true) +
+        // FH_SIM_POOL_SIZE (int > 0). When either gate is off, no
+        // bundle is constructed and SimLobbyController's pool_ stays
+        // nullptr, so handleCreateMatch's pool-first branch is inert
+        // and behavior is byte-equivalent to pre-5E.
+        //
+        // When on: constructs SimPoolBundle{HttpClient, SimOrchestrator,
+        // SimPool}, starts the pool's refill thread, then attaches the
+        // pool to sim_lobby_controller_ so incoming
+        // POST /api/sim/matches requests try pool.take() first before
+        // falling back to launchMatch (5D).
+        //
+        // NO orphan warm-container cleanup at boot in this slice —
+        // if the previous backend left `footballhome_sim_warm_*`
+        // containers around, spawnWarm collisions log-and-back-off
+        // in the refill thread (SimPool.cpp) and the pool self-heals
+        // within refill_wake_interval once ops manually reaps the
+        // orphans OR the auto-bumped warm_id counter skips past
+        // them. Explicit boot-time reap deferred to a follow-up
+        // slice — the first-flip production deploy should verify
+        // `sudo podman ps --filter name=footballhome_sim_warm_` is
+        // empty before enabling FH_SIM_POOL_SIZE.
+        {
+            auto orch_cfg = fh::orchestration::loadConfigFromEnv();
+            auto pool_cfg = fh::orchestration::loadSimPoolConfigFromEnv();
+            if (orch_cfg.enabled && pool_cfg.target_size > 0) {
+                sim_pool_bundle_ = std::make_unique<SimPoolBundle>(
+                    std::move(orch_cfg), std::move(pool_cfg));
+                sim_pool_bundle_->pool.start();
+                sim_lobby_controller_->setSimPool(&sim_pool_bundle_->pool);
+                std::cout << "[sim-pool] wired target_size="
+                          << sim_pool_bundle_->pool.config().target_size
+                          << " refill_wake_interval_ms="
+                          << sim_pool_bundle_->pool.config()
+                                 .refill_wake_interval.count()
+                          << " refill_backoff_on_error_ms="
+                          << sim_pool_bundle_->pool.config()
+                                 .refill_backoff_on_error.count()
+                          << " — refill thread started" << std::endl;
+            } else if (!orch_cfg.enabled) {
+                std::cout << "[sim-pool] disabled "
+                             "(FH_SIM_ORCHESTRATOR_ENABLED unset)"
+                          << std::endl;
+            } else {
+                std::cout << "[sim-pool] disabled "
+                             "(FH_SIM_POOL_SIZE=0)"
+                          << std::endl;
+            }
+        }
+
         // Create socket
         if (!createSocket()) {
             return false;
@@ -261,6 +339,36 @@ public:
     }
     
     ~HttpServer() {
+        // §21.7 item 1 step 5E — pool teardown.
+        //
+        // In production the socket loop in run() is infinite and
+        // SIGTERM kills the process before this dtor fires — this
+        // path is exercised by tests and clean-exit codepaths only.
+        // For those cases we:
+        //   1. Detach the pool from the controller FIRST so any
+        //      in-flight handleCreateMatch reading pool_ observes
+        //      nullptr (it treats that as "pool disabled" and takes
+        //      the launchMatch fallback branch).
+        //   2. Drain any warm slots the pool still holds via
+        //      orch.stopMatch(). Skipping this leaves the containers
+        //      running as orphans until the next backend boot's
+        //      operator-driven cleanup — correct but sloppy.
+        //   3. Let sim_pool_bundle_'s dtor run pool.~SimPool() which
+        //      joins the refill thread; then orch + http go out of
+        //      scope in the right order.
+        if (sim_lobby_controller_) {
+            sim_lobby_controller_->setSimPool(nullptr);
+        }
+        if (sim_pool_bundle_) {
+            while (auto slot = sim_pool_bundle_->pool.take()) {
+                fh::orchestration::StopOptions so;
+                so.container_id = slot->container_id;
+                so.grace_seconds = 5;
+                (void)sim_pool_bundle_->orch.stopMatch(so);
+            }
+            sim_pool_bundle_->pool.stop();
+        }
+
         if (server_fd_ >= 0) {
             close(server_fd_);
         }

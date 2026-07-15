@@ -2,10 +2,46 @@
 
 #include "SimOrchestrator.h"
 
+#include <cstdlib>
 #include <iostream>
+#include <string>
 #include <utility>
 
 namespace fh::orchestration {
+
+namespace {
+
+// Env parsing helpers — local, mirror the shape used in
+// SimOrchestrator.cpp so ops toggles feel consistent across the
+// backend. Kept anon-namespace-scoped rather than exported because
+// loadSimPoolConfigFromEnv is the only caller.
+int envIntOrDefault(const char* name, int fallback) {
+    const char* v = std::getenv(name);
+    if (!v || !*v) return fallback;
+    try {
+        return std::stoi(v);
+    } catch (...) {
+        return fallback;
+    }
+}
+
+} // namespace
+
+SimPoolConfig loadSimPoolConfigFromEnv() {
+    SimPoolConfig cfg;
+    cfg.target_size = envIntOrDefault("FH_SIM_POOL_SIZE", 0);
+    if (cfg.target_size < 0) cfg.target_size = 0;
+
+    int backoff_ms = envIntOrDefault("FH_SIM_POOL_REFILL_BACKOFF_MS", 2000);
+    if (backoff_ms < 100) backoff_ms = 100;
+    cfg.refill_backoff_on_error = std::chrono::milliseconds(backoff_ms);
+
+    int wake_ms = envIntOrDefault("FH_SIM_POOL_REFILL_WAKE_MS", 30000);
+    if (wake_ms < 100) wake_ms = 100;
+    cfg.refill_wake_interval = std::chrono::milliseconds(wake_ms);
+
+    return cfg;
+}
 
 SimPool::SimPool(SimPoolConfig cfg, SimOrchestrator& orch)
     : cfg_(std::move(cfg)), orch_(orch) {}
