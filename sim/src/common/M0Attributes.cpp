@@ -24,6 +24,22 @@ profile::AttributeSet defaultPhysical()
     // by MechanicsParams::fromPhysical, so the M0 canonical-hash gold
     // and the Slice 15.6 ball-trajectory gold stay byte-identical.
     a.set(kDribbleEfficiency,   math::Fixed64::fromDouble(0.85));
+
+    // Slice 25.2 (§23.3): ball-carry speed pair. These replace the prior
+    // "walk × efficiency" formula in BallControl. See
+    // database/migrations/209-sim-attr-carry-speeds.sql for the DB rows
+    // and the semantic contract.
+    //   * max_dribble_speed       = 4.0 m/s (dribble under control, no sprint)
+    //   * max_carry_sprint_speed  = 6.0 m/s (sprint with ball; still < 7.5
+    //                                        m/s no-ball sprint by design —
+    //                                        ball-touch cadence limits top)
+    // dribble_efficiency (0.85 above) still applies as an attenuation, so
+    // out-of-the-box effective caps are 3.4 m/s (dribble) and 5.1 m/s
+    // (sprint w/ ball). Only the dribble determinism goldens
+    // (kExpectedHashDribble200, kExpectedHashFirstTouch200) are affected;
+    // no-ball paths are byte-identical.
+    a.set(kMaxDribbleSpeed,     math::Fixed64::fromDouble(4.0));
+    a.set(kMaxCarrySprintSpeed, math::Fixed64::fromDouble(6.0));
     return a;
 }
 

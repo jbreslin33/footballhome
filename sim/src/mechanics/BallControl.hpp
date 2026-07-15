@@ -85,6 +85,13 @@ struct BallControlSlot {
     math::Vec3                    new_velocity;        // mechanics-computed
     math::Fixed64                 heading;             // mechanics-computed
     bool                          wants_dribble;
+    // Slice 25.2: chooses between dribble cap and carry-sprint cap in
+    // BallControl::fillOwnedFields. Populated from Intent::wants_sprint
+    // in Match.cpp so a human (or future AI) that asserts sprint while
+    // owning the ball moves at max_carry_sprint_speed × dribble_efficiency
+    // instead of the slower dribble cap. Ignored when the slot is not
+    // the chosen owner.
+    bool                          wants_sprint;
     math::Fixed64                 dribble_efficiency;  // [0,1] from profile
     const match::MechanicsParams* params;              // borrowed
 };

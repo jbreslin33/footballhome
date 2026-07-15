@@ -219,6 +219,10 @@ void Match::tick()
             bcs.new_velocity       = res.new_velocity;
             bcs.heading            = res.new_heading;
             bcs.wants_dribble      = intent.wants_dribble;
+            // Slice 25.2: pipe sprint intent through so BallControl can
+            // pick max_carry_sprint_speed vs max_dribble_speed for the
+            // owner's velocity cap.
+            bcs.wants_sprint       = intent.wants_sprint;
             bcs.dribble_efficiency = mech.dribble_efficiency;
             bcs.params             = &mech;
             bc_slots.push_back(bcs);

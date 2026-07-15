@@ -36,6 +36,7 @@
 #   awk -f sim/scripts/gen_registry_header.awk \
 #       database/migrations/200-sim-registries.sql \
 #       database/migrations/208-sim-attr-dribble-efficiency.sql \
+#       database/migrations/209-sim-attr-carry-speeds.sql \
 #       > sim/src/common/M0Registry.generated.hpp
 #
 # Design refs: DESIGN.md §21.1 (ship-blocker item 3), §22.11 (this ADR).
@@ -193,11 +194,13 @@ from migration file. Migration format may have changed." > "/dev/stderr"
     print "// AUTO-GENERATED - do not edit."
     print "// Source:    database/migrations/200-sim-registries.sql"
     print "//        +   database/migrations/208-sim-attr-dribble-efficiency.sql"
+    print "//        +   database/migrations/209-sim-attr-carry-speeds.sql"
     print "// Generator: sim/scripts/gen_registry_header.awk"
     print "// Regenerate on host (single line, wrapped for readability only):"
     print "//   awk -f sim/scripts/gen_registry_header.awk"
     print "//       database/migrations/200-sim-registries.sql"
     print "//       database/migrations/208-sim-attr-dribble-efficiency.sql"
+    print "//       database/migrations/209-sim-attr-carry-speeds.sql"
     print "//       > sim/src/common/M0Registry.generated.hpp"
     print "// See sim/DESIGN.md section 22.11."
     print ""

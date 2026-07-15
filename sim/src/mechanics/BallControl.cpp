@@ -72,20 +72,31 @@ Vec3 computeGluePosition(const Vec3& owner_position, Fixed64 owner_heading) noex
 
 // Populate the {owner_capped_velocity, ball_target_velocity,
 // ball_target_position} fields of `res` for a given chosen owner slot.
-// The cap magnitude is `max_walk_speed * dribble_efficiency`.
+//
+// Slice 25.2 cap formula (replaces the prior `walk × efficiency`):
+//
+//     base_speed  = wants_sprint ? max_carry_sprint_speed  // 6.0 m/s
+//                                : max_dribble_speed;      // 4.0 m/s
+//     dribble_cap = base_speed × dribble_efficiency;       // per-player
+//                                                          // attenuation
+//
+// See sim/DESIGN.md §23.3 Slice 25.2 and
+// database/migrations/209-sim-attr-carry-speeds.sql for the semantic
+// contract. wants_sprint is only meaningful for the chosen OWNER; a
+// non-owner's velocity is not touched here at all.
 void fillOwnedFields(BallControlResult&       res,
                      const BallControlSlot&   owner_slot) noexcept
 {
     // Guard: params should never be null if Match populated inputs
-    // correctly, but if it is, fall back to leaving velocity uncapped
-    // rather than crashing — a stray zero-vector cap would freeze the
-    // owner mid-dribble. `Fixed64::zero()` as fallback max_speed makes
-    // clampSpeedXY return zero, which is defensive but visible in
-    // tests if we ever regress.
-    const Fixed64 walk_cap = (owner_slot.params != nullptr)
-        ? owner_slot.params->max_walk_speed
+    // correctly, but if it is, fall back to a zero cap rather than
+    // crashing — clampSpeedXY(v, 0) returns zero, which is visibly
+    // wrong in tests if we ever regress.
+    const Fixed64 base_speed = (owner_slot.params != nullptr)
+        ? (owner_slot.wants_sprint
+            ? owner_slot.params->max_carry_sprint_speed
+            : owner_slot.params->max_dribble_speed)
         : Fixed64::zero();
-    const Fixed64 dribble_cap = walk_cap * owner_slot.dribble_efficiency;
+    const Fixed64 dribble_cap = base_speed * owner_slot.dribble_efficiency;
 
     const Vec3 capped_v = clampSpeedXY(owner_slot.new_velocity, dribble_cap);
     res.owner_capped_velocity = capped_v;

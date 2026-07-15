@@ -110,8 +110,10 @@ set(SIM_MIGRATION_FILE
 # INTO sim_attribute_registry / sim_concept_registry block it finds
 # across the input files in the order they're passed.
 #   208 = physical.dribble_efficiency (Slice 16.1)
+#   209 = physical.max_dribble_speed + max_carry_sprint_speed (Slice 25.2)
 set(SIM_MIGRATION_EXTRA_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/208-sim-attr-dribble-efficiency.sql)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/208-sim-attr-dribble-efficiency.sql
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/209-sim-attr-carry-speeds.sql)
 set(SIM_GEN_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/M0Registry.generated.hpp)
 set(SIM_GEN_SCRIPT
@@ -124,7 +126,7 @@ if(EXISTS ${SIM_MIGRATION_FILE})
         OUTPUT  ${SIM_GEN_HEADER}
         COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} > ${SIM_GEN_HEADER}
         DEPENDS ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} ${SIM_GEN_SCRIPT}
-        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208"
+        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209"
         VERBATIM)
     add_custom_target(gen_m0_registry ALL DEPENDS ${SIM_GEN_HEADER})
 else()
@@ -137,6 +139,7 @@ else()
             "    awk -f sim/scripts/gen_registry_header.awk \\\n"
             "        database/migrations/200-sim-registries.sql \\\n"
             "        database/migrations/208-sim-attr-dribble-efficiency.sql \\\n"
+            "        database/migrations/209-sim-attr-carry-speeds.sql \\\n"
             "        > sim/src/common/M0Registry.generated.hpp")
     endif()
     message(STATUS

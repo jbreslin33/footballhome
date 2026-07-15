@@ -42,6 +42,19 @@ struct MechanicsParams {
     // reading this in applyIntent, both golden hashes need refresh.
     math::Fixed64 dribble_efficiency;
 
+    // Slice 25.2: ball-carry speed pair. Read by BallControl in
+    // fillOwnedFields as the *base* speed cap, chosen per-tick from
+    // Intent::wants_sprint. NOT consumed by applyIntent — the no-ball
+    // determinism goldens (Wander/HumanSprint/BallRoll) stay byte-
+    // identical. The two ball-owning goldens (Dribble200 +
+    // FirstTouch200) shifted with the new formula in this slice.
+    //   * max_dribble_speed        = ceiling when owning ball, no sprint
+    //   * max_carry_sprint_speed   = ceiling when owning ball + wants_sprint
+    // Effective cap = base × dribble_efficiency (attenuation for weaker
+    // dribblers). See sim/src/mechanics/BallControl.cpp::fillOwnedFields.
+    math::Fixed64 max_dribble_speed;
+    math::Fixed64 max_carry_sprint_speed;
+
     // Extract M0 params from a physical AttributeSet. Missing attrs fall
     // back to the M0 defaults from §16.2 so tests can pass minimal profiles.
     static MechanicsParams fromPhysical(const profile::AttributeSet& physical);

@@ -58,6 +58,11 @@ MechanicsParams MechanicsParams::fromPhysical(const profile::AttributeSet& physi
     // Slice 16.3: cached for BallControl. Read-only for applyIntent
     // (which never touches it), so both canonical goldens stay put.
     p.dribble_efficiency    = get(m0::kDribbleEfficiency);
+
+    // Slice 25.2: ball-carry speed pair (see Mechanics.hpp comment).
+    // Also read-only for applyIntent; only BallControl consumes them.
+    p.max_dribble_speed        = get(m0::kMaxDribbleSpeed);
+    p.max_carry_sprint_speed   = get(m0::kMaxCarrySprintSpeed);
     return p;
 }
 

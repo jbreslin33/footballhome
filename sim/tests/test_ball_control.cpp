@@ -48,19 +48,31 @@ MechanicsParams makeParams(Fixed64 max_walk_speed = Fixed64::fromInt(2))
     // carries its own copy (per-slot from profile), keeping the two
     // sources orthogonal in test setup.
     p.dribble_efficiency    = Fixed64::zero();
+    // Slice 25.2: ball-carry speeds. Default max_dribble_speed to
+    // max_walk_speed so the pre-Slice-25.2 tests below (which set
+    // efficiency and observe `walk × efficiency`) continue to observe
+    // the exact same numbers — they now describe "dribble × efficiency"
+    // where dribble == walk, but the arithmetic is identical.
+    // max_carry_sprint_speed is set higher so the new sprint-with-ball
+    // test can distinguish the two branches.
+    p.max_dribble_speed      = max_walk_speed;                // 2 m/s default
+    p.max_carry_sprint_speed = Fixed64::fromInt(3);           // 3 m/s
     return p;
 }
 
 // Compact BallControlSlot factory. `dribble_efficiency` defaults to 1.0
 // so tests that don't care about the cap still get well-behaved motion
-// (velocity magnitude preserved).
+// (velocity magnitude preserved). Slice 25.2: `wants_sprint` defaults
+// to false (dribble cap branch); tests that want to exercise the
+// carry-sprint branch pass wants_sprint=true explicitly.
 BallControlSlot makeSlot(SlotId                slot,
                          Vec3                  position,
                          bool                  wants_dribble,
                          const MechanicsParams* params,
                          Fixed64               dribble_efficiency = Fixed64::one(),
                          Vec3                  new_velocity = Vec3{},
-                         Fixed64               heading      = Fixed64::zero())
+                         Fixed64               heading      = Fixed64::zero(),
+                         bool                  wants_sprint = false)
 {
     BallControlSlot s;
     s.slot_id            = slot;
@@ -68,6 +80,7 @@ BallControlSlot makeSlot(SlotId                slot,
     s.new_velocity       = new_velocity;
     s.heading            = heading;
     s.wants_dribble      = wants_dribble;
+    s.wants_sprint       = wants_sprint;
     s.dribble_efficiency = dribble_efficiency;
     s.params             = params;
     return s;
@@ -265,8 +278,10 @@ FH_TEST(owner_lost_challenger_picks_up_same_tick) {
 // ---------------------------------------------------------------------------
 // Rule 3 — ball motion while owned: velocity cap + glue point.
 // ---------------------------------------------------------------------------
-FH_TEST(owned_velocity_capped_to_walk_speed_times_efficiency) {
-    // walk = 2 m/s, efficiency = 0.5 → cap = 1 m/s.
+FH_TEST(owned_velocity_capped_to_dribble_speed_times_efficiency) {
+    // Slice 25.2: cap formula = max_dribble_speed × dribble_efficiency.
+    // makeParams sets max_dribble_speed = max_walk_speed = 2 m/s.
+    // efficiency = 0.5 → cap = 1 m/s.
     // Owner intended 3 m/s east; should be clamped to 1 m/s east.
     const auto p = makeParams(Fixed64::fromInt(2));
     const auto eff = Fixed64::fromFraction(1, 2);
@@ -291,7 +306,7 @@ FH_TEST(owned_velocity_capped_to_walk_speed_times_efficiency) {
 }
 
 FH_TEST(owned_velocity_not_capped_when_under_limit) {
-    // walk = 2 m/s, efficiency = 1.0 → cap = 2 m/s.
+    // Slice 25.2: cap = max_dribble_speed × efficiency = 2 × 1.0 = 2 m/s.
     // Owner intended 1 m/s → passes through unchanged.
     const auto p = makeParams(Fixed64::fromInt(2));
     std::vector<BallControlSlot> slots{
@@ -324,6 +339,53 @@ FH_TEST(owned_zero_efficiency_freezes_owner) {
     FH_EXPECT(r.owner.has_value());
     FH_EXPECT_EQ(r.owner_capped_velocity.x, Fixed64::zero());
     FH_EXPECT_EQ(r.owner_capped_velocity.y, Fixed64::zero());
+}
+
+// Slice 25.2: sprint-with-ball uses max_carry_sprint_speed (not
+// max_dribble_speed) as the base speed cap. Locks the branch on
+// BallControlSlot::wants_sprint so a future refactor can't silently
+// collapse the two branches back into one.
+FH_TEST(owned_velocity_uses_carry_sprint_cap_when_wants_sprint) {
+    // makeParams sets max_dribble_speed = 2, max_carry_sprint_speed = 3.
+    // efficiency = 1.0 → dribble_cap = 2 m/s, sprint_cap = 3 m/s.
+    // Owner intended 5 m/s east.
+    // With wants_sprint = false → clamped to 2 m/s (dribble branch).
+    // With wants_sprint = true  → clamped to 3 m/s (sprint branch).
+    const auto p = makeParams(Fixed64::fromInt(2));
+
+    // Dribble branch: capped to 2.
+    {
+        std::vector<BallControlSlot> slots{
+            makeSlot(SlotId{1}, kBallAtOrigin, /*wants_dribble=*/true, &p,
+                     /*eff=*/Fixed64::one(),
+                     /*new_velocity=*/Vec3{Fixed64::fromInt(5),
+                                           Fixed64::zero(), Fixed64::zero()},
+                     /*heading=*/Fixed64::zero(),
+                     /*wants_sprint=*/false),
+        };
+        const auto r = resolveBallControl(std::nullopt, kBallAtOrigin,
+                                          slots.data(), slots.size());
+        FH_EXPECT(r.owner.has_value());
+        FH_EXPECT_EQ(r.owner_capped_velocity.x, Fixed64::fromInt(2));
+        FH_EXPECT_EQ(r.owner_capped_velocity.y, Fixed64::zero());
+    }
+
+    // Sprint-with-ball branch: capped to 3.
+    {
+        std::vector<BallControlSlot> slots{
+            makeSlot(SlotId{1}, kBallAtOrigin, /*wants_dribble=*/true, &p,
+                     /*eff=*/Fixed64::one(),
+                     /*new_velocity=*/Vec3{Fixed64::fromInt(5),
+                                           Fixed64::zero(), Fixed64::zero()},
+                     /*heading=*/Fixed64::zero(),
+                     /*wants_sprint=*/true),
+        };
+        const auto r = resolveBallControl(std::nullopt, kBallAtOrigin,
+                                          slots.data(), slots.size());
+        FH_EXPECT(r.owner.has_value());
+        FH_EXPECT_EQ(r.owner_capped_velocity.x, Fixed64::fromInt(3));
+        FH_EXPECT_EQ(r.owner_capped_velocity.y, Fixed64::zero());
+    }
 }
 
 FH_TEST(glue_position_is_owner_plus_heading_offset) {

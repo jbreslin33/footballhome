@@ -144,9 +144,10 @@ constexpr std::uint64_t kExpectedHashBallRoll400 = 0x7c3932be60cba2aaULL;
 // asserted; ball spawns 0.3 m east (inside kBallControlRadius = 0.5 m) so
 // first-touch fires on tick 1. After that, BallControl glues the ball to
 // owner.position + kBallOwnerLeadDistance*heading, caps the owner's
-// velocity at max_walk*dribble_efficiency, and skips BallPhysics for the
+// velocity at max_dribble_speed*dribble_efficiency (Slice 25.2:
+// replaces prior max_walk*efficiency), and skips BallPhysics for the
 // ball. 200 ticks (10 s) exercises the glue + speed-cap paths.
-constexpr std::uint64_t kExpectedHashDribble200 = 0xad857d3402f4a975ULL;
+constexpr std::uint64_t kExpectedHashDribble200 = 0x60781ccf7af63f70ULL;
 
 // Slice 16.6: cross-arch golden for two humans racing to the same ball.
 // Both slots start equidistant (SlotId{1} at x=-0.4, SlotId{2} at x=+0.4)
@@ -155,7 +156,7 @@ constexpr std::uint64_t kExpectedHashDribble200 = 0xad857d3402f4a975ULL;
 // tie-breaker (lower SlotId) awards ownership to SlotId{1}. The losing
 // slot's motion still gets recorded, so the hash locks BOTH ownership
 // AND the tie-breaker rule.
-constexpr std::uint64_t kExpectedHashFirstTouch200 = 0xdb8d91b26222ddaaULL;
+constexpr std::uint64_t kExpectedHashFirstTouch200 = 0x589c246919c1ba82ULL;
 
 // Slice 17.6: cross-arch golden for HalfPitchScenario in Hard mode.
 // SlotId{1} spawns at (10, 0) (declared by the scenario) and gets
