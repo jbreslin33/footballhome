@@ -59,6 +59,14 @@ FH_TEST(scripted_ctor_has_no_player_slots) {
     FH_EXPECT_EQ(s.initialSpawns().size(), 0u);
 }
 
+FH_TEST(unclaimed_slots_are_idle) {
+    // Slice 24.2: BallOnPitchScenario is human-interactive, so unclaimed
+    // slots must idle (not wander). Preserves solo dribble practice by
+    // keeping the un-piloted flank as a stationary target dummy.
+    BallOnPitchScenario s;
+    FH_EXPECT(s.unclaimedSlotsIdle());
+}
+
 // Default ctor: ball at centre spot, stationary.
 FH_TEST(default_ball_at_centre_stationary) {
     BallOnPitchScenario s;

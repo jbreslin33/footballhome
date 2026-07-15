@@ -7,6 +7,7 @@
 
 #include "common/M0Attributes.hpp"
 #include "controller/HumanController.hpp"
+#include "controller/IdleController.hpp"
 #include "controller/WanderController.hpp"
 #include "mechanics/BallControl.hpp"
 #include "physics/BallPhysics.hpp"
@@ -83,9 +84,19 @@ void Match::spawnInitialSlots()
         slot.profile.concepts = m0::defaultConcepts();
         // technical, mental, recognition stay empty (M0)
 
-        // Default controller: WanderController for unclaimed slots.
-        slot.controller = std::make_unique<controller::WanderController>(
-            pitch.length_m, pitch.width_m, &rng_);
+        // Default controller for unclaimed slots. Scenario decides:
+        //   scripted/wander demos -> WanderController (consumes RNG, M0/M1
+        //                            determinism goldens locked to this).
+        //   human-interactive     -> IdleController   (zero RNG, keeps
+        //                            un-piloted slots stationary so a solo
+        //                            joystick user is not fought by an AI).
+        // See Scenario::unclaimedSlotsIdle() and Slice 24.2.
+        if (scenario_->unclaimedSlotsIdle()) {
+            slot.controller = std::make_unique<controller::IdleController>();
+        } else {
+            slot.controller = std::make_unique<controller::WanderController>(
+                pitch.length_m, pitch.width_m, &rng_);
+        }
         slot.stamina    = math::Fixed64::one();
 
         params_by_slot_.push_back(MechanicsParams::fromPhysical(slot.profile.physical));
@@ -388,14 +399,23 @@ void Match::releaseSlot(SlotId slot_id)
 
     Slot& s = slots_[idx];
 
-    const scenario::PitchSpec pitch = scenario_->pitch();
-    s.controller = std::make_unique<controller::WanderController>(
-        pitch.length_m, pitch.width_m, &rng_);
+    // Slice 24.2: mirror spawnInitialSlots' controller-policy branch so a
+    // slot released mid-match reverts to the same idle-or-wander default
+    // it originally received — otherwise a solo BallOnPitch user who
+    // disconnects and reconnects would suddenly find a wandering AI in
+    // the seat they just vacated.
+    if (scenario_->unclaimedSlotsIdle()) {
+        s.controller = std::make_unique<controller::IdleController>();
+    } else {
+        const scenario::PitchSpec pitch = scenario_->pitch();
+        s.controller = std::make_unique<controller::WanderController>(
+            pitch.length_m, pitch.width_m, &rng_);
+    }
     s.owner.reset();
     s.person.reset();
 
-    // Wander AI runs on the M0 baseline profile — a released slot has no
-    // "identity" any more. Values live in M0Attributes.cpp (§22.11).
+    // Wander/idle AI runs on the M0 baseline profile — a released slot
+    // has no "identity" any more. Values live in M0Attributes.cpp (§22.11).
     s.profile.physical = m0::defaultPhysical();
     s.profile.concepts = m0::defaultConcepts();
     // technical, mental, recognition stay empty (M0).

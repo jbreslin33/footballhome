@@ -22,9 +22,10 @@
 // contests for the ball from the east side. Slice 16.6's tie-break
 // rule (lower SlotId wins equidistant first-touch) is exercised by
 // the resulting 5 m symmetric race when both clients walk inward.
-// Solo-play behaviour: the unclaimed east slot spawns a
-// WanderController and renders as an AI (red) dot — free training
-// dummy.
+// Solo-play behaviour (Slice 24.2): the unclaimed slot spawns an
+// IdleController (see Scenario::unclaimedSlotsIdle) and renders as a
+// stationary AI dot \u2014 a training-dummy target that will not fight
+// the joystick user's dribble line.
 //
 // DB row + scenario_id: see migration 207-sim-scenarios-ball-on-pitch.sql
 // (assigns id=1) and Replay.cpp::makeScenario (adds the id=1 → this-class
@@ -45,6 +46,14 @@ public:
     // flanking the ball (SlotId{1} 5 m west facing east, SlotId{2} 5 m
     // east facing west).
     BallOnPitchScenario() noexcept;
+
+    // Slice 24.2: unclaimed slots idle instead of wandering. Preserves
+    // solo dribble-practice feel by keeping the un-piloted flank as a
+    // stationary target dummy at (+5, 0) or (-5, 0). Scripted ctor is
+    // unaffected — it emits zero slots, so this policy is never queried
+    // and the Slice 15.6 golden `ball_roll_east_400_ticks_seed_42` =
+    // `0x7c3932be60cba2aa` remains locked.
+    bool unclaimedSlotsIdle() const override { return true; }
 
     // Scripted variant (determinism/drills): caller-supplied initial
     // ball state, ZERO slots. Preserves the Slice 15.6 golden hash

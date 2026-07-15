@@ -117,6 +117,22 @@ public:
 
     // Short user-facing hints shown pre-match.
     virtual std::vector<std::string> hints() const = 0;
+
+    // Slice 24.2 (M2 in progress): controller policy for unclaimed slots.
+    //   false (default) -> Match spawns WanderController for unclaimed
+    //                      slots, matching the M0/M1 behavior every
+    //                      determinism golden was locked against.
+    //   true            -> Match spawns IdleController instead — the slot
+    //                      stands still until a human client claims it,
+    //                      then reverts to Idle on release. Use for
+    //                      human-interactive demo scenarios where a
+    //                      wandering AI would fight the joystick user.
+    //
+    // Any override that returns true MUST also have zero determinism
+    // goldens that exercise its slots — IdleController consumes zero RNG
+    // whereas WanderController consumes RNG on every target repick, so
+    // flipping this changes the canonical hash of a scripted-slot run.
+    virtual bool                 unclaimedSlotsIdle() const { return false; }
 };
 
 } // namespace fh::sim::scenario
