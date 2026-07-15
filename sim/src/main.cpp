@@ -42,12 +42,15 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -63,6 +66,76 @@ namespace {
 // std::function or heap allocations. Set to non-null only while run()
 // is executing.
 std::atomic<fh::sim::server::SimServer*> g_server{nullptr};
+
+// ---------------------------------------------------------------------
+// §21.7 item 1 step 4A: warm-daemon match assignment gate.
+//
+// Two entry paths into the "hot phase" of this daemon:
+//   (1) SIM_MATCH_ID env set at process start (pre-existing behaviour).
+//       Env values feed straight through; the gate is never touched;
+//       assign_match_handler is not even wired (endpoint returns 404).
+//   (2) SIM_MATCH_ID env unset AND admin server enabled
+//       (FH_SIM_ADMIN_TOKEN set). Boot completes registries + admin
+//       server + then BLOCKS on the gate. The first successful
+//       POST /admin/assign_match (contracted in AdminHttpServer.hpp)
+//       flips the gate and unblocks main; the payload becomes
+//       match_id / seed / scenario_id for the rest of boot. A second
+//       assign_match on the same daemon returns kConflict — assignment
+//       is single-shot per process.
+//
+// Motivation: eliminate the ~800 ms podman create+start round-trip
+// from per-match boot latency by pre-spawning daemons that stall on
+// the gate. See §16.7 (warm-daemon-pool design) and §21.7 item 1
+// (M2 blocker: warm-image spawn floor).
+// ---------------------------------------------------------------------
+struct MatchAssignment {
+    std::uint64_t match_id{0};
+    std::uint64_t seed{0};
+    std::int16_t  scenario_id{0};
+};
+
+class AssignmentGate {
+public:
+    // Called by AdminHttpServer's assign_match_handler on the admin
+    // accept-loop thread. Returns true on first successful assignment,
+    // false if an assignment was already recorded (handler maps that
+    // to HTTP 409 Conflict per the AdminHttpServer.hpp contract).
+    bool assign(const MatchAssignment& a) noexcept
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (assigned_.has_value()) { return false; }
+        assigned_ = a;
+        cv_.notify_all();
+        return true;
+    }
+    // Called by the main thread. Blocks until assign() succeeds.
+    // Never returns nullopt in the current wiring — the gate has no
+    // shutdown path yet (SIGTERM during the wait will kill the
+    // process outright; wiring a signal-driven wake-up path lands
+    // with sub-slice B alongside the runMatch() lambda refactor).
+    MatchAssignment waitForAssign()
+    {
+        std::unique_lock<std::mutex> lock(mu_);
+        cv_.wait(lock, [this]{ return assigned_.has_value(); });
+        return *assigned_;
+    }
+private:
+    std::mutex                     mu_;
+    std::condition_variable        cv_;
+    std::optional<MatchAssignment> assigned_;
+};
+
+AssignmentGate g_assignment_gate;
+
+// Snapshot of the resolved match_id, read by the admin tick_stats
+// provider from the accept-loop thread while the main thread runs the
+// tick loop. std::atomic sidesteps the data-race UB that a plain int
+// would introduce when the assign path stores from main while the
+// accept-loop thread reads. The tick_stats_provider only meaningfully
+// dereferences this after g_server becomes non-null; between admin
+// server start and g_server.store, the provider returns the "booting"
+// placeholder body and never touches this value.
+std::atomic<std::uint64_t> g_current_match_id{0};
 
 extern "C" void handleSignal(int /*sig*/) noexcept
 {
@@ -116,8 +189,18 @@ int main(int /*argc*/, char** /*argv*/)
 
     const std::string  bind_addr{envOr("SIM_BIND_ADDRESS", "0.0.0.0")};
     const std::uint16_t port     = parsePort(envOr("SIM_PORT", "9100"));
-    const std::uint64_t match_id = parseU64(std::getenv("SIM_MATCH_ID"),   1);
-    const std::uint64_t seed     = parseU64(std::getenv("SIM_MATCH_SEED"), 42);
+
+    // §21.7 item 1 step 4A: capture whether SIM_MATCH_ID was
+    // explicitly set. When unset AND admin server enabled, boot blocks
+    // on the assignment gate below and these initial defaults are
+    // overwritten by the assign_match payload. The default match_id=1
+    // / seed=42 fallback is preserved for the admin-disabled path so
+    // existing single-process dev runs keep working unchanged.
+    const char* sim_match_id_c = std::getenv("SIM_MATCH_ID");
+    const bool  sim_match_id_env_set =
+        (sim_match_id_c != nullptr && sim_match_id_c[0] != '\0');
+    std::uint64_t match_id = parseU64(sim_match_id_c, 1);
+    std::uint64_t seed     = parseU64(std::getenv("SIM_MATCH_SEED"), 42);
 
     // Slice 15.5: scenario selection. Values map to sim_scenarios.code_id;
     // Replay.cpp::makeScenario is the single source of truth for the runtime
@@ -232,7 +315,14 @@ int main(int /*argc*/, char** /*argv*/)
         // rather than nullptr-derefing. Counters are std::atomic on the
         // sim side so this lambda is safe to invoke concurrently with
         // the tick loop.
-        acfg.tick_stats_provider = [match_id]() -> std::string {
+        //
+        // §21.7 item 1 step 4A: match_id now sourced from the atomic
+        // g_current_match_id, populated below once assignment is
+        // finalised (either from env or from POST /admin/assign_match).
+        // A tick_stats call during the pre-assignment wait window
+        // takes the g_server==nullptr branch above and never reads
+        // g_current_match_id at all.
+        acfg.tick_stats_provider = []() -> std::string {
             auto* srv = g_server.load(std::memory_order_relaxed);
             if (srv == nullptr) {
                 return std::string{"{\"state\":\"booting\"}"};
@@ -245,7 +335,8 @@ int main(int /*argc*/, char** /*argv*/)
                 "\"sum_behind_ms\":%llu,"
                 "\"max_behind_ms\":%u,"
                 "\"active_clients\":%u}",
-                static_cast<unsigned long long>(match_id),
+                static_cast<unsigned long long>(
+                    g_current_match_id.load(std::memory_order_relaxed)),
                 static_cast<unsigned long long>(srv->ticksExecuted()),
                 static_cast<unsigned>(srv->catchUpSkips()),
                 static_cast<unsigned long long>(srv->sumBehindMs()),
@@ -253,6 +344,43 @@ int main(int /*argc*/, char** /*argv*/)
                 static_cast<unsigned>(srv->activeClientCount()));
             return std::string(buf, (n > 0 ? static_cast<std::size_t>(n) : 0));
         };
+
+        // §21.7 item 1 step 4A: wire POST /admin/assign_match only
+        // when SIM_MATCH_ID env is unset. On env-configured daemons
+        // the endpoint stays hidden (404) so an accidentally-directed
+        // assign_match call cannot mislead the orchestrator into
+        // believing the daemon now serves the assigned match when it
+        // is actually still serving its env-configured one. The
+        // handler runs on the admin accept-loop thread; g_assignment_gate
+        // synchronises with the main thread via mutex + condition
+        // variable.
+        if (!sim_match_id_env_set) {
+            acfg.assign_match_handler =
+                [](const fh::sim::admin::AssignMatchRequest& req)
+                -> fh::sim::admin::AssignMatchResult {
+                MatchAssignment a;
+                a.match_id    = static_cast<std::uint64_t>(req.match_id);
+                a.seed        = req.seed;
+                a.scenario_id = req.scenario_id;
+                fh::sim::admin::AssignMatchResult r;
+                if (!g_assignment_gate.assign(a)) {
+                    r.outcome = fh::sim::admin::AssignMatchOutcome::kConflict;
+                    return r;
+                }
+                r.outcome = fh::sim::admin::AssignMatchOutcome::kOk;
+                char buf[192];
+                const int n = std::snprintf(buf, sizeof(buf),
+                    "{\"assigned\":true,\"match_id\":%llu,"
+                    "\"seed\":%llu,\"scenario_id\":%d}",
+                    static_cast<unsigned long long>(a.match_id),
+                    static_cast<unsigned long long>(a.seed),
+                    static_cast<int>(a.scenario_id));
+                r.body_json = std::string(
+                    buf, (n > 0 ? static_cast<std::size_t>(n) : 0));
+                return r;
+            };
+        }
+
         admin_server = std::make_unique<fh::sim::admin::AdminHttpServer>(
             acfg, *admin_db);
         if (!admin_server->start()) {
@@ -268,6 +396,42 @@ int main(int /*argc*/, char** /*argv*/)
                      "footballhome_sim: FH_SIM_ADMIN_TOKEN not set — "
                      "admin http server disabled\n");
     }
+
+    // ------------------------------------------------------------------
+    // §21.7 item 1 step 4A: warm-daemon assignment wait.
+    //
+    // If SIM_MATCH_ID was not set at process start AND the admin
+    // server is up, block here until POST /admin/assign_match arrives.
+    // The handler wired above fills g_assignment_gate; waitForAssign()
+    // unblocks and yields the payload. match_id/seed/scenario_id are
+    // overwritten with the assigned values before the drift check,
+    // upsertMatch, WS bind, and SimServer construction below — those
+    // consume the values by-plain-copy so they see the resolved ones.
+    //
+    // If the admin server is disabled OR SIM_MATCH_ID was set, this
+    // block is a no-op and the env-derived match_id/seed/scenario_id
+    // flow straight through — byte-identical to pre-4A behaviour.
+    // ------------------------------------------------------------------
+    if (admin_enabled && !sim_match_id_env_set) {
+        std::fprintf(stderr,
+                     "footballhome_sim: SIM_MATCH_ID unset — waiting for "
+                     "POST /admin/assign_match on admin port %u...\n",
+                     static_cast<unsigned>(
+                         parsePort(envOr("SIM_ADMIN_PORT", "9101"))));
+        const auto a = g_assignment_gate.waitForAssign();
+        match_id    = a.match_id;
+        seed        = a.seed;
+        scenario_id = a.scenario_id;
+        std::fprintf(stderr,
+                     "footballhome_sim: assigned via admin — "
+                     "match_id=%llu seed=%llu scenario_id=%d\n",
+                     static_cast<unsigned long long>(match_id),
+                     static_cast<unsigned long long>(seed),
+                     static_cast<int>(scenario_id));
+    }
+    // Publish the resolved match_id for the admin tick_stats provider
+    // (env path OR post-wait path — both land here).
+    g_current_match_id.store(match_id, std::memory_order_relaxed);
 
     std::fprintf(stderr,
                  "footballhome_sim: loaded registries — "
