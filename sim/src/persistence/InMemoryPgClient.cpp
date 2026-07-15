@@ -77,6 +77,19 @@ InMemoryPgClient::matchResult(MatchId id) const
     return it->second.result;
 }
 
+bool InMemoryPgClient::matchFirstTickWritten(MatchId id) const noexcept
+{
+    const auto it = matches_.find(id);
+    return it != matches_.end() && it->second.first_tick_written;
+}
+
+std::size_t
+InMemoryPgClient::matchFirstTickCallCount(MatchId id) const noexcept
+{
+    const auto it = matches_.find(id);
+    return it == matches_.end() ? 0 : it->second.first_tick_call_count;
+}
+
 // ---------------------------------------------------------------------------
 // Registry reads
 // ---------------------------------------------------------------------------
@@ -115,6 +128,23 @@ void InMemoryPgClient::upsertMatch(const MatchRow& row)
     rec.row = row;
     // upsertMatch does NOT touch ended / result — matches DB behaviour
     // where ON CONFLICT DO UPDATE excludes ended_at + result columns.
+}
+
+void InMemoryPgClient::updateMatchFirstTick(MatchId id)
+{
+    const auto it = matches_.find(id);
+    if (it == matches_.end()) {
+        throw PgError("updateMatchFirstTick",
+                      "match id " + std::to_string(id) + " not found");
+    }
+    // Increment the diagnostic call counter unconditionally (tests use
+    // it to detect over-firing of the SimServer first-tick callback),
+    // but the DB-visible flag mirrors the WHERE-first_tick_at-IS-NULL
+    // guard: only the first invocation flips it.
+    ++it->second.first_tick_call_count;
+    if (!it->second.first_tick_written) {
+        it->second.first_tick_written = true;
+    }
 }
 
 void InMemoryPgClient::updateMatchEnded(MatchId id,

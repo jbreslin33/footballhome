@@ -59,6 +59,18 @@ public:
     bool matchEnded(MatchId id) const noexcept;
     std::optional<std::vector<std::byte>> matchResult(MatchId id) const;
 
+    // §21.7 item 2 remedy: was first_tick_at written for this match?
+    // True iff updateMatchFirstTick has been called at least once for
+    // `id`. Mirrors the DB semantic "first_tick_at IS NOT NULL".
+    bool matchFirstTickWritten(MatchId id) const noexcept;
+    // Test-only counter: how many times updateMatchFirstTick was
+    // invoked for `id`. The DB call is idempotent (WHERE ... IS NULL
+    // guard) so only the first invocation has an effect, but the
+    // sim daemon should invoke it exactly once per tick loop; a value
+    // > 1 in the test harness indicates SimServer is firing the
+    // first-tick callback more than once, which would be a bug.
+    std::size_t matchFirstTickCallCount(MatchId id) const noexcept;
+
     // -----------------------------------------------------------------
     // IPgClient overrides
     // -----------------------------------------------------------------
@@ -68,6 +80,7 @@ public:
 
     std::optional<MatchRow> getMatch(MatchId id) override;
     void upsertMatch(const MatchRow& row) override;
+    void updateMatchFirstTick(MatchId id) override;
     void updateMatchEnded(MatchId id,
                           std::span<const std::byte> result_hash) override;
 
@@ -89,6 +102,8 @@ private:
         MatchRow               row;
         bool                   ended{false};
         std::vector<std::byte> result;
+        bool                   first_tick_written{false};
+        std::size_t            first_tick_call_count{0};
     };
 
     std::vector<RegistryRow>                attrs_;

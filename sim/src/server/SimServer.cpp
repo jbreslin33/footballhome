@@ -90,7 +90,22 @@ void SimServer::run(std::function<std::int64_t()> steady_now_ms)
         // Advance the sim and push the resulting snapshot to everyone.
         match_->tick();
         broadcastSnapshot();
-        ticks_executed_.fetch_add(1, std::memory_order_relaxed);
+        const std::uint64_t new_tick_count =
+            ticks_executed_.fetch_add(1, std::memory_order_relaxed) + 1u;
+
+        // §21.7 item 2 remedy: fire the first-tick callback exactly once,
+        // AFTER the first tick body has completed and broadcast (so the
+        // wall-clock stamp reflects the true "loop began ticking this
+        // match" instant, not the "about to tick" instant). Guarded by
+        // `new_tick_count == 1` and by an explicit callback-emptiness
+        // check so we don't pay an indirect-call penalty on every tick.
+        // The callback itself is DB I/O (updateMatchFirstTick) — a few
+        // ms once per match lifetime — which lands inside this iteration's
+        // wall-clock budget and gets counted against sum_behind_ms_
+        // below, matching what any other real tick-body cost would do.
+        if (new_tick_count == 1u && cfg_.first_tick_callback) {
+            cfg_.first_tick_callback();
+        }
 
         // Fixed-step: schedule the next tick strictly by cadence. If we
         // fell behind (a stall > 5 periods), jump forward instead of

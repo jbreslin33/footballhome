@@ -608,15 +608,21 @@ fi
 # --- 5.5) effective tick-rate under concurrent load ------------------------
 # Closes the §23.4 M1 exit criterion "20 concurrent matches at ≥ 19.9 Hz
 # effective tick rate". Approach:
-#   effective_hz = MAX(sim_match_events.tick_num) / (ended_at - started_at)
-# for each match, computed server-side by Postgres. The `started_at`
-# timestamp is set by sim/src/main.cpp:upsertMatch at daemon boot
-# (right before the tick loop starts), and `ended_at` is set by the
-# stopMatch path when SIGTERM is processed and MatchEnd is written —
-# so the delta captures exactly the wall-clock window during which the
-# daemon was ticking. MAX(tick_num) is bounded above by the MatchEnd
-# event's tick_num (i.e. the final tick executed) since no event is
-# written with a later tick_num.
+#   effective_hz = MAX(sim_match_events.tick_num)
+#                  / (ended_at - COALESCE(first_tick_at, started_at))
+# for each match, computed server-side by Postgres. `first_tick_at` is
+# written by SimServer's tick thread immediately after the first
+# `match_->tick()` completes (§21.7 item 2 remedy: shifts the denominator
+# anchor from upsertMatch's boot-time started_at to the true
+# "loop-began-ticking" wall instant, isolating steady-state throughput
+# from the ~1.5 s pre-first-tick boot overhead per §21.7 item 1). The
+# COALESCE fallback to `started_at` preserves the pre-remedy math for
+# any pre-migration matches (first_tick_at IS NULL) or for daemons that
+# died before their first tick fired — those degenerate cases keep the
+# old, more pessimistic Hz value rather than reporting NULL and
+# vanishing from the aggregate. `ended_at` is set by the SIGTERM
+# stopMatch path when the tick loop exits and MatchEnd is written. See
+# database/migrations/214-sim-first-tick-at.sql.
 #
 # We report min/p50/max Hz across all spawned matches and hard-fail
 # only if min < 15 Hz — a 25% degradation from the target that would
@@ -639,7 +645,9 @@ if [[ -s "${MATCH_IDS_FILE}" ]]; then
                     (COALESCE((SELECT MAX(tick_num)
                                  FROM sim_match_events
                                 WHERE match_id = m.id), 0))::numeric
-                    / NULLIF(EXTRACT(EPOCH FROM (m.ended_at - m.started_at)), 0)
+                    / NULLIF(EXTRACT(EPOCH FROM
+                        (m.ended_at - COALESCE(m.first_tick_at, m.started_at))
+                    ), 0)
                 , 2) AS hz
            FROM sim_matches m
           WHERE m.id IN (${id_csv})
@@ -678,6 +686,24 @@ if [[ -s "${MATCH_IDS_FILE}" ]]; then
             fi
         fi
     fi
+
+    # §21.7 item 2 remedy diagnostic: count how many spawned matches
+    # actually got their first_tick_at column populated. Post-remedy
+    # this should be spawned_count/spawned_count for the whole cohort
+    # — anything less means SimServer's first_tick_callback did not
+    # fire (bug in main.cpp wiring, or PgError swallowed silently), or
+    # migration 214 was not applied against this DB (COALESCE fallback
+    # kicks in and old behaviour continues invisibly). We log as info,
+    # not fail — the COALESCE keeps the effective-Hz math working, but
+    # a mismatch here explains any regression in the reported numbers.
+    first_tick_populated="$(sudo podman exec footballhome_db psql \
+        -U footballhome_user -d footballhome -t -A -c \
+        "SELECT COUNT(*) FROM sim_matches
+          WHERE id IN (${id_csv})
+            AND first_tick_at IS NOT NULL;" \
+        2>/dev/null)"
+    first_tick_populated="${first_tick_populated:-0}"
+    info "first_tick_at populated: ${first_tick_populated}/${spawned_count} matches (§21.7 item 2 remedy — expect ${spawned_count}/${spawned_count})"
 fi
 
 # --- 5.6) catch-up-skip distribution (§21.7 item 2 attribution) -------------

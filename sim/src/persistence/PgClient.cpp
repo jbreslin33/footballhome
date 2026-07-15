@@ -29,6 +29,7 @@ constexpr const char* PS_LOAD_CONCEPT           = "load_concept_registry";
 constexpr const char* PS_LOAD_PATTERN           = "load_pattern_registry";
 constexpr const char* PS_GET_MATCH              = "get_match";
 constexpr const char* PS_UPSERT_MATCH           = "upsert_match";
+constexpr const char* PS_UPDATE_MATCH_FIRST_TICK = "update_match_first_tick";
 constexpr const char* PS_UPDATE_MATCH_ENDED     = "update_match_ended";
 constexpr const char* PS_LOAD_PROFILE_EXISTS    = "load_profile_exists";
 constexpr const char* PS_LOAD_PROFILE_ATTR      = "load_profile_attr";
@@ -150,6 +151,14 @@ PgClient::PgClient(const ConnConfig& cfg)
         c.prepare(PS_UPDATE_MATCH_ENDED,
             "UPDATE sim_matches SET ended_at = NOW(), result = $2 "
             "WHERE id = $1 AND ended_at IS NULL");
+
+        // §21.7 item 2 remedy: one-shot first-tick stamp. Guarded by
+        // WHERE first_tick_at IS NULL so a crash-restart preserves the
+        // original tick-start instant (mirrors updateMatchEnded's
+        // idempotence pattern).
+        c.prepare(PS_UPDATE_MATCH_FIRST_TICK,
+            "UPDATE sim_matches SET first_tick_at = NOW() "
+            "WHERE id = $1 AND first_tick_at IS NULL");
 
         c.prepare(PS_LOAD_PROFILE_EXISTS,
             "SELECT 1 FROM sim_player_profile WHERE person_id = $1");
@@ -350,6 +359,18 @@ void PgClient::upsertMatch(const MatchRow& row)
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("upsertMatch", e.what());
+    }
+}
+
+void PgClient::updateMatchFirstTick(MatchId id)
+{
+    try {
+        pqxx::work tx(impl_->conn);
+        tx.exec(pqxx::prepped{PS_UPDATE_MATCH_FIRST_TICK},
+                pqxx::params{id});
+        tx.commit();
+    } catch (const std::exception& e) {
+        throw PgError("updateMatchFirstTick", e.what());
     }
 }
 

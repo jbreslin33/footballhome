@@ -165,6 +165,20 @@ public:
     // `server_version` on restart. Does NOT touch `ended_at` / `result`.
     virtual void upsertMatch(const MatchRow& row) = 0;
 
+    // Called by SimServer exactly once on the first tick body of the
+    // match (before or after broadcastSnapshot, doesn't matter — this
+    // is a wall-clock stamp, not an event). Sets first_tick_at = NOW()
+    // guarded by `WHERE first_tick_at IS NULL`, so a crash-restart of
+    // the same match_id preserves the original tick-start instant
+    // (semantics: "when the loop FIRST began ticking this match",
+    // not "when the current daemon incarnation started ticking").
+    // No-op on already-populated rows. §21.7 item 2 remedy: replaces
+    // upsertMatch's boot-time started_at as the effective-Hz denominator
+    // anchor so pre-first-tick boot overhead does not inflate the
+    // wall-clock window (see sim/DESIGN.md §21.7 item 2 + database/
+    // migrations/214-sim-first-tick-at.sql).
+    virtual void updateMatchFirstTick(MatchId id) = 0;
+
     // Called on shutdown. Sets ended_at = NOW() and result = result_hash
     // (must be exactly 8 bytes — the canonical FNV-1a-64 snapshot hash).
     // No-op if the row is already ended (idempotent under crash-restart).

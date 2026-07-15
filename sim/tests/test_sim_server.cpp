@@ -670,6 +670,75 @@ FH_TEST(ticks_executed_counter_advances_on_each_tick)
     FH_EXPECT_EQ(fx.server->catchUpSkips(),  static_cast<std::uint32_t>(0));
     FH_EXPECT_EQ(fx.server->sumBehindMs(),   static_cast<std::uint64_t>(0));
     FH_EXPECT_EQ(fx.server->maxBehindMs(),   static_cast<std::uint32_t>(0));
+
+    // §21.7 item 2 remedy boundary: `tickOnceForTest` is a hand-driven
+    // per-tick helper for assertions, NOT the fixed-cadence loop —
+    // firing the first_tick_callback here would violate the "exactly
+    // once per match lifetime" contract (a test that calls
+    // tickOnceForTest 10 times would fire it 10 times). The callback
+    // path lives in `run()`; verified live via the load test's post-run
+    // `SELECT first_tick_at FROM sim_matches` (see
+    // sim/scripts/load_test_orchestrator.sh §5.5, DESIGN.md §21.7 item
+    // 2). No InMemoryPgClient upsertMatch was made by this fixture, so
+    // the accessor also confirms the counter defaults to 0 for
+    // never-touched match ids.
+    FH_EXPECT_EQ(fx.db->matchFirstTickCallCount(42),
+                 static_cast<std::size_t>(0));
+    FH_EXPECT(!fx.db->matchFirstTickWritten(42));
+}
+
+// §21.7 item 2 remedy: InMemoryPgClient::updateMatchFirstTick contract.
+// PgClient's live counterpart uses `UPDATE sim_matches SET first_tick_at
+// = NOW() WHERE id = $1 AND first_tick_at IS NULL` — first invocation
+// stamps, subsequent invocations are DB no-ops. The in-memory client
+// must mirror that (mirror the `first_tick_written` flag) while also
+// exposing a per-invocation counter (`first_tick_call_count`) so tests
+// can distinguish "callback never fired" from "callback over-fired".
+FH_TEST(in_memory_pg_client_update_match_first_tick_idempotent_and_counted)
+{
+    InMemoryPgClient db;
+
+    fh::sim::persistence::MatchRow row;
+    row.id             = 100;
+    row.scenario_id    = 0;
+    row.seed           = 1;
+    row.tick_hz        = 20;
+    row.server_version = "test";
+    db.upsertMatch(row);
+
+    // Pre-invocation: not written, zero calls.
+    FH_EXPECT(!db.matchFirstTickWritten(100));
+    FH_EXPECT_EQ(db.matchFirstTickCallCount(100),
+                 static_cast<std::size_t>(0));
+
+    // First invocation: writes flag, bumps counter.
+    db.updateMatchFirstTick(100);
+    FH_EXPECT(db.matchFirstTickWritten(100));
+    FH_EXPECT_EQ(db.matchFirstTickCallCount(100),
+                 static_cast<std::size_t>(1));
+
+    // Second/third invocations: flag stays set, counter still bumps
+    // so a bug in SimServer's "exactly once" gate would surface here
+    // (call_count > 1 for a well-behaved daemon is a bug signal).
+    db.updateMatchFirstTick(100);
+    db.updateMatchFirstTick(100);
+    FH_EXPECT(db.matchFirstTickWritten(100));
+    FH_EXPECT_EQ(db.matchFirstTickCallCount(100),
+                 static_cast<std::size_t>(3));
+
+    // Unknown match id must throw — mirrors PgClient which would raise
+    // PgError from a 0-rows-affected sanity check (well, actually PgClient
+    // silently accepts 0 rows because IS-NULL guard collapses to a no-op
+    // for any id; but a MISSING row is a different failure — the daemon
+    // should never call updateMatchFirstTick before upsertMatch, so this
+    // is a "bug in main.cpp" signal, not a runtime edge case).
+    bool threw = false;
+    try { db.updateMatchFirstTick(999); }
+    catch (const fh::sim::persistence::PgError&) { threw = true; }
+    FH_EXPECT(threw);
+    FH_EXPECT(!db.matchFirstTickWritten(999));
+    FH_EXPECT_EQ(db.matchFirstTickCallCount(999),
+                 static_cast<std::size_t>(0));
 }
 
 FH_TEST_MAIN()

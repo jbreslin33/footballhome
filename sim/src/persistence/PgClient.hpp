@@ -48,6 +48,7 @@ public:
 
     std::optional<MatchRow> getMatch(MatchId id) override;
     void upsertMatch(const MatchRow& row) override;
+    void updateMatchFirstTick(MatchId id) override;
     void updateMatchEnded(MatchId id,
                           std::span<const std::byte> result_hash) override;
 

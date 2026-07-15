@@ -41,6 +41,20 @@ public:
     struct Config {
         std::uint32_t tick_hz     = 20;    // sent in HELLO_ACK
         std::uint64_t match_id    = 1;     // sent in HELLO_ACK
+        // §21.7 item 2 remedy: fired exactly once, from the tick thread,
+        // immediately after the FIRST successful `match_->tick()` in
+        // `run()`. main.cpp wires this to `db->updateMatchFirstTick(id)`
+        // so the load test's §5.5 effective-Hz denominator can anchor on
+        // the true wall-clock instant of the first tick rather than on
+        // upsertMatch's boot-time started_at (which includes ~1.5 s of
+        // pre-first-tick boot overhead per §21.7 item 1). May be empty:
+        // when unset the callback is skipped and behaviour matches the
+        // pre-remedy loop exactly (tests that don't need first-tick
+        // persistence can leave this default). Never fires from
+        // `tickOnceForTest()` — that helper is for hand-driven per-tick
+        // assertions and would fire the callback on every invocation,
+        // which is the opposite of the "exactly once" contract.
+        std::function<void()> first_tick_callback{};
     };
 
     // Ownership: SimServer takes over transport / serializer / match. The

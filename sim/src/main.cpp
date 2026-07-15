@@ -421,6 +421,32 @@ int main(int /*argc*/, char** /*argv*/)
     fh::sim::server::SimServer::Config scfg;
     scfg.tick_hz  = 20;
     scfg.match_id = match_id;
+    // §21.7 item 2 remedy: fire updateMatchFirstTick from the tick
+    // thread the instant the first tick body completes, so
+    // sim_matches.first_tick_at anchors the load test's §5.5
+    // effective-Hz denominator on the true "loop began ticking" wall
+    // instant rather than on upsertMatch's boot-time started_at (which
+    // includes ~1.5 s of pre-first-tick boot per §21.7 item 1). Captures
+    // db.get() by value — the underlying PgClient outlives the SimServer
+    // (see the input_log / event_log capture pattern below) so this is
+    // safe. Exceptions inside the callback are swallowed by SimServer's
+    // caller (main) unwind path — the callback itself only makes one
+    // DB round-trip; a failure there is logged by PgClient's PgError
+    // path but should not tear down the whole match (a missing
+    // first_tick_at simply falls back to started_at via the COALESCE
+    // in the effective-Hz SQL).
+    scfg.first_tick_callback = [db_ptr = db.get(), match_id]() {
+        try {
+            db_ptr->updateMatchFirstTick(match_id);
+        } catch (const fh::sim::persistence::PgError& e) {
+            std::fprintf(stderr,
+                         "footballhome_sim: updateMatchFirstTick failed: "
+                         "%s: %s (continuing; effective-Hz will fall back "
+                         "to started_at via COALESCE)\n",
+                         e.context().c_str(),
+                         e.what());
+        }
+    };
 
     // Async persistence logs (§16.6 task 8). Sinks capture db.get() by
     // value so the lambda lifetime is decoupled from the log's - the
