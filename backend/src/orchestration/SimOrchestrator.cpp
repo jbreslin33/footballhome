@@ -198,6 +198,72 @@ std::vector<std::string> buildSimEnv(const LaunchOptions& opts) {
 }
 
 // -------------------------------------------------------------------------
+// Build the env manifest for a WARM sim daemon (§21.7 item 1 step 5A).
+//
+// Identical to buildSimEnv() EXCEPT the three per-match variables
+// (SIM_MATCH_ID / SIM_MATCH_SEED / SIM_SCENARIO) are omitted. The sim
+// daemon's main.cpp branches on `getenv("SIM_MATCH_ID") != nullptr` at
+// boot (step 4A landing): env-set ⇒ existing hot-boot path;
+// env-unset ⇒ AssignmentGate wait, admin port serves
+// POST /admin/assign_match to receive the real match_id later.
+//
+// Every other env variable (secrets, ports, bind addresses) is the same
+// so the daemon's admin server binds identically and the eventual
+// assign_match handler has all the DB credentials it needs to run
+// upsertMatch + MatchStart in the hot phase.
+// -------------------------------------------------------------------------
+std::vector<std::string> buildWarmSimEnv() {
+    std::vector<std::string> env;
+
+    // NO SIM_MATCH_ID, NO SIM_MATCH_SEED, NO SIM_SCENARIO — the whole
+    // point of this env shape is to keep the daemon in the AssignmentGate
+    // wait state so a POST /admin/assign_match can decide the values.
+    //
+    // BUT: [sim/Dockerfile](../../../sim/Dockerfile) sets
+    // `ENV SIM_MATCH_ID=1 SIM_MATCH_SEED=42` as image-level defaults for
+    // local-dev `podman run` convenience. The Docker/Podman container-
+    // create API's `Env` field can only override / add — it can't UNSET
+    // an image-level ENV. So we override with EMPTY strings, which the
+    // sim's boot check treats as "unset":
+    //   const bool env_set = (getenv("SIM_MATCH_ID") != nullptr &&
+    //                         getenv("SIM_MATCH_ID")[0] != '\0');
+    // Empty string ⇒ pointer non-null, first char is '\0' ⇒ env_set=false
+    // ⇒ AssignmentGate wait branch engages (step 4A).
+    env.push_back("SIM_MATCH_ID=");
+    env.push_back("SIM_MATCH_SEED=");
+    env.push_back("SIM_SCENARIO=");
+
+    // Static (identical to buildSimEnv):
+    env.push_back("SIM_BIND_ADDRESS=0.0.0.0");
+    env.push_back("SIM_PORT=9100");
+    env.push_back("SIM_ADMIN_BIND_ADDRESS=0.0.0.0");
+    env.push_back("SIM_ADMIN_PORT=9101");
+
+    // Postgres + secrets — same rationale as buildSimEnv: the daemon
+    // needs these ready for when the hot phase engages after assignment.
+    env.push_back("POSTGRES_HOST="     + envOrDefault("POSTGRES_HOST",     "db"));
+    env.push_back("POSTGRES_PORT="     + envOrDefault("POSTGRES_PORT",     "5432"));
+    env.push_back("POSTGRES_DB="       + envOrDefault("POSTGRES_DB",       "footballhome"));
+    env.push_back("POSTGRES_USER="     + envOrDefault("POSTGRES_USER",     "footballhome_user"));
+    env.push_back("POSTGRES_PASSWORD=" + envOrDefault("POSTGRES_PASSWORD", ""));
+
+    env.push_back("JWT_SECRET="         + envOrDefault("JWT_SECRET", ""));
+    env.push_back("FH_SIM_ADMIN_TOKEN=" + envOrDefault("FH_SIM_ADMIN_TOKEN", ""));
+
+    return env;
+}
+
+// Deterministic warm-container name (§21.7 item 1 step 5A). Namespaced
+// with `_warm_` to guarantee zero overlap with the assigned-container
+// name space owned by containerNameFor() in SimRunningMatch.h. A
+// follow-up slice (5B) renames the container to the canonical
+// `footballhome_sim_${match_id}` at assign time so nginx's per-match
+// regex route (Slice 14.4) can reach it.
+std::string warmContainerNameFor(long long warm_id) {
+    return "footballhome_sim_warm_" + std::to_string(warm_id);
+}
+
+// -------------------------------------------------------------------------
 // Build the JSON body for POST /containers/create.
 //
 // Podman's Docker-compat container-create endpoint accepts the same
@@ -219,8 +285,7 @@ std::vector<std::string> buildSimEnv(const LaunchOptions& opts) {
 // reachable only via the internal bridge (identical to the M0
 // docker-compose service).
 // -------------------------------------------------------------------------
-nlohmann::json buildCreateRequest(const LaunchOptions& opts,
-                                  const std::string& container_name,
+nlohmann::json buildCreateRequest(const std::string& container_name,
                                   const std::vector<std::string>& env) {
     nlohmann::json body;
     body["Image"] = kSimImageTag;
@@ -257,7 +322,6 @@ nlohmann::json buildCreateRequest(const LaunchOptions& opts,
         }}
     };
 
-    (void)opts;  // opts already fully consumed via env / name
     return body;
 }
 
@@ -367,7 +431,7 @@ LaunchResult SimOrchestrator::launchMatch(const LaunchOptions& opts) {
     const std::string createUrl = std::string(kPodmanUrlPrefix) + "/"
                                 + kPodmanApiVersion
                                 + "/containers/create?name=" + r.container_name;
-    const nlohmann::json body = buildCreateRequest(opts, r.container_name,
+    const nlohmann::json body = buildCreateRequest(r.container_name,
                                                    buildSimEnv(opts));
     HttpClient::Response create = http_.postJson(createUrl, body.dump(), {},
                                                  cfg_.podman_socket_path);
@@ -415,6 +479,96 @@ LaunchResult SimOrchestrator::launchMatch(const LaunchOptions& opts) {
     // Docker/Podman container-start returns 204 on success, 304 if it
     // was already running (which shouldn't happen for a freshly-created
     // container but tolerate anyway).
+    if (start.status != 204 && start.status != 304) {
+        r.error = "podman start returned HTTP " + std::to_string(start.status)
+                + ": " + start.body;
+        removeContainerBestEffort(r.container_id);
+        r.container_id.clear();
+        return r;
+    }
+
+    r.ok = true;
+    return r;
+}
+
+// ---------------------------------------------------------------------------
+// spawnWarm (§21.7 item 1 step 5A, 2026-07-15)
+//
+// Structurally identical to launchMatch: same permit, same two-step
+// podman create+start, same rollback discipline. The differences are
+// entirely in the inputs handed to buildCreateRequest:
+//   - name  = warmContainerNameFor(warm_id) instead of containerNameFor()
+//   - env   = buildWarmSimEnv() (omits SIM_MATCH_ID/SEED/SCENARIO)
+//
+// Deliberately duplicates the create+start call graph rather than
+// refactoring launchMatch onto a shared helper — the slice ships as pure
+// addition so a regression in launchMatch is architecturally impossible.
+// A follow-up cleanup slice can factor commonalities once both paths
+// have real integration coverage.
+// ---------------------------------------------------------------------------
+LaunchResult SimOrchestrator::spawnWarm(long long warm_id) {
+    LaunchResult r;
+    r.container_name = warmContainerNameFor(warm_id);
+
+    if (!cfg_.enabled) {
+        r.error = "orchestrator disabled (FH_SIM_ORCHESTRATOR_ENABLED unset)";
+        return r;
+    }
+    if (warm_id <= 0) {
+        r.error = "invalid warm_id (must be > 0)";
+        return r;
+    }
+
+    // Same backpressure semaphore as launchMatch — warm spawns and
+    // per-match launches share podman's rate-limit envelope.
+    LaunchPermit permit;
+
+    // Step 1: create.
+    const std::string createUrl = std::string(kPodmanUrlPrefix) + "/"
+                                + kPodmanApiVersion
+                                + "/containers/create?name=" + r.container_name;
+    const nlohmann::json body = buildCreateRequest(r.container_name,
+                                                   buildWarmSimEnv());
+    HttpClient::Response create = http_.postJson(createUrl, body.dump(), {},
+                                                 cfg_.podman_socket_path);
+    if (!create.error.empty()) {
+        r.error = "podman create transport error: " + create.error;
+        return r;
+    }
+    if (create.status != 201) {
+        r.error = "podman create returned HTTP " + std::to_string(create.status)
+                + ": " + create.body;
+        return r;
+    }
+
+    try {
+        auto j = nlohmann::json::parse(create.body);
+        if (j.contains("Id") && j["Id"].is_string()) {
+            r.container_id = j["Id"].get<std::string>();
+        }
+    } catch (const std::exception& e) {
+        r.error = std::string("podman create body was not valid JSON: ")
+                + e.what();
+        return r;
+    }
+
+    if (r.container_id.empty()) {
+        r.error = "podman create response missing Id field";
+        return r;
+    }
+
+    // Step 2: start.
+    const std::string startUrl = std::string(kPodmanUrlPrefix) + "/"
+                               + kPodmanApiVersion
+                               + "/containers/" + r.container_id + "/start";
+    HttpClient::Response start = http_.postJson(startUrl, "", {},
+                                                cfg_.podman_socket_path);
+    if (!start.error.empty()) {
+        r.error = "podman start transport error: " + start.error;
+        removeContainerBestEffort(r.container_id);
+        r.container_id.clear();
+        return r;
+    }
     if (start.status != 204 && start.status != 304) {
         r.error = "podman start returned HTTP " + std::to_string(start.status)
                 + ": " + start.body;

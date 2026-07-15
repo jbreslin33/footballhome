@@ -136,6 +136,37 @@ public:
     // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
     LaunchResult launchMatch(const LaunchOptions& opts);
 
+    // §21.7 item 1 step 5A (2026-07-15) — spawn a "warm" sim daemon that
+    // boots into the AssignmentGate wait state (main.cpp warm-boot gate
+    // from step 4A), listening on the admin port for a future
+    // POST /admin/assign_match without knowing its match_id yet.
+    //
+    // Same two-step podman create+start as launchMatch, differing only in:
+    //   - Container name: `footballhome_sim_warm_${warm_id}` — namespaced
+    //     to avoid colliding with launchMatch's `footballhome_sim_${match_id}`
+    //     names. A follow-up slice (5B) renames the container to the
+    //     canonical `footballhome_sim_${match_id}` at assign time so nginx's
+    //     `location ~ ^/sim/(\d+)$` regex block (Slice 14.4) can reach it.
+    //   - Env: SIM_MATCH_ID, SIM_MATCH_SEED, SIM_SCENARIO deliberately
+    //     ABSENT. The sim daemon detects env-unset at boot (sim/src/main.cpp
+    //     branch landed in step 4A) and blocks on AssignmentGate::waitForAssign
+    //     until POST /admin/assign_match arrives.
+    //   - Every other field (image, network, healthcheck, secrets, restart
+    //     policy) is IDENTICAL to launchMatch — the warm daemon is byte-for-
+    //     byte the same binary; only its runtime env shape differs.
+    //
+    // `warm_id` is a monotonic counter owned by the caller (SimPool in
+    // slice 5C). Must be > 0. Reusing a warm_id whose container is still
+    // alive returns a create-failure ("name already in use") — the pool
+    // must not reuse ids without confirming the previous container is
+    // gone.
+    //
+    // Concurrency: same LaunchSemaphore backpressure as launchMatch
+    // (excess concurrent spawns queue rather than stampede podman).
+    //
+    // When `config.enabled == false`, returns { ok=false, error="orchestrator disabled" }.
+    LaunchResult spawnWarm(long long warm_id);
+
     // Slice 14.5 — stop + remove a running per-match sim daemon container.
     //
     // Three-step podman API call:
