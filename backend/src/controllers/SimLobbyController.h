@@ -2,6 +2,10 @@
 #include "../core/Controller.h"
 #include "../database/Database.h"
 
+namespace fh::orchestration {
+class SimPool;   // §21.7 item 1 step 5D — forward decl; full defn in SimPool.h
+}
+
 // SimLobbyController — thin discovery + JWT-bridge surface for the
 // fh-sim.v1 browser client. Three endpoints (DESIGN.md §16.1):
 //
@@ -26,8 +30,18 @@ public:
     SimLobbyController();
     void registerRoutes(Router& router, const std::string& prefix) override;
 
+    // §21.7 item 1 step 5D — attach a warm-daemon pool. When set to a
+    // non-null pool, handleCreateMatch tries pool->take() before
+    // falling back to SimOrchestrator::launchMatch. When null (the
+    // default) the controller behaves byte-identically to before this
+    // slice — pure additive. Called by HttpServer in 5E after
+    // constructing + starting the pool.
+    void setSimPool(fh::orchestration::SimPool* pool);
+
 private:
     Database* db_;
+    // §21.7 item 1 step 5D — see setSimPool() docblock. Non-owning.
+    fh::orchestration::SimPool* pool_ = nullptr;
 
     Response handleListMatches(const Request& request);
     Response handleCreateMatch(const Request& request);

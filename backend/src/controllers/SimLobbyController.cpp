@@ -5,6 +5,7 @@
 #include "../database/Database.h"
 #include "../models/SimRunningMatch.h"
 #include "../orchestration/SimOrchestrator.h"
+#include "../orchestration/SimPool.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
 
@@ -146,6 +147,14 @@ SimLobbyController::SimLobbyController() {
     db_ = Database::getInstance();
 }
 
+// §21.7 item 1 step 5D — see header docblock. Non-owning; caller
+// (HttpServer in 5E) owns the SimPool lifetime and MUST call
+// setSimPool(nullptr) before destroying the pool, otherwise a
+// concurrent request could dereference a dangling pointer.
+void SimLobbyController::setSimPool(fh::orchestration::SimPool* pool) {
+    pool_ = pool;
+}
+
 void SimLobbyController::registerRoutes(Router& router,
                                         const std::string& prefix) {
     // GET  /api/sim/matches
@@ -262,8 +271,31 @@ namespace {
 // still returned (so the API shape is stable) — clients that follow
 // it before 14.5 ships will just fail to route, which is the same
 // user-visible outcome as before 14.3.
-std::string buildWsUrl(long long match_id) {
-    return "/sim/" + std::to_string(match_id);
+//
+// §21.7 item 1 step 5D — pool-assigned matches route to a warm
+// container whose name is `footballhome_sim_warm_${warm_id}`, NOT
+// `footballhome_sim_${match_id}`. The routing key is the suffix
+// after the shared "footballhome_sim_" prefix (e.g. "warm_7" or
+// "123"). Both forms will resolve once 5F extends nginx's regex
+// from `^/sim/(\d+)$` to `^/sim/(warm_\d+|\d+)$`. Until 5F ships
+// the warm form 404s at nginx — the pool-first branch of
+// handleCreateMatch is inert without setSimPool() being called
+// (which lands in 5E alongside 5F), so no user-visible regression.
+std::string wsPathSuffixFromContainerName(const std::string& container_name) {
+    constexpr const char* kPrefix = "footballhome_sim_";
+    constexpr std::size_t kPrefixLen = std::char_traits<char>::length(kPrefix);
+    if (container_name.size() > kPrefixLen &&
+        container_name.compare(0, kPrefixLen, kPrefix) == 0) {
+        return container_name.substr(kPrefixLen);
+    }
+    // Defensive: if the container name doesn't have the expected
+    // prefix (should never happen in prod), return it verbatim so
+    // nginx surfaces a 404 rather than the backend crashing.
+    return container_name;
+}
+
+std::string buildWsUrl(const std::string& container_name) {
+    return "/sim/" + wsPathSuffixFromContainerName(container_name);
 }
 
 // Backend-side placeholder for sim_matches.server_version. The sim
@@ -388,14 +420,47 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
         fh::orchestration::containerNameFor(match_id);
 
     // -----------------------------------------------------------------
-    // 4) INSERT sim_running_matches (pending row, no container_id yet).
+    // 4) Try the warm-daemon pool first (§21.7 item 1 step 5D). If
+    //    the pool is wired and has a slot ready, the hot path becomes
+    //    a single postAssignMatch round-trip (~10 ms) instead of a
+    //    launchMatch (~800 ms per step 5A attribution B1+B2). If
+    //    pool_ is null (default until HttpServer wires it in 5E) or
+    //    take() returns nullopt (pool drained), we fall through to
+    //    the launch path — graceful degradation, no user-visible
+    //    outage.
+    // -----------------------------------------------------------------
+    std::optional<fh::orchestration::SimPoolSlot> pool_slot;
+    if (pool_ != nullptr) {
+        pool_slot = pool_->take();
+    }
+
+    // The routing key differs by path: pool slots carry their own
+    // warm-namespaced name for their lifetime (5B's rename-deferral
+    // finding — podman rename doesn't reflow the aardvark-dns
+    // alias); launch-path daemons are named after the match_id.
+    // sim_running_matches.container_name records whichever we use
+    // so /join can build the correct ws_url for the client.
+    std::string effective_container_name =
+        pool_slot ? pool_slot->container_name : container_name;
+
+    // -----------------------------------------------------------------
+    // 5) INSERT sim_running_matches (pending row, no container_id yet).
     //    If this fails we roll back the sim_matches row.
     // -----------------------------------------------------------------
     if (!fh::orchestration::SimRunningMatchRepo::insertPending(
-            match_id, container_name)) {
-        // Rollback sim_matches — best-effort. Failure here logs and
-        // moves on; a leftover sim_matches row with no companion
-        // sim_running_matches row is inert (nothing reads it).
+            match_id, effective_container_name)) {
+        // Roll back sim_matches (best-effort) and — if we took a
+        // pool slot — best-effort stop the warm container so it
+        // doesn't leak. The pool's refill thread will spawn a
+        // replacement on its next wake.
+        if (pool_slot) {
+            HttpClient http;
+            fh::orchestration::SimOrchestrator reaper(cfg, http);
+            fh::orchestration::StopOptions stop_opts;
+            stop_opts.container_id  = pool_slot->container_id;
+            stop_opts.grace_seconds = 5;
+            (void)reaper.stopMatch(stop_opts);
+        }
         try {
             db_->query("DELETE FROM sim_matches WHERE id = $1::bigint",
                        {std::to_string(match_id)});
@@ -405,15 +470,20 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
     }
 
     // -----------------------------------------------------------------
-    // 5) Actually launch the container. HttpClient is stateless-per-
-    //    call so a fresh instance here matches how every other
-    //    outbound-HTTP path in this codebase looks.
+    // 6) Actually launch (or assign) the container. HttpClient is
+    //    stateless-per-call so a fresh instance here matches how
+    //    every other outbound-HTTP path in this codebase looks.
     // -----------------------------------------------------------------
     // Resolve scenario_id → code_id (e.g. 1 → "ball_on_pitch"). The DB
     // is the single source of truth (see sim_scenarios in migrations
     // 200/204/207/212/213 and sim/src/main.cpp's SIM_SCENARIO parser).
     // Empty on lookup miss ⇒ orchestrator omits SIM_SCENARIO ⇒ sim
     // daemon falls back to empty_pitch.
+    //
+    // We look this up unconditionally even on the pool path (where
+    // scenario_id is what postAssignMatch actually needs) — the
+    // lookup is cheap and keeps the code shape symmetric with the
+    // fallback-to-launch branch below.
     std::string scenario_code;
     try {
         auto rows = db_->query(
@@ -430,46 +500,107 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
 
     HttpClient http;
     fh::orchestration::SimOrchestrator orchestrator(cfg, http);
-    fh::orchestration::LaunchOptions opts;
-    opts.match_id      = match_id;
-    opts.seed          = seed;
-    opts.scenario_code = scenario_code;
-    fh::orchestration::LaunchResult launch = orchestrator.launchMatch(opts);
 
-    if (!launch.ok) {
-        std::cerr << "[sim-lobby] launchMatch(match_id=" << match_id
-                  << ") failed: " << launch.error << std::endl;
-        // Roll back BOTH rows so a retry with a new match_id has a
-        // clean slate.
-        fh::orchestration::SimRunningMatchRepo::deleteFor(match_id);
-        try {
-            db_->query("DELETE FROM sim_matches WHERE id = $1::bigint",
-                       {std::to_string(match_id)});
-        } catch (...) {}
-        return jsonError(HttpStatus::BAD_GATEWAY,
-                         "podman launch failed: " + launch.error);
+    // Values populated by whichever branch (pool vs launch) succeeds.
+    // pool_used stays false unless postAssignMatch returned ok=true.
+    bool        pool_used = false;
+    std::string container_id;
+
+    if (pool_slot) {
+        // ---- pool path: postAssignMatch to the warm daemon ----
+        fh::orchestration::AssignOptions assign;
+        assign.container_name = pool_slot->container_name;
+        assign.match_id       = match_id;
+        assign.seed           = seed;
+        assign.scenario_id    = scenario_id;
+        auto ar = orchestrator.postAssignMatch(assign);
+        if (ar.ok) {
+            container_id = pool_slot->container_id;
+            pool_used    = true;
+            std::cout << "[sim-lobby] pool-assigned match_id=" << match_id
+                      << " warm=" << pool_slot->container_name
+                      << " id=" << container_id.substr(0, 12) << std::endl;
+        } else {
+            // 409 already-assigned OR transport error. Either way the
+            // warm daemon is spent — reap it and fall through to
+            // launchMatch. The pool's take() already decremented its
+            // available count, so the refill thread will spawn a
+            // replacement on its next wake without any explicit signal.
+            std::cerr << "[sim-lobby] pool assign failed match_id=" << match_id
+                      << " warm=" << pool_slot->container_name
+                      << " already_assigned=" << (ar.already_assigned ? 1 : 0)
+                      << " error=" << ar.error
+                      << " — reaping and falling back to launchMatch"
+                      << std::endl;
+            fh::orchestration::StopOptions stop_opts;
+            stop_opts.container_id  = pool_slot->container_id;
+            stop_opts.grace_seconds = 5;
+            (void)orchestrator.stopMatch(stop_opts);
+
+            // The sim_running_matches row was inserted with the
+            // warm-namespaced name; correct it to the match-named
+            // form the launch path will use, so /join and the
+            // reaper see the right routing key.
+            fh::orchestration::SimRunningMatchRepo::deleteFor(match_id);
+            effective_container_name = container_name;
+            if (!fh::orchestration::SimRunningMatchRepo::insertPending(
+                    match_id, effective_container_name)) {
+                try {
+                    db_->query("DELETE FROM sim_matches WHERE id = $1::bigint",
+                               {std::to_string(match_id)});
+                } catch (...) {}
+                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                                 "sim_running_matches re-insert failed");
+            }
+            pool_slot.reset();
+        }
+    }
+
+    if (!pool_used) {
+        // ---- launch path: spawn a fresh per-match container ----
+        fh::orchestration::LaunchOptions opts;
+        opts.match_id      = match_id;
+        opts.seed          = seed;
+        opts.scenario_code = scenario_code;
+        fh::orchestration::LaunchResult launch =
+            orchestrator.launchMatch(opts);
+
+        if (!launch.ok) {
+            std::cerr << "[sim-lobby] launchMatch(match_id=" << match_id
+                      << ") failed: " << launch.error << std::endl;
+            // Roll back BOTH rows so a retry with a new match_id has
+            // a clean slate.
+            fh::orchestration::SimRunningMatchRepo::deleteFor(match_id);
+            try {
+                db_->query("DELETE FROM sim_matches WHERE id = $1::bigint",
+                           {std::to_string(match_id)});
+            } catch (...) {}
+            return jsonError(HttpStatus::BAD_GATEWAY,
+                             "podman launch failed: " + launch.error);
+        }
+        container_id = launch.container_id;
+        std::cout << "[sim-lobby] launched match_id=" << match_id
+                  << " container=" << launch.container_name
+                  << " id=" << launch.container_id.substr(0, 12) << std::endl;
     }
 
     // -----------------------------------------------------------------
-    // 6) Fill in container_id. If this UPDATE fails somehow (row was
+    // 7) Fill in container_id. If this UPDATE fails somehow (row was
     //    reaped mid-launch), we DO NOT roll back the container — it's
     //    already running and serving traffic. Log and move on; the
     //    Slice 14.6 reaper will handle the row-vs-container mismatch.
     // -----------------------------------------------------------------
     (void)fh::orchestration::SimRunningMatchRepo::setContainerId(
-        match_id, launch.container_id);
-
-    std::cout << "[sim-lobby] launched match_id=" << match_id
-              << " container=" << launch.container_name
-              << " id=" << launch.container_id.substr(0, 12) << std::endl;
+        match_id, container_id);
 
     return jsonOk(json{
         {"id",             match_id},
         {"scenario_id",    scenario_id},
         {"seed",           seed},
         {"tick_hz",        tick_hz},
-        {"ws_url",         buildWsUrl(match_id)},
-        {"container_name", launch.container_name},
+        {"ws_url",         buildWsUrl(effective_container_name)},
+        {"container_name", effective_container_name},
+        {"pool_used",      pool_used},
     });
 }
 
@@ -511,8 +642,12 @@ Response SimLobbyController::handleJoinMatch(const Request& request) {
 
     // ws_path discrimination (Slice 14.4):
     //   * Orchestrator-launched matches have a `sim_running_matches`
-    //     row → ws_path = "/sim/${match_id}" (nginx regex block routes
-    //     to footballhome_sim_${match_id}:9100).
+    //     row → ws_path = "/sim/${suffix}" where ${suffix} is derived
+    //     from container_name via wsPathSuffixFromContainerName —
+    //     "${match_id}" for match-named containers, "warm_${warm_id}"
+    //     for pool-assigned containers (§21.7 item 1 step 5D). Both
+    //     forms resolve at nginx once 5F extends the regex to
+    //     `^/sim/(warm_\d+|\d+)$`.
     //   * The pre-seeded M0 match (docker-compose service
     //     `footballhome_sim`, migration 202 seed) has NO row → ws_path
     //     = "/sim" (nginx exact-match block routes to
@@ -523,10 +658,12 @@ Response SimLobbyController::handleJoinMatch(const Request& request) {
     std::string ws_path = "/sim";
     try {
         auto rows = db_->query(
-            "SELECT 1 FROM sim_running_matches WHERE match_id = $1::bigint LIMIT 1",
+            "SELECT container_name FROM sim_running_matches "
+            " WHERE match_id = $1::bigint LIMIT 1",
             {std::to_string(matchId)});
-        if (!rows.empty()) {
-            ws_path = "/sim/" + std::to_string(matchId);
+        if (!rows.empty() && !rows[0]["container_name"].is_null()) {
+            const std::string cname = rows[0]["container_name"].as<std::string>();
+            ws_path = buildWsUrl(cname);
         }
     } catch (const std::exception& e) {
         // Non-fatal: fall back to legacy path. Log so ops sees it.
