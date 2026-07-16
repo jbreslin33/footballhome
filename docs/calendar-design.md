@@ -678,14 +678,19 @@ Week/month grids can come after.
 
 - [x] **Slice 0:** service account created, both calendars wired,
       env encrypted, smoke test proves reads.
-- [ ] **Slice 1:** schema migration for `gcal_calendars` + `gcal_events` +
-      `fh_events` + `fh_event_rsvps`. Seed `gcal_calendars` with the
-      two rows.
-- [ ] **Slice 2:** `scripts/gcal-sync.js` — full initial sync + incremental
-      via `syncToken`. Wire systemd timer.
-- [ ] **Slice 3:** classification pass — pattern-match table (§6)
-      populates `fh_events` rows automatically. Includes the
-      `rsvps_open_at` calculation for `kind='pickup'` (§6.5).
+- [x] **Slice 1:** schema migration for `gcal_calendars` + `gcal_events` +
+      `fh_events` + `fh_event_rsvps` + `fh_recurring_rsvps`. Seed
+      `gcal_calendars` with the two rows. (`database/migrations/119`
+      + fix-up `120` for the soccer-prefix index regex.)
+- [x] **Slice 2:** `scripts/gcal-sync.js` — full initial sync + incremental
+      via `syncToken`. `systemd/gcal-sync.{service,timer}` fires it
+      every 5 min. Installed by `scripts/setup/setup-gcal.sh`.
+- [x] **Slice 3:** classification pass — `scripts/gcal-classify.js`
+      iterates the §6.1 pattern table, upserts `fh_events` rows, and
+      computes `rsvps_open_at` for `kind='pickup'` per §6.5. Runs as
+      the second `ExecStart` in `gcal-sync.service` so every tick is
+      sync → classify. Reports unclassified soccer summaries at the
+      end (Slice 8's queue).
 - [ ] **Slice 4:** backend `GET /api/calendar/upcoming?days=14` endpoint
       reading from Postgres. Includes `rsvps_open_at` and a
       `rsvps_open_now` boolean so the client can render a countdown vs.
