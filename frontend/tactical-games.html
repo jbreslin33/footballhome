@@ -197,6 +197,7 @@
       2 = half_pitch_hard                (no ball, Hard constraint east half — Slice 17.4)
       3 = soft_drill                     (no ball, Soft constraint drill zone — Slice 17.5)
       4 = ball_on_pitch_with_defender    (ball + AI defender jogging toward it — Slice 24.3a)
+      5 = ball_on_pitch_2v0              (two slots 15 m apart, pass drill — Slice 26.3)
   -->
   <div class="game game--launch" role="link" tabindex="0"
        data-scenario-id="1"
@@ -238,6 +239,17 @@
     <div class="body">
       <div class="title">Ball on Pitch + Defender <span class="badge">M2 · AI defender</span></div>
       <div class="desc">Same as Ball on Pitch but slot 2 is a Defender AI that jogs toward the ball every tick. Claim slot 1, grab the ball, and hold shift to sprint away. Touch-to-steal works both ways: get within 0.7 m of the defender to strip it back. Slice 24.3b.</div>
+    </div>
+    <div class="chev">›</div>
+  </div>
+
+  <div class="game game--launch" role="link" tabindex="0"
+       data-scenario-id="5"
+       data-scenario-label="Ball on Pitch 2v0">
+    <div class="icon">⚽</div>
+    <div class="body">
+      <div class="title">Ball on Pitch 2v0 <span class="badge">M2 · Short pass</span></div>
+      <div class="desc">Ball on centre spot, two claimable slots 15 m either side. Walk in, collect, then tap the KICK pad (or Space) with the joystick pointed at your teammate to pass. Dribbling the 15 m takes ~5 s at carry speed; a pass covers it in ~1 s. Solo: the far slot idles as a stationary receiver. Slice 26.3 — first scenario that uses the wants_kick trailer + BallControl release-on-kick.</div>
     </div>
     <div class="chev">›</div>
   </div>
