@@ -40,7 +40,6 @@
 #include "controllers/PayReminderLogController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
-#include "controllers/BillingController.h"
 #include "controllers/AdminLaBackfillController.h"
 #include "controllers/LeadsController.h"
 #include "controllers/LeadsWebhookController.h"
@@ -53,6 +52,7 @@
 #include "controllers/MatchSeriesController.h"
 #include "controllers/MyController.h"
 #include "controllers/EventReminderController.h"
+#include "controllers/CalendarController.h"
 #include "controllers/SimLobbyController.h"
 #include "controllers/SimDebugController.h"
 #include "controllers/TrailTestController.h"
@@ -97,7 +97,6 @@ private:
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
-    std::shared_ptr<BillingController> billing_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
     std::shared_ptr<LeadsController> leads_controller_;
     std::shared_ptr<LeadsWebhookController> leads_webhook_controller_;
@@ -110,6 +109,7 @@ private:
     std::shared_ptr<MatchSeriesController> match_series_controller_;
     std::shared_ptr<MyController> my_controller_;
     std::shared_ptr<EventReminderController> event_reminder_controller_;
+    std::shared_ptr<CalendarController> calendar_controller_;
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
     std::shared_ptr<SimDebugController> sim_debug_controller_;
     std::shared_ptr<TrailTestController> trail_test_controller_;
@@ -168,7 +168,6 @@ public:
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
-        billing_controller_ = std::make_shared<BillingController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
         leads_controller_ = std::make_shared<LeadsController>();
         leads_webhook_controller_ = std::make_shared<LeadsWebhookController>();
@@ -181,6 +180,7 @@ public:
         match_series_controller_ = std::make_shared<MatchSeriesController>();
         my_controller_ = std::make_shared<MyController>();
         event_reminder_controller_ = std::make_shared<EventReminderController>();
+        calendar_controller_ = std::make_shared<CalendarController>();
         sim_lobby_controller_ = std::make_shared<SimLobbyController>();
         sim_debug_controller_ = std::make_shared<SimDebugController>();
         trail_test_controller_ = std::make_shared<TrailTestController>();
@@ -439,10 +439,6 @@ private:
         // payments Members view).  LA's payments API is read-only, so
         // this is a flag-and-track table + a queue UI.
         router_.useController("/api/charge-flags", charge_flags_controller_);
-        // Phase 15 — billing_expectations state machine (per-Friday
-        // projected/actual invoice lines).  POST /projector/run kicks the
-        // BillingProjector on-demand; GET /expectations + /queue read.
-        router_.useController("/api/billing", billing_controller_);
         // Phase 10 — admin glue.  POST /api/admin/leagueapps-link/backfill
         // (operator-driven persons sweep).
         router_.useController("/api/admin", admin_la_backfill_controller_);
@@ -470,6 +466,13 @@ private:
         //   POST /api/matches/:id/remind
         //   GET  /api/reminders/verify
         router_.useController("/api", event_reminder_controller_);
+
+        // Google Calendar mirror read surface (Slice 4, see
+        // docs/calendar-design.md). Reads from fh_events joined to
+        // gcal_events populated by scripts/gcal-sync.js +
+        // scripts/gcal-classify.js on the 5-min systemd timer.
+        //   GET /api/calendar/upcoming?days=<int>
+        router_.useController("/api", calendar_controller_);
 
         // Slice 12 — fh-sim lobby + JWT bridge.
         //   GET  /api/sim/matches

@@ -691,7 +691,15 @@ Week/month grids can come after.
       the second `ExecStart` in `gcal-sync.service` so every tick is
       sync → classify. Reports unclassified soccer summaries at the
       end (Slice 8's queue).
-- [ ] **Slice 4:** backend `GET /api/calendar/upcoming?days=14` endpoint
+- [x] **Slice 4:** backend `GET /api/calendar/upcoming?days=<int>`
+      endpoint — `backend/src/controllers/CalendarController.{h,cpp}`
+      joins `fh_events` → `gcal_events` → `gcal_calendars`, filters
+      out tombstoned + cancelled rows, caps `days` at 1..90, and
+      emits `rsvps_open_now` per §6.5.2 so the frontend can render
+      the countdown vs RSVP button without re-deriving the rule.
+      Unauthenticated (schedule-only, no PII); RSVP writes gain
+      auth in Slice 6.
+- [ ] **Slice 5:** CalendarScreen (add tile under Schedule in `frontend/js/screens/admin-club.js`)
       reading from Postgres. Includes `rsvps_open_at` and a
       `rsvps_open_now` boolean so the client can render a countdown vs.
       an active RSVP button.

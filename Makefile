@@ -125,9 +125,16 @@ build:
 deploy:
 	@echo "🚀 Building and deploying backend..."
 	@$(COMPOSE) --env-file env build backend
-	@$(ENGINE) rm -f footballhome_frontend 2>/dev/null || true
-	@$(ENGINE) rm -f footballhome_backend 2>/dev/null || true
-	@$(COMPOSE) --env-file env up -d backend frontend
+	# --depend is required because leagueapps-sync's `requires=footballhome_backend`
+	# in podman-compose creates a hard dependency; without --depend a plain
+	# `rm -f footballhome_backend` errors with 125 "has dependent containers"
+	# and compose then falls back to `podman start` on the OLD container,
+	# silently ignoring the freshly-built image. Losing this line means the
+	# next `make deploy` for a C++ change appears to succeed but nothing
+	# updates.
+	@$(ENGINE) rm -f --depend footballhome_frontend 2>/dev/null || true
+	@$(ENGINE) rm -f --depend footballhome_backend  2>/dev/null || true
+	@$(COMPOSE) --env-file env up -d backend frontend leagueapps-sync
 	@echo "✓ Deploy complete — new backend is live"
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"

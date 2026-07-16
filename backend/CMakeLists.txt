@@ -42,7 +42,6 @@ set(SOURCES
     src/models/PayReminderLog.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
-    src/models/BillingExpectations.cpp
     src/models/YouthAgeGroups.cpp
     src/models/YouthRoster.cpp
     src/models/MensTeamColumns.cpp
@@ -60,7 +59,6 @@ set(SOURCES
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp
     src/services/LineupNotificationHub.cpp
-    src/services/BillingProjector.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp
     src/controllers/EventRsvpController.cpp
@@ -87,7 +85,6 @@ set(SOURCES
     src/controllers/PayReminderLogController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
-    src/controllers/BillingController.cpp
     src/controllers/AdminLaBackfillController.cpp
     src/controllers/LeadsController.cpp
     src/controllers/LeadsWebhookController.cpp
@@ -100,6 +97,7 @@ set(SOURCES
     src/controllers/MatchSeriesController.cpp
     src/controllers/MyController.cpp
     src/controllers/EventReminderController.cpp
+    src/controllers/CalendarController.cpp
     src/controllers/SimLobbyController.cpp
     src/controllers/SimDebugController.cpp
     src/controllers/TrailTestController.cpp
