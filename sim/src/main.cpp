@@ -35,6 +35,7 @@
 #include "registry/ConceptRegistry.hpp"
 #include "registry/PatternRegistry.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
+#include "scenario/BallOnPitch2v0Scenario.hpp"
 #include "scenario/BallOnPitchWithDefenderScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
@@ -245,11 +246,13 @@ int main(int /*argc*/, char** /*argv*/)
     else if (scenario_name == "half_pitch_hard")            { scenario_id = 2; }
     else if (scenario_name == "soft_drill")                 { scenario_id = 3; }
     else if (scenario_name == "ball_on_pitch_with_defender"){ scenario_id = 4; }
+    else if (scenario_name == "ball_on_pitch_2v0")          { scenario_id = 5; }
     else {
         std::fprintf(stderr,
                      "footballhome_sim: unknown SIM_SCENARIO=\"%s\" — "
                      "expected one of: empty_pitch, ball_on_pitch, "
-                     "half_pitch_hard, soft_drill, ball_on_pitch_with_defender\n",
+                     "half_pitch_hard, soft_drill, ball_on_pitch_with_defender, "
+                     "ball_on_pitch_2v0\n",
                      scenario_name.c_str());
         return 2;
     }
@@ -632,6 +635,9 @@ int main(int /*argc*/, char** /*argv*/)
             break;
         case 4:
             mcfg.scenario = std::make_unique<fh::sim::scenario::BallOnPitchWithDefenderScenario>();
+            break;
+        case 5:
+            mcfg.scenario = std::make_unique<fh::sim::scenario::BallOnPitch2v0Scenario>();
             break;
         case 0:
         default:

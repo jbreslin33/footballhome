@@ -62,6 +62,15 @@ struct MechanicsParams {
     // determinism golden stay byte-identical.
     math::Fixed64 press_resistance;
 
+    // Slice 26.3 (ADR §22.23): pass_power in m/s from
+    // profile.physical.pass_power (attr id=14, migration 217, default
+    // 15 m/s). Consumed by BallControl only when the current owner
+    // asserts Intent::wants_kick AND Intent::kick_power_hint == 0.
+    // Not consumed by applyIntent — pass_power is a ball-side
+    // attribute, not a player-motion attribute. No existing golden
+    // exercises wants_kick, so all 9 stay byte-identical.
+    math::Fixed64 pass_power;
+
     // Extract M0 params from a physical AttributeSet. Missing attrs fall
     // back to the M0 defaults from §16.2 so tests can pass minimal profiles.
     static MechanicsParams fromPhysical(const profile::AttributeSet& physical);

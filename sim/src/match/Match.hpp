@@ -150,6 +150,16 @@ private:
     // field can convey it to clients for the Slice 16.5 indicator ring.
     std::optional<SlotId>                       ball_owner_{std::nullopt};
 
+    // Slice 26.3 (ADR §22.23): countdown of remaining ticks during
+    // which BallPhysics::tickBall must suppress its snap-to-rest
+    // clamp. Armed to physics::kKickAliveTicks the tick a kick fires
+    // (via BallControl::resolveBallControl returning `kicked = true`),
+    // decremented each tick, saturated at 0. Zero for every tick of
+    // every existing determinism golden (no kick fires), so
+    // tickBall's default `skip_rest_snap = false` path is preserved
+    // byte-identically.
+    int                                         kick_alive_ticks_remaining_{0};
+
     bool                                        ended_{false};
 };
 

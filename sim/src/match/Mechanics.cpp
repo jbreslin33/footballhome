@@ -68,6 +68,11 @@ MechanicsParams MechanicsParams::fromPhysical(const profile::AttributeSet& physi
     // BallControl. Read-only for applyIntent; every no-defender
     // determinism golden stays byte-identical.
     p.press_resistance         = get(m0::kPressResistance);
+
+    // Slice 26.3: pass_power (m/s) for BallControl's release-on-kick
+    // impulse. Read-only for applyIntent; only fires when the current
+    // owner asserts Intent::wants_kick with kick_power_hint == 0.
+    p.pass_power               = get(m0::kPassPower);
     return p;
 }
 

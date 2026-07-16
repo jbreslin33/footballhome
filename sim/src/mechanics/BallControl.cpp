@@ -200,6 +200,29 @@ BallControlResult resolveBallControl(std::optional<SlotId>          current_owne
             && prev->wants_dribble
             && distSqXY(prev->position, ball_position) <= effective_radius_sq)
         {
+            // Slice 26.3: release-on-kick. A retained owner asserting
+            // wants_kick drops the ball this tick AND emits a kick
+            // impulse in the result. Rule 1 does NOT run below — the
+            // ball just left the foot and any near-by slot would
+            // otherwise instantly re-grab it (auto-dribble hint fires
+            // within kBallAutoDribbleRadius, wider than
+            // kBallControlRadius). Returning early enforces
+            // "kicker cannot re-claim in the same tick".
+            if (prev->wants_kick) {
+                res.owner  = std::nullopt;
+                res.kicked = true;
+                res.kick_direction = prev->kick_direction;
+                // kick_power_hint (u16 m/s) overrides the profile's
+                // pass_power when non-zero. Slice 26.2 wire decoder
+                // guarantees the hint is a plausible u16; a client
+                // sending an unrealistic value gets an unrealistic
+                // kick but nothing crashes.
+                res.kick_speed = (prev->kick_power_hint > 0)
+                    ? Fixed64::fromInt(
+                        static_cast<std::int32_t>(prev->kick_power_hint))
+                    : prev->pass_power;
+                return res;
+            }
             res.owner = prev->slot_id;
             fillOwnedFields(res, *prev);
             return res;

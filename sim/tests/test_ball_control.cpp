@@ -12,6 +12,7 @@
 #include "math/Vec3.hpp"
 #include "test_harness.hpp"
 
+#include <cstdint>
 #include <vector>
 
 using fh::sim::SlotId;
@@ -677,6 +678,200 @@ FH_TEST(contest_closest_presser_wins) {
     // stronger far presser is ignored precisely because it's farther.
     FH_EXPECT(r.owner.has_value());
     FH_EXPECT_EQ(*r.owner, SlotId{1});
+}
+
+// ---------------------------------------------------------------------------
+// Slice 26.3 (ADR §22.23) — release-on-kick coverage.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Extended slot factory that also populates the Slice 26.3 kick
+// fields. Keeps the pre-26.3 makeSlot() call sites untouched so no
+// existing test needs to be edited.
+BallControlSlot makeKickerSlot(SlotId                 slot,
+                               Vec3                   position,
+                               bool                   wants_dribble,
+                               const MechanicsParams* params,
+                               bool                   wants_kick,
+                               Vec3                   kick_direction,
+                               Fixed64                pass_power,
+                               std::uint16_t          kick_power_hint = 0)
+{
+    BallControlSlot s;
+    s.slot_id            = slot;
+    s.position           = position;
+    s.new_velocity       = Vec3{};
+    s.heading            = Fixed64::zero();
+    s.wants_dribble      = wants_dribble;
+    s.wants_sprint       = false;
+    s.wants_to_press     = false;
+    s.dribble_efficiency = Fixed64::one();
+    s.press_resistance   = Fixed64::zero();
+    s.wants_kick         = wants_kick;
+    s.kick_direction     = kick_direction;
+    s.kick_power_hint    = kick_power_hint;
+    s.pass_power         = pass_power;
+    s.params             = params;
+    return s;
+}
+
+} // namespace
+
+// Owner asserting wants_kick this tick drops ownership AND emits a
+// kick impulse in the result. Ball position is inside the retention
+// radius so Rule 2 would otherwise retain — the kick branch takes
+// precedence.
+FH_TEST(owner_kick_releases_ownership_and_emits_impulse) {
+    const auto p = makeParams();
+    const std::vector<BallControlSlot> slots{
+        makeKickerSlot(SlotId{1},
+                       Vec3{Fixed64::fromFraction(1, 10),   // 0.1 m from ball
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*wants_dribble=*/true,
+                       &p,
+                       /*wants_kick=*/true,
+                       Vec3{Fixed64::fromInt(1),
+                            Fixed64::zero(),
+                            Fixed64::zero()},   // +x unit direction
+                       /*pass_power=*/Fixed64::fromInt(15)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtOrigin,
+                                      slots.data(), slots.size());
+
+    // Ownership dropped.
+    FH_EXPECT(!r.owner.has_value());
+    // Kick flag raised, direction passed through raw (BallPhysics
+    // normalises inside applyImpulse), speed = pass_power since
+    // kick_power_hint == 0.
+    FH_EXPECT(r.kicked);
+    FH_EXPECT_EQ(r.kick_direction.x, Fixed64::fromInt(1));
+    FH_EXPECT_EQ(r.kick_direction.y, Fixed64::zero());
+    FH_EXPECT_EQ(r.kick_speed, Fixed64::fromInt(15));
+}
+
+// kick_power_hint (u16 m/s) OVERRIDES pass_power when non-zero. The
+// wire trailer's per-kick hint always wins if the client sent one.
+FH_TEST(owner_kick_power_hint_overrides_pass_power) {
+    const auto p = makeParams();
+    const std::vector<BallControlSlot> slots{
+        makeKickerSlot(SlotId{1},
+                       Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+                       /*wants_dribble=*/true,
+                       &p,
+                       /*wants_kick=*/true,
+                       Vec3{Fixed64::fromInt(1),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*pass_power=*/Fixed64::fromInt(15),
+                       /*kick_power_hint=*/8),   // override to 8 m/s
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtOrigin,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.kicked);
+    FH_EXPECT_EQ(r.kick_speed, Fixed64::fromInt(8));
+}
+
+// Non-owner asserting wants_kick is IGNORED — you can't kick a ball
+// you don't own. The current-owner slot doesn't want_kick, so Rule 2
+// retains as normal. The other slot's wants_kick has no effect.
+FH_TEST(non_owner_wants_kick_is_ignored) {
+    const auto p = makeParams();
+    const std::vector<BallControlSlot> slots{
+        // Slot 1 is the current owner — near ball, wants dribble,
+        // NOT wanting kick. Should retain.
+        makeKickerSlot(SlotId{1},
+                       Vec3{Fixed64::fromFraction(1, 10),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*wants_dribble=*/true,
+                       &p,
+                       /*wants_kick=*/false,
+                       Vec3{},
+                       Fixed64::fromInt(15)),
+        // Slot 2 asserts wants_kick without owning. Should be ignored.
+        makeKickerSlot(SlotId{2},
+                       Vec3{Fixed64::fromInt(3),    // 3 m away, out of range
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*wants_dribble=*/false,
+                       &p,
+                       /*wants_kick=*/true,
+                       Vec3{Fixed64::fromInt(1),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       Fixed64::fromInt(15)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtOrigin,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
+    FH_EXPECT(!r.kicked);
+}
+
+// Kick suppresses Rule 1 first-touch pickup in the same tick — the
+// ball just left the foot; a near-by slot cannot instantly re-grab.
+// Slot 1 kicks; slot 2 sits close enough that Rule 1 would normally
+// take. Result: ball is loose (owner=nullopt) AND no first-touch
+// hand-off, only the kick.
+FH_TEST(kick_suppresses_first_touch_in_same_tick) {
+    const auto p = makeParams();
+    const std::vector<BallControlSlot> slots{
+        // Owner slot 1 kicking.
+        makeKickerSlot(SlotId{1},
+                       Vec3{Fixed64::fromFraction(1, 10),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*wants_dribble=*/true,
+                       &p,
+                       /*wants_kick=*/true,
+                       Vec3{Fixed64::fromInt(1),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       Fixed64::fromInt(15)),
+        // Slot 2 is IN range and wants dribble but is not the owner
+        // — under Rule 1 this would be the next taker. Kick must
+        // suppress that path.
+        makeKickerSlot(SlotId{2},
+                       Vec3{Fixed64::fromFraction(-1, 10),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*wants_dribble=*/true,
+                       &p,
+                       /*wants_kick=*/false,
+                       Vec3{},
+                       Fixed64::fromInt(15)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtOrigin,
+                                      slots.data(), slots.size());
+    FH_EXPECT(!r.owner.has_value());
+    FH_EXPECT(r.kicked);
+}
+
+// Owner asserting wants_kick but OUT OF RANGE doesn't kick — Rule 2
+// retention fails on the range check, so the release-on-kick branch
+// never runs. Ball simply becomes loose (as in Slice 16.3 baseline),
+// no impulse emitted.
+FH_TEST(owner_kick_out_of_range_does_not_fire) {
+    const auto p = makeParams();
+    const std::vector<BallControlSlot> slots{
+        makeKickerSlot(SlotId{1},
+                       Vec3{Fixed64::fromInt(2),    // 2 m from ball, out of range
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       /*wants_dribble=*/true,
+                       &p,
+                       /*wants_kick=*/true,
+                       Vec3{Fixed64::fromInt(1),
+                            Fixed64::zero(),
+                            Fixed64::zero()},
+                       Fixed64::fromInt(15)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtOrigin,
+                                      slots.data(), slots.size());
+    FH_EXPECT(!r.owner.has_value());
+    FH_EXPECT(!r.kicked);
 }
 
 FH_TEST_MAIN()

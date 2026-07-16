@@ -20,6 +20,8 @@ using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
 using fh::sim::physics::kDefaultBallDecayPerTick;
 using fh::sim::physics::kDefaultBallRestThreshold;
+using fh::sim::physics::kKickAliveTicks;
+using fh::sim::physics::applyImpulse;
 using fh::sim::physics::tickBall;
 
 // One tick of default decay should multiply velocity by exactly 49/50 per
@@ -145,9 +147,6 @@ FH_TEST(rolls_to_rest_in_bounded_ticks) {
     }
 }
 
-// Determinism: same inputs → identical trajectory, ULP-for-ULP.
-// The Slice 15.6 cross-arch test will assert this too across arches;
-// this test locks it inside a single arch as a first defense.
 FH_TEST(deterministic_across_two_runs) {
     auto run = []() {
         EntityState b;
@@ -164,6 +163,141 @@ FH_TEST(deterministic_across_two_runs) {
     FH_EXPECT_EQ(a.x, b.x);
     FH_EXPECT_EQ(a.y, b.y);
     FH_EXPECT_EQ(a.z, b.z);
+}
+
+// ---------------------------------------------------------------------------
+// Slice 26.3 (ADR §22.23) — applyImpulse + skip_rest_snap coverage.
+// ---------------------------------------------------------------------------
+
+// Baseline applyImpulse: unit direction × speed lands as raw velocity.
+// Position, heading, motion, slot_id are untouched.
+FH_TEST(apply_impulse_unit_direction_sets_velocity_to_direction_times_speed) {
+    EntityState ball;
+    ball.slot_id  = SlotId{0};
+    ball.position = Vec3{Fixed64::fromInt(1),
+                         Fixed64::fromInt(2),
+                         Fixed64::zero()};
+    ball.velocity = Vec3{Fixed64::fromInt(99),
+                         Fixed64::fromInt(99),
+                         Fixed64::fromInt(99)};
+
+    // Unit +x direction, speed 15 m/s (pass_power default). Impulse
+    // overwrites the pre-existing velocity — pass primitive fully
+    // imparts new momentum.
+    applyImpulse(ball,
+                 Vec3{Fixed64::fromInt(1), Fixed64::zero(), Fixed64::zero()},
+                 Fixed64::fromInt(15));
+
+    FH_EXPECT_EQ(ball.velocity.x, Fixed64::fromInt(15));
+    FH_EXPECT_EQ(ball.velocity.y, Fixed64::zero());
+    FH_EXPECT_EQ(ball.velocity.z, Fixed64::zero());
+    // Position untouched — impulse is a velocity-only operation.
+    FH_EXPECT_EQ(ball.position.x, Fixed64::fromInt(1));
+    FH_EXPECT_EQ(ball.position.y, Fixed64::fromInt(2));
+}
+
+// Non-unit direction is normalised so caller can pass any non-zero
+// XY vector and get a velocity of exactly the requested magnitude.
+// This is the wire path's guarantee: the Slice 26.2 decoder allows
+// magnitudes in [0.5, 1.5], and the game must not scale the kick by
+// the accidental non-unit-ness of the joystick.
+FH_TEST(apply_impulse_non_unit_direction_normalises) {
+    EntityState ball;
+    // Direction magnitude sqrt(3² + 4²) = 5. Speed 10. Expected
+    // velocity = (3/5 * 10, 4/5 * 10, 0) = (6, 8, 0).
+    applyImpulse(ball,
+                 Vec3{Fixed64::fromInt(3),
+                      Fixed64::fromInt(4),
+                      Fixed64::zero()},
+                 Fixed64::fromInt(10));
+    FH_EXPECT_EQ(ball.velocity.x, Fixed64::fromInt(6));
+    FH_EXPECT_EQ(ball.velocity.y, Fixed64::fromInt(8));
+    FH_EXPECT_EQ(ball.velocity.z, Fixed64::zero());
+}
+
+// Zero-length direction is a no-op: leaves velocity untouched. Guards
+// against a divide-by-zero in normalize() when the client asserts
+// wants_kick without a direction (which the Slice 26.2 wire decoder
+// rejects, but tests may still probe).
+FH_TEST(apply_impulse_zero_direction_is_noop) {
+    EntityState ball;
+    ball.velocity = Vec3{Fixed64::fromInt(7),
+                         Fixed64::fromInt(-3),
+                         Fixed64::zero()};
+    applyImpulse(ball, Vec3{}, Fixed64::fromInt(15));
+    FH_EXPECT_EQ(ball.velocity.x, Fixed64::fromInt(7));
+    FH_EXPECT_EQ(ball.velocity.y, Fixed64::fromInt(-3));
+}
+
+// Zero speed is also a no-op — no direction interpretation, no
+// division. Symmetric with the zero-direction guard.
+FH_TEST(apply_impulse_zero_speed_is_noop) {
+    EntityState ball;
+    ball.velocity = Vec3{Fixed64::fromInt(7),
+                         Fixed64::fromInt(-3),
+                         Fixed64::zero()};
+    applyImpulse(ball,
+                 Vec3{Fixed64::fromInt(1), Fixed64::zero(), Fixed64::zero()},
+                 Fixed64::zero());
+    FH_EXPECT_EQ(ball.velocity.x, Fixed64::fromInt(7));
+    FH_EXPECT_EQ(ball.velocity.y, Fixed64::fromInt(-3));
+}
+
+// skip_rest_snap=true suppresses the snap-to-rest branch: a velocity
+// whose components ALL fall below rest_threshold after decay still
+// gets returned as the decayed value, not zeroed. This is the Slice
+// 26.3 kick runway that keeps a slow pass alive across kKickAliveTicks.
+FH_TEST(tick_ball_skip_rest_snap_leaves_sub_threshold_velocity_alive) {
+    EntityState ball;
+    // 1/1000 m/s per axis — below the 1/100 default threshold. Under
+    // the default (snap-eligible) path this snaps to zero; with
+    // skip_rest_snap=true the decayed value survives.
+    ball.velocity = Vec3{Fixed64::fromFraction(1, 1000),
+                         Fixed64::fromFraction(-1, 1000),
+                         Fixed64::zero()};
+
+    tickBall(ball,
+             kDefaultBallDecayPerTick,
+             kDefaultBallRestThreshold,
+             /*skip_rest_snap=*/true);
+
+    // Decayed, not snapped: x = 1/1000 * 49/50, y = -1/1000 * 49/50.
+    FH_EXPECT_EQ(ball.velocity.x,
+                 Fixed64::fromFraction(1, 1000) * kDefaultBallDecayPerTick);
+    FH_EXPECT_EQ(ball.velocity.y,
+                 Fixed64::fromFraction(-1, 1000) * kDefaultBallDecayPerTick);
+    // Both non-zero — the snap did NOT fire.
+    FH_EXPECT(ball.velocity.x != Fixed64::zero());
+    FH_EXPECT(ball.velocity.y != Fixed64::zero());
+}
+
+// skip_rest_snap default is false — the existing 8 tests above all
+// rely on this. Belt-and-suspenders assertion that the default-arg
+// call site matches the explicit-arg call site byte-for-byte.
+FH_TEST(tick_ball_default_and_explicit_false_match) {
+    EntityState a;
+    EntityState b;
+    a.velocity = Vec3{Fixed64::fromInt(7),
+                      Fixed64::fromInt(-3),
+                      Fixed64::zero()};
+    b.velocity = a.velocity;
+
+    for (int i = 0; i < 50; ++i) {
+        tickBall(a, kDefaultBallDecayPerTick, kDefaultBallRestThreshold);
+        tickBall(b, kDefaultBallDecayPerTick, kDefaultBallRestThreshold,
+                 /*skip_rest_snap=*/false);
+    }
+    FH_EXPECT_EQ(a.velocity.x, b.velocity.x);
+    FH_EXPECT_EQ(a.velocity.y, b.velocity.y);
+    FH_EXPECT_EQ(a.velocity.z, b.velocity.z);
+}
+
+// kKickAliveTicks is a sanity-guarded constant: 2 s at 20 Hz gives
+// comfortable runway for a short pass across the M2 BallOnPitch2v0
+// scenario without letting a dead ball linger for absurdly long.
+FH_TEST(kick_alive_ticks_constant_is_reasonable) {
+    FH_EXPECT(kKickAliveTicks >= 20);   // ≥ 1 s of runway
+    FH_EXPECT(kKickAliveTicks <= 200);  // ≤ 10 s (guardrail against typo)
 }
 
 FH_TEST_MAIN()

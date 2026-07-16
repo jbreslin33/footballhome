@@ -49,6 +49,7 @@
 #include "math/Vec3.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 namespace fh::sim::mechanics {
@@ -136,6 +137,27 @@ struct BallControlSlot {
     // Slice 24.3b: press_resistance rating [0,1] from profile. Only
     // consumed for slots that assert wants_to_press this tick.
     math::Fixed64                 press_resistance;
+    // Slice 26.3 (ADR §22.23): short-pass primitive inputs. Only
+    // consumed when THIS slot is the current owner AND would otherwise
+    // retain via Rule 2 — the kick then drops ownership and emits a
+    // kick impulse in the BallControlResult. Non-owners with wants_kick
+    // set are ignored (you can't kick a ball you don't own).
+    //   * `wants_kick`       — from Intent (INPUT flags bit 4, §7.3).
+    //   * `kick_direction`   — XY unit-ish vector from Intent. Wire
+    //     decoder guarantees magnitude ∈ [0.5, 1.5]; BallPhysics
+    //     normalises inside applyImpulse so tests may pass arbitrary
+    //     non-zero directions.
+    //   * `kick_power_hint`  — u16 m/s from Intent. Zero means "use
+    //     `pass_power` from the profile".
+    //   * `pass_power`       — m/s from the slot's profile.physical
+    //     (attr id=14, Slice 26.1 default 15 m/s). Consumed only when
+    //     `kick_power_hint == 0`.
+    // Existing determinism goldens leave wants_kick=false, so all four
+    // fields short-circuit before affecting output.
+    bool                          wants_kick{false};
+    math::Vec3                    kick_direction{};
+    std::uint16_t                 kick_power_hint{0};
+    math::Fixed64                 pass_power{};
     const match::MechanicsParams* params;              // borrowed
 };
 
@@ -149,6 +171,16 @@ struct BallControlSlot {
 //
 // Steps 1..3 must all happen BEFORE physics.step for the integration
 // to land ball and owner at the same glue delta.
+//
+// Slice 26.3 addition: when `kicked` is true, `owner` is guaranteed
+// nullopt (the kick releases in the same tick it fires) and Match
+// must call `physics::applyImpulse(ball, kick_direction, kick_speed)`
+// BEFORE `physics.step`. Additionally, Match must arm its
+// kick-alive counter (see BallPhysics.hpp::kKickAliveTicks) so the
+// friction rest-threshold clamp is suppressed for the pass runway.
+// Rule 1 first-touch pickup does NOT run in the same tick as a
+// kick — the ball just left the foot and any near-by slot would
+// re-grab it before it could travel a single tick.
 struct BallControlResult {
     std::optional<SlotId>  owner;
 
@@ -157,6 +189,16 @@ struct BallControlResult {
     math::Vec3             owner_capped_velocity{};
     math::Vec3             ball_target_velocity{};
     math::Vec3             ball_target_position{};
+
+    // Slice 26.3: kick trailer. `kicked` true iff the ball was
+    // released this tick by a wants_kick owner. `kick_direction` is
+    // the raw XY direction from Intent (BallPhysics::applyImpulse
+    // normalises internally); `kick_speed` is the effective m/s
+    // magnitude (from Intent::kick_power_hint when non-zero, else
+    // from the owner's `physical.pass_power` attribute).
+    bool                   kicked{false};
+    math::Vec3             kick_direction{};
+    math::Fixed64          kick_speed{};
 };
 
 // Resolve ball control for one tick.

@@ -248,6 +248,16 @@ void Match::tick()
             bcs.wants_to_press     = intent.wants_to_press;
             bcs.press_resistance   = mech.press_resistance;
             bcs.dribble_efficiency = mech.dribble_efficiency;
+            // Slice 26.3 (ADR §22.23): pipe the wire kick trailer
+            // through so BallControl can release-on-kick this tick.
+            // BallControl ignores these unless THIS slot is the
+            // current owner AND would otherwise retain via Rule 2,
+            // so the eight bytes here have no observable effect on
+            // any pre-Slice-26.3 golden.
+            bcs.wants_kick         = intent.wants_kick;
+            bcs.kick_direction     = intent.kick_direction;
+            bcs.kick_power_hint    = intent.kick_power_hint;
+            bcs.pass_power         = mech.pass_power;
             bcs.params             = &mech;
             bc_slots.push_back(bcs);
         }
@@ -291,6 +301,20 @@ void Match::tick()
             // at owner.new_position + kBallOwnerLeadDistance*(cos h, sin h).
             physics_->setPosition(*ball_, bc.ball_target_position);
             physics_->setVelocity(*ball_, bc.ball_target_velocity);
+        } else if (bc.kicked) {
+            // Slice 26.3 (ADR §22.23): release-on-kick. The previous
+            // owner asserted Intent::wants_kick this tick; ownership
+            // has already been dropped by resolveBallControl (bc.owner
+            // == nullopt above). Apply the kick impulse to the ball
+            // BEFORE physics.step so the kicked velocity gets
+            // integrated into a position delta this same tick, and
+            // arm the kick-alive counter so tickBall skips its
+            // snap-to-rest clamp for the pass runway (see
+            // physics::kKickAliveTicks).
+            EntityState ball = physics_->get(*ball_);
+            physics::applyImpulse(ball, bc.kick_direction, bc.kick_speed);
+            physics_->setVelocity(*ball_, ball.velocity);
+            kick_alive_ticks_remaining_ = physics::kKickAliveTicks;
         }
     }
 
@@ -309,10 +333,30 @@ void Match::tick()
     // -----------------------------------------------------------------
     if (ball_.has_value() && !ball_is_owned) {
         EntityState ball = physics_->get(*ball_);
+        // Slice 26.3 (ADR §22.23): skip tickBall's snap-to-rest clamp
+        // for kKickAliveTicks ticks after a kick so a slow pass isn't
+        // killed by the friction floor before it can reach a receiver.
+        // kick_alive_ticks_remaining_ was armed to kKickAliveTicks by
+        // the wants_kick branch above (or, when the kick fired on a
+        // previous tick, decremented from that armed value below).
+        // Zero for every tick of every pre-Slice-26.3 golden — the
+        // false-branch is byte-identical to the M1 behaviour.
+        const bool skip_rest_snap = kick_alive_ticks_remaining_ > 0;
         physics::tickBall(ball,
                           physics::kDefaultBallDecayPerTick,
-                          physics::kDefaultBallRestThreshold);
+                          physics::kDefaultBallRestThreshold,
+                          skip_rest_snap);
         physics_->setVelocity(*ball_, ball.velocity);
+    }
+
+    // Slice 26.3: decrement the kick-alive counter each tick, saturating
+    // at zero. Placed AFTER the friction pass so the tick that armed the
+    // counter still exercised the skip. When the ball is owned again
+    // mid-pass (someone else picked it up) the counter still counts down
+    // — that's fine, it will simply be zero by the time the next kick
+    // fires unless a rapid re-kick happens.
+    if (kick_alive_ticks_remaining_ > 0) {
+        --kick_alive_ticks_remaining_;
     }
 
     // -----------------------------------------------------------------
@@ -485,6 +529,9 @@ void Match::end() noexcept
     // end() shows the ball as loose on the wire, and a hypothetical
     // post-end resume (M2+) would start with no stale ownership.
     ball_owner_.reset();
+    // Slice 26.3: also disarm the kick-alive counter so a hypothetical
+    // post-end resume doesn't inherit a stale skip-rest-snap window.
+    kick_alive_ticks_remaining_ = 0;
 }
 
 TickNum Match::tick_num() const noexcept
