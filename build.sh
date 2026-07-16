@@ -152,10 +152,16 @@ echo ""
 # encounters, independent of file boundaries):
 #   200 = baseline (attrs 1..9 + run_to_point concept + empty_pitch scenario)
 #   208 = physical.dribble_efficiency (attr 10, Slice 16.1)
-echo -e "${YELLOW}🔧 Regenerating sim registry header from migrations 200 + 208...${NC}"
+#   209 = physical.max_dribble_speed + max_carry_sprint_speed (attrs 11+12, Slice 25.2)
+#   216 = physical.press_resistance (attr 13, Slice 24.3b)
+#   217 = physical.pass_power (attr 14, Slice 26.1)
+echo -e "${YELLOW}🔧 Regenerating sim registry header from migrations 200 + 208 + 209 + 216 + 217...${NC}"
 awk -f sim/scripts/gen_registry_header.awk \
     database/migrations/200-sim-registries.sql \
     database/migrations/208-sim-attr-dribble-efficiency.sql \
+    database/migrations/209-sim-attr-carry-speeds.sql \
+    database/migrations/216-sim-attr-press-resistance.sql \
+    database/migrations/217-sim-attr-pass-power.sql \
     > sim/src/common/M0Registry.generated.hpp
 echo -e "${GREEN}✓ sim/src/common/M0Registry.generated.hpp regenerated${NC}"
 echo ""

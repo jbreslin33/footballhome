@@ -45,6 +45,8 @@ std::vector<RegistryRow> canonicalM0Attrs()
         {12, "physical.max_carry_sprint_speed", "physical"},
         // Slice 24.3b: touch-to-steal (migration 216).
         {13, "physical.press_resistance",       "physical"},
+        // Slice 26.1: short-pass primitive kick speed (migration 217).
+        {14, "physical.pass_power",             "physical"},
     };
 }
 
@@ -67,7 +69,7 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     AttributeRegistry reg;
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{13});
+    FH_EXPECT_EQ(reg.size(), std::size_t{14});
     // Round-trip lookup by id.
     const auto* e = reg.find(static_cast<fh::sim::AttrId>(3));
     FH_EXPECT(e != nullptr);
@@ -91,6 +93,10 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     const auto prd = reg.lookup("physical.press_resistance");
     FH_EXPECT(prd.has_value());
     FH_EXPECT_EQ(*prd, fh::sim::AttrId{13});
+    // Slice 26.1: pass_power at id=14.
+    const auto ppw = reg.lookup("physical.pass_power");
+    FH_EXPECT(ppw.has_value());
+    FH_EXPECT_EQ(*ppw, fh::sim::AttrId{14});
 }
 
 FH_TEST(load_attribute_registry_clears_prior_contents)
@@ -104,7 +110,7 @@ FH_TEST(load_attribute_registry_clears_prior_contents)
     reg.addEntry(static_cast<fh::sim::AttrId>(999), "junk.key", "junk");
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{13});
+    FH_EXPECT_EQ(reg.size(), std::size_t{14});
     FH_EXPECT(reg.find(static_cast<fh::sim::AttrId>(999)) == nullptr);
 }
 
@@ -189,8 +195,8 @@ FH_TEST(verify_passes_when_db_matches_compile_time_catalog)
 FH_TEST(verify_throws_on_missing_attribute_row)
 {
     auto rows = canonicalM0Attrs();
-    rows.pop_back();   // Slice 24.3b: drop kPressResistance (id=13,
-                       // now the tail entry after migration 216).
+    rows.pop_back();   // Slice 26.1: drop kPassPower (id=14, now the
+                       // tail entry after migration 217).
 
     InMemoryPgClient db;
     db.seedAttributeRegistry(std::move(rows));
@@ -208,7 +214,7 @@ FH_TEST(verify_throws_on_missing_attribute_row)
         threw = true;
         FH_EXPECT(e.context() == "verifyM0RegistryConsistency");
         const std::string msg{e.what()};
-        FH_EXPECT(msg.find("id=13") != std::string::npos);
+        FH_EXPECT(msg.find("id=14") != std::string::npos);
         FH_EXPECT(msg.find("missing") != std::string::npos);
     }
     FH_EXPECT(threw);

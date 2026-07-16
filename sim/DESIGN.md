@@ -1162,7 +1162,7 @@ Steps 1, 4a–h, 5, and 6 are shipped. Steps 1 and 3 have M0-specific caveats:
 |---|---|---:|---:|---|
 | **M0** | `Fixed64` + `FixedMath` + trig LUTs + cross-platform determinism CI. Move a player dot on empty pitch. Full infra (auth, wire, physics stub, WanderController, Canvas2DRenderer, replay logging). | 5–7 | 5–7 | **done** (closed 2026-07-13 via Slice 13 §16.6; goldens locked in [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp)) |
 | **M1** | Ball entity + dribble physics + one player can move it. Playable-area constraints. | 3–4 | 8–11 | **done** (closed 2026-07-15; §23.4 exit checklist all `[x]`, §21.7 M2-blockers all `[x]`) |
-| **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **in progress** (Slices 24.1–24.3b shipped 2026-07-15/16: multiplayer BallOnPitchScenario, Idle/Defender controllers, press/contest touch-to-steal via `physical.press_resistance`; Slices 25.1–25.3 shipped: realistic proportions + carry-speed hierarchy + gear/owns-ball HUD; full §24 spec pending) |
+| **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **in progress** (§24 spec landed 2026-07-16; Slices 24.1–24.3b + 25.1–25.3 shipped: multiplayer BallOnPitchScenario, Idle/Defender controllers, press/contest touch-to-steal via `physical.press_resistance`, realistic proportions + carry-speed hierarchy + gear/owns-ball HUD; Slice 26.1 landed 2026-07-16: `physical.pass_power` attr registry seed for the short-pass primitive) |
 | **M3** | 1v1 attack↔defend scenario. First real `AiController` (chase, jockey, mark, feint). | 4–5 | 15–20 | not started |
 | **M4** | 2v1 / 2v2 / 3v2 progressions. Off-ball intelligence, longer passes, first team coordination. | 5–7 | 20–27 | not started |
 | **M5** | **PressTrigger4v2** (the original goal). Cover-shadow, press-partner switching, GK distribution. | 3–4 | 23–31 | not started |
@@ -2683,7 +2683,7 @@ From [§15](#15-milestone-plan): **"Multi-player interactions: collisions, first
 - Each slice ends with a green ctest gate (47/47 as of Slice 24.3b) plus a coach-visible demo reachable from `frontend/tactical-games.html`.
 - Every determinism gate (§22.1 bit-exact, §22.2 Fixed64, §22.9 registry ID stability, §22.14 write policy, ADR §22.18 profile-row storage, §16.6 boot-time drift guard) MUST stay green at the end of every slice. Any golden hash rotation MUST be intentional (i.e., the scenario producing the new hash is what exercises the new mechanic — see Slice 24.3b's `kExpectedHashBallOnPitchWithDefender400` rotation for the pattern).
 - New ADRs land at the next available integer (currently §22.23) in chronological order — never re-numbered per §22.0.
-- SQL migrations continue at 217+ (216 landed with Slice 24.3b as `216-sim-attr-press-resistance.sql`).
+- SQL migrations continue at 218+ (216 landed with Slice 24.3b as `216-sim-attr-press-resistance.sql`; 217 landed with Slice 26.1 as `217-sim-attr-pass-power.sql`).
 - CI lint gate (`sim/Dockerfile`) gains a new script per invariant added — same shape as the four M1-era checks (`check_no_floats`, `check_no_bad_rng`, `check_no_hardcoded_attrs`, `check_profile_write_policy`).
 
 ### 24.2 Deliverables
@@ -2712,8 +2712,9 @@ Grouped by subsystem, mirroring §23.2's checkbox style. Tick in place as work l
 - [x] Realistic ball-carry speed hierarchy — carrier walks slower than a free runner (Slice 25.2, `fb6acbd6`). Consumes `max_dribble_speed` / `max_carry_sprint_speed` that were spec'd in M1 but not visually differentiated.
 - [x] Gear (walk/jog/sprint) + owns-ball HUD indicators for visible sprint feedback (Slice 25.3, `29bdc2ad`).
 
-**Short-pass primitive** (forward slice 26 — not started)
+**Short-pass primitive** (forward slice 26 — in progress)
 
+- [x] `physical.pass_power` attribute at stable id=14 via migration 217 (Slice 26.1). Landed 2026-07-16. Default 15 m/s. No consumer yet (Slice 26.3 will be the first) so all 47 goldens stay byte-identical.
 - [ ] `Intent::wants_kick` + `Intent::kick_target_direction` (unit vector in Fixed64) or `kick_target_position`. Decision pending — direction is simpler, position enables aim assist. Recommend direction for M2, position for M3.
 - [ ] `BallControl` release-on-kick: if owner asserts `wants_kick` this tick, ownership drops AND `BallPhysics::applyImpulse(ball, direction × kKickImpulseSpeed)` fires before the physics step integrates. Impulse magnitude derived from a new `physical.pass_power` attribute (default ~15 m/s) — spec'd in Slice 26.1.
 - [ ] `BallPhysics` decouples "loose-ball rolling friction" from "just-kicked ball": kicked balls skip the M1 rest-threshold clamp for their first N ticks so a pass doesn't get killed by the friction floor. `kKickAliveTicks` constant.
@@ -2734,8 +2735,8 @@ Grouped by subsystem, mirroring §23.2's checkbox style. Tick in place as work l
 **Shots (net-boundary interaction)** (forward slice 28 — not started)
 
 - [ ] `Scenario::goalRegions()` — vector of axis-aligned rectangles per goal. `EmptyPitchScenario` returns empty; a new `GoalDrillScenario` returns two rectangles at pitch ends.
-- [ ] `Match::tick` post-physics: if `ball.position` crosses a `goalRegions[i]` rectangle, log a `MatchEvent::Goal` (new event type — migration 217) and freeze the ball on the goal line. Detection is AABB inclusion, not swept-line — M2 accepts the tunneling risk (a 15 m/s kick over one 50 ms tick moves the ball 0.75 m, and goal areas are ≥ 5 m deep, so tunneling requires kick_speed > 100 m/s which is unphysical).
-- [ ] `sim_match_events.result` versioning per §21.3 (first byte = version tag). Migration 217 introduces version=1 payload with `[u8 version][u8 event_subtype][u16 slot_id][3×f32 ball_pos]` for the Goal event. This closes §21.3's `sim_matches.result BYTEA has no versioned schema` before we accumulate any legacy blobs.
+- [ ] `Match::tick` post-physics: if `ball.position` crosses a `goalRegions[i]` rectangle, log a `MatchEvent::Goal` (new event type — migration 221) and freeze the ball on the goal line. Detection is AABB inclusion, not swept-line — M2 accepts the tunneling risk (a 15 m/s kick over one 50 ms tick moves the ball 0.75 m, and goal areas are ≥ 5 m deep, so tunneling requires kick_speed > 100 m/s which is unphysical).
+- [ ] `sim_match_events.result` versioning per §21.3 (first byte = version tag). Migration 221 introduces version=1 payload with `[u8 version][u8 event_subtype][u16 slot_id][3×f32 ball_pos]` for the Goal event. This closes §21.3's `sim_matches.result BYTEA has no versioned schema` before we accumulate any legacy blobs.
 - [ ] Frontend goal-flash animation on Goal event. Wire-side: append MATCH_EVENT frame type (msg_type 0x04, capability bit 2). ADR §22.24 draft covers this.
 - [ ] Determinism golden: `goal_from_kick_east_200_ticks_seed_42`.
 
@@ -2767,13 +2768,14 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 25 exit gate**: no gameplay change, but a coach opening any M2 scenario visually understands which slot is dribbling, walking vs sprinting, and how a strip resolves. **Closed 2026-07-15**.
 
-**Slice 26 — Short pass primitive** (not started)
+**Slice 26 — Short pass primitive** (in progress)
 
-- 26.1 `physical.pass_power` attribute at id=14 via migration 217. Default 15 m/s. New M2 attribute — no baseline shift in existing goldens because no scenario asserts `wants_kick` yet.
-- 26.2 `Intent::wants_kick` + `Intent::kick_target_direction`. Wire encoding: INPUT flags byte bit 4 (`kInputFlagWantsKick = 0x10`) + 2×f32 direction (needs wire v1.2 or a length-prefixed extension per §22.20 pattern). DB decoder migration 218 surfaces `wants_kick` + direction in `sim_decode_input` jsonb.
-- 26.3 `BallControl` release-on-kick + `BallPhysics::applyImpulse` for the kicked ball. `BallOnPitch2v0Scenario` — two claimable slots for pass-back-and-forth demo. First scenario without a defender that requires the new mechanic. Migration 219 registers scenario id=4.
-- 26.4 `BallPhysics::kKickAliveTicks` — kicked balls skip the rest-threshold clamp for the first N ticks. Prevents the M1 friction floor from killing short passes.
-- 26.5 Client-side motion trail on ball when `|vel| > threshold`. Server-side is a no-op (already sends `vel` on the trailer per §22.20).
+- [x] 26.1 (2026-07-16) — `physical.pass_power` attribute at stable id=14 via migration 217. Default 15 m/s. Consumer arrives in 26.3; 47/47 goldens byte-identical.
+- [ ] 26.2 `Intent::wants_kick` + `Intent::kick_target_direction`. Wire encoding: INPUT flags byte bit 4 (`kInputFlagWantsKick = 0x10`) + 2×f32 direction (needs wire v1.2 or a length-prefixed extension per §22.20 pattern). DB decoder migration 218 surfaces `wants_kick` + direction in `sim_decode_input` jsonb.
+- [ ] 26.3 `BallControl` release-on-kick + `BallPhysics::applyImpulse` for the kicked ball. `BallOnPitch2v0Scenario` — two claimable slots for pass-back-and-forth demo. First scenario without a defender that requires the new mechanic. Migration 219 registers scenario id=4.
+- [ ] 26.4 `BallPhysics::kKickAliveTicks` — kicked balls skip the rest-threshold clamp for the first N ticks. Prevents the M1 friction floor from killing short passes.
+- [ ] 26.5 Client-side motion trail on ball when `|vel| > threshold`. Server-side is a no-op (already sends `vel` on the trailer per §22.20).
+- [ ] 26.6 Determinism goldens: `pass_east_slot1_to_slot2_400_ticks_seed_42`, `pass_receive_first_touch_200_ticks_seed_42`.
 - 26.6 Determinism goldens: `pass_east_slot1_to_slot2_400_ticks_seed_42`, `pass_receive_first_touch_200_ticks_seed_42`.
 
 **Slice 26 exit gate**: two coaches on two devices open `BallOnPitch2v0`, one claims slot 1 + one claims slot 2, they can pass the ball back and forth with a kick button. Each pass shows a motion trail on both clients. Determinism-locked.
@@ -2790,7 +2792,7 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 28 — Shots on goal + versioned match events** (not started)
 
-- 28.1 Migration 217 (event schema versioning per §21.3 pre-M3 fix) — first byte of `sim_match_events.payload` = version tag. Add `EventType::Goal` at id 5. Wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04). ADR §22.24 draft.
+- 28.1 Migration 221 (event schema versioning per §21.3 pre-M3 fix) — first byte of `sim_match_events.payload` = version tag. Add `EventType::Goal` at id 5. Wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04). ADR §22.24 draft.
 - 28.2 `Scenario::goalRegions()` API. `EmptyPitchScenario` returns empty. New `GoalDrillScenario` returns two AABBs at pitch ends.
 - 28.3 `Match::tick` post-physics goal-detection loop.
 - 28.4 Frontend goal-flash animation + score HUD.

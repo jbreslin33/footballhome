@@ -52,6 +52,20 @@ profile::AttributeSet defaultPhysical()
     // Dribble200 / FirstTouch200 goldens (which never see a defender
     // asserting wants_to_press) are also unaffected.
     a.set(kPressResistance,     math::Fixed64::fromDouble(0.75));
+
+    // Slice 26.1 (§24.3): pass_power is the initial ball speed (m/s)
+    // when this player fires a short pass. Consumed by BallPhysics'
+    // applyImpulse in Slice 26.3 — NO code path reads this default yet,
+    // so migration 217 landing here is determinism-neutral: all 47
+    // goldens (Wander200, HumanSprint400, BallRoll400, Dribble200,
+    // FirstTouch200, HalfPitchHard400, SoftDrill400,
+    // BallOnPitchWithDefender400, plus the M0 canonical hash) stay
+    // byte-identical. Default 15.0 m/s is a moderate crisp pass —
+    // faster than a top-end no-ball sprint (7.5 m/s) so a pass beats a
+    // chaser, but slow enough that a receiver 10 m away has ~0.66 s to
+    // read it. Per-player biasing arrives when the profile editor
+    // lands (deferred per §24.5).
+    a.set(kPassPower,           math::Fixed64::fromDouble(15.0));
     return a;
 }
 
