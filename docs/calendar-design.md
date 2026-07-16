@@ -699,7 +699,16 @@ Week/month grids can come after.
       the countdown vs RSVP button without re-deriving the rule.
       Unauthenticated (schedule-only, no PII); RSVP writes gain
       auth in Slice 6.
-- [ ] **Slice 5:** CalendarScreen (add tile under Schedule in `frontend/js/screens/admin-club.js`)
+- [x] **Slice 5:** `CalendarScreen` (`frontend/js/screens/calendar.js`)
+      renders the §10.1 agenda list — bucketed by date (Today,
+      Tomorrow, This week, Next week, Later), color-coded by
+      `kind`, with the read-only §10.2 fields + Slice 4's
+      `rsvps_open_now` flag turned into a green "RSVPs open" pill
+      or an amber "Opens Sun Jul 19 8:00 PM" countdown label.
+      Reached via a new `admin-calendar` tile added under the
+      Schedule section of `admin-club.js` (§10.1). Week and month
+      grid views are follow-ups.
+- [ ] **Slice 6:** `POST /api/rsvp` with window check
       reading from Postgres. Includes `rsvps_open_at` and a
       `rsvps_open_now` boolean so the client can render a countdown vs.
       an active RSVP button.

@@ -249,6 +249,7 @@ class AdminClubScreen extends Screen {
     // /api/events/team/:teamId) across every team in the club.
     const scheduleTiles = [
       { id: 'admin-schedule', icon: '📅', label: 'Schedule', description: 'Club-wide unified board — every match & practice across every team. Filter by kind, category, date range.' },
+      { id: 'admin-calendar', icon: '🗓️', label: 'Calendar',  description: 'Read-only agenda from Google Calendar (soccer@ + sports@). Auto-syncs every 5 min. To add/change events, edit them in gcal.' },
     ];
     renderInto('#section-schedule', scheduleTiles);
 
@@ -360,6 +361,18 @@ class AdminClubScreen extends Screen {
       // Club-wide unified schedule board — matches + practices across
       // every team.  See screens/admin-schedule.js.
       this.navigation.goTo('admin-schedule', {
+        clubId:   this.clubId,
+        clubName: this.clubName,
+      });
+      return;
+    }
+
+    if (section === 'admin-calendar') {
+      // Google Calendar mirror view (agenda list).  See
+      // screens/calendar.js + docs/calendar-design.md §10.1.
+      // clubId/clubName aren't consumed today — calendar is site-
+      // wide — but we pass them so the back button lands here.
+      this.navigation.goTo('calendar', {
         clubId:   this.clubId,
         clubName: this.clubName,
       });

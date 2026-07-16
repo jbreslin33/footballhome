@@ -88,7 +88,8 @@ class App {
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
       publicSchedule: new PublicScheduleScreen(this.navigation, this.auth),
       my: new MyScreen(this.navigation, this.auth),
-      adminSeriesEditor: new AdminSeriesEditorScreen(this.navigation, this.auth)
+      adminSeriesEditor: new AdminSeriesEditorScreen(this.navigation, this.auth),
+      calendar: new CalendarScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     window.adminSystemScreen = this.screens.adminSystem;
@@ -179,6 +180,10 @@ class App {
     this.screenManager.register('public-schedule', this.screens.publicSchedule);
     this.screenManager.register('my', this.screens.my);
     this.screenManager.register('admin-series-editor', this.screens.adminSeriesEditor);
+    // Google Calendar mirror view — CalendarScreen renders the
+    // agenda list backed by GET /api/calendar/upcoming (Slice 4).
+    // Reached from the Schedule section of admin-club (§10.1).
+    this.screenManager.register('calendar', this.screens.calendar);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }
