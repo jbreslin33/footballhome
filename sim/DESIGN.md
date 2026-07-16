@@ -4,6 +4,8 @@
 **Owner:** footballhome
 **Scope:** authoritative multi-player tactical football simulator, server-side C++, browser client, binary wire, member-only auth.
 
+> **Active handoff (2026-07-16):** jbreslin → lbreslin. Only open sim ticket is **Slice 26.6 — pass determinism goldens** (§24.3). Full pickup spec, copy-pasteable test skeletons, and hash-recording protocol: [docs/handoff-sim-slice-26-6-goldens.md](../docs/handoff-sim-slice-26-6-goldens.md). Everything else in Slice 26 (26.1–26.5) is landed on origin/main. Blocked-ahead work: Slice 27 (player-player collisions, waiting on ADR §22.23).
+
 ---
 
 ## 1. Vision

@@ -1,5 +1,6 @@
 # Handoff: Slice 26.6 — Pass determinism goldens (close Slice 26)
 
+> **Assignee:** lbreslin (as of 2026-07-16, from jbreslin).
 > **Status:** ready for pickup — no blockers, no upstream dependencies.
 > Slices 26.1 through 26.5 are all landed on origin/main. This slice is
 > the last remaining item to close Slice 26 fully; when it lands, the
@@ -10,6 +11,31 @@
 > after a first-time green run. Pure test-only — no runtime, wire, or
 > schema change. If your golden ever fails afterwards, something *else*
 > drifted; do NOT bump the constants without understanding what.
+
+## Environment prep for lbreslin (same host — fishtown)
+
+No clone, no SSH keys, no dotfile setup — you're logging in on the
+same server where jbreslin does this work. Just verify these three
+things once from your shell:
+
+```bash
+# 1. Group membership — need write access to /srv/footballhome.
+id                                              # look for "footballhome" in groups
+# If missing: `sudo usermod -aG footballhome lbreslin` (then log out + back in).
+
+# 2. Sudo works (rootful podman is not optional — see .github/copilot-instructions.md).
+sudo -n true && echo SUDO_OK                     # any non-zero → your account isn't in sudoers yet
+
+# 3. Podman + containers visible under sudo.
+sudo podman ps                                   # should list footballhome_db, footballhome_backend, footballhome_frontend at minimum
+```
+
+If any of the three fail, ask jbreslin to fix before starting — the
+rest of this doc assumes all three pass.
+
+Git identity: set `user.name` / `user.email` in `~/.gitconfig`
+(anything you want your commits to say). Repo remote is already
+configured — you just `git commit` + `git push` as yourself.
 
 ## Motivation
 
