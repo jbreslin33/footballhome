@@ -282,9 +282,16 @@ int main(int /*argc*/, char** /*argv*/)
     fh::sim::registry::PatternRegistry   pattern_registry;
 
     // Hoisted so ProfileStore below keeps a live connection for the
-    // duration of the sim process. §22.12 two-connection model is not
-    // yet wired (main-thread connection only for now); the flush-thread
-    // connection lands with task 8 (input log durability).
+    // duration of the sim process. This is the *request-thread*
+    // connection (§22.12 decision #4) — registry bootstrap, profile
+    // load/save on WS connect, first-tick + match-end updates. The
+    // flush-thread connection (`log_db` below, added 2026-07-16 as the
+    // Slice 26.4 hotfix) is a separate PgClient owned by the async
+    // input/event log sinks so libpqxx never sees two `pqxx::work`s
+    // on one connection from two threads (which throws
+    // "Started new transaction while transaction was still active"
+    // and downgrades the connecting client to a spectator — blocking
+    // the two-human M2 test).
     std::unique_ptr<fh::sim::persistence::PgClient> db;
     try {
         db = std::make_unique<fh::sim::persistence::PgClient>(db_cfg);
@@ -430,6 +437,39 @@ int main(int /*argc*/, char** /*argv*/)
         std::fprintf(stderr,
                      "footballhome_sim: FH_SIM_ADMIN_TOKEN not set — "
                      "admin http server disabled\n");
+    }
+
+    // ------------------------------------------------------------------
+    // Flush-thread PgClient (Slice 26.4, 2026-07-16).
+    //
+    // AsyncPgLog<Row> drains from a dedicated background thread
+    // (InputLog + EventLog). libpqxx `pqxx::connection` is NOT
+    // thread-safe: only one `pqxx::work` may exist per connection at
+    // any time. The `db` connection above is owned by the transport
+    // thread (WS-accept -> ProfileStore::loadOrCreate) and the tick
+    // thread (first_tick_callback + match-end update); routing the
+    // async batch inserts through the SAME connection races and
+    // throws "Started new transaction while transaction was still
+    // active" every time the drain fires mid-connect. The catch in
+    // SimServer::handleConnect swallows the throw and degrades the
+    // client to slot=0 (spectator) — which was the root cause of the
+    // "tab 2 can watch but can't play" bug that blocked the M2 two-
+    // human test on 2026-07-16.
+    //
+    // Fix: give the log sinks their own `pqxx::connection`. Failure
+    // to connect is fatal on the same tier as `db` — without it we
+    // can't persist inputs/events and the match would silently lose
+    // its replay tape.
+    // ------------------------------------------------------------------
+    std::unique_ptr<fh::sim::persistence::PgClient> log_db;
+    try {
+        log_db = std::make_unique<fh::sim::persistence::PgClient>(db_cfg);
+    } catch (const fh::sim::persistence::PgError& e) {
+        std::fprintf(stderr,
+                     "footballhome_sim: log db connect failed: %s: %s\n",
+                     e.context().c_str(),
+                     e.what());
+        return 6;
     }
 
     // ------------------------------------------------------------------
@@ -680,17 +720,23 @@ int main(int /*argc*/, char** /*argv*/)
         }
     };
 
-    // Async persistence logs (§16.6 task 8). Sinks capture db.get() by
-    // value so the lambda lifetime is decoupled from the log's - the
-    // underlying PgClient outlives both logs (both `.stop()` before the
-    // `db` unique_ptr resets at scope exit). Capacity 256 per spec:
-    // ~13 s of one-input-per-tick-per-slot at 20 Hz.
+    // Async persistence logs (§16.6 task 8). Sinks capture log_db.get()
+    // by value so the lambda lifetime is decoupled from the log's —
+    // the underlying PgClient outlives both logs (both `.stop()` before
+    // the `log_db` unique_ptr resets at scope exit). Capacity 256 per
+    // spec: ~13 s of one-input-per-tick-per-slot at 20 Hz.
+    //
+    // Slice 26.4 (2026-07-16): sinks route through log_db, NOT db, so
+    // the drain thread never contends with the transport thread's
+    // ProfileStore::loadOrCreate call on the shared libpqxx
+    // connection. See the `log_db` construction block above for the
+    // full rationale.
     fh::sim::persistence::InputLog input_log(
-        [db_ptr = db.get()](std::span<const fh::sim::persistence::InputRow> rows) {
+        [db_ptr = log_db.get()](std::span<const fh::sim::persistence::InputRow> rows) {
             db_ptr->insertInputBatch(rows);
         });
     fh::sim::persistence::EventLog event_log(
-        [db_ptr = db.get()](std::span<const fh::sim::persistence::EventRow> rows) {
+        [db_ptr = log_db.get()](std::span<const fh::sim::persistence::EventRow> rows) {
             db_ptr->insertEventBatch(rows);
         });
 

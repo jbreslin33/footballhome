@@ -1,8 +1,21 @@
 // footballhome sim - PgClient
 //
-// Production libpqxx-backed implementation of IPgClient. One connection
-// per instance; the sim daemon holds two instances (main thread + flush
-// thread) per DESIGN.md §22.12 decision #4.
+// Production libpqxx-backed implementation of IPgClient. One `pqxx::
+// connection` per instance. libpqxx connections are NOT thread-safe:
+// only one `pqxx::work` may exist on a connection at a time. The sim
+// daemon therefore constructs THREE PgClient instances (see
+// sim/src/main.cpp — DESIGN.md §22.12 decision #4, completed as the
+// Slice 26.4 hotfix on 2026-07-16):
+//   * `db`      — transport + tick thread (registry bootstrap,
+//                 ProfileStore::loadOrCreate on WS connect,
+//                 first_tick + match-end updates).
+//   * `log_db`  — AsyncPgLog<Row> drain thread (InputLog + EventLog
+//                 batch inserts). Must be separate from `db` or the
+//                 drain races the connect-path ProfileStore call and
+//                 the throw downgrades the connecting client to a
+//                 spectator.
+//   * `admin_db`— AdminHttpServer request handler thread (replay
+//                 ingest + admin queries).
 //
 // This header must NOT expose any libpqxx types — sim_persistence users
 // (sim_server, sim_gameplay, tests) never include <pqxx/pqxx.h>. The
