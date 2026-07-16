@@ -158,6 +158,13 @@ class PaymentsScreen extends Screen {
         this.view = params.initialView;
       }
     }
+    // FilterBar captures its `host` DOM node at construction; the
+    // ScreenManager wipes + rebuilds the DOM on every re-entry, so
+    // the cached instance would write into a detached ghost element
+    // and the category / program / status chip rows would silently
+    // vanish.  Force a fresh FilterBar per entry.  Same fix pattern
+    // as members.js:onEnter.
+    this._filterBar = null;
     this._buildFilterBar();
     this.paintViewButtons();
 
@@ -221,6 +228,16 @@ class PaymentsScreen extends Screen {
       }
       // (Category / program / status chip clicks are handled by the
       // shared FilterBar component — see `_buildFilterBar` below.)
+    });
+    // Due-date dropdown change events don't bubble as clicks — attach
+    // a dedicated `change` listener.  Uses data-set-next-due=<regId>.
+    this.element.addEventListener('change', (e) => {
+      const sel = e.target.closest('select[data-set-next-due]');
+      if (!sel) return;
+      const regId = sel.getAttribute('data-set-next-due');
+      const iso   = sel.value;
+      if (!regId || !iso) return;
+      this.setNextDue(regId, iso);
     });
     const search = this.find('#pay-search');
     if (search) {
@@ -781,7 +798,7 @@ class PaymentsScreen extends Screen {
   }
 
   renderMemberCard(m) {
-    const badge = this.renderStatusBadge(m.status);
+    const badge = this.renderStatusBadge(m.status, m.daysOverdue);
     const name  = `${this.escape(m.firstName || '')} ${this.escape(m.lastName || '')}`.trim() || '—';
     const lastLine = m.lastPaidAt
       ? `Last: ${this.fmtMoney(m.lastAmount)} · ${this.fmtDate(m.lastPaidAt)}`
@@ -919,9 +936,11 @@ class PaymentsScreen extends Screen {
           <div style="font-weight:700; font-size:1rem;">${name}</div>
           <div style="display:flex; align-items:center; gap:6px;">${prorateCell}${badge}</div>
         </div>
+        ${this.renderDueHero(m)}
         ${dobLine}
         ${contactLine}
         <div style="font-size:0.8rem; opacity:0.85;">${lastLine}</div>
+        ${this.renderDueDateDropdown(m)}
         <div style="font-size:0.75rem; opacity:0.7;">
           Lifetime: ${this.fmtMoney(m.totalPaid || 0)}
           ${m.totalRefunded ? ` · refunded ${this.fmtMoney(m.totalRefunded)}` : ''}
@@ -970,8 +989,9 @@ class PaymentsScreen extends Screen {
     }
   }
 
-  _toast(msg) {
+  _toast(msg, kind = 'info') {
     // Cheap, no-dep toast pinned near the top-right.  Self-clears after 3s.
+    // kind: 'info' (amber) | 'success' (green) | 'error' (red).
     if (!msg) return;
     let host = document.getElementById('pay-toast-host');
     if (!host) {
@@ -980,9 +1000,12 @@ class PaymentsScreen extends Screen {
       host.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:min(420px, calc(100vw - 32px));';
       document.body.appendChild(host);
     }
+    const palette = kind === 'success' ? { border: '#16a34a', prefix: '✅ ' }
+                  : kind === 'error'   ? { border: '#dc2626', prefix: '⚠️ ' }
+                  :                      { border: '#d97706', prefix: '' };
     const t = document.createElement('div');
-    t.textContent = msg;
-    t.style.cssText = 'background:#0f172a; color:#e5e7eb; border:1px solid #d97706; border-radius:6px; padding:10px 14px; box-shadow:0 4px 14px rgba(0,0,0,0.35); font-size:0.85rem; line-height:1.35; opacity:0; transition:opacity 0.15s ease-in;';
+    t.textContent = palette.prefix + msg;
+    t.style.cssText = `background:#0f172a; color:#e5e7eb; border:1px solid ${palette.border}; border-radius:6px; padding:10px 14px; box-shadow:0 4px 14px rgba(0,0,0,0.35); font-size:0.85rem; line-height:1.35; opacity:0; transition:opacity 0.15s ease-in;`;
     host.appendChild(t);
     requestAnimationFrame(() => { t.style.opacity = '1'; });
     setTimeout(() => {
@@ -991,19 +1014,279 @@ class PaymentsScreen extends Screen {
     }, 3000);
   }
 
-  renderStatusBadge(status) {
+  // Full-screen semi-transparent overlay with a spinner. Blocks pointer
+  // events so the operator can't fire another mutation while the current
+  // one is in-flight. Used for actions that shuffle cards between
+  // sections (setNextDue) because the card visibly jumps and without
+  // a blocker it's easy to double-click or fat-finger a second row.
+  _showBusy(msg) {
+    let ov = document.getElementById('pay-busy-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'pay-busy-overlay';
+      ov.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(2,6,23,0.55); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; cursor:progress;';
+      ov.innerHTML = `
+        <style>
+          @keyframes pay-spin { to { transform: rotate(360deg); } }
+        </style>
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:10px; padding:20px 28px; display:flex; align-items:center; gap:14px; box-shadow:0 10px 30px rgba(0,0,0,0.5); min-width:220px;">
+          <div style="width:22px; height:22px; border:3px solid #334155; border-top-color:#f59e0b; border-radius:50%; animation: pay-spin 0.8s linear infinite;"></div>
+          <div id="pay-busy-msg" style="color:#e5e7eb; font-size:0.9rem; font-weight:500;"></div>
+        </div>
+      `;
+      document.body.appendChild(ov);
+    }
+    const msgEl = ov.querySelector('#pay-busy-msg');
+    if (msgEl) msgEl.textContent = msg || 'Working…';
+    ov.style.display = 'flex';
+  }
+  _hideBusy() {
+    const ov = document.getElementById('pay-busy-overlay');
+    if (ov) ov.remove();
+  }
+
+  renderStatusBadge(status, daysOverdue) {
     let icon, label, bg, fg;
+    // Day-count suffix — server sends an int for every card.  Shown
+    // only on the two "money owed now" statuses so operators see how
+    // long the clock has been running.  Never-paid with days=0 (no
+    // reg date on file) falls back to the bare label.
+    const days = Number.isFinite(daysOverdue) ? daysOverdue : 0;
     switch (status) {
       case 'current': icon='🟢'; label='Current'; bg='#052e1a'; fg='#86efac'; break;
       case 'behind':  icon='🟡'; label='Behind';  bg='#3a2e05'; fg='#fbbf24'; break;
-      case 'overdue': icon='🔴'; label='Overdue'; bg='#3a1f1f'; fg='#fca5a5'; break;
-      case 'never':   icon='⚫'; label='Never paid'; bg='#1f2937'; fg='#e5e7eb'; break;
+      case 'overdue':
+        icon='🔴';
+        label = days > 0 ? `Overdue · ${days}d` : 'Overdue';
+        bg='#3a1f1f'; fg='#fca5a5';
+        break;
+      case 'never':
+        icon='⚫';
+        label = days > 0 ? `Never paid · ${days}d` : 'Never paid';
+        bg='#1f2937'; fg='#e5e7eb';
+        break;
       default:        icon='❓'; label=status || '—'; bg='#1f2937'; fg='#cbd5e1';
     }
     return `<span style="display:inline-block; padding:3px 8px; font-size:0.7rem; font-weight:700;
                           border-radius:4px; background:${bg}; color:${fg}; white-space:nowrap;">
               ${icon} ${label}
             </span>`;
+  }
+
+  // ── Due hero (top of card) ─────────────────────────────────────────
+  // Big, unambiguous "here is what they owe and when" block that sits
+  // directly under the name.  Two lines:
+  //   1. Amount currently due (LA-authoritative outstanding balance).
+  //   2. Due date (next_due_at from our DB) with day-count overdue.
+  // Falls back gracefully when LA is unreachable or the row has no
+  // next_due_at set.
+  renderDueHero(m) {
+    // ── amount ────────────────────────────────────────────────────
+    // Prefer live LA outstanding balance (fresh every request).  When
+    // that field isn't present (LA unreachable → no `laOutstanding-
+    // Balance` on the row) fall back to snapshot cents captured on
+    // last sync.  If neither is available, hide the amount line.
+    let owedNum = null;
+    let owedSource = '';
+    if (Number.isFinite(m.laOutstandingBalance)) {
+      owedNum = Number(m.laOutstandingBalance);
+      owedSource = 'la';
+    } else if (Number.isFinite(m.laAmountOwedCents) && Number.isFinite(m.laAmountPaidCents)) {
+      owedNum = (m.laAmountOwedCents - m.laAmountPaidCents) / 100;
+      owedSource = 'snapshot';
+    }
+    const owedFmt = (owedNum === null)
+      ? null
+      : this.fmtMoney(Math.max(0, owedNum));
+
+    // ── due date ──────────────────────────────────────────────────
+    let dueIso  = m.nextDueAt ? m.nextDueAt.slice(0, 10) : '';
+    let dueDate = null;
+    let dueLbl  = '';
+    let overdue = false;
+    let daysBy  = 0;
+    if (dueIso) {
+      const [y, mo, da] = dueIso.split('-').map(Number);
+      dueDate = new Date(Date.UTC(y, mo - 1, da));
+      dueLbl  = this._fmtFri(dueDate);
+      const today0 = new Date();
+      today0.setUTCHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today0.getTime() - dueDate.getTime()) / 86400000);
+      overdue = diffDays > 0;
+      daysBy  = Math.max(0, diffDays);
+    }
+
+    const amountColor = (owedNum && owedNum > 0.005) ? '#fca5a5' : '#86efac';
+    const dateColor   = overdue ? '#fca5a5' : '#cbd5e1';
+
+    const amountBlock = (owedFmt !== null)
+      ? `<div style="display:flex; align-items:baseline; gap:6px;">
+           <span style="font-size:0.65rem; opacity:0.55; text-transform:uppercase; letter-spacing:0.5px;">Due</span>
+           <span style="font-size:1.4rem; font-weight:800; color:${amountColor}; line-height:1;">
+             ${owedFmt}
+           </span>
+           ${owedSource === 'snapshot'
+             ? '<span style="font-size:0.6rem; opacity:0.4;">(cached)</span>'
+             : ''}
+         </div>`
+      : `<div style="font-size:0.75rem; opacity:0.5;">LA balance unavailable</div>`;
+
+    const dateBlock = dueLbl
+      ? `<div style="font-size:0.9rem; font-weight:600; color:${dateColor};">
+           ${overdue ? 'Was due' : 'Due'} ${dueLbl}${overdue ? ` · ${daysBy}d late` : ''}
+         </div>`
+      : `<div style="font-size:0.8rem; opacity:0.55; font-style:italic;">No due date set — pick a Friday below</div>`;
+
+    return `
+      <div style="background:#0b1220; border:1px solid ${overdue ? '#7f1d1d' : '#1f2937'};
+                  border-radius:6px; padding:8px 10px;
+                  display:flex; justify-content:space-between; align-items:center;
+                  gap:10px; flex-wrap:wrap;">
+        ${amountBlock}
+        ${dateBlock}
+      </div>
+    `;
+  }
+
+  // ── Due-date dropdown helpers ───────────────────────────────────────  // Return the first Friday of the month containing `d` (Date, UTC).
+  // Used to compute the three dropdown choices.
+  _firstFridayOfMonth(d) {
+    const y  = d.getUTCFullYear();
+    const mo = d.getUTCMonth();
+    const first = new Date(Date.UTC(y, mo, 1));
+    const dow   = first.getUTCDay();                // 0=Sun..5=Fri
+    const add   = (5 - dow + 7) % 7;
+    return new Date(Date.UTC(y, mo, 1 + add));
+  }
+
+  // Return `{last, next, following}` — three 1st-Friday-of-month
+  // Date objects relative to today (UTC).  User directive: "last 1st
+  // friday, next 1st friday, and the first friday after that in case
+  // someone pays early somehow".
+  _fridayChoices() {
+    const now      = new Date();
+    const thisFri  = this._firstFridayOfMonth(now);
+    // "next" = first 1st-Friday on or after today.  "last" = the one
+    // in the previous month.  "following" = the one after "next".
+    let next;
+    if (thisFri.getTime() >= Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) {
+      next = thisFri;
+    } else {
+      next = this._firstFridayOfMonth(
+        new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)));
+    }
+    const last = this._firstFridayOfMonth(
+      new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() - 1, 1)));
+    const following = this._firstFridayOfMonth(
+      new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 1)));
+    return { last, next, following };
+  }
+
+  // Format a Date as 'YYYY-MM-DD' (UTC).  This is the wire format the
+  // backend POST /next-due endpoint accepts and the format we store
+  // in the <option value=>.
+  _isoDate(d) {
+    const y  = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${mo}-${dd}`;
+  }
+
+  // Human label for a Friday date: "Fri Jul 3".
+  _fmtFri(d) {
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const day = d.getUTCDate();
+    // 11/12/13 are 'th'; otherwise 1→st, 2→nd, 3→rd, rest→th.
+    const suffix = (day % 100 >= 11 && day % 100 <= 13)
+      ? 'th'
+      : ({1:'st', 2:'nd', 3:'rd'}[day % 10] || 'th');
+    return `${months[d.getUTCMonth()]} ${day}${suffix}`;
+  }
+
+  // Render the due-date <select>.  Value = ISO date currently on the
+  // member row (YYYY-MM-DD extracted from m.nextDueAt).  Options are
+  // last / next / following 1st-Fridays.  When the current value
+  // matches none of those, it's added as a fourth option so the display
+  // doesn't lie about state.
+  renderDueDateDropdown(m) {
+    // Registration-id-less rows (rare — legacy) can't be POSTed to.
+    if (!m.laRegistrationId) return '';
+    const cur     = m.nextDueAt ? m.nextDueAt.slice(0, 10) : '';   // 'YYYY-MM-DD' or ''
+    const choices = this._fridayChoices();
+    const options = [
+      { v: this._isoDate(choices.last),      lbl: this._fmtFri(choices.last) },
+      { v: this._isoDate(choices.next),      lbl: this._fmtFri(choices.next) },
+      { v: this._isoDate(choices.following), lbl: this._fmtFri(choices.following) },
+    ];
+    const knownValues = new Set(options.map((o) => o.v));
+    // If the current value isn't in the standard 3, surface it as a
+    // fourth option so the operator can see what's actually stored
+    // (e.g. an old operator override or a la_seed date not aligned
+    // with a Friday).  We still render just the date, no prefix.
+    if (cur && !knownValues.has(cur)) {
+      const [y, mo, da] = cur.split('-').map(Number);
+      const d = new Date(Date.UTC(y, mo - 1, da));
+      options.unshift({ v: cur, lbl: this._fmtFri(d) });
+    }
+    const src = m.nextDueSource
+      ? `<span style="opacity:0.6; font-size:0.65rem; margin-left:6px;">
+           ${m.nextDueSource === 'operator_override' ? '✎ overridden'
+            : m.nextDueSource === 'payment_advance'  ? '↻ auto'
+            : m.nextDueSource === 'la_seed'          ? '⇢ la'
+            : this.escape(m.nextDueSource)}
+         </span>`
+      : '';
+    return `
+      <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; opacity:0.9;">
+        <label style="opacity:0.75;">Due:</label>
+        <select data-set-next-due="${m.laRegistrationId}"
+                style="background:#0f172a; color:#e5e7eb;
+                       border:1px solid #374151; border-radius:4px;
+                       padding:3px 6px; font-size:0.75rem;">
+          ${cur ? '' : '<option value="">— pick a Friday —</option>'}
+          ${options.map((o) =>
+            `<option value="${o.v}"${o.v === cur ? ' selected' : ''}>${o.lbl}</option>`
+          ).join('')}
+        </select>
+        ${src}
+      </div>
+    `;
+  }
+
+  // POST the operator's chosen next_due_at, then re-fetch the current
+  // tab's members payload so the badge reflects the new anchor.
+  async setNextDue(laRegistrationId, isoDate) {
+    if (!laRegistrationId || !isoDate) return;
+    this._showBusy('Saving due date…');
+    try {
+      const res = await this.auth.fetch(
+        `/api/payments/members/${laRegistrationId}/next-due`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ nextDueAt: isoDate }),
+        }
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200) || `HTTP ${res.status}`);
+      }
+      // Refresh every loaded tab so the badge, section grouping and
+      // dropdown state all pick up the write before we clear the
+      // overlay — otherwise the card visibly jumps AFTER the busy
+      // indicator disappears, which feels janky.
+      const tabs = ['mens','womens','boys','girls'];
+      await Promise.all(tabs
+        .filter((k) => this.membersByTab[k] !== null)
+        .map((k) => this.loadMembers(k)));
+      this._toast(`Due date set to ${isoDate}`, 'success');
+    } catch (err) {
+      this._toast(`Failed to set due date: ${err.message}`, 'error');
+    } finally {
+      this._hideBusy();
+    }
   }
 
   // ── Transactions view (raw ledger — pre-existing behaviour) ─────────
