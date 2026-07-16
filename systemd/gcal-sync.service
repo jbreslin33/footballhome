@@ -1,0 +1,29 @@
+[Unit]
+Description=Football Home — Google Calendar mirror (Slice 2)
+Documentation=file:///srv/footballhome/docs/calendar-design.md
+After=network-online.target
+Wants=network-online.target
+# Don't fire while the DB is being started/restarted by podman.
+After=podman.service
+
+[Service]
+Type=oneshot
+User=jbreslin
+Group=jbreslin
+WorkingDirectory=/srv/footballhome
+# One-shot per invocation. Reads dotenv from /srv/footballhome/env.
+ExecStart=/usr/bin/node /srv/footballhome/scripts/gcal-sync.js
+# The script exits non-zero on Google auth / DB failures; systemd will
+# journal the failure but the .timer keeps firing every 5 min so a
+# transient network hiccup self-heals on the next tick.
+StandardOutput=journal
+StandardError=journal
+# Kill if it ever runs longer than 2 min — full sync of 1000+ events
+# is ~50s, incremental is <1s, so 120s is generous.
+TimeoutStartSec=120s
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target

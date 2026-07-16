@@ -264,11 +264,14 @@ promotes rows that pass the prefix filter into `fh_events`.
 Concretely:
 
 ```sql
--- Candidates for FH classification
+-- Candidates for FH classification.
+-- NB: Postgres regex (POSIX ARE, §9.7.3) does NOT support Perl
+-- shortcuts \s or \b — must use \M / \y for word boundary,
+-- [[:space:]] for whitespace.  Migration 120 was the fix-up.
 SELECT id, summary, starts_at
 FROM   gcal_events
 WHERE  deleted_at IS NULL
-  AND  summary ~* '^\s*Soccer\b';
+  AND  summary ~* '^Soccer\M';
 ```
 
 Everything else stays in `gcal_events` (for audit / debugging / the

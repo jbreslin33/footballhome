@@ -1,0 +1,21 @@
+[Unit]
+Description=Football Home — Google Calendar mirror timer (every 5 min)
+Documentation=file:///srv/footballhome/docs/calendar-design.md
+Requires=gcal-sync.service
+
+[Timer]
+# Fire ~30 s after boot (once the network + DB are up), then every 5 min.
+# OnUnitActiveSec is measured from the last time gcal-sync.service
+# actually ran, so runs never pile up if a previous invocation was slow.
+OnBootSec=30s
+OnUnitActiveSec=5min
+Unit=gcal-sync.service
+# Randomize by up to 15 s so we don't hit Google exactly on the tick
+# with every other Football-Home host in the world.
+RandomizedDelaySec=15s
+# If the machine was off when a run should have happened, do it as
+# soon as we're up — the incremental syncToken means catching up is cheap.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
