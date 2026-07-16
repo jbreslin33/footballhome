@@ -19,6 +19,7 @@
 #include "profile/ConceptSet.hpp"
 #include "profile/PlayerProfile.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -97,6 +98,24 @@ struct SlotSpawn {
     std::optional<profile::PlayerProfile> ai_profile;
 };
 
+// Slice 24.3a: which controller kind Match should build for an
+// unclaimed slot. Deliberately an enum in Scenario's namespace rather
+// than a std::unique_ptr<IPlayerController> factory — that would drag
+// the controller/ headers into every scenario translation unit and
+// invert the "Scenario is a lower layer than controller" dependency
+// direction. Match owns the enum -> concrete controller mapping.
+//
+// Determinism note (per §22.9 goldens contract): Wander is the ONLY
+// kind that consumes RNG. Idle and Defender consume none. Any scenario
+// that returns Idle/Defender for every unclaimed slot is safe to add
+// without perturbing RNG-keyed goldens; a scenario mixing Wander with
+// anything else must ship its own golden hash.
+enum class UnclaimedControllerKind : std::uint8_t {
+    Wander   = 0,   // WanderController — M0/M1 default, consumes RNG
+    Idle     = 1,   // IdleController   — Slice 24.2, zero RNG
+    Defender = 2,   // DefenderController — Slice 24.3a, zero RNG, pursues ball
+};
+
 class Scenario {
 public:
     virtual ~Scenario() = default;
@@ -133,6 +152,33 @@ public:
     // whereas WanderController consumes RNG on every target repick, so
     // flipping this changes the canonical hash of a scripted-slot run.
     virtual bool                 unclaimedSlotsIdle() const { return false; }
+
+    // Slice 24.3a: finer-grained per-slot controller policy for
+    // scenarios that mix multiple AI behaviours (e.g. a demo that puts
+    // one unclaimed slot on Idle so the human can claim it and puts
+    // another on Defender so the human has something to dribble past).
+    //
+    // The default implementation collapses to the boolean above so
+    // every pre-24.3 scenario keeps its existing behaviour bit-for-bit
+    // without an override — WanderController on Wander, IdleController
+    // on Idle. Anything richer than "all-idle vs all-wander" overrides
+    // this method and returns the correct kind per SlotId.
+    //
+    // Match (spawnInitialSlots and reclaimSlotToUnclaimed) is the
+    // single dispatch point: it takes the returned enum and constructs
+    // the matching concrete controller. Scenario stays free of any
+    // dependency on controller/ headers — the coupling lives in Match.
+    //
+    // Determinism: Wander is the ONLY kind that consumes RNG. Idle and
+    // Defender consume none. So any new scenario that returns Idle
+    // and/or Defender for every unclaimed slot is safe to introduce
+    // without breaking scripted-slot goldens keyed to the RNG stream.
+    virtual UnclaimedControllerKind
+        unclaimedControllerFor(SlotId /*slot*/) const
+    {
+        return unclaimedSlotsIdle() ? UnclaimedControllerKind::Idle
+                                    : UnclaimedControllerKind::Wander;
+    }
 };
 
 } // namespace fh::sim::scenario

@@ -15,6 +15,7 @@
 #include "physics/StubPhysics.hpp"
 #include "profile/PlayerProfile.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
+#include "scenario/BallOnPitchWithDefenderScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
 #include "scenario/SoftDrillScenario.hpp"
@@ -35,10 +36,11 @@ namespace {
 // Scenario-id → Scenario factory. IDs are hand-managed per §22.9; each
 // new scenario adds a DB row via a migration AND a branch here.
 // Assignments:
-//   0 = EmptyPitchScenario    (M0 baseline; migrations 200 + 204)
-//   1 = BallOnPitchScenario   (M1 Slice 15 demo; migration 207)
-//   2 = HalfPitchScenario     (M1 Slice 17.4 demo; migration 212)
-//   3 = SoftDrillScenario     (M1 Slice 17.5 demo; migration 213)
+//   0 = EmptyPitchScenario               (M0 baseline; migrations 200 + 204)
+//   1 = BallOnPitchScenario              (M1 Slice 15 demo; migration 207)
+//   2 = HalfPitchScenario                (M1 Slice 17.4 demo; migration 212)
+//   3 = SoftDrillScenario                (M1 Slice 17.5 demo; migration 213)
+//   4 = BallOnPitchWithDefenderScenario  (M2 Slice 24.3a demo; migration 215)
 // Anything else is unknown — throw loudly rather than silently
 // substituting a scenario, because a hash mismatch after replay would
 // be nearly impossible to debug from the outside.
@@ -56,10 +58,14 @@ std::unique_ptr<scenario::Scenario> makeScenario(std::int16_t scenario_id)
     if (scenario_id == 3) {
         return std::make_unique<scenario::SoftDrillScenario>();
     }
+    if (scenario_id == 4) {
+        return std::make_unique<scenario::BallOnPitchWithDefenderScenario>();
+    }
     throw std::runtime_error(
         "replayMatch: unknown scenario_id=" + std::to_string(scenario_id) +
         " (known: 0=EmptyPitchScenario, 1=BallOnPitchScenario, "
-        "2=HalfPitchScenario, 3=SoftDrillScenario)");
+        "2=HalfPitchScenario, 3=SoftDrillScenario, "
+        "4=BallOnPitchWithDefenderScenario)");
 }
 
 // M0 default profile — see M0 limitation note in Replay.hpp.

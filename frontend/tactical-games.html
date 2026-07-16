@@ -137,11 +137,12 @@
     accepts either. See sim/DESIGN.md §23.3 Slice 18.1.
 
     scenario_id lookup (sim_scenarios table, seeded by migrations
-    202/207/212/213):
-      0 = empty_pitch      (no ball, no constraint  — M0 default)
-      1 = ball_on_pitch    (rolling ball, no constraint — Slice 15)
-      2 = half_pitch_hard  (no ball, Hard constraint east half — Slice 17.4)
-      3 = soft_drill       (no ball, Soft constraint drill zone — Slice 17.5)
+    202/207/212/213/215):
+      0 = empty_pitch                    (no ball, no constraint  — M0 default)
+      1 = ball_on_pitch                  (rolling ball, no constraint — Slice 15)
+      2 = half_pitch_hard                (no ball, Hard constraint east half — Slice 17.4)
+      3 = soft_drill                     (no ball, Soft constraint drill zone — Slice 17.5)
+      4 = ball_on_pitch_with_defender    (ball + AI defender jogging toward it — Slice 24.3a)
   -->
   <div class="game game--launch" role="link" tabindex="0"
        data-scenario-id="1"
@@ -172,6 +173,17 @@
     <div class="body">
       <div class="title">Soft Drill Zone <span class="badge">M1 · Soft boundary</span></div>
       <div class="desc">Dotted cyan 40×30 m rectangle at pitch center. Walk out and the server gently pushes you back — you can leave briefly but a spring pulls you home. Test that Slice 17.5's Soft playable-area constraint works.</div>
+    </div>
+    <div class="chev">›</div>
+  </div>
+
+  <div class="game game--launch" role="link" tabindex="0"
+       data-scenario-id="4"
+       data-scenario-label="Ball on Pitch + Defender">
+    <div class="icon">🛡️</div>
+    <div class="body">
+      <div class="title">Ball on Pitch + Defender <span class="badge">M2 · AI defender</span></div>
+      <div class="desc">Same as Ball on Pitch but slot 2 is a Defender AI that jogs toward the ball every tick. Claim slot 1, grab the ball, and hold shift to sprint away. No touch-to-steal yet (Slice 24.3b) — if the defender catches up it just stands on top of you. Slice 24.3a.</div>
     </div>
     <div class="chev">›</div>
   </div>

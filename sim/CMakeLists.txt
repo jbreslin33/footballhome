@@ -229,9 +229,11 @@ add_library(sim_gameplay STATIC
     src/physics/PlayableAreaConstraint.cpp
     src/controller/HumanController.cpp
     src/controller/WanderController.cpp
+    src/controller/DefenderController.cpp
     src/controller/AiController.cpp
     src/scenario/EmptyPitchScenario.cpp
     src/scenario/BallOnPitchScenario.cpp
+    src/scenario/BallOnPitchWithDefenderScenario.cpp
     src/scenario/HalfPitchScenario.cpp
     src/scenario/SoftDrillScenario.cpp
     src/match/MatchClock.cpp
