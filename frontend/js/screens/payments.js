@@ -1273,14 +1273,27 @@ class PaymentsScreen extends Screen {
         const text = await res.text();
         throw new Error(text.slice(0, 200) || `HTTP ${res.status}`);
       }
-      // Refresh every loaded tab so the badge, section grouping and
-      // dropdown state all pick up the write before we clear the
-      // overlay — otherwise the card visibly jumps AFTER the busy
-      // indicator disappears, which feels janky.
-      const tabs = ['mens','womens','boys','girls'];
-      await Promise.all(tabs
-        .filter((k) => this.membersByTab[k] !== null)
-        .map((k) => this.loadMembers(k)));
+      // Only reload the tab the operator is actually looking at, in
+      // the foreground.  Every /api/payments/{tab}/members call
+      // triggers a fresh LaProgramSync::run for that program (external
+      // LA API round trip), so awaiting all four in Promise.all made
+      // the "saving..." spinner wait on the slowest of four LA calls.
+      // The other tabs are refreshed silently in the background - the
+      // operator will see fresh data when they switch tabs, and the
+      // "All Programs" bar recomputes from membersByTab whenever any
+      // tab lands.
+      const currentTab = ['mens','womens','boys','girls'].includes(this.tab)
+        ? this.tab
+        : null;
+      if (currentTab && this.membersByTab[currentTab] !== null) {
+        await this.loadMembers(currentTab);
+      }
+      // Fire-and-forget the other tabs.
+      for (const k of ['mens','womens','boys','girls']) {
+        if (k === currentTab) continue;
+        if (this.membersByTab[k] === null) continue;   // never loaded - leave for on-demand
+        this.loadMembers(k).catch(() => {});
+      }
       this._toast(`Due date set to ${isoDate}`, 'success');
     } catch (err) {
       this._toast(`Failed to set due date: ${err.message}`, 'error');
