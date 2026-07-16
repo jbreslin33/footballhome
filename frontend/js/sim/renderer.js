@@ -79,6 +79,20 @@ class FhSimRenderer {
         // vertices (Advisory + empty polygon is the M0 baseline).
         this.scenarioMeta = null;
 
+        // Slice 26.5: client-side motion trail on the ball. Ring buffer
+        // of recent ball world positions (metres), one sample pushed
+        // per rAF frame whenever |vel| > _BALL_TRAIL_MIN_SPEED. Below
+        // the threshold the trail ages out one sample per frame so a
+        // resting ball has no ghost tail. Stored in WORLD coordinates
+        // so the trail survives camera pans (mySlot follow-cam,
+        // viewport zoom). Reset to empty in drawBall() whenever
+        // snap.ball is null (scenario without ball / between matches).
+        // Server-side is a no-op: velocity already rides on the SNAPSHOT
+        // ball trailer per §22.20, no wire change needed.
+        this._ballTrail    = [];
+        this._BALL_TRAIL_MAX       = 24;   // ~0.4 s of history at 60 fps
+        this._BALL_TRAIL_MIN_SPEED = 0.5;  // m/s; matches M1 rest threshold band
+
         this.resize();
     }
 
@@ -401,7 +415,14 @@ class FhSimRenderer {
     // near-player situations (in M1 the ball is always loose, so overlap
     // is rare — but the order is the correct one for future slices).
     drawBall(snap) {
-        if (!snap || !snap.ball) return;
+        if (!snap || !snap.ball) {
+            // Slice 26.5: no ball this frame → drop the trail entirely.
+            // Covers scenario-without-ball (EmptyPitch, HalfPitch,
+            // SoftDrill) AND the brief window between matches when the
+            // renderer briefly sees null.
+            if (this._ballTrail.length) this._ballTrail.length = 0;
+            return;
+        }
         const ctx = this.ctx;
         const ball = snap.ball;
 
@@ -411,9 +432,51 @@ class FhSimRenderer {
         const geomR = BALL_RADIUS_M * this.pxPerM;
         const r     = Math.max(BALL_MIN_PX, geomR);
 
+        // Slice 26.5: motion trail. Sample per rAF frame — push while the
+        // ball is moving above the rest-band threshold, otherwise age
+        // out one sample per frame so a coasting-to-rest kick leaves a
+        // trail that fades naturally after ~0.4 s instead of hanging
+        // around forever. Draw BEFORE the velocity tick + ball body so
+        // the head of the trail visually terminates INSIDE the ball
+        // marker.
+        const speed = Math.hypot(ball.velX, ball.velY);
+        if (speed > this._BALL_TRAIL_MIN_SPEED) {
+            this._ballTrail.push({ x: ball.posX, y: ball.posY });
+            if (this._ballTrail.length > this._BALL_TRAIL_MAX) {
+                this._ballTrail.shift();
+            }
+        } else if (this._ballTrail.length > 0) {
+            this._ballTrail.shift();
+        }
+
+        if (this._ballTrail.length >= 2) {
+            const n = this._ballTrail.length;
+            // Slightly thicker than the ball's own outline so the trail
+            // reads as a comet tail rather than a hair; clamped so it
+            // stays visible when zoomed far out.
+            const trailW = Math.max(1.5, geomR * 0.9);
+            ctx.lineCap  = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = trailW;
+            // One stroke per segment so we can fade the alpha along the
+            // buffer. Cheap: n ≤ _BALL_TRAIL_MAX (24) so this is at most
+            // 23 stroke() calls per frame — well under the pitch grid.
+            for (let i = 1; i < n; ++i) {
+                const a = this._ballTrail[i - 1];
+                const b = this._ballTrail[i];
+                // Oldest segment: ~0.05 alpha; newest: ~0.55 alpha.
+                const t = i / n;
+                const alpha = 0.05 + t * 0.5;
+                ctx.strokeStyle = 'rgba(255,255,255,' + alpha.toFixed(3) + ')';
+                ctx.beginPath();
+                ctx.moveTo(this._wx(a.x), this._wy(a.y));
+                ctx.lineTo(this._wx(b.x), this._wy(b.y));
+                ctx.stroke();
+            }
+        }
+
         // Optional velocity tick (short line) — helps visualize decay.
         // Only when the ball is actually moving (avoid a lonely dot).
-        const speed = Math.hypot(ball.velX, ball.velY);
         if (speed > 0.05) {
             ctx.strokeStyle = 'rgba(255,255,255,0.55)';
             ctx.lineWidth   = 1.5;
