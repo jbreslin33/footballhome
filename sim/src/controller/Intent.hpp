@@ -59,6 +59,20 @@ struct Intent {
     // sufficient to fail Rule 2 (owner retention).
     bool       wants_release{false};
 
+    // Slice 24.3b: signal to BallControl's contest step that this slot
+    // is actively pressing an opposing dribbler. When set on a slot
+    // that is NOT the current ball owner AND that slot is within
+    // `kContestRadius` of the ball, BallControl shrinks the owner's
+    // effective retention radius by a factor derived from the presser's
+    // `physical.press_resistance` rating vs the owner's
+    // `physical.dribble_efficiency` rating. Deterministic; no RNG.
+    //
+    // Only defenders (DefenderController) assert this in Slice 24.3b.
+    // HumanController and WanderController never set it, so every
+    // pre-existing determinism golden (which uses only those two
+    // controllers) is byte-identical.
+    bool       wants_to_press{false};
+
     // Reserved for M1+: pass, shoot, tackle, etc.
     // std::uint8_t action_bits{0};
 };

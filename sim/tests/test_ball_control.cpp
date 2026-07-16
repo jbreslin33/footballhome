@@ -72,7 +72,9 @@ BallControlSlot makeSlot(SlotId                slot,
                          Fixed64               dribble_efficiency = Fixed64::one(),
                          Vec3                  new_velocity = Vec3{},
                          Fixed64               heading      = Fixed64::zero(),
-                         bool                  wants_sprint = false)
+                         bool                  wants_sprint = false,
+                         bool                  wants_to_press = false,
+                         Fixed64               press_resistance = Fixed64::zero())
 {
     BallControlSlot s;
     s.slot_id            = slot;
@@ -81,7 +83,9 @@ BallControlSlot makeSlot(SlotId                slot,
     s.heading            = heading;
     s.wants_dribble      = wants_dribble;
     s.wants_sprint       = wants_sprint;
+    s.wants_to_press     = wants_to_press;
     s.dribble_efficiency = dribble_efficiency;
+    s.press_resistance   = press_resistance;
     s.params             = params;
     return s;
 }
@@ -437,6 +441,242 @@ FH_TEST(glue_position_respects_owner_heading) {
     FH_EXPECT_EQ(r.ball_target_position.x, ex);
     FH_EXPECT_EQ(r.ball_target_position.y, ey);
     FH_EXPECT_EQ(r.ball_target_position.z, owner_pos.z);
+}
+
+// ===========================================================================
+// Slice 24.3b — contest step (pressure-shrunken retention radius)
+// ===========================================================================
+//
+// A NON-owner slot that asserts `wants_to_press` and is within
+// kContestRadius of the ball shrinks the current owner's effective
+// retention radius. Below a shrink threshold, Rule 2 fails naturally
+// and the ball goes loose — no dedicated strip opcode.
+//
+// Helper: put the owner at the origin and the ball at the standard
+// glue offset (kBallOwnerLeadDistance = 0.4 m east). Rule 2 uses
+// player-to-ball distance (0.4 m); default kBallControlRadius = 0.5 m
+// leaves 0.1 m of retention slack, which the contest step chips away.
+namespace {
+
+const Fixed64 kGlueOffset = kBallOwnerLeadDistance;
+const Vec3    kOwnerAtOrigin{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()};
+const Vec3    kBallAtGlue{kGlueOffset, Fixed64::zero(), Fixed64::zero()};
+
+} // namespace
+
+// Presser NOT asserting wants_to_press → no contest, owner retained
+// even with high press_resistance rating. Proves the bit is what
+// gates the mechanic, not just proximity.
+FH_TEST(contest_no_press_bit_no_effect) {
+    const auto p = makeParams();
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1}, kOwnerAtOrigin, /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        // Defender: high press_resistance but wants_to_press = false.
+        makeSlot(SlotId{2},
+                 Vec3{kGlueOffset, Fixed64::zero(), Fixed64::zero()},
+                 /*wants=*/false, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/false,
+                 /*press_resistance=*/Fixed64::fromFraction(99, 100)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtGlue,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
+}
+
+// Presser asserts wants_to_press but is OUTSIDE kContestRadius → no
+// contest. Confirms proximity is a hard gate.
+FH_TEST(contest_presser_outside_contest_radius_no_effect) {
+    const auto p = makeParams();
+    // Contest radius = 0.7 m; place defender 1.0 m north of the ball.
+    const Vec3 defender_pos{kGlueOffset, Fixed64::fromInt(1), Fixed64::zero()};
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1}, kOwnerAtOrigin, /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        makeSlot(SlotId{2}, defender_pos,
+                 /*wants=*/false, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(99, 100)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtGlue,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
+}
+
+// Presser in range but WEAKER than the attacker (skill_delta clamped
+// to zero) → only the baseline penalty applies:
+//   effective_radius = 0.5 - 0.10 = 0.40 m
+// Ball at 0.4 m ⇒ distance ≤ 0.40 m ⇒ retention holds on the knife
+// edge. Confirms baseline-only pressure does NOT strip a defensible
+// dribbler.
+FH_TEST(contest_weak_presser_baseline_penalty_owner_retains) {
+    const auto p = makeParams();
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1}, kOwnerAtOrigin, /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        makeSlot(SlotId{2},
+                 Vec3{kGlueOffset, Fixed64::zero(), Fixed64::zero()},
+                 /*wants=*/false, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(75, 100)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtGlue,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
+}
+
+// Presser in range AND stronger than attacker → skill_delta = 0.10,
+// effective_radius = 0.5 - 0.10 - 0.5*0.10 = 0.35 m. Ball at 0.4 m ⇒
+// distance > radius ⇒ Rule 2 fails. The presser sits AT the ball
+// (distance = 0) and asserts wants_dribble, so Rule 1 hands ownership
+// to them in the same tick. This is the "touch-to-steal" moment the
+// slice ships: strip = Rule-2-fails + Rule-1-picks-presser, no
+// dedicated opcode.
+FH_TEST(contest_strong_presser_strips_ball) {
+    const auto p = makeParams();
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1}, kOwnerAtOrigin, /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        makeSlot(SlotId{2},
+                 Vec3{kGlueOffset, Fixed64::zero(), Fixed64::zero()},
+                 // Presser asserts wants_dribble so it's a Rule 1
+                 // candidate when Rule 2 fails. This mirrors what
+                 // DefenderController does in production.
+                 /*wants=*/true, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(95, 100)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtGlue,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{2});
+}
+
+// Strong presser in contest range but presser does NOT assert
+// wants_dribble → Rule 2 fails, Rule 1 also finds no closer taker
+// (only the ex-owner at 0.4 m is a wants_dribble candidate, and
+// they win by being the only one). This documents the corner case:
+// pressure alone without an intent-to-take does not divorce the ball
+// from the ex-owner — a real defender must want the ball, not just
+// harass. DefenderController asserts both bits; this test guards
+// against a future AI that separates them.
+FH_TEST(contest_strong_presser_without_dribble_intent_owner_reclaims) {
+    const auto p = makeParams();
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1}, kOwnerAtOrigin, /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        makeSlot(SlotId{2},
+                 Vec3{kGlueOffset, Fixed64::zero(), Fixed64::zero()},
+                 /*wants=*/false, &p,          // no wants_dribble
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(95, 100)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtGlue,
+                                      slots.data(), slots.size());
+    // Rule 2 fails (pressure shrinks radius below 0.4 m), Rule 1
+    // sees only the ex-owner at 0.4 m ≤ kBallControlRadius 0.5 m
+    // with wants_dribble = true → they re-claim it.
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
+}
+
+// No current owner → contest step is a no-op even when a wants_to_press
+// slot is right next to the ball. The Rule 1 first-touch scan runs
+// against the FULL kBallControlRadius exactly as in Slice 16.3.
+FH_TEST(contest_no_owner_no_shrink_rule1_full_radius) {
+    const auto p = makeParams();
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1},
+                 // Slot 1 wants the ball and is at 0.45 m — INSIDE the
+                 // full 0.5 m Rule-1 radius, OUTSIDE the shrunken 0.35 m
+                 // Rule-2 radius that would apply if there were an owner.
+                 Vec3{Fixed64::fromFraction(45, 100),
+                      Fixed64::zero(), Fixed64::zero()},
+                 /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        makeSlot(SlotId{2},
+                 Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+                 /*wants=*/false, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(95, 100)),
+    };
+    const auto r = resolveBallControl(std::nullopt, kBallAtOrigin,
+                                      slots.data(), slots.size());
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
+}
+
+// Two pressers, only the CLOSER one matters. Verifies the O(n)
+// scan picks the closest by (distance², slot_id) — the tie-break
+// convention is the same as Rule 1.
+FH_TEST(contest_closest_presser_wins) {
+    const auto p = makeParams();
+    // Far presser: much stronger (would strip if selected). At 0.65 m
+    // north of the ball — inside kContestRadius but farther than the
+    // near presser.
+    const Vec3 far_pos{kGlueOffset,
+                       Fixed64::fromFraction(65, 100),
+                       Fixed64::zero()};
+    // Near presser: weaker (would NOT strip). At 0.05 m south of the
+    // ball.
+    const Vec3 near_pos{kGlueOffset,
+                        -Fixed64::fromFraction(5, 100),
+                        Fixed64::zero()};
+    std::vector<BallControlSlot> slots{
+        makeSlot(SlotId{1}, kOwnerAtOrigin, /*wants=*/true, &p,
+                 /*eff=*/Fixed64::fromFraction(85, 100)),
+        makeSlot(SlotId{2}, far_pos,
+                 /*wants=*/false, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(99, 100)),
+        makeSlot(SlotId{3}, near_pos,
+                 /*wants=*/false, &p,
+                 /*eff=*/Fixed64::zero(),
+                 /*new_velocity=*/Vec3{},
+                 /*heading=*/Fixed64::zero(),
+                 /*wants_sprint=*/false,
+                 /*wants_to_press=*/true,
+                 /*press_resistance=*/Fixed64::fromFraction(75, 100)),
+    };
+    const auto r = resolveBallControl(SlotId{1}, kBallAtGlue,
+                                      slots.data(), slots.size());
+    // Closer presser (slot 3, resistance 0.75) is selected. It's
+    // weaker than the attacker (eff 0.85) so only the baseline
+    // penalty applies (0.5 - 0.10 = 0.40 m) — retention holds. The
+    // stronger far presser is ignored precisely because it's farther.
+    FH_EXPECT(r.owner.has_value());
+    FH_EXPECT_EQ(*r.owner, SlotId{1});
 }
 
 FH_TEST_MAIN()

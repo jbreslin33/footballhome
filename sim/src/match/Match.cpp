@@ -83,6 +83,10 @@ void Match::spawnInitialSlots()
         slot.role    = s.role;
         slot.profile.physical = m0::defaultPhysical();
         slot.profile.concepts = m0::defaultConcepts();
+        // Slice 24.3b: scenario hook to override specific physical
+        // attributes on top of defaults (e.g. weaker dribble for a
+        // demo defender). No-op for scenarios that don't override.
+        scenario_->applyPhysicalOverrides(s.slot, slot.profile.physical);
         // technical, mental, recognition stay empty (M0)
 
         // Default controller for unclaimed slots. Scenario decides
@@ -172,6 +176,11 @@ awareness::WorldView Match::buildWorldView() const
     w.tick         = clock_->current();
     w.time_seconds = clock_->elapsedSeconds();
     w.ball         = ball_;   // nullopt in M0
+    // Slice 24.3b: expose current owner so AI controllers can check
+    // "am I the owner" without proxy-inference from geometry. This is
+    // last-tick's owner as decided by BallControl; on the very first
+    // tick it's nullopt (Match::ball_owner_ is default-constructed).
+    w.ball_owner   = ball_owner_;
 
     const auto ids = physics_->all();   // sorted ascending
     w.entities.reserve(ids.size());
@@ -234,6 +243,10 @@ void Match::tick()
             // pick max_carry_sprint_speed vs max_dribble_speed for the
             // owner's velocity cap.
             bcs.wants_sprint       = intent.wants_sprint;
+            // Slice 24.3b: pipe the press bit + press_resistance rating
+            // through so BallControl can run the contest step.
+            bcs.wants_to_press     = intent.wants_to_press;
+            bcs.press_resistance   = mech.press_resistance;
             bcs.dribble_efficiency = mech.dribble_efficiency;
             bcs.params             = &mech;
             bc_slots.push_back(bcs);
@@ -441,6 +454,10 @@ void Match::releaseSlot(SlotId slot_id)
     // has no "identity" any more. Values live in M0Attributes.cpp (§22.11).
     s.profile.physical = m0::defaultPhysical();
     s.profile.concepts = m0::defaultConcepts();
+    // Slice 24.3b: re-apply per-slot scenario attribute overrides so
+    // a reclaimed-to-unclaimed slot ends up in the SAME attribute
+    // state it had at initial spawn. Symmetric with spawnInitialSlots.
+    scenario_->applyPhysicalOverrides(s.slot_id, s.profile.physical);
     // technical, mental, recognition stay empty (M0).
 
     params_by_slot_[idx] = MechanicsParams::fromPhysical(s.profile.physical);

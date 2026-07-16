@@ -86,6 +86,19 @@ Intent HumanController::decide(const awareness::AwarenessView& view,
         out.wants_dribble = false;
     }
 
+    // Slice 24.3b: symmetric wants_to_press auto-hint. Humans should
+    // be able to steal from an AI dribbler without a dedicated button;
+    // mirror DefenderController's unconditional press assertion so the
+    // BallControl contest step will consider us when we get within
+    // kContestRadius (0.7 m) of an opponent-owned ball. The contest
+    // step skips the current owner, so setting this on a slot that
+    // already owns the ball is a no-op. Suppressed on wants_release
+    // for the same reason as wants_dribble — if the client is asking
+    // to let go, don't fight to take it back the same tick.
+    if (!out.wants_release) {
+        out.wants_to_press = true;
+    }
+
     return out;
 }
 

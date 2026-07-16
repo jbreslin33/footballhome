@@ -22,6 +22,10 @@ AwarenessView RecognitionSystem::apply(const WorldView&              world,
     view.time_seconds        = world.time_seconds;
     view.entities            = world.entities;
     view.ball                = world.ball;
+    // Slice 24.3b: identity copy through in M0. Future perception
+    // milestones may fuzz/hide this if the perceiver hasn't seen the
+    // last touch, but for M1 every player knows the current owner.
+    view.ball_owner          = world.ball_owner;
     view.recognized_patterns.clear();
     return view;
 }

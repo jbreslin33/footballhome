@@ -102,6 +102,50 @@
         font-size: 0.8rem;
     }
 
+    /* Slice 24.3b: shared loading overlay for scenario launches. The
+       POST + podman-spinup + sim.html boot chain can take 1-3 s, and
+       during that window the page looked frozen. Match the same
+       "spinner + label" shape used by every JS Screen in
+       frontend/js/screens/*.js (see PaymentsScreen, LeadsAnalyticsScreen)
+       so the UX is consistent. Overlay owns the whole viewport once
+       fetch starts — no more "did I actually click?" ambiguity. */
+    #launch-loader {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: rgba(15, 20, 30, 0.92);
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 18px;
+        color: #f4f4f4;
+        text-align: center;
+        padding: 24px;
+    }
+    #launch-loader[aria-hidden="false"] { display: flex; }
+    #launch-loader .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 204, 0, 0.18);
+        border-top-color: #ffcc00;
+        border-radius: 50%;
+        animation: launch-spin 0.9s linear infinite;
+    }
+    #launch-loader .label {
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    #launch-loader .sublabel {
+        font-size: 0.85rem;
+        color: rgba(244, 244, 244, 0.65);
+        max-width: 380px;
+    }
+    @keyframes launch-spin {
+        to { transform: rotate(360deg); }
+    }
+
     .footer-note {
       margin-top: 22px; color: var(--muted); font-size: 0.8rem;
       line-height: 1.5;
@@ -110,6 +154,16 @@
 </head>
 <body>
   <a class="back" href="/">← Back</a>
+
+  <!-- Slice 24.3b: launch loading overlay. Shown immediately on tile
+       click so the user sees instant feedback while the /api/sim/matches
+       POST + podman container spinup + sim.html redirect chain resolves.
+       Same visual shape as JS Screens' loading-state divs. -->
+  <div id="launch-loader" aria-hidden="true" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div class="label" id="launch-loader-label">Launching match…</div>
+    <div class="sublabel">Warming up the sim. This usually takes a second or two.</div>
+  </div>
 
   <header>
     <img src="/images/lighthouse-1893-crest.png" alt="">
@@ -183,7 +237,7 @@
     <div class="icon">🛡️</div>
     <div class="body">
       <div class="title">Ball on Pitch + Defender <span class="badge">M2 · AI defender</span></div>
-      <div class="desc">Same as Ball on Pitch but slot 2 is a Defender AI that jogs toward the ball every tick. Claim slot 1, grab the ball, and hold shift to sprint away. No touch-to-steal yet (Slice 24.3b) — if the defender catches up it just stands on top of you. Slice 24.3a.</div>
+      <div class="desc">Same as Ball on Pitch but slot 2 is a Defender AI that jogs toward the ball every tick. Claim slot 1, grab the ball, and hold shift to sprint away. Touch-to-steal works both ways: get within 0.7 m of the defender to strip it back. Slice 24.3b.</div>
     </div>
     <div class="chev">›</div>
   </div>
@@ -213,12 +267,31 @@
             try { return localStorage.getItem('token') || ''; } catch (_e) { return ''; }
         }
 
+        // Slice 24.3b: overlay control. We show the loader BEFORE the
+        // POST fires so the click is visually acknowledged immediately.
+        // On error we hide it again and surface the error inline on
+        // the tile (existing data-error pattern). On success we leave
+        // it up — location.href will unload the page a beat later.
+        const loaderEl      = document.getElementById('launch-loader');
+        const loaderLabelEl = document.getElementById('launch-loader-label');
+        function showLoader(label) {
+            if (!loaderEl) return;
+            if (label && loaderLabelEl) loaderLabelEl.textContent = label;
+            loaderEl.setAttribute('aria-hidden', 'false');
+        }
+        function hideLoader() {
+            if (!loaderEl) return;
+            loaderEl.setAttribute('aria-hidden', 'true');
+        }
+
         async function launchScenario(tile) {
             const scenarioId = parseInt(tile.getAttribute('data-scenario-id'), 10);
             if (!Number.isFinite(scenarioId) || scenarioId < 0) return;
 
             tile.setAttribute('aria-busy', 'true');
             tile.removeAttribute('data-error');
+            const label = tile.getAttribute('data-scenario-label') || 'match';
+            showLoader('Launching ' + label + '…');
 
             const headers = {
                 'Accept':        'application/json',
@@ -244,21 +317,26 @@
                     } catch (_e) { /* ignore */ }
                     tile.setAttribute('data-error', ' · launch failed: ' + msg);
                     tile.setAttribute('aria-busy', 'false');
+                    hideLoader();
                     return;
                 }
                 const body = await resp.json();
                 if (!body || typeof body.id !== 'number') {
                     tile.setAttribute('data-error', ' · malformed launch response');
                     tile.setAttribute('aria-busy', 'false');
+                    hideLoader();
                     return;
                 }
                 // Redirect. sim.html's client.js reads ?match=N and
                 // calls /api/sim/matches/${N}/join for the actual JWT.
+                // Keep the loader up — location.href unloads the page
+                // in the next tick, so hiding would just flash.
                 location.href = '/sim.html?match=' + body.id;
             } catch (err) {
                 tile.setAttribute('data-error',
                     ' · network error: ' + (err && err.message ? err.message : err));
                 tile.setAttribute('aria-busy', 'false');
+                hideLoader();
             }
         }
 

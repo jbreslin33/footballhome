@@ -121,6 +121,74 @@ BallControlResult resolveBallControl(std::optional<SlotId>          current_owne
 
     const Fixed64 radius_sq = kBallControlRadius * kBallControlRadius;
 
+    // --- Slice 24.3b: contest step (compute effective retention radius) ----
+    //
+    // If we have a current owner AND any non-owner slot is asserting
+    // wants_to_press within kContestRadius of the ball, the owner's
+    // retention radius shrinks by a pressure penalty. When the shrunken
+    // radius falls below the ball's actual distance-from-owner (~0.4 m
+    // via kBallOwnerLeadDistance), the Rule 2 check below fails
+    // naturally, ball becomes loose, and the standard Rule 1 first-
+    // touch scramble decides the next owner — no explicit "strip"
+    // opcode needed.
+    //
+    // Formula (see BallControl.hpp for the constant rationale):
+    //
+    //   skill_delta      = max(0, press_resistance - dribble_efficiency)
+    //   effective_radius = max(kMinPressureRadius,
+    //                          kBallControlRadius
+    //                          - kPressBaselineCost
+    //                          - kPressSkillDelta * skill_delta)
+    //
+    // Choosing the CLOSEST presser (not the strongest) keeps this
+    // deterministic and O(n); if a designer wants "best of many
+    // pressers" behaviour, that's a future refinement.
+    //
+    // If there is NO current owner, or the owner has no ball-side
+    // presser this tick, effective_radius_sq == radius_sq and Rule 2
+    // is byte-identical to Slice 16.3. Existing determinism goldens
+    // (Dribble200, FirstTouch200, BallRoll400) never see a
+    // wants_to_press assertion, so they are unaffected.
+    Fixed64 effective_radius_sq = radius_sq;
+    if (current_owner.has_value()) {
+        const BallControlSlot* owner_slot =
+            findSlot(slots, n_slots, *current_owner);
+        if (owner_slot != nullptr) {
+            const Fixed64 contest_radius_sq = kContestRadius * kContestRadius;
+            const BallControlSlot* presser = nullptr;
+            Fixed64 presser_dsq = Fixed64::zero();
+            for (std::size_t i = 0; i < n_slots; ++i) {
+                const BallControlSlot& s = slots[i];
+                if (s.slot_id == *current_owner) { continue; }
+                if (!s.wants_to_press)           { continue; }
+                const Fixed64 dsq = distSqXY(s.position, ball_position);
+                if (dsq > contest_radius_sq)     { continue; }
+                if (presser == nullptr
+                    || dsq < presser_dsq
+                    || (dsq == presser_dsq && s.slot_id < presser->slot_id))
+                {
+                    presser     = &s;
+                    presser_dsq = dsq;
+                }
+            }
+            if (presser != nullptr) {
+                Fixed64 skill_delta =
+                    presser->press_resistance - owner_slot->dribble_efficiency;
+                if (skill_delta < Fixed64::zero()) {
+                    skill_delta = Fixed64::zero();
+                }
+                Fixed64 effective_radius =
+                    kBallControlRadius
+                    - kPressBaselineCost
+                    - kPressSkillDelta * skill_delta;
+                if (effective_radius < kMinPressureRadius) {
+                    effective_radius = kMinPressureRadius;
+                }
+                effective_radius_sq = effective_radius * effective_radius;
+            }
+        }
+    }
+
     // --- Rule 2: owner retention -------------------------------------
     // Try to keep the current owner if they still qualify. This runs
     // FIRST so that a slight tie in distance-sq between the retained
@@ -130,15 +198,16 @@ BallControlResult resolveBallControl(std::optional<SlotId>          current_owne
         const BallControlSlot* prev = findSlot(slots, n_slots, *current_owner);
         if (prev != nullptr
             && prev->wants_dribble
-            && distSqXY(prev->position, ball_position) <= radius_sq)
+            && distSqXY(prev->position, ball_position) <= effective_radius_sq)
         {
             res.owner = prev->slot_id;
             fillOwnedFields(res, *prev);
             return res;
         }
         // Fall through: current owner released the ball or moved out
-        // of range. Ball becomes loose UNLESS Rule 1 finds a new
-        // taker this same tick (instant hand-off).
+        // of range (Slice 16.3) or was pressed off it (Slice 24.3b).
+        // Ball becomes loose UNLESS Rule 1 finds a new taker this
+        // same tick (instant hand-off).
     }
 
     // --- Rule 1: first-touch pickup ----------------------------------

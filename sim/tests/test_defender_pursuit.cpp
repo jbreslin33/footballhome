@@ -1,4 +1,4 @@
-// footballhome sim - DefenderController tests (Slice 24.3a)
+// footballhome sim - DefenderController tests (Slice 24.3a + 24.3b)
 //
 // Contract:
 //   1. Given a ball in the view, the defender's desired_direction is
@@ -11,9 +11,10 @@
 //      don't wire one in (Defender's ctor takes nothing) but the
 //      determinism goldens that surround this slice will catch any
 //      accidental RNG consumption at the match layer.
-//   4. Never sets wants_sprint / wants_walk / wants_dribble /
-//      wants_release. Slice 24.3b lands the actual contest bit;
-//      24.3a is pure pursuit.
+//   4. Never sets wants_sprint / wants_walk / wants_release. Slice
+//      24.3b asserts BOTH wants_dribble (Rule-1 first-touch candidate)
+//      AND wants_to_press (Rule-2 owner-radius shrinker) — the strip
+//      is the emergent composition of those two rules.
 
 #include "awareness/AwarenessView.hpp"
 #include "common/EntityState.hpp"
@@ -83,7 +84,11 @@ FH_TEST(pursues_ball_directly_west) {
     FH_EXPECT_EQ(intent.desired_direction.y, Fixed64::zero());
     FH_EXPECT(!intent.wants_sprint);
     FH_EXPECT(!intent.wants_walk);
-    FH_EXPECT(!intent.wants_dribble);
+    // Slice 24.3b: defender asserts BOTH wants_dribble (Rule-1 candidate
+    // once it reaches the ball) AND wants_to_press (Rule-2 shrinker for
+    // any current owner). See DefenderController::decide.
+    FH_EXPECT(intent.wants_dribble);
+    FH_EXPECT(intent.wants_to_press);
     FH_EXPECT(!intent.wants_release);
 }
 
@@ -180,6 +185,49 @@ FH_TEST(idle_when_standing_on_ball) {
 FH_TEST(kind_is_defender) {
     DefenderController c;
     FH_EXPECT_EQ(std::string(c.kind()), std::string("defender"));
+}
+
+// Slice 24.3b bug fix: when the defender IS the current ball owner
+// (view.ball_owner == self), it must NOT chase the ball — the ball is
+// glued kBallOwnerLeadDistance (0.4 m) ahead of it, so a raw
+// diff-toward-ball step would push it forward every tick and walk the
+// ball straight off the pitch. Expected behavior: idle motion but
+// KEEP wants_dribble asserted so BallControl retains ownership.
+FH_TEST(holds_position_when_owns_ball) {
+    DefenderController c;
+    // Defender at origin, ball 0.4 m east (the glue position). Ownership
+    // is signalled explicitly via view.ball_owner = self.
+    auto v = makeView(Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+                      /*include_ball=*/true,
+                      Vec3{Fixed64::fromFraction(4, 10), Fixed64::zero(),
+                           Fixed64::zero()});
+    v.ball_owner = SlotId{2};
+
+    const Intent i = c.decide(v, SlotId{2});
+    // No movement — defender stands still.
+    FH_EXPECT_EQ(i.desired_direction.x, Fixed64::zero());
+    FH_EXPECT_EQ(i.desired_direction.y, Fixed64::zero());
+    // But still wants the ball so Rule 2 retention holds next tick.
+    FH_EXPECT(i.wants_dribble);
+    FH_EXPECT(i.wants_to_press);
+}
+
+// Sanity: view.ball_owner set to SOMEONE ELSE must NOT trigger the
+// hold path — defender should still chase. Guards against a future
+// regression that checks .has_value() instead of == self.
+FH_TEST(chases_when_ball_owned_by_other_slot) {
+    DefenderController c;
+    auto v = makeView(Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()},
+                      /*include_ball=*/true,
+                      Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()});
+    v.ball_owner = SlotId{1};   // human owns it, not this defender
+
+    const Intent i = c.decide(v, SlotId{2});
+    // Chase behavior unchanged: unit vector from (5,0) toward (0,0).
+    FH_EXPECT_EQ(i.desired_direction.x, Fixed64::fromInt(-1));
+    FH_EXPECT_EQ(i.desired_direction.y, Fixed64::zero());
+    FH_EXPECT(i.wants_dribble);
+    FH_EXPECT(i.wants_to_press);
 }
 
 FH_TEST_MAIN()

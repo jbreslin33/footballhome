@@ -20,6 +20,24 @@ Intent DefenderController::decide(const awareness::AwarenessView& view,
     }
     if (my_pos == nullptr) { return idle(); }
 
+    // Slice 24.3b (bug fix): if THIS slot already owns the ball, stop
+    // chasing — the ball is glued kBallOwnerLeadDistance (0.4 m) ahead
+    // of us in our heading direction, so any diff-toward-ball step
+    // would just push us forward every tick and walk the ball straight
+    // off the pitch. Hold position but KEEP wants_dribble asserted so
+    // BallControl's Rule 2 retention still passes and we stay the
+    // owner. wants_to_press is still asserted (harmless — the contest
+    // step skips the current owner). A future slice can replace this
+    // hold with a goalward-carry AI; the demo just needs "defender
+    // steals, then stops" to be visible.
+    if (view.ball_owner.has_value() && *view.ball_owner == self) {
+        Intent hold;
+        hold.desired_direction = math::Vec3{};   // idle motion
+        hold.wants_dribble     = true;           // retain ownership
+        hold.wants_to_press    = true;           // no-op while owner
+        return hold;
+    }
+
     // Find the ball entity. AwarenessView::ball holds the EntityId (not
     // the position) so we look it up in the entity list. When the
     // scenario has no ball (M0 empty pitch), just stand still — the
@@ -53,6 +71,18 @@ Intent DefenderController::decide(const awareness::AwarenessView& view,
 
     Intent intent;
     intent.desired_direction = diff.normalized();
+    // Slice 24.3b: assert BOTH wants_dribble and wants_to_press. The
+    // press bit shrinks the current owner's Rule-2 retention radius;
+    // the dribble bit makes this slot a Rule-1 candidate so that
+    // *when* the owner is pressed off the ball, this closer slot wins
+    // the first-touch scramble in the same tick — the "strip" is the
+    // emergent composition of those two rules, not a bespoke opcode.
+    // Setting them unconditionally is safe: BallControl only cares
+    // about wants_dribble within kBallControlRadius of the ball and
+    // wants_to_press within kContestRadius, so a defender jogging in
+    // from 5 m away is inert until they're actually in range.
+    intent.wants_dribble     = true;
+    intent.wants_to_press    = true;
     return intent;
 }
 

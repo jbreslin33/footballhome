@@ -62,6 +62,27 @@ public:
                                    : UnclaimedControllerKind::Idle;
     }
 
+    // Slice 24.3b: give slot 2 (the AI defender) a WEAK dribble so the
+    // demo's steal-back leg actually resolves. Default dribble_efficiency
+    // is 0.85 and default press_resistance is 0.75 → skill_delta clamps
+    // to 0 → effective retention radius equals the ball glue distance
+    // (both 0.4 m) → Rule 2's `<=` retention holds forever and the
+    // human can never strip. Lowering slot 2's dribble_efficiency to
+    // 0.55 puts the human's default 0.75 press 0.20 above it, which
+    // shrinks the retention radius to 0.5 - 0.1 - 0.5*0.20 = 0.30 m —
+    // well under the 0.4 m glue distance, so a same-tick press ends
+    // retention and Rule 1 first-touch hands the ball to whoever's
+    // closer (the pressing human).
+    //
+    // Slot 1 (human) uses defaults so it dribbles at the standard
+    // rate once it owns the ball, and the defender's default 0.75
+    // press vs the human's 0.85 dribble_efficiency correctly FAILS to
+    // strip — matching M0Attributes' design comment ("default defender
+    // pressing a default attacker does NOT win"). The asymmetry lives
+    // in this scenario only; global defaults stay balanced.
+    void applyPhysicalOverrides(SlotId                 slot,
+                                profile::AttributeSet& attrs) const override;
+
 private:
     PitchSpec               pitch_;
     PlayableArea            playable_;

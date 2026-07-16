@@ -55,6 +55,13 @@ struct MechanicsParams {
     math::Fixed64 max_dribble_speed;
     math::Fixed64 max_carry_sprint_speed;
 
+    // Slice 24.3b (§23.3): press_resistance rating in [0,1] used by
+    // BallControl's post-Rule-2 contest step. Only meaningful for a
+    // slot that asserts Intent::wants_to_press this tick. Not consumed
+    // by applyIntent — the M0 canonical goldens and every no-defender
+    // determinism golden stay byte-identical.
+    math::Fixed64 press_resistance;
+
     // Extract M0 params from a physical AttributeSet. Missing attrs fall
     // back to the M0 defaults from §16.2 so tests can pass minimal profiles.
     static MechanicsParams fromPhysical(const profile::AttributeSet& physical);

@@ -179,6 +179,27 @@ public:
         return unclaimedSlotsIdle() ? UnclaimedControllerKind::Idle
                                     : UnclaimedControllerKind::Wander;
     }
+
+    // Slice 24.3b: per-slot physical-attribute overrides applied AFTER
+    // m0::defaultPhysical() has been copied into the slot's profile.
+    // Called by Match::spawnInitialSlots once per slot; the default
+    // implementation is a no-op so every existing scenario keeps
+    // byte-identical attributes (and thus byte-identical determinism
+    // goldens) without an override.
+    //
+    // Use case: a scenario wants a "weak dribbler" defender or a
+    // "high-press" attacker demo without changing the global defaults
+    // and without introducing a full per-slot PlayerProfile file. The
+    // override mutates the already-defaulted AttributeSet — just
+    // `attrs.set(m0::kDribbleEfficiency, ...)` etc.
+    //
+    // Determinism: any override that changes an attribute consumed by
+    // Mechanics::fromPhysical or BallControl WILL trip the affected
+    // scenario's golden. Update the pinned hash when you introduce a
+    // new override, and leave scenarios that don't override alone.
+    virtual void
+        applyPhysicalOverrides(SlotId                    /*slot*/,
+                               profile::AttributeSet&    /*attrs*/) const {}
 };
 
 } // namespace fh::sim::scenario

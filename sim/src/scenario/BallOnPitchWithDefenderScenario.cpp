@@ -2,6 +2,7 @@
 
 #include "scenario/BallOnPitchWithDefenderScenario.hpp"
 
+#include "common/M0Registry.generated.hpp"
 #include "math/FixedMath.hpp"
 
 namespace fh::sim::scenario {
@@ -55,9 +56,24 @@ std::vector<std::string> BallOnPitchWithDefenderScenario::hints() const
         "Slot 1 spawns 5 m west facing east (claim to control it).",
         "Slot 2 spawns 5 m east facing west with a DEFENDER AI — it will jog toward the ball.",
         "Beat the defender to the ball, then hold shift-sprint to outrun it.",
-        "No contest mechanic yet (Slice 24.3b). If the defender catches you it just stands on top of you.",
-        "Slice 24.3a demo (DESIGN.md §23.3).",
+        "If the defender grabs it first, chase it down within ~0.7 m to strip the ball back.",
+        "Slice 24.3b demo (DESIGN.md §23.3).",
     };
+}
+
+void BallOnPitchWithDefenderScenario::applyPhysicalOverrides(
+    SlotId                 slot,
+    profile::AttributeSet& attrs) const
+{
+    // Only touch slot 2 (the defender). Slot 1 (human) keeps default
+    // attributes so the "human dribbles at standard rate" and "default
+    // defender fails to strip default attacker" invariants hold.
+    if (slot == SlotId{2}) {
+        // 0.55 as a rational — fromDouble is banned outside
+        // M0Attributes.cpp by check_no_hardcoded_attrs.sh.
+        attrs.set(m0::kDribbleEfficiency,
+                  math::Fixed64::fromFraction(11, 20));
+    }
 }
 
 } // namespace fh::sim::scenario

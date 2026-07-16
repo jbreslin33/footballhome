@@ -40,6 +40,18 @@ profile::AttributeSet defaultPhysical()
     // no-ball paths are byte-identical.
     a.set(kMaxDribbleSpeed,     math::Fixed64::fromDouble(4.0));
     a.set(kMaxCarrySprintSpeed, math::Fixed64::fromDouble(6.0));
+
+    // Slice 24.3b (§23.3): press_resistance rates a DEFENDER's ability
+    // to strip an opposing dribbler while in contest range of the ball.
+    // Read by BallControl in the post-Rule-2 contest step; not consumed
+    // by MechanicsParams::fromPhysical's applyIntent path, so the M0
+    // canonical goldens and every no-ball / no-defender determinism
+    // golden stay byte-identical. Default 0.75 is deliberately BELOW
+    // default dribble_efficiency (0.85): a default defender pressing a
+    // default attacker does NOT win the contest, so the existing
+    // Dribble200 / FirstTouch200 goldens (which never see a defender
+    // asserting wants_to_press) are also unaffected.
+    a.set(kPressResistance,     math::Fixed64::fromDouble(0.75));
     return a;
 }
 

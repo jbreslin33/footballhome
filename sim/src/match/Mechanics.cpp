@@ -63,6 +63,11 @@ MechanicsParams MechanicsParams::fromPhysical(const profile::AttributeSet& physi
     // Also read-only for applyIntent; only BallControl consumes them.
     p.max_dribble_speed        = get(m0::kMaxDribbleSpeed);
     p.max_carry_sprint_speed   = get(m0::kMaxCarrySprintSpeed);
+
+    // Slice 24.3b: press_resistance rating for the contest step in
+    // BallControl. Read-only for applyIntent; every no-defender
+    // determinism golden stays byte-identical.
+    p.press_resistance         = get(m0::kPressResistance);
     return p;
 }
 

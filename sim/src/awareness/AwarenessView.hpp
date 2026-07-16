@@ -29,6 +29,12 @@ struct WorldView {
     math::Fixed64             time_seconds{math::Fixed64::zero()};
     std::vector<EntityState>  entities;
     std::optional<EntityId>   ball;   // nullopt in M0 (no ball yet)
+    // Slice 24.3b: identity of the slot that currently owns the ball
+    // (as decided by BallControl on the PREVIOUS tick). nullopt when
+    // the ball is loose or the scenario has no ball. Read by AI
+    // controllers so a slot can tell whether it is the current owner
+    // and stop chasing itself off the pitch.
+    std::optional<SlotId>     ball_owner;
 };
 
 // What one specific player is aware of this tick. Produced from a WorldView
@@ -44,6 +50,9 @@ struct AwarenessView {
     math::Fixed64             time_seconds{math::Fixed64::zero()};
     std::vector<EntityState>  entities;
     std::optional<EntityId>   ball;
+    // Slice 24.3b: mirrors WorldView::ball_owner in M0's identity copy.
+    // See WorldView above for semantics.
+    std::optional<SlotId>     ball_owner;
     std::vector<PatternId>    recognized_patterns;
 };
 

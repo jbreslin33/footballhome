@@ -25,6 +25,7 @@
 #include "match/Snapshot.hpp"
 #include "physics/StubPhysics.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
+#include "scenario/BallOnPitchWithDefenderScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
 #include "scenario/SoftDrillScenario.hpp"
@@ -183,6 +184,31 @@ constexpr std::uint64_t kExpectedHashHalfPitchHard400 = 0x489acd31dddb4587ULL;
 // vel.x ≈ 7.47 m/s east — mid-cycle, about to cross the boundary
 // again.
 constexpr std::uint64_t kExpectedHashSoftDrill400 = 0x700808840ecc3183ULL;
+
+// Slice 24.3b: cross-arch determinism proof for BallOnPitchWithDefender
+// scenario. SlotId{1} (west side, unclaimed → Idle) never moves; the
+// ball sits at centre at rest. SlotId{2} (east side, DefenderController)
+// jogs west toward the ball every tick, asserting wants_dribble +
+// wants_to_press unconditionally. Reaches the ball around tick ~50
+// (5 m / 4.5 m/s ≈ 1.1 s at 20 Hz), at which point it becomes the ball
+// owner via Rule 1 first-touch (slot 1 Idle never contests).
+//
+// Once slot 2 owns the ball the DefenderController's hold-when-owner
+// branch (Slice 24.3b bug fix, gated on view.ball_owner == self) kicks
+// in: desired_direction becomes zero, wants_dribble stays true so Rule
+// 2 retention keeps ownership sticky. Final snapshot shows slot 2
+// parked ~0.5 m west of the ball's original centre position with the
+// ball glued 0.4 m further west (kBallOwnerLeadDistance ahead of the
+// defender's heading).
+//
+// 400 ticks (20 s) covers the full approach + steady-state hold.
+// Any Fixed64 drift in DefenderController::decide, in the wiring of
+// wants_to_press through MechanicsParams / BallControlSlot, in the
+// BallControl contest step (no-op here — the owner isn't a candidate
+// against itself), or in the new ball_owner plumbing through
+// WorldView / AwarenessView, trips the hash.
+constexpr std::uint64_t kExpectedHashBallOnPitchWithDefender400 =
+    0x71f639d918a32830ULL;
 
 } // namespace
 
@@ -473,6 +499,40 @@ FH_TEST(soft_drill_sprint_east_400_ticks_seed_42) {
             static_cast<unsigned long>(kExpectedHashSoftDrill400));
     }
     FH_EXPECT_EQ(h, kExpectedHashSoftDrill400);
+}
+
+// Slice 24.3b: BallOnPitchWithDefender scenario cross-arch golden. See
+// the constant comment above for the setup and expected owner flow.
+FH_TEST(ball_on_pitch_with_defender_400_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<
+        fh::sim::scenario::BallOnPitchWithDefenderScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    // NO claimSlot — slot 1 stays Idle, slot 2 runs DefenderController.
+
+    for (int i = 0; i < 400; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== ball_on_pitch_with_defender_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashBallOnPitchWithDefender400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashBallOnPitchWithDefender400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashBallOnPitchWithDefender400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashBallOnPitchWithDefender400);
 }
 
 FH_TEST_MAIN()

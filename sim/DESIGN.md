@@ -1162,7 +1162,7 @@ Steps 1, 4a–h, 5, and 6 are shipped. Steps 1 and 3 have M0-specific caveats:
 |---|---|---:|---:|---|
 | **M0** | `Fixed64` + `FixedMath` + trig LUTs + cross-platform determinism CI. Move a player dot on empty pitch. Full infra (auth, wire, physics stub, WanderController, Canvas2DRenderer, replay logging). | 5–7 | 5–7 | **done** (closed 2026-07-13 via Slice 13 §16.6; goldens locked in [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp)) |
 | **M1** | Ball entity + dribble physics + one player can move it. Playable-area constraints. | 3–4 | 8–11 | **done** (closed 2026-07-15; §23.4 exit checklist all `[x]`, §21.7 M2-blockers all `[x]`) |
-| **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **in progress** (Slice 24.1 shipped 2026-07-15 — BallOnPitchScenario spawns two slots flanking the ball, enabling multiplayer contest; full §24 spec pending) |
+| **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **in progress** (Slices 24.1–24.3b shipped 2026-07-15/16: multiplayer BallOnPitchScenario, Idle/Defender controllers, press/contest touch-to-steal via `physical.press_resistance`; Slices 25.1–25.3 shipped: realistic proportions + carry-speed hierarchy + gear/owns-ball HUD; full §24 spec pending) |
 | **M3** | 1v1 attack↔defend scenario. First real `AiController` (chase, jockey, mark, feint). | 4–5 | 15–20 | not started |
 | **M4** | 2v1 / 2v2 / 3v2 progressions. Off-ball intelligence, longer passes, first team coordination. | 5–7 | 20–27 | not started |
 | **M5** | **PressTrigger4v2** (the original goal). Cover-shadow, press-partner switching, GK distribution. | 3–4 | 23–31 | not started |

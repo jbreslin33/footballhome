@@ -70,6 +70,39 @@ inline constexpr math::Fixed64 kBallControlRadius =
 inline constexpr math::Fixed64 kBallOwnerLeadDistance =
     math::Fixed64::fromFraction(2, 5);
 
+// -- Slice 24.3b contest constants -----------------------------------
+//
+// Radius (m) within which a non-owner slot asserting
+// Intent::wants_to_press contributes pressure to the current owner.
+// Wider than kBallControlRadius so a defender arriving on the scene
+// can start pressuring BEFORE they'd win a raw first-touch scramble.
+// 0.7 m ≈ one lunge distance.
+inline constexpr math::Fixed64 kContestRadius =
+    math::Fixed64::fromFraction(7, 10);
+
+// Fixed retention penalty (m) applied to kBallControlRadius as soon as
+// a valid presser is inside kContestRadius. Baseline "you're being
+// pressed" cost regardless of the skill delta. 0.1 m eats HALF of the
+// current retention slack (kBallControlRadius 0.5 - kBallOwnerLeadDistance
+// 0.4 = 0.1 m of slack) — a marginal press without a skill advantage
+// still leaves the retained owner on a knife edge.
+inline constexpr math::Fixed64 kPressBaselineCost =
+    math::Fixed64::fromFraction(1, 10);
+
+// Slope (m per rating-point) mapping the (press_resistance -
+// dribble_efficiency) delta into an additional radius shrink. Positive
+// delta ⇒ defender more skilled ⇒ radius shrinks further. At 0.5, a
+// 0.10 skill advantage costs another 0.05 m of retention radius.
+inline constexpr math::Fixed64 kPressSkillDelta =
+    math::Fixed64::fromFraction(1, 2);
+
+// Absolute floor (m) for the pressure-shrunken radius. Guards against
+// pathological negative results from a wildly higher press_resistance
+// than dribble_efficiency, and gives a hard minimum below which
+// retention always fails at the standard 0.4 m glue distance.
+inline constexpr math::Fixed64 kMinPressureRadius =
+    math::Fixed64::fromFraction(15, 100);
+
 // One slot's contribution to owner arbitration. Match builds these
 // each tick after per-slot Mechanics has run: `heading` is the
 // mechanics-computed post-tick heading (already written to physics),
@@ -92,7 +125,17 @@ struct BallControlSlot {
     // instead of the slower dribble cap. Ignored when the slot is not
     // the chosen owner.
     bool                          wants_sprint;
+    // Slice 24.3b: asserted by a non-owner slot (only defenders in
+    // Slice 24.3b) to trigger the contest step. When the ball has an
+    // owner and any wants_to_press slot is within kContestRadius of
+    // the ball, the owner's effective retention radius shrinks by
+    // kPressBaselineCost + kPressSkillDelta × max(0, press_resistance -
+    // dribble_efficiency). See the resolveBallControl comment block.
+    bool                          wants_to_press;
     math::Fixed64                 dribble_efficiency;  // [0,1] from profile
+    // Slice 24.3b: press_resistance rating [0,1] from profile. Only
+    // consumed for slots that assert wants_to_press this tick.
+    math::Fixed64                 press_resistance;
     const match::MechanicsParams* params;              // borrowed
 };
 
