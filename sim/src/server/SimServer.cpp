@@ -246,8 +246,16 @@ void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& claims)
     // Slice 17.7a: bit 1 (kWireCapScenarioMeta) tells the client to expect
     // exactly one SCENARIO_META frame immediately after HELLO_ACK carrying
     // the scenario's playable-area polygon + constraint mode.
+    // Slice 26.2 (ADR §22.23): bit 3 (kWireCapInputKickTrailer) tells the
+    // client that this server will accept the length-prefixed kick trailer
+    // on INPUT frames — the client uses this to enable its kick UI. Set
+    // unconditionally in Slice 26.2 (no M2 scenario disables kicks); a
+    // future match-type switch would clear it here to grey out the client
+    // button.
     constexpr std::uint16_t kSessionCaps =
-        net::kWireCapSnapshotBallTrailer | net::kWireCapScenarioMeta;
+        net::kWireCapSnapshotBallTrailer
+      | net::kWireCapScenarioMeta
+      | net::kWireCapInputKickTrailer;
     const auto ack = net::encodeHelloAckFrame(cfg_.match_id, slot, cfg_.tick_hz,
                                               kSessionCaps);
     (void)transport_->send(cid, ack);
@@ -329,6 +337,18 @@ void SimServer::handleMessage(ClientId cid, std::span<const std::uint8_t> bytes)
             intent.wants_walk    = di->wants_walk;
             intent.wants_dribble = di->wants_dribble;   // Slice 16.2
             intent.wants_release = di->wants_release;   // Slice 16.4
+            // Slice 26.2 (ADR §22.23) — kick trailer. wants_kick without
+            // a trailer would have been rejected by decodeInputFrame
+            // already, so if we get here with wants_kick=true the trailer
+            // fields are populated. wants_kick=false leaves the direction
+            // at (0,0,0) and power at 0, which is correct per §22.23.
+            intent.wants_kick      = di->wants_kick;
+            intent.kick_direction  = math::Vec3{
+                math::Fixed64::fromFloat(di->kick_dir_x),
+                math::Fixed64::fromFloat(di->kick_dir_y),
+                math::Fixed64::zero()
+            };
+            intent.kick_power_hint = di->kick_power_hint;
             match_->applyInput(cid, intent);
 
             // Input log (§16.6 task 8): record the accepted wire frame

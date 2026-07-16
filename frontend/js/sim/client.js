@@ -134,6 +134,10 @@ async function resolveSimJwt(matchId) {
     const canvas    = document.getElementById('sim-canvas');
     const stickCvs  = document.getElementById('sim-joystick');
     const sprintPad = document.getElementById('sim-sprint-pad');
+    // Slice 26.2: kick pad. Optional — an older cached sim.html without
+    // the new markup should still boot; input.js gracefully skips its
+    // listener wiring when kickPad is null.
+    const kickPad   = document.getElementById('sim-kick-pad');
     const statusEl  = document.getElementById('sim-status');
     // Slice 25.3: gear + owns-ball HUD refs. Non-critical (page still
     // works without them), so we don't bail from the required-elements
@@ -170,6 +174,7 @@ async function resolveSimJwt(matchId) {
     const input        = new FhSimInput({
         stickCanvas: stickCvs,
         sprintPad:   sprintPad,
+        kickPad:     kickPad,
     });
 
     const state = {
@@ -193,6 +198,12 @@ async function resolveSimJwt(matchId) {
         // for legacy servers that don't send the frame — renderer.
         // drawPlayableArea() no-ops on null.
         scenarioMeta: null,
+        // Slice 26.2 (ADR §22.23): whether the server accepts 28-byte
+        // INPUT payloads with a kick trailer. Latched from HELLO_ACK.
+        // When false, the encoder MUST emit 20-byte baseline frames
+        // only — otherwise the server rejects the frame and no player
+        // input reaches the sim.
+        canKick: false,
     };
 
     // Resize handling – recompute pixel scale on rotation/DPR change.
@@ -228,6 +239,10 @@ async function resolveSimJwt(matchId) {
             state.tickHz  = ack.tickHz || 20;
             state.state   = ack.slot === 0 ? 'spectating' : 'playing';
             state.helloAcks++;
+            state.canKick = (ack.wireCapabilityBits & FhSimWire.WIRE_CAP.INPUT_KICK_TRAILER) !== 0;
+            if (kickPad) {
+                kickPad.classList.toggle('sim-kick-pad--disabled', !state.canKick);
+            }
             interpolator.setTickHz(state.tickHz);
             renderer.setMySlot(ack.slot);
         },
@@ -281,13 +296,25 @@ async function resolveSimJwt(matchId) {
     const inputHz = 30;
     const inputTimer = setInterval(() => {
         if (state.slot == null || state.slot === 0) return;   // spectator
-        const intent = input.read() || { dirX: 0, dirY: 0, wantsSprint: false, wantsWalk: false };
+        const intent = input.read() || {
+            dirX: 0, dirY: 0,
+            wantsSprint: false, wantsWalk: false,
+            wantsKick: false, kickDirX: 1, kickDirY: 0, kickPowerHint: 0,
+        };
+        // Slice 26.2: gate the kick trailer on the negotiated capability
+        // bit — sending a 28-byte frame to a server that doesn't
+        // advertise INPUT_KICK_TRAILER will be rejected outright.
+        const wantsKick = !!intent.wantsKick && state.canKick;
         transport.sendInput({
-            clientTick:  state.clientTick++,
-            dirX:        intent.dirX,
-            dirY:        intent.dirY,
-            wantsSprint: intent.wantsSprint,
-            wantsWalk:   intent.wantsWalk,
+            clientTick:    state.clientTick++,
+            dirX:          intent.dirX,
+            dirY:          intent.dirY,
+            wantsSprint:   intent.wantsSprint,
+            wantsWalk:     intent.wantsWalk,
+            wantsKick:     wantsKick,
+            kickDirX:      intent.kickDirX     || 0,
+            kickDirY:      intent.kickDirY     || 0,
+            kickPowerHint: intent.kickPowerHint || 0,
         });
     }, 1000 / inputHz);
 

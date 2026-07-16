@@ -79,8 +79,8 @@ using fh::sim::net::BinaryV1Serializer;
 using fh::sim::net::kFrameHeaderBytes;
 using fh::sim::net::kHelloAckFrameBytes;
 using fh::sim::net::kInputFlagWantsSprint;
-using fh::sim::net::kInputFrameBytes;
-using fh::sim::net::kInputPayloadBytes;
+using fh::sim::net::kInputPayloadBaselineBytes;
+using fh::sim::net::kInputFrameBaselineBytes;
 using fh::sim::net::kWireVersionV1;
 using fh::sim::net::MsgType;
 using fh::sim::net::ws::Opcode;
@@ -288,11 +288,11 @@ std::vector<std::uint8_t> buildInputFramePayload(std::uint32_t client_tick,
                                                  float dir_x, float dir_y,
                                                  std::uint8_t flags)
 {
-    std::vector<std::uint8_t> out(kInputFrameBytes);
+    std::vector<std::uint8_t> out(kInputFrameBaselineBytes);
     out[0] = kWireVersionV1;
     out[1] = static_cast<std::uint8_t>(MsgType::Input);
-    out[2] = static_cast<std::uint8_t>(kInputPayloadBytes & 0xFFu);
-    out[3] = static_cast<std::uint8_t>((kInputPayloadBytes >> 8) & 0xFFu);
+    out[2] = static_cast<std::uint8_t>(kInputPayloadBaselineBytes & 0xFFu);
+    out[3] = static_cast<std::uint8_t>((kInputPayloadBaselineBytes >> 8) & 0xFFu);
     out[4] = static_cast<std::uint8_t>(client_tick & 0xFFu);
     out[5] = static_cast<std::uint8_t>((client_tick >> 8) & 0xFFu);
     out[6] = static_cast<std::uint8_t>((client_tick >> 16) & 0xFFu);
@@ -487,7 +487,7 @@ FH_TEST(scripted_match_writes_full_lifecycle_row_set) {
     FH_EXPECT_GT(inputs.size(), 0u);
     for (const auto& in : inputs) {
         FH_EXPECT_EQ(in.match_id, kMatchId);
-        FH_EXPECT_EQ(in.payload.size(), kInputFrameBytes);
+        FH_EXPECT_EQ(in.payload.size(), kInputFrameBaselineBytes);
     }
 
     // (c) sim_match_events contains the full lifecycle set.

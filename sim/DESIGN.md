@@ -697,11 +697,18 @@ Multi-byte fields are **little-endian**.
 [u8  flags]             // bit 0 = wants_sprint,
                         // bit 1 = wants_walk,
                         // bit 2 = wants_dribble    (Slice 16.2),
-                        // bit 3 = wants_release    (Slice 16.4)
+                        // bit 3 = wants_release    (Slice 16.4),
+                        // bit 4 = wants_kick       (Slice 26.2 — trailer present)
 [u8  reserved[3]]
+--- Slice 26.2 kick trailer (present iff bit 4 set; ADR §22.23) ---
+[u16 trailer_len = 10]  // additive extension — future non-kick
+                        //   extensions land as different trailers
+[f32 kick_dir_x]        // world-XY unit vector; magnitude ∈ [0.5, 1.5]
+[f32 kick_dir_y]        //   (server rejects otherwise)
+[u16 kick_power_hint]   // 0 in Slice 26.2 (populated in Slice 26.3+)
 ```
 
-**16 bytes per input.** Sent at ~30 Hz or on change. Bits 2 and 3 default false in older clients (M0 mask was `wants_sprint | wants_walk`) — the server's `Intent` initialiser preserves that so an M0 client running against an M1 server never triggers dribble/release semantics. Wire-format mirror: [sim/src/net/InputFrame.hpp](sim/src/net/InputFrame.hpp).
+**16 bytes per input, or 28 bytes when the kick trailer is present** (total wire frame 20 or 32 bytes including the 4-byte header). Sent at ~30 Hz or on change. Bits 2/3/4 default false in older clients (M0 mask was `wants_sprint | wants_walk`) — the server's `Intent` initialiser preserves that so an M0 client running against a post-M1 server never triggers dribble/release/kick semantics. **Backward-compat guarantee**: any INPUT frame with `wants_kick == 0` encodes to bytes byte-identical to what M0 would have produced (locked by test `no_kick_input_matches_m0_bytes` in [sim/tests/test_input_frame.cpp](sim/tests/test_input_frame.cpp)). Wire-format mirror: [sim/src/net/InputFrame.hpp](sim/src/net/InputFrame.hpp). SQL debug decoder: `sim_decode_input()` from migration 218. ADR: §22.23.
 
 ### 7.4 SCENARIO_META payload (Slice 17.7a)
 
@@ -1162,7 +1169,7 @@ Steps 1, 4a–h, 5, and 6 are shipped. Steps 1 and 3 have M0-specific caveats:
 |---|---|---:|---:|---|
 | **M0** | `Fixed64` + `FixedMath` + trig LUTs + cross-platform determinism CI. Move a player dot on empty pitch. Full infra (auth, wire, physics stub, WanderController, Canvas2DRenderer, replay logging). | 5–7 | 5–7 | **done** (closed 2026-07-13 via Slice 13 §16.6; goldens locked in [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp)) |
 | **M1** | Ball entity + dribble physics + one player can move it. Playable-area constraints. | 3–4 | 8–11 | **done** (closed 2026-07-15; §23.4 exit checklist all `[x]`, §21.7 M2-blockers all `[x]`) |
-| **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **in progress** (§24 spec landed 2026-07-16; Slices 24.1–24.3b + 25.1–25.3 shipped: multiplayer BallOnPitchScenario, Idle/Defender controllers, press/contest touch-to-steal via `physical.press_resistance`, realistic proportions + carry-speed hierarchy + gear/owns-ball HUD; Slice 26.1 landed 2026-07-16: `physical.pass_power` attr registry seed for the short-pass primitive) |
+| **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **in progress** (§24 spec landed 2026-07-16; Slices 24.1–24.3b + 25.1–25.3 shipped: multiplayer BallOnPitchScenario, Idle/Defender controllers, press/contest touch-to-steal via `physical.press_resistance`, realistic proportions + carry-speed hierarchy + gear/owns-ball HUD; Slice 26.1 landed 2026-07-16: `physical.pass_power` attr registry seed for the short-pass primitive; Slice 26.2 landed 2026-07-16: `Intent::wants_kick` + `kick_direction` + kick_power_hint wire + JS mirror + migration 218 per ADR §22.23 — 47/47 tests green, 9/9 goldens byte-identical) |
 | **M3** | 1v1 attack↔defend scenario. First real `AiController` (chase, jockey, mark, feint). | 4–5 | 15–20 | not started |
 | **M4** | 2v1 / 2v2 / 3v2 progressions. Off-ball intelligence, longer passes, first team coordination. | 5–7 | 20–27 | not started |
 | **M5** | **PressTrigger4v2** (the original goal). Cover-shadow, press-partner switching, GK distribution. | 3–4 | 23–31 | not started |
@@ -2457,7 +2464,7 @@ Backward-compat guarantee locked by test `no_ball_snapshot_omits_trailer`: any s
 
 ### 22.23 [2026-07-16] INPUT frame length-prefixed extension — additive kick trailer for Slice 26.2
 
-**Status**: proposed 2026-07-16 as the spec for Slice 26.2 (`Intent::wants_kick` + `kick_target_direction` + server-side decoder relaxation + client-side encoder + JS mirror). No implementation yet — this ADR is the pre-implementation lock. §24.6 called this decision out as an M2 prerequisite; the ADR resolves it before any INPUT-frame bytes get written on either side of the wire.
+**Status**: proposed 2026-07-16, **landed 2026-07-16 in Slice 26.2** (`Intent::wants_kick` + `Intent::kick_direction` + `Intent::kick_power_hint` + server-side decoder + client-side encoder + JS mirror + migration 218 debug decoder). Wire-format contract locked; all 9 determinism goldens byte-identical (47/47 tests green, `test_determinism` 0.02 s). See §24.3 Slice 26.2 log line for the implementation summary.
 
 **Context**: Slice 26.1 landed `physical.pass_power` at attr id=14 (migration 217, commit `78b2ad6c`) but no code path yet reads it. Slice 26.2 is the wire-touching slice that carries the client's decision to kick. Two pieces of information must cross the boundary each tick the player is holding the kick button:
 
@@ -2810,7 +2817,7 @@ Grouped by subsystem, mirroring §23.2's checkbox style. Tick in place as work l
 **Short-pass primitive** (forward slice 26 — in progress)
 
 - [x] `physical.pass_power` attribute at stable id=14 via migration 217 (Slice 26.1). Landed 2026-07-16. Default 15 m/s. No consumer yet (Slice 26.3 will be the first) so all 47 goldens stay byte-identical.
-- [ ] `Intent::wants_kick` + `Intent::kick_target_direction` (unit vector in Fixed64) or `kick_target_position`. Decision pending — direction is simpler, position enables aim assist. Recommend direction for M2, position for M3.
+- [x] `Intent::wants_kick` + `Intent::kick_direction` (unit vector) + `Intent::kick_power_hint` — Slice 26.2 (2026-07-16). Wire: additive length-prefixed trailer per ADR §22.23 (28-byte payload variant); HELLO_ACK cap bit 3 `kWireCapInputKickTrailer`; server-side decoder accepts 20-or-32-byte frames with strict `trailer_len == 10` + magnitude in `[0.5, 1.5]`. Frontend: Space key + kick pad; `state.canKick` gates the trailer per HELLO_ACK. SQL debug decoder migration 218 surfaces the trailer for 32-byte rows. No physics consumer yet (Slice 26.3 is the first) so all 47 goldens stay byte-identical.
 - [ ] `BallControl` release-on-kick: if owner asserts `wants_kick` this tick, ownership drops AND `BallPhysics::applyImpulse(ball, direction × kKickImpulseSpeed)` fires before the physics step integrates. Impulse magnitude derived from a new `physical.pass_power` attribute (default ~15 m/s) — spec'd in Slice 26.1.
 - [ ] `BallPhysics` decouples "loose-ball rolling friction" from "just-kicked ball": kicked balls skip the M1 rest-threshold clamp for their first N ticks so a pass doesn't get killed by the friction floor. `kKickAliveTicks` constant.
 - [ ] First-touch handoff — an in-flight ball entering `kBallControlRadius` of a `wants_dribble` slot claims via existing Rule 1. Already works today (BallControl doesn't know a ball is "in flight" vs "at rest"). Verify with a determinism golden: `pass_east_slot1_to_slot2_400_ticks_seed_42`.
@@ -2866,7 +2873,7 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 **Slice 26 — Short pass primitive** (in progress)
 
 - [x] 26.1 (2026-07-16) — `physical.pass_power` attribute at stable id=14 via migration 217. Default 15 m/s. Consumer arrives in 26.3; 47/47 goldens byte-identical.
-- [ ] 26.2 `Intent::wants_kick` + `Intent::kick_target_direction`. Wire encoding per **ADR §22.23** (2026-07-16): additive length-prefixed trailer on INPUT (offset 16+), server-declared HELLO_ACK cap bit 3 (`kWireCapInputKickTrailer`), `kInputFlagWantsKick = 1u << 4`, 28-byte payload when kicking + 16-byte legacy payload otherwise. DB decoder migration 218 extends `sim_decode_input` to surface `kick_dir_x`, `kick_dir_y`, `kick_power_hint` in the returned jsonb for 28-byte rows; 16-byte rows decode with the M0 shape unchanged.
+- [x] 26.2 (2026-07-16) — `Intent::wants_kick` + `Intent::kick_direction` + `Intent::kick_power_hint`. Wire encoding per **ADR §22.23**: additive length-prefixed trailer on INPUT (offset 16+); server-declared HELLO_ACK cap bit 3 (`kWireCapInputKickTrailer`); `kInputFlagWantsKick = 1u << 4`; 28-byte payload when kicking, 20-byte legacy payload otherwise (byte-identical to M0). Server-side decoder in `sim/src/net/InputFrame.cpp` accepts 20-or-32-byte frames with strict `trailer_len == 10` and kick-direction magnitude in `[0.5, 1.5]`. Frontend: Space key + kick pad, `state.canKick` gated on HELLO_ACK bit 3. DB decoder migration 218 extends `sim_decode_input` to surface `kick_dir_x`, `kick_dir_y`, `kick_power_hint` in the returned jsonb for 32-byte rows; 20-byte rows decode with the M0 shape unchanged. 47/47 tests green including all 9 determinism goldens (0.02 s).
 - [ ] 26.3 `BallControl` release-on-kick + `BallPhysics::applyImpulse` for the kicked ball. `BallOnPitch2v0Scenario` — two claimable slots for pass-back-and-forth demo. First scenario without a defender that requires the new mechanic. Migration 219 registers scenario id=4.
 - [ ] 26.4 `BallPhysics::kKickAliveTicks` — kicked balls skip the rest-threshold clamp for the first N ticks. Prevents the M1 friction floor from killing short passes.
 - [ ] 26.5 Client-side motion trail on ball when `|vel| > threshold`. Server-side is a no-op (already sends `vel` on the trailer per §22.20).

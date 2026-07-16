@@ -16,6 +16,8 @@
 #include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
 
+#include <cstdint>
+
 namespace fh::sim::controller {
 
 struct Intent {
@@ -72,6 +74,27 @@ struct Intent {
     // pre-existing determinism golden (which uses only those two
     // controllers) is byte-identical.
     bool       wants_to_press{false};
+
+    // Slice 26.2 (ADR §22.23) — short-pass primitive. Set from INPUT
+    // frame bit 4 (`kInputFlagWantsKick`) when the client asserts a
+    // one-tick kick. Slice 26.2 is wire-only: the fields cross the
+    // boundary and land in the Intent, but no downstream code consumes
+    // them yet. Slice 26.3 will teach BallControl to drop ownership on
+    // `wants_kick && is_current_owner`, and Slice 26.4 will teach
+    // BallPhysics to apply the impulse using `kick_direction` scaled
+    // by `physical.pass_power` (or `kick_power_hint` when non-zero).
+    //
+    // `kick_direction` is a roughly-unit XY vector in world space
+    // (z=0 by convention — the pitch is on the ground plane). The
+    // wire decoder rejects magnitudes outside [0.5, 1.5], so a
+    // client-side normalisation slip won't silently zero the kick.
+    //
+    // `kick_power_hint` is in m/s. Zero means "server picks from the
+    // owner's `physical.pass_power` attribute" — the intended default
+    // that keeps the wire compact for the common case.
+    bool           wants_kick{false};
+    math::Vec3     kick_direction{};
+    std::uint16_t  kick_power_hint{0};
 
     // Reserved for M1+: pass, shoot, tackle, etc.
     // std::uint8_t action_bits{0};

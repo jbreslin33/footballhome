@@ -17,6 +17,11 @@
     <canvas id="sim-canvas"   aria-label="pitch view"></canvas>
     <canvas id="sim-joystick" aria-label="virtual joystick"></canvas>
     <div id="sim-sprint-pad" role="button" aria-label="sprint">RUN</div>
+    <!-- Slice 26.2 (ADR §22.23): kick pad. Held boolean; direction is
+         derived from the current joystick direction (or last facing).
+         Greyed out when the sim doesn't advertise
+         WIRE_CAP.INPUT_KICK_TRAILER in HELLO_ACK. -->
+    <div id="sim-kick-pad" role="button" aria-label="kick">KICK</div>
     <!-- Slice 25.3: gear + owns-ball indicator. Reads the local
          human's MotionState and ball ownership every render frame.
          Purpose is playtest feedback for the Slice 25.2 carry-speed

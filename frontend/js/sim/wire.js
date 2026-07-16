@@ -18,8 +18,12 @@
 //   Ball region (30):       [f32 pos_x][f32 pos_y][f32 pos_z]
 //                           [f32 vel_x][f32 vel_y][f32 vel_z]
 //                           [f32 spin][u16 owner_slot]
-//   INPUT payload (16):     [u32 client_tick][f32 dir_x][f32 dir_y]
+//   INPUT payload (16 baseline, 28 with kick trailer): Slice 26.2 / ADR §22.23
+//                           [u32 client_tick][f32 dir_x][f32 dir_y]
 //                           [u8 flags][u8 reserved[3]]
+//                           [u16 trailer_len=10]                    (kick)
+//                           [f32 kick_dir_x][f32 kick_dir_y]        (kick)
+//                           [u16 kick_power_hint]                   (kick)
 
 'use strict';
 
@@ -47,6 +51,11 @@ const ENTITY_FLAG = Object.freeze({
 const INPUT_FLAG = Object.freeze({
     SPRINT: 0x01,
     WALK:   0x02,
+    // 0x04, 0x08 reserved.
+    // Slice 26.2 (ADR §22.23): bit 4 signals "trailing kick region present".
+    // A well-formed 28-byte INPUT payload MUST set this bit; a 16-byte
+    // baseline payload MUST NOT.
+    KICK:   0x10,
 });
 
 const MOTION_STATE = Object.freeze({
@@ -60,9 +69,14 @@ const MOTION_STATE = Object.freeze({
 // Bit 0 = server may append the v1.1 ball trailer to SNAPSHOT payloads.
 // Bit 1 = server will send one SCENARIO_META frame immediately after
 //         HELLO_ACK (Slice 17.7a).
+// Bit 2 reserved for Slice 28 MATCH_EVENT frame.
+// Bit 3 = server accepts 28-byte INPUT payloads with kick trailer
+//         (Slice 26.2 / ADR §22.23). When absent, clients MUST send
+//         only 16-byte baseline payloads.
 const WIRE_CAP = Object.freeze({
     SNAPSHOT_BALL_TRAILER: 0x0001,
     SCENARIO_META:         0x0002,
+    INPUT_KICK_TRAILER:    0x0008,
 });
 
 // Slice 17.7a (§7.4): SCENARIO_META mode enum. Wire values are frozen
@@ -80,7 +94,15 @@ const BALL_OWNER_LOOSE = 0xFFFF;
 
 const FRAME_HEADER_BYTES   = 4;
 const HELLO_ACK_PAYLOAD    = 16;   // was 14 in M0; +2 for wire_capability_bits
-const INPUT_PAYLOAD_BYTES  = 16;
+const INPUT_PAYLOAD_BASELINE_BYTES   = 16;
+const INPUT_TRAILER_LEN_BYTES        = 2;
+const INPUT_KICK_REGION_BYTES        = 10;   // f32 dir_x + f32 dir_y + u16 power
+const INPUT_PAYLOAD_WITH_KICK_BYTES  = INPUT_PAYLOAD_BASELINE_BYTES
+    + INPUT_TRAILER_LEN_BYTES + INPUT_KICK_REGION_BYTES;   // 28
+// Retain the old name for backward compat with any callers that read it.
+const INPUT_PAYLOAD_BYTES  = INPUT_PAYLOAD_BASELINE_BYTES;
+const KICK_DIR_MIN_MAGNITUDE = 0.5;
+const KICK_DIR_MAX_MAGNITUDE = 1.5;
 const SNAPSHOT_HEADER      = 10;
 const ENTITY_BYTES         = 30;
 const SNAPSHOT_TRAILER_LEN_BYTES = 2;   // u16 length prefix
@@ -95,22 +117,47 @@ const SCENARIO_META_VERTEX_BYTES = 8;   // f32 x + f32 y
 // Encode an INPUT frame (client → server). Returns an ArrayBuffer ready
 // to hand to WebSocket.send(). `intent` is:
 //   { clientTick: uint32, dirX: number, dirY: number,
-//     wantsSprint: bool, wantsWalk: bool }
+//     wantsSprint: bool, wantsWalk: bool,
+//     wantsKick?: bool, kickDirX?: number, kickDirY?: number,
+//     kickPowerHint?: number }
+//
+// Slice 26.2 (ADR §22.23): when `intent.wantsKick` is falsy the encoder
+// emits a 20-byte frame that is byte-identical to the M0 baseline — this
+// preserves determinism goldens. When true, the encoder appends a
+// length-prefixed kick region and sets INPUT_FLAG.KICK.
+//
+// Callers must ensure the server negotiated WIRE_CAP.INPUT_KICK_TRAILER
+// via HELLO_ACK; otherwise the server will reject 28-byte payloads.
+// Kick direction magnitude must fall in [0.5, 1.5] to be accepted by the
+// server-side decoder — the encoder does NOT clamp, so out-of-range values
+// will produce frames the server drops.
 function encodeInput(intent) {
-    const buf = new ArrayBuffer(FRAME_HEADER_BYTES + INPUT_PAYLOAD_BYTES);
+    const wantsKick = !!intent.wantsKick;
+    const payloadBytes = wantsKick
+        ? INPUT_PAYLOAD_WITH_KICK_BYTES
+        : INPUT_PAYLOAD_BASELINE_BYTES;
+    const buf = new ArrayBuffer(FRAME_HEADER_BYTES + payloadBytes);
     const dv  = new DataView(buf);
     dv.setUint8(0, WIRE_VERSION);
     dv.setUint8(1, MSG.INPUT);
-    dv.setUint16(2, INPUT_PAYLOAD_BYTES, /*littleEndian*/ true);
-    // payload
+    dv.setUint16(2, payloadBytes, /*littleEndian*/ true);
+    // Baseline payload (bytes 4..19).
     dv.setUint32(4,  intent.clientTick >>> 0, true);
     dv.setFloat32(8,  intent.dirX,            true);
     dv.setFloat32(12, intent.dirY,            true);
     let flags = 0;
     if (intent.wantsSprint) flags |= INPUT_FLAG.SPRINT;
     if (intent.wantsWalk)   flags |= INPUT_FLAG.WALK;
+    if (wantsKick)          flags |= INPUT_FLAG.KICK;
     dv.setUint8(16, flags);
     // bytes 17..19 remain zero
+    if (wantsKick) {
+        // Kick trailer (bytes 20..31): [u16 trailer_len=10][f32 x][f32 y][u16 power].
+        dv.setUint16 (20, INPUT_KICK_REGION_BYTES,  true);
+        dv.setFloat32(22, intent.kickDirX || 0,     true);
+        dv.setFloat32(26, intent.kickDirY || 0,     true);
+        dv.setUint16 (30, (intent.kickPowerHint >>> 0) & 0xFFFF, true);
+    }
     return buf;
 }
 
@@ -277,6 +324,12 @@ window.FhSimWire = Object.freeze({
     FRAME_HEADER_BYTES,
     HELLO_ACK_PAYLOAD,
     INPUT_PAYLOAD_BYTES,
+    INPUT_PAYLOAD_BASELINE_BYTES,
+    INPUT_PAYLOAD_WITH_KICK_BYTES,
+    INPUT_TRAILER_LEN_BYTES,
+    INPUT_KICK_REGION_BYTES,
+    KICK_DIR_MIN_MAGNITUDE,
+    KICK_DIR_MAX_MAGNITUDE,
     SNAPSHOT_HEADER,
     ENTITY_BYTES,
     SNAPSHOT_TRAILER_LEN_BYTES,

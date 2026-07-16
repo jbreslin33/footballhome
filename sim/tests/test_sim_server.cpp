@@ -59,11 +59,12 @@ using fh::sim::net::kFrameHeaderBytes;
 using fh::sim::net::kHelloAckFrameBytes;
 using fh::sim::net::kHelloAckPayloadBytes;
 using fh::sim::net::kInputFlagWantsSprint;
-using fh::sim::net::kInputFrameBytes;
-using fh::sim::net::kInputPayloadBytes;
+using fh::sim::net::kInputPayloadBaselineBytes;
+using fh::sim::net::kInputFrameBaselineBytes;
 using fh::sim::net::kScenarioModeAdvisory;
 using fh::sim::net::kWireCapScenarioMeta;
 using fh::sim::net::kWireCapSnapshotBallTrailer;
+using fh::sim::net::kWireCapInputKickTrailer;
 using fh::sim::net::kWireVersionV1;
 using fh::sim::net::MsgType;
 using fh::sim::net::read_u16_le;
@@ -310,11 +311,11 @@ std::vector<std::uint8_t> buildInputFramePayload(std::uint32_t client_tick,
                                                  float dir_x, float dir_y,
                                                  std::uint8_t flags)
 {
-    std::vector<std::uint8_t> out(kInputFrameBytes);
+    std::vector<std::uint8_t> out(kInputFrameBaselineBytes);
     out[0] = kWireVersionV1;
     out[1] = static_cast<std::uint8_t>(MsgType::Input);
-    out[2] = static_cast<std::uint8_t>(kInputPayloadBytes & 0xFFu);
-    out[3] = static_cast<std::uint8_t>((kInputPayloadBytes >> 8) & 0xFFu);
+    out[2] = static_cast<std::uint8_t>(kInputPayloadBaselineBytes & 0xFFu);
+    out[3] = static_cast<std::uint8_t>((kInputPayloadBaselineBytes >> 8) & 0xFFu);
     // client_tick
     out[4] = static_cast<std::uint8_t>(client_tick & 0xFFu);
     out[5] = static_cast<std::uint8_t>((client_tick >> 8) & 0xFFu);
@@ -623,6 +624,11 @@ FH_TEST(scenario_meta_sent_immediately_after_hello_ack) {
         read_u16_le(ack.data() + kFrameHeaderBytes + 14);
     FH_EXPECT((caps & kWireCapScenarioMeta) != 0u);
     FH_EXPECT((caps & kWireCapSnapshotBallTrailer) != 0u);
+    // Slice 26.2 (ADR §22.23): server MUST advertise the kick-trailer
+    // capability so the client enables its kick UI. Set unconditionally
+    // in SimServer::handleConnect; test rejects a regression that clears
+    // the bit for any scenario.
+    FH_EXPECT((caps & kWireCapInputKickTrailer) != 0u);
 
     // Frame 1 = SCENARIO_META. Fixture is EmptyPitchScenario → Advisory
     // + empty polygon.

@@ -99,9 +99,15 @@ inline constexpr std::uint16_t kBallOwnerLoose          = 0xFFFFu;
 //   bit 0 = SnapshotBallTrailer   // SNAPSHOT may carry the v1.1 ball trailer
 //   bit 1 = ScenarioMeta          // Server WILL emit SCENARIO_META once,
 //                                 // immediately after HELLO_ACK (Slice 17.7a)
+//   bit 2 = (reserved for MatchEventFrame — Slice 28 / ADR §22.24)
+//   bit 3 = InputKickTrailer      // Server accepts the length-prefixed
+//                                 // kick trailer on INPUT frames; client
+//                                 // MUST grey out its kick UI when this
+//                                 // bit is unset (Slice 26.2 / ADR §22.23).
 // -----------------------------------------------------------------------
 inline constexpr std::uint16_t kWireCapSnapshotBallTrailer = 1u << 0;
 inline constexpr std::uint16_t kWireCapScenarioMeta        = 1u << 1;
+inline constexpr std::uint16_t kWireCapInputKickTrailer    = 1u << 3;   // Slice 26.2
 
 // -----------------------------------------------------------------------
 // SCENARIO_META payload layout (§7.4, Slice 17.7a).

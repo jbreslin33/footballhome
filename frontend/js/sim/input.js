@@ -3,14 +3,24 @@
 // Player input for the fh-sim.v1 client. Two source stacks compose into
 // a single Intent that client.js reads every INPUT tick:
 //
-//   KeyboardInput — WASD/arrow keys, Shift = sprint, Ctrl = walk.
-//   TouchInput    — virtual left thumb-stick, tap-and-hold sprint pad.
+//   KeyboardInput — WASD/arrow keys, Shift = sprint, Ctrl = walk,
+//                   Space = kick.
+//   TouchInput    — virtual left thumb-stick, tap-and-hold sprint pad,
+//                   tap kick pad.
 //
 // The Intent shape mirrors the sim's controller::Intent:
-//   { dirX, dirY, wantsSprint, wantsWalk }
+//   { dirX, dirY, wantsSprint, wantsWalk,
+//     wantsKick, kickDirX, kickDirY, kickPowerHint }
 // where (dirX, dirY) is a unit-ish vector in WORLD space: +x = along
 // the pitch length (goal-to-goal), +y = across (touchline-to-touchline,
 // same direction as "up" on screen — the renderer flips it).
+//
+// Slice 26.2 (ADR §22.23) added the kick fields. When `wantsKick` is
+// true, the direction (kickDirX, kickDirY) is derived from the current
+// move direction — or a stored last-facing when the human is idle —
+// and always emitted at unit magnitude so it lands inside the
+// [0.5, 1.5] server-side accept window. kickPowerHint is 0 for M2; the
+// slice 26.3+ carry-release + kick-strength model will populate it.
 
 'use strict';
 
@@ -21,6 +31,12 @@
 class FhSimKeyboardInput {
     constructor() {
         this._keys = new Set();
+        // Slice 26.2: last non-zero move direction, used as the kick
+        // vector when the human presses Space while standing still.
+        // Defaults to (1, 0) so the very first kick after page load
+        // still lands inside the [0.5, 1.5] magnitude accept window.
+        this._lastFacingX = 1;
+        this._lastFacingY = 0;
         this._onDown = (e) => this._handle(e, true);
         this._onUp   = (e) => this._handle(e, false);
         window.addEventListener('keydown', this._onDown, { passive: false });
@@ -38,11 +54,13 @@ class FhSimKeyboardInput {
         const k = keyOf(e);
         if (k == null) return;
         if (pressed) this._keys.add(k); else this._keys.delete(k);
-        // Prevent WASD/arrows from scrolling the page while playing.
+        // Prevent WASD/arrows/space from scrolling/paging while playing.
         if (k !== 'sprint' && k !== 'walk') e.preventDefault();
     }
 
-    // Returns { dirX, dirY, wantsSprint, wantsWalk } or null if idle.
+    // Returns { dirX, dirY, wantsSprint, wantsWalk,
+    //          wantsKick, kickDirX, kickDirY, kickPowerHint } or null if
+    // fully idle.
     read() {
         let dx = 0, dy = 0;
         if (this._keys.has('right')) dx += 1;
@@ -51,12 +69,26 @@ class FhSimKeyboardInput {
         if (this._keys.has('down'))  dy -= 1;
         const wantsSprint = this._keys.has('sprint');
         const wantsWalk   = this._keys.has('walk');
-        if (dx === 0 && dy === 0 && !wantsSprint && !wantsWalk) return null;
+        const wantsKick   = this._keys.has('kick');
+        if (dx === 0 && dy === 0 && !wantsSprint && !wantsWalk && !wantsKick) return null;
         // Normalise so diagonals aren't ~1.41 fast — the sim expects
         // dir_x/dir_y magnitude ≤ 1.
         const mag = Math.hypot(dx, dy);
-        if (mag > 0) { dx /= mag; dy /= mag; }
-        return { dirX: dx, dirY: dy, wantsSprint, wantsWalk };
+        if (mag > 0) {
+            dx /= mag; dy /= mag;
+            this._lastFacingX = dx;
+            this._lastFacingY = dy;
+        }
+        // Kick direction: current move dir if any, else stored facing.
+        const kickDirX = (mag > 0) ? dx : this._lastFacingX;
+        const kickDirY = (mag > 0) ? dy : this._lastFacingY;
+        return {
+            dirX: dx, dirY: dy,
+            wantsSprint, wantsWalk,
+            wantsKick,
+            kickDirX, kickDirY,
+            kickPowerHint: 0,
+        };
     }
 }
 
@@ -68,6 +100,7 @@ function keyOf(e) {
         case 'KeyD': case 'ArrowRight': return 'right';
         case 'ShiftLeft': case 'ShiftRight':     return 'sprint';
         case 'ControlLeft': case 'ControlRight': return 'walk';
+        case 'Space':                            return 'kick';
         default: return null;
     }
 }
@@ -80,15 +113,21 @@ function keyOf(e) {
 class FhSimTouchInput {
     // opts.stickCanvas: HTMLCanvasElement for joystick overlay
     // opts.sprintPad:   HTMLElement for the sprint button
+    // opts.kickPad:     HTMLElement for the kick button (Slice 26.2, optional)
     constructor(opts) {
         this.stickCanvas = opts.stickCanvas;
         this.stickCtx    = this.stickCanvas.getContext('2d');
         this.sprintPad   = opts.sprintPad;
+        this.kickPad     = opts.kickPad || null;
 
         this._pointerId = null;
         this._anchor    = null;   // { x, y } in canvas CSS pixels
         this._current   = null;
         this._sprint    = false;
+        this._kick      = false;
+        // Slice 26.2: last non-zero move dir for kicks-while-idle.
+        this._lastFacingX = 1;
+        this._lastFacingY = 0;
 
         // Joystick pixels; enough to feel like a full "throw" without
         // dragging your thumb across the phone.
@@ -131,6 +170,18 @@ class FhSimTouchInput {
         this.sprintPad.addEventListener('pointerup',     this._onSprintUp,   { passive: true });
         this.sprintPad.addEventListener('pointercancel', this._onSprintUp,   { passive: true });
         this.sprintPad.addEventListener('pointerleave',  this._onSprintUp,   { passive: true });
+
+        // Slice 26.2: kick pad. Held-boolean semantics mirror the
+        // sprint pad; the wire-level de-bounce (one kick per press)
+        // lives in Slice 26.3+ once BallControl::release-on-kick lands.
+        if (this.kickPad) {
+            this._onKickDown = () => { this._kick = true;  };
+            this._onKickUp   = () => { this._kick = false; };
+            this.kickPad.addEventListener('pointerdown',   this._onKickDown, { passive: true });
+            this.kickPad.addEventListener('pointerup',     this._onKickUp,   { passive: true });
+            this.kickPad.addEventListener('pointercancel', this._onKickUp,   { passive: true });
+            this.kickPad.addEventListener('pointerleave',  this._onKickUp,   { passive: true });
+        }
     }
 
     _unbind() {
@@ -144,6 +195,12 @@ class FhSimTouchInput {
         this.sprintPad.removeEventListener('pointerup',     this._onSprintUp);
         this.sprintPad.removeEventListener('pointercancel', this._onSprintUp);
         this.sprintPad.removeEventListener('pointerleave',  this._onSprintUp);
+        if (this.kickPad) {
+            this.kickPad.removeEventListener('pointerdown',   this._onKickDown);
+            this.kickPad.removeEventListener('pointerup',     this._onKickUp);
+            this.kickPad.removeEventListener('pointercancel', this._onKickUp);
+            this.kickPad.removeEventListener('pointerleave',  this._onKickUp);
+        }
     }
 
     _canvasPoint(e) {
@@ -179,16 +236,36 @@ class FhSimTouchInput {
     // Returns Intent shape or null if not currently touched.
     read() {
         if (!this._anchor || !this._current) {
-            if (this._sprint) return { dirX: 0, dirY: 0, wantsSprint: true, wantsWalk: false };
+            if (this._sprint || this._kick) {
+                return {
+                    dirX: 0, dirY: 0,
+                    wantsSprint: this._sprint, wantsWalk: false,
+                    wantsKick: this._kick,
+                    kickDirX: this._lastFacingX,
+                    kickDirY: this._lastFacingY,
+                    kickPowerHint: 0,
+                };
+            }
             return null;
         }
         const dx =  (this._current.x - this._anchor.x);
         const dy = -(this._current.y - this._anchor.y);   // flip: screen down = world −y
         const mag = Math.hypot(dx, dy);
-        if (mag < 4) return { dirX: 0, dirY: 0, wantsSprint: this._sprint, wantsWalk: false };
+        if (mag < 4) {
+            return {
+                dirX: 0, dirY: 0,
+                wantsSprint: this._sprint, wantsWalk: false,
+                wantsKick: this._kick,
+                kickDirX: this._lastFacingX,
+                kickDirY: this._lastFacingY,
+                kickPowerHint: 0,
+            };
+        }
         const clamped = Math.min(mag, this._maxRadiusPx);
         const nx = (dx / mag);
         const ny = (dy / mag);
+        this._lastFacingX = nx;
+        this._lastFacingY = ny;
         // Magnitude ratio drives walk/jog/sprint feel via a hint.
         const strength = clamped / this._maxRadiusPx;
         return {
@@ -196,6 +273,10 @@ class FhSimTouchInput {
             dirY: ny,
             wantsSprint: this._sprint || strength > 0.9,
             wantsWalk:   strength < 0.3,
+            wantsKick:   this._kick,
+            kickDirX:    nx,
+            kickDirY:    ny,
+            kickPowerHint: 0,
         };
     }
 

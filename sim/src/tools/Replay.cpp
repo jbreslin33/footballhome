@@ -106,6 +106,16 @@ decodePayloadToIntent(const std::vector<std::byte>& payload)
     intent.wants_walk    = di->wants_walk;
     intent.wants_dribble = di->wants_dribble;   // Slice 16.2
     intent.wants_release = di->wants_release;   // Slice 16.4
+    // Slice 26.2 (ADR §22.23) — kick trailer, if present on the wire
+    // payload row. Legacy rows (pre-26.2) decode with wants_kick=false
+    // and zero kick fields, byte-identically to what SimServer did.
+    intent.wants_kick      = di->wants_kick;
+    intent.kick_direction  = math::Vec3{
+        math::Fixed64::fromFloat(di->kick_dir_x),
+        math::Fixed64::fromFloat(di->kick_dir_y),
+        math::Fixed64::zero()
+    };
+    intent.kick_power_hint = di->kick_power_hint;
     return intent;
 }
 
