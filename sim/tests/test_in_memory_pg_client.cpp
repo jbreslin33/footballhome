@@ -284,6 +284,13 @@ FH_TEST(event_type_names_are_stable)
     FH_EXPECT_EQ(static_cast<int>(EventType::SlotRelease),      6);
     FH_EXPECT_EQ(static_cast<int>(EventType::ScenarioSuccess),  7);
     FH_EXPECT_EQ(static_cast<int>(EventType::ScenarioReset),    8);
+    FH_EXPECT_EQ(static_cast<int>(EventType::Goal),             9);   // ADR §22.25, Slice 28
+
+    // Goal payload v1 layout constants (ADR §22.25). Cross-checked here so a
+    // header edit that flips these silently trips the sim's test suite.
+    FH_EXPECT_EQ(static_cast<int>(fh::sim::persistence::kGoalPayloadV1Bytes),    5);
+    FH_EXPECT_EQ(static_cast<int>(fh::sim::persistence::kGoalPayloadV1Version),  1);
+    FH_EXPECT_EQ(static_cast<int>(fh::sim::persistence::kGoalKickerSlotUnknown), 0);
 }
 
 FH_TEST_MAIN()
