@@ -27,6 +27,7 @@
 #include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/BallOnPitchWithDefenderScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
+#include "scenario/GoalDrillScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
 #include "scenario/SoftDrillScenario.hpp"
 #include "scenario/Scenario.hpp"
@@ -34,6 +35,7 @@
 #include "common/M0Attributes.hpp"
 #include "math/Fixed64.hpp"
 #include "math/FixedMath.hpp"
+#include "persistence/EventTypes.hpp"
 #include "profile/PlayerProfile.hpp"
 #include "test_harness.hpp"
 
@@ -252,6 +254,47 @@ constexpr std::uint64_t kExpectedHashPassEast400 = 0xd2287a0b3981f04dULL;
 // the crossover. This is the CI gate for the M2 exit criterion —
 // two humans passing back and forth on BallOnPitch2v0 in the browser.
 constexpr std::uint64_t kExpectedHashPassReceive200 = 0xdaa7989a56a58f5fULL;
+
+// Slice 28.5 (§24.3, ADR §22.25): cross-arch determinism golden for a
+// full goal-from-kick sequence in GoalDrillScenario. This is the
+// authoritative end-to-end lock on the goal-detection pipeline landed
+// in Slice 28.2 (goal regions) + 28.3 (post-physics detect + emit) +
+// 28.4 (wire broadcast) — any drift in scenario geometry, ball
+// physics friction / kick-alive suppression, BallControl release-on-
+// kick timing, Match::tick's goal-region membership predicate, or the
+// canonical dump encoding trips the hash.
+//
+// Script:
+//   * seed = 42, GoalDrillScenario (slot 1 spawns at (-15, 0) heading
+//     east; ball at centre spot at rest; east goal region at
+//     x ∈ [+52.5, +54.5], y ∈ [-3.66, +3.66]).
+//   * Slot 1 claimed with default M0 profile.
+//   * Persistent intent (ticks 1..100): desired_direction=(+1,0,0),
+//     wants_sprint = wants_dribble = true. Slot sprints east from -15
+//     toward the ball, grabs it via Rule 1 first-touch (within
+//     kBallControlRadius = 0.5 m AND wants_dribble asserted), then
+//     carries east at max_carry_sprint_speed × dribble_efficiency =
+//     6.0 × 0.85 = 5.1 m/s for the remaining ticks.
+//   * Tick 101: fire wants_kick east with kick_power_hint = 25 m/s —
+//     well above the profile default pass_power = 15 m/s to guarantee
+//     the ball clears the ~50 m to the east goal line inside the 100-
+//     tick remaining budget. BallControl releases ownership on the
+//     kick tick, BallPhysics::applyImpulse launches the ball east at
+//     25 m/s, kick_alive_ticks_remaining_ arms to 40.
+//   * Ticks 102..200: idle intent (all flags cleared) so the persistent
+//     wants_kick doesn't try to fire a second kick — defensive; the
+//     released ball is now unowned so wants_kick is a no-op regardless.
+//   * The ball crosses x = 52.5 while still inside the kick-alive
+//     window and Match::tick's Slice-28.3 freeze rule zeroes velocity
+//     + clears kick_alive_ticks_remaining_ + clears last_kicker_slot_
+//     on emit — subsequent ticks sit motionless inside the east region.
+//   * Post-tick assertions: exactly one PendingGoal drained, region
+//     index = 1 (east), kicker = SlotId{1}. The v1 payload bytes
+//     `[01 01 01 00 00]` = [ver=1][region=1][kicker_lo=1][kicker_hi=0]
+//     [reserved=0] round-trip through encodeGoalPayloadV1 unchanged.
+//   * Canonical snapshot dump hashed for cross-arch stability.
+constexpr std::uint64_t kExpectedHashGoalFromKickEast200 =
+    0x18c0949f8ab5f4aaULL;
 
 } // namespace
 
@@ -762,6 +805,107 @@ FH_TEST(pass_receive_first_touch_200_ticks_seed_42) {
             static_cast<unsigned long>(kExpectedHashPassReceive200));
     }
     FH_EXPECT_EQ(h, kExpectedHashPassReceive200);
+}
+
+// Slice 28.5: cross-arch determinism proof for a full goal-from-kick
+// sequence in GoalDrillScenario. See kExpectedHashGoalFromKickEast200
+// above for the setup rationale + the wire-side / DB-side implications.
+FH_TEST(goal_from_kick_east_200_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<fh::sim::scenario::GoalDrillScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile profile;
+    profile.physical = fh::sim::m0::defaultPhysical();
+    profile.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{7}, PersonId{7}, std::move(profile));
+
+    // Ticks 1..100: sprint east from (-15, 0) toward the ball at
+    // centre with wants_dribble asserted so Rule 1 first-touch fires
+    // as soon as the slot is within kBallControlRadius = 0.5 m of the
+    // ball. Persistent input — one applyInput, 100 ticks.
+    Intent approach;
+    approach.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    approach.wants_sprint  = true;
+    approach.wants_dribble = true;
+    m->applyInput(ClientId{7}, approach);
+    for (int i = 0; i < 100; ++i) m->tick();
+
+    // Tick 101: fire wants_kick east at 25 m/s (kick_power_hint
+    // overrides profile pass_power). BallControl releases ownership,
+    // BallPhysics::applyImpulse launches the ball, kick_alive_ticks_
+    // remaining_ arms to 40 (2 s at 20 Hz).
+    Intent kick;
+    kick.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    kick.wants_kick      = true;
+    kick.kick_direction  =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    kick.kick_power_hint = 25;
+    m->applyInput(ClientId{7}, kick);
+    m->tick();
+
+    // Ticks 102..200: idle intent so the persistent wants_kick from
+    // last input doesn't re-fire (defensive; ball is unowned anyway).
+    Intent idle;
+    m->applyInput(ClientId{7}, idle);
+    for (int i = 0; i < 99; ++i) m->tick();
+
+    // Slice 28.3 + 28.5 assertion: exactly one Goal event emitted, in
+    // the east region (index 1), attributed to SlotId{1}.
+    auto goals = m->drainPendingGoals();
+    FH_EXPECT_EQ(goals.size(), std::size_t{1});
+    if (goals.size() == std::size_t{1}) {
+        FH_EXPECT_EQ(goals[0].goal_region_index, std::uint8_t{1});
+        FH_EXPECT(goals[0].kicker_slot.has_value());
+        if (goals[0].kicker_slot.has_value()) {
+            FH_EXPECT_EQ(*goals[0].kicker_slot, SlotId{1});
+        }
+
+        // Slice 28.5: lock the ADR §22.25 v1 Goal payload bytes for
+        // this scenario. Any drift in encodeGoalPayloadV1 or in the
+        // slot-id / region-id plumbing that Match::tick feeds it
+        // trips these direct byte assertions in addition to the
+        // canonical-hash drift below.
+        const std::uint16_t kicker_id =
+            goals[0].kicker_slot.has_value() ? *goals[0].kicker_slot
+                : fh::sim::persistence::kGoalKickerSlotUnknown;
+        const auto payload = fh::sim::persistence::encodeGoalPayloadV1(
+            goals[0].goal_region_index, kicker_id);
+        FH_EXPECT_EQ(payload.size(),
+                     fh::sim::persistence::kGoalPayloadV1Bytes);
+        FH_EXPECT_EQ(static_cast<std::uint8_t>(payload[0]),
+                     fh::sim::persistence::kGoalPayloadV1Version);
+        FH_EXPECT_EQ(static_cast<std::uint8_t>(payload[1]),
+                     std::uint8_t{0x01});   // region = 1 (east)
+        FH_EXPECT_EQ(static_cast<std::uint8_t>(payload[2]),
+                     std::uint8_t{0x01});   // kicker_lo (SlotId 1)
+        FH_EXPECT_EQ(static_cast<std::uint8_t>(payload[3]),
+                     std::uint8_t{0x00});   // kicker_hi
+        FH_EXPECT_EQ(static_cast<std::uint8_t>(payload[4]),
+                     std::uint8_t{0x00});   // reserved
+    }
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== goal_from_kick_east_200_ticks_seed_42 ===\n", stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashGoalFromKickEast200) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashGoalFromKickEast200)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashGoalFromKickEast200));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashGoalFromKickEast200);
 }
 
 FH_TEST_MAIN()
