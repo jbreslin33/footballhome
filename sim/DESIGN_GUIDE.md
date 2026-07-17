@@ -1,140 +1,116 @@
-# Guide to DESIGN.md: Designer Onboarding
+# Guide to DESIGN.md
 
-Welcome to the footballhome simulator design document! This guide will help you navigate the comprehensive DESIGN.md file and understand how to find what you need.
+This is my own cheat sheet for getting back up to speed on the footballhome
+simulator project — what's in `DESIGN.md`, how it's organized, and where to
+look depending on what I'm about to do. It's written for one developer (me),
+not a team, so there's no role-based navigation — just the document's
+contents and a sane path through them.
 
-## Quick Overview
+## What DESIGN.md is
 
-**DESIGN.md** is the single source of truth for the footballhome simulator project — a multiplayer tactical football training system. It documents:
-- Architecture and design decisions
-- Technical specifications
-- Database schema
-- Project roadmap (Milestones 0-3)
-- Implementation progress
-- Decision rationale (ADRs)
+`DESIGN.md` is the single source of truth for the sim project — a
+multiplayer tactical football training system that's a companion to the
+main fh RSVP/roster app. It's **one cohesive ~3500-line document**, not
+scattered docs, covering vision, architecture, full technical spec,
+database schema, the milestone roadmap, live implementation status, and
+every architecture decision (with reasoning) made along the way.
 
-**Key fact:** This is **one cohesive document**, not scattered docs. Everything connects.
+If the doc and the code ever disagree, **the doc is right and the code is
+the bug** — see §22.8.
 
 ---
 
-## Document Structure at a Glance
+## Where the project stands right now
 
-### Part 1: Foundation (Sections 1-4)
-Start here to understand **what** the simulator is and **why** it's designed this way.
+Before diving into sections, check the **status banner at the very top of
+DESIGN.md** (above §1) — it's a running log of the most recent slices
+landed, updated every time something ships. As of the last update:
 
-| Section | Purpose | Read if... |
-|---------|---------|-----------|
-| **§1 Vision** | Purpose of the simulator | You're new to the project |
-| **§2 Non-goals** | What we explicitly don't do | You're tempted to add something |
-| **§3 Guiding principles** | 10 core design rules | You're making architectural decisions |
-| **§4 Architecture overview** | System diagram + data flow | You need the 30-second mental model |
+- **M0 (foundation), M1 (ball/dribble), M2 (multiplayer physics/collisions/shots)** — all **done**.
+- **M3 (utility-AI behaviors, concepts)** — in progress. `AiController` utility-AI
+  dispatch is scaffolded (Slice 30.1) and the first real behavior,
+  `PursueBallCarrierBehavior`, has landed (Slice 30.2), replacing the old
+  `DefenderController`.
+- **Next up:** Slice 31.1 — seed `marking` + `jockey` concepts via migration.
+- **M4/M5** — not started (2v1+ progressions, then the original goal:
+  `PressTrigger4v2`).
 
-### Part 2: Technical Deep-Dive (Sections 5-11)
-The implementation layer. Read if you're building features, not just using the simulator.
+The **§15 Milestone plan** table gives the compact roadmap view (weeks,
+cumulative estimate, status per milestone). Read the banner first, the
+table second — the banner is the most current word on exactly what landed
+last.
 
-| Section | What it covers | Relevance |
-|---------|---------------|-----------|
-| **§5 Class hierarchy** | C++ server object model | Backend engineers, architects |
-| §5.1 Math & primitives | Q32.32 fixed-point math | Determinism-critical code |
-| §5.2 Attributes & concepts | Open player skill catalog | Coaches, AI trainers |
-| §5.3 Physics interface | Collision and movement | Physics features |
-| §5.4 Player controller interface | Human/AI input layer | Multiplayer design |
-| §5.5 AI behavior interface | Concept-gated AI | AI/behavior engineers |
-| §5.6 Scenario interface | Training scenarios | Scenario designers |
-| §5.7 Match orchestrator | Game loop | Core loop engineers |
-| §5.8 Network transport | Binary wire protocol | Networking, client work |
-| §5.9 Server runtime | Process startup | DevOps, deployment |
-| **§6 Client architecture** | Vanilla JS renderer | Frontend engineers |
-| **§7 Wire protocol** | Binary message format | Wire-level debugging |
-| **§8 Database schema** | SQL tables & relationships | Data engineers, SQL queries |
-| **§9 Coordinate system & math** | Pitch layout + vectors | Physics, rendering |
-| **§10 Determinism rules** | Byte-identical simulation | Testing, replays |
-| **§11 Player model** | Cognition stages (Recognition→Decision→Execution) | Behavior design |
+---
 
-### Part 3: Reference Catalogs (Section 12)
-**Reserved catalogs** (not code yet) that define the skill taxonomy.
+## Document Map
+
+### Sections 1-4 — Foundation: what & why
+
+| Section | Contents |
+|---------|----------|
+| **§1 Vision** | Why this exists — teach tactical concepts by playing them, same engine scales toward full 11v11 |
+| **§2 Non-goals** | Explicitly out of scope for now (3D rendering, matchmaking, user-generated scenarios, etc.) |
+| **§3 Guiding principles** | 10 rules that every design/code decision must satisfy |
+| **§4 Architecture overview** | System diagram: browser client ↔ `footballhome_sim` (C++) ↔ `footballhome_backend` ↔ Postgres |
+
+### Sections 5-11 — Technical spec (the implementation layer)
+
+| Section | Contents |
+|---------|----------|
+| **§5 Class hierarchy** | The full C++ server object model |
+| §5.1 | Q32.32 fixed-point math (`Fixed64`) — the math primitives |
+| §5.2 | Attributes & concepts — the player skill/knowledge model |
+| §5.3 | `IPhysicsWorld` — collision & movement interface |
+| §5.4 | `IPlayerController` — human/AI input layer |
+| §5.5 | `IBehavior` — concept-gated AI behavior interface |
+| §5.6 | `Scenario` interface — training scenario definitions |
+| §5.7 | `Match` — the game loop orchestrator |
+| §5.8 | Network transport — binary wire layer |
+| §5.9 | Server runtime — process startup/lifecycle |
+| **§6 Client architecture** | Vanilla JS renderer, ~200 lines, zero game logic |
+| **§7 Wire protocol** | Binary message format (SNAPSHOT, INPUT, HELLO_ACK, etc.) |
+| **§8 Database schema** | SQL tables & relationships for sim data |
+| **§9 Coordinate system & math** | Pitch layout + vector conventions |
+| **§10 Determinism rules** | Why and how the sim is byte-identical across machines |
+| **§11 Player model** | Recognition → Decision → Execution cognitive stages |
+
+### Section 12 — Reference catalogs (documentation, not yet code)
 
 | Catalog | Describes |
 |---------|-----------|
-| §12.1 Physical | Player body attributes (speed, strength, etc.) |
-| §12.2 Technical | Ball skill attributes (passing, shooting, etc.) |
+| §12.1 Physical | Body attributes (speed, strength, etc.) |
+| §12.2 Technical | Ball-skill attributes (passing, shooting, etc.) |
 | §12.3 Mental | Decision-making attributes (positioning, awareness, etc.) |
 | §12.4 Concepts | Tactical knowledge units (pressing, marking, etc.) |
-| §12.5 Patterns | Recognition targets (for M4+, empty in M0) |
+| §12.5 Patterns | Recognition targets — reserved for M4+, empty today |
 
-**For designers:** These catalogs are the DNA of the training system. Decisions here cascade into coaching content.
+### Sections 13-16, 22-25 — Roadmap & progress
 
-### Part 4: Project Roadmap (Sections 13-25)
-Where the project has been, where it's going, and what's in progress.
+| Section | Contents |
+|---------|----------|
+| **§13 Auth model** | Login + member-only access, JWT flow |
+| **§14 Match lifecycle** | join → play → end → persist |
+| **§15 Milestone plan** | Roadmap table (M0-M5), status per milestone |
+| **§16 Milestone 0** | Detailed spec + deliverable checklist (§16.1), attributes (§16.2), concepts (§16.3), non-goals (§16.4), exit criteria (§16.5) |
+| **§22 Decision log (ADRs)** | Every architecture decision made, with context/decision/consequences — **the reasoning behind everything** |
+| **§23 Milestone 1 spec** (nested under the ADR numbering — scope §23.1, deliverables §23.2, slices §23.3, exit criteria §23.4) |
+| **§24 Milestone 2 spec** (same shape: §24.1-24.7 — physics, collisions, shots) |
+| **§25 Milestone 3 spec** (same shape: §25.1-25.7 — utility AI, first real behaviors) |
 
-| Section | Content |
-|---------|---------|
-| **§13 Auth model** | Login + member-only access |
-| **§14 Match lifecycle** | Stages: join → play → end → persist |
-| **§15 Milestone plan** | Roadmap overview (M0 → M1 → M2 → M3) |
-| **§16 Milestone 0** | Current/recent target — detailed spec + slices |
-| **§23 Milestone 1** | Next phase — specs + slice breakdown |
-| **§24 Milestone 2** | Physics, AI behaviors, collisions |
-| **§25 Milestone 3** | Advanced AI, utility system |
+Note the numbering quirk: §23-25 (per-milestone detailed specs) live physically
+*after* §22 (the ADR log) in the file, not before it. §15 is the roadmap
+overview; §16/23/24/25 are where each milestone's actual spec, slice
+sequence, and exit checklist live.
 
-### Part 5: Operations & Context (Sections 17-22)
-Rules, gotchas, and the reasoning behind choices.
+### Sections 17-21 — Operations & context
 
-| Section | Topic |
-|---------|-------|
-| **§17 Project layout** | File tree + per-file implementation status |
-| **§18 Debug & observability** | Logging, profiling, replay inspection |
-| **§19 Anti-patterns** | Things we explicitly don't do (and why) |
-| **§20 Open questions** | Revisit-later items (safe to ignore for now) |
-| **§21 Known flaws** | Conscious technical debt + blockers |
-| **§22 Decision log (ADRs)** | **The reasoning behind every big choice** |
-
----
-
-## How to Navigate by Role
-
-### I'm a **Product/Design Lead**
-1. **§1 Vision** — Why does this exist?
-2. **§3 Guiding principles** — What are the constraints?
-3. **§15 Milestone plan** — What's the roadmap?
-4. **§16.1 Deliverables** (M0) — What ships next?
-5. **§12 Catalogs** — What skills do we teach?
-6. **§11 Player model** — How do players learn?
-
-### I'm a **Frontend Engineer**
-1. **§4 Architecture overview** — How does the client fit?
-2. **§6 Client architecture** — Where does my code live?
-3. **§7 Wire protocol** — Binary message format
-4. **§6.2 Renderer interface** — How to render a snapshot
-5. **§6.3 Input interface** — How to capture player input
-6. **§10 Determinism rules** — Why can't I use floating-point?
-
-### I'm a **Backend/C++ Engineer**
-1. **§4 Architecture overview** — System picture
-2. **§5 Class hierarchy** — The server object model
-3. **§22 Decision log** — Why did we choose this way?
-4. **§17 Project layout** — Where's the code?
-5. **§10 Determinism rules** — Math rules for the sim loop
-6. Specific §5.X for your subsystem (physics, AI, networking, etc.)
-
-### I'm a **Scenario/Content Designer**
-1. **§11 Player model** — How do players learn?
-2. **§5.6 Scenario interface** — How scenarios work
-3. **§12 Catalogs** — What attributes/concepts to use
-4. **§6.4 Layout & UX requirements** — Screen constraints
-5. **§21 Known flaws** → M0 non-goals — What can't I do yet?
-
-### I'm a **QA/Testing Engineer**
-1. **§10 Determinism rules** — Why replays must be identical
-2. **§14 Match lifecycle** — What states can a match be in?
-3. **§22.1 Determinism is a top-level property** — Testing strategy
-4. **§18 Debug & observability** — How to inspect a match
-5. **§16.5 M0 exit criteria** — What "done" looks like
-
-### I'm a **DevOps/Infrastructure**
-1. **§5.9 Server runtime** — Process startup + lifecycle
-2. **§8 Database schema** — Tables + relationships
-3. **§22.19 Backend → podman IPC** — Service communication
-4. **§13 Auth model** — Member-only login flow
+| Section | Contents |
+|---------|----------|
+| **§17 Project layout** | File tree with per-file implementation status |
+| **§18 Debug & observability** | Logging, replay inspection |
+| **§19 Anti-patterns** | Things explicitly avoided, and why |
+| **§20 Open questions** | Revisit-later items — safe to ignore for now |
+| **§21 Known flaws** | Conscious technical debt + active blockers |
 
 ---
 
@@ -282,45 +258,64 @@ Mentioned frequently in DESIGN.md:
 
 ---
 
-## Next Steps
+## Getting Back Up to Speed (Re-orientation Checklist)
 
-### Your First Day
-1. Read **§1 (Vision)** and **§3 (Guiding principles)** — 15 min.
-2. Read **§4 (Architecture overview)** — 10 min.
-3. Read the role-specific guide above for your job title — 20 min.
-4. Skim **§22 (Decision log)** to get a sense of how decisions are documented — 30 min.
+This isn't a one-time onboarding — it's what I run through every time I sit
+back down after time away from the sim project.
 
-### Your First Week
-- Deep-dive into the §5.X subsystems relevant to your work.
-- Read **§22** ADRs to understand the reasoning (not just the rules).
-- Check **§17 (Project layout)** to find code files.
-- Run a simulator match locally and inspect a replay using the tools in **§18**.
+1. **Read the status banner** at the top of DESIGN.md (above §1). It's the
+   most current word on what landed last and what's next.
+2. **Skim §15 (Milestone plan)** for the big-picture roadmap position.
+3. **Check the current milestone's spec section** (§16 for M0, §23 for M1,
+   §24 for M2, §25 for M3) — specifically its exit-criteria subsection
+   (e.g. §25.4) to see what's still open before the milestone closes.
+4. **Check §21 (Known flaws)** for anything blocking active work.
+5. If it's been a long gap, skim the tail end of **§22 (Decision log)** —
+   the most recent ADRs explain *why* the last few slices were built the
+   way they were.
+6. Find the code for the slice in progress via **§17 (Project layout)**,
+   then pick up where the status banner says work stopped.
 
-### Your First Month
-- Contribute a small fix or clarification to DESIGN.md (show you understand the format).
-- Propose an ADR for a decision you made.
-- Mentor someone else using this guide.
+## First Time Through (if I've genuinely forgotten the fundamentals)
+
+1. **§1 Vision** + **§3 Guiding principles** — what this is and the
+   non-negotiable rules (~15 min).
+2. **§4 Architecture overview** — the three-process picture: browser ↔
+   `footballhome_sim` ↔ `footballhome_backend` ↔ Postgres (~10 min).
+3. **§10 Determinism rules** + **§22.1/§22.2** — the single idea that
+   shapes every line of gameplay code: fixed-point math, no floats, bit-exact
+   replays (~10 min).
+4. **§11 Player model** — Recognition → Decision → Execution, the layering
+   every controller must respect (~10 min).
+5. Skim **§22 (Decision log)** front to back once, just to build a mental
+   map of *why* things are the way they are — don't try to retain details,
+   just know it's there to search later (~30 min).
+
+## Running the Project Locally
+
+- **§17 Project layout** — file tree with per-file implementation status;
+  use it to find where a given piece of the spec actually lives in code.
+- **§18 Debug & observability** — how to inspect a running match / replay.
+- **§16.6 / §22.12-22.14** — persistence & replay library, useful when
+  debugging why a replay doesn't match a golden hash.
 
 ---
 
 ## FAQ
 
 **Q: Is DESIGN.md always up-to-date?**
-A: Yes. §22.8 declares it "one document, one source of truth." If you see a discrepancy with code, the document is authoritative — the code is the bug.
+A: Yes — that's the rule (§22.8), "one document, one source of truth." If code and doc disagree, the doc is right and the code is the bug. Keep it that way: update the doc in the same sitting as the code change.
 
-**Q: Can I ignore parts of DESIGN.md?**
-A: Not the ones in your critical path. But yes, open questions (§20), some of §21 (known flaws), and advanced M3 milestones can wait.
+**Q: Do I need to read all ~3500 lines every time?**
+A: No. Use the status banner + §15 for "where am I", the Document Map above for "where do I find X", and only read the §5.X subsystem or §22 ADR that's directly relevant to what I'm about to touch.
 
-**Q: How long is DESIGN.md?**
-A: ~3500 lines. Not all at once. Use this guide to navigate by role + task.
+**Q: I disagree with a past decision I made — what do I do?**
+A: Read the ADR in §22 first — there's usually a reason that seemed good at the time. If it still seems wrong, add an amendment to that ADR (format in §22.0) rather than silently changing behavior; keep the paper trail.
 
-**Q: What if I disagree with a design decision?**
-A: Read the ADR (§22) first. If you still disagree, propose an amendment in the ADR (see §22.0). Don't fork it in your head.
-
-**Q: Who maintains this?**
-A: The whole team. Everyone owns keeping it accurate. If you find a discrepancy, fix it (or flag it in §21 as a known flaw).
+**Q: When do I add a new ADR vs. just editing a section?**
+A: New ADR (§22, copy the §22.N template) for any decision with real trade-offs or that future-me will wonder about. Just edit in place for the Milestone spec sections (§16/23/24/25 checklists), §12 catalogs, §17 layout, and §21 known flaws — those are living trackers, not decision records.
 
 ---
 
-**Last updated:** 2026-07-17  
-**For questions:** Check §20 (Open questions) or §21 (Known flaws), or add an ADR in §22.
+**Last updated:** 2026-07-17
+**When stuck:** check §20 (Open questions) and §21 (Known flaws) first — the answer to "is this a known issue" is probably already written down.
