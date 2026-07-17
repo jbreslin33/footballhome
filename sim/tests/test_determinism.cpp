@@ -33,6 +33,7 @@
 #include "controller/Intent.hpp"
 #include "common/M0Attributes.hpp"
 #include "math/Fixed64.hpp"
+#include "math/FixedMath.hpp"
 #include "profile/PlayerProfile.hpp"
 #include "test_harness.hpp"
 
@@ -209,6 +210,48 @@ constexpr std::uint64_t kExpectedHashSoftDrill400 = 0x700808840ecc3183ULL;
 // WorldView / AwarenessView, trips the hash.
 constexpr std::uint64_t kExpectedHashBallOnPitchWithDefender400 =
     0x71f639d918a32830ULL;
+
+// Slice 26.6: cross-arch golden for a short pass east. Locks the M2
+// kick primitive introduced in Slice 26.3 (BallControl release-on-kick,
+// BallPhysics::applyImpulse, kKickAliveTicks=40 friction-suppression
+// window, MechanicsParams::pass_power default = 15 m/s from the
+// physical.pass_power attribute registered at stable id=14 in
+// migration 217). Setup: ball at origin at rest; SlotId{1} at
+// (-0.3, 0, 0) claimed by a HumanController (0.3 m < kBallControlRadius
+// = 0.5 m, so Rule 1 first-touch fires on tick 1); SlotId{2} at
+// (+15, +5, 0) also claimed but never fed input — the +5 m y offset
+// keeps it outside HumanController's kBallAutoDribbleRadius=1.5 m of
+// the ball's east flight path so the auto-dribble augment never fires
+// and Rule 1 never transfers ownership to slot 2 (that transfer is
+// what PassReceive200 below tests separately). Script: tick 1 asserts
+// dribble+east so slot 1 grabs the ball; ticks 2-9 dribble east;
+// tick 10 asserts wants_kick + kick_direction=(+1,0,0) +
+// kick_power_hint=0 so pass_power falls through to the 15 m/s default;
+// ticks 11-400 the ball flies east through slot 2's neighborhood and
+// coasts to rest under the M1 rest-band snap once kKickAliveTicks
+// expires around tick 51. Any drift in release-on-kick timing, in
+// applyImpulse magnitude / direction math, in kKickAliveTicks, in
+// BallPhysics friction decay, or in the wants_kick INPUT path from
+// Match::applyInput -> BallControl -> BallPhysics trips the hash.
+constexpr std::uint64_t kExpectedHashPassEast400 = 0xd2287a0b3981f04dULL;
+
+// Slice 26.6: cross-arch golden for the full pass-and-receive path.
+// Same layout as PassEast400 but SlotId{2} is planted directly in
+// the ball's flight path at (+15, 0, 0) and continuously asserts
+// wants_dribble + desired_direction=(-1,0,0) (walking west toward
+// the incoming pass). Around tick ~28-30 (ball at 15 m/s east, slot 2
+// at ~2.5 m/s west, closing 15 m at 17.5 m/s ≈ 0.86 s ≈ 17 ticks post-
+// kick) the ball crosses within kBallControlRadius=0.5 m of slot 2 →
+// Rule 1 first-touch transfers ownership → Rule 3 glues the ball to
+// slot 2 kBallOwnerLeadDistance ahead of its heading. Both continue
+// west for the remainder of the 200 ticks. Locks everything
+// PassEast400 locks PLUS: Rule 1 pickup at the receiving side
+// (HumanController auto-dribble at 1.5 m, wants_dribble=true from
+// explicit input, distance < 0.5 m threshold), Rule 3 glue behavior
+// after the ownership transfer, and the deterministic tick timing of
+// the crossover. This is the CI gate for the M2 exit criterion —
+// two humans passing back and forth on BallOnPitch2v0 in the browser.
+constexpr std::uint64_t kExpectedHashPassReceive200 = 0xdaa7989a56a58f5fULL;
 
 } // namespace
 
@@ -533,6 +576,192 @@ FH_TEST(ball_on_pitch_with_defender_400_ticks_seed_42) {
                 kExpectedHashBallOnPitchWithDefender400));
     }
     FH_EXPECT_EQ(h, kExpectedHashBallOnPitchWithDefender400);
+}
+
+// Slice 26.6: cross-arch determinism proof for a short pass east.
+// See kExpectedHashPassEast400 above for the setup rationale.
+FH_TEST(pass_east_slot1_to_slot2_400_ticks_seed_42) {
+    fh::sim::scenario::SlotSpawn s1;
+    s1.slot     = SlotId{1};
+    // 0.3 m west of the ball — inside kBallControlRadius=0.5 m so
+    // Rule 1 first-touch fires on tick 1 with wants_dribble asserted.
+    s1.position = Vec3{Fixed64::fromFraction(-3, 10),
+                       Fixed64::zero(), Fixed64::zero()};
+    s1.heading  = Fixed64::zero();  // east (kicker)
+
+    fh::sim::scenario::SlotSpawn s2;
+    s2.slot     = SlotId{2};
+    // (+15, +5, 0): 5 m off-axis so HumanController's
+    // kBallAutoDribbleRadius=1.5 m never trips as the ball flies past.
+    // PassReceive200 below moves this back on-axis to test the receive.
+    s2.position = Vec3{Fixed64::fromInt(15),
+                       Fixed64::fromInt(5),
+                       Fixed64::zero()};
+    s2.heading  = fh::sim::math::FX_PI;  // west (nominally facing pass)
+
+    BallSpawn ball{
+        Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+        Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()}  // at rest
+    };
+
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<BallAndTwoSlotsScenario>(ball,
+        std::vector<fh::sim::scenario::SlotSpawn>{s1, s2});
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    // Slot 1: the kicker.
+    fh::sim::profile::PlayerProfile p1;
+    p1.physical = fh::sim::m0::defaultPhysical();
+    p1.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{11}, PersonId{11}, std::move(p1));
+
+    // Slot 2: claimed but never fed input so its Intent stays idle.
+    // Claimed (not unclaimed) to avoid the WanderController RNG stream
+    // that would otherwise pollute the canonical dump.
+    fh::sim::profile::PlayerProfile p2;
+    p2.physical = fh::sim::m0::defaultPhysical();
+    p2.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{2}, ClientId{22}, PersonId{22}, std::move(p2));
+
+    // Tick 1: dribble east so first-touch grabs the ball.
+    Intent dribble;
+    dribble.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    dribble.wants_dribble = true;
+    m->applyInput(ClientId{11}, dribble);
+    m->tick();
+
+    // Ticks 2-9: continue dribbling east.
+    for (int i = 0; i < 8; ++i) m->tick();
+
+    // Tick 10: fire the kick. wants_kick releases the ball and
+    // BallPhysics::applyImpulse launches it along kick_direction at
+    // MechanicsParams::pass_power (15 m/s default from migration 217).
+    Intent kick;
+    kick.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    kick.wants_kick        = true;
+    kick.kick_direction    =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    kick.kick_power_hint   = 0;   // 0 = server uses MechanicsParams::pass_power
+    m->applyInput(ClientId{11}, kick);
+    m->tick();
+
+    // Ticks 11-400: ball flies east, kKickAliveTicks=40 suppresses the
+    // M1 rest-band snap for the first 40 ticks, then friction decay +
+    // rest-snap wind the ball down to a stop somewhere east of pitch.
+    // Slot 2 stays at (+15, +5) — Intent still idle from last-input
+    // memory (never received an INPUT via applyInput).
+    for (int i = 0; i < 389; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== pass_east_slot1_to_slot2_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashPassEast400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update kExpectedHashPassEast400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(kExpectedHashPassEast400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashPassEast400);
+}
+
+// Slice 26.6: cross-arch determinism proof for the full pass-and-
+// receive path. See kExpectedHashPassReceive200 above.
+FH_TEST(pass_receive_first_touch_200_ticks_seed_42) {
+    fh::sim::scenario::SlotSpawn s1;
+    s1.slot     = SlotId{1};
+    s1.position = Vec3{Fixed64::fromFraction(-3, 10),
+                       Fixed64::zero(), Fixed64::zero()};
+    s1.heading  = Fixed64::zero();
+
+    fh::sim::scenario::SlotSpawn s2;
+    s2.slot     = SlotId{2};
+    // On-axis this time — slot 2 is the receiver, ball path passes
+    // right through it.
+    s2.position = Vec3{Fixed64::fromInt(15),
+                       Fixed64::zero(), Fixed64::zero()};
+    s2.heading  = fh::sim::math::FX_PI;  // west (walks toward pass)
+
+    BallSpawn ball{
+        Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+        Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()}
+    };
+
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<BallAndTwoSlotsScenario>(ball,
+        std::vector<fh::sim::scenario::SlotSpawn>{s1, s2});
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile p1;
+    p1.physical = fh::sim::m0::defaultPhysical();
+    p1.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{11}, PersonId{11}, std::move(p1));
+
+    fh::sim::profile::PlayerProfile p2;
+    p2.physical = fh::sim::m0::defaultPhysical();
+    p2.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{2}, ClientId{22}, PersonId{22}, std::move(p2));
+
+    // Slot 2 walks west toward the incoming pass and asserts
+    // wants_dribble so Rule 1 fires as soon as the ball is within
+    // kBallControlRadius=0.5 m.
+    Intent walk_west;
+    walk_west.desired_direction = Vec3{Fixed64::fromInt(-1),
+                                       Fixed64::zero(),
+                                       Fixed64::zero()};
+    walk_west.wants_dribble = true;
+    m->applyInput(ClientId{22}, walk_west);
+
+    // Slot 1 pickup + kick (same script as PassEast400).
+    Intent dribble;
+    dribble.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    dribble.wants_dribble = true;
+    m->applyInput(ClientId{11}, dribble);
+    m->tick();
+    for (int i = 0; i < 8; ++i) m->tick();
+
+    Intent kick;
+    kick.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    kick.wants_kick        = true;
+    kick.kick_direction    =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    kick.kick_power_hint   = 0;   // 0 = server uses MechanicsParams::pass_power
+    m->applyInput(ClientId{11}, kick);
+    m->tick();
+
+    // Ticks 11-200: pass flight + first-touch handoff around tick
+    // ~28-30 + slot 2 continues west with ball glued.
+    for (int i = 0; i < 189; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== pass_receive_first_touch_200_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashPassReceive200) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update kExpectedHashPassReceive200)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(kExpectedHashPassReceive200));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashPassReceive200);
 }
 
 FH_TEST_MAIN()
