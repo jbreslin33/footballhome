@@ -25,16 +25,26 @@ machine's CPU/GPU for LLM inference via an SSH reverse tunnel.
 ./install-linux.sh
 ```
 
-Both scripts are idempotent — safe to re-run to upgrade ollama or pull a
-different model. Override the default model with `--model=...`:
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File .\install-windows.ps1
+```
+
+All three scripts are idempotent — safe to re-run to upgrade ollama or
+pull a different model. Override the default model with `--model=...`
+(Mac/Linux) or `-Model` (Windows):
 
 ```bash
 ./install-mac.sh --model qwen2.5-coder:14b
 ```
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-windows.ps1 -Model qwen2.5-coder:14b
+```
 
 ## Persistent SSH tunnel (recommended)
 
-Add this to `~/.ssh/config` on this machine (edit `HostName`/`User`):
+Add this to `~/.ssh/config` on this machine (Windows path:
+`%USERPROFILE%\.ssh\config`) — edit `HostName`/`User`:
 
 ```
 Host fishtown
@@ -46,7 +56,8 @@ Host fishtown
 ```
 
 Now every `ssh fishtown` auto-forwards 11434 back to this machine. No
-flags to remember.
+flags to remember. Works identically from macOS Terminal, Linux shell,
+Windows PowerShell / Windows Terminal / cmd.
 
 ## Daily use
 
@@ -67,7 +78,11 @@ aider                     # reads .aider.conf.yml, talks to your ollama
 curl -s http://127.0.0.1:11434/api/tags
 ```
 - Empty models list → tunnel is up, no model pulled. `ollama pull ...` on client.
-- Connection refused → tunnel not established. On client: `brew services restart ollama` (Mac) or `sudo systemctl restart ollama` (Linux), then re-SSH.
+- Connection refused → tunnel not established. On client:
+  - Mac:      `brew services restart ollama`
+  - Linux:    `sudo systemctl restart ollama`
+  - Windows:  right-click ollama icon in system tray → Restart, or `Restart-Service Ollama` in an elevated PowerShell.
+  Then re-SSH.
 
 **Model too slow**
 - Lower parameter count: `qwen2.5-coder:7b` → `qwen2.5-coder:3b`
