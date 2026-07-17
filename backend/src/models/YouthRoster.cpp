@@ -14,8 +14,6 @@
 #include "PersonBilling.h"
 #include "PersonPayments.h"
 #include "YouthAgeGroups.h"
-#include "../services/LaProgramSync.h"
-#include "../services/LeagueAppsService.h"
 #include "../database/Database.h"
 
 using nlohmann::json;
@@ -202,7 +200,10 @@ json YouthRoster::shapeYouthPlayer(const json& rec, const std::string& club) {
     return out;
 }
 
-YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
+YouthRoster::Result YouthRoster::run(int seasonEndYear,
+                                     bool includeAll,
+                                     const std::vector<json>& boysRecs,
+                                     const std::vector<json>& girlsRecs) {
     Result out;
 
     auto bucketDefs = ageGroups_->loadFor(seasonEndYear);
@@ -216,26 +217,17 @@ YouthRoster::Result YouthRoster::run(int seasonEndYear, bool includeAll) {
         return out;
     }
 
-    // ── LA registrant snapshots (via LaProgramSync — LA is source of truth) ─
+    // ── LA snapshots supplied by caller ──────────────────────────────
     //
     // STRICT RULE (see .github/copilot-instructions.md "Membership Data
     // Flow" and /memories/repo/membership-source-of-truth.md): every
-    // request MUST call LaProgramSync::run(programId) for every LA
-    // program feeding the response.  That call fetches LA live, upserts
-    // persons/aliases/memberships, and closes any open membership row
-    // LA no longer returns.  NO direct fetchProgramRegistrations, NO
-    // cross-sub-program pickup filters.
-    std::vector<json> boysRecs, girlsRecs;
-    {
-        LaProgramSync sync;
-        auto boysSync = sync.run(boysProgramId_);
-        boysRecs = std::move(boysSync.recs);
-    }
-    {
-        LaProgramSync sync;
-        auto girlsSync = sync.run(girlsProgramId_);
-        girlsRecs = std::move(girlsSync.recs);
-    }
+    // request MUST have LaProgramSync::run(programId) called for every
+    // LA program feeding the response.  That responsibility now lives
+    // in the controller via laGet(static, {boysProgramId, girlsProgramId}),
+    // which fetches LA live, upserts persons/aliases/memberships, closes
+    // stale rows, and hands us the resulting recs.  This model reads
+    // the response payload from Postgres (which the pre-sync just
+    // refreshed) — no direct LA I/O here.
 
     // Sync new LA transactions into person_payments (see MensRoster.cpp
     // for rationale).  Non-fatal on failure.

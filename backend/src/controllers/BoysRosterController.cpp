@@ -76,9 +76,16 @@ BoysRosterController::BoysRosterController()
 BoysRosterController::~BoysRosterController() = default;
 
 void BoysRosterController::registerRoutes(Router& router, const std::string& prefix) {
-    router.get(prefix, [this](const Request& req) {
-        return this->handleGet(req);
-    });
+    // STRICT rule (§ Membership Data Flow): every LA-derived response
+    // MUST run LaProgramSync on every feeding program BEFORE the
+    // handler.  laGet(static) syncs boys + girls programs in parallel,
+    // hands the resulting recs to the handler, which forwards them to
+    // the model.  Model no longer touches LA directly.
+    laGet(router, prefix,
+          {model_->boysProgramId(), model_->girlsProgramId()},
+          [this](const Request& req, const LaSyncMap& sync) {
+              return this->handleGet(req, sync);
+          });
     router.post(prefix + "/assign", [this](const Request& req) {
         return this->handleAssign(req);
     });
@@ -90,7 +97,7 @@ void BoysRosterController::registerRoutes(Router& router, const std::string& pre
     });
 }
 
-Response BoysRosterController::handleGet(const Request& request) {
+Response BoysRosterController::handleGet(const Request& request, const LaSyncMap& sync) {
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -106,7 +113,15 @@ Response BoysRosterController::handleGet(const Request& request) {
             std::cerr << "[boys-roster] roster sweep failed: " << e.what() << std::endl;
         }
 
-        auto result = model_->run(includeAll, refreshLa);
+        // Recs already fetched + persons/aliases/memberships upserted
+        // by the framework's laGet wrapper.  Model just reads.
+        static const std::vector<nlohmann::json> kEmpty;
+        const auto boysIt  = sync.find(model_->boysProgramId());
+        const auto girlsIt = sync.find(model_->girlsProgramId());
+        const auto& boysRecs  = (boysIt  != sync.end()) ? boysIt->second.recs  : kEmpty;
+        const auto& girlsRecs = (girlsIt != sync.end()) ? girlsIt->second.recs : kEmpty;
+
+        auto result = model_->run(includeAll, refreshLa, boysRecs, girlsRecs);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";

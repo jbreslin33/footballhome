@@ -296,7 +296,30 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
         [this](const Request& r, const LaSyncMap& sync) {
             return handleUnjoinedMembers(r, sync);
         });
-    router.get (prefix + "/analytics",        [this](const Request& r){ return handleAnalytics       (r); });
+    // /analytics cross-references leads against Mens + Youth (boys +
+    // girls) rosters.  Both roster models now accept pre-synced recs
+    // (no internal LA fetch), so route through laGet(dynamic) with a
+    // resolver that returns exactly those three program IDs — womens
+    // and pickup are NOT included since analytics doesn't cross-ref
+    // them (see handleAnalytics doc).  The framework runs
+    // LaProgramSync on all three in parallel BEFORE dispatch.
+    laGet(router, prefix + "/analytics",
+        [](const Request&) {
+            // Instantiate on-demand: cheap (envInt lookups + unique_ptr
+            // ctors).  Keeps program-id knowledge inside the models
+            // where it belongs rather than duplicating env-var names
+            // here — matches the routing/model dependency invariant.
+            MensRoster  mr;
+            YouthRoster yr;
+            return std::vector<int>{
+                mr.mensProgramId(),
+                yr.boysProgramId(),
+                yr.girlsProgramId()
+            };
+        },
+        [this](const Request& r, const LaSyncMap& sync) {
+            return handleAnalytics(r, sync);
+        });
     // Public (no bearer) — landing form at /pickup posts here.  Must be
     // registered before the `:id` routes so the literal wins.
     router.post(prefix + "/guest-signup",     [this](const Request& r){ return handleGuestSignup     (r); });
@@ -960,13 +983,22 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
             }
         }
 
-        // 4. Boys / Girls — live LA fetch.  Adds latency to the page load
-        //    (two LA HTTP calls) but matches user requirement "checked on
-        //    every load".  On any LA failure we silently skip youth so the
-        //    Men/Women section still renders.
+        // 4. Boys / Girls — recs pre-synced by laGet(dynamic).  Adds
+        //    ~2 HTTP calls to the page load (fanned out with the other
+        //    programs in parallel) but matches user requirement
+        //    "checked on every load".  On any LA failure we silently
+        //    skip youth so the Men/Women section still renders.
         try {
             YouthRoster yr;
-            auto result = yr.run(YouthRoster::defaultSeasonEndYear(), /*includeAll=*/false);
+            static const std::vector<nlohmann::json> kEmpty;
+            const auto bIt = sync.find(yr.boysProgramId());
+            const auto gIt = sync.find(yr.girlsProgramId());
+            const auto& boysRecs  = (bIt != sync.end()) ? bIt->second.recs : kEmpty;
+            const auto& girlsRecs = (gIt != sync.end()) ? gIt->second.recs : kEmpty;
+            auto result = yr.run(YouthRoster::defaultSeasonEndYear(),
+                                 /*includeAll=*/false,
+                                 boysRecs,
+                                 girlsRecs);
             if (result.error.empty() && result.body.contains("buckets")) {
                 auto handleYouthRow = [&](const nlohmann::json& row,
                                           const std::string& bucketLabel) {
@@ -1148,7 +1180,7 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
 // This endpoint is intended for the Club Admin → Leads Analytics screen
 // and is NOT called on every load; it's opened deliberately.
 // ────────────────────────────────────────────────────────────────────────────
-Response LeadsController::handleAnalytics(const Request& request) {
+Response LeadsController::handleAnalytics(const Request& request, const LaSyncMap& sync) {
     if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     using nlohmann::json;
@@ -1199,15 +1231,18 @@ Response LeadsController::handleAnalytics(const Request& request) {
             tryField("parentPhone");
         };
 
-        // Mens (live LA fetch)
+        // Mens (recs pre-synced by laGet(dynamic))
         try {
             MensRoster mr;
-            auto res = mr.run(/*includeAll=*/false, /*refreshLa=*/true);
+            static const std::vector<nlohmann::json> kEmpty;
+            const auto it = sync.find(mr.mensProgramId());
+            const auto& mensRecs = (it != sync.end()) ? it->second.recs : kEmpty;
+            auto res = mr.run(/*includeAll=*/false, /*refreshLa=*/true, mensRecs);
             if (res.error.empty() && res.body.contains("buckets")) {
-                for (auto it = res.body["buckets"].begin();
-                     it != res.body["buckets"].end(); ++it) {
-                    if (!it.value().is_array()) continue;
-                    for (const auto& row : it.value()) ingestRow(row);
+                for (auto it2 = res.body["buckets"].begin();
+                     it2 != res.body["buckets"].end(); ++it2) {
+                    if (!it2.value().is_array()) continue;
+                    for (const auto& row : it2.value()) ingestRow(row);
                 }
                 if (res.body.contains("unassigned") && res.body["unassigned"].is_array()) {
                     for (const auto& row : res.body["unassigned"]) ingestRow(row);
@@ -1220,15 +1255,23 @@ Response LeadsController::handleAnalytics(const Request& request) {
             std::cerr << "analytics: mens LA threw: " << e.what() << std::endl;
         }
 
-        // Youth (live LA fetch)
+        // Youth (recs pre-synced by laGet(dynamic))
         try {
             YouthRoster yr;
-            auto res = yr.run(YouthRoster::defaultSeasonEndYear(), /*includeAll=*/false);
+            static const std::vector<nlohmann::json> kEmpty;
+            const auto bIt = sync.find(yr.boysProgramId());
+            const auto gIt = sync.find(yr.girlsProgramId());
+            const auto& boysRecs  = (bIt != sync.end()) ? bIt->second.recs : kEmpty;
+            const auto& girlsRecs = (gIt != sync.end()) ? gIt->second.recs : kEmpty;
+            auto res = yr.run(YouthRoster::defaultSeasonEndYear(),
+                              /*includeAll=*/false,
+                              boysRecs,
+                              girlsRecs);
             if (res.error.empty() && res.body.contains("buckets")) {
-                for (auto it = res.body["buckets"].begin();
-                     it != res.body["buckets"].end(); ++it) {
-                    if (!it.value().is_array()) continue;
-                    for (const auto& row : it.value()) ingestRow(row);
+                for (auto it2 = res.body["buckets"].begin();
+                     it2 != res.body["buckets"].end(); ++it2) {
+                    if (!it2.value().is_array()) continue;
+                    for (const auto& row : it2.value()) ingestRow(row);
                 }
                 if (res.body.contains("unbucketed") && res.body["unbucketed"].is_array()) {
                     for (const auto& row : res.body["unbucketed"]) ingestRow(row);

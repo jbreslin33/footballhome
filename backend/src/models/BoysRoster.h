@@ -1,6 +1,5 @@
 #pragma once
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 #include "../third_party/json.hpp"
@@ -41,9 +40,26 @@ public:
     BoysRoster();
     ~BoysRoster();
 
-    // refreshLa=true forces a live LeagueApps fetch; otherwise the cached
-    // registrant snapshot is reused (initial load fetches unconditionally).
-    Result run(bool includeAll, bool refreshLa);
+    // Run with pre-synced LA registration records.  The controller
+    // (via laGet(static)) is responsible for calling LaProgramSync::run
+    // on `boysProgramId_` and `girlsProgramId_` BEFORE dispatching, and
+    // passing the resulting recs vectors in.  This model no longer
+    // touches LeagueApps directly — reads exclusively from Postgres
+    // (which the pre-sync just refreshed).
+    //
+    // `refreshLa` gates payment `syncFromLa()` (kept as a knob so
+    // background jobs can skip it) — LA membership sync itself is
+    // ALWAYS done by the caller regardless.
+    Result run(bool includeAll,
+               bool refreshLa,
+               const std::vector<nlohmann::json>& boysRecs,
+               const std::vector<nlohmann::json>& girlsRecs);
+
+    // Public accessors so controllers registering laGet(static) know
+    // exactly which LA programs to sync — keeps the routing table
+    // and the model's declared dependencies in one place.
+    int boysProgramId() const { return boysProgramId_; }
+    int girlsProgramId() const { return girlsProgramId_; }
 
 private:
     std::unique_ptr<MensTeamColumns>     columns_;      // domain="boys"
@@ -51,14 +67,6 @@ private:
     std::unique_ptr<PersonPayments>      payments_;
     int boysProgramId_;
     int girlsProgramId_;
-
-    // In-memory registrant snapshots (boys + girls program), guarded by
-    // cacheMutex_.  See MensRoster::run for the rationale — a transient
-    // LA outage shouldn't wedge the dashboard if we already have data.
-    std::mutex                  cacheMutex_;
-    std::vector<nlohmann::json> cachedBoys_;
-    std::vector<nlohmann::json> cachedGirls_;
-    bool                        cacheValid_ = false;
 
     static int envInt(const char* name, int fallback);
     static int defaultSeasonEndYear();

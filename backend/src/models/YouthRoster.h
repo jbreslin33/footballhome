@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <vector>
 #include "../third_party/json.hpp"
 
 class PersonBilling;
@@ -42,7 +43,26 @@ public:
     YouthRoster();
     ~YouthRoster();
 
-    Result run(int seasonEndYear, bool includeAll);
+    // Run with pre-synced LA registration records.  The controller
+    // (via laGet(static)) is responsible for calling LaProgramSync::run
+    // on `boysProgramId_` and `girlsProgramId_` BEFORE dispatching to
+    // this method, and passing the resulting recs vectors in.  This
+    // model no longer touches LeagueApps directly — reads exclusively
+    // from Postgres (which the pre-sync has just refreshed) and shapes
+    // the response from the passed-in recs.
+    //
+    // See .github/copilot-instructions.md "Membership Data Flow" and
+    // Controller::laGet() docs.
+    Result run(int seasonEndYear,
+               bool includeAll,
+               const std::vector<nlohmann::json>& boysRecs,
+               const std::vector<nlohmann::json>& girlsRecs);
+
+    // Public accessors so controllers registering laGet(static) know
+    // exactly which LA programs to sync — keeps the routing table
+    // and the model's declared dependencies in one place.
+    int boysProgramId() const { return boysProgramId_; }
+    int girlsProgramId() const { return girlsProgramId_; }
 
     static int defaultSeasonEndYear();
 

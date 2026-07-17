@@ -129,9 +129,15 @@ MensRosterController::MensRosterController()
 MensRosterController::~MensRosterController() = default;
 
 void MensRosterController::registerRoutes(Router& router, const std::string& prefix) {
-    router.get(prefix, [this](const Request& req) {
-        return this->handleGet(req);
-    });
+    // STRICT rule (§ Membership Data Flow): every LA-derived response
+    // MUST run LaProgramSync on every feeding program BEFORE the
+    // handler.  laGet(static) syncs the mens program, hands the
+    // resulting recs to the handler, which forwards them to the model.
+    laGet(router, prefix,
+          {model_->mensProgramId()},
+          [this](const Request& req, const LaSyncMap& sync) {
+              return this->handleGet(req, sync);
+          });
     router.post(prefix + "/assign", [this](const Request& req) {
         return this->handleAssign(req);
     });
@@ -164,7 +170,7 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     });
 }
 
-Response MensRosterController::handleGet(const Request& request) {
+Response MensRosterController::handleGet(const Request& request, const LaSyncMap& sync) {
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -185,7 +191,13 @@ Response MensRosterController::handleGet(const Request& request) {
             std::cerr << "[mens-roster] roster sweep failed: " << e.what() << std::endl;
         }
 
-        auto result = model_->run(includeAll, refreshLa);
+        // Recs already fetched + persons/aliases/memberships upserted
+        // by the framework's laGet wrapper.  Model just reads.
+        static const std::vector<nlohmann::json> kEmpty;
+        const auto it = sync.find(model_->mensProgramId());
+        const auto& recs = (it != sync.end()) ? it->second.recs : kEmpty;
+
+        auto result = model_->run(includeAll, refreshLa, recs);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";

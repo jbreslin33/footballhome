@@ -64,7 +64,14 @@ private:
     // Postgres — no LA fetch inside.  The LaSyncMap param is unused
     // (handler doesn't need per-program metadata); marked (void).
     Response handleUnjoinedMembers  (const Request& request, const LaSyncMap& sync);
-    Response handleAnalytics        (const Request& request);
+    // /analytics also depends on LA membership state (via MensRoster
+    // + YouthRoster::run, which now accept pre-synced recs).  Routed
+    // through laGet(dynamic) — resolver returns {mens, boys, girls}
+    // program IDs; framework runs LaProgramSync on each in parallel
+    // BEFORE this handler; the handler forwards the recs to the model
+    // runs.  Womens/pickup programs are NOT included: analytics only
+    // cross-references leads against the mens + youth rosters.
+    Response handleAnalytics        (const Request& request, const LaSyncMap& sync);
     Response handleVcard            (const Request& request);
     Response handleMarkConverted    (const Request& request);
     Response handleUnmarkConverted  (const Request& request);

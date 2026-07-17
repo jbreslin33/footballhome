@@ -26,7 +26,7 @@ public:
 private:
     std::unique_ptr<YouthRoster> model_;
 
-    Response handleGet(const Request& request);
+    Response handleGet(const Request& request, const LaSyncMap& sync);
 
     // Bearer presence check (no signature verification).
 };

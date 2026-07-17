@@ -31,7 +31,7 @@ private:
     std::unique_ptr<MensTeamColumns>      columns_;
     std::unique_ptr<MensTeamAssignments>  assignments_;
 
-    Response handleGet(const Request& request);
+    Response handleGet(const Request& request, const LaSyncMap& sync);
     Response handleAssign(const Request& request);
     Response handleRosterStatus(const Request& request);
     Response handleReorder(const Request& request);

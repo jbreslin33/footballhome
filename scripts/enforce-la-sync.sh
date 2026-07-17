@@ -49,11 +49,27 @@
 #                     non-synced caller, you break the rule and this
 #                     allowlist is a lie — remove the entry and migrate
 #                     the caller.
+#   MensRoster, BoysRoster, YouthRoster
+#                   — as of the roster laGet(static) migration these
+#                     models accept pre-synced recs as a parameter and
+#                     no longer call LaProgramSync themselves.  All
+#                     three of their public run() entry points are only
+#                     invoked from:
+#                       * MensRosterController::handleGet
+#                         (laGet(static, {mens}))
+#                       * BoysRosterController::handleGet
+#                         (laGet(static, {boys, girls}))
+#                       * YouthRosterController::handleGet
+#                         (laGet(static, {boys, girls}))
+#                       * LeadsController::handleAnalytics
+#                         (laGet(dynamic, {mens, boys, girls}))
+#                     So every caller pre-syncs.  Allowlisted for the
+#                     same reason as Team/PersonPayments.
 #
-# NOT allowlisted (they call LaProgramSync::run directly and therefore
-# pass the token grep on their own — the lint verifies this every run):
-#   MensRoster, BoysRoster, YouthRoster.
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments)|backend/src/core/Controller)'
+# NOT allowlisted (they must contain a valid entry-point token in the
+# translation unit — the lint verifies this every run):
+#   (none currently)
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster)|backend/src/core/Controller)'
 
 set -euo pipefail
 

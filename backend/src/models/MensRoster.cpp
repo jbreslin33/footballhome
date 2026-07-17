@@ -20,8 +20,6 @@
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
 #include "../database/Database.h"
-#include "../services/LaProgramSync.h"
-#include "../services/LeagueAppsService.h"
 
 using nlohmann::json;
 
@@ -241,7 +239,9 @@ json MensRoster::shapeMensPlayer(const json& rec) {
     return out;
 }
 
-MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
+MensRoster::Result MensRoster::run(bool includeAll,
+                                   bool refreshLa,
+                                   const std::vector<nlohmann::json>& recs) {
     Result out;
 
     auto cols          = columns_->loadAll();
@@ -254,37 +254,32 @@ MensRoster::Result MensRoster::run(bool includeAll, bool refreshLa) {
         return out;
     }
 
-    // ── LA registrant snapshot (via LaProgramSync — LA is source of truth) ─
+    // ── LA snapshot supplied by caller ───────────────────────────────
     //
     // STRICT RULE (see .github/copilot-instructions.md "Membership Data
     // Flow" and /memories/repo/membership-source-of-truth.md):
-    // every request MUST call LaProgramSync::run(programId) so that
+    // every request MUST have LaProgramSync::run(programId) called so
     //   1) LA is fetched live,
     //   2) persons + aliases + person_la_memberships are upserted, and
     //   3) any open membership row for a person LA no longer returns is
     //      closed (ended_at = now()).
-    // NO cached snapshot, NO direct fetchProgramRegistrations shortcut,
-    // NO cross-sub-program pickup exclusion (2026-07-14: removed after
-    // it silently dropped active members like Mars Milligan who were
-    // ALSO enrolled in the pickup sub-program).
-    //
-    // A transport failure surfaces as a 502 to the caller (via the
-    // controller's catch) — better a loud error than silently stale data.
-    (void)refreshLa;  // no-op: LaProgramSync always runs regardless
-    std::vector<nlohmann::json> recs;
-    {
-        LaProgramSync sync;
-        auto syncResult = sync.run(mensProgramId_);
-        recs = std::move(syncResult.recs);
-    }
+    // That responsibility now lives in the controller via
+    // laGet(static, {mensProgramId}) — the framework runs the sync
+    // before dispatching and hands us `recs`.  NO cached snapshot, NO
+    // direct fetchProgramRegistrations, NO cross-sub-program pickup
+    // exclusion (2026-07-14: removed after it silently dropped active
+    // members).
 
     // Payment sync piggy-backs on the load so the cards reflect the
     // freshest transactions.  Non-fatal on failure (cards still render).
-    try {
-        payments_->syncFromLa();
-    } catch (const std::exception& e) {
-        std::cerr << "[MensRoster] payment sync failed: "
-                  << e.what() << std::endl;
+    // Gated by refreshLa so background callers can skip it.
+    if (refreshLa) {
+        try {
+            payments_->syncFromLa();
+        } catch (const std::exception& e) {
+            std::cerr << "[MensRoster] payment sync failed: "
+                      << e.what() << std::endl;
+        }
     }
     auto lastPaidByReg = payments_->loadLastPositiveByProgramByRegistration(mensProgramId_);
     auto recentByReg   = payments_->loadRecentByProgramByRegistration(mensProgramId_, 3);
