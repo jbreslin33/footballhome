@@ -23,6 +23,7 @@
 #include "match/Match.hpp"
 #include "match/MatchClock.hpp"
 #include "match/Snapshot.hpp"
+#include "physics/BasicPhysics.hpp"
 #include "physics/StubPhysics.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/BallOnPitchWithDefenderScenario.hpp"
@@ -57,6 +58,7 @@ using fh::sim::match::RealtimeClock;
 using fh::sim::match::Snapshot;
 using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
+using fh::sim::physics::BasicPhysics;
 using fh::sim::physics::StubPhysics;
 using fh::sim::scenario::BallOnPitchScenario;
 using fh::sim::scenario::BallSpawn;
@@ -295,6 +297,92 @@ constexpr std::uint64_t kExpectedHashPassReceive200 = 0xdaa7989a56a58f5fULL;
 //   * Canonical snapshot dump hashed for cross-arch stability.
 constexpr std::uint64_t kExpectedHashGoalFromKickEast200 =
     0x18c0949f8ab5f4aaULL;
+
+// Slice 27.5: cross-arch determinism proof for a head-on player-vs-
+// player collision under BasicPhysics (ADR §22.24). Two claimed slots
+// spawn on the centre line 10 m apart (SlotId{1} at -5, SlotId{2} at
+// +5) and BOTH assert wants_sprint with opposing desired_direction
+// vectors so they run straight at each other at max sprint speed
+// (default profile: max_sprint_speed = 7.5 m/s). Closing speed 15
+// m/s over 10 m → first contact tick when 2*sprint*dt*n reaches the
+// sum-of-radii gap (r_sum = 2 * kPlayerContactRadius = 0.8 m), i.e.
+// around tick 13 (10 - 0.8) / (2 * 7.5 * 0.05) = 12.27.
+//
+// Post-contact BasicPhysics::resolveCollisions MTV-clamps the pair
+// at exactly r_sum along the +x normal and zaps the closing +/-x
+// component of each velocity to (approximately) zero via the
+// tangential-slide branch. Both slots come to rest touching along
+// the centre line and stay parked for the remainder of the 200 ticks
+// (HumanController keeps re-asserting sprint intent every tick but
+// the MTV re-fires and re-zaps every tick — net motion zero).
+//
+// Ball is spawned far off-axis at (0, +30, 0) at rest. The Slice
+// 27.2 amendment guarantees ball is ALWAYS excluded from the
+// collision pass regardless of ownership; the ball being present in
+// the world at all is a byproduct of BallAndTwoSlotsScenario always
+// having one, but its position / rest-state is invariant so it just
+// contributes stable bytes to the canonical dump. Neither slot ever
+// gets within kBallControlRadius = 0.5 m of the ball, so ownership
+// never transfers.
+//
+// Any drift in BasicPhysics::resolveCollisions (MTV normal, mass
+// split, velocity zap sign convention), in HumanController's sprint
+// speed cap wiring, in the ascending-EntityId pair-iteration order,
+// or in the ball-always-excluded rule, trips this hash.
+constexpr std::uint64_t kExpectedHashCollideHeadOn200 = 0xda52a00e2a8c4b49ULL;
+
+// Slice 27.5: cross-arch determinism proof for a claimed dribbler
+// carrying an owned ball PAST a stationary obstacle under
+// BasicPhysics (ADR §22.24 + Amendment 2026-07-17: ball is ALWAYS
+// excluded from the collision pass, so no MTV-clamp is ever applied
+// to the ball itself). Setup: SlotId{1} (dribbler) spawns at
+// (-1, 0, 0), ball at (-0.7, 0, 0) at rest (0.3 m east of the
+// dribbler, well inside kBallControlRadius = 0.5 m so Rule 1 first-
+// touch fires on tick 1). SlotId{2} (obstacle) spawns at
+// (+3, +0.15, 0) — nearly on the dribbler's east flight path but
+// offset 0.15 m north so the MTV normal at contact has a non-zero
+// y component and the dribbler slides tangentially past instead of
+// stopping dead. SlotId{2} is claimed (so it runs HumanController,
+// not the RNG-driven Wander controller) but never fed input — its
+// default zero-Intent keeps it stationary at spawn.
+//
+// Ticks 1..400: dribbler asserts wants_dribble + wants_sprint +
+// desired_direction=(+1,0,0). Owner + ball ride east as one
+// kinematic unit (ball glued via BallControl to
+// owner.position + kBallOwnerLeadDistance * heading). Around tick
+// ~18-22 the dribbler's contact circle (radius 0.4) overlaps the
+// obstacle's (also 0.4) at combined range 0.8 m; MTV clamps the
+// dribbler outward along the (∂x, ∂y) normal (dominant +x, small
+// -y since the dribbler was slightly BELOW the obstacle's y=+0.15
+// centre) and the tangential-slide branch zaps only the closing
+// normal component. The dribbler emerges south of the obstacle and
+// keeps sprinting east; ball tracks the owner's south-of-obstacle
+// trajectory.
+//
+// **Ownership transfers to SlotId{2} during the passthrough.**
+// The critical observation for Slice 27.5: even though the ball is
+// excluded from the COLLISION pass (Amendment 2026-07-17), the
+// HumanController on the stationary obstacle auto-augments its
+// zero-Intent with wants_dribble whenever the ball is within
+// kBallAutoDribbleRadius = 1.5 m — and as the dribbler slides past
+// with the ball glued 0.4 m ahead, the ball passes close enough to
+// slot 2 (whose x-axis position stays ~3.0 m while the ball's y-
+// track is only ~0.35 m away from slot 2's y=+0.15) that Rule 1's
+// distance check fires and transfers ownership. Final snapshot
+// shows ball_owner = 2. **That transfer is a legitimate
+// AI-controller behaviour (not a physics bug)** — the ball itself
+// was never MTV-clamped away from ANY owner during the collision
+// pass, which is what the Amendment guarantees; ownership changed
+// hands through the Rule-1 first-touch pathway, not through
+// physics. Locking this exact outcome in the canonical hash catches
+// any drift in: (a) the ball-always-excluded rule, (b) BallControl
+// owner-glue math, (c) BasicPhysics tangential-slide sign
+// convention, (d) HumanController auto-dribble augment threshold /
+// wiring, (e) Rule 1 first-touch distance check with an existing
+// owner, (f) the ascending-EntityId pair-iteration order in
+// resolveCollisions.
+constexpr std::uint64_t kExpectedHashCollisionBallPassthrough400 =
+    0x77ca6ee4e965ccedULL;
 
 } // namespace
 
@@ -906,6 +994,151 @@ FH_TEST(goal_from_kick_east_200_ticks_seed_42) {
                 kExpectedHashGoalFromKickEast200));
     }
     FH_EXPECT_EQ(h, kExpectedHashGoalFromKickEast200);
+}
+
+// Slice 27.5: head-on player-vs-player collision under BasicPhysics.
+// See kExpectedHashCollideHeadOn200 above for the setup rationale.
+FH_TEST(two_humans_collide_head_on_200_ticks_seed_42) {
+    fh::sim::scenario::SlotSpawn s1;
+    s1.slot     = SlotId{1};
+    s1.position = Vec3{Fixed64::fromInt(-5), Fixed64::zero(), Fixed64::zero()};
+    s1.heading  = Fixed64::zero();
+
+    fh::sim::scenario::SlotSpawn s2;
+    s2.slot     = SlotId{2};
+    s2.position = Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()};
+    s2.heading  = Fixed64::zero();
+
+    // Ball parked far off-axis; ball is ALWAYS excluded from the
+    // collision pass (Slice 27.2 amendment) so its presence only
+    // contributes stable bytes to the canonical dump.
+    BallSpawn ball{
+        Vec3{Fixed64::zero(), Fixed64::fromInt(30), Fixed64::zero()},
+        Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()}
+    };
+
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<BasicPhysics>();
+    cfg.scenario = std::make_unique<BallAndTwoSlotsScenario>(ball,
+        std::vector<fh::sim::scenario::SlotSpawn>{s1, s2});
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile p1;
+    p1.physical = fh::sim::m0::defaultPhysical();
+    p1.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{11}, PersonId{11}, std::move(p1));
+
+    fh::sim::profile::PlayerProfile p2;
+    p2.physical = fh::sim::m0::defaultPhysical();
+    p2.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{2}, ClientId{22}, PersonId{22}, std::move(p2));
+
+    Intent i1;
+    i1.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    i1.wants_sprint = true;
+    m->applyInput(ClientId{11}, i1);
+
+    Intent i2;
+    i2.desired_direction =
+        Vec3{Fixed64::fromInt(-1), Fixed64::zero(), Fixed64::zero()};
+    i2.wants_sprint = true;
+    m->applyInput(ClientId{22}, i2);
+
+    for (int i = 0; i < 200; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== two_humans_collide_head_on_200_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashCollideHeadOn200) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashCollideHeadOn200)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(kExpectedHashCollideHeadOn200));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashCollideHeadOn200);
+}
+
+// Slice 27.5: owned-ball passthrough of a stationary obstacle under
+// BasicPhysics. See kExpectedHashCollisionBallPassthrough400 above
+// for the setup rationale.
+FH_TEST(collision_ball_passthrough_owned_400_ticks_seed_42) {
+    fh::sim::scenario::SlotSpawn s1;
+    s1.slot     = SlotId{1};
+    s1.position = Vec3{Fixed64::fromInt(-1), Fixed64::zero(), Fixed64::zero()};
+    s1.heading  = Fixed64::zero();
+
+    fh::sim::scenario::SlotSpawn s2;
+    s2.slot     = SlotId{2};
+    s2.position = Vec3{Fixed64::fromInt(3),
+                       Fixed64::fromFraction(15, 100),   // +0.15 m north
+                       Fixed64::zero()};
+    s2.heading  = Fixed64::zero();
+
+    // Ball spawns 0.3 m east of dribbler — inside kBallControlRadius
+    // = 0.5 m so Rule 1 first-touch fires on tick 1.
+    BallSpawn ball{
+        Vec3{Fixed64::fromFraction(-7, 10),
+             Fixed64::zero(), Fixed64::zero()},
+        Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()}
+    };
+
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<BasicPhysics>();
+    cfg.scenario = std::make_unique<BallAndTwoSlotsScenario>(ball,
+        std::vector<fh::sim::scenario::SlotSpawn>{s1, s2});
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile p1;
+    p1.physical = fh::sim::m0::defaultPhysical();
+    p1.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{11}, PersonId{11}, std::move(p1));
+
+    // Slot 2 is claimed (avoids the WanderController RNG stream) but
+    // never fed input — its default zero-Intent keeps it stationary
+    // at spawn for the entire run. Acts as a passive obstacle for
+    // the dribbler to slide past.
+    fh::sim::profile::PlayerProfile p2;
+    p2.physical = fh::sim::m0::defaultPhysical();
+    p2.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{2}, ClientId{22}, PersonId{22}, std::move(p2));
+
+    Intent i1;
+    i1.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    i1.wants_sprint  = true;
+    i1.wants_dribble = true;
+    m->applyInput(ClientId{11}, i1);
+
+    for (int i = 0; i < 400; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== collision_ball_passthrough_owned_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashCollisionBallPassthrough400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashCollisionBallPassthrough400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashCollisionBallPassthrough400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashCollisionBallPassthrough400);
 }
 
 FH_TEST_MAIN()
