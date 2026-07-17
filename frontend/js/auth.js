@@ -146,13 +146,26 @@ class Auth {
     }
 
     // ── View-as URL injection ───────────────────────────────────
-    // When impersonating, append `?asPersonId=<id>` to any /api/my/*
-    // path so the backend renders as that person.  Scoped strictly to
-    // the /api/my/* prefix — no other endpoint honors the override
-    // and injecting it elsewhere would be a footgun (e.g. sending it
-    // to /api/admin/* is harmless but pollutes server logs).
+    // When impersonating, append `?asPersonId=<id>` to the READ paths
+    // that honour it server-side.  Writes NEVER get the override — an
+    // admin viewing as a player must not accidentally RSVP as them
+    // (see MyController::applyImpersonation +
+    // CalendarController::applyImpersonation).
+    //
+    // Honouring endpoints (all read-only):
+    //   /api/my/*                           — MyController
+    //   /api/calendar/upcoming              — CalendarController
+    //   /api/calendar/my-standing (GET only)— CalendarController
     let effectivePath = path;
-    if (this.viewAsPersonId && path.startsWith('/api/my/')) {
+    const method = (options.method || 'GET').toUpperCase();
+    const wantsImpersonation = this.viewAsPersonId && (
+      path.startsWith('/api/my/') ||
+      (method === 'GET' && (
+        path.startsWith('/api/calendar/upcoming') ||
+        path.startsWith('/api/calendar/my-standing')
+      ))
+    );
+    if (wantsImpersonation) {
       const sep = path.includes('?') ? '&' : '?';
       effectivePath = path + sep + 'asPersonId=' + encodeURIComponent(this.viewAsPersonId);
     }

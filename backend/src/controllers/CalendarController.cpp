@@ -96,6 +96,53 @@ long long resolveOptionalPersonId(const Request& request) {
     return resolved->personId;
 }
 
+// ─── View-as / impersonation ────────────────────────────────────────
+//
+// Mirrors MyController::applyImpersonation.  Read endpoints (upcoming,
+// my-standing) let an admin pass `?asPersonId=N` to render as person
+// N.  Writes deliberately do NOT — an admin viewing as a player must
+// not be able to accidentally RSVP as that player.
+//
+// Returns std::nullopt on success (with *effective updated).  Returns
+// a populated Response (403 / 404 / 500) on any failure the caller
+// must surface unchanged.
+std::optional<Response> applyImpersonation(const Request& request,
+                                            long long authPersonId,
+                                            long long* effectivePersonId) {
+    *effectivePersonId = authPersonId;
+    const std::string q = request.getQueryParam("asPersonId");
+    if (q.empty()) return std::nullopt;
+    long long target = 0;
+    try { target = std::stoll(q); } catch (...) { target = 0; }
+    if (target <= 0 || target == authPersonId) return std::nullopt;
+
+    auto* db = Database::getInstance();
+    try {
+        auto isAdmin = db->query(
+            "SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+            " WHERE u.person_id = $1::int LIMIT 1",
+            {std::to_string(authPersonId)});
+        if (isAdmin.empty()) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                              "only admins may use view-as");
+        }
+        auto exists = db->query(
+            "SELECT 1 FROM persons WHERE id = $1::int LIMIT 1",
+            {std::to_string(target)});
+        if (exists.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND,
+                              "view-as target person not found");
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[CalendarController::applyImpersonation] "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                          "view-as check failed");
+    }
+    *effectivePersonId = target;
+    return std::nullopt;
+}
+
 // Write endpoints (POST /api/calendar/rsvp) MUST reject anonymous
 // callers with a 401 — different behaviour from the read path.
 struct SessionGate {
@@ -187,7 +234,16 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
     // Optional session — enriches each event with the caller's RSVP.
     // Anonymous callers see `my_rsvp: null` on every event; no auth
     // error is raised here (write endpoint enforces auth).
-    const long long personId = resolveOptionalPersonId(request);
+    long long personId = resolveOptionalPersonId(request);
+
+    // Admin view-as: `?asPersonId=N` swaps the effective person for
+    // read purposes so an admin sees exactly what N sees.  Ignored
+    // for anonymous callers (personId == 0).
+    if (personId > 0) {
+        if (auto err = applyImpersonation(request, personId, &personId)) {
+            return *err;
+        }
+    }
 
     try {
         auto* db = Database::getInstance();
@@ -570,7 +626,13 @@ Response CalendarController::handlePostRsvp(const Request& request) {
 Response CalendarController::handleGetMyStanding(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.personId;
+    long long personId = gate.personId;
+
+    // Admin view-as: swap the effective person for read purposes so
+    // the standing-prefs grid shows the impersonated player's rows.
+    if (auto err = applyImpersonation(request, personId, &personId)) {
+        return *err;
+    }
 
     try {
         auto* db = Database::getInstance();

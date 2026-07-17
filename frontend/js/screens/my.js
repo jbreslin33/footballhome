@@ -32,13 +32,14 @@ class MyScreen extends Screen {
     this.standingSaving = new Set();     // "kind::category::response" tokens in-flight
     this.dataError      = null;
 
-    // Chat state (newest-first section).
-    this.chatMessages   = [];            // full history, still stored oldest-first
+    // Chat state (compressed: latest message on top, expandable).
+    this.chatMessages   = [];            // full history, stored oldest-first
     this.chatViewerId   = 0;             // server-echoed users.id — decides "mine"
     this.chatLoaded     = false;
     this.chatSending    = false;
     this.chatError      = null;
     this.chatPollTimer  = null;
+    this.chatExpanded   = false;         // true → show full history; false → latest only
   }
 
   // ---------- lifecycle ----------
@@ -53,10 +54,10 @@ class MyScreen extends Screen {
         <p class="subtitle" id="my-subtitle">Loading…</p>
       </div>
       <div style="padding: 0 var(--space-4);">
-        <section id="my-events" style="margin-bottom: var(--space-4);">
+        <section id="my-chat" style="margin-bottom: var(--space-4);"></section>
+        <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
-        <section id="my-chat"></section>
       </div>
     `;
     this.element = el;
@@ -96,9 +97,30 @@ class MyScreen extends Screen {
     }
   }
 
-  // Thin fetch wrapper — sends both JWT (Authorization) and cookie
-  // (credentials: include) so all backend session strategies work.
+  // Thin fetch wrapper.  READs go through auth.fetch so the impersonation
+  // (`?asPersonId=`) URL rewrite in auth.js flows to /api/calendar/*
+  // endpoints — otherwise a "view-as" admin would see their own person's
+  // events (usually zero) instead of the impersonated player's roster.
+  // WRITES bypass that path and always execute as the actual caller,
+  // matching applyImpersonation's write-refusal contract.
   async _fetch(url, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    // Reads: use auth.fetch so impersonation URL rewrite applies.
+    if (method === 'GET' && this.auth && typeof this.auth.fetch === 'function') {
+      const res = await this.auth.fetch(url, options);
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = await res.json();
+          if (body && body.error)   msg = body.error;
+          if (body && body.message) msg = body.message;
+        } catch {}
+        throw new Error(msg);
+      }
+      return res.json();
+    }
+    // Writes: raw fetch + credentials so cookie + JWT both flow, but no
+    // impersonation rewrite (see auth.js comment).
     const headers = { ...(options.headers || {}) };
     if (this.auth && this.auth.token) {
       headers['Authorization'] = `Bearer ${this.auth.token}`;
@@ -151,6 +173,12 @@ class MyScreen extends Screen {
       }
       if (e.target.closest('#chat-send-btn')) {
         this._sendChatMessage();
+        return;
+      }
+      // Compressed → expanded chat toggle.
+      if (e.target.closest('#chat-expand-toggle')) {
+        this.chatExpanded = !this.chatExpanded;
+        this._renderChatMessages();
         return;
       }
     });
@@ -403,13 +431,12 @@ class MyScreen extends Screen {
     }
   }
 
-  // ────── Chat (newest at top) ──────────────────────────────────────
+  // ────── Chat (latest message on top, expandable) ──────────────────
 
   _renderChatShell() {
     const box = this.find('#my-chat');
     if (!box) return;
     box.innerHTML = `
-      <h2 style="margin: var(--space-4) 0 var(--space-3); font-size:1.1rem;">Chat</h2>
       <div style="background: rgba(15,23,42,0.55); border-radius:10px;
                   border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
         <div style="display:flex; gap:8px; align-items:flex-end;
@@ -430,8 +457,7 @@ class MyScreen extends Screen {
             ➤
           </button>
         </div>
-        <div id="chat-list"
-             style="padding: 8px 10px 12px; max-height: 65vh; overflow-y:auto;">
+        <div id="chat-list" style="padding: 8px 10px 10px;">
           <div class="loading-state"><div class="spinner"></div><p>Loading chat…</p></div>
         </div>
       </div>
@@ -448,19 +474,50 @@ class MyScreen extends Screen {
     }
     if (!this.chatMessages || !this.chatMessages.length) {
       box.innerHTML = `
-        <div style="opacity:0.6; padding: var(--space-4); text-align:center;">
-          <div style="font-size:2rem; margin-bottom:8px;">💬</div>
-          <div>No messages yet — be the first to say hi.</div>
+        <div style="opacity:0.6; padding: var(--space-3); text-align:center;">
+          <div style="font-size:1.2rem; margin-bottom:4px;">💬</div>
+          <div style="font-size:0.9rem;">No messages yet — be the first to say hi.</div>
         </div>`;
       return;
     }
 
-    // Newest at top: reverse a shallow copy so the underlying array
-    // (used by since_id polling logic) stays oldest→newest.
-    const rows = this.chatMessages.slice().reverse()
-      .map(m => this._renderChatRow(m))
-      .join('');
-    box.innerHTML = rows;
+    // Chat is stored oldest→newest; newest-first means iterate reversed.
+    const reversed = this.chatMessages.slice().reverse();
+    const total    = reversed.length;
+
+    // Compressed: latest message only + "Show N more messages" toggle.
+    // Expanded: full history newest-first + "Show less" toggle.
+    if (!this.chatExpanded) {
+      const latest = reversed[0];
+      const more   = total > 1 ? total - 1 : 0;
+      const toggle = more > 0
+        ? `<button id="chat-expand-toggle" type="button"
+                   style="display:block; width:100%; margin-top:8px;
+                          background:transparent; color:#93c5fd;
+                          border:1px solid rgba(147,197,253,0.3);
+                          border-radius:6px; padding:6px 10px;
+                          font-size:0.85rem; font-weight:600; cursor:pointer;">
+             ▼ Show ${more} older message${more !== 1 ? 's' : ''}
+           </button>`
+        : '';
+      box.innerHTML = this._renderChatRow(latest) + toggle;
+      return;
+    }
+
+    // Expanded: full list + collapse toggle at the top.
+    const rows = reversed.map(m => this._renderChatRow(m)).join('');
+    const toggle = `
+      <button id="chat-expand-toggle" type="button"
+              style="display:block; width:100%; margin: 0 0 8px;
+                     background:transparent; color:#93c5fd;
+                     border:1px solid rgba(147,197,253,0.3);
+                     border-radius:6px; padding:6px 10px;
+                     font-size:0.85rem; font-weight:600; cursor:pointer;">
+        ▲ Show only latest message
+      </button>`;
+    box.innerHTML = `
+      ${toggle}
+      <div style="max-height: 55vh; overflow-y:auto;">${rows}</div>`;
   }
 
   _renderChatRow(m) {
