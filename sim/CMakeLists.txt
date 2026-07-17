@@ -234,6 +234,7 @@ add_dependencies(sim_persistence gen_m0_registry)
 # -----------------------------------------------------------------------------
 add_library(sim_gameplay STATIC
     src/physics/StubPhysics.cpp
+    src/physics/BasicPhysics.cpp
     src/physics/BallPhysics.cpp
     src/physics/PlayableAreaConstraint.cpp
     src/controller/HumanController.cpp

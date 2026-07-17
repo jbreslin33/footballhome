@@ -30,7 +30,7 @@
 #include "persistence/PgClient.hpp"
 #include "persistence/ProfileStore.hpp"
 #include "persistence/RegistryLoader.hpp"
-#include "physics/StubPhysics.hpp"
+#include "physics/BasicPhysics.hpp"
 #include "registry/AttributeRegistry.hpp"
 #include "registry/ConceptRegistry.hpp"
 #include "registry/PatternRegistry.hpp"
@@ -660,7 +660,7 @@ int main(int /*argc*/, char** /*argv*/)
     mcfg.id             = match_id;
     mcfg.seed           = seed;
     mcfg.server_version = FH_SIM_GIT_DESCRIBE;
-    mcfg.physics  = std::make_unique<fh::sim::physics::StubPhysics>();
+    mcfg.physics  = std::make_unique<fh::sim::physics::BasicPhysics>();
     // Slice 15.5 + Slice 18.x + Slice 24.3a: pick the Scenario matching
     // the resolved scenario_id. Keep this switch in lock-step with
     // sim/src/tools/Replay.cpp::makeScenario and sim_scenarios.code_id

@@ -12,7 +12,7 @@
 #include "match/MatchClock.hpp"
 #include "math/Vec3.hpp"
 #include "net/InputFrame.hpp"
-#include "physics/StubPhysics.hpp"
+#include "physics/BasicPhysics.hpp"
 #include "profile/PlayerProfile.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/BallOnPitch2v0Scenario.hpp"
@@ -172,7 +172,7 @@ ReplayResult replayMatch(persistence::IPgClient& db,
     cfg.id             = mrow.id;
     cfg.seed           = mrow.seed;
     cfg.server_version = mrow.server_version;
-    cfg.physics        = std::make_unique<physics::StubPhysics>();
+    cfg.physics        = std::make_unique<physics::BasicPhysics>();
     cfg.scenario       = makeScenario(mrow.scenario_id);
     cfg.clock          = std::make_unique<match::RealtimeClock>(
         static_cast<std::uint32_t>(mrow.tick_hz));

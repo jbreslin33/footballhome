@@ -28,6 +28,13 @@ public:
     void     setMotion(EntityId id, MotionState motion) override;
     void     setPosition(EntityId id, math::Vec3 pos) override;
     void     applyImpulse(EntityId id, math::Vec3 impulse) override;
+    // Slice 27.2 (ADR §22.24): stored but never read — StubPhysics has
+    // no collision pass. Present only to satisfy the widened
+    // IPhysicsWorld interface so existing determinism goldens can keep
+    // constructing StubPhysics directly (they explicitly instantiate it
+    // in cfg.physics rather than going through the Match factory that
+    // Slice 27.2 flipped to BasicPhysics).
+    void     setBodyMass(EntityId id, math::Fixed64 mass) override;
 
     EntityState              get(EntityId id) const override;
     std::vector<EntityId>    all() const override;

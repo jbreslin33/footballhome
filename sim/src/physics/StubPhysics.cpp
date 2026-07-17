@@ -70,6 +70,20 @@ void StubPhysics::applyImpulse(EntityId id, math::Vec3 impulse)
     }
 }
 
+void StubPhysics::setBodyMass(EntityId id, math::Fixed64 mass)
+{
+    // Slice 27.2 (ADR §22.24): StubPhysics has no collision pass, so
+    // there is nothing to weight. Silently no-op — satisfies the
+    // widened IPhysicsWorld interface and keeps determinism goldens
+    // that explicitly construct StubPhysics byte-identical (they never
+    // read a mass value back). The `id` / `mass` arguments are
+    // deliberately unused; if StubPhysics ever needs to expose them
+    // (e.g. for a diagnostic dump), add a per-entity map in the
+    // header and populate it here.
+    (void)id;
+    (void)mass;
+}
+
 EntityState StubPhysics::get(EntityId id) const
 {
     const auto it = entities_.find(id);

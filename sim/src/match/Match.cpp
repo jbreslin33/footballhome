@@ -89,6 +89,19 @@ void Match::spawnInitialSlots()
         scenario_->applyPhysicalOverrides(s.slot, slot.profile.physical);
         // technical, mental, recognition stay empty (M0)
 
+        // Slice 27.2 (ADR §22.24): seed the physics world's per-entity
+        // body_mass from the freshly-populated (defaults + scenario
+        // overrides) physical profile. Without this, BasicPhysics would
+        // fall back to kBodyMassDefault=1.0 for every unclaimed slot on
+        // tick 1 — correct value but wrong contract: physics should not
+        // second-guess the profile. Clamp to [0.5, 1.5] happens inside
+        // BasicPhysics::clampedBodyMass on READ, so mis-authored
+        // overrides can't destabilise the resolver. StubPhysics no-ops
+        // this call so pre-M2 tests are unaffected.
+        physics_->setBodyMass(
+            eid,
+            slot.profile.physical.get(m0::kBodyMass, math::Fixed64::one()));
+
         // Default controller for unclaimed slots. Scenario decides
         // per-slot via unclaimedControllerFor():
         //   Wander   -> WanderController (consumes RNG; M0/M1 goldens
@@ -166,6 +179,15 @@ void Match::spawnInitialSlots()
         const EntityId eid = physics_->spawn(bdef);
         physics_->setHeading(eid, math::Fixed64::zero());
         physics_->setMotion (eid, MotionState::Idle);
+        // Slice 27.2 (ADR §22.24): the ball is excluded from the
+        // BasicPhysics collision pass entirely (see BasicPhysics.hpp
+        // header comment for the kBallControlRadius rationale), so its
+        // body_mass is never READ during a collision resolution.
+        // We still seed the default so a diagnostic dump of every
+        // entity's mass is complete and so a future M4+ change that
+        // includes the ball in some collision context has a sane
+        // starting value.
+        physics_->setBodyMass(eid, math::Fixed64::one());
         ball_ = eid;
     }
 }
@@ -561,6 +583,14 @@ void Match::claimSlot(SlotId slot_id,
     // Attribute values drive movement caps + stamina curve. Refreshing
     // params here is the whole point of per-person profiles (§16.6).
     params_by_slot_[idx] = MechanicsParams::fromPhysical(s.profile.physical);
+
+    // Slice 27.2 (ADR §22.24): refresh the physics world's cached
+    // body_mass from the claim's profile so BasicPhysics's MTV split
+    // uses the claimant's real physical.body_mass value (default 1.0
+    // per migration 220) on the very next tick. StubPhysics no-ops.
+    physics_->setBodyMass(
+        s.entity,
+        s.profile.physical.get(m0::kBodyMass, math::Fixed64::one()));
 }
 
 void Match::releaseSlot(SlotId slot_id)
@@ -607,6 +637,14 @@ void Match::releaseSlot(SlotId slot_id)
     // technical, mental, recognition stay empty (M0).
 
     params_by_slot_[idx] = MechanicsParams::fromPhysical(s.profile.physical);
+
+    // Slice 27.2 (ADR §22.24): symmetric with the claim path — reset
+    // the physics world's cached body_mass to the released slot's
+    // (defaults + overrides) profile value so BasicPhysics resumes
+    // MTV-splitting against the spawn-time mass on the next tick.
+    physics_->setBodyMass(
+        s.entity,
+        s.profile.physical.get(m0::kBodyMass, math::Fixed64::one()));
 }
 
 void Match::applyInput(ClientId client, const controller::Intent& intent)

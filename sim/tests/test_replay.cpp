@@ -28,7 +28,7 @@
 #include "persistence/EventTypes.hpp"
 #include "persistence/IPgClient.hpp"
 #include "persistence/InMemoryPgClient.hpp"
-#include "physics/StubPhysics.hpp"
+#include "physics/BasicPhysics.hpp"
 #include "profile/PlayerProfile.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "test_harness.hpp"
@@ -56,7 +56,7 @@ using fh::sim::persistence::EventType;
 using fh::sim::persistence::InMemoryPgClient;
 using fh::sim::persistence::InputRow;
 using fh::sim::persistence::MatchRow;
-using fh::sim::physics::StubPhysics;
+using fh::sim::physics::BasicPhysics;
 using fh::sim::scenario::EmptyPitchScenario;
 using fh::sim::tools::replayMatch;
 using fh::sim::tools::ReplayOptions;
@@ -76,7 +76,7 @@ std::unique_ptr<Match> makeMatch()
     cfg.id             = kMatchId;
     cfg.seed           = kSeed;
     cfg.server_version = "test";
-    cfg.physics        = std::make_unique<StubPhysics>();
+    cfg.physics        = std::make_unique<BasicPhysics>();
     cfg.scenario       = std::make_unique<EmptyPitchScenario>();
     cfg.clock          = std::make_unique<RealtimeClock>(kTickHz);
     return std::make_unique<Match>(std::move(cfg));
