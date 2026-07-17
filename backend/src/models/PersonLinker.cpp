@@ -201,7 +201,7 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
     }
 }
 
-PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
+PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun, bool deferPrimaryContact) {
     Result out;
 
     // Extract the three identifying fields.
@@ -238,12 +238,22 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
             // may have been created before we started ingesting email/phone,
             // and paused-program regs need their contact rows just as much
             // as active-program regs.  Skipped when dryRun.
+            //
+            // Phase A batching (2026-07-17): when deferPrimaryContact
+            // is set, LaProgramSync will flush the primary person's
+            // email/phone in bulk after its per-record loop.  We
+            // still run ensureParentLink (per-CHILD; adult programs
+            // are no-ops here) because the parent contact + parent
+            // FK step involves resolve-or-create semantics that don't
+            // batch as cleanly.
             if (!dryRun) {
-                const std::string email = strOrEmpty(rec, "email");
-                const std::string phone = rec.contains("phoneNumber") && rec["phoneNumber"].is_string()
-                                       ? rec["phoneNumber"].get<std::string>()
-                                       : strOrEmpty(rec, "phone");
-                upsertContact(out.personId, email, phone);
+                if (!deferPrimaryContact) {
+                    const std::string email = strOrEmpty(rec, "email");
+                    const std::string phone = rec.contains("phoneNumber") && rec["phoneNumber"].is_string()
+                                           ? rec["phoneNumber"].get<std::string>()
+                                           : strOrEmpty(rec, "phone");
+                    upsertContact(out.personId, email, phone);
+                }
                 ensureParentLink(out.personId, rec);
             }
             return out;
@@ -306,13 +316,17 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
         out.aliasCreated = true;
 
         // 5. Contact backfill on the (child or adult) person AND parent
-        // linkage for youth.  Same logic as the fast-path branch above.
+        // linkage for youth.  Same logic as the fast-path branch above:
+        // primary contact is deferred to LaProgramSync's bulk INSERT
+        // when deferPrimaryContact is set.
         {
-            const std::string email = strOrEmpty(rec, "email");
-            const std::string phone = rec.contains("phoneNumber") && rec["phoneNumber"].is_string()
-                                   ? rec["phoneNumber"].get<std::string>()
-                                   : strOrEmpty(rec, "phone");
-            upsertContact(personId, email, phone);
+            if (!deferPrimaryContact) {
+                const std::string email = strOrEmpty(rec, "email");
+                const std::string phone = rec.contains("phoneNumber") && rec["phoneNumber"].is_string()
+                                       ? rec["phoneNumber"].get<std::string>()
+                                       : strOrEmpty(rec, "phone");
+                upsertContact(personId, email, phone);
+            }
             ensureParentLink(personId, rec);
         }
         return out;

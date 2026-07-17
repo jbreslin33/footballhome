@@ -39,7 +39,18 @@ public:
     // Always returns; never throws on schema-conformant input.
     // `dryRun` mirrors Node's option: probe what would happen (set the
     // `wouldCreate*` flags) without writing.
-    Result linkLa(const nlohmann::json& rec, bool dryRun = false);
+    //
+    // `deferPrimaryContact` (Phase A batching, 2026-07-17): when true,
+    // the primary person's email/phone are NOT upserted inline; the
+    // caller is expected to collect (personId, email, phone) tuples
+    // for every record and flush them in one bulk INSERT after the
+    // loop.  `ensureParentLink` still runs (parent contact + parent
+    // FK linkage are per-CHILD and only present on youth programs,
+    // which are small).  Adult program syncs (men, men-pickup) see
+    // the full ~1.6s win from batching primary contacts.
+    Result linkLa(const nlohmann::json& rec,
+                  bool dryRun = false,
+                  bool deferPrimaryContact = false);
 
     // Mark `personId` as a current member of LA sub-program `programId`.
     // Idempotent: if the person already has an open row for this program,
@@ -86,6 +97,15 @@ public:
     void closeStaleMemberships(long long programId,
                                const std::set<std::string>& activeLaUserIds);
 
+    // Upsert `email` and/or `phone` onto `personId`.  No-op for empty strings.
+    //
+    // Exposed public (Phase A batching, 2026-07-17) so LaProgramSync
+    // can call it as a fallback when the bulk INSERT path can't be
+    // used (e.g. a single re-run after a partial failure).  Also used
+    // by the internal fast-path in linkLa when `deferPrimaryContact`
+    // is false (the historical inline behaviour).
+    void upsertContact(int personId, const std::string& email, const std::string& phone);
+
 private:
     Database* db_;
 
@@ -107,9 +127,6 @@ private:
     //
     // These are best-effort: on any DB error we log and swallow (never
     // fail the caller — the alias linkage is what matters most).
-
-    // Upsert `email` and/or `phone` onto `personId`.  No-op for empty strings.
-    void upsertContact(int personId, const std::string& email, const std::string& phone);
 
     // For CHILD records, resolve-or-create the parent person from
     // parentUserId + parentFirstName/parentLastName, upsert parentEmail/
