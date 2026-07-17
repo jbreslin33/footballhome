@@ -21,12 +21,29 @@
 //        rows (§6.0) are omitted — they exist in gcal_events only
 //        for the admin "Needs classification" queue (Slice 8).
 //
-// This endpoint is UNAUTHENTICATED for now. It exposes only
-// scheduling metadata (title, time, location, kind) — no PII, no
-// RSVP identities. When Slice 6's per-user RSVP surface lands the
-// write endpoints will be session-gated separately; this read
-// endpoint stays open so unauthenticated visitors can see the
-// public schedule.
+//        The read is public — no auth required — so it exposes only
+//        scheduling metadata (title, time, location, kind).  If the
+//        caller happens to be signed in (via the fh_sess cookie or a
+//        Bearer JWT) each event additionally carries `my_rsvp`
+//        ('yes' | 'no' | 'maybe' | null) — the caller's current
+//        response for that fh_event.  Anonymous callers always see
+//        `my_rsvp: null`.
+//
+//   POST /api/calendar/rsvp    (Slice 6)
+//        Body: { fh_event_id:int, response:'yes'|'no'|'maybe',
+//                note?:string }
+//        Session-gated (fh_sess cookie OR Bearer JWT, same pattern
+//        as MyController).  Upserts one fh_event_rsvps row for the
+//        caller with created_via='manual'.  Rejects with 409 when
+//        now() < fh_events.rsvps_open_at (§6.5.2 window rule),
+//        with 404 when the target fh_event is unknown or its
+//        gcal_events parent is tombstoned/cancelled.
+//
+//        NB: the design doc originally called this endpoint
+//        `POST /api/rsvp`, but that path is already owned by
+//        EventRsvpController (the chat-driven RSVP flow).  Scoped
+//        under /api/calendar/* to mirror the read endpoint above
+//        and keep the two RSVP systems non-overlapping.
 class CalendarController : public Controller {
 public:
     CalendarController();
@@ -36,4 +53,5 @@ public:
 
 private:
     Response handleGetUpcoming(const Request& request);
+    Response handlePostRsvp   (const Request& request);
 };

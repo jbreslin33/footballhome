@@ -1,11 +1,15 @@
 #include "CalendarController.h"
 
+#include "../core/Crypto.h"
 #include "../database/Database.h"
+#include "../services/SessionService.h"
 #include "../third_party/json.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <exception>
 #include <iostream>
+#include <optional>
 #include <string>
 
 using nlohmann::json;
@@ -40,10 +44,106 @@ json boolOrNull(const pqxx::row& row, const char* col) {
     return f.as<bool>();
 }
 
-json longOrNull(const pqxx::row& row, const char* col) {
-    const auto& f = row[col];
-    if (f.is_null()) return nullptr;
-    return f.as<long long>();
+// ─── Optional session resolution ────────────────────────────────────
+//
+// The read endpoint is intentionally public (see header) but we want
+// to enrich the response with the caller's own RSVP when a session is
+// present.  This helper mirrors MyController::requireSession's dual
+// path (Bearer JWT first, then fh_sess cookie) but returns 0 on any
+// failure instead of a 401 — the caller decides what to do with an
+// anonymous request.
+long long personIdFromJwtPayload(const std::string& payloadJson) {
+    const std::string needle = "\"userId\":\"";
+    auto pos = payloadJson.find(needle);
+    if (pos == std::string::npos) return 0;
+    pos += needle.size();
+    auto end = payloadJson.find('"', pos);
+    if (end == std::string::npos) return 0;
+    const std::string userIdStr = payloadJson.substr(pos, end - pos);
+    if (userIdStr.empty()) return 0;
+
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT person_id FROM users WHERE id = $1::int LIMIT 1",
+            {userIdStr});
+        if (r.empty() || r[0]["person_id"].is_null()) return 0;
+        return r[0]["person_id"].as<long long>();
+    } catch (...) {
+        return 0;
+    }
+}
+
+long long resolveOptionalPersonId(const Request& request) {
+    // Prefer Bearer JWT for the same "current tab intent" reason
+    // MyController documents at length — a stale cookie must not
+    // shadow a fresh login.
+    const std::string authHeader = request.getHeader("Authorization");
+    if (authHeader.size() > 7 && authHeader.substr(0, 7) == "Bearer ") {
+        const std::string token = authHeader.substr(7);
+        std::string payloadJson;
+        if (fh::crypto::verifyJwtHS256(token, &payloadJson)) {
+            const long long personId = personIdFromJwtPayload(payloadJson);
+            if (personId > 0) return personId;
+        }
+    }
+    const std::string cookie  = request.getHeader("Cookie");
+    const std::string sessVal = SessionService::parseCookieValue(
+        cookie, SessionService::kCookieName);
+    if (sessVal.empty()) return 0;
+    auto resolved = SessionService::getInstance().requireSession(sessVal);
+    if (!resolved) return 0;
+    return resolved->personId;
+}
+
+// Write endpoints (POST /api/calendar/rsvp) MUST reject anonymous
+// callers with a 401 — different behaviour from the read path.
+struct SessionGate {
+    long long                 personId = 0;
+    std::optional<Response>   error;
+};
+
+SessionGate requireSession(const Request& request) {
+    const long long personId = resolveOptionalPersonId(request);
+    if (personId > 0) return {personId, std::nullopt};
+
+    // Distinguish "no credentials at all" from "credentials present
+    // but invalid" — matches MyController's 401 body strings so the
+    // frontend session-expiry handler picks up both flavours.
+    const std::string authHeader = request.getHeader("Authorization");
+    const bool hasBearer = authHeader.size() > 7 &&
+                           authHeader.substr(0, 7) == "Bearer ";
+    const std::string cookie  = request.getHeader("Cookie");
+    const std::string sessVal = SessionService::parseCookieValue(
+        cookie, SessionService::kCookieName);
+    const bool present = hasBearer || !sessVal.empty();
+    return {0, jsonError(HttpStatus::UNAUTHORIZED,
+                         present ? "Session expired" : "Not signed in")};
+}
+
+// JSON body helpers — same shape MyController / EventRsvpController use.
+std::optional<long long> jsonInt(const json& j, const char* key) {
+    if (!j.contains(key) || j[key].is_null()) return std::nullopt;
+    if (j[key].is_number_integer())  return j[key].get<long long>();
+    if (j[key].is_number_unsigned()) return static_cast<long long>(j[key].get<unsigned long long>());
+    if (j[key].is_number_float())    return static_cast<long long>(j[key].get<double>());
+    if (j[key].is_string()) {
+        try { return std::stoll(j[key].get<std::string>()); }
+        catch (...) { return std::nullopt; }
+    }
+    return std::nullopt;
+}
+
+std::string jsonStr(const json& j, const char* key) {
+    if (!j.contains(key) || j[key].is_null()) return {};
+    if (j[key].is_string()) return j[key].get<std::string>();
+    return j[key].dump();
+}
+
+std::string toLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
 }
 
 }  // namespace
@@ -55,6 +155,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
 
     router.get(prefix + "/calendar/upcoming", [this](const Request& req) {
         return this->handleGetUpcoming(req);
+    });
+    router.post(prefix + "/calendar/rsvp", [this](const Request& req) {
+        return this->handlePostRsvp(req);
     });
 }
 
@@ -74,6 +177,11 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         if (days < 1)  days = 1;
         if (days > 90) days = 90;
     }
+
+    // Optional session — enriches each event with the caller's RSVP.
+    // Anonymous callers see `my_rsvp: null` on every event; no auth
+    // error is raised here (write endpoint enforces auth).
+    const long long personId = resolveOptionalPersonId(request);
 
     try {
         auto* db = Database::getInstance();
@@ -96,6 +204,26 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         // rsvps_open_now is computed here so the frontend doesn't
         // have to re-implement §6.5.2's window check just to decide
         // whether to show the RSVP button vs a countdown.
+        //
+        // my_rsvp is a LEFT JOIN against fh_event_rsvps for the
+        // caller's person_id — NULL when unauthenticated (personId=0)
+        // because no persons row has id=0, so the JOIN drops out.
+        //
+        // teams[] is aggregated in a correlated subquery over the
+        // §6.1.5 junction (fh_event_teams) — one row per (event,
+        // team) link, JSON-encoded on the DB side so we don't have
+        // to reshape it in C++.  Empty array when no teams attached
+        // (legacy-classified events without DSL tags).
+        //
+        // my_rsvp_eligible walks the same junction to
+        // player_rsvp_eligibility (via the leagueapps external alias
+        // chain — identical shape to MyController::callerRosteredForMatch)
+        // and reports whether the caller has an eligibility grant on
+        // ANY team attached to the event.  NULL when anonymous.
+        //
+        // hangout_link is the Meet URL extracted from the raw gcal
+        // event payload — Google puts it on `hangoutLink` for events
+        // with a Meet attached.  NULL when no Meet.
         const std::string sql = R"SQL(
             SELECT
                 fe.id                  AS fh_event_id,
@@ -114,9 +242,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 ge.all_day,
                 ge.status,
                 ge.html_link,
+                ge.raw->>'hangoutLink' AS hangout_link,
                 fe.kind,
                 fe.category,
-                fe.team_id,
                 fe.is_home,
                 fe.fh_notes,
                 CASE
@@ -125,10 +253,41 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                  'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                 END AS rsvps_open_at,
                 (fe.rsvps_open_at IS NULL
-                 OR fe.rsvps_open_at <= now()) AS rsvps_open_now
+                 OR fe.rsvps_open_at <= now()) AS rsvps_open_now,
+                mr.response AS my_rsvp,
+                COALESCE((
+                    SELECT jsonb_agg(
+                        jsonb_build_object(
+                            'id',              t.id,
+                            'name',            t.name,
+                            'gender_category', t.gender_category
+                        )
+                        ORDER BY t.id
+                    )
+                    FROM fh_event_teams fet
+                    JOIN teams t ON t.id = fet.team_id
+                    WHERE fet.fh_event_id = fe.id
+                ), '[]'::jsonb) AS teams_json,
+                CASE
+                    WHEN $2::int = 0 THEN NULL
+                    ELSE EXISTS (
+                        SELECT 1
+                        FROM   fh_event_teams fet
+                        JOIN   player_rsvp_eligibility ple
+                            ON ple.team_id = fet.team_id
+                        JOIN   external_person_aliases epa
+                            ON epa.provider = 'leagueapps'
+                           AND epa.external_user_id = ple.leagueapps_user_id::text
+                        WHERE  fet.fh_event_id = fe.id
+                          AND  epa.person_id   = $2::int
+                    )
+                END AS my_rsvp_eligible
             FROM fh_events   fe
             JOIN gcal_events ge ON ge.id = fe.gcal_event_id
             JOIN gcal_calendars gc ON gc.id = ge.calendar_id
+            LEFT JOIN fh_event_rsvps mr
+                   ON mr.fh_event_id = fe.id
+                  AND mr.person_id   = $2::int
             WHERE ge.deleted_at IS NULL
               AND ge.status <> 'cancelled'
               AND ge.starts_at >= now() - INTERVAL '1 hour'
@@ -137,7 +296,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             LIMIT 500
         )SQL";
 
-        pqxx::result rows = db->query(sql, {std::to_string(days)});
+        pqxx::result rows = db->query(sql, {std::to_string(days),
+                                            std::to_string(personId)});
 
         json events = json::array();
         events.get_ref<json::array_t&>().reserve(rows.size());
@@ -158,13 +318,25 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["all_day"]           = row["all_day"].as<bool>();
             ev["status"]            = row["status"].c_str();
             ev["html_link"]         = textOrNull(row, "html_link");
+            ev["hangout_link"]      = textOrNull(row, "hangout_link");
             ev["kind"]              = row["kind"].c_str();
             ev["category"]          = textOrNull(row, "category");
-            ev["team_id"]           = longOrNull(row, "team_id");
             ev["is_home"]           = boolOrNull(row, "is_home");
             ev["fh_notes"]          = textOrNull(row, "fh_notes");
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
+            ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
+            ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            // teams comes from the DB as a JSONB aggregate string
+            // (jsonb_agg → text via row["…"].c_str()).  Parse it back
+            // into a json array — cheap because the payload is tiny
+            // (0..a few teams per event) and it lets the frontend see
+            // a real array instead of an opaque string.
+            try {
+                ev["teams"] = json::parse(row["teams_json"].c_str());
+            } catch (...) {
+                ev["teams"] = json::array();
+            }
             events.push_back(std::move(ev));
         }
 
@@ -177,6 +349,195 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
 
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleGetUpcoming: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /api/calendar/rsvp — Slice 6 write path (see design doc §6.5.2).
+//
+// Body: { fh_event_id:int, response:'yes'|'no'|'maybe', note?:string }
+//
+// Contract:
+//   * Session-gated (401 when anonymous).
+//   * fh_event_id must resolve to a live fh_events row whose parent
+//     gcal_events is NOT tombstoned/cancelled — otherwise 404.
+//   * If fh_events.rsvps_open_at IS NOT NULL AND now() < it, return
+//     409 with an explanatory body.  The standing-RSVP applier
+//     (§6.5.3) is the only writer allowed before the window opens,
+//     and it doesn't go through this endpoint.
+//   * Upsert one fh_event_rsvps row (fh_event_id, person_id) →
+//     (response, responded_at=now(), created_via='manual').  Any
+//     prior 'standing' row for the same (event, person) is
+//     overwritten and its created_via flips to 'manual' — the
+//     manual click is authoritative.
+Response CalendarController::handlePostRsvp(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    json body;
+    try {
+        body = request.getBody().empty()
+            ? json::object()
+            : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         std::string("Invalid JSON: ") + e.what());
+    }
+
+    auto fhEventIdOpt = jsonInt(body, "fh_event_id");
+    if (!fhEventIdOpt || *fhEventIdOpt <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "fh_event_id (positive int) required");
+    }
+    const long long fhEventId = *fhEventIdOpt;
+
+    const std::string response = toLower(jsonStr(body, "response"));
+    if (response != "yes" && response != "no" && response != "maybe") {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "response must be 'yes', 'no', or 'maybe'");
+    }
+
+    // Optional freeform note — trimmed to 1000 chars like the older
+    // RSVP endpoint.  Not persisted in fh_event_rsvps today (no note
+    // column per migration 119); accepted for forward-compat with the
+    // §6.5.3 profile flow but silently dropped.  Add a note column
+    // when the UI actually collects one.
+    std::string note = jsonStr(body, "note");
+    if (note.size() > 1000) note.resize(1000);
+
+    try {
+        auto* db = Database::getInstance();
+
+        // Existence + liveness check.  We look at the fh_events row
+        // AND its gcal_events parent — a tombstoned gcal event must
+        // not accept new RSVPs even if the fh_events row survives
+        // (per §1.1's "no orphan FH data" corollary this is a bug
+        // state, but we're defensive here in case the applier races
+        // the sync worker).
+        auto checkRows = db->query(
+            "SELECT fe.id, "
+            "       ge.deleted_at IS NOT NULL AS gcal_tombstoned, "
+            "       ge.status = 'cancelled'   AS gcal_cancelled, "
+            "       fe.rsvps_open_at, "
+            "       (fe.rsvps_open_at IS NULL "
+            "        OR fe.rsvps_open_at <= now()) AS rsvps_open_now, "
+            "       to_char(fe.rsvps_open_at AT TIME ZONE 'UTC', "
+            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS rsvps_open_at_iso "
+            "  FROM fh_events   fe "
+            "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+            " WHERE fe.id = $1::bigint",
+            {std::to_string(fhEventId)});
+
+        if (checkRows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND,
+                             "fh_event not found");
+        }
+        const auto& c = checkRows[0];
+        if (c["gcal_tombstoned"].as<bool>() || c["gcal_cancelled"].as<bool>()) {
+            return jsonError(HttpStatus::NOT_FOUND,
+                             "event is cancelled or removed from Google Calendar");
+        }
+        if (!c["rsvps_open_now"].as<bool>()) {
+            json err = {
+                {"error",         "RSVP window not open yet"},
+                {"rsvps_open_at", c["rsvps_open_at_iso"].is_null()
+                                     ? json(nullptr)
+                                     : json(c["rsvps_open_at_iso"].as<std::string>())},
+            };
+            Response r(HttpStatus::CONFLICT, err.dump());
+            r.setHeader("Content-Type", "application/json; charset=utf-8");
+            return r;
+        }
+
+        // Eligibility gate — §6.1.5.  The caller must have a
+        // player_rsvp_eligibility grant for AT LEAST ONE team attached
+        // to this event via the junction (fh_event_teams).  The join
+        // chain mirrors MyController::callerRosteredForMatch — team →
+        // player_rsvp_eligibility → external_person_aliases → person.
+        //
+        // Failure modes this gate catches:
+        //   * Signed-in mens roster member trying to RSVP a womens
+        //     event (no ple.team_id row for them on any womens team).
+        //   * DSL-unclassified event (empty fh_event_teams) — no
+        //     junction rows means no team means EXISTS = false, so
+        //     403 with "event has no roster attached".  The DB never
+        //     accepts an RSVP to an event whose team model isn't set
+        //     up yet, which is the correct fail-closed behaviour.
+        //
+        // We fetch team_count separately so the 403 body can
+        // distinguish "wrong roster" from "event has no teams yet",
+        // which is a much clearer error message for the frontend +
+        // for operator debugging.
+        auto eligRows = db->query(
+            "SELECT "
+            "  (SELECT COUNT(*)::int FROM fh_event_teams "
+            "     WHERE fh_event_id = $1::bigint) AS team_count, "
+            "  EXISTS ( "
+            "    SELECT 1 "
+            "      FROM fh_event_teams fet "
+            "      JOIN player_rsvp_eligibility ple "
+            "        ON ple.team_id = fet.team_id "
+            "      JOIN external_person_aliases epa "
+            "        ON epa.provider = 'leagueapps' "
+            "       AND epa.external_user_id = ple.leagueapps_user_id::text "
+            "     WHERE fet.fh_event_id = $1::bigint "
+            "       AND epa.person_id   = $2::int "
+            "  ) AS eligible",
+            {std::to_string(fhEventId), std::to_string(personId)});
+        if (eligRows.empty()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                             "eligibility check returned no row");
+        }
+        const auto& e0 = eligRows[0];
+        const int  teamCount = e0["team_count"].as<int>();
+        const bool eligible  = e0["eligible"].as<bool>();
+        if (teamCount == 0) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "This event has no roster attached yet — "
+                             "ops needs to add Team:/Club: tags to the "
+                             "Google Calendar description.");
+        }
+        if (!eligible) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "You are not on the roster for this event.");
+        }
+
+        // Upsert.  ON CONFLICT overwrites response, responded_at, and
+        // created_via — the manual click always beats an earlier
+        // standing/admin insert.
+        auto row = db->query(
+            "INSERT INTO fh_event_rsvps "
+            "    (fh_event_id, person_id, response, responded_at, created_via) "
+            "VALUES ($1::bigint, $2::int, $3, now(), 'manual') "
+            "ON CONFLICT (fh_event_id, person_id) DO UPDATE "
+            "   SET response     = EXCLUDED.response, "
+            "       responded_at = EXCLUDED.responded_at, "
+            "       created_via  = EXCLUDED.created_via "
+            "RETURNING id, fh_event_id, person_id, response, created_via, "
+            "          to_char(responded_at AT TIME ZONE 'UTC', "
+            "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS responded_at",
+            {std::to_string(fhEventId),
+             std::to_string(personId),
+             response});
+
+        if (row.empty()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                             "RSVP write returned no row");
+        }
+        const auto& r0 = row[0];
+        json rsvp = {
+            {"id",            r0["id"].as<long long>()},
+            {"fh_event_id",   r0["fh_event_id"].as<long long>()},
+            {"person_id",     r0["person_id"].as<long long>()},
+            {"response",      r0["response"].as<std::string>()},
+            {"created_via",   r0["created_via"].as<std::string>()},
+            {"responded_at",  r0["responded_at"].as<std::string>()},
+        };
+        return jsonOk({{"rsvp", rsvp}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handlePostRsvp: "
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
