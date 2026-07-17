@@ -36,16 +36,28 @@ else
 fi
 
 # ── aider ─────────────────────────────────────────────────────────────
-if ! command -v aider &> /dev/null; then
-  print_status "Installing aider-chat (may take a minute)..."
-  pipx install aider-chat
-  # Ensure current shell can see it
-  export PATH="$HOME/.local/bin:$PATH"
-  print_success "aider installed: $(aider --version 2>&1 | head -1)"
-else
+# Detect three states: (a) fully installed & on PATH, (b) pipx venv
+# exists but binary is missing (previous run was cancelled mid-install),
+# (c) not installed at all.
+AIDER_VENV="$HOME/.local/share/pipx/venvs/aider-chat"
+AIDER_BIN="$HOME/.local/bin/aider"
+
+if command -v aider &> /dev/null; then
   print_status "Upgrading aider-chat..."
   pipx upgrade aider-chat >/dev/null 2>&1 || true
   print_success "aider ready: $(aider --version 2>&1 | head -1)"
+elif [ -d "$AIDER_VENV" ] && [ ! -x "$AIDER_BIN" ]; then
+  # Pipx thinks aider is installed but the binary is missing — a
+  # previous install was cancelled mid-run.  Force-reinstall.
+  print_warning "Detected incomplete aider install (venv exists, binary missing) — force-reinstalling..."
+  pipx install aider-chat --force
+  export PATH="$HOME/.local/bin:$PATH"
+  print_success "aider installed: $(aider --version 2>&1 | head -1)"
+else
+  print_status "Installing aider-chat (may take a minute)..."
+  pipx install aider-chat
+  export PATH="$HOME/.local/bin:$PATH"
+  print_success "aider installed: $(aider --version 2>&1 | head -1)"
 fi
 
 # ── Repo-root .aider.conf.yml (only if missing — don't clobber edits) ─
