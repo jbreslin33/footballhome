@@ -571,6 +571,7 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
             "  FROM fh_events fe "
             "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
             " WHERE fe.category = 'mens' "
+            "   AND fe.kind     = 'pickup' "
             "   AND ge.deleted_at IS NULL "
             "   AND ge.starts_at >= (((NOW() AT TIME ZONE 'America/New_York')::date)::timestamp) "
             "                        AT TIME ZONE 'America/New_York' "
