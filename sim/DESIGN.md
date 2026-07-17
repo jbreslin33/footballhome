@@ -17,6 +17,8 @@
 > **Slice 28.4 (`MatchEventFrame` wire msg_type 0x04 + HELLO_ACK capability bit 2 + frontend goal-flash):** landed 2026-07-17. 50/50 sim tests green.
 >
 > **Slice 28.5 (determinism golden `goal_from_kick_east_200_ticks_seed_42`):** landed 2026-07-17. 50/50 sim tests green (existing `test_determinism` case count now 8). Closes the M2 exit criterion "Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal`".
+>
+> **Slice 27.1 (ADR §22.24 — player-player collision resolution):** drafted 2026-07-17. Chosen: option (b) circle-circle positional-clamp + tangential-slide, `physical.body_mass` in [0.5, 1.5] for the split weighting, ball-owned exclusion rule. Unblocks Slice 27.2 (`BasicPhysics`), 27.3 (attribute id=15, migration 220), 27.4 (rotate 3 existing goldens), 27.5 (2 new collision goldens).
 
 ---
 
@@ -2589,11 +2591,135 @@ So the wire needs 8 additional bytes on the kick tick. Same shape of problem §2
 
 **Refs**: §7.3 (INPUT payload — v1.1 addendum is this ADR), §7.1 (HELLO_ACK cap-bit table — bit 3 added here), §22.0 (ADR append-only rule), §22.20 (SNAPSHOT-trailer extension pattern this ADR mirrors), §22.22 (SCENARIO_META cap-bit precedent), §24.6 (M2 → M3 transition prereq item that this ADR closes), §24.3 Slice 26.1 (`physical.pass_power` attribute row this ADR's trailer will drive), §24.3 Slice 26.2 (implementation slice that lands this ADR), §21.3 (pre-M3 fix list — `sim_decode_input` version handling now defined explicitly by migration 218).
 
-### 22.24 [reserved 2026-07-16] Player-player collision resolution — Slice 27
+### 22.24 [2026-07-17] Player-player collision resolution — Slice 27
 
-**Status**: **reserved, not drafted.** Placeholder integer for the Slice 27 collision-resolution decision (circle-circle positional-clamp + tangential-slide vs alternatives; `body_mass` vs `contact_radius` weighting; ball-owned exclusion rule). Draft to land alongside Slice 27.1 implementation. Whoever picks up Slice 27 first drafts this ADR against the recommendation at §24.3 → "Player-player collisions" bullet list, then implements. Do not implement Slice 27 code before this ADR lands — the decision matrix has real trade-offs that need explicit review (elastic-vs-clamp affects downstream shot mechanics, mass-vs-radius affects the attribute registry footprint).
+**Status**: **drafted 2026-07-17 (Slice 27.1), not yet implemented.** Locks the collision-resolution algorithm + weighting attribute + ball-exclusion rule for the physics upgrade landing across Slices 27.2 (`BasicPhysics`), 27.3 (`physical.body_mass` attr id=15, migration 220), 27.4 (rotate 3 existing determinism goldens), 27.5 (2 new collision goldens). Sim engine remains on wire v1 — physics is server-side only, no wire change. Existing scenarios with 0 or 1 slot (`EmptyPitchScenario`, `BallOnPitchScenario`, `HalfPitchScenario`, `SoftDrillScenario`) stay byte-identical because their collision list is empty; scenarios with ≥ 2 slots that get close (`BallOnPitchWithDefender`, `BallOnPitch2v0`, `GoalDrill`, plus the test-only `BallAndTwoSlotsScenario` used by `test_determinism`) will see per-tick trajectory changes and their goldens rotate in 27.4.
 
-**When you draft this**: mirror §22.23's structure (Status / Context / Options considered / Chosen / Layout or Algorithm / Constants / Decoder or Emitter contract / When to revisit / Refs). Options to enumerate: (a) positional-clamp only, (b) positional-clamp + tangential-slide, (c) impulse-based elastic with restitution=0.2, (d) impulse-based inelastic (positional + zero-velocity along normal), (e) sweep-based (CCD) for high-speed contacts. Recommendation from §24.3 is (b) — cheap, deterministic, coach-legible, no restitution to tune.
+**Context**: Slices 15 through 28 shipped on `StubPhysics` (`sim/src/physics/StubPhysics.cpp`), which integrates `pos += vel*dt` per entity with **zero inter-entity interaction**. Two coaches sharing `BallOnPitch2v0Scenario` today can walk through each other; a defender in `BallOnPitchWithDefenderScenario` can pass through the coach's body to press the ball; two players contesting a first-touch (Slice 16.6's `test_two_humans_first_touch_tie_break_200_ticks_seed_42`) resolve ownership via `BallControl`'s tie-break rule but never physically collide even when their centres overlap by 100% at spawn. This is a P1 immersion break — a coach on the browser sees another player's dot walk *through* their own — and blocks Slice 27's exit gate ("defender can no longer occupy the same 2D position as the coach").
+
+The ball's exclusion from any player-collision resolution is a hard M2 requirement. `BallControl` (Slice 16.3) sets `ball.position = owner.position + kBallOwnerLeadDistance*heading` every tick the owner holds it; if collision resolution treated the ball as an ordinary entity, an opponent brushing near the owner would displace the ball via the same overlap-clamp path that keeps players apart — defeating the whole first-touch contract from Slice 16.3 (only `wants_kick` releases; only proximity + `wants_dribble` transfers). §24.3's Slice 27 bullet list already flagged this: *"Non-owner slots that intersect the ball's radius during the physics step MUST NOT kick the ball (only `wants_kick` does)."*
+
+All five resolution algorithms below produce identical resting configurations for two centre-overlap contacts; they diverge on the dynamic behaviour (bounce, slide, stick) and on the M2 attribute-registry footprint.
+
+**Options considered**:
+
+1. **A — positional-clamp only.** On overlap: compute the minimum-translation-vector (MTV) that separates the two circles along their centre-to-centre normal; move each entity halfway along MTV (or split by mass, see the weighting sub-decision). Do NOT touch velocities. Simplest possible impl: ~30 LOC in `BasicPhysics::step`. **Downside**: a player running into a stationary defender at full sprint gets clamped to the defender's edge but retains full velocity into the defender — next tick MTV fires again, next tick again, until the moving player changes direction. Client sees a player "stuck" on another with visibly non-zero velocity but zero displacement. Coach-hostile.
+
+2. **B — positional-clamp + tangential-slide.** MTV clamp as in (A), then decompose each entity's velocity into normal component (along the MTV) and tangential component (perpendicular). Zero the normal component if it's pointing INTO the contact (so a player running into a wall of defender loses their forward momentum on the contact axis); preserve the tangential component (so pressing on someone's shoulder still lets you slide past). No restitution term, no bounce. Deterministic on Fixed64. **~80 LOC in `BasicPhysics::step`.** Coach reads it as "you can't run through people but you can slide around them" — matches real-football body-shielding intuition.
+
+3. **C — impulse-based elastic (restitution = 0.2).** Full 2D-body impulse resolution: compute the normal impulse that reverses the closing velocity times a restitution coefficient. Adds a `restitution` scalar to tune; adds a `body_mass` attribute for the mass-ratio split. Produces a small visible bounce on hard contacts. **Downside**: adding a bounce coefficient bakes a designer knob into every collision, and elastic collisions in a top-down player game read as *rag-dolly* — not the football aesthetic. Restitution values above 0.05 make defenders slide backward from a full-speed sprint contact by ≥ 15 cm/tick; below 0.05 they're visually indistinguishable from (B). Adds a `restitution` migration row for zero visual gain over (B).
+
+4. **D — impulse-based inelastic (perfectly plastic).** Positional clamp + zero the closing velocity on both entities (equivalent to restitution = 0.0 in (C)). Splits the closing velocity by mass ratio. **Downside**: the *entire* closing velocity is zeroed, including its tangential component — both players stop when they touch. Two players sprinting past each other perpendicularly at 45° lose all their sprint on the momentary contact. Feels wrong: you should be able to graze a defender's shoulder without losing your dribble.
+
+5. **E — sweep-based CCD (swept-circle intersection over the sub-tick interval).** Compute the *time-of-impact* within the tick's dt; roll positions forward to that instant; resolve; recurse for the remaining dt. Handles high-speed contacts (e.g. a 25 m/s kicked ball vs a static player) without tunneling. **Downside**: sub-tick recursion breaks the current `IPhysicsWorld::step(dt)` single-shot contract; adds substantial LOC (~200) and a recursion-depth cap; tick-timing budget becomes non-uniform (a scenario with 3 pileups can spend 3× the CPU of one with none). Tunneling risk between players is negligible at M2 speeds (max sprint 7.5 m/s × 0.05 s = 0.375 m per tick vs a `contact_radius` of 0.4 m — the moving player is guaranteed to overlap the target on the tick they'd tunnel). Ball-vs-player CCD is orthogonal to the ball-owned exclusion rule below, so a sweep for the ball doesn't buy us anything M2 needs.
+
+**Chosen**: **Option B — positional-clamp + tangential-slide.** Split-by-mass ratio using a new `physical.body_mass` attribute (id=15, migration 220, default 1.0, range [0.5, 1.5]). Ball-owned exclusion: on every tick's collision pass, the ball entity is skipped iff `BallControl::owner().has_value()` — the owner + ball are treated as a single kinematic unit for collision purposes. Loose balls (no owner) DO collide with players via the same MTV clamp but only positionally — no velocity is imparted to the ball by the player (the player is a passive obstacle that the ball rolls past), which preserves the M2 rule that only `wants_kick` can accelerate the ball.
+
+**Algorithm** (server-side, `sim/src/physics/BasicPhysics.cpp`):
+
+```
+for each tick after per-entity velocity integration and BEFORE PlayableAreaConstraint::apply_hard:
+
+  // Build collision list.
+  candidates := [e for e in physics.all() if e.flags.is_active]
+  if ball.has_owner:
+    candidates.remove(ball)          // ball rides with owner, exempt from clamp
+
+  // Single-pass MTV resolution. Deterministic order = ascending EntityId.
+  // Fixed64 throughout — no float creep.
+  for i in 0 .. candidates.len()-1:
+    for j in i+1 .. candidates.len()-1:
+      a, b := candidates[i], candidates[j]
+      delta := a.position.xy - b.position.xy    // z ignored in M2
+      d_sq  := delta.length_sq()
+      r_sum := a.contact_radius + b.contact_radius
+      if d_sq >= r_sum*r_sum:
+        continue                                // no overlap
+
+      // Non-zero normal even when centres exactly coincide: fall back
+      // to the +x direction so the tie-break is deterministic across
+      // architectures. Prev-tick delta is not used — stateless.
+      d := if d_sq > kContactEpsilonSquared then sqrt(d_sq) else Fixed64::one()
+      normal := if d_sq > kContactEpsilonSquared then delta / d
+                else Vec2{Fixed64::one(), Fixed64::zero()}
+
+      penetration := r_sum - d
+
+      // Positional clamp split by mass. Heavier body moves less.
+      // Total displacement = penetration; a gets (b.mass / total)
+      // fraction, b gets (a.mass / total). Matches Newton's inverse-mass
+      // convention (equal masses each move penetration/2).
+      total_mass := a.body_mass + b.body_mass
+      a.position.xy += normal * (penetration * b.body_mass / total_mass)
+      b.position.xy -= normal * (penetration * a.body_mass / total_mass)
+
+      // Tangential-slide velocity zap. Zero the CLOSING component
+      // along `normal` for each entity; preserve tangential.
+      // v_normal = dot(v, normal); if v_normal > 0 for a (moving TOWARD b),
+      // subtract v_normal * normal from a.velocity. Symmetric for b
+      // (its "toward" is -normal, so it's v_normal < 0 that gets
+      // zeroed).
+      va_n := dot(a.velocity.xy, normal)
+      if va_n < Fixed64::zero():                 // a moving TOWARD b (into -normal from b's side means +normal into b's centre; sign flipped: a.velocity has +normal pointing FROM b, so "toward b" = negative normal)
+        a.velocity.xy -= normal * va_n           // zeros a's -normal component only
+      vb_n := dot(b.velocity.xy, normal)
+      if vb_n > Fixed64::zero():                 // b moving TOWARD a (in +normal direction from b's centre)
+        b.velocity.xy -= normal * vb_n           // zeros b's +normal component only
+
+      // Note: separating pairs (a moving AWAY from b) are left alone —
+      // preserves the sensible outcome of two players who just contacted
+      // and are now walking away from each other.
+```
+
+**Constants** (all in [sim/src/physics/BasicPhysics.hpp](sim/src/physics/BasicPhysics.hpp)):
+
+- `kPlayerContactRadius       = Fixed64::fromFraction(4, 10)`   // 0.4 m per player — half a shoulder-width; sum of two = 0.8 m body diameter.
+- `kBallContactRadius         = Fixed64::fromFraction(11, 100)` // 0.11 m official FIFA size-5 ball radius.
+- `kContactEpsilonSquared     = Fixed64::fromFraction(1, 10000)` // (0.01 m)² — below this the centres are treated as coincident and normal defaults to +x.
+- `kBodyMassMin               = Fixed64::fromFraction(5, 10)`   // 0.5 lower clamp; a defender with 0.5 is displaced twice as much per contact.
+- `kBodyMassMax               = Fixed64::fromFraction(15, 10)`  // 1.5 upper clamp; a defender with 1.5 is displaced 1/3 as much.
+- `kBodyMassDefault           = Fixed64::one()`                  // 1.0 — every player at M2 default until the profile editor lands.
+
+All constants live in `BasicPhysics.hpp` (not a scattered header) so a single grep finds every collision tuning knob. `kPlayerContactRadius` is deliberately a physics constant (not a per-player attribute) at M2 — body-size variation via attribute is deferred to M4+; body-mass variation lives on the attribute registry for the split-weighting only.
+
+**Attribute contract**:
+
+- New row in `sim_attribute_registry`: `physical.body_mass`, id=**15**, weight=1.0, category=`physical`, description=`Body mass for collision split-weighting; clamped to [0.5, 1.5] at read time in BasicPhysics::step.`
+- Migration 220 lands the INSERT row + a `sim_default_body_mass()` SQL function returning `1.0` for use in `m0::defaultPhysical()` fallback.
+- `common/M0Attributes.cpp` sets `a.set(kBodyMass, Fixed64::one())` in `defaultPhysical()`; `m0::defaultPhysical()` output changes by 1 attribute row — the M0 canonical hash locked by `test_canonical_hash::m0_default_attribute_set_hash_is_stable` (currently 0x???) MUST rotate. Called out in Slice 27.3.
+- `sim/src/common/M0Registry.generated.hpp` regenerates via the pre-build codegen; adds `inline constexpr AttrId kBodyMass = 15;`.
+- `MechanicsParams::fromPhysical` does NOT read `body_mass` — it's a physics-layer attribute, consumed only by `BasicPhysics::step`. `BasicPhysics` reads it via a new `IPhysicsWorld::setBodyMass(EntityId, Fixed64)` setter that `Match::claimSlot` calls after profile assignment; unclaimed slots default to `kBodyMassDefault`.
+
+**Ball-owned exclusion rule** (canonical statement, quotable in test names and code comments):
+
+> On any tick where `BallControl::owner().has_value()`, the ball entity is EXCLUDED from `BasicPhysics::step`'s collision-candidate list. The owner-and-ball pair is treated as a single kinematic unit for collision purposes: the owner's position/velocity resolves against other players per the MTV algorithm above, and `BallControl` re-glues the ball to `owner.position + kBallOwnerLeadDistance*heading` after the physics step (unchanged behaviour from Slice 16.3). Non-owner slots that overlap the ball's radius during a physics tick do NOT displace the ball. Loose balls (no owner) ARE in the collision-candidate list — they get positionally clamped away from any player they overlap, but the tangential-slide velocity-zap step is a no-op on them (ball has infinite effective mass for velocity purposes; only `BallPhysics::applyImpulse` from a kick can accelerate a loose ball).
+
+**Consequences**:
+
++ **Deterministic + coach-legible.** Fixed64 throughout, ascending-EntityId iteration order, stateless (no per-pair contact-tracking state carries between ticks). A coach sees "walk into a defender → stop; walk sideways → slide past." Matches body-shielding intuition from real football.
++ **Ball ownership contract preserved.** The exclusion rule is a single one-line guard around the ball's inclusion in the candidate list — impossible to accidentally bypass because it's the sole entry point. First-touch semantics (Slice 16.3) remain untouched: still only `wants_dribble` + proximity transfers, still only `wants_kick` releases.
++ **No new wire bits.** Sim server-side only. `sim_match_events.payload`, `sim_match_inputs.payload`, HELLO_ACK cap bits, SNAPSHOT layout — all unchanged. Existing wire tests (`test_binary_v1_serializer`, `test_input_frame`, `test_match_event_frame`, `test_scenario_meta_frame`) stay green without modification.
++ **Attribute footprint is one row.** `physical.body_mass` at id=15 is the sole new attribute; `contact_radius` deliberately deferred to M4+ (currently a physics constant). This matches §22.20's minimalism principle for attribute-registry growth.
++ **1-slot / ball-only goldens stay byte-identical.** `Wander200` is a special case — uses `EmptyPitchScenario` (0 slots) so nothing collides. `HumanSprint400`, `BallRoll400`, `HalfPitchHard400`, `SoftDrill400` all have 0 or 1 active slot AND the ball is exempt from player-vs-player collisions AND (loose ball) has no player nearby to collide with. `test_ball_physics` and `test_stub_physics` remain valid because `BasicPhysics` extends the interface additively — old direct-`StubPhysics` tests continue to work; the *default* factory (Match constructor) is what flips to `BasicPhysics`.
++ **Test-only scenarios don't need modification.** `BallAndTwoSlotsScenario` in `test_determinism.cpp` continues to compile unchanged; its 2-slot goldens (`Dribble200`, `FirstTouch200`, `PassEast400`, `PassReceive200`) rotate under Slice 27.4 because the two slots' positions/velocities now interact.
+
+− **Three existing goldens rotate.** Slice 27.4 lands the new hashes for `Wander200` (→ unchanged because 0-slot; verify), `Dribble200` (2-slot but co-linear, minimal impact; verify), `FirstTouch200` (2-slot centre-overlap at spawn — substantial hash change), `BallOnPitchWithDefender400` (2-slot with close-contact steady-state hold — substantial hash change), `PassEast400` (2-slot; slot 2 stationary at (+15, +5), 5 m off-axis — verify no contact), `PassReceive200` (2-slot; slot 2 on-axis; kicked ball flies past slot 1, slot 2 receives — substantial hash change if slot 2 walks through slot 1's spawn position during approach; likely no contact given the +15 m gap but must be verified). Each golden's new hash lands with a re-derived closed-form position estimate in the constant's comment, same discipline as the 8 existing goldens.
+− **`m0::defaultPhysical()` output gains one row.** `test_canonical_hash::m0_default_attribute_set_hash_is_stable` (if it exists — verify) rotates in Slice 27.3. The FNV-1a-64 hash lock in `common/M0Attributes.cpp`'s test coverage moves to a new value; Slice 27.3 documents both the pre- and post-hash for a clean diff.
+− **`IPhysicsWorld` gains `setBodyMass(EntityId, Fixed64)`.** Interface widening — `StubPhysics`, `BasicPhysics`, and any test-only physics implementations MUST implement the new method. Trivial store-on-entity in `StubPhysics` (already stores heading/motion opaquely); real consumer only in `BasicPhysics`.
+− **Tunneling risk between players at M2 speeds is non-zero but negligible.** Max sprint 7.5 m/s × 0.05 s = 0.375 m per tick. Two players approaching head-on close 0.75 m per tick. Sum-of-radii = 0.8 m. So a head-on approach cannot skip past overlap in a single tick — always caught. Off-axis approaches close slower. Ball-vs-player at kick speeds (25 m/s in Slice 28.5 golden) DOES tunnel: 25 m/s × 0.05 s = 1.25 m per tick, larger than kPlayerContactRadius + kBallContactRadius = 0.51 m. Acceptable at M2 because (a) the ball is exempt from player-vs-player collision, (b) `BallPhysics` already handles ball-vs-ground; (c) ball-vs-player physics interaction isn't a Slice 27 goal (§24.3 explicitly non-goals it). Revisit condition below covers the M4+ CCD upgrade.
+− **Circle-circle at close range is O(N²).** At M2 N ≤ 22 (worst case 11v11) — 22² = 484 pair checks per tick, all cache-hot Fixed64 subtracts. Well under the tick budget. Grid broadphase deferred to M4+ per §24.5 non-goal on "full-match 11v11 optimisation".
+− **The velocity-zap sign convention is subtle.** The direction convention ("normal points from b to a") plus the sign of `dot(v, normal)` for "moving toward" MUST be documented at the call site with an ASCII diagram in `BasicPhysics.cpp` — anyone re-deriving this from scratch during a bug hunt will get it wrong.
+
+**Revisit if / when**:
+
+- **A player-vs-player collision test scenario needs a bounce** (e.g. an M4 goalkeeper-punch drill where the keeper explicitly wants to send an attacker sprawling). Promote to option (C) impulse-based elastic; add `physical.restitution` at attr id=16; only the specific collision types that opt in via `is_impact_pair()` use the elastic path; default MTV+slide behaviour stays for the other 99% of contacts.
+- **Two-body chains cause visible jitter** (e.g. three players in a triangle each MTV-pushing the others into more overlap). At M2 with N ≤ 22 the single-pass resolution should converge in one tick for isolated pairs; if not, promote to a fixed-count iterative resolver (5–10 passes per tick, break early on σ(penetration) < ε). Deterministic if iteration count is compile-time constant.
+- **Ball-vs-player interaction becomes a game requirement** (e.g. M5's offside line rendering needs the ball to bounce off a player who's just standing there). Ball exemption drops; add a dedicated `resolveBallVsPlayer` branch that does positional-clamp only (never touches velocity) so `wants_kick` remains the sole velocity-mutation entry point.
+- **`contact_radius` becomes a per-player attribute** (M4+ body-size variation). Add `physical.contact_radius` at attr id=17, clamp to [0.3, 0.55], and read it from `IPhysicsWorld::setContactRadius` instead of the compile-time `kPlayerContactRadius`. Deterministic goldens rotate again at that time.
+- **Cross-tick contact-tracking is needed** (e.g. for a "held-jersey" penalty detector counting sustained contact ticks). Add a `std::unordered_map<PairKey, ContactState>` inside `BasicPhysics`; hash key is `(min(id_a, id_b), max(id_a, id_b))`. Determinism-safe because ascending-EntityId pair iteration means the same PairKeys are inserted in the same order on every replay.
+- **N grows past 30 (M4+ 11v11+substitutes)**, the O(N²) inner loop becomes measurable in tick-time budget. Introduce a uniform-grid broadphase (cell size = 2 * kPlayerContactRadius). Broadphase output is a set of candidate pairs — the narrowphase MTV algorithm above is unchanged. Deterministic if grid iteration is row-major.
+
+**Refs**: §5.3 (`IPhysicsWorld` interface + `BasicPhysics` predecessor `StubPhysics`), §16.3 (`BallControl` first-touch + owner-glue rule that the ball exemption preserves), §22.0 (ADR append-only rule), §22.20 (SNAPSHOT trailer additive-extension pattern for attribute-registry growth precedent), §24.3 → "Player-player collisions" bullet list (source of the option-(b) recommendation this ADR ratifies), §24.4 M2 exit criterion "Player-player collisions resolved deterministically without ball being knocked away from its owner" (Slice 27), §24.6 M2→M3 transition "Collision → determinism-golden rotation surface" (Slice 27.4 rotates the 3 goldens catalogued there).
 
 ### 22.25 [2026-07-16] `sim_match_events.payload` versioning + `EventType::Goal` (id=9) — Slice 28
 
@@ -3015,7 +3141,7 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 25 exit gate**: no gameplay change, but a coach opening any M2 scenario visually understands which slot is dribbling, walking vs sprinting, and how a strip resolves. **Closed 2026-07-15**.
 
-**Slice 26 — Short pass primitive** (in progress)
+**Slice 26 — Short pass primitive** (closed 2026-07-16 with Slice 26.6 landing PassEast400 + PassReceive200 goldens; see exit gate below)
 
 - [x] 26.1 (2026-07-16) — `physical.pass_power` attribute at stable id=14 via migration 217. Default 15 m/s. Consumer arrives in 26.3; 47/47 goldens byte-identical.
 - [x] 26.2 (2026-07-16) — `Intent::wants_kick` + `Intent::kick_direction` + `Intent::kick_power_hint`. Wire encoding per **ADR §22.23**: additive length-prefixed trailer on INPUT (offset 16+); server-declared HELLO_ACK cap bit 3 (`kWireCapInputKickTrailer`); `kInputFlagWantsKick = 1u << 4`; 28-byte payload when kicking, 20-byte legacy payload otherwise (byte-identical to M0). Server-side decoder in `sim/src/net/InputFrame.cpp` accepts 20-or-32-byte frames with strict `trailer_len == 10` and kick-direction magnitude in `[0.5, 1.5]`. Frontend: Space key + kick pad, `state.canKick` gated on HELLO_ACK bit 3. DB decoder migration 218 extends `sim_decode_input` to surface `kick_dir_x`, `kick_dir_y`, `kick_power_hint` in the returned jsonb for 32-byte rows; 20-byte rows decode with the M0 shape unchanged. 47/47 tests green including all 9 determinism goldens (0.02 s).
@@ -3029,9 +3155,9 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 26 exit gate**: two coaches on two devices open `BallOnPitch2v0`, one claims slot 1 + one claims slot 2, they can pass the ball back and forth with a kick button. Each pass shows a motion trail on both clients. Determinism-locked. **CLOSED 2026-07-16** with Slice 26.6 landing (goldens: PassEast400 + PassReceive200).
 
-**Slice 27 — Player-player collisions** (not started; blocked on ADR §22.24)
+**Slice 27 — Player-player collisions** (in progress — ADR §22.24 drafted 2026-07-17, Slice 27.1 landed)
 
-- 27.1 ADR §22.24 lands: circle-circle positional-clamp + tangential-slide, `body_mass` attribute for split-weighting, ball-owned exclusion rule.
+- 27.1 [x] ADR §22.24 lands: circle-circle positional-clamp + tangential-slide, `body_mass` attribute for split-weighting, ball-owned exclusion rule. Drafted 2026-07-17.
 - 27.2 `sim/src/physics/BasicPhysics.{hpp,cpp}` — replaces StubPhysics in the Match factory. Circle-circle overlap resolution via minimum-translation-vector, applied post-integration, pre-`apply_hard`.
 - 27.3 `physical.body_mass` attribute (id=15, migration 220). Default 1.0.
 - 27.4 Update every existing determinism golden — collisions change tick-by-tick trajectories for any scenario with ≥ 2 slots that get close. `Wander200`, `FirstTouch200`, `BallOnPitchWithDefender400` all rotate; `HumanSprint400`, `BallRoll400`, `Dribble200`, `HalfPitchHard400`, `SoftDrill400` are 1-slot or ball-only and unaffected.
@@ -3066,7 +3192,7 @@ Tick in place as work lands. All must be green for M2 to be considered complete.
 - [x] A non-player AI (`DefenderController`) can pursue the ball with `IPlayerController` semantics (Slice 24.3a).
 - [x] AI can hold ownership without walking off pitch (Slice 24.3b — `ball_owner` plumbing through `AwarenessView`).
 - [x] Cross-arch determinism CI green for every M2 scenario shipped so far (`test_determinism` includes `BallOnPitchWithDefender400` = `0x71f639d918a32830`).
-- [ ] Two players can pass the ball to each other and the receiver can control it (Slice 26).
+- [x] Two players can pass the ball to each other and the receiver can control it (Slice 26 — closed 2026-07-16 with the `pass_receive_first_touch_200_ticks_seed_42` golden asserting `ball_owner == 2` after slot 1 kicks the ball into slot 2's first-touch radius).
 - [ ] Player-player collisions resolved deterministically without ball being knocked away from its owner (Slice 27).
 - [x] Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal` (Slice 28). *(Storage side complete in Slice 28.3; wire-visible goal-flash complete in Slice 28.4; determinism golden complete in Slice 28.5 — `goal_from_kick_east_200_ticks_seed_42` locks the full pipeline byte-for-byte.)*
 - [ ] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at end of M2 (§22.14 invariant — carried through M1 exit criteria, must survive M2).
