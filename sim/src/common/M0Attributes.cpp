@@ -66,6 +66,23 @@ profile::AttributeSet defaultPhysical()
     // read it. Per-player biasing arrives when the profile editor
     // lands (deferred per §24.5).
     a.set(kPassPower,           math::Fixed64::fromDouble(15.0));
+
+    // Slice 27.3 (§24.3, ADR §22.24): body_mass is the split-weighting
+    // for the positional-clamp + tangential-slide collision resolver.
+    // Consumed by BasicPhysics::step in Slice 27.2 — NO code path
+    // reads this default yet, so migration 220 landing here is
+    // determinism-neutral: all 50 goldens (Wander200, HumanSprint400,
+    // BallRoll400, Dribble200, FirstTouch200, HalfPitchHard400,
+    // SoftDrill400, BallOnPitchWithDefender400, PassEast400,
+    // PassReceive200, GoalFromKickEast200) stay byte-identical.
+    // Slice 27.4 is the byte-changing slice once BasicPhysics is wired
+    // into the Match factory in Slice 27.2. Default 1.0 means "every
+    // player is the same mass" — equal masses each move penetration/2
+    // in the MTV split. Runtime clamp to [0.5, 1.5] happens inside
+    // BasicPhysics::step so a mis-authored profile can't destabilise
+    // the resolver. Per-player biasing arrives when the profile editor
+    // lands (deferred per §24.5).
+    a.set(kBodyMass,            math::Fixed64::fromDouble(1.0));
     return a;
 }
 

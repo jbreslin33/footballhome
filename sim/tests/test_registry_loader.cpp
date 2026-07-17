@@ -47,6 +47,9 @@ std::vector<RegistryRow> canonicalM0Attrs()
         {13, "physical.press_resistance",       "physical"},
         // Slice 26.1: short-pass primitive kick speed (migration 217).
         {14, "physical.pass_power",             "physical"},
+        // Slice 27.3: body_mass for the positional-clamp + tangential-
+        // slide collision resolver split (migration 220, ADR §22.24).
+        {15, "physical.body_mass",              "physical"},
     };
 }
 
@@ -69,7 +72,7 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     AttributeRegistry reg;
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{14});
+    FH_EXPECT_EQ(reg.size(), std::size_t{15});
     // Round-trip lookup by id.
     const auto* e = reg.find(static_cast<fh::sim::AttrId>(3));
     FH_EXPECT(e != nullptr);
@@ -97,6 +100,10 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     const auto ppw = reg.lookup("physical.pass_power");
     FH_EXPECT(ppw.has_value());
     FH_EXPECT_EQ(*ppw, fh::sim::AttrId{14});
+    // Slice 27.3: body_mass at id=15 (migration 220, ADR §22.24).
+    const auto bmd = reg.lookup("physical.body_mass");
+    FH_EXPECT(bmd.has_value());
+    FH_EXPECT_EQ(*bmd, fh::sim::AttrId{15});
 }
 
 FH_TEST(load_attribute_registry_clears_prior_contents)
@@ -110,7 +117,7 @@ FH_TEST(load_attribute_registry_clears_prior_contents)
     reg.addEntry(static_cast<fh::sim::AttrId>(999), "junk.key", "junk");
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{14});
+    FH_EXPECT_EQ(reg.size(), std::size_t{15});
     FH_EXPECT(reg.find(static_cast<fh::sim::AttrId>(999)) == nullptr);
 }
 
@@ -195,8 +202,8 @@ FH_TEST(verify_passes_when_db_matches_compile_time_catalog)
 FH_TEST(verify_throws_on_missing_attribute_row)
 {
     auto rows = canonicalM0Attrs();
-    rows.pop_back();   // Slice 26.1: drop kPassPower (id=14, now the
-                       // tail entry after migration 217).
+    rows.pop_back();   // Slice 27.3: drop kBodyMass (id=15, now the
+                       // tail entry after migration 220).
 
     InMemoryPgClient db;
     db.seedAttributeRegistry(std::move(rows));
@@ -214,7 +221,7 @@ FH_TEST(verify_throws_on_missing_attribute_row)
         threw = true;
         FH_EXPECT(e.context() == "verifyM0RegistryConsistency");
         const std::string msg{e.what()};
-        FH_EXPECT(msg.find("id=14") != std::string::npos);
+        FH_EXPECT(msg.find("id=15") != std::string::npos);
         FH_EXPECT(msg.find("missing") != std::string::npos);
     }
     FH_EXPECT(threw);

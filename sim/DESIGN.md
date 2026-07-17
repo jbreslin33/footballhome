@@ -19,6 +19,8 @@
 > **Slice 28.5 (determinism golden `goal_from_kick_east_200_ticks_seed_42`):** landed 2026-07-17. 50/50 sim tests green (existing `test_determinism` case count now 8). Closes the M2 exit criterion "Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal`".
 >
 > **Slice 27.1 (ADR §22.24 — player-player collision resolution):** drafted 2026-07-17. Chosen: option (b) circle-circle positional-clamp + tangential-slide, `physical.body_mass` in [0.5, 1.5] for the split weighting, ball-owned exclusion rule. Unblocks Slice 27.2 (`BasicPhysics`), 27.3 (attribute id=15, migration 220), 27.4 (rotate 3 existing goldens), 27.5 (2 new collision goldens).
+>
+> **Slice 27.3 (`physical.body_mass` attribute + migration 220):** landed 2026-07-17 out-of-order (before 27.2) so `IPhysicsWorld::setBodyMass` has a stable attribute id to read from when Slice 27.2 arrives. Attr id=15, default 1.0, runtime-clamped to [0.5, 1.5] in `BasicPhysics::step`. Determinism-neutral: no code path reads the value yet, so all 50 sim tests + all 11 determinism goldens stay byte-identical.
 
 ---
 
@@ -3155,11 +3157,11 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 26 exit gate**: two coaches on two devices open `BallOnPitch2v0`, one claims slot 1 + one claims slot 2, they can pass the ball back and forth with a kick button. Each pass shows a motion trail on both clients. Determinism-locked. **CLOSED 2026-07-16** with Slice 26.6 landing (goldens: PassEast400 + PassReceive200).
 
-**Slice 27 — Player-player collisions** (in progress — ADR §22.24 drafted 2026-07-17, Slice 27.1 landed)
+**Slice 27 — Player-player collisions** (in progress — Slice 27.1 ADR §22.24 drafted 2026-07-17, Slice 27.3 attribute + migration 220 landed 2026-07-17)
 
 - 27.1 [x] ADR §22.24 lands: circle-circle positional-clamp + tangential-slide, `body_mass` attribute for split-weighting, ball-owned exclusion rule. Drafted 2026-07-17.
 - 27.2 `sim/src/physics/BasicPhysics.{hpp,cpp}` — replaces StubPhysics in the Match factory. Circle-circle overlap resolution via minimum-translation-vector, applied post-integration, pre-`apply_hard`.
-- 27.3 `physical.body_mass` attribute (id=15, migration 220). Default 1.0.
+- 27.3 [x] `physical.body_mass` attribute (id=15, migration 220). Default 1.0. Landed 2026-07-17 out-of-order (before 27.2) to unblock `IPhysicsWorld::setBodyMass` in Slice 27.2. Determinism-neutral — no code path reads the value yet; 50/50 sim tests green with all 11 determinism goldens byte-identical (Wander200, HumanSprint400, BallRoll400, Dribble200, FirstTouch200, HalfPitchHard400, SoftDrill400, BallOnPitchWithDefender400, PassEast400, PassReceive200, GoalFromKickEast200).
 - 27.4 Update every existing determinism golden — collisions change tick-by-tick trajectories for any scenario with ≥ 2 slots that get close. `Wander200`, `FirstTouch200`, `BallOnPitchWithDefender400` all rotate; `HumanSprint400`, `BallRoll400`, `Dribble200`, `HalfPitchHard400`, `SoftDrill400` are 1-slot or ball-only and unaffected.
 - 27.5 New determinism goldens: `two_humans_collide_head_on_200_ticks_seed_42`, `collision_ball_passthrough_owned_400_ticks_seed_42`.
 
