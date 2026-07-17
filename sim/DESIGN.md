@@ -26,6 +26,38 @@
 
 ---
 
+### ⏭ RESUME HERE — next session (2026-07-18)
+
+**Where we left off (2026-07-17 EOD):** Slices 27.1 → 27.4 all landed. `BasicPhysics` is live in production. `main` is clean (`1cd96aaf`, pushed to origin). Podman image tagged `localhost/footballhome_sim:test-27-2` still built. **51/51 sim tests green.**
+
+**Next task: Slice 27.5 — 2 new collision determinism goldens.**
+
+The two golden fixtures to add to `sim/tests/test_determinism.cpp`:
+
+1. **`two_humans_collide_head_on_200_ticks_seed_42`** — 2 slots on the centre line, spawn at (-5, 0, 0) and (+5, 0, 0), both claimed by `HumanController`, slot 1 asserts `desired_direction=(+1,0,0)` + `wants_sprint=true`, slot 2 asserts `desired_direction=(-1,0,0)` + `wants_sprint=true`. At sprint speed (~7.5 m/s) they close 15 m/s combined → contact around tick ~13. Post-contact both bodies MTV-clamped at sum-of-radii = 0.8 m and closing velocity is zapped to zero. Both slots stationary from ~tick 14 onward. Locks the head-on collision + velocity-zap behaviour end-to-end. Ball absent (use a scenario with 2 slots + no ball, or add one via a new `TwoHumansHeadOnScenario` — check which existing 2-slot scenarios are ball-less first).
+2. **`collision_ball_passthrough_owned_400_ticks_seed_42`** — reuses `BallOnPitchWithDefenderScenario` (or a new variant): coach slot claims ball via first-touch, dribbles east through the defender's spawn position. Owner + ball ride as one unit through the collision pass (ball excluded from candidate list; owner MTV-clamps against defender + slides tangentially). Ball ownership survives the entire contact. Final `ball_owner = slot 1`, ball ≈ coach's east-most position + `kBallOwnerLeadDistance * (+1, 0, 0)`. Locks the ball-always-excluded rule + owner-glue survival end-to-end.
+
+**Fixture pattern (CRITICAL):** unlike the existing 11 goldens which write `cfg.physics = std::make_unique<StubPhysics>()`, the two new goldens MUST write `cfg.physics = std::make_unique<BasicPhysics>()` so the collision behaviour actually enters their execution path (see Slice 27.4 folded-finding above — the Match-factory swap does NOT reach the goldens; every fixture picks its own physics). Follow the standard first-fail-copy-hash protocol from `test_determinism.cpp`'s file header.
+
+**Concrete steps for tomorrow:**
+1. `sudo podman ps` to confirm containers are up (rootful podman — always sudo).
+2. Read [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp) top-of-file to re-read the golden-recording protocol.
+3. Read [sim/tests/scenarios/BallOnPitchWithDefenderScenario.hpp](sim/tests/scenarios/BallOnPitchWithDefenderScenario.hpp) (or wherever the 2-slot scenarios live) to pick the right base for each golden.
+4. Add the two `FH_TEST` blocks + `BasicPhysics` fixtures.
+5. `sudo podman build -f sim/Dockerfile -t footballhome_sim:test-27-5 --target build sim/` — first run fails on placeholder hashes, ctest prints actual hash; copy them in, rebuild, expect 53/53 green.
+6. Update DESIGN.md: add Slice 27.5 landing blurb at top, flip §24.5 Slice 27.5 checkbox, **close Slice 27 entirely** (add "Slice 27 fully CLOSED 2026-07-18" line + update §24.4 M2 exit criterion "Player-player collisions resolved deterministically without ball being knocked away from its owner" to ✓).
+7. Commit + push (multi-paragraph, avoid `!`).
+8. Slice 27 done → next milestone is either Slice 29 (whatever the M2→M3 slice queue names next) or the M2 exit-gate wrap-up ceremony per §24.4.
+
+**Off-limits drift on disk (do NOT stage in Slice 27.5 commit):** unrelated backend/, database/migrations/117-118, database/migrations/121, docs/, frontend/, package*.json, scripts/, wire-snoop.js changes. Stage only `sim/**`.
+
+**Known gotchas re-learned this session:**
+- `test_harness.hpp` has NO `FH_EXPECT_NEAR` — only strict `FH_EXPECT_EQ`. Use the `nearEq(Fixed64, Fixed64)` helper (or inline `FH_EXPECT((delta.raw >= -TOL && delta.raw <= TOL))`) whenever an assertion runs through `fx_sqrt`, division, or chained multiplication.
+- Fixed64 `(-a)*b ≠ -(a*b)` under arithmetic-shift-right rounding — do NOT assert symmetric-mirror invariants across signed positions. Use the mass-weighted centroid form `m_a*a.x + m_b*b.x = const` instead (Newton's 3rd law is bit-exact).
+- Every fixture in `test_determinism.cpp` picks its own physics — the Match-factory swap in production main.cpp does not reach the tests.
+
+---
+
 ## 1. Vision
 
 A **companion piece to fh's RSVP + roster systems** that lets club members *learn and practice tactical concepts by playing them.*
