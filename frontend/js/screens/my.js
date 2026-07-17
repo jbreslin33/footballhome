@@ -1,4 +1,12 @@
-// MyScreen — signed-in player's weekly RSVP + recurring preferences + club chat.
+// MyScreen — signed-in player's Auto-RSVP standing preferences + club chat.
+//
+// Post-gcal rip (2026-07-17): the "This week" and "Weekly availability"
+// tabs were removed — the canonical player RSVP surface is the
+// CalendarScreen (/#calendar) which reads directly from fh_events.
+// This screen keeps two responsibilities:
+//
+//   1. Auto-RSVP preferences (fh_recurring_rsvps, via /api/calendar/my-standing)
+//   2. Club chat (users.id-scoped, via /api/my/chat/messages)
 //
 // Auth: MyController accepts either the fh_sess cookie OR a JWT bearer.
 // We use auth.fetch() here so the JWT path works for the standard SPA
@@ -6,26 +14,17 @@
 // so magic-link sessions transparently work too.
 //
 // Endpoints:
-//   GET  /api/my/week           → { player_id, events: [...] }
-//   POST /api/my/rsvp           → body { match_id, rsvp_status_id, note? }
-//   GET  /api/my/recurring      → { prefs: [...] }
-//   PUT  /api/my/recurring      → body { prefs: [{day_of_week, match_type_id, rsvp_status_id}] }
-//   GET  /api/my/chat/messages  → { chat_id, messages: [...] }  (optional ?since_id=)
-//   POST /api/my/chat/messages  → body { message }
+//   GET  /api/calendar/my-standing  → { prefs: [...] }
+//   POST /api/calendar/my-standing  → body { kind, category, response, active }
+//   GET  /api/my/chat/messages      → { chat_id, messages: [...] }  (optional ?since_id=)
+//   POST /api/my/chat/messages      → body { message }
 class MyScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
-    this.week          = null;          // { player_id, events }
-    this.prefs         = null;          // Array<{day_of_week, match_type_id, rsvp_status_id, ...}>
-    this.standing      = null;          // Slice 6a: Array<{kind, category, response, active}>
+    this.standing      = null;          // Array<{kind, category, response, active}>
     this.standingSaving = new Set();    // "kind::category" tokens currently POSTing
-    this.mode          = 'week';        // 'week' | 'recurring' | 'standing' | 'chat'
-    this.savingId      = null;          // match_id currently being written
+    this.mode          = 'standing';    // 'standing' | 'chat'
     this.errorMsg      = null;
-    // RSVP roster expansion — per-event bucketed lists fetched lazily.
-    this.rsvpsByMatch    = {};          // { matchId: {counts, going, not_going, no_response} }
-    this.rsvpsLoadingIds = new Set();   // matchIds currently in flight
-    this.expandedMatchIds = new Set();  // matchIds whose "who's going" panel is open
     // Chat state.
     this.chatMessages  = [];            // oldest-first list of {id, user_id, person_id, author_first_name, author_last_name, message, created_at}
     this.chatViewerId  = 0;             // server-echoed users.id of the caller — used to decide "mine" vs "theirs"
@@ -51,9 +50,7 @@ class MyScreen extends Screen {
       </div>
       <div style="padding: 0 var(--space-4);">
         <div style="display:flex; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap:wrap;">
-          <button class="btn btn-primary tab-btn" data-tab="week">This week</button>
-          <button class="btn btn-outline-secondary tab-btn" data-tab="recurring">Weekly availability</button>
-          <button class="btn btn-outline-secondary tab-btn" data-tab="standing">Auto-RSVP</button>
+          <button class="btn btn-primary tab-btn" data-tab="standing">Auto-RSVP</button>
           <button class="btn btn-outline-secondary tab-btn" data-tab="chat">Chat<span id="chat-badge" style="display:none; margin-left:6px; background:#dc2626; color:#fff; border-radius:10px; padding:1px 7px; font-size:0.75rem; font-weight:700;"></span></button>
         </div>
         <div id="my-content">
@@ -66,7 +63,7 @@ class MyScreen extends Screen {
   }
 
   onEnter(_params) {
-    this.mode = 'week';
+    this.mode = 'standing';
     this.errorMsg = null;
     this._wire();
     this._bootstrap();
@@ -85,29 +82,16 @@ class MyScreen extends Screen {
 
   async _bootstrap() {
     try {
-      const [weekRes, prefsRes, standingRes] = await Promise.all([
-        this._fetch('/api/my/week'),
-        this._fetch('/api/my/recurring'),
-        // Slice 6a: standing prefs for the new fh_events flow. Runs
-        // in parallel with the two legacy fetches — non-blocking, so
-        // a 5xx on my-standing (e.g. right after a deploy before
-        // routes register) doesn't take the whole screen down.
-        this._fetch('/api/calendar/my-standing').catch(err => {
-          console.warn('[my] my-standing load failed:', err.message);
-          return { prefs: [] };
-        }),
-      ]);
-      this.week     = weekRes;
-      this.prefs    = prefsRes.prefs || [];
+      const standingRes = await this._fetch('/api/calendar/my-standing').catch(err => {
+        console.warn('[my] my-standing load failed:', err.message);
+        return { prefs: [] };
+      });
       this.standing = standingRes.prefs || [];
       this._renderTabs();
       this._renderCurrent();
-      // Prefetch per-event RSVP rosters so the count summaries and
-      // expandable panels populate shortly after cards render.
-      this._prefetchAllEventRsvps();
     } catch (err) {
       console.error('[my] bootstrap failed:', err);
-      this.errorMsg = err.message || 'Failed to load schedule.';
+      this.errorMsg = err.message || 'Failed to load.';
       this._renderError();
     }
   }
@@ -153,30 +137,10 @@ class MyScreen extends Screen {
           this._enterChat();
         } else {
           // Downshift to background polling so the badge keeps updating
-          // even while the user is on Week/Recurring.
+          // even while the user is on the Auto-RSVP tab.
           this._startChatPoll(/*background*/ true);
           this._renderChatBadge();
         }
-        return;
-      }
-      const rsvpBtn = e.target.closest('[data-rsvp-match-id]');
-      if (rsvpBtn) {
-        const matchId = parseInt(rsvpBtn.getAttribute('data-rsvp-match-id'), 10);
-        const statusId = parseInt(rsvpBtn.getAttribute('data-status-id'), 10);
-        this._submitRsvp(matchId, statusId);
-        return;
-      }
-      const toggleBtn = e.target.closest('[data-toggle-rsvps]');
-      if (toggleBtn) {
-        const matchId = parseInt(toggleBtn.getAttribute('data-toggle-rsvps'), 10);
-        this._toggleEventRsvps(matchId);
-        return;
-      }
-      const prefBtn = e.target.closest('[data-pref-key]');
-      if (prefBtn) {
-        const [dowStr, mtypeStr] = prefBtn.getAttribute('data-pref-key').split(':');
-        const statusId = parseInt(prefBtn.getAttribute('data-status-id'), 10);
-        this._togglePref(parseInt(dowStr, 10), parseInt(mtypeStr, 10), statusId);
         return;
       }
       // Slice 6a: standing prefs toggle. data-standing-kind + data-standing-category
@@ -244,10 +208,8 @@ class MyScreen extends Screen {
   }
 
   _renderCurrent() {
-    if (this.mode === 'week')      return this._renderWeek();
-    if (this.mode === 'recurring') return this._renderRecurring();
-    if (this.mode === 'standing')  return this._renderStanding();
     if (this.mode === 'chat')      return this._renderChat();
+    return this._renderStanding();
   }
 
   _renderError() {
@@ -260,510 +222,6 @@ class MyScreen extends Screen {
       </div>
     `;
   }
-
-  _renderWeek() {
-    const box = this.find('#my-content');
-    if (!box) return;
-    const events = (this.week && this.week.events) || [];
-    const sub    = this.find('#my-subtitle');
-    if (sub) sub.textContent = events.length
-      ? `${events.length} event${events.length === 1 ? '' : 's'} this week`
-      : 'Nothing on the schedule right now.';
-
-    const banner = this._duesOwedBanner();
-    const rsvpBanner = this._rsvpMandatoryBanner();
-    const pickupCta = this._pickupSignupCta();
-
-    if (!events.length) {
-      // No roster row + we have a pickup signup URL → the CTA IS the
-      // whole screen (no "check back after Sunday" copy, since the real
-      // reason they see nothing is that they're not registered).
-      if (pickupCta) {
-        box.innerHTML = banner + pickupCta;
-        return;
-      }
-      box.innerHTML = `
-        ${banner}
-        <div class="empty-state">
-          <p>No upcoming events. Check back after Sunday 8pm — the week rolls over then.</p>
-        </div>
-      `;
-      return;
-    }
-
-    box.innerHTML = banner + rsvpBanner + events.map(ev => this._eventCard(ev)).join('');
-  }
-
-  // "Register for Pickup" card shown when the caller has no mens roster
-  // row at all (membership_status === 'none') and the backend told us
-  // where to send them on LeagueApps (pickup_signup_url).  Users with an
-  // active/dues-owed row already see their events; paused-only users end
-  // up here too, which is intentional — they can re-enter the club
-  // through the free pickup tier without paying full dues.
-  _pickupSignupCta() {
-    if (!this.week) return '';
-    if (this.week.membership_status !== 'none') return '';
-    const url = this.week.pickup_signup_url;
-    if (!url || typeof url !== 'string') return '';
-    return `
-      <div style="background: rgba(59, 130, 246, 0.08);
-                  border: 1px solid rgba(59, 130, 246, 0.35);
-                  border-radius: 12px;
-                  padding: var(--space-4);
-                  margin-bottom: var(--space-3);
-                  text-align: center;">
-        <div style="font-size: 1.15rem; font-weight: 700;
-                    color: #1d4ed8; margin-bottom: var(--space-2);">
-          You're almost in!
-        </div>
-        <div style="color: var(--color-text-secondary);
-                    margin-bottom: var(--space-3); line-height: 1.5;">
-          Register for free Pickup on LeagueApps to see the weekly schedule
-          and RSVP. Takes about 60 seconds — no payment required.
-        </div>
-        <a href="${this.escapeHtml(url)}" target="_blank" rel="noopener"
-           style="display: inline-block;
-                  background: #2563eb;
-                  color: #fff;
-                  padding: 10px 18px;
-                  border-radius: 8px;
-                  font-weight: 600;
-                  text-decoration: none;">
-          Register for Pickup →
-        </a>
-      </div>
-    `;
-  }
-
-  // Amber banner shown when the caller's mens roster_assignments are all
-  // soft-deleted (delinquent dues).  Pickup availability still works —
-  // practice and games are the ones filtered out on the backend.
-  _duesOwedBanner() {
-    if (!this.week || this.week.membership_status !== 'dues_owed') return '';
-    const days = this.week.dues_days_overdue || 0;
-    const daysStr = days > 0 ? ` (${days} day${days === 1 ? '' : 's'} overdue)` : '';
-    return `
-      <div style="background: rgba(240, 173, 78, 0.15);
-                  border: 1px solid rgba(240, 173, 78, 0.5);
-                  border-radius: 8px;
-                  padding: var(--space-3);
-                  margin-bottom: var(--space-3);
-                  color: #f0ad4e;">
-        <div style="font-weight: 600; margin-bottom: var(--space-1);">
-          ⚠ Dues owed${this.escapeHtml(daysStr)}
-        </div>
-        <div style="opacity: 0.95;">
-          Pay to unlock practice and games. You can still set availability for pickup below.
-        </div>
-      </div>
-    `;
-  }
-
-  // 2026-07-06 pm — persistent policy banner shown above the weekly
-  // event list.  Mirrors the RSVP-mandatory language in the reminder
-  // messages (mens-events-reminders.js plain body + EventReminderController
-  // magic-link body) so members see the same policy whether they land
-  // here via a reminder link or navigate on their own.  Hidden when the
-  // schedule is empty (no events = nothing to RSVP to = the banner
-  // would just be noise).
-  _rsvpMandatoryBanner() {
-    return `
-      <div style="background: rgba(59, 130, 246, 0.10);
-                  border: 1px solid rgba(59, 130, 246, 0.40);
-                  border-radius: 8px;
-                  padding: var(--space-3);
-                  margin-bottom: var(--space-3);
-                  color: #93c5fd;">
-        <div style="font-weight: 600; margin-bottom: var(--space-1);">
-          📋 RSVP to every event on your schedule
-        </div>
-        <div style="opacity: 0.95;">
-          Set <strong>Going</strong> or <strong>Can't go</strong> for each row below.
-          It's how we plan rosters, subs, and cancellations — please keep it up to date.
-          <div style="margin-top: var(--space-1); opacity: 0.85;">
-            <em>Not sure? Tap <strong>Can't go</strong>. You can always change it later if plans free up.</em>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  _eventCard(ev) {
-    const day       = this._formatDay(ev.match_date);
-    const time      = this._formatRange(ev.match_time, ev.end_time);
-    const title     = ev.title || this._titleCase(ev.match_type || 'Event');
-    const currentId = ev.my_rsvp ? ev.my_rsvp.rsvp_status_id : null;
-    const saving    = this.savingId === ev.match_id;
-
-    // Explicit "your status" line at the top of the button row — the
-    // roster summary further down was previously mistaken for the
-    // caller's own RSVP because both used the same green.
-    const yourStatusLabel = currentId === 1 ? 'Going'
-                          : currentId === 2 ? "Can't go"
-                          : 'Not set';
-    const yourStatusColor = currentId === 1 ? '#16a34a'
-                          : currentId === 2 ? '#dc2626'
-                          : '#9ca3af';
-
-    const btn = (statusId, label, activeBg) => {
-      const active = currentId === statusId;
-      const style = [
-        'flex:1',
-        'padding: var(--space-2) var(--space-3)',
-        'border-radius: 6px',
-        `background: ${active ? activeBg : 'transparent'}`,
-        `color: ${active ? '#fff' : 'inherit'}`,
-        `border: 1px solid ${active ? activeBg : 'rgba(255,255,255,0.2)'}`,
-        'cursor: pointer',
-        'font-weight: 500',
-      ].join(';');
-      return `
-        <button data-rsvp-match-id="${ev.match_id}" data-status-id="${statusId}"
-                ${saving ? 'disabled' : ''}
-                style="${style}">
-          ${saving && active ? '…' : this.escapeHtml(label)}
-        </button>
-      `;
-    };
-
-    const desc = ev.description
-      ? `<div style="opacity:0.75; font-size:0.9rem; margin-top: var(--space-1);">${this.escapeHtml(ev.description)}</div>`
-      : '';
-
-    // Venue line — name + optional address, wrapped in a maps link so
-    // players can tap to open Google Maps.  Falls back gracefully when
-    // the match has no venue attached (venue_id NULL).
-    let venueBlock = '';
-    if (ev.venue_name || ev.venue_address) {
-      const parts = [];
-      if (ev.venue_address) parts.push(ev.venue_address);
-      if (ev.venue_city)    parts.push(ev.venue_city);
-      if (ev.venue_state)   parts.push(ev.venue_state);
-      const fullAddr = parts.join(', ');
-      const mapsQ = encodeURIComponent(
-        ev.venue_name && fullAddr ? `${ev.venue_name}, ${fullAddr}`
-        : (ev.venue_name || fullAddr)
-      );
-      const mapsHref = `https://www.google.com/maps/search/?api=1&query=${mapsQ}`;
-      const label = ev.venue_name || fullAddr;
-      const subLine = (ev.venue_name && fullAddr)
-        ? `<div style="opacity:0.6; font-size:0.8rem;">${this.escapeHtml(fullAddr)}</div>`
-        : '';
-      venueBlock = `
-        <div style="margin-top: var(--space-1); font-size:0.9rem;">
-          <a href="${mapsHref}" target="_blank" rel="noopener"
-             style="color:#93c5fd; text-decoration:none;">
-            📍 ${this.escapeHtml(label)}
-          </a>
-          ${subLine}
-        </div>
-      `;
-    }
-
-    const rsvpBlock = this._renderEventRsvpBlock(ev.match_id);
-
-    return `
-      <div style="background: var(--bg-secondary, rgba(255,255,255,0.04));
-                  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
-                  border-radius: 8px; padding: var(--space-3);
-                  margin-bottom: var(--space-3);">
-        <div style="display:flex; justify-content: space-between; gap: var(--space-2); align-items: baseline;">
-          <div style="font-weight: 600;">${this.escapeHtml(title)}</div>
-          <div style="opacity:0.7; font-size: 0.9rem;">${this.escapeHtml(day)} · ${this.escapeHtml(time)}</div>
-        </div>
-        ${venueBlock}
-        ${desc}
-        <div style="margin-top: var(--space-3); font-size:0.8rem; opacity:0.75;">
-          <span style="opacity:0.7;">Your availability:</span>
-          <strong style="color:${yourStatusColor};">${this.escapeHtml(yourStatusLabel)}</strong>
-          ${ev.is_coach ? `<span style="display:inline-block; margin-left:8px; padding:1px 8px;
-                                        border-radius:8px; background:rgba(147,197,253,0.15);
-                                        color:#93c5fd; font-size:0.72rem; font-weight:700;
-                                        letter-spacing:0.03em; vertical-align:middle;">🧢 COACH</span>` : ''}
-        </div>
-        <div style="display:flex; gap: var(--space-2); margin-top: var(--space-2);">
-          ${btn(1, 'Going',     '#16a34a')}
-          ${btn(2, "Can't go",  '#dc2626')}
-        </div>
-        ${rsvpBlock}
-      </div>
-    `;
-  }
-
-  // Compact roster preview + optional expanded panel per event card.
-  // Counts line + toggle button are always rendered; the expanded
-  // panel with names only appears when the user has clicked "Show
-  // who's going" for that match.
-  _renderEventRsvpBlock(matchId) {
-    const data     = this.rsvpsByMatch[matchId];
-    const loading  = this.rsvpsLoadingIds.has(matchId);
-    const expanded = this.expandedMatchIds.has(matchId);
-
-    // Summary line — INTENTIONALLY neutral.  We do NOT display the
-    // "going" count, names, or any RSVP status word on the collapsed
-    // card, because users reported reading roster-level text as if it
-    // were their own personal RSVP state.  All status details live
-    // inside the expanded panel only.
-    let summary;
-    if (data) {
-      const c = data.counts || {};
-      const responded = (c.going || 0) + (c.not_going || 0);
-      const total     = c.total || (responded + (c.no_response || 0));
-      summary = `
-        <span style="opacity:0.65; font-size:0.8rem;">
-          Team roster: <strong>${responded}</strong> of <strong>${total}</strong> responded
-        </span>
-      `;
-    } else if (loading) {
-      summary = `<span style="opacity:0.55;">Loading team roster…</span>`;
-    } else {
-      summary = `<span style="opacity:0.5;">Tap to see the team roster</span>`;
-    }
-
-    const arrow = expanded ? '▲' : '▼';
-    const toggleLabel = expanded ? 'Hide' : 'See everyone';
-
-    const expandedBody = (expanded && data) ? `
-      <div style="margin-top: var(--space-3); padding-top: var(--space-3);
-                  border-top: 1px dashed rgba(255,255,255,0.1);">
-        ${this._renderCoachRsvpsBlock(data.coaches)}
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-          ${this._renderRsvpBucket('Going',     data.going,       '#16a34a', '✓')}
-          ${this._renderRsvpBucket("Can't go",  data.not_going,   '#dc2626', '✕')}
-          ${this._renderRsvpBucket('No reply',  data.no_response, '#6b7280', '—')}
-        </div>
-      </div>
-    ` : (expanded && loading) ? `
-      <div style="margin-top: var(--space-3); padding: var(--space-3) 0;
-                  opacity:0.55; text-align:center; font-size:0.9rem;">
-        Loading roster…
-      </div>
-    ` : '';
-
-    return `
-      <div style="margin-top: var(--space-3); padding-top: var(--space-2);
-                  border-top: 1px solid rgba(255,255,255,0.06);
-                  display:flex; align-items:center; justify-content:space-between;
-                  gap: var(--space-2); flex-wrap:wrap; font-size:0.85rem;">
-        <div style="flex:1; min-width:0;">${summary}</div>
-        <button data-toggle-rsvps="${matchId}"
-                style="background: transparent; color: #93c5fd;
-                       border: 1px solid rgba(147,197,253,0.3);
-                       border-radius: 4px; padding: 3px 10px;
-                       cursor: pointer; font-size: 0.8rem; font-weight:500;
-                       flex-shrink:0;">
-          ${arrow} ${this.escapeHtml(toggleLabel)}
-        </button>
-      </div>
-      ${expandedBody}
-    `;
-  }
-
-  // Coach RSVP row — renders above the four player-status buckets
-  // inside the expanded "who's going" panel.  Coach RSVPs live in
-  // coach_rsvp_history (separate from player_rsvp_history) and are
-  // always shown together as a single "Coaches" block so it's clear
-  // at a glance which staff are coming.  Returns '' when the event
-  // has no active coaches with an app account (users.id row).
-  _renderCoachRsvpsBlock(coaches) {
-    if (!coaches || !coaches.total) return '';
-    const line = (label, arr, color, icon) => {
-      if (!arr || !arr.length) return '';
-      const names = arr.map(c => {
-        const first = (c.first_name || '').trim();
-        const last  = (c.last_name  || '').trim();
-        return this.escapeHtml((first + (last ? ' ' + last : '')) || `Coach #${c.user_id}`);
-      }).join(', ');
-      return `
-        <div style="font-size:0.85rem; padding:2px 0;">
-          <span style="color:${color}; font-weight:600;">${icon} ${this.escapeHtml(label)}:</span>
-          <span style="opacity:0.9;"> ${names}</span>
-        </div>
-      `;
-    };
-    const rows =
-        line('Going',    coaches.going,       '#16a34a', '✓')
-      + line("Can't go", coaches.not_going,   '#dc2626', '✕')
-      + line('No reply', coaches.no_response, '#6b7280', '—');
-    return `
-      <div style="margin-bottom: var(--space-3); padding: var(--space-2);
-                  background: rgba(147,197,253,0.06);
-                  border: 1px solid rgba(147,197,253,0.20);
-                  border-radius: 6px;">
-        <div style="color:#93c5fd; font-weight:700; font-size:0.8rem;
-                    text-transform: uppercase; letter-spacing: 0.05em;
-                    margin-bottom: 4px;">
-          🧢 Coaches
-        </div>
-        ${rows}
-      </div>
-    `;
-  }
-
-  _renderRsvpBucket(label, people, color, icon) {
-    const items = (people || []);
-    if (items.length === 0) {
-      return `
-        <div>
-          <div style="color:${color}; font-weight:600; font-size:0.85rem; margin-bottom:4px;">
-            ${icon} ${this.escapeHtml(label)} <span style="opacity:0.55;">(0)</span>
-          </div>
-          <div style="opacity:0.35; font-size:0.85rem; font-style:italic;">nobody</div>
-        </div>
-      `;
-    }
-    // Pickup-only members sink to the bottom of each bucket and get a
-    // visible pill so the roster is easy to scan.
-    const sorted = items.slice().sort((a, b) => {
-      const pa = a.pickup_only ? 1 : 0;
-      const pb = b.pickup_only ? 1 : 0;
-      if (pa !== pb) return pa - pb;
-      const la = (a.last_name || '').toLowerCase();
-      const lb = (b.last_name || '').toLowerCase();
-      return la.localeCompare(lb);
-    });
-    const rows = sorted.map(p => {
-      const first = (p.first_name || '').trim();
-      const last  = (p.last_name  || '').trim();
-      const name  = first || last
-        ? this.escapeHtml(first + (last ? ' ' + last : ''))
-        : `Person #${p.person_id}`;
-      const pill = p.pickup_only
-        ? ` <span style="display:inline-block; margin-left:6px; padding:1px 6px;
-                         border-radius:8px; background:rgba(147,197,253,0.15);
-                         color:#93c5fd; font-size:0.7rem; font-weight:600;
-                         letter-spacing:0.02em; vertical-align:middle;">Pickup</span>`
-        : '';
-      return `<div style="font-size:0.85rem; padding:1px 0;">${name}${pill}</div>`;
-    }).join('');
-    return `
-      <div>
-        <div style="color:${color}; font-weight:600; font-size:0.85rem; margin-bottom:4px;">
-          ${icon} ${this.escapeHtml(label)} <span style="opacity:0.55;">(${items.length})</span>
-        </div>
-        ${rows}
-      </div>
-    `;
-  }
-
-  // Toggle expanded state for an event's roster panel.  Kicks off a
-  // fetch if we haven't cached the data yet.
-  _toggleEventRsvps(matchId) {
-    if (this.expandedMatchIds.has(matchId)) {
-      this.expandedMatchIds.delete(matchId);
-    } else {
-      this.expandedMatchIds.add(matchId);
-      if (!this.rsvpsByMatch[matchId] && !this.rsvpsLoadingIds.has(matchId)) {
-        this._fetchEventRsvps(matchId);
-      }
-    }
-    this._renderWeek();
-  }
-
-  // Prefetch RSVP rosters for every event in the current week so the
-  // count summaries populate shortly after cards render.  Never
-  // blocks the initial render — failures are silently ignored.
-  _prefetchAllEventRsvps() {
-    const events = (this.week && this.week.events) || [];
-    for (const ev of events) {
-      if (!this.rsvpsByMatch[ev.match_id] && !this.rsvpsLoadingIds.has(ev.match_id)) {
-        this._fetchEventRsvps(ev.match_id);
-      }
-    }
-  }
-
-  async _fetchEventRsvps(matchId) {
-    this.rsvpsLoadingIds.add(matchId);
-    try {
-      const res = await this._fetch(`/api/my/event-rsvps?match_id=${encodeURIComponent(matchId)}`);
-      this.rsvpsByMatch[matchId] = res;
-    } catch (err) {
-      // Silent — leave summary as fallback text.
-      console.warn('event-rsvps fetch failed', matchId, err);
-    } finally {
-      this.rsvpsLoadingIds.delete(matchId);
-      if (this.mode === 'week') this._renderWeek();
-    }
-  }
-
-  _renderRecurring() {
-    const box = this.find('#my-content');
-    if (!box) return;
-    const sub = this.find('#my-subtitle');
-    if (sub) sub.textContent = 'Set defaults for each weekly slot.';
-
-    // Slot list matches the current match_series schedule.  Keep in sync
-    // with the DB rows in `match_series` — this is display order only.
-    const slots = [
-      { dow: 2, match_type_id: 7, label: 'Tuesday Pickup',     time: '7:00 PM' },
-      { dow: 3, match_type_id: 3, label: 'Wednesday Practice', time: '7:00 PM' },
-      { dow: 4, match_type_id: 7, label: 'Thursday Pickup',    time: '7:00 PM' },
-      { dow: 5, match_type_id: 3, label: 'Friday Practice',    time: '7:00 PM' },
-      { dow: 6, match_type_id: 7, label: 'Saturday Pickup',    time: '11:00 AM' },
-    ];
-
-    const prefMap = new Map();
-    for (const p of (this.prefs || [])) {
-      prefMap.set(`${p.day_of_week}:${p.match_type_id}`, p.rsvp_status_id);
-    }
-
-    const rows = slots.map(s => {
-      const key = `${s.dow}:${s.match_type_id}`;
-      const current = prefMap.get(key) || 0;
-      const cell = (statusId, label, bg) => {
-        const active = current === statusId;
-        const style = [
-          'padding: 6px 12px',
-          'border-radius: 4px',
-          `background: ${active ? bg : 'transparent'}`,
-          `color: ${active ? '#fff' : 'inherit'}`,
-          `border: 1px solid ${active ? bg : 'rgba(255,255,255,0.2)'}`,
-          'cursor: pointer',
-          'font-size: 0.85rem',
-        ].join(';');
-        return `<button data-pref-key="${key}" data-status-id="${statusId}"
-                        style="${style}">${label}</button>`;
-      };
-      return `
-        <div style="display:flex; justify-content: space-between; align-items: center;
-                    padding: var(--space-2) 0;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);">
-          <div>
-            <div style="font-weight: 500;">${this.escapeHtml(s.label)}</div>
-            <div style="opacity: 0.6; font-size: 0.85rem;">${this.escapeHtml(s.time)}</div>
-          </div>
-          <div style="display:flex; gap: 6px;">
-            ${cell(1, 'Yes',          '#16a34a')}
-            ${cell(2, 'No',           '#dc2626')}
-            ${cell(0, 'Not Selected', '#4b5563')}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    box.innerHTML = `
-      <div style="background: var(--bg-secondary, rgba(255,255,255,0.04));
-                  border-radius: 8px; padding: var(--space-3);">
-        <p style="margin-top:0; font-weight:600; color:#fbbf24;">
-          Pick the <strong>2 days</strong> you're committing to each week.
-        </p>
-        <p style="margin-top:0; opacity:0.85;">
-          Tap <strong>Yes</strong> on the two slots you'll show up for every week — those are your committed days.
-          Everyone should have two.  If you can't commit to a slot, leave it on <strong>Not Selected</strong> (the rightmost option) instead of picking Yes.
-        </p>
-        <p style="margin-top:0; opacity:0.85;">
-          Your default RSVP is auto-applied every Sunday at 8&nbsp;PM when the week rolls over.
-          If something comes up and you can't make one of your committed days that week, just flip it to <strong>No</strong> on the
-          <a href="#" data-tab="week">This week</a> tab — the auto-RSVP only kicks in for future weeks, not the current one after you've overridden it.
-        </p>
-        <p style="margin-top:0; opacity:0.75; font-size:0.9rem;">
-          <strong>Not Selected</strong> means no default — you'll RSVP manually each week for that slot.
-        </p>
-        ${rows}
-      </div>
-    `;
-  }
-
   // ─── Slice 6a: standing / recurring RSVPs on fh_events ────────────
   //
   // Independent from the legacy _renderRecurring above.  This screen
@@ -906,116 +364,6 @@ class MyScreen extends Screen {
       this.standingSaving.delete(key);
       this._renderStanding();
     }
-  }
-
-  // ---------- writes ----------
-
-  async _submitRsvp(matchId, statusId) {
-    if (this.savingId) return;
-    this.savingId = matchId;
-    this._renderWeek();  // show "…" state
-    try {
-      const res = await this._fetch('/api/my/rsvp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ match_id: matchId, rsvp_status_id: statusId }),
-      });
-      // Update local state without a full refetch.
-      const ev = (this.week?.events || []).find(e => e.match_id === matchId);
-      if (ev) {
-        ev.my_rsvp = {
-          rsvp_status_id: statusId,
-          status: this._statusName(statusId),
-          notes: null,
-        };
-      }
-      // Invalidate the roster cache for this match so counts + names
-      // reflect the caller's new RSVP; refetch in background.
-      delete this.rsvpsByMatch[matchId];
-      this._fetchEventRsvps(matchId);
-    } catch (err) {
-      console.error('[my] RSVP failed:', err);
-      alert(`Could not save RSVP: ${err.message}`);
-    } finally {
-      this.savingId = null;
-      this._renderWeek();
-    }
-  }
-
-  async _togglePref(dow, mtypeId, statusId) {
-    // statusId=0 means "clear".  We rebuild the prefs array
-    // and PUT the whole set — the backend does delete-then-insert.
-    const filtered = (this.prefs || []).filter(
-      p => !(p.day_of_week === dow && p.match_type_id === mtypeId)
-    );
-    if (statusId > 0) {
-      filtered.push({
-        day_of_week: dow,
-        match_type_id: mtypeId,
-        rsvp_status_id: statusId,
-      });
-    }
-    // Optimistic UI.
-    const previous = this.prefs;
-    this.prefs = filtered;
-    this._renderRecurring();
-    try {
-      await this._fetch('/api/my/recurring', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prefs: filtered.map(p => ({
-          day_of_week:    p.day_of_week,
-          match_type_id:  p.match_type_id,
-          rsvp_status_id: p.rsvp_status_id,
-        })) }),
-      });
-    } catch (err) {
-      console.error('[my] preference save failed:', err);
-      alert(`Could not save preference: ${err.message}`);
-      this.prefs = previous;
-      this._renderRecurring();
-    }
-  }
-
-  // ---------- helpers ----------
-
-  _statusName(id) {
-    switch (id) {
-      case 1: return 'yes';
-      case 2: return 'no';
-      default: return '';
-    }
-  }
-
-  _titleCase(s) {
-    if (!s) return '';
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
-
-  _formatDay(isoDate) {
-    if (!isoDate) return '';
-    // Interpret YYYY-MM-DD in local time.  Avoids the "off by one day"
-    // UTC bug that new Date('2026-07-05') would trigger.
-    const [y, m, d] = isoDate.split('-').map(n => parseInt(n, 10));
-    const dt = new Date(y, (m || 1) - 1, d || 1);
-    return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  _formatRange(startHHMMSS, endHHMMSS) {
-    const fmt = (hhmm) => {
-      if (!hhmm) return '';
-      const [hRaw, mRaw] = hhmm.split(':');
-      let h = parseInt(hRaw, 10);
-      const m = parseInt(mRaw, 10) || 0;
-      const suffix = h >= 12 ? 'PM' : 'AM';
-      h = h % 12; if (h === 0) h = 12;
-      return m === 0 ? `${h} ${suffix}` : `${h}:${String(m).padStart(2,'0')} ${suffix}`;
-    };
-    const a = fmt(startHHMMSS);
-    const b = fmt(endHHMMSS);
-    if (!a) return '';
-    if (!b) return a;
-    return `${a}–${b}`;
   }
 
   // ────── Men's chat ──────────────────────────────────────────────────

@@ -143,7 +143,6 @@ void SqlFileLogger::initializeTableMap() {
     
     // RSVP and attendance
     table_file_map_["event_attendance"] = "30";
-    table_file_map_["player_rsvp_history"] = "30";
     table_file_map_["coach_rsvp_history"] = "30";
     table_file_map_["parent_rsvp_history"] = "30";
     table_file_map_["attendance_cron_log"] = "30";

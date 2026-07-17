@@ -341,10 +341,6 @@ BEGIN
     v_kind := 'rsvp';
     v_team_ids_json := fn_lineups_teams_for_chat_event(v_row.chat_event_id);
 
-  ELSIF TG_TABLE_NAME = 'player_rsvp_history' THEN
-    v_kind := 'rsvp';
-    v_team_ids_json := fn_lineups_teams_for_match(v_row.event_id);
-
   ELSIF TG_TABLE_NAME = 'match_lineups' THEN
     v_kind := 'lineup';
     v_team_ids_json := fn_lineups_teams_for_match(v_row.match_id);
@@ -2491,7 +2487,7 @@ CREATE TABLE public.matches (
     gameday_hidden boolean DEFAULT false NOT NULL,
     lineup_hidden boolean DEFAULT true NOT NULL,
     manual_override boolean DEFAULT false NOT NULL,
-    CONSTRAINT check_match_teams CHECK (((match_type_id = ANY (ARRAY[2, 3, 5, 7])) OR ((home_team_id IS NOT NULL) AND (away_team_id IS NOT NULL))))
+    CONSTRAINT check_match_teams CHECK (((match_type_id = ANY (ARRAY[2, 3, 5])) OR ((home_team_id IS NOT NULL) AND (away_team_id IS NOT NULL))))
 );
 
 
@@ -3155,36 +3151,6 @@ CREATE SEQUENCE public.player_positions_id_seq
 --
 
 ALTER SEQUENCE public.player_positions_id_seq OWNED BY public.player_positions.id;
-
-
---
--- Name: player_rsvp_history; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.player_rsvp_history (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    event_id integer NOT NULL,
-    player_id integer NOT NULL,
-    rsvp_status_id integer NOT NULL,
-    changed_by integer,
-    change_source_id integer,
-    notes text,
-    changed_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
--- Name: player_rsvps_current; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.player_rsvps_current AS
- SELECT DISTINCT ON (player_rsvp_history.event_id, player_rsvp_history.player_id) player_rsvp_history.event_id,
-    player_rsvp_history.player_id,
-    player_rsvp_history.rsvp_status_id,
-    player_rsvp_history.notes,
-    player_rsvp_history.changed_at
-   FROM public.player_rsvp_history
-  ORDER BY player_rsvp_history.event_id, player_rsvp_history.player_id, player_rsvp_history.changed_at DESC;
 
 
 --
@@ -31672,14 +31638,6 @@ COPY public.player_positions (id, player_id, position_id, is_primary, sort_order
 
 
 --
--- Data for Name: player_rsvp_history; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.player_rsvp_history (id, event_id, player_id, rsvp_status_id, changed_by, change_source_id, notes, changed_at) FROM stdin;
-\.
-
-
---
 -- Data for Name: player_sources; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -42790,14 +42748,6 @@ ALTER TABLE ONLY public.player_positions
 
 
 --
--- Name: player_rsvp_history player_rsvp_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_rsvp_history
-    ADD CONSTRAINT player_rsvp_history_pkey PRIMARY KEY (id);
-
-
---
 -- Name: player_sources player_sources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -44511,20 +44461,6 @@ CREATE INDEX idx_player_positions_primary ON public.player_positions USING btree
 
 
 --
--- Name: idx_player_rsvp_history_event; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_player_rsvp_history_event ON public.player_rsvp_history USING btree (event_id);
-
-
---
--- Name: idx_player_rsvp_history_player; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_player_rsvp_history_player ON public.player_rsvp_history USING btree (player_id);
-
-
---
 -- Name: idx_player_sources_player; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -45187,13 +45123,6 @@ CREATE TRIGGER trg_notify_event_rsvps AFTER INSERT OR DELETE OR UPDATE ON public
 --
 
 CREATE TRIGGER trg_notify_match_lineups AFTER INSERT OR DELETE OR UPDATE ON public.match_lineups FOR EACH ROW EXECUTE FUNCTION public.fn_notify_lineup_change();
-
-
---
--- Name: player_rsvp_history trg_notify_player_rsvp_hist; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_notify_player_rsvp_hist AFTER INSERT OR DELETE OR UPDATE ON public.player_rsvp_history FOR EACH ROW EXECUTE FUNCTION public.fn_notify_lineup_change();
 
 
 --
@@ -46243,46 +46172,6 @@ ALTER TABLE ONLY public.player_positions
 
 ALTER TABLE ONLY public.player_positions
     ADD CONSTRAINT player_positions_position_id_fkey FOREIGN KEY (position_id) REFERENCES public.positions(id);
-
-
---
--- Name: player_rsvp_history player_rsvp_history_change_source_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_rsvp_history
-    ADD CONSTRAINT player_rsvp_history_change_source_id_fkey FOREIGN KEY (change_source_id) REFERENCES public.rsvp_change_sources(id);
-
-
---
--- Name: player_rsvp_history player_rsvp_history_changed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_rsvp_history
-    ADD CONSTRAINT player_rsvp_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.users(id);
-
-
---
--- Name: player_rsvp_history player_rsvp_history_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_rsvp_history
-    ADD CONSTRAINT player_rsvp_history_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.matches(id) ON DELETE CASCADE;
-
-
---
--- Name: player_rsvp_history player_rsvp_history_player_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_rsvp_history
-    ADD CONSTRAINT player_rsvp_history_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.users(id);
-
-
---
--- Name: player_rsvp_history player_rsvp_history_rsvp_status_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_rsvp_history
-    ADD CONSTRAINT player_rsvp_history_rsvp_status_id_fkey FOREIGN KEY (rsvp_status_id) REFERENCES public.rsvp_statuses(id);
 
 
 --

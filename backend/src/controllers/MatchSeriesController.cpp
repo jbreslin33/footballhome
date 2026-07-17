@@ -1,7 +1,6 @@
 #include "MatchSeriesController.h"
 
 #include "../database/Database.h"
-#include "../services/RsvpMaterialization.h"
 #include "../third_party/json.hpp"
 
 #include <exception>
@@ -170,8 +169,6 @@ MatchSeriesController::~MatchSeriesController() = default;
 
 void MatchSeriesController::registerRoutes(Router& router, const std::string& prefix) {
     // prefix is "/api/match-series".
-    router.post  (prefix + "/rollover",
-                  [this](const Request& r) { return handleRollover(r); });
     router.get   (prefix,
                   [this](const Request& r) { return handleList(r); });
     router.post  (prefix,
@@ -182,28 +179,6 @@ void MatchSeriesController::registerRoutes(Router& router, const std::string& pr
                   [this](const Request& r) { return handleUpdate(r); });
     router.del   (prefix + "/:id",
                   [this](const Request& r) { return handleDelete(r); });
-}
-
-// ---------------------------------------------------------------------
-// POST /api/match-series/rollover
-// ---------------------------------------------------------------------
-Response MatchSeriesController::handleRollover(const Request& request) {
-    if (!requireBearer(request)) {
-        return jsonError(HttpStatus::UNAUTHORIZED, "auth required");
-    }
-    try {
-        auto result = RsvpMaterialization::rollover();
-        return jsonOk({
-            {"success",           true},
-            {"windowStart",       result.windowStartIso},
-            {"windowEnd",         result.windowEndIso},
-            {"matchesInserted",   result.matchesInserted},
-            {"rsvpsInserted",     result.rsvpsInserted},
-        });
-    } catch (const std::exception& e) {
-        std::cerr << "[MatchSeriesController::handleRollover] " << e.what() << std::endl;
-        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
-    }
 }
 
 // ---------------------------------------------------------------------

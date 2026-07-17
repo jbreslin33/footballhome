@@ -152,21 +152,10 @@ class TeamHubScreen extends Screen {
         this.navigation.goBack();
         return;
       }
-      // Take-attendance: jump to the working match-rsvp-management
-      // screen (the older practice-attendance screen queries dead
-      // tables — events, practices, attendance_statuses — that don't
-      // exist in this schema).  We pass the specific matchId as a
-      // param so the target screen can auto-expand that row.
-      const attBtn = e.target.closest('[data-attendance-open]');
-      if (attBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const matchId = parseInt(attBtn.dataset.attendanceOpen, 10);
-        this.navigation.goTo('match-rsvp-management', {
-          matchId: Number.isFinite(matchId) && matchId > 0 ? matchId : undefined,
-        });
-        return;
-      }
+      // Take-attendance button removed 2026-07-17 with the pickup-RSVP
+      // rip — attendance now lives on the CalendarScreen event detail
+      // (backed by fh_event_rsvps).  Any lingering [data-attendance-open]
+      // markup is inert.
       // Edit event — reuse the existing match-form screen in edit mode.
       // Practices/pickups are a single row in `matches` shared across
       // teams (pool teams' calendars mirror to member teams), so an
@@ -538,10 +527,6 @@ class TeamHubScreen extends Screen {
         </div>
         ${venue ? `<div style="font-size:1rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${this.escapeHtml(venue)}">📍 ${this.escapeHtml(venue)}</div>` : ''}
         <div style="flex:1"></div>
-        <button type="button" data-attendance-open="${m.id}"
-                style="all:unset;cursor:pointer;text-align:center;font-size:1rem;font-weight:600;padding:9px 12px;border-radius:6px;background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.35);">
-          📋 Attendance
-        </button>
         <div style="display:flex;gap:8px;">
           <button type="button" data-event-edit="${m.id}"
                   style="flex:1;all:unset;cursor:pointer;text-align:center;font-size:0.95rem;font-weight:500;padding:8px;border-radius:6px;background:rgba(148,163,184,0.12);color:#e2e8f0;border:1px solid rgba(148,163,184,0.35);"

@@ -1570,12 +1570,19 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
         json_array << "[";
         bool first = true;
         
-        // If role_type specified, query only that table, otherwise query all tables
+        // If role_type specified, query only that table, otherwise query all tables.
+        // NOTE: player_rsvps_current was dropped 2026-07-17 (migration 123 —
+        // player RSVPs now live in fh_event_rsvps against fh_events, not
+        // matches).  The 'player' role is intentionally excluded here so
+        // legacy match_id-scoped callers only see coach + parent RSVPs.
         std::vector<std::string> roles_to_query;
-        if (!role_type.empty() && (role_type == "player" || role_type == "coach" || role_type == "parent")) {
+        if (!role_type.empty() && (role_type == "coach" || role_type == "parent")) {
             roles_to_query.push_back(role_type);
+        } else if (role_type == "player") {
+            // Legacy caller — return empty array rather than 400.
+            roles_to_query.clear();
         } else {
-            roles_to_query = {"player", "coach", "parent"};
+            roles_to_query = {"coach", "parent"};
         }
         
         for (const auto& role : roles_to_query) {
@@ -2084,9 +2091,9 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
                 p.photo_url as avatar_url,
                 tp.jersey_number,
                 pos.abbreviation as position,
-                rs.name as rsvp_status,
+                NULL::text as rsvp_status,
                 CASE WHEN ml.id IS NOT NULL THEN true ELSE false END as on_game_roster,
-                CASE WHEN rs.name = 'yes' THEN 0 ELSE 1 END as rsvp_order
+                1 as rsvp_order
             FROM matches m
             JOIN team_division_players tp ON tp.team_id = m.home_team_id
             JOIN players p ON tp.player_id = p.id
@@ -2094,8 +2101,6 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
             LEFT JOIN player_positions pp ON pp.player_id = p.id AND pp.is_primary = true
             LEFT JOIN positions pos ON pp.position_id = pos.id
             LEFT JOIN roster_statuses rost ON tp.roster_status_id = rost.id
-            LEFT JOIN player_rsvps_current prc ON prc.player_id = p.id AND prc.event_id = m.id
-            LEFT JOIN rsvp_statuses rs ON prc.rsvp_status_id = rs.id
             LEFT JOIN match_lineups ml ON ml.match_id = m.id AND ml.player_id = p.id
             WHERE m.id = $1
               AND tp.is_active = true
@@ -2230,8 +2235,10 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
         }
 
         // Get all players from the home team roster with enriched data
-        // RSVP priority: admin override (player_rsvps_current) > GroupMe RSVP (chat_event_rsvps)
-        //   - admin_rsvp comes from player_rsvps_current (keyed on users.id, joined via persons)
+        // RSVP priority: GroupMe RSVP (chat_event_rsvps) only
+        //   - admin_rsvp is always NULL (see comment on the column) — the
+        //     legacy player_rsvps_current view was dropped when the
+        //     canonical RSVP surface moved onto fh_event_rsvps.
         //   - gm_rsvp comes from chat_event_rsvps for this match's chat_event,
         //     using cer.person_id (auto-populated by GroupMe sync when the member
         //     was identified) honoring override_rsvp_status_id if present.
@@ -2246,14 +2253,13 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 CASE WHEN ml.id IS NOT NULL THEN true ELSE false END as on_game_roster,
                 COALESCE(r.jersey_number::text, '') as jersey_number,
                 r.team_id as roster_team_id,
-                -- Admin override RSVP (player_rsvps_current is keyed by users.id)
-                (
-                    SELECT rs.name FROM player_rsvps_current prc
-                    JOIN users u_admin ON u_admin.id = prc.player_id
-                    JOIN rsvp_statuses rs ON rs.id = prc.rsvp_status_id
-                    WHERE prc.event_id = m.id AND u_admin.person_id = pe.id
-                    LIMIT 1
-                ) as admin_rsvp,
+                -- Admin override RSVP: legacy `player_rsvps_current` was
+                -- dropped 2026-07-17 (migration 123).  Real league matches
+                -- don't yet flow through gcal → fh_events, so admin
+                -- overrides for match-scoped rows have no destination; the
+                -- column is left NULL until ops mirrors league fixtures on
+                -- gcal.  GM sync still populates chat_event_rsvps below.
+                NULL::text as admin_rsvp,
                 -- GroupMe RSVP for this match's chat_event (honors admin override on the rsvp row)
                 (
                     SELECT rs.name FROM chat_event_rsvps cer
@@ -2522,48 +2528,19 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
     }
 }
 
-// PUT /api/matches/:matchId/player-rsvp - Set/override a player's RSVP for a match
-// Auto-saves into player_rsvp_history (persists across rebuilds)
+// PUT /api/matches/:matchId/player-rsvp - DISABLED 2026-07-17
+//
+// Legacy game-day-roster admin override wrote to `player_rsvp_history`
+// which was dropped by migration 123.  Real league matches don't yet
+// flow through gcal → fh_events, so this write has no destination.
+// The endpoint is retained as a 410 Gone so callers get a clear signal
+// rather than a silent 404.  Rewire when league fixtures land on gcal.
 Response EventController::handleSetPlayerRSVP(const Request& request) {
-    std::string matchId = extractMatchIdFromPath(request.getPath());
-    if (matchId.empty()) {
-        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
-    }
-
-    try {
-        std::string body = request.getBody();
-        std::string playerId = parseJSON(body, "player_id");
-        std::string rsvpStatus = parseJSON(body, "rsvp_status");
-
-        if (playerId.empty() || rsvpStatus.empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "player_id and rsvp_status are required"));
-        }
-
-        // Look up rsvp_status_id from name
-        pqxx::result statusResult = db_->query(
-            "SELECT id FROM rsvp_statuses WHERE name = $1", {rsvpStatus});
-        if (statusResult.empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid RSVP status"));
-        }
-        std::string rsvpStatusId = statusResult[0][0].c_str();
-
-        // Insert into player_rsvp_history (the view player_rsvps_current picks up the latest)
-        std::string insertQuery = R"(
-            INSERT INTO player_rsvp_history (event_id, player_id, rsvp_status_id, change_source_id, notes)
-            VALUES ($1, $2, $3, 3, 'Set from game day roster')
-        )";
-        db_->query(insertQuery, {matchId, playerId, rsvpStatusId});
-
-        std::cout << "✅ RSVP set for player " << playerId << " match " << matchId << " -> " << rsvpStatus << std::endl;
-
-        std::ostringstream json;
-        json << "{\"success\":true,\"message\":\"RSVP updated\",\"rsvpStatus\":\"" << escapeJSON(rsvpStatus) << "\"}";
-        return Response(HttpStatus::OK, json.str());
-
-    } catch (const std::exception& e) {
-        std::cerr << "❌ Error setting player RSVP: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to set RSVP"));
-    }
+    (void)request;
+    return Response(HttpStatus(410),
+        createJSONResponse(false,
+            "Admin RSVP override is disabled — league fixtures must "
+            "flow through gcal + fh_events before this can be re-enabled."));
 }
 
 // Helper function to decode base64url

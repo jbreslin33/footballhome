@@ -34,13 +34,6 @@ class MatchOptionsScreen extends Screen {
         </button>
         
         ${isCoach ? `
-          <button data-action="manage-rsvps" class="btn btn-lg btn-secondary">
-            📋 Manage Player RSVPs
-            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
-              View and edit player availability for matches
-            </small>
-          </button>
-
           <button data-action="tactical-board" class="btn btn-lg btn-secondary">
             🧠 Match Tactics
             <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
@@ -64,8 +57,6 @@ class MatchOptionsScreen extends Screen {
           this.navigation.goTo('match-management');
         } else if (action === 'rsvp') {
           this.navigation.goTo('match-list');
-        } else if (action === 'manage-rsvps') {
-          this.navigation.goTo('match-rsvp-management');
         } else if (action === 'tactical-board') {
           this.navigation.goTo('tactical-board', { 
             matchTitle: 'General Match Preparation' 

@@ -413,9 +413,15 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
             " WHERE id = $1::int",
             {std::to_string(tokenRowId), minted.sessionId});
 
-        const std::string target = hasEvent
-            ? (publicBaseUrl() + "/#rsvp/" + std::to_string(chatEventId))
-            : (publicBaseUrl() + "/#my");
+        // Land the recipient on the CalendarScreen — the canonical RSVP
+        // surface post-gcal (2026-07-17).  The legacy /#rsvp/ screen was
+        // deleted with the pickup-RSVP rip; magic links generated
+        // pre-rip that still carry a chat_event_id also land on
+        // /#calendar (harmless \u2014 the recipient sees the event there
+        // instead of a per-chat popup).
+        const std::string target = publicBaseUrl() + "/#calendar";
+        (void)hasEvent;
+        (void)chatEventId;
 
         Response r(HttpStatus::FOUND);
         r.setHeader("Location",   target);

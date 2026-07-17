@@ -34,13 +34,11 @@ class App {
       practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
       practiceForm: new PracticeFormScreen(this.navigation, this.auth),
       practiceList: new PracticeListScreen(this.navigation, this.auth),
-      practiceRSVPManagement: new PracticeRSVPManagementScreen(this.navigation, this.auth),
       practiceAttendance: new PracticeAttendanceScreen(this.navigation, this.auth),
       matchOptions: new MatchOptionsScreen(this.navigation, this.auth),
       matchManagement: new MatchManagementScreen(this.navigation, this.auth),
       matchForm: new MatchFormScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
-      matchRSVPManagement: new MatchRSVPManagementScreen(this.navigation, this.auth),
       matchDetail: new MatchDetailScreen(this.navigation, this.auth),
       gameDayRoster: new GameDayRosterScreen(this.navigation, this.auth),
       matchShare: new MatchShareScreen(this.navigation, this.auth),
@@ -82,7 +80,6 @@ class App {
       adminScheduleItem: new AdminScheduleItemScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
       practiceDashboard: new PracticeDashboardScreen(this.navigation, this.auth),
-      rsvp: new RsvpScreen(this.navigation, this.auth),
       adPreview: new AdPreviewScreen(this.navigation, this.auth),
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
@@ -112,13 +109,11 @@ class App {
     this.screenManager.register('practice-management', this.screens.practiceManagement);
     this.screenManager.register('practice-form', this.screens.practiceForm);
     this.screenManager.register('practice-list', this.screens.practiceList);
-    this.screenManager.register('practice-rsvp-management', this.screens.practiceRSVPManagement);
     this.screenManager.register('practice-attendance', this.screens.practiceAttendance);
     this.screenManager.register('match-options', this.screens.matchOptions);
     this.screenManager.register('match-management', this.screens.matchManagement);
     this.screenManager.register('match-form', this.screens.matchForm);
     this.screenManager.register('match-list', this.screens.matchList);
-    this.screenManager.register('match-rsvp-management', this.screens.matchRSVPManagement);
     this.screenManager.register('match-detail', this.screens.matchDetail);
     this.screenManager.register('game-day-roster', this.screens.gameDayRoster);
     this.screenManager.register('match-share', this.screens.matchShare);
@@ -173,7 +168,6 @@ class App {
     this.screenManager.register('mens-pickup-dash',     this.screens.practiceDashboard);
     this.screenManager.register('womens-pickup-dash',   this.screens.practiceDashboard);
     this.screenManager.register('youth-pickup-dash',    this.screens.practiceDashboard);
-    this.screenManager.register('rsvp', this.screens.rsvp);
     this.screenManager.register('ad-preview', this.screens.adPreview);
     this.screenManager.register('public-gameday', this.screens.publicGameday);
     this.screenManager.register('public-lineup', this.screens.publicLineup);
@@ -207,27 +201,17 @@ class App {
       return true;
     };
 
-    // FH-native magic-link landing — #rsvp/<chatEventId>.  Cookie session
-    // was set by /api/auth/magic-link/verify before this redirect, so the
-    // screen self-bootstraps with credentials-included fetches.
-    const routeRsvp = () => {
-      const m = (window.location.hash || '').match(/^#rsvp\/(\d+)$/);
-      if (!m) return false;
-      this.screenManager.show('rsvp', { chatEventId: m[1] });
-      return true;
-    };
+    // FH-native magic-link landing — the legacy /#rsvp/<chatEventId>
+    // route was removed 2026-07-17 with the pickup-RSVP rip.  Magic-link
+    // verify now unconditionally redirects to /#calendar, so no explicit
+    // hash routing is needed on the client side.
 
     window.addEventListener('hashchange', () => {
       if (routePublic()) return;
-      if (routeRsvp())   return;
     });
 
     if (routePublic()) {
       console.log('Routed to public team view');
-      return;
-    }
-    if (routeRsvp()) {
-      console.log('Routed to RSVP screen');
       return;
     }
 

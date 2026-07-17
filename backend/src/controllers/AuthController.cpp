@@ -529,7 +529,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
         //       APSL / pool teams (Practice=908, Pickup=909).  It is
         //       keyed on `leagueapps_user_id`; we bridge to a
         //       persons row via `external_person_aliases` (same
-        //       pattern used by RsvpMaterialization).
+        //       pattern used across the roster/RSVP surfaces).
         //
         // Both branches emit `{id, name, club_id, division_name?}`
         // rows and are UNION-ed so a single caller with entries in

@@ -1,22 +1,22 @@
 // MensEventsRemindersScreen — coach's "who hasn't RSVP'd yet?" board.
 //
-// Layout (v2, 2026-07-06):
+// Layout (v3, 2026-07-17 — post-gcal rip):
 //   Horizontal-scrolling row of EVENT COLUMNS, ordered left-to-right
 //   by time.  Next event is leftmost.  Only shows events in the next
-//   7 days.  Each column contains four stacked sections:
+//   7 days.  Each column contains three stacked sections:
 //     ✅ Going       ❌ Can't go      ⚪ No response
 //   Every roster-eligible player for that event lands in exactly one
-//   section based on their most recent player_rsvp_history row.
+//   section based on their fh_event_rsvps row (if any).
 //
 // Per-player row has FOUR contact buttons:
-//   📧  plain mailto:  (generic body, links to /#rsvp/<chat_event_id>)
+//   📧  plain mailto:  (generic body, links to https://footballhome.org/)
 //   💬  plain sms:     (generic body, same URL)
-//   🔗📧 magic-link mailto:  (POST /api/matches/:id/remind{channel:email,
+//   🔗📧 magic-link mailto:  (POST /api/events/:fhEventId/remind{channel:email,
 //                             person_ids:[id]} → open returned mailto_href)
 //   🔗💬 magic-link sms:     (same but channel:sms → sms_href)
 //
 // Data source: GET /api/mens/week-availability?days=7
-// Magic-link source: POST /api/matches/:id/remind
+// Magic-link source: POST /api/events/:fhEventId/remind
 //
 // The magic-link buttons hit a rate-limit (one nudge per player per
 // event per 5 min) — we surface any 429-like message inline on the
@@ -120,16 +120,14 @@ class MensEventsRemindersScreen extends Screen {
   }
 
   renderColumn(ev) {
-    const badge = this._typeBadge(ev.type, ev.match_type_id);
-    const away = ev.away_team_name
-      ? ` vs <span style="color:var(--text-muted);">${this._escape(ev.away_team_name)}</span>`
-      : '';
+    const badge = this._typeBadge(ev.kind);
+    const away = '';
     const venue = ev.venue_name
       ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">📍 ${this._escape(ev.venue_name)}</div>`
       : '';
 
     // Pickup-only split (user directive 2026-07-07):
-    // On pickup event columns (match_type_id === 7) we push players who
+    // On pickup event columns (kind === 'pickup') we push players who
     // have NO active roster_assignments on APSL/Liga 1/Liga 2 into a
     // separate "PICKUP ONLY" section that renders at the bottom of the
     // column under its own banner.  Rationale: we don't want pickup-
@@ -141,7 +139,7 @@ class MensEventsRemindersScreen extends Screen {
     // For non-pickup events (games/practice) is_pickup_only players
     // shouldn't appear anyway because the eligibility rules filter to
     // teams 35/120/121; treating everyone as "regular" here is safe.
-    const isPickupEvent = ev.match_type_id === 7;
+    const isPickupEvent = ev.kind === 'pickup';
     const allPlayers = ev.players || [];
     const regularPlayers    = isPickupEvent ? allPlayers.filter(p => !p.is_pickup_only) : allPlayers;
     const pickupOnlyPlayers = isPickupEvent ? allPlayers.filter(p =>  p.is_pickup_only) : [];
@@ -243,7 +241,7 @@ class MensEventsRemindersScreen extends Screen {
 
     return `
       <div class="mer-column" style="flex:0 0 ${this._colWidthPx}px;background:var(--bg-secondary);
-                                     border-radius:12px;border-top:4px solid ${this._typeColor(ev.type, ev.match_type_id)};
+                                     border-radius:12px;border-top:4px solid ${this._typeColor(ev.kind)};
                                      overflow:hidden;display:flex;flex-direction:column;">
         <div style="padding:10px 12px;background:rgba(15,23,42,0.35);border-bottom:1px solid rgba(148,163,184,0.15);">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
@@ -252,7 +250,7 @@ class MensEventsRemindersScreen extends Screen {
             ${ev.time_str ? `<span style="font-size:0.78rem;color:var(--text-muted);">· ${this._escape(ev.time_str)}</span>` : ''}
           </div>
           <div style="font-weight:700;font-size:0.98rem;line-height:1.25;">
-            ${this._escape(ev.home_team_name || ev.title)}${away}
+            ${this._escape(ev.title || ev.type_label || 'Event')}${away}
           </div>
           ${venue}
           <div style="margin-top:6px;font-size:0.72rem;color:var(--text-muted);">
@@ -290,11 +288,11 @@ class MensEventsRemindersScreen extends Screen {
   renderPlayerRow(p, ev) {
     const name = `${this._escape(p.first_name || '')} ${this._escape(p.last_name || '')}`.trim() || 'Unknown';
 
-    // Plain-URL RSVP links point at #rsvp/<chat_event_id> when we
-    // have one; fall back to /#my (weekly schedule) otherwise.
-    const rsvpUrl = ev.chat_event_id
-      ? `https://footballhome.org/#rsvp/${ev.chat_event_id}`
-      : `https://footballhome.org/#my`;
+    // Plain-URL RSVP link — always the calendar surface post-gcal rip
+    // (2026-07-17).  Signed-in players land straight on their next-7
+    // events; signed-out players get magic-link'd via /#calendar's
+    // AuthScreen redirect flow.
+    const rsvpUrl = `https://footballhome.org/#calendar`;
 
     // Plain body — no server round-trip; player has to sign in.
     // 2026-07-06 pm — spell out that RSVPing every event is mandatory
@@ -302,7 +300,7 @@ class MensEventsRemindersScreen extends Screen {
     // link body served by EventReminderController::handleSendReminders
     // and the /#my week-schedule page).
     const eventWhen = [ev.date_str, ev.time_str].filter(Boolean).join(' ');
-    const eventTitle = ev.title || ev.home_team_name || 'the next event';
+    const eventTitle = ev.title || ev.type_label || 'the next event';
     const bodyLines = [
       `Hi ${p.first_name || 'there'} — heads up, we don't have your RSVP yet for ${eventTitle}${eventWhen ? ' on ' + eventWhen : ''}${ev.venue_name ? ' at ' + ev.venue_name : ''}.`,
       '',
@@ -340,8 +338,8 @@ class MensEventsRemindersScreen extends Screen {
              style="${btnBase}background:#10b981;color:#fff;">💬</a>`
       : this._disabledBtn(btnBase, '💬', 'No SMS phone on file');
 
-    // Magic-link — deferred, hits /api/matches/:id/remind on click.
-    const magicAttrs = `data-match-id="${ev.match_id}" data-person-id="${p.person_id}"`;
+    // Magic-link — deferred, hits /api/events/:fhEventId/remind on click.
+    const magicAttrs = `data-fh-event-id="${ev.fh_event_id}" data-person-id="${p.person_id}"`;
     const emailMagicBtn = hasEmail
       ? `<button type="button" class="mer-magic-btn" ${magicAttrs} data-channel="email"
                  title="Email ${this._escape(p.email)} a one-tap magic-link RSVP"
@@ -372,18 +370,18 @@ class MensEventsRemindersScreen extends Screen {
   }
 
   async handleMagicClick(btn) {
-    const matchId  = btn.getAttribute('data-match-id');
-    const personId = btn.getAttribute('data-person-id');
-    const channel  = btn.getAttribute('data-channel') || 'sms';
+    const fhEventId = btn.getAttribute('data-fh-event-id');
+    const personId  = btn.getAttribute('data-person-id');
+    const channel   = btn.getAttribute('data-channel') || 'sms';
 
-    if (!matchId || !personId) return;
+    if (!fhEventId || !personId) return;
 
     const original = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '⏳';
 
     try {
-      const resp = await this.auth.fetch(`/api/matches/${matchId}/remind`, {
+      const resp = await this.auth.fetch(`/api/events/${fhEventId}/remind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel, person_ids: [Number(personId)] })
@@ -436,39 +434,25 @@ class MensEventsRemindersScreen extends Screen {
     return `https://mail.google.com/mail/?${params.toString()}`;
   }
 
-  _typeBadge(type, mtId) {
-    const t = (type || '').toLowerCase() || (
-      mtId === 3 ? 'practice' :
-      mtId === 7 ? 'pickup'   :
-      mtId === 1 ? 'game'     :
-      mtId === 4 ? 'scrimmage':
-      mtId === 6 ? 'cup'      :
-      mtId === 2 ? 'custom'   :
-      mtId === 5 ? 'tournament' : ''
-    );
+  _typeBadge(kind) {
+    const t = (kind || '').toLowerCase();
     const styles = {
-      practice:  { bg:'rgba(59,130,246,0.22)',  fg:'#93c5fd', label:'🏃 Practice' },
-      pickup:    { bg:'rgba(168,85,247,0.22)',  fg:'#c4b5fd', label:'⚡ Pickup'   },
-      league:    { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'⚽ Game'     },
-      cup:       { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'🏆 Cup'      },
-      scrimmage: { bg:'rgba(148,163,184,0.22)', fg:'#cbd5e1', label:'⚔️ Scrimmage'},
-      tournament:{ bg:'rgba(234,179,8,0.22)',   fg:'#fde68a', label:'🏆 Tournament'},
-      custom:    { bg:'rgba(148,163,184,0.22)', fg:'#cbd5e1', label:'📅 Event'    },
-      game:      { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'⚽ Game'     },
+      practice: { bg:'rgba(59,130,246,0.22)',  fg:'#93c5fd', label:'🏃 Practice' },
+      pickup:   { bg:'rgba(168,85,247,0.22)',  fg:'#c4b5fd', label:'⚡ Pickup'   },
+      match:    { bg:'rgba(34,197,94,0.22)',   fg:'#86efac', label:'⚽ Match'    },
+      meeting:  { bg:'rgba(148,163,184,0.22)', fg:'#cbd5e1', label:'📅 Meeting'  },
+      camp:     { bg:'rgba(234,179,8,0.22)',   fg:'#fde68a', label:'🏕 Camp'      },
     };
-    const s = styles[t] || styles.custom;
+    const s = styles[t] || { bg:'rgba(148,163,184,0.22)', fg:'#cbd5e1', label:'📅 Event' };
     return `<span style="padding:2px 8px;border-radius:9999px;font-size:0.72rem;
                           background:${s.bg};color:${s.fg};font-weight:700;
                           white-space:nowrap;">${s.label}</span>`;
   }
 
-  _typeColor(type, mtId) {
-    const t = (type || '').toLowerCase() || (
-      mtId === 3 ? 'practice' : mtId === 7 ? 'pickup' :
-      mtId === 1 ? 'game'     : 'custom'
-    );
-    return { practice:'#3b82f6', pickup:'#a855f7', game:'#22c55e', league:'#22c55e',
-             cup:'#22c55e', scrimmage:'#94a3b8', tournament:'#eab308', custom:'#94a3b8'
+  _typeColor(kind) {
+    const t = (kind || '').toLowerCase();
+    return { practice:'#3b82f6', pickup:'#a855f7', match:'#22c55e',
+             meeting:'#94a3b8', camp:'#eab308'
            }[t] || '#94a3b8';
   }
 

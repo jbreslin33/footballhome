@@ -246,11 +246,8 @@ class PracticeDashboardScreen extends Screen {
       }
       const attBtn = e.target.closest('[data-pd-attendance]');
       if (attBtn) {
-        const id = parseInt(attBtn.dataset.pdAttendance, 10);
-        // Set team context so match-rsvp-management loads matches for
-        // the pool team (it reads navigation.context.team.id).
-        this.navigation.context.team = { id: this.poolTeamId, name: this.poolTeamName };
-        this.navigation.goTo('match-rsvp-management', { matchId: id });
+        // RSVP/Attend button was removed 2026-07-17 with the pickup-RSVP
+        // rip — RSVPs now flow through /#calendar (fh_event_rsvps).
         return;
       }
     });
@@ -432,10 +429,6 @@ class PracticeDashboardScreen extends Screen {
           </div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button type="button" data-pd-attendance="${m.id}"
-                  style="all:unset;cursor:pointer;font-size:1.05rem;font-weight:500;padding:10px 14px;border-radius:6px;background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.35);">
-            📋 RSVP / Attend
-          </button>
           <button type="button" data-pd-edit="${m.id}"
                   style="all:unset;cursor:pointer;font-size:1.05rem;padding:10px 14px;border-radius:6px;background:rgba(148,163,184,0.12);color:#e2e8f0;border:1px solid rgba(148,163,184,0.35);"
                   title="Edit — applies globally">

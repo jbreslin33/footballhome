@@ -212,23 +212,26 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
             "LIMIT 20",
             { std::to_string(laUserId) });
 
-        // ── Player's own recent RSVP responses (audit view: "what has
-        // this person actually said yes/no to?").  Joins to players
-        // via the person we already resolved.
+        // ── Person's own recent RSVP responses (audit view: "what has
+        // this person actually said yes/no to?").  Sourced from
+        // fh_event_rsvps → fh_events → gcal_events; the legacy
+        // player_rsvp_history table was dropped 2026-07-17 (migration
+        // 123) when RSVPs moved onto the gcal-driven surface.
         pqxx::result rsvpsRes = db_->query(
-            "SELECT h.id, h.event_id, h.changed_at, "
-            "       s.name AS status_name, "
-            "       m.match_date, m.match_time, m.title, "
-            "       ht.name AS home_team_name, "
-            "       at.name AS away_team_name "
-            "FROM player_rsvp_history h "
-            "JOIN players pl        ON pl.id = h.player_id "
-            "JOIN matches m         ON m.id  = h.event_id "
-            "LEFT JOIN rsvp_statuses s ON s.id = h.rsvp_status_id "
-            "LEFT JOIN teams ht     ON ht.id = m.home_team_id "
-            "LEFT JOIN teams at     ON at.id = m.away_team_id "
-            "WHERE pl.person_id = $1 "
-            "ORDER BY h.changed_at DESC "
+            "SELECT r.id, r.fh_event_id AS event_id, "
+            "       r.responded_at AS changed_at, "
+            "       r.response AS status_name, "
+            "       (ge.starts_at AT TIME ZONE 'America/New_York')::date AS match_date, "
+            "       TO_CHAR(ge.starts_at AT TIME ZONE 'America/New_York', "
+            "               'HH24:MI:SS') AS match_time, "
+            "       COALESCE(NULLIF(ge.summary,''), 'Event') AS title, "
+            "       NULL::text AS home_team_name, "
+            "       NULL::text AS away_team_name "
+            "FROM fh_event_rsvps r "
+            "JOIN fh_events    fe ON fe.id = r.fh_event_id "
+            "JOIN gcal_events  ge ON ge.id = fe.gcal_event_id "
+            "WHERE r.person_id = $1::int "
+            "ORDER BY r.responded_at DESC "
             "LIMIT 20",
             { personIdStr });
 

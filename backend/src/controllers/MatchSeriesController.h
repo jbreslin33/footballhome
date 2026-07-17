@@ -7,11 +7,6 @@
 //
 // Routes registered under prefix "/api/match-series":
 //
-//   POST   /api/match-series/rollover
-//       Materialise this week's matches from active series + apply
-//       recurring RSVPs.  Idempotent.  Called by the Sunday-8pm
-//       cron; admins can also hit it as "sync now".
-//
 //   GET    /api/match-series
 //       List every series row plus a rolling stats block: how many
 //       materialised matches exist upcoming vs past, whether any are
@@ -48,7 +43,6 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
-    Response handleRollover(const Request& request);
     Response handleList    (const Request& request);
     Response handleCreate  (const Request& request);
     Response handleGet     (const Request& request);

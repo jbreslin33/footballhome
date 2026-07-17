@@ -457,13 +457,18 @@ private:
         router_.useController("/api/social", social_controller_);
         router_.useController("/api/internal", internal_roster_controller_);
         router_.useController("/api/public", public_controller_);
-        // Recurring event series admin surface (POST /rollover).  Full
-        // CRUD comes in a follow-up commit.
+        // Recurring event series admin surface (GET/POST/PUT/DELETE
+        // CRUD).  The Sunday-8pm materialisation cron was retired
+        // 2026-07-17 when RSVPs moved onto the gcal-driven
+        // fh_events surface.
         router_.useController("/api/match-series", match_series_controller_);
-        // Signed-in-player self-service surface: /week, /rsvp, /recurring.
+        // Signed-in-player self-service surface: men's chat only.
+        // RSVPs live on /api/calendar/* (fh_event_rsvps); standing
+        // preferences live in fh_recurring_rsvps and are toggled via
+        // the same calendar surface.
         router_.useController("/api/my", my_controller_);
         // Coach-triggered reminder nudges + magic-link verify.
-        //   POST /api/matches/:id/remind
+        //   POST /api/events/:fhEventId/remind
         //   GET  /api/reminders/verify
         router_.useController("/api", event_reminder_controller_);
 
