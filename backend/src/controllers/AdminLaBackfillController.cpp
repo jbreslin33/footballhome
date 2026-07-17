@@ -119,6 +119,12 @@ Response internalErr(HttpStatus st, const std::string& msg) {
 
 } // namespace
 
+// Forward decls — these helpers are defined further down (near
+// handleMembers/handleSyncMemberships) but the laGet(dynamic) resolver
+// in registerRoutes calls them.  Signatures must match the definitions.
+static std::string resolveVariant (const Request& request, const std::string& fallback);
+static std::string resolveCategory(const Request& request);
+
 AdminLaBackfillController::AdminLaBackfillController()
     : linker_(std::make_unique<PersonLinker>()),
       boysProgramId_ (envInt("LEAGUEAPPS_BOYS_CLUB_PROGRAM_ID",  5039252)),
@@ -135,9 +141,40 @@ void AdminLaBackfillController::registerRoutes(Router& router,
     router.get(prefix + "/la-probe", [this](const Request& req) {
         return this->handleProbe(req);
     });
-    router.get(prefix + "/members", [this](const Request& req) {
-        return this->handleMembers(req);
-    });
+    // GET /api/admin/members?variant=<active|paused>&category=<opt>
+    // Reads person_la_memberships joined to leagueapps_programs — the
+    // canonical Members-tile screen.  Registered through laGet(dynamic)
+    // so every LA program matching the (variant, category) filter is
+    // synced *before* the DB read, satisfying § Membership Data Flow.
+    // The dynamic program resolver mirrors the same DB query the handler
+    // uses to enumerate programs — keep them in sync if you change one.
+    laGet(router, prefix + "/members",
+          [](const Request& req) {
+              std::vector<int> out;
+              const std::string variant  = resolveVariant(req, "active");
+              const std::string category = resolveCategory(req);
+              try {
+                  auto rows = Database::getInstance()->query(
+                      "SELECT program_id FROM leagueapps_programs "
+                      " WHERE ($1 = '' OR variant  = $1) "
+                      "   AND ($2 = '' OR category = $2) "
+                      " ORDER BY category, (variant <> 'active'), program_id",
+                      { variant, category });
+                  out.reserve(rows.size());
+                  for (const auto& r : rows) {
+                      if (!r["program_id"].is_null()) {
+                          out.push_back(static_cast<int>(r["program_id"].as<long long>()));
+                      }
+                  }
+              } catch (const std::exception& e) {
+                  std::cerr << "[admin/members] program enumerate failed: "
+                            << e.what() << std::endl;
+              }
+              return out;
+          },
+          [this](const Request& req, const LaSyncMap& sync) {
+              return this->handleMembers(req, sync);
+          });
     router.post(prefix + "/membership/sync", [this](const Request& req) {
         return this->handleSyncMemberships(req);
     });
@@ -732,7 +769,8 @@ static std::string resolveCategory(const Request& request) {
     return "";
 }
 
-Response AdminLaBackfillController::handleMembers(const Request& request) {
+Response AdminLaBackfillController::handleMembers(const Request& request, const LaSyncMap& sync) {
+    (void)sync;  // LA fetch was executed by laGet(); handler reads DB only.
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }

@@ -39,7 +39,7 @@ private:
 
     Response handleBackfill(const Request& request);
     Response handleProbe(const Request& request);
-    Response handleMembers(const Request& request);
+    Response handleMembers(const Request& request, const LaSyncMap& sync);
     Response handleSyncMemberships(const Request& request);
 
 };
