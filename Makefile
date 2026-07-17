@@ -83,6 +83,11 @@ help:
 	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
 	@echo "  make load-user-data      Load exported user data (after sync)"
 	@echo ""
+	@echo "Sim runtime (C++ tactical simulator — see sim/DESIGN.md):"
+	@echo "  make sim-deploy               Rebuild sim image + registry-consistency guard"
+	@echo "  make sim-load-test-10min      10-min AsyncPgLog persistence load test"
+	@echo "  make sim-load-test-orchestrator  20-match parallel orchestration load test"
+	@echo ""
 	@echo "VPN — scraper container (default, safe over SSH):"
 	@echo "  make scrape-vpn-up       Start the dedicated scraper+VPN container (SSH-safe)"
 	@echo "  make scrape-vpn-down     Stop and remove it"
@@ -206,6 +211,33 @@ sim-load-test-10min:
 # debian container). Overridable knobs at the top of the script.
 sim-load-test-orchestrator:
 	@bash sim/scripts/load_test_orchestrator.sh
+
+# Rebuild the sim runtime image + verify registry consistency before
+# declaring the deploy successful. Fixes the §21.8 M3-blocker footgun
+# where a migration touching sim_attribute_registry / sim_concept_registry
+# without a matching sim/src/common/M0Registry.generated.hpp regenerate +
+# runtime rebuild crashes every new match spawn at bootstrap with
+# `verifyM0RegistryConsistency: compile-time=N db=M` (2026-07-17 root
+# cause of "ball and players don't render on 2v0" — see sim/DESIGN.md §21.8).
+#
+# Guard: after podman-compose builds the new image, spawns a throwaway probe
+# container on the shared footballhome network, runs the exact bootstrap
+# path (registry SELECTs + drift check) against the live footballhome_db,
+# and refuses to succeed unless the probe reaches "listening on ...".
+#
+# In-flight matches keep their pre-existing image (immutable per container).
+# New matches spawned via SimOrchestrator after this target succeeds pick
+# up the fresh image.
+sim-deploy:
+	@echo "🎮 Rebuilding sim runtime image..."
+	@$(COMPOSE) --env-file env build footballhome_sim
+	@echo ""
+	@echo "🔍 Verifying registry consistency (compile-time vs live DB)..."
+	@bash sim/scripts/check_registry_consistency.sh
+	@echo ""
+	@echo "✓ sim runtime image is live and registry-consistent."
+	@echo "  New matches spawned via SimOrchestrator will use this image."
+	@echo "  In-flight matches keep their pre-existing image (immutable per container)."
 
 # ============================================================
 # Custom Targets (Domain-Specific)
