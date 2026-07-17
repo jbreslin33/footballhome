@@ -403,6 +403,40 @@ When a new season starts:
 - **JSON**: Use `Response::json(string)` for outputs.
 - **OOP Structure**: Each feature should have dedicated classes (Controller, Service, Model)
 
+#### Route Registration for LA-dependent endpoints
+
+**Any endpoint whose response depends on LeagueApps membership state (rosters, member lists, profile, pool, lineups, payments, RSVP eligibility, badges, everything) MUST be registered through `Controller::laGet`/`laPost`/`laPut`/`laDel`, not the bare `router.get/post/…`.** This is the ONLY way the STRICT membership-data-flow rule (§ Membership Data Flow, above) is enforced at the framework layer — the la* helpers wrap the router call in a lambda that runs `LaProgramSync::run()` for every declared program BEFORE dispatching to the handler.
+
+There are two overloads. Pick based on whether the program list is known at registration time.
+
+**Static program list** (compile-time — the common case for per-tab routes):
+
+```cpp
+laGet(router, prefix + "/mens/members", {mensProgramId_},
+    [this](const Request& req, const LaSyncMap& sync) {
+        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "…");
+        return this->handleGetMembers("mens", mensProgramId_, sync);
+    });
+```
+
+**Dynamic program list** (resolved from the request — profile page, admin filters, cross-category rosters):
+
+```cpp
+laGet(router, prefix + "/la/:leagueAppsUserId",
+    [](const Request&) { return Controller::allLaProgramIds(); },
+    [this](const Request& req, const LaSyncMap& sync) {
+        return this->handleGetByLaUserId(req, sync);
+    });
+```
+
+`Controller::allLaProgramIds()` reads every row from `leagueapps_programs` (active variant first). Use it for endpoints that render membership across every category. For filtered subsets, write an inline resolver that mirrors the handler's own program-enumeration query.
+
+**Handler shape:** always `Response handleName(const Request&, const LaSyncMap&)`. The `LaSyncMap` is `std::unordered_map<int, LaProgramSync::Result>` — one entry per program that was synced. Handlers should read response payloads from Postgres (which the sync just refreshed) and use the map only for optional post-sync inspection (e.g. Payments uses `sync.find(pid)` to check reachability). Adding `(void)sync;` at the top is fine when the handler doesn't need the map.
+
+**Enforcement:** `make check-la-sync` (auto-run by `make deploy`) runs `scripts/enforce-la-sync.sh`, which greps for any file under `backend/src/controllers/` or `backend/src/models/` that reads `person_la_memberships` without a matching `laGet(`/`laPost(`/`laPut(`/`laDel(`/`LaProgramSync::run(`/`Controller::syncPrograms(`/`Controller::allLaProgramIds(` token in the same translation unit. Allowlist for downstream models (`Team`, `PersonPayments`, `MensRoster`, `BoysRoster`, `YouthRoster`) lives at the top of the lint script — extend it only when adding a new model whose readers are ALL called from already-synced controller paths.
+
+Read the la* implementation in [backend/src/core/Controller.h](backend/src/core/Controller.h) and [backend/src/core/Controller.cpp](backend/src/core/Controller.cpp) before adding new routes.
+
 ### Database
 - **Initialization**: Data is loaded via `docker-entrypoint-initdb.d` mapping to `database/data`.
 - **Queries**: Write raw SQL in C++ models using `pqxx::work`.

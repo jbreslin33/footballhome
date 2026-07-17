@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2
+.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 check-la-sync
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -129,6 +129,7 @@ build:
 
 deploy:
 	@echo "🚀 Building and deploying backend..."
+	@$(MAKE) --no-print-directory check-la-sync
 	@$(COMPOSE) --env-file env build backend
 	# --depend is required because leagueapps-sync's `requires=footballhome_backend`
 	# in podman-compose creates a hard dependency; without --depend a plain
@@ -144,6 +145,14 @@ deploy:
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"
 	@echo "Backend:   http://localhost:3001"
+
+# Pre-flight for `make deploy`: fails if any controller or model reads
+# person_la_memberships without a preceding LaProgramSync entry point
+# (see .github/copilot-instructions.md § Membership Data Flow).  Delegates
+# to scripts/enforce-la-sync.sh so the same check works from a pre-commit
+# hook.  Safe to run manually: `make check-la-sync`.
+check-la-sync:
+	@bash scripts/enforce-la-sync.sh
 
 up:
 	@echo "🚀 Starting containers..."
