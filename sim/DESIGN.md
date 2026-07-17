@@ -4,7 +4,7 @@
 **Owner:** footballhome
 **Scope:** authoritative multi-player tactical football simulator, server-side C++, browser client, binary wire, member-only auth.
 
-> **Slice 26 status (2026-07-16):** fully **CLOSED**. Final goldens: `kExpectedHashPassEast400 = 0xd2287a0b3981f04d`, `kExpectedHashPassReceive200 = 0xdaa7989a56a58f5f` (47/47 sim tests green, 11 determinism goldens internal). Next real work is **Slice 27 (player-player collisions)** — blocked on **ADR §22.23** landing.
+> **Slice 26 status (2026-07-16):** fully **CLOSED**. Final goldens: `kExpectedHashPassEast400 = 0xd2287a0b3981f04d`, `kExpectedHashPassReceive200 = 0xdaa7989a56a58f5f` (47/47 sim tests green, 11 determinism goldens internal). Next real work is **Slice 27 (player-player collisions)** — blocked on **ADR §22.24** landing.
 
 ---
 
@@ -2786,7 +2786,7 @@ From [§15](#15-milestone-plan): **"Multi-player interactions: collisions, first
 - Slice numbering: 24.x through 25.x already shipped (see §24.3 log). Forward slices continue at 26.x for pass primitive, 27.x for collisions, 28.x for shots, 29.x for M2 close-out. Slice numbers do NOT track milestone number — they are a repo-wide monotonic counter that jumped from 18 (M1 close) to 24 (first M2 slice) intentionally to leave 19–23 unused for future reserved work.
 - Each slice ends with a green ctest gate (47/47 as of Slice 24.3b) plus a coach-visible demo reachable from `frontend/tactical-games.html`.
 - Every determinism gate (§22.1 bit-exact, §22.2 Fixed64, §22.9 registry ID stability, §22.14 write policy, ADR §22.18 profile-row storage, §16.6 boot-time drift guard) MUST stay green at the end of every slice. Any golden hash rotation MUST be intentional (i.e., the scenario producing the new hash is what exercises the new mechanic — see Slice 24.3b's `kExpectedHashBallOnPitchWithDefender400` rotation for the pattern).
-- New ADRs land at the next available integer (currently §22.23) in chronological order — never re-numbered per §22.0.
+- New ADRs land at the next available integer in chronological order — never re-numbered per §22.0. §22.23 landed 2026-07-16 (Slice 26.2 kick trailer); §22.24 is reserved for the Slice 27 collision-resolution decision (draft below). **Next available for a new ADR is §22.25.**
 - SQL migrations continue at 218+ (216 landed with Slice 24.3b as `216-sim-attr-press-resistance.sql`; 217 landed with Slice 26.1 as `217-sim-attr-pass-power.sql`).
 - CI lint gate (`sim/Dockerfile`) gains a new script per invariant added — same shape as the four M1-era checks (`check_no_floats`, `check_no_bad_rng`, `check_no_hardcoded_attrs`, `check_profile_write_policy`).
 
@@ -2828,11 +2828,11 @@ Grouped by subsystem, mirroring §23.2's checkbox style. Tick in place as work l
 - [x] `BallOnPitch2v0Scenario` — two claimable human slots, no defender. First scenario that actually needs the pass primitive (spec'd in Slice 26.3). Landed 2026-07-16 in Slice 26.3 (scenario_id=5, migration 219).
 - [ ] Determinism goldens for pass primitive (Slice 26.6).
 
-**Player-player collisions** (forward slice 27 — not started; §22.23 draft below)
+**Player-player collisions** (forward slice 27 — not started; §22.24 draft below)
 
-- [ ] Decision: circle-circle elastic vs positional-clamp-only vs impulse-based. Recommend **positional-clamp + tangential-slide** for M2 — cheap, deterministic, coach-legible, no restitution to tune. ADR draft §22.23.
+- [ ] Decision: circle-circle elastic vs positional-clamp-only vs impulse-based. Recommend **positional-clamp + tangential-slide** for M2 — cheap, deterministic, coach-legible, no restitution to tune. ADR draft §22.24.
 - [ ] `sim/src/physics/BasicPhysics.{hpp,cpp}` replaces `StubPhysics` in the default IPhysicsWorld factory — first physics class in the lineage §5.3 spec'd back in M0. Circle-circle overlap resolution via minimum-translation-vector, applied after the tick's velocity integration and BEFORE `PlayableAreaConstraint::apply_hard`.
-- [ ] `physical.body_mass` attribute (or `physical.contact_radius` if we bias by size instead of mass) — ADR §22.23 decides. Recommend `body_mass` in [0.5, 1.5] scaled around 1.0 so the resolution can weight the split.
+- [ ] `physical.body_mass` attribute (or `physical.contact_radius` if we bias by size instead of mass) — ADR §22.24 decides. Recommend `body_mass` in [0.5, 1.5] scaled around 1.0 so the resolution can weight the split.
 - [ ] Ball-player collision behavior: currently the ball glues 0.4 m ahead of the owner. Non-owner slots that intersect the ball's radius during the physics step MUST NOT kick the ball (only `wants_kick` does). Guard with a "ball-owned excludes ball from collision list" check in BasicPhysics.
 - [ ] Determinism goldens: `two_humans_collide_head_on_200_ticks_seed_42`, `collision_ball_passthrough_owned_400_ticks_seed_42`.
 
@@ -2886,9 +2886,9 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 26 exit gate**: two coaches on two devices open `BallOnPitch2v0`, one claims slot 1 + one claims slot 2, they can pass the ball back and forth with a kick button. Each pass shows a motion trail on both clients. Determinism-locked. **CLOSED 2026-07-16** with Slice 26.6 landing (goldens: PassEast400 + PassReceive200).
 
-**Slice 27 — Player-player collisions** (not started; blocked on ADR §22.23)
+**Slice 27 — Player-player collisions** (not started; blocked on ADR §22.24)
 
-- 27.1 ADR §22.23 lands: circle-circle positional-clamp + tangential-slide, `body_mass` attribute for split-weighting, ball-owned exclusion rule.
+- 27.1 ADR §22.24 lands: circle-circle positional-clamp + tangential-slide, `body_mass` attribute for split-weighting, ball-owned exclusion rule.
 - 27.2 `sim/src/physics/BasicPhysics.{hpp,cpp}` — replaces StubPhysics in the Match factory. Circle-circle overlap resolution via minimum-translation-vector, applied post-integration, pre-`apply_hard`.
 - 27.3 `physical.body_mass` attribute (id=15, migration 220). Default 1.0.
 - 27.4 Update every existing determinism golden — collisions change tick-by-tick trajectories for any scenario with ≥ 2 slots that get close. `Wander200`, `FirstTouch200`, `BallOnPitchWithDefender400` all rotate; `HumanSprint400`, `BallRoll400`, `Dribble200`, `HalfPitchHard400`, `SoftDrill400` are 1-slot or ball-only and unaffected.
