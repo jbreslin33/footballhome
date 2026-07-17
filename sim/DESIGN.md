@@ -1210,7 +1210,7 @@ Steps 1, 4a–h, 5, and 6 are shipped. Steps 1 and 3 have M0-specific caveats:
 | **M0** | `Fixed64` + `FixedMath` + trig LUTs + cross-platform determinism CI. Move a player dot on empty pitch. Full infra (auth, wire, physics stub, WanderController, Canvas2DRenderer, replay logging). | 5–7 | 5–7 | **done** (closed 2026-07-13 via Slice 13 §16.6; goldens locked in [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp)) |
 | **M1** | Ball entity + dribble physics + one player can move it. Playable-area constraints. | 3–4 | 8–11 | **done** (closed 2026-07-15; §23.4 exit checklist all `[x]`, §21.7 M2-blockers all `[x]`) |
 | **M2** | Multi-player interactions: collisions, first-touch, short passes, shots. | 3–4 | 11–15 | **done** (closed 2026-07-17 via Slice 29; §24.4 exit checklist all `[x]`, §21.7 M2-blockers all `[x]`, one new §21.8 M3-blocker catalogued; Slices 24–28 shipped: multiplayer BallOnPitchScenario + Idle/Defender controllers + press/contest touch-to-steal + realistic proportions/carry-speed/HUD + short pass primitive with kick trailer + PgClient thread-safety hotfix + ball motion trail + `BasicPhysics` circle-circle collisions with mass-split + `physical.body_mass` attr id=15 + `MatchEvent::Goal` event type 9 with versioned payload + `GoalDrillScenario` + frontend goal-flash animation; 51/51 sim tests green with 12 determinism goldens locked in [sim/tests/test_determinism.cpp](sim/tests/test_determinism.cpp)) |
-| **M3** | 1v1 attack↔defend scenario. First real `AiController` (chase, jockey, mark, feint). | 4–5 | 15–20 | not started |
+| **M3** | 1v1 attack↔defend scenario. First real `AiController` (chase, jockey, mark, feint). | 4–5 | 15–20 | not started (spec landed 2026-07-17 as [§25](#25-milestone-3--detailed-spec); Slices 30–35 planned) |
 | **M4** | 2v1 / 2v2 / 3v2 progressions. Off-ball intelligence, longer passes, first team coordination. | 5–7 | 20–27 | not started |
 | **M5** | **PressTrigger4v2** (the original goal). Cover-shadow, press-partner switching, GK distribution. | 3–4 | 23–31 | not started |
 
@@ -3236,9 +3236,9 @@ Tick in place as work lands. All must be green for M2 to be considered complete.
 Analogous to §21.2 and §21.7. Track new blockers here as they emerge. Currently known before Slice 26 starts:
 
 - [x] **Wire v1.2 vs additive v1.1 extension.** Resolved 2026-07-16 as ADR §22.23: option (a) — length-prefixed extension trailer on INPUT, mirroring §22.20's SNAPSHOT-trailer pattern; server-declared HELLO_ACK cap bit 3 (`kWireCapInputKickTrailer`) gates the client's use of the trailer. Slice 26.2 implements the ADR; no wire version bump.
-- [ ] **`sim_match_events.payload` versioning** (already on §21.3 pre-M3 list). Slice 28.1 forces this to land in M2, one milestone earlier than the §21.3 estimate. Resolved as **ADR §22.25 (drafted 2026-07-16)**: first byte of payload = version tag for `event_type ≥ 9`; `event_type in (1..8)` grandfathered unversioned. Migration 221 introduces the version=1 Goal payload (5 bytes: `[u8 version][u8 goal_region_index][u16 kicker_slot_id][u8 reserved]`) and `EventType::Goal = 9`.
+- [x] **`sim_match_events.payload` versioning** (already on §21.3 pre-M3 list). Slice 28.1 forced this to land in M2, one milestone earlier than the §21.3 estimate. Resolved as **ADR §22.25 (accepted 2026-07-16)**: first byte of payload = version tag for `event_type ≥ 9`; `event_type in (1..8)` grandfathered unversioned. Migration 221 introduces the version=1 Goal payload (5 bytes: `[u8 version][u8 goal_region_index][u16 kicker_slot_id][u8 reserved]`) and `EventType::Goal = 9`. **Closed 2026-07-17** — Slices 28.1 (storage), 28.4 (wire `MatchEventFrame` codec + `sim/src/net/MatchEventFrame.{hpp,cpp}`), and 28.5 (`goal_from_kick_east_200_ticks_seed_42` golden = `0x18c0949f8ab5f4aa`) all landed byte-for-byte against §22.25's payload layout.
 - [ ] **DefenderController → AiController migration path.** Slice 24.3a's DefenderController is a hand-rolled controller. When M3's utility-AI lands, the migration is: (a) create a `PursueBallBehavior` `IBehavior` implementation, (b) plug it into `AiController` with concept gate on `pursue_ball_carrier` (concept added in M3), (c) delete `DefenderController.{hpp,cpp}`. Migration should be a single M3 slice; catalogue as pre-M3 sanity check that no scenario uses `DefenderController` as a stable API before then.
-- [ ] **Collision → determinism-golden rotation surface.** Slice 27 rotates 3 goldens. Confirm no third-party (external test harness, replay tool) depends on the specific hashes before flipping. Currently the only consumer is `sim/tests/test_determinism.cpp` in-tree.
+- [x] **Collision → determinism-golden rotation surface.** Slice 27 was planned to rotate 3 goldens under the `StubPhysics` → `BasicPhysics` factory swap. **Closed 2026-07-17 as a no-op finding (Slice 27.4)**: empirically zero existing goldens rotated because `test_determinism.cpp` writes `cfg.physics = std::make_unique<StubPhysics>()` directly in every golden's fixture, bypassing the Match factory entirely — so switching the default factory to `BasicPhysics` in production had zero test-side impact. Slice 27.5's two new goldens (`two_humans_collide_head_on_200_ticks_seed_42`, `collision_ball_passthrough_owned_400_ticks_seed_42`) instantiate `BasicPhysics` explicitly per the same pattern. Only consumer remains `sim/tests/test_determinism.cpp` in-tree; no external harness/replay tool exists to break.
 - [ ] **Ball trailer format capacity.** ADR §22.20's trailer is length-prefixed but the outer SNAPSHOT frame length is u16 (~64 KB cap). With 22 slots + 1 ball at ~30 bytes each we're at ~700 bytes/snapshot. M4+ (11v11 = 22 slots + ball + potentially event annotations) plus any per-slot extension pushes toward the cap. Not an M2 blocker; catalogue for M4 planning.
 
 ### 24.7 Reference cross-links
@@ -3254,6 +3254,205 @@ Analogous to §21.2 and §21.7. Track new blockers here as they emerge. Currentl
 - [§22.20](#2220-2026-07-13-wire-v11-extension-format--length-prefixed-ball-trailer--hello_ack-capability-bits) — length-prefixed extension pattern that Slice 26.2's INPUT extension will reuse.
 - [§23.3](#233-slice-sequence) — M1 slice log; template for §24.3's shape.
 - [§23.4](#234-m1-exit-criteria) — M1 exit criteria; template for §24.4's shape.
+
+---
+
+## 25. Milestone 3 — detailed spec
+
+Added 2026-07-17 as the M3 detailed spec, mirroring §16 (M0), §23 (M1), and §24 (M2). Landed as doc-only pass while M2 is fresh and no M3 code exists — this section defines what M3 IS before any Slice 30 code lands, per the §22.0 spec-then-implement discipline that §24 explicitly acknowledged skipping.
+
+### 25.1 M3 scope recap
+
+From [§15](#15-milestone-plan): **"1v1 attack↔defend scenario. First real `AiController` (chase, jockey, mark, feint)."** Estimated 4–5 weeks, cumulative 15–20 from project start.
+
+**Prerequisites** (all tracked in §21.3 pre-M3 fixes + §21.8 M3-blockers + §24.6 M2→M3 transition):
+
+- [x] §21.8 item 1 — Sim runtime image not auto-rebuilt on `sim_*_registry` migrations ⇒ closed 2026-07-17 (commit `724d33ec` — `make sim-deploy` + `check_registry_consistency.sh` guard).
+- [x] §24.6 — `sim_match_events.payload` versioning (ADR §22.25) ⇒ closed 2026-07-17 (Slices 28.1 storage / 28.4 wire / 28.5 golden).
+- [x] §24.6 — Collision golden rotation surface ⇒ closed 2026-07-17 as no-op finding (Slice 27.4).
+- [ ] §21.3 item 1 — **Debug endpoint replay tick-checkpointing**. `GET /api/sim/debug/matches/:id/state?tick=T` currently spawns `fh-sim-replay` in a 10-s-capped subprocess; with M3's 4-behavior utility-AI + collision-heavy 1v1 scenarios, replay-from-scratch may exceed 10 s well before tick 12000. Fix (per §21.3 spec): `sim_match_checkpoints` table + every-N-ticks canonical-state snapshot + replay-from-nearest-checkpoint. Land as **Slice 30.0** (pre-behavior) so debug tooling keeps working through M3's more-expensive scenarios.
+- [ ] §24.6 — **DefenderController → AiController migration path**. Slice 24.3a's `DefenderController` is a hand-rolled `IPlayerController`. When M3's utility-AI arrives, migration is: (a) implement `PursueBallCarrierBehavior` in `sim/src/behavior/`, (b) instantiate `AiController` with it + concept-gate on `pressing` (M3 concept), (c) delete `DefenderController.{hpp,cpp}` and update `BallOnPitchWithDefenderScenario` to spawn an `AiController` slot. Land as **Slice 30.2** — first `IBehavior` implementation, chosen because pursue-ball semantics already exist byte-for-byte in `DefenderController` and the swap is a determinism sanity check on the utility-AI dispatch machinery before behaviors accumulate.
+
+**Rules** (inherited from §16.6 / §22.0 / §23 / §24):
+
+- Slice numbering continues at **30.x** (§24 closed at Slice 29). §29 was M2 close-out; M3 opens at Slice 30.
+- Each slice ends with a green ctest gate plus a coach-visible demo reachable from [frontend/tactical-games.html](frontend/tactical-games.html).
+- Every determinism gate stays green at the end of every slice. Any golden hash rotation MUST be intentional (e.g. `BallOnPitchWithDefender400` will rotate exactly once when `DefenderController` swaps to `AiController(PursueBallCarrierBehavior)` in Slice 30.2 — the pursuit path is byte-identical in specification but the `IBehavior::utility()` → `IBehavior::execute()` dispatch tick-order differs slightly from `DefenderController::decide()`; document the pre/post hashes at slice landing).
+- New ADRs land at the next available integer in chronological order — never re-numbered per §22.0. **Next available for a new ADR is §22.26** — reserved for the utility-AI hysteresis / oscillation-mitigation decision (§21.4 non-standard choice explicitly says "add to M3 spec"). Draft below in §25.3 Slice 32.
+- SQL migrations continue at **223+**. Estimated schedule (subject to slice-by-slice adjustment): 223 for the first M3 concept, 224 for the M3 attribute batch, 225 for the first M3 pattern, 226 for `sim_match_checkpoints` (Slice 30.0), 227+ for behavior-specific tuning attributes as they land.
+- CI lint gate (`sim/Dockerfile`) gains a new script per invariant added — same shape as `check_no_floats`, `check_no_bad_rng`, `check_no_hardcoded_attrs`, `check_profile_write_policy`. First M3 candidate: `check_behavior_registration.sh` — every concrete `IBehavior` subclass under `sim/src/behavior/` must appear in `AiController::defaultBehaviors()` (or a matching factory) so orphan behaviors can't accumulate.
+- The five M3 attributes (`technical.feint`, `technical.first_time_pass`, `technical.standing_tackle`, `technical.interception`, `technical.marking_technique`, `mental.composure`, `mental.anticipation`, `mental.aggression`, `mental.positioning_sense`) get stable IDs assigned in the migration that introduces each — never mass-batched. Same convention as `physical.body_mass` id=15 (migration 220) or `physical.press_resistance` id=13 (migration 216). ID range in use is `[1, 15]`; M3 fills `[16, 24]` conservatively — reserve gaps for late M3 additions.
+- The six M3 concepts (`return_to_base`, `stay_in_zone`, `marking`, `jockey`, `pressing`, `1v1_beat`) get stable IDs in `[3, 8]` (M0/M1/M2 used `[1, 2]` for `run_to_point` + `pass_short`).
+
+### 25.2 Deliverables
+
+Grouped by subsystem, mirroring §24.2. Tick in place as work lands.
+
+**Debug-replay scale + utility-AI scaffolding**
+
+- [ ] `sim/src/persistence/CheckpointStore.{hpp,cpp}` + migration 226 (`sim_match_checkpoints(match_id, tick_num, canonical_state BYTEA)`). Sim writes a canonical state snapshot every 200 ticks (~10 s of match time). `fh-sim-replay` learns to accept `--from-checkpoint` so `GET /api/sim/debug/matches/:id/state?tick=T` loads nearest checkpoint ≤ T and replays < 200 ticks. Closes §21.3 item 1. (Slice 30.0)
+- [ ] `AiController::defaultBehaviors()` factory returning `std::vector<std::unique_ptr<IBehavior>>` — one canonical bag per Role. `AiController` ctor learns a two-arg form: `AiController(Role, ConceptSet, std::vector<std::unique_ptr<IBehavior>>)`. `decide()` iterates behaviors, scores via `utility()`, filters by `requiredConcepts()` × `minMastery()`, picks highest, dispatches `execute()`. Ties broken by behavior insertion order (deterministic). (Slice 30.1)
+- [ ] `sim/scripts/check_behavior_registration.sh` — CI grep asserting every concrete `IBehavior` subclass under `sim/src/behavior/` appears in either `AiController::defaultBehaviors()` or a documented scenario-specific factory. Prevents orphan behaviors. (Slice 30.1)
+- [ ] `PursueBallCarrierBehavior` — first `IBehavior` implementation. Requires concept `pressing` (id assigned in migration 223), minMastery = 0.0 (any positive value opens the gate — behavior availability is presence-gated, not skill-gated for the M3 pursue primitive). `utility()` returns Fixed64 proportional to `1 / distance_to_ball` clamped to `[0, 1]`; `execute()` produces `Intent{ desired_direction = normalize(ball_pos - my_pos), wants_dribble = true, wants_press = true }`. Behavior-side equivalent of `DefenderController::decide()`. (Slice 30.2)
+- [ ] `DefenderController.{hpp,cpp}` deleted; `BallOnPitchWithDefenderScenario` re-spawned with `AiController` slot carrying `defaultBehaviors()` including `PursueBallCarrierBehavior`. `BallOnPitchWithDefender400` golden rotates once (documented as intentional; new hash locked at slice landing). Closes §24.6 DefenderController migration item. (Slice 30.2)
+
+**M3 concepts + attributes registry**
+
+- [ ] Migration 223 (`223-sim-concept-pressing.sql`) — `pressing` concept id=3, category `defensive`. First M3 concept.
+- [ ] Migration 224 (`224-sim-concept-marking-jockey.sql`) — `marking` id=4, `jockey` id=5, both category `defensive`.
+- [ ] Migration 225 (`225-sim-concept-1v1-beat.sql`) — `1v1_beat` id=6, category `on_ball`.
+- [ ] Migration 227 (`227-sim-concept-positioning.sql`) — `return_to_base` id=7, `stay_in_zone` id=8, both category `positioning`. Wired but no consumer in M3 (positioning behaviors gated on these lands with M4 formation shape work); ships now so the concept catalog is complete for the milestone the M3 attribute additions target.
+- [ ] Migration 228+ (batched or split as convenient): `technical.marking_technique` id=16, `technical.standing_tackle` id=17, `technical.interception` id=18, `technical.feint` id=19, `technical.first_time_pass` id=20, `mental.aggression` id=21, `mental.positioning_sense` id=22, `mental.composure` id=23, `mental.anticipation` id=24. Defaults per attribute set in migration comments; recommend all default to 0.5 (mid-range) except `mental.composure` = 0.6 and `mental.aggression` = 0.4 so the median AI defender is a shade calmer + less reckless than pure-neutral.
+- [ ] `sim/src/common/M0Registry.generated.hpp` regenerated by `sim/scripts/gen_registry_header.awk` after every registry migration; `make sim-deploy` guard (§21.8) catches drift between compile-time and DB. New M3 attribute k-identifiers (`kMarkingTechnique`, `kStandingTackle`, `kInterception`, `kFeint`, `kFirstTimePass`, `kAggression`, `kPositioningSense`, `kComposure`, `kAnticipation`) and concept k-identifiers (`kMarking`, `kJockey`, `kPressing`, `k1v1Beat`, `kReturnToBase`, `kStayInZone`) become available for behavior code without any hard-coded literals (`check_no_hardcoded_attrs.sh` still guards).
+
+**Defender behaviors (Slice 31)**
+
+- [ ] `JockeyBehavior` — requires `jockey` (concept id=5). `utility()` scores higher when: (a) self is closest defender to ball, (b) ball_owner ≠ self.team, (c) ball_carrier is heading toward self.goal, (d) `positioning_sense × composure` scales the score. `execute()` produces `Intent{ desired_direction = tangent_to_ball_carrier_path, wants_dribble = false, wants_press = false }` — position between ball-carrier and goal, don't commit to the tackle. Consumes `mental.positioning_sense` + `mental.composure` for scoring bias.
+- [ ] `MarkOpponentBehavior` — requires `marking` (concept id=4). `utility()` scores higher when: (a) an assigned mark target exists (see below), (b) self is closer to mark_target than to ball. `execute()` produces `Intent{ desired_direction = normalize(mark_target_pos - my_pos), wants_dribble = false }` — shadow the assigned opponent goal-side. First introduction of a *slot pairing* concept: `AiController` learns a `mark_target: std::optional<SlotId>` field set at scenario spawn (declared in `SlotSpawn::mark_target`) or by higher-level assignment in M4+. In M3 the field is scenario-set only.
+- [ ] `AiController::role_` field consulted by defensive behaviors — `Role::Defender` opens `jockey` + `marking`; `Role::Midfielder` opens `pressing` + `marking`; `Role::Forward` opens `1v1_beat` + `pressing`. Encoded in each behavior's `utility()` via `if (role != expected) return Fixed64::zero()` short-circuit — cheap early-out, no wasted execute() calls.
+- [ ] Determinism goldens: `defender_jockeys_dribbler_200_ticks_seed_42`, `defender_marks_stationary_target_200_ticks_seed_42`.
+
+**Attacker behaviors + first pattern (Slice 33)**
+
+- [ ] `Feint1v1Behavior` — requires `1v1_beat` (concept id=6). `utility()` scores higher when: (a) self owns ball, (b) exactly one defender within `kFeintDefenderRadius = 3.0 m`, (c) `technical.feint × mental.composure` scales the score. `execute()` produces `Intent{ desired_direction = lateral_of_defender_heading, wants_dribble = true }` — jerk lateral then continue toward goal. Cadence controlled by internal `next_feint_tick` field on the behavior (Fixed64 tick counter, reset when the behavior deselects) to avoid utility-AI oscillation micro-flip-flopping the feint direction.
+- [ ] First `sim_pattern_registry` entry: `pattern_being_beaten_1v1` (from §12.5 defensive_read). Recognition fires when: (a) self is `Role::Defender`, (b) self is `kFeintDefenderRadius` of ball_carrier, (c) ball_carrier's velocity has changed direction > 90° within last 5 ticks. Populates `RecognitionSet` on the defender slot; consumed by `JockeyBehavior::utility()` (raises score to commit-position when the beat pattern fires). First non-empty test of the Recognition pipeline that shipped identity-pass in M0.
+- [ ] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42`.
+
+**Utility-AI hysteresis (Slice 32 — ADR §22.26)**
+
+- [ ] **ADR §22.26** (**drafted 2026-07-17**, accepted at Slice 32 landing) — utility-AI oscillation mitigation. Closes §21.4 non-standard-choice item 4. Two-part mitigation: (a) minimum-commitment durations per behavior (`IBehavior::minTicks()` — default 10 ticks / 0.5 s), (b) time-since-last-switch penalty (`AiController::decide()` subtracts a decaying bonus from all non-current behaviors, decaying at `kHysteresisDecayPerTick` from an initial `kHysteresisBonus`). Rationale for both instead of one: minTicks handles rapid oscillation between adjacent-utility behaviors (jockey ↔ press), the switch-penalty handles gradual drift where utility scores converge slowly over many ticks. Chosen over pure minTicks because minTicks can trap a behavior mid-execution when circumstances materially change (e.g. ball_owner flips team); the penalty gives dampening without absolute lockout. Consequences (+) coach-visible AI feels less jittery, (−) tuning knob per behavior means M3 spec now carries per-behavior constants that must survive determinism goldens; migration path for future behaviors: default minTicks = 10 unless overridden.
+- [ ] `IBehavior::minTicks()` interface method (default 10). `AiController` tracks `current_behavior_started_at: Fixed64` and short-circuits `decide()` to keep the current behavior if `now - started_at < current->minTicks()`.
+- [ ] `AiController::decide()` gains a switch-penalty pass — deducts `kHysteresisBonus × exp(-kHysteresisDecayPerTick × ticks_since_switch)` from every non-current behavior's `utility()` return before argmax.
+- [ ] Determinism goldens: `no_oscillation_between_jockey_and_press_400_ticks_seed_42` (asserts behavior_transitions ≤ 8 over 400 ticks in a scenario deliberately constructed to be equal-utility for two behaviors).
+
+**1v1 attack-vs-defend scenario (Slice 34)**
+
+- [ ] `sim/src/scenario/OneVsOneAttackDefendScenario.{hpp,cpp}` — scenario id=7 (next available; migration 229 registers). Two slots: attacker at (-15, 0) with `Role::Forward` + `ai_profile_source` = configurable person_id (per §21.2 item 1 the `ai_profile_source` field wiring lands here — first consumer), defender at (+10, 0) with `Role::Defender` + `AiController(defaultBehaviors())`. Ball at (-15, 0) glued to attacker at spawn. Goal region at east end from `GoalDrillScenario`. Success: attacker crosses ball into east goal region within 20 s. Reset: 20 s elapsed OR defender owns ball for > 3 s.
+- [ ] `ProfileStore::load(person_id)` wiring in `Match::spawnInitialSlots` — deferred all the way from §21.2 (M1-blocker item 1 "consumer wiring deferred to M3"). Threading concern noted there: `ProfileStore` gets constructed on the same DB connection as `RegistryLoader` (transport-thread scope), the loaded profile is copied into `slot.profile` before `Mechanics::attach()`. Not thread-hot: profile load happens once per slot spawn, off the tick loop.
+- [ ] `SlotSpawn::mark_target: std::optional<SlotId>` — field added for `MarkOpponentBehavior` to consume when scenario-set. Reserved-empty in `OneVsOneAttackDefendScenario` (1v1 has no marking assignment); ships now for the class-layout stability convention (§22 "reserved fields carry their eventual meaning").
+- [ ] Frontend: new tile in [frontend/tactical-games.html](frontend/tactical-games.html) pointing at scenario_id=7. Coach opens tile, claims attacker slot, must beat the AI defender to score in the east goal.
+- [ ] Determinism golden: `one_v_one_attacker_scores_east_400_ticks_seed_42` — locks the full 1v1 pipeline byte-for-byte (defender behavior selection + hysteresis + attacker human input scripted + ball_control transitions + goal detection).
+
+**M3 close-out (Slice 35)**
+
+- [ ] All §25.4 exit-criteria boxes ticked.
+- [ ] Cross-arch determinism CI green for every new M3 golden (`sim/scripts/check_determinism_cross_arch.sh` unchanged; runs whatever `test_determinism` emits — expected to grow to ~17 goldens: 12 pre-M3 + PursueBallCarrier rotation + JockeysDribbler + MarksStationary + FeintsPastDefender + NoOscillation + OneVsOneScores).
+- [ ] M4 blocker sweep: any tech debt discovered during M3 catalogued into §21.9 with revisit-conditions before M4 starts.
+- [ ] `sim/DESIGN.md` §15 milestone table flipped M3 → **done**; §21.9 M4-blockers section appended if the sweep yielded any items (may be empty like §21.7 finished empty).
+
+### 25.3 Slice sequence
+
+Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 opens at **Slice 30**.
+
+**Slice 30 — Utility-AI scaffolding + DefenderController migration** (not started)
+
+- 30.0 [ ] `CheckpointStore` + migration 226 (`sim_match_checkpoints`) + `fh-sim-replay --from-checkpoint`. Closes §21.3 item 1. Pre-behavior work because subsequent slices ship expensive-to-replay scenarios.
+- 30.1 [ ] `AiController` ctor widened + `defaultBehaviors()` factory + `check_behavior_registration.sh` CI gate. No behavior implementations yet — factory returns empty vector; `AiController::decide()` returns `Intent::idle()` when behaviors empty (backward-compatible with M0 skeleton). Zero determinism impact (no consumer scenario switches to `AiController` this slice).
+- 30.2 [ ] `PursueBallCarrierBehavior` + migration 223 (`pressing` concept id=3) + `DefenderController` deletion + `BallOnPitchWithDefenderScenario` rewrite. `BallOnPitchWithDefender400` golden rotates once — document new hash at landing. Closes §24.6 DefenderController migration item.
+
+**Slice 30 exit gate**: coach opens `BallOnPitchWithDefender` tile, defender behaves identically to Slice 24.3b's `DefenderController` (visually — behavior utility is a straight port), but under the hood is now an `AiController(PursueBallCarrierBehavior)` composed via the utility-AI dispatch machinery. `GET /api/sim/debug/matches/:id/state?tick=T` returns fast for high T values (checkpoints working).
+
+**Slice 31 — Defender behaviors (jockey + marking)**
+
+- 31.1 [ ] Migration 224 (`jockey` id=5, `marking` id=4).
+- 31.2 [ ] `JockeyBehavior` + `MarkOpponentBehavior` implementations. `SlotSpawn::mark_target` field added.
+- 31.3 [ ] Migration 228 M3 attribute batch (`marking_technique` id=16, `standing_tackle` id=17, `interception` id=18, `positioning_sense` id=22, `composure` id=23). Consumed by `JockeyBehavior::utility()` + `MarkOpponentBehavior::utility()`.
+- 31.4 [ ] `AiController::defaultBehaviors()` wired to include `{PursueBallCarrierBehavior, JockeyBehavior, MarkOpponentBehavior}` for `Role::Defender`. `BallOnPitchWithDefender` golden rotates (jockey/pursue-ball toggle in M2's toy scenario becomes observable). Document new hash.
+- 31.5 [ ] Determinism goldens: `defender_jockeys_dribbler_200`, `defender_marks_stationary_target_200`.
+
+**Slice 31 exit gate**: coach opens `BallOnPitchWithDefender`, defender jockeys instead of blindly chasing when the coach dribbles laterally; defender abandons jockey and commits to press when coach dribbles straight at goal.
+
+**Slice 32 — Utility-AI hysteresis (ADR §22.26)**
+
+- 32.1 [ ] ADR §22.26 drafted → accepted. `IBehavior::minTicks()` interface method (default 10). `AiController::decide()` learns switch-penalty + minTicks lockout.
+- 32.2 [ ] Determinism golden: `no_oscillation_between_jockey_and_press_400_ticks_seed_42` — assert behavior_transitions ≤ 8 over 400 ticks in a deliberately near-equal-utility fixture.
+- 32.3 [ ] Slice 31 goldens re-verified byte-identical (hysteresis doesn't kick in when utility spread > `kHysteresisBonus` — deliberate design).
+
+**Slice 32 exit gate**: watching the defender in a mixed lateral+goal-ward dribbling test shows no visible jitter between jockey and press postures; behavior switches feel intentional. Determinism-locked.
+
+**Slice 33 — Attacker behaviors + first pattern**
+
+- 33.1 [ ] Migration 225 (`1v1_beat` id=6).
+- 33.2 [ ] `Feint1v1Behavior` implementation. `technical.feint` id=19 landed via migration 228 batch (see Slice 31.3).
+- 33.3 [ ] `pattern_being_beaten_1v1` in `sim_pattern_registry` (migration 229 — first M3 pattern). `RecognitionSystem` learns to fire it per §25.2's spec. First non-empty Recognition path since M0.
+- 33.4 [ ] `AiController::defaultBehaviors()` extended for `Role::Forward` = `{Feint1v1Behavior, /* future: shoot, pass */}`.
+- 33.5 [ ] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42`.
+
+**Slice 33 exit gate**: coach spawns a scenario with an `AiController(Forward)` attacker and human defender; the attacker feints past the defender when the defender commits early to press.
+
+**Slice 34 — 1v1 attack-vs-defend scenario**
+
+- 34.1 [ ] `OneVsOneAttackDefendScenario` (scenario_id=7) + migration 230 (`230-sim-scenarios-1v1-attack-defend.sql`).
+- 34.2 [ ] `ProfileStore::load(person_id)` wired into `Match::spawnInitialSlots` per `SlotSpawn::ai_profile_source`. First consumer of the field (§21.2 M1-blocker item 1 wiring completes).
+- 34.3 [ ] Frontend tile in [frontend/tactical-games.html](frontend/tactical-games.html); coach can pick which real fh-member's profile drives the AI defender.
+- 34.4 [ ] Migration 227 (`return_to_base` id=7, `stay_in_zone` id=8) — wired but unused in M3, ships for concept-catalog completeness.
+- 34.5 [ ] Determinism golden: `one_v_one_attacker_scores_east_400_ticks_seed_42` (scripted attacker input beats scripted defender behavior stack — full pipeline lock).
+
+**Slice 34 exit gate**: fh-member Miguel picks the AI defender persona; a coach opens the 1v1 tile with Miguel-as-defender, tries to beat him to the east goal. Miguel's `mental.positioning_sense` + `mental.composure` visibly change how the defender behaves vs a default persona.
+
+**Slice 35 — M3 close-out** (doc-only, mirrors Slice 29 shape)
+
+- 35.1 [ ] §25.4 exit-criteria sweep — all boxes ticked with verification evidence.
+- 35.2 [ ] §25.5 non-goals sanity check — nothing accidentally landed in M3 that should be M4+.
+- 35.3 [ ] §21.9 M4-blockers section append (or record "empty sweep" if nothing surfaced).
+- 35.4 [ ] §15 milestone flip: M3 → **done**.
+
+**Slice 35 exit gate**: §25.4 all `[x]`, cross-arch CI green, DESIGN.md updated to reflect close-out. Zero code change; ADR §22 unchanged; append-only rules honored.
+
+### 25.4 M3 exit criteria
+
+Tick in place as work lands. All must be green for M3 to be considered complete.
+
+- [ ] `AiController` runs at least one real `IBehavior` in a production scenario (Slice 30.2 — `PursueBallCarrierBehavior` in `BallOnPitchWithDefender`).
+- [ ] All five M3 behaviors implemented and shipping in `AiController::defaultBehaviors()` for their respective Roles: `PursueBallCarrierBehavior`, `JockeyBehavior`, `MarkOpponentBehavior`, `Feint1v1Behavior` (+ any tuning-driven splits like a separate `PressBallCarrierBehavior` if Slice 30.2 discovers pursue and press need different utility curves).
+- [ ] All six M3 concepts registered in `sim_concept_registry` with stable IDs in `[3, 8]`: `pressing`, `marking`, `jockey`, `1v1_beat`, `return_to_base`, `stay_in_zone`.
+- [ ] All nine M3 attributes registered in `sim_attribute_registry` with stable IDs in `[16, 24]`: `marking_technique`, `standing_tackle`, `interception`, `feint`, `first_time_pass`, `aggression`, `positioning_sense`, `composure`, `anticipation`.
+- [ ] First `sim_pattern_registry` entry populated: `pattern_being_beaten_1v1` — Recognition pipeline validated end-to-end for the first time since M0.
+- [ ] `1v1AttackVsDefendScenario` playable end-to-end with real fh-member profile driving the AI (§21.2 item 1 wiring completes here).
+- [ ] Utility-AI hysteresis (ADR §22.26) landed and locked by `no_oscillation_between_jockey_and_press_400_ticks_seed_42` golden.
+- [ ] Debug-endpoint replay latency at tick 12000 of a checkpoint-heavy match < 5 s wall-clock (P95) — closes §21.3 item 1 quantitatively.
+- [ ] Cross-arch determinism CI green for every new M3 golden (17+ goldens including pre-M3).
+- [ ] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at end of M3 (§22.14 invariant — carried through M0/M1/M2/M3). M3 introduces the first legitimate write path for `sim_player_recognition` (Slice 33.3 populates it as patterns fire), so this invariant needs a nuanced re-verification: `n_tup_ins` on `sim_player_recognition` MAY be nonzero, `n_tup_upd` MUST remain zero.
+- [ ] No new §21 ship-blocker items opened during M3 without a matching closure or explicit revisit-condition timestamp. New items catalogued in §21.9 M4-blockers with revisit conditions (analogous to Slice 29's §21.8 catalogue).
+
+### 25.5 Explicit M3 non-goals
+
+- Off-ball intelligence (M4 — 2v1 / 2v2 supporting runs, cover-shadow, press-partner switching, `formation_shape` concept, `mental.off_ball_intelligence` attribute).
+- Long passes / lobs / air-drag physics (M4 — `pass_long` concept, `technical.lofted_pass` + `technical.through_ball` attributes, ball altitude dimension activated).
+- 2v1 / 2v2 numerical scenarios (M4 — M3 is single-attacker vs single-defender only).
+- `switch_press_partner` / `numerical_press` / `cover_shadow` concepts (M5 — coordination category, tied to press-trigger goal).
+- GK-specific attributes and behaviors (M5).
+- Referee, offside, throw-ins, corner kicks (M5+).
+- Snapshot delta compression (still on §21.4 non-standard-choices list).
+- Client-side prediction / rollback (post-M0 open question §20).
+- Profile-editor UI (still deferred per §23.5's carry-over from M1; M3 introduces the first *consumer* of persisted profiles via `ai_profile_source` but not an editor for them).
+- `mental.decisions` / `mental.vision` attributes (M4 — off-ball reads).
+- Full-match 11v11 (§2 explicit non-goal — the destination, not the milestone).
+
+### 25.6 M3 → M4 transition prerequisites
+
+Analogous to §21.7 and §24.6. **Empty at spec-time** — items append here as M3 slices surface them. Placeholder anchor for the Slice 35.3 sweep to populate.
+
+- (No items yet — populate during Slice 30.x → 34.x as blockers emerge, and confirm empty vs populated at Slice 35 close-out.)
+
+### 25.7 Reference cross-links
+
+- [§5.4](#54-player-controller-interface) — `AiController` skeleton graduates to real utility-AI in Slice 30.1.
+- [§5.5](#55-ai-behavior-interface-concept-gated) — `IBehavior` interface gets its first four concrete implementations (Slices 30.2 → 33.2).
+- [§5.6](#56-scenario-interface) — `SlotSpawn::ai_profile_source` field (added in §21.2's M1-blocker resolution) gets its first consumer in Slice 34.2. `SlotSpawn::mark_target` field added Slice 31.2.
+- [§12](#12-attribute--concept-catalog) — M3 attribute/concept batch consumed by the new behaviors.
+- [§15](#15-milestone-plan) — M3 scope line item that this section fully specs out.
+- [§16.6](#166-slice-13--persistence-library) — `RegistryLoader` picks up all M3 registry additions automatically (drift-check-gated).
+- [§21.3](#213-pre-m3-fixes-fix-before-m3-planning) — item 1 (debug-replay checkpointing) closes as Slice 30.0. Items 2 (`sim_matches.result` versioning), 3 (input lag), 4 (`sim_match_inputs` retention) are NOT M3 gates and stay open past M3 close-out.
+- [§21.4](#214-non-standard-choices--conscious-revisit-only-if-they-hurt) — item 4 (utility-AI oscillation) closes as ADR §22.26 in Slice 32.
+- [§21.8](#218-m3-blockers-fix-before-starting-m3-milestone-work) — item 1 (sim runtime image auto-rebuild) closed 2026-07-17 as commit `724d33ec`; the `make sim-deploy` guard now protects every M3 registry migration.
+- [§22.14](#2214-2026-07-13-sim_player_profile-write-policy--first-touch-insert-only-in-m0) — write policy carries into M3 with the nuance in §25.4 that `sim_player_recognition` INSERTs are legitimate as patterns fire; UPDATEs stay banned.
+- [§22.19](#2219-2026-07-14-podman-surface-docker-compat-rest-via-libcurl--unix-socket-path) — SimOrchestrator surface unchanged in M3.
+- [§22.25](#2225-2026-07-16-sim_match_events-payload-versioning--first-byte-version-tag-for-event_type-9) — event payload versioning; M3 does not add new event types (Goal remains 9) so no v2 payload lands.
+- [§22.26](#2226) — utility-AI hysteresis (drafted 2026-07-17, accepted at Slice 32 landing).
+- [§24.3](#243-slice-sequence) — M2 slice log; template for §25.3's shape.
+- [§24.4](#244-m2-exit-criteria) — M2 exit criteria; template for §25.4's shape.
+- [§24.6](#246-m2--m3-transition-prerequisites) — M2→M3 transition; all items either closed (event payload versioning, collision golden rotation) or absorbed into M3 slice work (DefenderController migration = Slice 30.2).
 
 ---
 
