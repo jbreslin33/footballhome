@@ -39,46 +39,28 @@ loop that Slice 6b assumes but is not currently happening.
 **W1 — Doc sync (already done in this commit).** §13 has a Slice 6b
 row; this §0 exists; timestamp bumped. Nothing to do tomorrow.
 
-**W2 — Install the gcal-sync systemd timer.** The units live in
-`/srv/footballhome/systemd/gcal-sync.{service,timer}` but are NOT
-installed on the host — `systemctl list-timers | grep gcal` returns
-nothing. That's why today's classifier run picked up
-`insert=1245 update=207` on the ops calendar: sync hadn't run in
-weeks. Fix:
+**W2 — Install the gcal-sync systemd timer.** ✅ DONE 2026-07-17.
+`sudo bash scripts/setup/setup-gcal.sh` installs both unit files to
+`/etc/systemd/system/`, reloads systemd, enables + starts the timer,
+and fires one-shot sync. Timer runs `OnBootSec=30s` + `OnUnitActiveSec=5min`
+with `Persistent=true`. Verified via `systemctl list-timers gcal-sync.timer`.
+If a fresh box ever needs this again, the setup script is idempotent
+— just re-run it.
 
-```bash
-sudo ln -sf /srv/footballhome/systemd/gcal-sync.service /etc/systemd/system/gcal-sync.service
-sudo ln -sf /srv/footballhome/systemd/gcal-sync.timer   /etc/systemd/system/gcal-sync.timer
-sudo systemctl daemon-reload
-sudo systemctl enable --now gcal-sync.timer
-systemctl list-timers gcal-sync.timer --no-pager
-```
+**W3 — Seed aliases for Women / Boys (Girls deferred).** ✅ DONE
+2026-07-17 via option (B) — alias only to REAL rosters, don't invent
+virtual pool teams. Migration `122-gcal-aliases-boys-womens.sql`
+added 7 rows:
+- Boys: `u8 → 916`, `u12 → 917`, `u16 → 911` (Lighthouse Youth League)
+- Womens: `tri county → 901`, `tricounty → 901`, both under
+  `club_alias='womens'` AND `club_alias='women'` (accepts either
+  `Club: Womens` or `Club: Women` in the DSL).
 
-Verify next run within 5 min; `journalctl -u gcal-sync.service -n 100
---no-pager` should show sync+classify output. `scripts/setup/setup-gcal.sh`
-should idempotently do all of this — worth checking whether the script
-exists and just wasn't run, vs needs writing.
-
-**W3 — Seed aliases for Women / Boys / Girls.** `gcal_team_aliases`
-today has 8 rows, all `club_alias='mens'`. Any DSL like
-`Club: Women`, `Club: Boys`, `Club: Girls` will resolve to zero teams
-today and land in `classifyDsl`'s `missingClub` bucket. Add a
-migration `122-gcal-aliases-women-boys-girls.sql` that mirrors the
-`mens` seed. Need real team_ids first — look them up:
-
-```sql
-SELECT id, name, gender_category
-  FROM teams
- WHERE gender_category IN ('womens','boys','girls')
-   AND (is_pool = true OR name IN ('Pickup','Practice','Adult'))
- ORDER BY gender_category, id;
-```
-
-Mirror the mens 8-row shape per category:
-`(club_alias, team_alias) = (<cat>, apsl | liga 1 | liga1 | liga 2 |
-liga2 | adult | practice | pickup)` with matching team_ids. Skip any
-tuple that has no real team on the DB side — better silent-unresolved
-in the classifier report than a fake FK.
+**Girls deferred** — no `gender_category='girls'` teams exist yet.
+Same for Women/Boys/Girls Practice+Pickup pool teams (that's the
+option (C) we punted on: needs new virtual teams + LA program wiring
+for `player_rsvp_eligibility`, which we'll do when ops actually starts
+tagging non-Mens practice/pickup events. See §13 W3 row.)
 
 ### 0.3 Then Slice 6a (biggest — see §13)
 
@@ -160,8 +142,27 @@ past ~50/week we'll revisit.
 
 ### 0.7 Off-limits drift on disk (2026-07-17 EOD)
 
-None. `git status` clean after today's Slice 6b commit + this §0
-resume-note commit.
+**Slice 6b code is UNCOMMITTED on disk** — the deployed backend +
+frontend are running from files that aren't in git. Files affected:
+- Untracked: `database/migrations/121-gcal-team-aliases-and-junction.sql`
+- Modified: `backend/src/controllers/CalendarController.{h,cpp}`,
+  `frontend/js/screens/calendar.js`, `scripts/gcal-classify.js`
+
+Additional (parallel workstream, unclear provenance — do not touch):
+- Untracked: `database/migrations/117-next-due-at.sql`,
+  `118-drop-billing-expectations.sql`, `wire-snoop.js`,
+  `backend/.dockerignore`
+- Deleted: `backend/src/controllers/BillingController.{cpp,h}`,
+  `backend/src/models/BillingExpectations.{cpp,h}`,
+  `backend/src/services/BillingProjector.{cpp,h}`
+- Modified: `backend/src/controllers/PaymentsController.{cpp,h}`,
+  `backend/src/models/PersonPayments.{cpp,h}`,
+  `backend/src/services/LaProgramSync.cpp`, `package.json`, others.
+
+**Fix required BEFORE Slice 6a / 7:** commit + push the Slice 6b work
+above so the deployed binary matches git. Otherwise a fresh
+`make build` from HEAD rebuilds the pre-6b backend and blows up on
+missing `fh_event_teams` references.
 
 ---
 
@@ -1074,14 +1075,21 @@ Week/month grids can come after.
       FH admin form. Revisit if volume grows past ~50/week.
 
 **Post-Slice-6b infra tasks (do first — see §0.2):**
-- [ ] **W2** — install `systemd/gcal-sync.{service,timer}` on the host.
-      Currently not installed → 5-min auto-sync isn't running →
-      classifier only picks up gcal changes when someone runs it by
-      hand. Detected 2026-07-17 when a manual run picked up
-      `insert=1245 update=207`.
-- [ ] **W3** — seed `gcal_team_aliases` for Women / Boys / Girls
-      (migration `122-`), mirroring the 8-row Mens seed shape from
-      migration 121.
+- [x] **W2** — install `systemd/gcal-sync.{service,timer}` on the host.
+      DONE 2026-07-17 via `scripts/setup/setup-gcal.sh`. Timer runs
+      every 5 min with `Persistent=true` so a machine that was off
+      catches up on next boot.
+- [x] **W3** — seed `gcal_team_aliases` for Boys + Womens.
+      DONE 2026-07-17 via migration `122-gcal-aliases-boys-womens.sql`
+      (7 rows: `boys → u8/u12/u16`, `womens/women → tri county`).
+- [ ] **W3 follow-up (option C, deferred)** — create virtual Practice
+      + Pickup pool teams for Women / Boys / Girls (mirror Mens
+      teams 908/909), wire `player_rsvp_eligibility` from the
+      corresponding LA program IDs (`5064686` Women Pickup, `5064618`
+      Boys Pickup, `5064662` Girls Pickup per copilot-instructions
+      membership-flow section), then add the alias rows. Do this
+      when ops starts tagging non-Mens practice/pickup events. Also
+      seed Girls once a `gender_category='girls'` team exists.
 
 **Explicitly out of scope, per §1.1:** any "create event in FH" UI or
 an FH → gcal writer. If we ever want that, it requires a design-doc
