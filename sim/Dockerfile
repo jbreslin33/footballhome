@@ -34,7 +34,8 @@ COPY scripts ./scripts
 RUN bash scripts/check_no_floats.sh \
     && bash scripts/check_no_bad_rng.sh \
     && bash scripts/check_no_hardcoded_attrs.sh \
-    && bash scripts/check_profile_write_policy.sh
+    && bash scripts/check_profile_write_policy.sh \
+    && bash scripts/check_behavior_registration.sh
 
 # ---- Build-time version (§16.6 task 7) --------------------------------------
 # The build context is ./sim so .git is NOT visible here. The host-side
