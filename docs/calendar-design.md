@@ -1,7 +1,9 @@
 # Football Home ↔ Google Calendar — design doc
 
-**Status:** IN PROGRESS. Slices 0–6b landed on `main`; Slice 6a + 7 next.
-**Last updated:** 2026-07-17.
+**Status:** IN PROGRESS. Slices 0–7 landed on `main`; MyScreen unified
+week view (§10.4) landed 2026-07-17 EOD. Slice 8 (unclassified queue)
+is the only open scheduled item.
+**Last updated:** 2026-07-17 EOD.
 **Owner:** jbreslin / Football Home.
 
 ---
@@ -11,158 +13,86 @@
 Where we are and exactly what to do tomorrow. Read this before touching
 anything else — it will save you from re-deriving what's already known.
 
-### 0.1 What landed today (Slice 6b)
+### 0.1 What landed today (Slices 6a, 7, MyScreen unified)
 
-Roster-gated RSVPs via a description DSL. Ops now writes
-`Team:` / `Club:` tags into the gcal event description; the classifier
-resolves them to a `teams[]` set via `gcal_team_aliases` and attaches
-them to `fh_events` through the new `fh_event_teams` junction. Backend
-enforces "must be on at least one attached team's roster" on POST; GET
-returns `teams[]`, `my_rsvp_eligible`, `hangout_link`. Frontend renders
-team chips + a 5-branch RSVP block (signed-out / no-roster /
-not-eligible / open / countdown).
+- **Slice 6a — standing/recurring RSVPs.** `GET/POST
+  /api/calendar/my-standing` in `CalendarController`. Worker
+  `scripts/gcal-rsvp-apply-standing.js` running on the shared 5-min
+  cadence with the sync worker. Frontend surfaces are the two
+  outline "Recurring Going / Not Going" buttons per event card on
+  MyScreen (below) — no separate profile grid.
+- **Slice 7 — legacy pickup rip.** `mens-events-reminders.js`
+  repointed at `fh_events` + `fh_event_rsvps`. Legacy tables
+  (`matches` / `player_rsvp_history` / `player_recurring_rsvps`)
+  retained for real-match data; pickup no longer dual-writes.
+  Committed 2026-07-17.
+- **MyScreen unified week view.** `frontend/js/screens/my.js`
+  rewritten as the primary player landing screen. Single-page
+  layout: compressed chat on top (newest message only + expand
+  toggle), one-week RSVP list below. Trims client-side to the
+  current week per §6.5.5 (Sunday 20:00 ET rollover). Four buttons
+  per card (per-event Going/Not Going, recurring Going/Not Going);
+  per-event override always wins. See §10.4.
+- **View-as impersonation on `/api/calendar/*`.** `auth.js` +
+  `CalendarController::applyImpersonation`. See §10.5.
 
-- Migration `121-gcal-team-aliases-and-junction.sql` — applied.
-- Classifier `scripts/gcal-classify.js` — DSL Pass A + legacy Pass B
-  are disjoint via `Team:` exclusion; 1451 events reclassified.
-- Backend `CalendarController.cpp` — deployed.
-- Frontend `frontend/js/screens/calendar.js` — deployed.
-- Full spec in §6.1.5. Wire-level behaviour in §10.2.
-- `fh_events.team_id` DROPPED. Junction is 3NF source of truth.
+### 0.2 Only open scheduled item — Slice 8
 
-### 0.2 Tomorrow's smallest useful batch (W1 + W2 + W3)
+Unclassified queue. Fallback classifier reports N "Soccer …"
+summaries per run that don't match any legacy regex AND have no
+`Team:` DSL tag. **Decision 2026-07-17 stands: SKIP the admin UI.**
+Add `scripts/gcal-unclassified-report.js` that emails jbreslin@
+weekly with the list. Ops resolves each by adding DSL tags in gcal
+(source of truth per §6.1.5), not by clicking through an FH admin
+form. Revisit if volume grows past ~50/week.
 
-Do these first — they're independent, all small, and W2 in particular
-unblocks the whole "user retrofits gcal → RSVPs auto-open in 5 min"
-loop that Slice 6b assumes but is not currently happening.
+### 0.3 Deferred / opportunistic
 
-**W1 — Doc sync (already done in this commit).** §13 has a Slice 6b
-row; this §0 exists; timestamp bumped. Nothing to do tomorrow.
+- **W3 follow-up (option C).** Create virtual Practice + Pickup
+  pool teams for Women / Boys / Girls (mirror Mens teams 908/909),
+  wire `player_rsvp_eligibility` from the corresponding LA program
+  IDs (`5064686` Women Pickup, `5064618` Boys Pickup, `5064662`
+  Girls Pickup per copilot-instructions membership-flow section),
+  then add the alias rows. Do this when ops starts tagging non-Mens
+  practice/pickup events. Also seed Girls once a
+  `gender_category='girls'` team exists.
+- **`club-events.js` migration.** The last screen still reading
+  from the legacy chat-driven RSVP path. Not urgent — the chat
+  event system it uses is orthogonal to gcal.
 
-**W2 — Install the gcal-sync systemd timer.** ✅ DONE 2026-07-17.
-`sudo bash scripts/setup/setup-gcal.sh` installs both unit files to
-`/etc/systemd/system/`, reloads systemd, enables + starts the timer,
-and fires one-shot sync. Timer runs `OnBootSec=30s` + `OnUnitActiveSec=5min`
-with `Persistent=true`. Verified via `systemctl list-timers gcal-sync.timer`.
-If a fresh box ever needs this again, the setup script is idempotent
-— just re-run it.
+### 0.4 Traps re-learned recently (don't step on tomorrow)
 
-**W3 — Seed aliases for Women / Boys (Girls deferred).** ✅ DONE
-2026-07-17 via option (B) — alias only to REAL rosters, don't invent
-virtual pool teams. Migration `122-gcal-aliases-boys-womens.sql`
-added 7 rows:
-- Boys: `u8 → 916`, `u12 → 917`, `u16 → 911` (Lighthouse Youth League)
-- Womens: `tri county → 901`, `tricounty → 901`, both under
-  `club_alias='womens'` AND `club_alias='women'` (accepts either
-  `Club: Womens` or `Club: Women` in the DSL).
-
-**Girls deferred** — no `gender_category='girls'` teams exist yet.
-Same for Women/Boys/Girls Practice+Pickup pool teams (that's the
-option (C) we punted on: needs new virtual teams + LA program wiring
-for `player_rsvp_eligibility`, which we'll do when ops actually starts
-tagging non-Mens practice/pickup events. See §13 W3 row.)
-
-### 0.3 Then Slice 6a (biggest — see §13)
-
-Schema `fh_recurring_rsvps` already exists (migration 119). Rebuild
-plan in §13 6a row plus below. Do NOT do the "backfill for regulars"
-step — cross-doc directive: users opt in themselves via the profile
-toggle. If the toggle isn't compelling enough that regulars discover
-it, that's a UX problem to fix, not a data-migration problem to
-work around.
-
-Order for tomorrow, once W1–W3 land:
-1. `GET /api/calendar/my-standing` + `POST /api/calendar/my-standing`
-   in `CalendarController`. Upserts one row per
-   `(person_id, kind, category)` with `active` boolean.
-2. `scripts/gcal-rsvp-apply-standing.js` — pure worker, no HTTP. Join
-   `fh_events` (rsvps_open_at ≤ now AND standing_applied_at IS NULL)
-   → `fh_event_teams` → `player_rsvp_eligibility` → `fh_recurring_rsvps`
-   (active AND matching kind + (category OR NULL)). Upsert
-   `fh_event_rsvps` with `created_via='standing'`, then stamp
-   `fh_events.standing_applied_at = now()`. Idempotent — safe to
-   re-run.
-3. `systemd/gcal-rsvp-apply-standing.{service,timer}` — 5 min cadence,
-   independent of gcal-sync (they touch different tables and different
-   locks; running in parallel is fine).
-4. Frontend: profile-screen toggle grid `(kind × category)`. Bind to
-   `/api/calendar/my-standing`. Show a per-card "Auto-registered via
-   your standing pref" pill on calendar cards where
-   `my_rsvp_created_via = 'standing'` (backend must add that column
-   to `GET /api/calendar/upcoming` first).
-
-### 0.4 Then Slice 7 (data migration — legacy pickup RSVPs)
-
-Discovered state (see §13 Slice 7 row for detail): "pickup" today
-lives on `matches` rows with `match_type_id=7`, with RSVPs in
-`player_rsvp_history` (360 rows) and standing prefs in
-`player_recurring_rsvps` (129 rows, keyed on day_of_week+match_type).
-There is NO dedicated "pickup" table to drop.
-
-One-shot copy scripts (see 6a §13 row) — do NOT drop the legacy
-tables, they still hold real-match RSVPs. Just stop dual-writing to
-them for pickup once the frontend repoint is deployed.
-
-### 0.5 Then Slice 8 (unclassified queue)
-
-Classifier currently reports 14 unresolved "Soccer …" summaries
-(mostly youth practice + a couple of intra-squad games). Decision
-(2026-07-17): SKIP the admin UI. Add
-`scripts/gcal-unclassified-report.js` that mails jbreslin@ weekly with
-the list. Ops resolves each by adding DSL tags in gcal — that's the
-source of truth per §6.1.5, not an FH admin form. If the volume grows
-past ~50/week we'll revisit.
-
-### 0.6 Traps re-learned today (don't step on tomorrow)
-
+- **Impersonation URL rewrite is per-endpoint-prefix, not global.**
+  If you add a new `/api/*` READ path that must render as the
+  impersonated player, you MUST extend both `frontend/js/auth.js`
+  (URL rewrite whitelist) AND the backend controller's read handler
+  (add the `applyImpersonation` call after session resolution).
+  Writes deliberately bypass — never wire `applyImpersonation` into
+  a POST.
 - **`teams.name`, not `teams.display_name`.** The `SELECT` in
   `CalendarController::handleGetUpcoming`'s `teams_json` subquery
-  was written as `t.display_name` and 500'd until fixed. When you
-  wire the Slice 6a profile toggle, if you `SELECT` from teams,
-  use `name`.
+  was written as `t.display_name` and 500'd until fixed.
 - **Rootful podman means `sudo` on everything.** `podman ps` without
   sudo returns empty. `make shell-db` without sudo fails. Set your
   shell aliases and stop losing 30s per command trying to
   understand why the container "doesn't exist".
 - **The 148-migration runner is slow (~30-45s to reach a new file).**
   This is not broken; it's per-file existence-checking through slow
-  podman exec. Wait it out. `ps auxf | grep run-migrations` confirms
-  it's alive.
+  podman exec. Wait it out.
 - **The gcal `singleEvents: true` expansion.** Every recurring
   instance is its own row in `gcal_events`. When ops edits the
   Saturday pickup DSL description, they MUST use "This and following
   events" (not "This event only") or only one instance updates.
-  This is a training issue, not a code issue.
-- **Container names conflict on rebuild.** `podman-compose up -d`
-  after a build can't recreate a container whose name is already
-  in use; workaround is `podman rm -f footballhome_backend
-  footballhome_frontend footballhome_leagueapps_sync` then
-  `podman-compose up -d`. There's probably a `--force-recreate`
-  equivalent worth digging up so `make build` does this cleanly.
 
-### 0.7 Off-limits drift on disk (2026-07-17 EOD)
+### 0.5 Off-limits drift on disk
 
-**Slice 6b code is COMMITTED as `b900d788` (2026-07-17).** The
-deployed backend + frontend now match git HEAD. Files were:
-`database/migrations/121-gcal-team-aliases-and-junction.sql`,
-`backend/src/controllers/CalendarController.{h,cpp}`,
-`frontend/js/screens/calendar.js`, `scripts/gcal-classify.js`.
-Working tree clean for the calendar workstream.
-
-**Separate parallel workstream (billing refactor) — DRIFT REMAINS,
-NOT MINE TO TOUCH:**
-- Untracked: `database/migrations/117-next-due-at.sql`,
-  `118-drop-billing-expectations.sql`, `wire-snoop.js`,
-  `backend/.dockerignore`
-- Deleted: `backend/src/controllers/BillingController.{cpp,h}`,
-  `backend/src/models/BillingExpectations.{cpp,h}`,
-  `backend/src/services/BillingProjector.{cpp,h}`
-- Modified: `backend/src/controllers/PaymentsController.{cpp,h}`,
-  `backend/src/models/PersonPayments.{cpp,h}`,
-  `backend/src/services/LaProgramSync.cpp`, `package.json`, others.
-
-The Slice 6a work below is safe to layer on top of HEAD; it doesn't
-overlap with the billing files.
+Working tree for the calendar workstream is clean at HEAD. The
+separate billing-refactor workstream still has uncommitted drift
+(deleted `BillingController.*`, `BillingExpectations.*`,
+`BillingProjector.*`; untracked `117-next-due-at.sql`,
+`118-drop-billing-expectations.sql`, `wire-snoop.js`,
+`backend/.dockerignore`). Do NOT stage those \u2014 they belong to a
+parallel agent.
 
 ---
 
@@ -676,6 +606,48 @@ Same column and same standing-RSVP mechanism — add a `kind` branch
 to `RSVPS_OPEN_AT_SQL` (or a lookup table) if matches, etc.,
 eventually need windowed RSVPs with a different open-cadence.
 
+### 6.5.5 Client-side display window (weekly rollover)
+
+**Added 2026-07-17 EOD.** Separate from the server-side
+`rsvps_open_at` gate (§6.5.1–§6.5.2), MyScreen enforces a
+display-only "one week at a time" rule:
+
+> **The player-facing week view shows events up to (and including)
+> the upcoming Sunday. At Sunday 20:00 America/New_York the window
+> slides to the following Sunday.**
+
+Rationale: after Slice 6b, ops attaches DSL tags to next week's
+gcal events days in advance, and the classifier immediately mints
+`fh_events` rows with `rsvps_open_at = <next Sun 20:00>`. Backend
+`/api/calendar/upcoming?days=14` faithfully returns those future
+rows. Without a client-side trim, a player would see next week's
+practices + pickup in an amber "opens Sun 8pm" state alongside
+this week's — visually crowded and confusing. Trimming to the
+current week keeps the screen focused on "what should I RSVP to
+now".
+
+The two cutovers are intentionally the same clock (Sun 20:00 ET):
+next week's events appear in the display window at the exact
+instant their `rsvps_open_at` also passes, so a player who refreshes
+MyScreen at 20:00:05 Sun sees the new week's cards already showing
+open RSVP buttons — no amber countdowns on the player-facing path.
+
+Implementation:
+
+- Backend request remains `days=14` so next week's rows are already
+  in memory client-side — the rollover is instant on the next tick,
+  no fetch required.
+- Frontend `frontend/js/screens/my.js` — `_weekWindowEnd()` returns
+  end-of-upcoming-Sunday (23:59:59.999 local) when `now < Sun 20:00`,
+  else end-of-following-Sunday.  `_renderEvents()` filters the
+  fetched list by `event.starts_at <= _weekWindowEnd()`.
+- The full 14-day list is still available on the (admin-facing)
+  `CalendarScreen` (§10.1) which does NOT apply this trim — admins
+  need forward visibility.
+
+**Do NOT push this rule into the backend.** It's a UX-layer choice
+tied to which surface is rendering, not a data-authority rule.
+
 ---
 
 ## 7. Sync worker sketch
@@ -880,14 +852,49 @@ with its own edit affordance where the current user has permission.
 Once Slice 3 exists, the current screens migrate one at a time to
 read from `fh_events`:
 
-- `mens-events-reminders.js` first (smallest surface, and Slice 7
-  pickup migration lands its data anyway).
-- `club-events.js` next.
-- `my.js` last (biggest, aggregates across everything).
+- [x] `mens-events-reminders.js` — migrated as part of Slice 7.
+- [ ] `club-events.js` — not yet migrated.
+- [x] `my.js` — migrated 2026-07-17 EOD.  Now the primary
+      player-facing landing screen: chat compressed to the newest
+      message on top (with an expand toggle for older messages) and
+      a single "This Week" list of RSVP-eligible events below.
+      Reads `/api/calendar/upcoming?days=14` +
+      `/api/calendar/my-standing`, trims client-side per §6.5.5.
+      Four buttons per card (per-event Going/Not Going, recurring
+      Going/Not Going) — the per-event override always wins over
+      the standing pref (§6.5.3's `ON CONFLICT DO NOTHING` rule).
+      Also honors view-as impersonation (see §10.5).
 
 First deliverable for M1: sync worker + `/api/calendar/upcoming`
 returning DB rows + a minimal agenda-list version of `calendar.js`.
 Week/month grids can come after.
+
+### 10.5 View-as impersonation on `/api/calendar/*`
+
+**Added 2026-07-17 EOD.** An admin using the "view as" picker
+(see `frontend/js/role-selection.js`) needs MyScreen to render as
+the impersonated player. The impersonation mechanism was originally
+scoped to `/api/my/*` only (`MyController::applyImpersonation`);
+MyScreen's move to `/api/calendar/*` broke it.
+
+Fix:
+
+- `frontend/js/auth.js` — the `?asPersonId=<id>` URL rewrite now
+  covers `GET /api/calendar/upcoming` and `GET /api/calendar/my-standing`
+  in addition to `/api/my/*`. Writes never get the override — an
+  admin viewing as a player must never accidentally RSVP as them.
+- `backend/src/controllers/CalendarController.cpp` — new
+  `applyImpersonation()` helper (admin-only via `admins` join;
+  target must exist; mirrors `MyController::applyImpersonation`).
+  Called from `handleGetUpcoming` and `handleGetMyStanding` after
+  the session resolves. `handlePostRsvp` and `handlePostMyStanding`
+  deliberately do NOT call it.
+
+This is a read-only affordance. Every LA-membership rule still
+applies (see [.github/copilot-instructions.md](../.github/copilot-instructions.md)
+membership section) — the impersonated view goes through the same
+roster / eligibility filters the impersonated player themselves
+would see.
 
 ---
 
@@ -1007,63 +1014,27 @@ Week/month grids can come after.
          pickup opening together each week.
       6. Verified end-to-end 2026-07-17: 1451 events reclassified,
          API returns new shape, POST enforces roster gate.
-- [ ] **Slice 6a:** standing/recurring RSVPs (§6.5.3). Schema
-      `fh_recurring_rsvps` already exists from migration 119. Work
-      remaining (see §0.3 for the concrete tomorrow-order):
+- [x] **Slice 6a:** standing/recurring RSVPs (§6.5.3). Landed
+      2026-07-17 EOD. Schema `fh_recurring_rsvps` from migration 119.
+      Delivered:
       1. `GET`/`POST /api/calendar/my-standing` on `CalendarController`
-         — upsert one `fh_recurring_rsvps` row per
+         — upserts one `fh_recurring_rsvps` row per
          `(person_id, kind, category)` with `active` boolean.
          Session-gated identically to `POST /api/calendar/rsvp`.
-      2. `scripts/gcal-rsvp-apply-standing.js` — worker joining
-         `fh_events` (rsvps_open_at ≤ now AND
-         standing_applied_at IS NULL) → `fh_event_teams` →
-         `player_rsvp_eligibility` → `fh_recurring_rsvps`
-         (active + kind match + category match OR NULL), upserts
-         `fh_event_rsvps` with `created_via='standing'`, stamps
-         `fh_events.standing_applied_at = now()`. Idempotent.
-      3. `systemd/gcal-rsvp-apply-standing.{service,timer}` — 5 min
-         cadence, independent of gcal-sync.
-      4. Frontend: profile-screen toggle grid `(kind × category)`
-         bound to `/api/calendar/my-standing`. Backend adds
-         `my_rsvp_created_via` to `GET /api/calendar/upcoming` and
-         frontend shows a "Auto-registered via your standing pref"
-         chip on those cards.
-      **Explicitly NOT DOING** the design-doc "backfill for regulars
-      ≥90% YES over 8 weeks + one-time email opt-in" step. If the
-      profile toggle isn't compelling enough that regulars discover
-      it, that's a UX problem to fix, not a data-migration problem
-      to work around. (Decision 2026-07-17.)
-- [ ] **Slice 7 — Pickup migration.** The Saturday Mens Pickup has
-      real historical RSVPs that need to be preserved when the
-      pickup screen repoints at the new `fh_events` rows.
-      **Discovered state (2026-07-17):** there is NO dedicated
-      "pickup" table — legacy pickup lives on `matches` rows with
-      `match_type_id=7`. Legacy per-event RSVPs are in
-      `player_rsvp_history` (360 rows, immutable log; take LATEST
-      per (player, event)). Legacy standing prefs are in
-      `player_recurring_rsvps` (129 rows, keyed by
-      `(person_id, day_of_week, match_type_id)`).
-      Migration:
-      1. Slice 6b's classifier already writes an `fh_events` row
-         (kind=pickup, category=mens, team=909 Pickup) for every
-         Sat instance — done.
-      2. One-shot `scripts/migrate-legacy-pickup-rsvps.js`:
-         for each `matches` row with `match_type_id=7`, find the
-         `fh_events` row on the same date, and for each player take
-         the LATEST `player_rsvp_history` row → upsert
-         `fh_event_rsvps` with `created_via='manual'`,
-         `responded_at=changed_at`. Report counts. Idempotent.
-      3. One-shot migration for standing prefs:
-         `player_recurring_rsvps WHERE day_of_week=6 AND match_type_id=7
-          AND rsvp_status = 'yes'` → `fh_recurring_rsvps`
-         `(kind='pickup', category='mens', response='yes', active=true)`.
-         Report only — user reviews then greenlights the copy.
-      4. Repoint `mens-events-reminders.js` (and any other pickup
-         screen) at `fh_events` + `fh_event_rsvps`. Only pickup —
-         real matches keep the legacy path.
-      5. **Do NOT drop legacy tables.** `matches` + `player_rsvp_history`
-         + `player_recurring_rsvps` still hold real-match data.
-         Slice 7 just stops dual-writing pickup rows to them.
+      2. `scripts/gcal-rsvp-apply-standing.js` worker running on the
+         5-min systemd timer (independent of gcal-sync).
+      3. Frontend surface: two outline "Recurring Going / Not Going"
+         buttons per event card on MyScreen (§10.4), NOT the separate
+         profile grid originally spec'd. Cleaner — same context as
+         the per-event override, one screen.
+      **Explicitly NOT DONE** the design-doc "backfill for regulars
+      ≥90% YES over 8 weeks + one-time email opt-in" step. Decision
+      2026-07-17 stands.
+- [x] **Slice 7 — Pickup migration.** Landed 2026-07-17. Legacy pickup
+      RSVPs preserved; `mens-events-reminders.js` repointed at
+      `fh_events` + `fh_event_rsvps`. `matches` +
+      `player_rsvp_history` + `player_recurring_rsvps` retained for
+      real-match data — pickup no longer dual-writes to them.
 - [ ] **Slice 8 — Unclassified queue.** Fallback classifier reports N
       "Soccer …" summaries per run that don't match any legacy regex
       AND have no `Team:` DSL tag (14 at Slice 6b landing time,
