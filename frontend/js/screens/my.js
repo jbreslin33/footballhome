@@ -17,7 +17,9 @@ class MyScreen extends Screen {
     super(navigation, auth);
     this.week          = null;          // { player_id, events }
     this.prefs         = null;          // Array<{day_of_week, match_type_id, rsvp_status_id, ...}>
-    this.mode          = 'week';        // 'week' | 'recurring' | 'chat'
+    this.standing      = null;          // Slice 6a: Array<{kind, category, response, active}>
+    this.standingSaving = new Set();    // "kind::category" tokens currently POSTing
+    this.mode          = 'week';        // 'week' | 'recurring' | 'standing' | 'chat'
     this.savingId      = null;          // match_id currently being written
     this.errorMsg      = null;
     // RSVP roster expansion — per-event bucketed lists fetched lazily.
@@ -51,6 +53,7 @@ class MyScreen extends Screen {
         <div style="display:flex; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap:wrap;">
           <button class="btn btn-primary tab-btn" data-tab="week">This week</button>
           <button class="btn btn-outline-secondary tab-btn" data-tab="recurring">Weekly availability</button>
+          <button class="btn btn-outline-secondary tab-btn" data-tab="standing">Auto-RSVP</button>
           <button class="btn btn-outline-secondary tab-btn" data-tab="chat">Chat<span id="chat-badge" style="display:none; margin-left:6px; background:#dc2626; color:#fff; border-radius:10px; padding:1px 7px; font-size:0.75rem; font-weight:700;"></span></button>
         </div>
         <div id="my-content">
@@ -82,12 +85,21 @@ class MyScreen extends Screen {
 
   async _bootstrap() {
     try {
-      const [weekRes, prefsRes] = await Promise.all([
+      const [weekRes, prefsRes, standingRes] = await Promise.all([
         this._fetch('/api/my/week'),
         this._fetch('/api/my/recurring'),
+        // Slice 6a: standing prefs for the new fh_events flow. Runs
+        // in parallel with the two legacy fetches — non-blocking, so
+        // a 5xx on my-standing (e.g. right after a deploy before
+        // routes register) doesn't take the whole screen down.
+        this._fetch('/api/calendar/my-standing').catch(err => {
+          console.warn('[my] my-standing load failed:', err.message);
+          return { prefs: [] };
+        }),
       ]);
-      this.week  = weekRes;
-      this.prefs = prefsRes.prefs || [];
+      this.week     = weekRes;
+      this.prefs    = prefsRes.prefs || [];
+      this.standing = standingRes.prefs || [];
       this._renderTabs();
       this._renderCurrent();
       // Prefetch per-event RSVP rosters so the count summaries and
@@ -167,6 +179,16 @@ class MyScreen extends Screen {
         this._togglePref(parseInt(dowStr, 10), parseInt(mtypeStr, 10), statusId);
         return;
       }
+      // Slice 6a: standing prefs toggle. data-standing-kind + data-standing-category
+      // identify the (kind, category) tuple; the click flips the current
+      // active/inactive state and POSTs.
+      const standingBtn = e.target.closest('[data-standing-kind]');
+      if (standingBtn) {
+        const kind     = standingBtn.getAttribute('data-standing-kind');
+        const category = standingBtn.getAttribute('data-standing-category') || null;
+        this._toggleStanding(kind, category);
+        return;
+      }
       if (e.target.closest('#chat-send-btn')) {
         this._sendChatMessage();
         return;
@@ -224,6 +246,7 @@ class MyScreen extends Screen {
   _renderCurrent() {
     if (this.mode === 'week')      return this._renderWeek();
     if (this.mode === 'recurring') return this._renderRecurring();
+    if (this.mode === 'standing')  return this._renderStanding();
     if (this.mode === 'chat')      return this._renderChat();
   }
 
@@ -739,6 +762,150 @@ class MyScreen extends Screen {
         ${rows}
       </div>
     `;
+  }
+
+  // ─── Slice 6a: standing / recurring RSVPs on fh_events ────────────
+  //
+  // Independent from the legacy _renderRecurring above.  This screen
+  // manages `fh_recurring_rsvps` rows keyed on (kind, category), which
+  // the gcal-rsvp-apply-standing worker uses to auto-fill fh_event_rsvps
+  // when each event's Sunday-20:00 RSVP window opens.
+  //
+  // For MVP the grid is a flat list of (kind × category) combinations
+  // that ops currently tags in Google Calendar (see migrations 121 +
+  // 122).  When a new category ships (e.g. Girls Pickup after option-C
+  // wiring) add a row here.  The UI intentionally does NOT let a user
+  // create arbitrary (kind, category) rows — every row must map to a
+  // real fh_events kind/category that ops tags on gcal, otherwise the
+  // pref matches nothing.
+
+  _renderStanding() {
+    const box = this.find('#my-content');
+    if (!box) return;
+    const sub = this.find('#my-subtitle');
+    if (sub) sub.textContent = 'Auto-say YES when an event window opens.';
+
+    // The set of (kind, category) rows shown here MUST be a subset of
+    // what the classifier actually produces.  Adding a row here that
+    // has no matching fh_events is harmless (it just never fires) but
+    // is confusing UX — remove it once ops confirms they will never
+    // tag that combo.
+    const slots = [
+      { kind: 'pickup',   category: 'mens',   label: 'Mens Pickup'    },
+      { kind: 'practice', category: 'mens',   label: 'Mens Practice'  },
+      { kind: 'pickup',   category: 'womens', label: 'Womens Pickup'  },
+      { kind: 'practice', category: 'womens', label: 'Womens Practice'},
+      { kind: 'pickup',   category: 'boys',   label: 'Boys Pickup'    },
+      { kind: 'practice', category: 'boys',   label: 'Boys Practice'  },
+      { kind: 'pickup',   category: 'girls',  label: 'Girls Pickup'   },
+      { kind: 'practice', category: 'girls',  label: 'Girls Practice' },
+    ];
+
+    // Index server-side prefs by "kind::category" for O(1) lookup.
+    const prefMap = new Map();
+    for (const p of (this.standing || [])) {
+      const key = `${p.kind}::${p.category || ''}`;
+      prefMap.set(key, p);
+    }
+
+    const rows = slots.map(s => {
+      const key      = `${s.kind}::${s.category}`;
+      const pref     = prefMap.get(key);
+      const active   = !!(pref && pref.active && pref.response === 'yes');
+      const saving   = this.standingSaving.has(key);
+      const bg       = active ? '#065f46' : 'transparent';
+      const fg       = active ? '#d1fae5' : 'inherit';
+      const bd       = active ? '#065f46' : 'rgba(255,255,255,0.2)';
+      const label    = active ? 'ON'  : 'OFF';
+      const cursor   = saving ? 'wait' : 'pointer';
+      const opacity  = saving ? '0.5' : '1';
+      return `
+        <div style="display:flex; justify-content: space-between; align-items: center;
+                    padding: var(--space-2) 0;
+                    border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <div>
+            <div style="font-weight:500;">${this.escapeHtml(s.label)}</div>
+            <div style="opacity:0.6; font-size:0.85rem;">
+              Auto-YES when this window opens
+            </div>
+          </div>
+          <button data-standing-kind="${s.kind}"
+                  data-standing-category="${s.category}"
+                  ${saving ? 'disabled' : ''}
+                  style="padding: 6px 18px; border-radius: 9999px;
+                         background:${bg}; color:${fg};
+                         border: 1px solid ${bd};
+                         font-size:0.85rem; font-weight:600;
+                         cursor:${cursor}; opacity:${opacity};
+                         min-width: 70px;">
+            ${label}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    box.innerHTML = `
+      <div style="background: var(--bg-secondary, rgba(255,255,255,0.04));
+                  border-radius: 8px; padding: var(--space-3);">
+        <p style="margin-top:0; font-weight:600; color:#fbbf24;">
+          Standing RSVPs for the new calendar events.
+        </p>
+        <p style="margin-top:0; opacity:0.85;">
+          Flip a toggle to <strong>ON</strong> and every future event of that kind + category
+          will auto-register you as YES the moment its RSVP window opens (Sunday 8 PM ET).
+          You can still manually override any individual event from the
+          <a href="#" data-tab="week">This week</a> tab or the main Calendar screen — your click always wins.
+        </p>
+        <p style="margin-top:0; opacity:0.75; font-size:0.9rem;">
+          Only shows for events you're roster-eligible for.  Turning a toggle OFF stops
+          future auto-registrations but doesn't touch any RSVP that's already been created.
+        </p>
+        ${rows}
+      </div>
+    `;
+  }
+
+  async _toggleStanding(kind, category) {
+    const key = `${kind}::${category || ''}`;
+    if (this.standingSaving.has(key)) return;
+
+    // Compute the target state — flip whatever the current row says.
+    const existing = (this.standing || []).find(
+      p => p.kind === kind && (p.category || '') === (category || '')
+    );
+    const currentlyOn = !!(existing && existing.active && existing.response === 'yes');
+    const newActive   = !currentlyOn;
+
+    this.standingSaving.add(key);
+    this._renderStanding();
+
+    try {
+      const body = await this._fetch('/api/calendar/my-standing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind,
+          category,
+          response: 'yes',   // MVP: toggle == YES / OFF.  A future revision
+                             // could let users pick "auto-NO" too.
+          active:   newActive,
+        }),
+      });
+      const saved = body?.pref;
+      if (saved) {
+        // Merge into local state — replace or append.
+        this.standing = (this.standing || []).filter(
+          p => !(p.kind === kind && (p.category || '') === (category || ''))
+        );
+        this.standing.push(saved);
+      }
+    } catch (err) {
+      console.error('[my] standing toggle failed:', err);
+      alert(`Could not save standing preference: ${err.message}`);
+    } finally {
+      this.standingSaving.delete(key);
+      this._renderStanding();
+    }
   }
 
   // ---------- writes ----------

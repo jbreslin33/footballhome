@@ -1,0 +1,31 @@
+[Unit]
+Description=Football Home — apply standing / recurring RSVPs (Slice 6a §6.5.3)
+Documentation=file:///srv/footballhome/docs/calendar-design.md
+After=network-online.target
+Wants=network-online.target
+# Don't fire while the DB is being started/restarted by podman.
+After=podman.service
+
+[Service]
+Type=oneshot
+User=jbreslin
+Group=jbreslin
+WorkingDirectory=/srv/footballhome
+# One ExecStart. The worker scans fh_events for rows whose
+# rsvps_open_at has passed and standing_applied_at IS NULL, then
+# inserts fh_event_rsvps rows for every roster-eligible user with a
+# matching active fh_recurring_rsvps pref, and stamps
+# standing_applied_at. Idempotent — see script header for details.
+ExecStart=/usr/bin/node /srv/footballhome/scripts/gcal-rsvp-apply-standing.js
+StandardOutput=journal
+StandardError=journal
+# Kill if it ever runs longer than 3 min — the applier is O(events
+# with pending window × avg roster size × avg standing prefs); even
+# a full backlog should finish well under 30s.
+TimeoutStartSec=180s
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target

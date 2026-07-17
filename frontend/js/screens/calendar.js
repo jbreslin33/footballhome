@@ -479,6 +479,12 @@ class CalendarScreen extends Screen {
     //
     // Selection styling follows the same palette as the kind pill so
     // "which one am I on" is instantly readable at a glance.
+    //
+    // Slice 6a: when the caller's current RSVP was inserted by the
+    // standing applier (created_via = 'standing'), we render a small
+    // chip below the buttons so they know the click was
+    // auto-registered.  Any manual click will flip created_via to
+    // 'manual' server-side, so the chip disappears on next fetch.
     const responses = [
       { key: 'yes',   label: '✓ YES',    on: '#065f46', off: '#1f2937', fg: '#d1fae5' },
       { key: 'no',    label: '✗ NO',     on: '#7f1d1d', off: '#1f2937', fg: '#fecaca' },
@@ -504,9 +510,21 @@ class CalendarScreen extends Screen {
         </button>`;
     }).join('');
 
+    const standingChip = (ev.my_rsvp_created_via === 'standing')
+      ? `<div style="margin-top:4px; padding:3px 8px; border-radius:9999px;
+                     background:#1e3a8a; color:#dbeafe; font-size:0.72rem;
+                     align-self:flex-start;
+                     border:1px solid #3b82f6;">
+           ✨ Auto-registered via your standing preference
+         </div>`
+      : '';
+
     return `
-      <div style="margin-top: var(--space-2); display:flex; gap:6px;">
-        ${buttons}
+      <div style="margin-top: var(--space-2); display:flex; flex-direction:column; gap:4px;">
+        <div style="display:flex; gap:6px;">
+          ${buttons}
+        </div>
+        ${standingChip}
       </div>`;
   }
 
@@ -540,9 +558,15 @@ class CalendarScreen extends Screen {
       const body = await res.json();
       // Reflect the server's canonical response locally without a full
       // reload — patch the my_rsvp field on the matching event and
-      // re-render just that card.
+      // re-render just that card.  The manual click flips
+      // created_via to 'manual' on the server (see §6.5.2), so mirror
+      // that in-memory too — makes the "auto-registered" chip
+      // disappear immediately.
       const ev = this.events.find(e => e.fh_event_id === fhEventId);
-      if (ev) ev.my_rsvp = body?.rsvp?.response || response;
+      if (ev) {
+        ev.my_rsvp = body?.rsvp?.response || response;
+        ev.my_rsvp_created_via = body?.rsvp?.created_via || 'manual';
+      }
     } catch (err) {
       console.error('[calendar] RSVP failed:', err);
       alert(err.message || 'Failed to save RSVP.');

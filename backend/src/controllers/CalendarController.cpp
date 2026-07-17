@@ -159,6 +159,12 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.post(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handlePostRsvp(req);
     });
+    router.get(prefix + "/calendar/my-standing", [this](const Request& req) {
+        return this->handleGetMyStanding(req);
+    });
+    router.post(prefix + "/calendar/my-standing", [this](const Request& req) {
+        return this->handlePostMyStanding(req);
+    });
 }
 
 Response CalendarController::handleGetUpcoming(const Request& request) {
@@ -254,7 +260,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 END AS rsvps_open_at,
                 (fe.rsvps_open_at IS NULL
                  OR fe.rsvps_open_at <= now()) AS rsvps_open_now,
-                mr.response AS my_rsvp,
+                mr.response    AS my_rsvp,
+                mr.created_via AS my_rsvp_created_via,
                 COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
@@ -326,6 +333,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
+            ev["my_rsvp_created_via"]= textOrNull(row, "my_rsvp_created_via");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
             // teams comes from the DB as a JSONB aggregate string
             // (jsonb_agg → text via row["…"].c_str()).  Parse it back
@@ -538,6 +546,207 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         return jsonOk({{"rsvp", rsvp}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostRsvp: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// ─── Slice 6a: standing / recurring RSVP preferences (§6.5.3) ──────
+//
+// Model: one row in fh_recurring_rsvps per (person, kind, category)
+// tuple.  `category` may be NULL for a "any category" pref — the
+// applier treats NULL as "matches all", so a single row with
+// kind='pickup', category=NULL auto-YESes on every pickup event the
+// user is roster-eligible for.  The current profile UI (§0.3) will
+// generally emit one row per (kind, category) pair the user checks
+// so the toggle grid is a straight WYSIWYG match to DB shape, but the
+// endpoint accepts NULL for power users / future flexibility.
+//
+// `active` is a soft-delete flag — flipping to false leaves the row
+// (audit / "undo" affordance) and the applier's WHERE active=true
+// filter skips it.  This lets a user briefly turn off "auto-RSVP for
+// mens practice while I'm out of town" without losing the pref.
+
+Response CalendarController::handleGetMyStanding(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    try {
+        auto* db = Database::getInstance();
+        // Return ALL rows — including inactive ones — so the profile
+        // UI can show a "you turned this off on <date>" affordance.
+        // Sort deterministically so the client can render the toggle
+        // grid in a stable order.
+        auto rows = db->query(
+            "SELECT id, kind, category, response, active, "
+            "       to_char(created_at AT TIME ZONE 'UTC', "
+            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
+            "       to_char(updated_at AT TIME ZONE 'UTC', "
+            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS updated_at "
+            "  FROM fh_recurring_rsvps "
+            " WHERE person_id = $1::int "
+            " ORDER BY kind ASC, COALESCE(category, '') ASC",
+            {std::to_string(personId)});
+
+        json prefs = json::array();
+        prefs.get_ref<json::array_t&>().reserve(rows.size());
+        for (const auto& row : rows) {
+            json p;
+            p["id"]         = row["id"].as<long long>();
+            p["kind"]       = row["kind"].c_str();
+            p["category"]   = textOrNull(row, "category");
+            p["response"]   = row["response"].c_str();
+            p["active"]     = row["active"].as<bool>();
+            p["created_at"] = row["created_at"].c_str();
+            p["updated_at"] = row["updated_at"].c_str();
+            prefs.push_back(std::move(p));
+        }
+        return jsonOk({{"prefs", std::move(prefs)}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleGetMyStanding: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handlePostMyStanding(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    json body;
+    try {
+        body = request.getBody().empty()
+            ? json::object()
+            : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         std::string("Invalid JSON: ") + e.what());
+    }
+
+    // kind must be one of the fh_events.kind CHECK values — the DB
+    // has no CHECK on fh_recurring_rsvps.kind (migration 119 line
+    // ~185 kept it flexible), so we enforce here.  Any drift with
+    // the fh_events shape means the pref will never match anything
+    // and the applier silently skips it, which is a much worse
+    // failure mode than a 400 at write time.
+    const std::string kind = toLower(jsonStr(body, "kind"));
+    static const std::string kAllowedKinds[] = {
+        "practice", "pickup", "match", "meeting", "camp", "other"
+    };
+    bool kindOk = false;
+    for (const auto& k : kAllowedKinds) if (k == kind) { kindOk = true; break; }
+    if (!kindOk) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "kind must be one of practice|pickup|match|meeting|camp|other");
+    }
+
+    // category may be omitted / null / a valid enum.  The DB CHECK
+    // on fh_events.category is 'mens|womens|boys|girls|staff'; we
+    // mirror that here.  NULL means "matches any category", per the
+    // applier semantics (see §6.5.3 rules).
+    std::string category;
+    bool categoryNull = true;
+    if (body.contains("category") && !body["category"].is_null()) {
+        category     = toLower(jsonStr(body, "category"));
+        categoryNull = false;
+        static const std::string kAllowedCategories[] = {
+            "mens", "womens", "boys", "girls", "staff"
+        };
+        bool catOk = false;
+        for (const auto& c : kAllowedCategories) if (c == category) { catOk = true; break; }
+        if (!catOk) {
+            return jsonError(HttpStatus::BAD_REQUEST,
+                             "category must be null or one of mens|womens|boys|girls|staff");
+        }
+    }
+
+    const std::string response = toLower(jsonStr(body, "response"));
+    if (response != "yes" && response != "no" && response != "maybe") {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "response must be 'yes', 'no', or 'maybe'");
+    }
+
+    // `active` defaults to true — the common case is "user just
+    // ticked this checkbox in the profile grid".  Only an explicit
+    // false turns it off.
+    bool active = true;
+    if (body.contains("active") && !body["active"].is_null()) {
+        if (body["active"].is_boolean()) {
+            active = body["active"].get<bool>();
+        } else {
+            return jsonError(HttpStatus::BAD_REQUEST,
+                             "active must be boolean");
+        }
+    }
+
+    try {
+        auto* db = Database::getInstance();
+
+        // Two upsert shapes needed because Postgres treats NULL as
+        // distinct in ordinary UNIQUE constraints — migration 119
+        // sidesteps this with a functional unique index on
+        // (person_id, kind, COALESCE(category, '')).  We invoke
+        // that index by NAME (`fh_recurring_rsvps_unique_idx`) so
+        // ON CONFLICT resolves correctly whether category is NULL
+        // or a value.  (Named-index conflict target is Postgres
+        // syntax `ON CONFLICT ON CONSTRAINT <name>`, but that only
+        // works for real UNIQUE constraints — for a functional
+        // unique index the columns-list form works as long as the
+        // expressions match exactly.)
+        pqxx::result row;
+        if (categoryNull) {
+            row = db->query(
+                "INSERT INTO fh_recurring_rsvps "
+                "    (person_id, kind, category, response, active, updated_at) "
+                "VALUES ($1::int, $2, NULL, $3, $4::bool, now()) "
+                "ON CONFLICT (person_id, kind, COALESCE(category, '')) DO UPDATE "
+                "   SET response   = EXCLUDED.response, "
+                "       active     = EXCLUDED.active, "
+                "       updated_at = now() "
+                "RETURNING id, kind, category, response, active, "
+                "          to_char(created_at AT TIME ZONE 'UTC', "
+                "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
+                "          to_char(updated_at AT TIME ZONE 'UTC', "
+                "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS updated_at",
+                {std::to_string(personId), kind, response,
+                 active ? "true" : "false"});
+        } else {
+            row = db->query(
+                "INSERT INTO fh_recurring_rsvps "
+                "    (person_id, kind, category, response, active, updated_at) "
+                "VALUES ($1::int, $2, $3, $4, $5::bool, now()) "
+                "ON CONFLICT (person_id, kind, COALESCE(category, '')) DO UPDATE "
+                "   SET response   = EXCLUDED.response, "
+                "       active     = EXCLUDED.active, "
+                "       updated_at = now() "
+                "RETURNING id, kind, category, response, active, "
+                "          to_char(created_at AT TIME ZONE 'UTC', "
+                "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
+                "          to_char(updated_at AT TIME ZONE 'UTC', "
+                "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS updated_at",
+                {std::to_string(personId), kind, category, response,
+                 active ? "true" : "false"});
+        }
+
+        if (row.empty()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                             "standing upsert returned no row");
+        }
+        const auto& r0 = row[0];
+        json pref = {
+            {"id",         r0["id"].as<long long>()},
+            {"kind",       r0["kind"].as<std::string>()},
+            {"category",   textOrNull(r0, "category")},
+            {"response",   r0["response"].as<std::string>()},
+            {"active",     r0["active"].as<bool>()},
+            {"created_at", r0["created_at"].as<std::string>()},
+            {"updated_at", r0["updated_at"].as<std::string>()},
+        };
+        return jsonOk({{"pref", pref}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handlePostMyStanding: "
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }

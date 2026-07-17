@@ -142,13 +142,15 @@ past ~50/week we'll revisit.
 
 ### 0.7 Off-limits drift on disk (2026-07-17 EOD)
 
-**Slice 6b code is UNCOMMITTED on disk** — the deployed backend +
-frontend are running from files that aren't in git. Files affected:
-- Untracked: `database/migrations/121-gcal-team-aliases-and-junction.sql`
-- Modified: `backend/src/controllers/CalendarController.{h,cpp}`,
-  `frontend/js/screens/calendar.js`, `scripts/gcal-classify.js`
+**Slice 6b code is COMMITTED as `b900d788` (2026-07-17).** The
+deployed backend + frontend now match git HEAD. Files were:
+`database/migrations/121-gcal-team-aliases-and-junction.sql`,
+`backend/src/controllers/CalendarController.{h,cpp}`,
+`frontend/js/screens/calendar.js`, `scripts/gcal-classify.js`.
+Working tree clean for the calendar workstream.
 
-Additional (parallel workstream, unclear provenance — do not touch):
+**Separate parallel workstream (billing refactor) — DRIFT REMAINS,
+NOT MINE TO TOUCH:**
 - Untracked: `database/migrations/117-next-due-at.sql`,
   `118-drop-billing-expectations.sql`, `wire-snoop.js`,
   `backend/.dockerignore`
@@ -159,10 +161,8 @@ Additional (parallel workstream, unclear provenance — do not touch):
   `backend/src/models/PersonPayments.{cpp,h}`,
   `backend/src/services/LaProgramSync.cpp`, `package.json`, others.
 
-**Fix required BEFORE Slice 6a / 7:** commit + push the Slice 6b work
-above so the deployed binary matches git. Otherwise a fresh
-`make build` from HEAD rebuilds the pre-6b backend and blows up on
-missing `fh_event_teams` references.
+The Slice 6a work below is safe to layer on top of HEAD; it doesn't
+overlap with the billing files.
 
 ---
 

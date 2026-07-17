@@ -1,0 +1,23 @@
+[Unit]
+Description=Football Home — standing-RSVP applier timer (every 5 min)
+Documentation=file:///srv/footballhome/docs/calendar-design.md
+Requires=gcal-rsvp-apply-standing.service
+
+[Timer]
+# Fire ~60 s after boot (gcal-sync fires at 30 s; give it a lead so
+# the first tick sees any freshly-classified events), then every 5 min.
+# OnUnitActiveSec is measured from the last active run so back-to-back
+# runs never overlap on a slow tick.
+OnBootSec=60s
+OnUnitActiveSec=5min
+Unit=gcal-rsvp-apply-standing.service
+# Randomize by up to 15 s so this timer and gcal-sync.timer don't
+# always fire on the same second.
+RandomizedDelaySec=15s
+# If the machine was off when a run should have happened, do it as
+# soon as we're up — the applier's standing_applied_at gate makes
+# catching up cheap.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
