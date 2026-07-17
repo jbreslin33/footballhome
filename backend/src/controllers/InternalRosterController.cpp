@@ -30,9 +30,17 @@ void InternalRosterController::registerRoutes(Router& router, const std::string&
     });
 
     // GET /api/internal/roster
-    router.get(prefix + "/roster", [this](const Request& request) {
-        return this->handleGetRoster(request);
-    });
+    // Registered through laGet(dynamic) — the query reads person_la_memberships
+    // across every category (active + pickup) to compute the Lighthouse pool
+    // (§ Membership Data Flow: any endpoint that reads person_la_memberships
+    // MUST sync every program it depends on first).  allLaProgramIds() returns
+    // the full registry, and Controller::syncPrograms fans them out in
+    // parallel before the handler runs.
+    laGet(router, prefix + "/roster",
+        [](const Request&) { return Controller::allLaProgramIds(); },
+        [this](const Request& req, const LaSyncMap& sync) {
+            return this->handleGetRoster(req, sync);
+        });
 
     // PUT /api/internal/roster/:playerId/team
     router.put(prefix + "/roster/:playerId/team", [this](const Request& request) {
@@ -102,7 +110,8 @@ Response InternalRosterController::handleGetTeams(const Request& request) {
 // GET /api/internal/roster
 // All Lighthouse-pool players with their current working-roster assignment
 // ============================================================================
-Response InternalRosterController::handleGetRoster(const Request& request) {
+Response InternalRosterController::handleGetRoster(const Request& request, const LaSyncMap& sync) {
+    (void)sync;  // LA fetch was executed by laGet(); handler reads DB only.
     try {
         // Build comma-separated list of internal team IDs for IN clause
         std::string teamIdList;

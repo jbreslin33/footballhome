@@ -63,7 +63,7 @@ public:
 private:
     Database* db_;
 
-    Response handleGetByLaUserId(const Request& request);
+    Response handleGetByLaUserId(const Request& request, const LaSyncMap& sync);
 
     // Path parser — returns false if the path doesn't match or the id
     // isn't a positive integer.  Trailing slashes tolerated.

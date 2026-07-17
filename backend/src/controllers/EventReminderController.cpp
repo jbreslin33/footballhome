@@ -140,22 +140,36 @@ EventReminderController::~EventReminderController() = default;
 
 void EventReminderController::registerRoutes(Router& router,
                                              const std::string& prefix) {
-    // prefix is "/api".  Two endpoints:
-    //   POST /api/matches/:matchId/remind   (coach)
-    //   GET  /api/reminders/verify          (public)
-    //   GET  /api/mens/week-availability    (coach)
-    router.post(prefix + "/matches/:matchId/remind",
-                [this](const Request& r) { return handleSendReminders(r); });
+    // prefix is "/api".  Three endpoints:
+    //   POST /api/matches/:matchId/remind   (coach)     — laPost + all LA
+    //   GET  /api/reminders/verify          (public)    — no LA read
+    //   GET  /api/mens/week-availability    (coach)     — laGet  + all LA
+    //
+    // The /remind and /mens/week-availability handlers both read
+    // person_la_memberships (paused-variant exclusion, § Membership Data
+    // Flow) — so they route through la* helpers and receive a fresh
+    // LaSyncMap covering every LA program in the registry.  /verify is a
+    // public token exchange that never touches LA membership state, so
+    // it stays on router.get.
+    laPost(router, prefix + "/matches/:matchId/remind",
+           [](const Request&) { return Controller::allLaProgramIds(); },
+           [this](const Request& r, const LaSyncMap& sync) {
+               return handleSendReminders(r, sync);
+           });
     router.get (prefix + "/reminders/verify",
                 [this](const Request& r) { return handleVerify(r); });
-    router.get (prefix + "/mens/week-availability",
-                [this](const Request& r) { return handleGetMensWeek(r); });
+    laGet(router, prefix + "/mens/week-availability",
+          [](const Request&) { return Controller::allLaProgramIds(); },
+          [this](const Request& r, const LaSyncMap& sync) {
+              return handleGetMensWeek(r, sync);
+          });
 }
 
 // ---------------------------------------------------------------------
 // POST /api/matches/:matchId/remind
 // ---------------------------------------------------------------------
-Response EventReminderController::handleSendReminders(const Request& request) {
+Response EventReminderController::handleSendReminders(const Request& request, const LaSyncMap& sync) {
+    (void)sync;  // LA fetch was executed by laPost(); handler reads DB only.
     if (!requireBearer(request)) {
         return jsonError(HttpStatus::UNAUTHORIZED, "auth required");
     }
@@ -563,7 +577,8 @@ Response EventReminderController::handleVerify(const Request& request) {
 //
 // Eligibility rules mirror EventReminderController::handleSendReminders
 // and MyController::handleGetWeek exactly — DO NOT drift.
-Response EventReminderController::handleGetMensWeek(const Request& request) {
+Response EventReminderController::handleGetMensWeek(const Request& request, const LaSyncMap& sync) {
+    (void)sync;  // LA fetch was executed by laGet(); handler reads DB only.
     if (!requireBearer(request)) {
         return jsonError(HttpStatus::UNAUTHORIZED, "auth required");
     }

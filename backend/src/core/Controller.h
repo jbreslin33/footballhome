@@ -76,6 +76,16 @@ protected:
     // code should always go through la* route helpers instead.
     static LaSyncMap syncPrograms(const std::vector<int>& programs);
 
+    // Returns every program_id currently in leagueapps_programs (active
+    // variants first, then paused/pickup by id) — the canonical "every
+    // LA program that could possibly feed this response" list.  Used
+    // with the dynamic laGet(…, LaProgramsForRequest, …) overload for
+    // profile/roster/backfill endpoints that render memberships across
+    // all categories at once.  DB errors are logged + swallowed
+    // (returns empty) so a transient outage in the registry table
+    // doesn't take down every LA-aware endpoint.
+    static std::vector<int> allLaProgramIds();
+
     // Utility methods for controllers
     Response jsonResponse(const std::string& json);
     Response jsonResponse(HttpStatus status, const std::string& json);

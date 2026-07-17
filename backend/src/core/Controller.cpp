@@ -260,7 +260,32 @@ Controller::LaSyncMap Controller::syncPrograms(const std::vector<int>& programs)
     return out;
 }
 
-// ── Static-programs overloads ──────────────────────────────────────────────
+// Enumerate every LA program in the registry.  Used by dynamic-programs
+// laGet() sites (profile page, admin backfill, cross-category rosters)
+// that need to guarantee membership state is fresh across every category
+// before rendering.  Order: active variant first (most common lookups),
+// then everything else by program_id — deterministic so debug logs and
+// timing traces line up run-to-run.
+std::vector<int> Controller::allLaProgramIds() {
+    std::vector<int> out;
+    try {
+        auto rows = Database::getInstance()->query(
+            "SELECT program_id FROM leagueapps_programs "
+            " WHERE program_id IS NOT NULL "
+            " ORDER BY (variant = 'active') DESC, program_id");
+        out.reserve(rows.size());
+        for (const auto& r : rows) {
+            if (!r["program_id"].is_null()) {
+                out.push_back(r["program_id"].as<int>());
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[Controller::allLaProgramIds] enumerate failed: "
+                  << e.what() << std::endl;
+    }
+    return out;
+}
+
 // Wrap a router.<verb>() registration with an automatic LA sync before
 // dispatch.  `programs` is captured by value so the handler always sees
 // the exact list its author declared, even if the caller's local mutates.

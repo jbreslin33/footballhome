@@ -33,7 +33,7 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
-    Response handleSendReminders(const Request& request);
+    Response handleSendReminders(const Request& request, const LaSyncMap& sync);
     Response handleVerify(const Request& request);
 
     // GET /api/mens/week-availability?days=7
@@ -45,5 +45,5 @@ private:
     //   individual "no response" player one-off.
     //
     //   Response shape — see cpp for the full JSON.
-    Response handleGetMensWeek(const Request& request);
+    Response handleGetMensWeek(const Request& request, const LaSyncMap& sync);
 };

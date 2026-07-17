@@ -15,7 +15,7 @@ private:
     Response handleGetTeams(const Request& request);
 
     // GET /api/internal/roster  — all Lighthouse pool players with working-roster info
-    Response handleGetRoster(const Request& request);
+    Response handleGetRoster(const Request& request, const LaSyncMap& sync);
 
     // PUT /api/internal/roster/:playerId/team  — assign/unassign player
     Response handleAssignPlayer(const Request& request);

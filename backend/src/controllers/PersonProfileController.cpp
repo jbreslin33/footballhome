@@ -1,5 +1,4 @@
 #include "PersonProfileController.h"
-#include "../services/LaProgramSync.h"
 #include <cctype>
 #include <iostream>
 #include <regex>
@@ -11,15 +10,30 @@ PersonProfileController::PersonProfileController() {
 
 void PersonProfileController::registerRoutes(Router& router, const std::string& prefix) {
     // GET /api/persons/la/:leagueAppsUserId
-    router.get(prefix + "/la/:leagueAppsUserId", [this](const Request& request) {
-        return this->handleGetByLaUserId(request);
-    });
+    //
+    // Registered via laGet with the *dynamic* LaProgramsForRequest overload:
+    // the profile page renders memberships across every LA program (mens,
+    // womens, boys, girls + their pickup variants — set defined in
+    // leagueapps_programs, not baked into C++).  The wrapper resolves the
+    // program list at request time (via allLeagueAppsProgramIds()), fans
+    // out LaProgramSync::run() in parallel, and then invokes the handler
+    // with the resulting LaSyncMap.  The handler itself never touches LA —
+    // it reads persons + person_la_memberships from the DB, which the
+    // sync just refreshed.  Satisfies the STRICT LA→DB→render rule
+    // (§ Membership Data Flow) at the framework layer.
+    laGet(router, prefix + "/la/:leagueAppsUserId",
+        [](const Request&) { return Controller::allLaProgramIds(); },
+        [this](const Request& req, const LaSyncMap& sync) {
+            return this->handleGetByLaUserId(req, sync);
+        });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // GET /api/persons/la/:leagueAppsUserId
 // ────────────────────────────────────────────────────────────────────────────
-Response PersonProfileController::handleGetByLaUserId(const Request& request) {
+Response PersonProfileController::handleGetByLaUserId(const Request& request,
+                                                     const LaSyncMap& sync) {
+    (void)sync;  // LA fetch was executed by laGet(); handler reads DB only.
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -33,68 +47,15 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request) {
     try {
         // ── Bridge: LA user id → persons.id ─────────────────────────
         // Alias table stores external_user_id as TEXT (LA ids are
-        // numeric today but the column is provider-agnostic).
+        // numeric today but the column is provider-agnostic).  laGet()
+        // ran LaProgramSync for every program in leagueapps_programs
+        // before we got here, so any current LA user's alias is fresh.
+        // A miss here means: not a member of any LA program → 404.
         pqxx::result aliasRes = db_->query(
             "SELECT person_id FROM external_person_aliases "
             "WHERE provider = 'leagueapps' AND external_user_id = $1 "
             "LIMIT 1",
             { std::to_string(laUserId) });
-
-        // ── On alias miss: run LA→DB sync per project rule ──────────
-        // Project rule (see .github/copilot-instructions.md, "Membership
-        // Data Flow"): any view showing LA membership MUST follow
-        // "LA API → update DB → query DB → render".  The roster pages
-        // fetch LA registrations directly without calling PersonLinker,
-        // so a brand-new signup can be visible on the boys/mens roster
-        // (rendered from LA JSON) before its external_person_aliases
-        // row exists.  Clicking the card fires GET /api/persons/la/:id
-        // and the alias lookup misses.  Self-heal by running the same
-        // LaProgramSync the /api/admin/membership/sync endpoint uses —
-        // for every program in leagueapps_programs.  Break as soon as
-        // the alias appears so we don't pay for every program sync in
-        // the common case.  Best-effort per program: log + continue on
-        // failure (a single flaky LA program must not block a click).
-        if (aliasRes.empty()) {
-            std::vector<long long> programIds;
-            try {
-                auto progRows = db_->query(
-                    "SELECT program_id FROM leagueapps_programs "
-                    " WHERE program_id IS NOT NULL "
-                    " ORDER BY (variant = 'active') DESC, program_id");
-                for (const auto& r : progRows) {
-                    if (!r["program_id"].is_null()) {
-                        programIds.push_back(r["program_id"].as<long long>());
-                    }
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "[PersonProfile] leagueapps_programs enumerate failed: "
-                          << e.what() << std::endl;
-            }
-
-            for (long long pid : programIds) {
-                try {
-                    LaProgramSync sync;
-                    sync.run(static_cast<int>(pid));
-                } catch (const std::exception& e) {
-                    std::cerr << "[PersonProfile] LaProgramSync failed program="
-                              << pid << ": " << e.what() << std::endl;
-                    continue;
-                }
-                // Re-check the alias after each program sync — the
-                // moment the target user's alias exists we stop.
-                try {
-                    aliasRes = db_->query(
-                        "SELECT person_id FROM external_person_aliases "
-                        "WHERE provider = 'leagueapps' AND external_user_id = $1 "
-                        "LIMIT 1",
-                        { std::to_string(laUserId) });
-                } catch (const std::exception& e) {
-                    std::cerr << "[PersonProfile] alias re-check failed: "
-                              << e.what() << std::endl;
-                }
-                if (!aliasRes.empty()) break;
-            }
-        }
 
         if (aliasRes.empty()) {
             return errorResponse(HttpStatus::NOT_FOUND,
