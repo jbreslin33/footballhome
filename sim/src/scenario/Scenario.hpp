@@ -116,6 +116,42 @@ enum class UnclaimedControllerKind : std::uint8_t {
     Defender = 2,   // DefenderController — Slice 24.3a, zero RNG, pursues ball
 };
 
+// Slice 28.2: axis-aligned bounding box describing one goal mouth in
+// world-space pitch coordinates. Scenarios that support scoring return
+// one region per goal via Scenario::goalRegions().
+//
+// Semantics:
+//   * `min` and `max` are world-space Vec3 corners of the AABB.
+//     Invariant: `min.{x,y,z} <= max.{x,y,z}` component-wise. Emitters
+//     that violate this are UB (containment tests below become nonsense).
+//   * `index` is the position of this region in the returned vector.
+//     Rendered as `goal_region_index` in the sim_match_events Goal
+//     payload (ADR §22.25 v1). Meaning is scenario-defined — e.g.
+//     GoalDrillScenario uses 0 = west goal, 1 = east goal. Callers MUST
+//     NOT hard-code "0 means home team" — that pairing is a scenario
+//     policy, not a global rule.
+//   * `is_home` / `is_away` bits deliberately omitted from this struct.
+//     Attribution ("who scored this goal") is a Match/Scenario concern,
+//     not a geometry concern. If a scenario needs to distinguish
+//     defending sides, expose it via a scenario-specific method
+//     (Slice 28.3+ decides).
+//
+// Coordinate system: same pitch-space Vec3 as SlotSpawn::position — x is
+// the pitch length axis, y is the width axis, z is vertical (usually 0
+// for M2 since ball height is not yet a first-class Match concern).
+//
+// Determinism note: goalRegions() is called by Match::tick each tick
+// (Slice 28.3) to check whether the ball entered any region. If the
+// returned regions ever depend on non-deterministic state (RNG, wall
+// clock, thread-local), the goal-detection code path becomes
+// non-deterministic — do not do that. Scenarios build the vector in the
+// constructor and return a stable snapshot.
+struct GoalRegion {
+    math::Vec3    min;
+    math::Vec3    max;
+    std::uint8_t  index{0};
+};
+
 class Scenario {
 public:
     virtual ~Scenario() = default;
@@ -128,6 +164,27 @@ public:
     virtual PlayableArea         playableArea() const = 0;
     virtual std::vector<SlotSpawn> initialSpawns() const = 0;
     virtual std::optional<BallSpawn> ballSpawn() const = 0;   // M0: none
+
+    // Slice 28.2: axis-aligned goal regions. Default returns empty — every
+    // pre-28 scenario continues to compile unchanged and has zero goal
+    // regions (so Match::tick's Slice-28.3 goal-detection loop is a no-op
+    // on those scenarios). Scenarios that support scoring override this
+    // and return one AABB per goal mouth.
+    //
+    // Contract:
+    //   * Called by Match::tick every physics step (Slice 28.3). Keep it
+    //     cheap — build the vector in the constructor and return a copy
+    //     or reference each call. Do not allocate per tick.
+    //   * Regions must be stable across the lifetime of the Scenario
+    //     instance (goalRegions() called at tick N must equal the call
+    //     at tick N+1). Mid-match goal-shape changes are not supported.
+    //   * `GoalRegion::index` MUST equal the region's position in the
+    //     returned vector (index 0 = regions[0]). The Goal payload
+    //     (ADR §22.25 v1) writes this byte directly into
+    //     sim_match_events.payload[1].
+    //   * Determinism: regions are declaration, not derived state. No
+    //     RNG, no wall clock. See the note on GoalRegion above.
+    virtual std::vector<GoalRegion> goalRegions() const { return {}; }
 
     // Ended / success / reset predicates over WorldView. M0: all return
     // false (empty-pitch never ends by itself).

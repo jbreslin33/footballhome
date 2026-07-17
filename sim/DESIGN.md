@@ -4,7 +4,13 @@
 **Owner:** footballhome
 **Scope:** authoritative multi-player tactical football simulator, server-side C++, browser client, binary wire, member-only auth.
 
-> **Slice 26 status (2026-07-16):** fully **CLOSED**. Final goldens: `kExpectedHashPassEast400 = 0xd2287a0b3981f04d`, `kExpectedHashPassReceive200 = 0xdaa7989a56a58f5f` (47/47 sim tests green, 11 determinism goldens internal). Next real work is **Slice 27 (player-player collisions)** — blocked on **ADR §22.24** landing. **ADR §22.25 (event-payload versioning + `EventType::Goal=9`) drafted 2026-07-16** to unblock Slice 28 whenever Slice 27 lands.
+> **Slice 26 status (2026-07-16):** fully **CLOSED**. Final goldens: `kExpectedHashPassEast400 = 0xd2287a0b3981f04d`, `kExpectedHashPassReceive200 = 0xdaa7989a56a58f5f` (47/47 sim tests green, 11 determinism goldens internal).
+>
+> **Slice 27 (player-player collisions):** parked pending **ADR §22.24**. Progressing on **Slice 28 (shots on goal)** in parallel per user directive.
+>
+> **Slice 28.1 (event payload versioning + `EventType::Goal=9`, migration 221):** landed 2026-07-16 per **ADR §22.25**.
+>
+> **Slice 28.2 (`Scenario::goalRegions()` + `GoalDrillScenario`, migration 222, scenario_id=6):** landed 2026-07-17. 48/48 sim tests green. Next up is Slice 28.3 (`Match::tick` post-physics goal-detection + Goal event emission).
 
 ---
 
@@ -3011,9 +3017,9 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 28 — Shots on goal + versioned match events** (not started; **ADR §22.25 drafted 2026-07-16** — implementation blocked only on Slice 27 landing first per §24 ordering)
 
-- 28.1 Migration 221 (event schema versioning per §22.25) — first byte of `sim_match_events.payload` = version tag for `event_type >= 9`; `event_type in (1..8)` remain grandfathered unversioned. Add `EventType::Goal` at id **9** (next available in the append-only enum after `ScenarioReset=8`). `sim_decode_event()` extended per §22.25's decoder contract. **No wire change in 28.1** — Slice 28.4 is the client-visible slice that bumps wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04).
-- 28.2 `Scenario::goalRegions()` API. `EmptyPitchScenario` returns empty. New `GoalDrillScenario` returns two AABBs at pitch ends.
-- 28.3 `Match::tick` post-physics goal-detection loop.
+- 28.1 [x] Migration 221 (event schema versioning per §22.25) — first byte of `sim_match_events.payload` = version tag for `event_type >= 9`; `event_type in (1..8)` remain grandfathered unversioned. Add `EventType::Goal` at id **9** (next available in the append-only enum after `ScenarioReset=8`). `sim_decode_event()` extended per §22.25's decoder contract. **No wire change in 28.1** — Slice 28.4 is the client-visible slice that bumps wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04). Landed 2026-07-16.
+- 28.2 [x] `Scenario::goalRegions()` API — `struct GoalRegion { Vec3 min; Vec3 max; u8 index; }` + `virtual std::vector<GoalRegion> goalRegions() const { return {}; }` default on `Scenario`. `EmptyPitchScenario` (and every other pre-28 scenario) grandfathered at empty via the default. New `GoalDrillScenario` (scenario_id=6, migration 222) returns two AABBs at the pitch ends: west (index 0, x∈[-54.5,-52.5]) and east (index 1, x∈[+52.5,+54.5]), both 7.32 m wide × 2.44 m tall × 2 m deep. Same 105×68 pitch + ±15 m slot spawns + centre-spot ball as `BallOnPitch2v0Scenario`; unclaimed slots idle. 48/48 sim tests green. Landed 2026-07-17.
+- 28.3 [ ] `Match::tick` post-physics goal-detection loop.
 - 28.4 Frontend goal-flash animation + score HUD.
 - 28.5 Determinism goldens: `goal_from_kick_east_200_ticks_seed_42`.
 
