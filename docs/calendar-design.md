@@ -46,6 +46,27 @@ weekly with the list. Ops resolves each by adding DSL tags in gcal
 (source of truth per §6.1.5), not by clicking through an FH admin
 form. Revisit if volume grows past ~50/week.
 
+#### 0.2.1 Slice 8 implementation sketch
+
+- Script runs weekly (same host-level cadence as the sync worker,
+  but a separate systemd timer is fine).
+- It scans `gcal_events` rows that:
+  - are not tombstoned/deleted,
+  - have a summary matching the soccer-prefix rule from §6.0,
+  - do not already have a matching `fh_events` row, and
+  - do not contain a `Team:` DSL tag in the description.
+- Output is an email body with one bullet per event:
+  - summary,
+  - calendar (Soccer vs Ops),
+  - start time,
+  - link to the Google event when available,
+  - a short note such as "no Team tag / no regex match".
+- No admin UI, no FH-side mutation path, and no auto-classification.
+  The report is an ops handoff, not an FH workflow.
+- If the weekly volume stays under ~50 rows, the current report-only
+  approach remains the right tradeoff. If it grows beyond that, we can
+  revisit a lightweight admin queue after the operational pain is real.
+
 ### 0.3 Deferred / opportunistic
 
 - **W3 follow-up (option C).** Create virtual Practice + Pickup

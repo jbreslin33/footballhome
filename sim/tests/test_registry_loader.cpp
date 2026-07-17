@@ -62,6 +62,10 @@ std::vector<RegistryRow> canonicalM0Concepts()
         // `pass_to_teammate` (id=2) will land in Slice 31.x; the
         // registry loader tolerates gaps.
         {3, "pressing",     "defensive"},
+        // Slice 31.1: marking + jockey (migration 225) — defensive
+        // concepts used by the first true defender-behavior slice.
+        {4, "marking",      "defensive"},
+        {5, "jockey",       "defensive"},
     };
 }
 
@@ -155,7 +159,7 @@ FH_TEST(load_concept_registry_populates)
     ConceptRegistry reg;
     fh::sim::persistence::loadConceptRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{2});
+    FH_EXPECT_EQ(reg.size(), std::size_t{4});
     const auto* e = reg.find(static_cast<fh::sim::ConceptId>(1));
     FH_EXPECT(e != nullptr);
     FH_EXPECT(e->key == "run_to_point");
@@ -163,6 +167,15 @@ FH_TEST(load_concept_registry_populates)
     const auto* p = reg.find(static_cast<fh::sim::ConceptId>(3));
     FH_EXPECT(p != nullptr);
     FH_EXPECT(p->key == "pressing");
+    // Slice 31.1: marking + jockey land at ids 4 + 5 (migration 225).
+    const auto* m = reg.find(static_cast<fh::sim::ConceptId>(4));
+    FH_EXPECT(m != nullptr);
+    FH_EXPECT(m->key == "marking");
+    const auto* j = reg.find(static_cast<fh::sim::ConceptId>(5));
+    FH_EXPECT(j != nullptr);
+    FH_EXPECT(j->key == "jockey");
+    FH_EXPECT_EQ(fh::sim::m0::kMarking, fh::sim::ConceptId{4});
+    FH_EXPECT_EQ(fh::sim::m0::kJockey, fh::sim::ConceptId{5});
 }
 
 FH_TEST(load_concept_registry_throws_when_db_empty)
