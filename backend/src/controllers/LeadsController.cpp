@@ -283,7 +283,19 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
     router.post(prefix + "/sync",             [this](const Request& r){ return handleSync            (r); });
     router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
-    router.get (prefix + "/unjoined-members", [this](const Request& r){ return handleUnjoinedMembers (r); });
+    // /unjoined-members renders the "Members" section which is 100% LA
+    // membership state (Men / Women / Boys / Girls, active + paused +
+    // pickup).  Route through laGet(dynamic) so LaProgramSync::run() is
+    // called once per LA program in parallel BEFORE the handler runs —
+    // the handler then reads everything from Postgres (persons +
+    // aliases + person_la_memberships + person_emails + person_phones,
+    // all freshly refreshed).  This eliminates the previous BANNED
+    // inline `la.fetchProgramRegistrations(pid)` loop.
+    laGet(router, prefix + "/unjoined-members",
+        [](const Request&) { return Controller::allLaProgramIds(); },
+        [this](const Request& r, const LaSyncMap& sync) {
+            return handleUnjoinedMembers(r, sync);
+        });
     router.get (prefix + "/analytics",        [this](const Request& r){ return handleAnalytics       (r); });
     // Public (no bearer) — landing form at /pickup posts here.  Must be
     // registered before the `:id` routes so the literal wins.
@@ -813,8 +825,9 @@ Response LeadsController::handleNextPickup(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 // GET /api/leads/unjoined-members
 //
-// Lists ALL current Lighthouse members (Men / Women / Boys / Girls).
-// The frontend uses this list for two purposes:
+// Lists ALL current Lighthouse members (Men / Women / Boys / Girls / all
+// LA sub-programs including paused + pickup).  The frontend uses this
+// list for two purposes:
 //   1. Render the blue "Members" section on the leads screen.
 //   2. Cross-reference each lead's email against the union of member
 //      emails; any lead that matches a member is hidden from the main
@@ -824,16 +837,26 @@ Response LeadsController::handleNextPickup(const Request& request) {
 // "members not in the leads funnel" framing; today's behavior is
 // strictly broader (no lead-overlap filtering happens here).
 //
-// Sources:
+// Membership sources (post-refactor 2026-07-17):
+//   • Registered through laGet(dynamic) → LaProgramSync::run() has
+//     ALREADY fired for every LA program in `leagueapps_programs`
+//     (parallel fan-out) before this handler is called.  That call
+//     upserts persons, aliases, person_la_memberships,
+//     person_emails and person_phones — so the handler reads
+//     everything from Postgres and NEVER calls LA directly (which
+//     was the previous BANNED pattern that filled section 5 with
+//     an inline `la.fetchProgramRegistrations()` loop).
 //   • Men   — mens_team_assignments → external_person_aliases('leagueapps')
-//             → persons → person_emails, with email/phone overlay from
-//             a live LA fetch (person_emails is sparse for men).
+//             → persons → person_emails (freshly synced this request).
 //   • Women — rosters (left_at IS NULL) → players → persons, restricted to
 //             teams.gender_category='womens'.
-//   • Boys  — live LA fetch via YouthRoster::run(), club="Boys Club".
-//   • Girls — same, club="Girls Club"; emails surface as parentEmail || playerEmail.
+//   • Boys / Girls / paused / pickup — the catch-all section 5 below
+//             walks EVERY open person_la_memberships row, resolves each
+//             to a person + LA userId + contact + program-name, and
+//             emits it in a single JOIN query.
 // ────────────────────────────────────────────────────────────────────────────
-Response LeadsController::handleUnjoinedMembers(const Request& request) {
+Response LeadsController::handleUnjoinedMembers(const Request& request, const LaSyncMap& sync) {
+    (void)sync;   // LA fetch was executed by laGet(); this handler reads DB only.
     if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {
@@ -875,55 +898,24 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
             }
         };
 
-        // 2. Men — mens_team_assignments only counts rostered or pool, both
-        //    are members of the club.  We do NOT filter on_roster=true so
-        //    bench/pool members are surfaced too.
-        //
-        //    Email enrichment: person_emails is often empty for men because
-        //    the mens-roster sync pre-dates the email-import path.  We do a
-        //    live LA fetch and overlay email/phone from the registration
-        //    record when the DB column came back blank.  Same LA-derived
-        //    email is also checked against leadEmails so a man who DID join
-        //    via Meta but never had person_emails populated is correctly
-        //    excluded from the "unjoined" list.
+        // 2. Men — mens_team_assignments (any presence = member; bench,
+        //    pool, on-roster all counted).  Email + phone come from
+        //    person_emails / person_phones which PersonLinker.linkLa
+        //    keeps in sync every request (see laGet wrapper on this
+        //    route).  The old code fetched LA registrations inline to
+        //    overlay email/phone because person_emails was sparse for
+        //    men; that predates the 2026-07-01 contact-backfill and
+        //    the 2026-07-17 laGet wiring — both now guarantee this
+        //    read is fresh.
         {
-            // Build LA user_id -> { email, phone } map.  Failure is
-            // non-fatal: we just fall back to the pre-enrichment behavior.
-            std::unordered_map<long long, std::pair<std::string, std::string>> laMap;
-            try {
-                const char* mensProgIdEnv = std::getenv("LEAGUEAPPS_MENS_PROGRAM_ID");
-                const int mensProgId = mensProgIdEnv ? std::atoi(mensProgIdEnv) : 5039300;
-                auto recs = LeagueAppsService::getInstance()
-                                .fetchProgramRegistrations(mensProgId);
-                for (const auto& r : recs) {
-                    auto uidIt = r.find("userId");
-                    if (uidIt == r.end() || uidIt->is_null()) continue;
-                    long long uid = 0;
-                    try {
-                        if (uidIt->is_number_integer()) uid = uidIt->get<long long>();
-                        else if (uidIt->is_string())    uid = std::stoll(uidIt->get<std::string>());
-                    } catch (...) { continue; }
-                    auto strField = [&](const char* k) -> std::string {
-                        auto it = r.find(k);
-                        if (it == r.end() || !it->is_string()) return {};
-                        return it->get<std::string>();
-                    };
-                    const std::string email = strField("email");
-                    const std::string phone = strField("phone");
-                    // First-seen wins; LA already dedups by latest reg.
-                    laMap.emplace(uid, std::make_pair(email, phone));
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "unjoined-members: men LA fetch failed: "
-                          << e.what() << " — continuing without enrichment."
-                          << std::endl;
-            }
-
             auto rs = db->query(
                 "SELECT t.name AS team_name, p.id AS person_id, "
                 "       p.first_name, p.last_name, m.leagueapps_user_id, "
                 "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
-                "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails "
+                "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails, "
+                "       COALESCE((SELECT pp.phone_number FROM person_phones pp "
+                "                  WHERE pp.person_id = p.id "
+                "                  ORDER BY pp.is_primary DESC, pp.id LIMIT 1), '') AS phone "
                 "  FROM roster_assignments m "
                 "  JOIN teams t ON t.id = m.team_id "
                 "  JOIN external_person_aliases epa "
@@ -932,24 +924,14 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
                 "  JOIN persons p ON p.id = epa.person_id "
                 " ORDER BY t.name, p.last_name, p.first_name");
             for (const auto& row : rs) {
-                const long long uid = row["leagueapps_user_id"].as<long long>();
-                std::string emails = row["emails"].c_str();
-                std::string phone;
-                auto laIt = laMap.find(uid);
-                if (laIt != laMap.end()) {
-                    const std::string& laEmail = laIt->second.first;
-                    const std::string& laPhone = laIt->second.second;
-                    if (emails.empty() && !laEmail.empty()) emails = laEmail;
-                    if (phone.empty()  && !laPhone.empty()) phone  = laPhone;
-                }
                 emit("Men",
                      row["person_id"].as<int>(),
-                     uid,
+                     row["leagueapps_user_id"].as<long long>(),
                      row["first_name"].is_null() ? std::string{} : row["first_name"].c_str(),
                      row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str(),
                      row["team_name"].is_null()  ? std::string{} : row["team_name"].c_str(),
-                     emails,
-                     phone);
+                     row["emails"].c_str(),
+                     row["phone"].c_str());
             }
         }
 
@@ -1043,130 +1025,90 @@ Response LeadsController::handleUnjoinedMembers(const Request& request) {
                       << e.what() << " — continuing without youth." << std::endl;
         }
 
-        // 5. Catch-all — every LA-linked person surfaced by ANY registration
-        //    in the `leagueapps_programs` registry (active + paused sub-
-        //    programs).  Paused-membership regs, and any active reg whose
-        //    person hasn't landed in a roster table yet, get emitted here
-        //    so their email/phone flows into the frontend's suppression
-        //    set (a paused member must never be cold-emailed).
+        // 5. Catch-all — every LA-linked person who currently has an
+        //    OPEN person_la_memberships row for ANY program (active,
+        //    paused, pickup, everything).  Handled in a single query
+        //    because laGet(dynamic, allLaProgramIds) already refreshed
+        //    every LA program's state into person_la_memberships +
+        //    person_emails + person_phones before this handler ran.
+        //    The old implementation looped over `leagueapps_programs`
+        //    and called `la.fetchProgramRegistrations(pid)` inline for
+        //    each — a direct violation of the STRICT rule (§ Membership
+        //    Data Flow, "shape response cards from the in-memory LA
+        //    response" is BANNED).
         //
-        //    Contact info comes from person_emails / person_phones (which
-        //    PersonLinker::linkLa now backfills on every sync).  For youth
-        //    the child's `parent_person_id` redirects the contact lookup
-        //    to the parent's rows.  LA record fields (email / parentEmail
-        //    / phoneNumber / parentPhone) are used as a fallback when the
-        //    DB tables are still empty.
+        //    Contact resolution mirrors the pre-refactor behavior:
+        //    youth records (persons.parent_person_id IS NOT NULL) use
+        //    the PARENT's email/phone rows because CHILD LA regs carry
+        //    contact info on the parent, not the child.  Adults use
+        //    their own rows.
+        //
+        //    `emittedLaUids` (populated by sections 2 + 4) is honored so
+        //    a person who was already surfaced under Men or Boys/Girls
+        //    isn't double-emitted here under their (same) active
+        //    program.  Different LA sub-programs for the same person
+        //    (e.g. Men active AND Men pickup) DO surface as separate
+        //    rows because the frontend uses this list to enumerate
+        //    which sub-programs each member belongs to.
         try {
-            auto progRows = db->query(
-                "SELECT program_id, category, variant, program_name "
-                "  FROM leagueapps_programs ORDER BY category, variant");
-            auto& la = LeagueAppsService::getInstance();
-            for (const auto& prog : progRows) {
-                const int pid = static_cast<int>(prog["program_id"].as<long long>());
-                const std::string cat = prog["category"].is_null() ? std::string{} : prog["category"].c_str();
-                const std::string var = prog["variant"].is_null()  ? std::string{} : prog["variant"].c_str();
-                const std::string progName = prog["program_name"].is_null() ? std::string{} : prog["program_name"].c_str();
+            auto rs = db->query(
+                "SELECT lp.category, "
+                "       lp.variant, "
+                "       lp.program_name, "
+                "       p.id                              AS person_id, "
+                "       p.first_name, "
+                "       p.last_name, "
+                "       epa.external_user_id              AS la_user_id, "
+                "       COALESCE(p.parent_person_id, p.id) AS contact_person_id, "
+                "       COALESCE((SELECT string_agg(pe.email, ', ' "
+                "                                   ORDER BY pe.is_primary DESC, pe.email) "
+                "                   FROM person_emails pe "
+                "                  WHERE pe.person_id = COALESCE(p.parent_person_id, p.id)), '') AS emails, "
+                "       COALESCE((SELECT pp.phone_number FROM person_phones pp "
+                "                  WHERE pp.person_id = COALESCE(p.parent_person_id, p.id) "
+                "                  ORDER BY pp.is_primary DESC, pp.id LIMIT 1), '')             AS phone "
+                "  FROM person_la_memberships plm "
+                "  JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+                "  JOIN persons p              ON p.id           = plm.person_id "
+                "  LEFT JOIN external_person_aliases epa "
+                "    ON epa.person_id = p.id AND epa.provider = 'leagueapps' "
+                " WHERE plm.ended_at IS NULL "
+                " ORDER BY lp.category, lp.variant, p.last_name, p.first_name, plm.la_program_id");
+
+            for (const auto& row : rs) {
+                std::optional<long long> laUid;
+                if (!row["la_user_id"].is_null()) {
+                    try { laUid = std::stoll(row["la_user_id"].c_str()); }
+                    catch (...) { /* orphaned membership without alias — leave null */ }
+                }
+                // Skip anyone already emitted by sections 2/3/4 for the
+                // SAME base category (Men from mens roster, Boys/Girls
+                // from YouthRoster).  We only skip when the underlying
+                // LA userId already produced a row — different sub-
+                // programs deserve their own line.
+                if (laUid.has_value() && emittedLaUids.count(*laUid)) continue;
+
+                const std::string cat = row["category"].is_null() ? std::string{} : row["category"].c_str();
+                const std::string var = row["variant"].is_null()  ? std::string{} : row["variant"].c_str();
+                const std::string progName = row["program_name"].is_null()
+                                                ? std::string{}
+                                                : row["program_name"].c_str();
 
                 // Human-friendly labels for the frontend Members card.
                 std::string uiCategory;
                 if      (cat == "men")   uiCategory = (var == "paused") ? "Men Paused"   : "Men";
                 else if (cat == "boys")  uiCategory = (var == "paused") ? "Boys Paused"  : "Boys";
                 else if (cat == "girls") uiCategory = (var == "paused") ? "Girls Paused" : "Girls";
+                else if (cat == "women") uiCategory = (var == "paused") ? "Women Paused" : "Women";
                 else                     uiCategory = cat;
 
-                std::vector<nlohmann::json> recs;
-                try {
-                    recs = la.fetchProgramRegistrations(pid);
-                } catch (const std::exception& e) {
-                    std::cerr << "unjoined-members: LA fetch failed for program="
-                              << pid << ": " << e.what() << std::endl;
-                    continue;
-                }
+                std::optional<int> personId = row["person_id"].as<int>();
+                const std::string fn = row["first_name"].is_null() ? std::string{} : row["first_name"].c_str();
+                const std::string ln = row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str();
+                const std::string emails = row["emails"].c_str();
+                const std::string phone  = row["phone"].c_str();
 
-                for (const auto& r : recs) {
-                    // Per user directive 2026-07-01: no registrationStatus
-                    // filter — any presence in a sub-program = member.
-
-                    long long uid = 0;
-                    auto uidIt = r.find("userId");
-                    if (uidIt == r.end() || uidIt->is_null()) continue;
-                    try {
-                        if      (uidIt->is_number_integer()) uid = uidIt->get<long long>();
-                        else if (uidIt->is_string())         uid = std::stoll(uidIt->get<std::string>());
-                    } catch (...) { continue; }
-                    if (uid <= 0) continue;
-                    if (emittedLaUids.count(uid)) continue;
-
-                    // Resolve person via LA alias.  If the alias hasn't
-                    // been created yet (linker hasn't seen this rec) fall
-                    // back to LA record fields so we still suppress.
-                    auto pLookup = db->query(
-                        "SELECT p.id AS person_id, p.first_name, p.last_name, "
-                        "       p.parent_person_id "
-                        "  FROM external_person_aliases a "
-                        "  JOIN persons p ON p.id = a.person_id "
-                        " WHERE a.provider = 'leagueapps' "
-                        "   AND a.external_user_id = $1 LIMIT 1",
-                        {std::to_string(uid)});
-
-                    std::optional<int> personId;
-                    std::string fn, ln;
-                    int contactPersonId = 0;
-                    if (!pLookup.empty()) {
-                        const auto& row = pLookup[0];
-                        personId = row["person_id"].as<int>();
-                        contactPersonId = *personId;
-                        fn = row["first_name"].is_null() ? std::string{} : row["first_name"].c_str();
-                        ln = row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str();
-                        if (!row["parent_person_id"].is_null()) {
-                            contactPersonId = row["parent_person_id"].as<int>();
-                        }
-                    }
-
-                    // Fallback names from LA rec if no person row.
-                    auto strField = [&](const char* k) -> std::string {
-                        auto it = r.find(k);
-                        if (it == r.end() || !it->is_string()) return {};
-                        return it->get<std::string>();
-                    };
-                    if (fn.empty()) fn = strField("firstName");
-                    if (ln.empty()) ln = strField("lastName");
-
-                    // Contact from person_emails / person_phones (or parent's).
-                    std::string emails, phone;
-                    if (contactPersonId > 0) {
-                        auto ems = db->query(
-                            "SELECT COALESCE(string_agg(email, ', ' "
-                            "                 ORDER BY is_primary DESC, email), '') AS emails "
-                            "  FROM person_emails WHERE person_id = $1::int",
-                            {std::to_string(contactPersonId)});
-                        if (!ems.empty() && !ems[0]["emails"].is_null()) {
-                            emails = ems[0]["emails"].c_str();
-                        }
-                        auto phs = db->query(
-                            "SELECT phone_number FROM person_phones "
-                            " WHERE person_id = $1::int "
-                            " ORDER BY is_primary DESC, id LIMIT 1",
-                            {std::to_string(contactPersonId)});
-                        if (!phs.empty() && !phs[0]["phone_number"].is_null()) {
-                            phone = phs[0]["phone_number"].c_str();
-                        }
-                    }
-                    // Fallback to LA record fields if DB tables empty.
-                    if (emails.empty()) {
-                        std::string e = strField("email");
-                        if (e.empty()) e = strField("parentEmail");
-                        if (!e.empty()) emails = e;
-                    }
-                    if (phone.empty()) {
-                        std::string p = strField("phoneNumber");
-                        if (p.empty()) p = strField("phone");
-                        if (p.empty()) p = strField("parentPhone");
-                        if (!p.empty()) phone = p;
-                    }
-
-                    emit(uiCategory, personId, uid, fn, ln, progName, emails, phone);
-                }
+                emit(uiCategory, personId, laUid, fn, ln, progName, emails, phone);
             }
         } catch (const std::exception& e) {
             std::cerr << "unjoined-members: catch-all sweep failed: "

@@ -57,7 +57,13 @@ private:
     Response handleDeleteContact    (const Request& request);
     Response handleContactStats     (const Request& request);
     Response handleNextPickup       (const Request& request);
-    Response handleUnjoinedMembers  (const Request& request);
+    // NOTE: /unjoined-members is registered via laGet(dynamic) so LA
+    // membership is freshly synced (persons + aliases +
+    // person_la_memberships + person_emails + person_phones) before this
+    // handler ever runs.  The handler therefore reads exclusively from
+    // Postgres — no LA fetch inside.  The LaSyncMap param is unused
+    // (handler doesn't need per-program metadata); marked (void).
+    Response handleUnjoinedMembers  (const Request& request, const LaSyncMap& sync);
     Response handleAnalytics        (const Request& request);
     Response handleVcard            (const Request& request);
     Response handleMarkConverted    (const Request& request);

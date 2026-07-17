@@ -37,18 +37,23 @@
 #   LaPool          — the pool model that owns the table's semantics.
 #   Controller      — the base class where la*() helpers live (definitions
 #                     reference the token in comments).
-#   Team, PersonPayments, MensRoster, BoysRoster, YouthRoster
-#                   — model-layer files.  Read person_la_memberships from
-#                     inside methods that are ALWAYS called from a
-#                     controller path that has already routed through
-#                     laGet()/laPost()/LaProgramSync::run() (verified
-#                     manually).  The lint can't do call-site dataflow,
-#                     so we assert-by-listing here.  If you add a new
-#                     public entry point on any of these models that
-#                     reads person_la_memberships from a non-synced
-#                     caller, you break the rule and this allowlist is
-#                     a lie — remove the entry and migrate the caller.
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster)|backend/src/core/Controller)'
+#   Team, PersonPayments
+#                   — model-layer files that read person_la_memberships
+#                     but do NOT self-sync.  Their public entry points
+#                     are ALWAYS called from controller paths that route
+#                     through laGet()/laPost()/LaProgramSync::run()
+#                     (verified manually).  The lint can't do call-site
+#                     dataflow, so we assert-by-listing here.  If you
+#                     add a new public entry point on any of these
+#                     models that reads person_la_memberships from a
+#                     non-synced caller, you break the rule and this
+#                     allowlist is a lie — remove the entry and migrate
+#                     the caller.
+#
+# NOT allowlisted (they call LaProgramSync::run directly and therefore
+# pass the token grep on their own — the lint verifies this every run):
+#   MensRoster, BoysRoster, YouthRoster.
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments)|backend/src/core/Controller)'
 
 set -euo pipefail
 
