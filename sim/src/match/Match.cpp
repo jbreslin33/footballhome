@@ -6,7 +6,7 @@
 #include "match/Match.hpp"
 
 #include "common/M0Attributes.hpp"
-#include "controller/DefenderController.hpp"
+#include "controller/AiController.hpp"
 #include "controller/HumanController.hpp"
 #include "controller/IdleController.hpp"
 #include "controller/WanderController.hpp"
@@ -87,6 +87,11 @@ void Match::spawnInitialSlots()
         // attributes on top of defaults (e.g. weaker dribble for a
         // demo defender). No-op for scenarios that don't override.
         scenario_->applyPhysicalOverrides(s.slot, slot.profile.physical);
+        // Slice 30.2: symmetric hook for per-slot concept overrides
+        // (e.g. plug `pressing` for a defender slot so its
+        // PursueBallCarrierBehavior's gate opens). No-op for scenarios
+        // that don't override — 11 pre-M3 goldens stay byte-identical.
+        scenario_->applyConceptOverrides(s.slot, slot.profile.concepts);
         // technical, mental, recognition stay empty (M0)
 
         // Slice 27.2 (ADR §22.24): seed the physics world's per-entity
@@ -109,15 +114,28 @@ void Match::spawnInitialSlots()
         //   Idle     -> IdleController   (zero RNG; solo-play default
         //               so a lone joystick user is not fought by an
         //               AI; Slice 24.2).
-        //   Defender -> DefenderController (zero RNG; jogs toward the
-        //               ball; Slice 24.3a).
+        //   Defender -> AiController with defaultBehaviors(Role::Any)
+        //               = {PursueBallCarrierBehavior} (zero RNG; jogs
+        //               toward the ball; Slice 24.3a semantics
+        //               replicated at IBehavior::execute() level in
+        //               Slice 30.2, gated by the `pressing` concept
+        //               plugged via applyConceptOverrides above).
         // See Scenario::unclaimedControllerFor() for the enum contract.
         switch (scenario_->unclaimedControllerFor(s.slot)) {
             case scenario::UnclaimedControllerKind::Idle:
                 slot.controller = std::make_unique<controller::IdleController>();
                 break;
             case scenario::UnclaimedControllerKind::Defender:
-                slot.controller = std::make_unique<controller::DefenderController>();
+                // Slice 30.2: swap DefenderController → AiController
+                // with the pursue bag. slot.profile.concepts is copied
+                // in (AiController owns its own ConceptSet copy) — the
+                // `pressing` concept was plugged just above by
+                // applyConceptOverrides so PursueBallCarrierBehavior's
+                // presence-gate opens on the very first decide() call.
+                slot.controller = std::make_unique<controller::AiController>(
+                    Role::Any,
+                    slot.profile.concepts,
+                    controller::AiController::defaultBehaviors(Role::Any));
                 break;
             case scenario::UnclaimedControllerKind::Wander:
             default:
@@ -603,6 +621,29 @@ void Match::releaseSlot(SlotId slot_id)
 
     Slot& s = slots_[idx];
 
+    s.owner.reset();
+    s.person.reset();
+
+    // Wander/idle AI runs on the M0 baseline profile — a released slot
+    // has no "identity" any more. Values live in M0Attributes.cpp (§22.11).
+    //
+    // Slice 30.2: profile reset moved above the controller-policy
+    // switch so the AiController constructed for Defender-kind slots
+    // sees the freshly-reset + overlaid ConceptSet (with `pressing`
+    // re-plugged by applyConceptOverrides) and its behavior gates
+    // open on the very first post-release tick.
+    s.profile.physical = m0::defaultPhysical();
+    s.profile.concepts = m0::defaultConcepts();
+    // Slice 24.3b: re-apply per-slot scenario attribute overrides so
+    // a reclaimed-to-unclaimed slot ends up in the SAME attribute
+    // state it had at initial spawn. Symmetric with spawnInitialSlots.
+    scenario_->applyPhysicalOverrides(s.slot_id, s.profile.physical);
+    // Slice 30.2: symmetric re-apply for ConceptSet overrides so a
+    // released defender slot re-picks-up the `pressing` concept its
+    // AiController needs when it re-spawns.
+    scenario_->applyConceptOverrides(s.slot_id, s.profile.concepts);
+    // technical, mental, recognition stay empty (M0).
+
     // Slice 24.2 / 24.3a: mirror spawnInitialSlots' controller-policy
     // dispatch so a slot released mid-match reverts to the same kind of
     // AI it was originally spawned with — otherwise a solo BallOnPitch
@@ -615,7 +656,14 @@ void Match::releaseSlot(SlotId slot_id)
             s.controller = std::make_unique<controller::IdleController>();
             break;
         case scenario::UnclaimedControllerKind::Defender:
-            s.controller = std::make_unique<controller::DefenderController>();
+            // Slice 30.2: Defender-kind now dispatches to AiController
+            // with the pursue bag instead of the deleted
+            // DefenderController. Slot's ConceptSet is copied in
+            // (AiController owns its own copy).
+            s.controller = std::make_unique<controller::AiController>(
+                Role::Any,
+                s.profile.concepts,
+                controller::AiController::defaultBehaviors(Role::Any));
             break;
         case scenario::UnclaimedControllerKind::Wander:
         default:
@@ -623,18 +671,6 @@ void Match::releaseSlot(SlotId slot_id)
                 pitch.length_m, pitch.width_m, &rng_);
             break;
     }
-    s.owner.reset();
-    s.person.reset();
-
-    // Wander/idle AI runs on the M0 baseline profile — a released slot
-    // has no "identity" any more. Values live in M0Attributes.cpp (§22.11).
-    s.profile.physical = m0::defaultPhysical();
-    s.profile.concepts = m0::defaultConcepts();
-    // Slice 24.3b: re-apply per-slot scenario attribute overrides so
-    // a reclaimed-to-unclaimed slot ends up in the SAME attribute
-    // state it had at initial spawn. Symmetric with spawnInitialSlots.
-    scenario_->applyPhysicalOverrides(s.slot_id, s.profile.physical);
-    // technical, mental, recognition stay empty (M0).
 
     params_by_slot_[idx] = MechanicsParams::fromPhysical(s.profile.physical);
 

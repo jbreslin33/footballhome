@@ -83,6 +83,14 @@ public:
     void applyPhysicalOverrides(SlotId                 slot,
                                 profile::AttributeSet& attrs) const override;
 
+    // Slice 30.2: plug the `pressing` concept into slot 2's ConceptSet
+    // so the AiController spawned by Match for Defender-kind slots
+    // finds the concept its PursueBallCarrierBehavior presence-gates
+    // on. Slot 1 (human) gets no override — even if a client releases
+    // slot 1 it stays Idle, no AI reads its concepts.
+    void applyConceptOverrides(SlotId                 slot,
+                               profile::ConceptSet&   concepts) const override;
+
 private:
     PitchSpec               pitch_;
     PlayableArea            playable_;

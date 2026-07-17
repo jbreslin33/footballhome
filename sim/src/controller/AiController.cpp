@@ -11,6 +11,7 @@
 #include "controller/AiController.hpp"
 
 #include "behavior/IBehavior.hpp"
+#include "behavior/PursueBallCarrierBehavior.hpp"
 #include "math/Fixed64.hpp"
 
 namespace fh::sim::controller {
@@ -77,26 +78,36 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
 std::vector<std::unique_ptr<behavior::IBehavior>>
 AiController::defaultBehaviors(Role role)
 {
-    // Slice 30.1: empty bag for every role. Behavior implementations
-    // arrive slice-by-slice:
-    //   Slice 30.2 — PursueBallCarrierBehavior (Role::Defender)
-    //   Slice 31.2 — JockeyBehavior, MarkOpponentBehavior (Role::Defender)
-    //   Slice 33.2 — Feint1v1Behavior (Role::Forward)
+    // Behavior bags grow slice-by-slice; the switch is exhaustive so a
+    // reviewer can see at a glance which roles have real bags today
+    // and which are still empty placeholders for later milestones.
+    //   Slice 30.2 — Role::Any → {PursueBallCarrierBehavior}
+    //                (BallOnPitchWithDefenderScenario spawns Role::Any
+    //                slots + Match dispatches the Defender-kind case
+    //                to AiController with this bag).
+    //   Slice 31.2 — JockeyBehavior, MarkOpponentBehavior added.
+    //   Slice 33.2 — Feint1v1Behavior added under an attacker role.
     //
-    // The switch is intentionally exhaustive-in-shape rather than a
-    // no-op return so the next slice's diff is small and the intent
-    // is obvious to a code reviewer.
+    // Slice 30.2 lands the first real bag under Role::Any because the
+    // scenario's SlotSpawn.role is Role::Any (the Role enum is reserved
+    // for later M-side role assignments and every current scenario uses
+    // Role::Any). Once M3+ scenarios start assigning GK/LCB/RCB/etc.,
+    // the pursue bag will move under the appropriate specific role and
+    // Role::Any will revert to `{}`.
+    std::vector<std::unique_ptr<behavior::IBehavior>> bag;
     switch (role) {
         case Role::Any:
+            bag.push_back(std::make_unique<behavior::PursueBallCarrierBehavior>());
+            return bag;
         case Role::GK:
         case Role::LCB:
         case Role::RCB:
         case Role::CDM:
         case Role::ST9:
         case Role::ST10:
-            return {};
+            return bag;   // empty — reserved for later milestones
     }
-    return {};
+    return bag;
 }
 
 } // namespace fh::sim::controller

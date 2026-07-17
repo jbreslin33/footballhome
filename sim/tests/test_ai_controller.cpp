@@ -371,20 +371,29 @@ FH_TEST(all_behaviors_abstaining_falls_through_to_idle)
     FH_EXPECT(out.desired_direction.x == Fixed64::zero());
 }
 
-FH_TEST(default_behaviors_empty_for_every_role_in_slice_30_1)
+FH_TEST(default_behaviors_slice_30_2_role_any_pursues_others_empty)
 {
-    // Canary: Slice 30.1 opens with an empty factory for every role.
-    // When Slice 30.2 populates Role::Defender_placeholder (or whatever
-    // the real role name settles on for the DefenderController rewrite),
-    // this test MUST be updated in the same commit. See DESIGN.md
-    // §25.3 Slice 30.2.
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  0u);
+    // Slice 30.2: Role::Any grew a real bag of {PursueBallCarrierBehavior}
+    // (BallOnPitchWithDefenderScenario spawns Role::Any slots and its
+    // `Defender` unclaimed-kind now dispatches through AiController).
+    // Every other role remains an empty placeholder until later slices
+    // populate them (§25.3):
+    //   Slice 31.2 — Jockey/MarkOpponent
+    //   Slice 33.2 — Feint1v1
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  1u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::CDM).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 0u);
+
+    // Lock the Role::Any bag's identity — pursue_ball_carrier by id
+    // string, so any future slice that swaps behaviors in/out of the
+    // Role::Any bag (e.g. Slice 31.4 adding JockeyBehavior beside
+    // pursue) must update this assertion deliberately.
+    const auto bag = AiController::defaultBehaviors(Role::Any);
+    FH_EXPECT_EQ(std::string(bag[0]->id()), std::string("pursue_ball_carrier"));
 }
 
 int main()

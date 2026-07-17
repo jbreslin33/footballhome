@@ -114,12 +114,14 @@ set(SIM_MIGRATION_FILE
 #   216 = physical.press_resistance (Slice 24.3b)
 #   217 = physical.pass_power (Slice 26.1)
 #   220 = physical.body_mass (Slice 27.3)
+#   224 = pressing concept (Slice 30.2)
 set(SIM_MIGRATION_EXTRA_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/208-sim-attr-dribble-efficiency.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/209-sim-attr-carry-speeds.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/216-sim-attr-press-resistance.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/217-sim-attr-pass-power.sql
-    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/220-sim-attr-body-mass.sql)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/220-sim-attr-body-mass.sql
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/224-sim-concept-pressing.sql)
 set(SIM_GEN_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/M0Registry.generated.hpp)
 set(SIM_GEN_SCRIPT
@@ -132,7 +134,7 @@ if(EXISTS ${SIM_MIGRATION_FILE})
         OUTPUT  ${SIM_GEN_HEADER}
         COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} > ${SIM_GEN_HEADER}
         DEPENDS ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} ${SIM_GEN_SCRIPT}
-        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209 + 216 + 217 + 220"
+        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224"
         VERBATIM)
     add_custom_target(gen_m0_registry ALL DEPENDS ${SIM_GEN_HEADER})
 else()
@@ -149,6 +151,7 @@ else()
             "        database/migrations/216-sim-attr-press-resistance.sql \\\n"
             "        database/migrations/217-sim-attr-pass-power.sql \\\n"
             "        database/migrations/220-sim-attr-body-mass.sql \\\n"
+            "        database/migrations/224-sim-concept-pressing.sql \\\n"
             "        > sim/src/common/M0Registry.generated.hpp")
     endif()
     message(STATUS
@@ -239,8 +242,8 @@ add_library(sim_gameplay STATIC
     src/physics/PlayableAreaConstraint.cpp
     src/controller/HumanController.cpp
     src/controller/WanderController.cpp
-    src/controller/DefenderController.cpp
     src/controller/AiController.cpp
+    src/behavior/PursueBallCarrierBehavior.cpp
     src/scenario/EmptyPitchScenario.cpp
     src/scenario/BallOnPitchScenario.cpp
     src/scenario/BallOnPitch2v0Scenario.cpp

@@ -55,7 +55,14 @@ std::vector<RegistryRow> canonicalM0Attrs()
 
 std::vector<RegistryRow> canonicalM0Concepts()
 {
-    return { {1, "run_to_point", "movement"} };
+    return {
+        {1, "run_to_point", "movement"},
+        // Slice 30.2: pressing (migration 224) — gates
+        // PursueBallCarrierBehavior. Note the id-3 gap where
+        // `pass_to_teammate` (id=2) will land in Slice 31.x; the
+        // registry loader tolerates gaps.
+        {3, "pressing",     "defensive"},
+    };
 }
 
 } // namespace
@@ -148,10 +155,14 @@ FH_TEST(load_concept_registry_populates)
     ConceptRegistry reg;
     fh::sim::persistence::loadConceptRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{1});
+    FH_EXPECT_EQ(reg.size(), std::size_t{2});
     const auto* e = reg.find(static_cast<fh::sim::ConceptId>(1));
     FH_EXPECT(e != nullptr);
     FH_EXPECT(e->key == "run_to_point");
+    // Slice 30.2: pressing lands at id=3 (migration 224).
+    const auto* p = reg.find(static_cast<fh::sim::ConceptId>(3));
+    FH_EXPECT(p != nullptr);
+    FH_EXPECT(p->key == "pressing");
 }
 
 FH_TEST(load_concept_registry_throws_when_db_empty)

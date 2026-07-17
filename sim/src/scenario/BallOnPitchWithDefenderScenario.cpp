@@ -76,4 +76,28 @@ void BallOnPitchWithDefenderScenario::applyPhysicalOverrides(
     }
 }
 
+// Slice 30.2: plug the M3 `pressing` concept into slot 2's ConceptSet
+// so the AiController that Match spawns for Defender-kind slots finds
+// the concept its PursueBallCarrierBehavior presence-gates on
+// (ConceptSet::has(id, min) returns false when the concept is absent,
+// regardless of min — so a bare kPressing plug with any value is what
+// opens the gate). Mastery value is math::Fixed64::one() — arbitrary
+// positive, unobservable for the single-behavior bag; kept at 1.0 for
+// readability and consistency with M0 defaultConcepts()'s run_to_point
+// mastery.
+//
+// Slot 1 gets no plug. Even if a human client releases slot 1 it
+// falls back to Idle (per unclaimedControllerFor), no AiController
+// runs on it, no concept read happens — the override would be inert
+// but confusing. Skipping it also documents "only defender needs
+// pressing" for anyone reading this file later.
+void BallOnPitchWithDefenderScenario::applyConceptOverrides(
+    SlotId                 slot,
+    profile::ConceptSet&   concepts) const
+{
+    if (slot == SlotId{2}) {
+        concepts.plug(m0::kPressing, math::Fixed64::one());
+    }
+}
+
 } // namespace fh::sim::scenario

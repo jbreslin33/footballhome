@@ -113,7 +113,14 @@ struct SlotSpawn {
 enum class UnclaimedControllerKind : std::uint8_t {
     Wander   = 0,   // WanderController — M0/M1 default, consumes RNG
     Idle     = 1,   // IdleController   — Slice 24.2, zero RNG
-    Defender = 2,   // DefenderController — Slice 24.3a, zero RNG, pursues ball
+    Defender = 2,   // AiController + defaultBehaviors(Role::Any) =
+                    // {PursueBallCarrierBehavior}. Zero RNG, gated by
+                    // the `pressing` concept (which the scenario plugs
+                    // via applyConceptOverrides for the defender slot).
+                    // Slice 24.3a semantics preserved at IBehavior
+                    // level (Slice 30.2). Enum name is the *intent*
+                    // (a defender-like AI); it is not the concrete
+                    // controller class.
 };
 
 // Slice 28.2: axis-aligned bounding box describing one goal mouth in
@@ -257,6 +264,29 @@ public:
     virtual void
         applyPhysicalOverrides(SlotId                    /*slot*/,
                                profile::AttributeSet&    /*attrs*/) const {}
+
+    // Slice 30.2: per-slot ConceptSet override, symmetric with
+    // applyPhysicalOverrides. Called by Match::spawnInitialSlots (and
+    // Match::reclaimAsUnclaimed) exactly once per slot, immediately
+    // after seeding the slot's profile.concepts with
+    // m0::defaultConcepts(). Default no-op means scenarios that don't
+    // need per-slot concept plumbing (all pre-M3 scenarios) stay
+    // byte-identical — no concept is added, no profile-blob path is
+    // perturbed, no determinism golden is at risk.
+    //
+    // Use case: a scenario that spawns an AiController-driven slot
+    // needs to plug the concept(s) that the slot's IBehavior bag will
+    // presence-gate on. BallOnPitchWithDefenderScenario plugs
+    // `pressing` into slot 2 so PursueBallCarrierBehavior's gate opens.
+    //
+    // Determinism: any override that plugs a concept read by an
+    // AiController this scenario spawns WILL affect intent stream and
+    // may rotate the affected scenario's golden. Update the pinned
+    // hash when you add/change an override, and leave scenarios that
+    // don't override alone.
+    virtual void
+        applyConceptOverrides(SlotId                    /*slot*/,
+                              profile::ConceptSet&      /*concepts*/) const {}
 };
 
 } // namespace fh::sim::scenario
