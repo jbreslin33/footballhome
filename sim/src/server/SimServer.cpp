@@ -93,6 +93,36 @@ void SimServer::run(std::function<std::int64_t()> steady_now_ms)
         const std::uint64_t new_tick_count =
             ticks_executed_.fetch_add(1, std::memory_order_relaxed) + 1u;
 
+        // Slice 28.3: drain the Match's pending goals into the async
+        // event log, one EventRow per goal, encoded per ADR §22.25 v1
+        // (5-byte payload: [ver=1][region][slot_lo][slot_hi][rsv=0]).
+        // Drain-and-clear is atomic on the vector; Match retains no
+        // reference. Emitted AFTER broadcastSnapshot so the wire
+        // ordering is (snapshot showing ball at rest inside goal
+        // region) → (Goal event row landing in Postgres) — matching
+        // the "ref sees ball cross, then blows the whistle" mental
+        // model that Slice 28.4's client-side goal-flash will lean on.
+        //
+        // No wire emission here — Slice 28.4 lands the MatchEventFrame
+        // (msg_type 0x04) that pushes Goal events to connected
+        // clients. Slice 28.3 is DB-only.
+        if (event_log_ != nullptr) {
+            auto goals = match_->drainPendingGoals();
+            for (const auto& g : goals) {
+                const std::uint16_t kicker_wire =
+                    g.kicker_slot.has_value()
+                        ? static_cast<std::uint16_t>(*g.kicker_slot)
+                        : persistence::kGoalKickerSlotUnknown;
+                persistence::EventRow ev;
+                ev.match_id   = cfg_.match_id;
+                ev.tick_num   = g.tick_num;
+                ev.event_type = persistence::EventType::Goal;
+                ev.payload    = persistence::encodeGoalPayloadV1(
+                    g.goal_region_index, kicker_wire);
+                event_log_->push(std::move(ev));
+            }
+        }
+
         // §21.7 item 2 remedy: fire the first-tick callback exactly once,
         // AFTER the first tick body has completed and broadcast (so the
         // wall-clock stamp reflects the true "loop began ticking this

@@ -283,6 +283,13 @@ void Match::tick()
             ball_owner_, ball_state.position,
             bc_slots.data(), bc_slots.size());
 
+        // Slice 28.3: snapshot the pre-tick owner BEFORE the reassignment
+        // below overwrites it. Used only in the `bc.kicked` branch to
+        // attribute a subsequent goal to whichever slot's Intent
+        // asserted `wants_kick` this tick (BallControl requires the
+        // kicker to be the current owner, so pre-tick owner == kicker).
+        const std::optional<SlotId> prev_owner = ball_owner_;
+
         ball_owner_ = bc.owner;
         if (bc.owner.has_value()) {
             ball_is_owned = true;
@@ -315,6 +322,14 @@ void Match::tick()
             physics::applyImpulse(ball, bc.kick_direction, bc.kick_speed);
             physics_->setVelocity(*ball_, ball.velocity);
             kick_alive_ticks_remaining_ = physics::kKickAliveTicks;
+
+            // Slice 28.3: remember who last kicked so a subsequent
+            // ball-crosses-goal-AABB detection can attribute the goal.
+            // `prev_owner` is guaranteed to have a value here because
+            // BallControl only produces `kicked=true` from an owned
+            // ball. Overwrites any earlier last_kicker_slot_ — the
+            // most recent kick wins for attribution.
+            last_kicker_slot_ = prev_owner;
         }
     }
 
@@ -415,6 +430,93 @@ void Match::tick()
             physics_->setVelocity(s.entity, st.velocity);
         }
     }
+
+    // -----------------------------------------------------------------
+    // Slice 28.3: post-physics goal detection (ADR §22.25).
+    //
+    // Rule: after positions are integrated (and Hard-mode clamped), if
+    // the ball is inside any GoalRegion AABB returned by the scenario,
+    // and it was NOT inside that same region on the previous tick, we
+    // emit exactly one PendingGoal row. AABB inclusion is inclusive on
+    // both ends (min/max are documented as `min <= max` and the
+    // predicate uses `>=` / `<=` on all three axes).
+    //
+    // Edge-triggering:
+    //   * Prev nullopt, curr set        → NEW GOAL (emit).
+    //   * Prev set,     curr different  → NEW GOAL (emit). Ball crossed
+    //                                     from one region to another
+    //                                     without any tick outside —
+    //                                     physically impossible for
+    //                                     GoalDrillScenario (regions
+    //                                     are 105 m apart) but the
+    //                                     predicate covers it for M3+
+    //                                     drills with adjacent AABBs.
+    //   * Prev == curr                  → no-op. Ball is still sitting
+    //                                     inside; we already emitted.
+    //   * Prev set, curr nullopt        → no-op. Ball left the region
+    //                                     without a fresh entry; the
+    //                                     next entry re-arms detection.
+    //
+    // Freeze rule: on emit, zero the ball's velocity so it stops on
+    // the spot. The 28.4/28.5 slices (wire + goldens) rely on the ball
+    // NOT bouncing back out — the sim never emits two goals for one
+    // physical entry, which matches every real sport's ref-blows-the-
+    // whistle semantics. Also reset kick_alive_ticks_remaining_ so the
+    // next tick's friction pass runs the normal rest-snap clamp,
+    // and clear last_kicker_slot_ so a subsequent goal without a
+    // kick fired between (i.e., dribbled in) is not misattributed.
+    //
+    // Grandfather clause: `regions.empty()` returns immediately, so
+    // every pre-28 scenario (EmptyPitchScenario, BallOnPitchScenario,
+    // HalfPitchScenario, SoftDrillScenario, BallOnPitchWithDefender,
+    // BallOnPitch2v0Scenario) is byte-identical to its Slice-27
+    // canonical hash. Only GoalDrillScenario (scenario_id=6) advertises
+    // regions in M2.
+    // -----------------------------------------------------------------
+    std::optional<std::uint8_t> curr_ball_goal_region_index;
+    if (ball_.has_value()) {
+        const auto regions = scenario_->goalRegions();
+        if (!regions.empty()) {
+            const math::Vec3 ball_pos = physics_->get(*ball_).position;
+            for (const auto& r : regions) {
+                if (ball_pos.x >= r.min.x && ball_pos.x <= r.max.x &&
+                    ball_pos.y >= r.min.y && ball_pos.y <= r.max.y &&
+                    ball_pos.z >= r.min.z && ball_pos.z <= r.max.z)
+                {
+                    curr_ball_goal_region_index = r.index;
+                    break;   // first-match wins; region overlaps are
+                             // scenario-authoring bugs, not runtime cases
+                }
+            }
+
+            if (curr_ball_goal_region_index.has_value()
+                && curr_ball_goal_region_index != prev_ball_goal_region_index_)
+            {
+                PendingGoal pg;
+                // clock_->current() has NOT been advanced yet (that
+                // happens at the tail of tick() below). We record the
+                // POST-advance tick number so the emitted event lines
+                // up with the tick_num of the snapshot SimServer
+                // broadcasts immediately after this tick returns
+                // (Snapshot::tick == clock_->current() read AFTER
+                // advance). Concretely: goal fires during the Nth call
+                // to tick() → PendingGoal::tick_num == N == snapshot.tick.
+                pg.tick_num          = clock_->current() + fh::sim::TickNum{1};
+                pg.goal_region_index = *curr_ball_goal_region_index;
+                pg.kicker_slot       = last_kicker_slot_;
+                pending_goals_.push_back(pg);
+
+                // Freeze the ball on the spot.
+                physics_->setVelocity(*ball_, math::Vec3{});
+                kick_alive_ticks_remaining_ = 0;
+
+                // Clear kicker attribution so the next goal (if any)
+                // requires a fresh kick to be attributed.
+                last_kicker_slot_.reset();
+            }
+        }
+    }
+    prev_ball_goal_region_index_ = curr_ball_goal_region_index;
 
     // -----------------------------------------------------------------
     // Scenario checks — M0 EmptyPitchScenario returns false for both,
@@ -532,6 +634,15 @@ void Match::end() noexcept
     // Slice 26.3: also disarm the kick-alive counter so a hypothetical
     // post-end resume doesn't inherit a stale skip-rest-snap window.
     kick_alive_ticks_remaining_ = 0;
+}
+
+std::vector<Match::PendingGoal> Match::drainPendingGoals()
+{
+    // Move-and-clear in one step. Reserves nothing on the returned
+    // vector — the SimServer caller iterates once and discards.
+    std::vector<PendingGoal> drained;
+    drained.swap(pending_goals_);
+    return drained;
 }
 
 TickNum Match::tick_num() const noexcept

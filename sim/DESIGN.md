@@ -10,7 +10,9 @@
 >
 > **Slice 28.1 (event payload versioning + `EventType::Goal=9`, migration 221):** landed 2026-07-16 per **ADR §22.25**.
 >
-> **Slice 28.2 (`Scenario::goalRegions()` + `GoalDrillScenario`, migration 222, scenario_id=6):** landed 2026-07-17. 48/48 sim tests green. Next up is Slice 28.3 (`Match::tick` post-physics goal-detection + Goal event emission).
+> **Slice 28.2 (`Scenario::goalRegions()` + `GoalDrillScenario`, migration 222, scenario_id=6):** landed 2026-07-17. 48/48 sim tests green.
+>
+> **Slice 28.3 (`Match::tick` post-physics goal-detection + Goal event emission per ADR §22.25 v1 payload):** landed 2026-07-17. 49/49 sim tests green. Next up is Slice 28.4 (`MatchEventFrame` wire msg_type 0x04 + HELLO_ACK capability bit 2 + frontend goal-flash).
 
 ---
 
@@ -3019,7 +3021,7 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 - 28.1 [x] Migration 221 (event schema versioning per §22.25) — first byte of `sim_match_events.payload` = version tag for `event_type >= 9`; `event_type in (1..8)` remain grandfathered unversioned. Add `EventType::Goal` at id **9** (next available in the append-only enum after `ScenarioReset=8`). `sim_decode_event()` extended per §22.25's decoder contract. **No wire change in 28.1** — Slice 28.4 is the client-visible slice that bumps wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04). Landed 2026-07-16.
 - 28.2 [x] `Scenario::goalRegions()` API — `struct GoalRegion { Vec3 min; Vec3 max; u8 index; }` + `virtual std::vector<GoalRegion> goalRegions() const { return {}; }` default on `Scenario`. `EmptyPitchScenario` (and every other pre-28 scenario) grandfathered at empty via the default. New `GoalDrillScenario` (scenario_id=6, migration 222) returns two AABBs at the pitch ends: west (index 0, x∈[-54.5,-52.5]) and east (index 1, x∈[+52.5,+54.5]), both 7.32 m wide × 2.44 m tall × 2 m deep. Same 105×68 pitch + ±15 m slot spawns + centre-spot ball as `BallOnPitch2v0Scenario`; unclaimed slots idle. 48/48 sim tests green. Landed 2026-07-17.
-- 28.3 [ ] `Match::tick` post-physics goal-detection loop.
+- 28.3 [x] `Match::tick` post-physics goal-detection loop. Iterates `scenario_->goalRegions()` after Hard-pass and before scenario checks; edge-triggered emit when the ball's AABB inclusion transitions from `nullopt` (or a different region) into a region. On emit: pushes a `Match::PendingGoal { tick_num, goal_region_index, kicker_slot }` where `tick_num = clock_->current() + 1` (aligned with the post-advance snapshot tick_num), zeroes ball velocity via `physics_->setVelocity(*ball_, math::Vec3{})`, and clears `last_kicker_slot_` so the next goal requires a fresh kick attribution. `Match::drainPendingGoals()` returns pending goals destructively (swap-and-clear). `SimServer::run()` drains after each tick and pushes `EventRow{ event_type = Goal, payload = encodeGoalPayloadV1(region, kicker_wire) }` to `event_log_` (5-byte ADR §22.25 v1 layout: `[u8 version=1][u8 region_index][u16 kicker_slot_id LE][u8 reserved=0]`, `kicker_wire = kGoalKickerSlotUnknown` when kicker unknown). Grandfather clause preserved: scenarios with `goalRegions().empty()` (every pre-28 scenario) never enter the detection block. `test_match_goal_detection` (8 cases) covers empty-regions no-op, outside-region no-op, first-tick emit, no-repeat on sitting ball, velocity zeroing, correct region index, destructive drain, and tick_num semantics. `test_determinism` + `test_canonical_hash` still byte-identical (grandfather clause holds). Landed 2026-07-17.
 - 28.4 Frontend goal-flash animation + score HUD.
 - 28.5 Determinism goldens: `goal_from_kick_east_200_ticks_seed_42`.
 
@@ -3044,7 +3046,7 @@ Tick in place as work lands. All must be green for M2 to be considered complete.
 - [x] Cross-arch determinism CI green for every M2 scenario shipped so far (`test_determinism` includes `BallOnPitchWithDefender400` = `0x71f639d918a32830`).
 - [ ] Two players can pass the ball to each other and the receiver can control it (Slice 26).
 - [ ] Player-player collisions resolved deterministically without ball being knocked away from its owner (Slice 27).
-- [ ] Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal` (Slice 28).
+- [ ] Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal` (Slice 28). *(Storage side complete in Slice 28.3; wire-visible goal-flash lands in 28.4; determinism golden lands in 28.5.)*
 - [ ] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at end of M2 (§22.14 invariant — carried through M1 exit criteria, must survive M2).
 - [ ] No new §21 ship-blocker items opened during M2 without a matching closure or explicit revisit-condition timestamp.
 

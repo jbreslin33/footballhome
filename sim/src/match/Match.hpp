@@ -105,6 +105,31 @@ public:
         return playable_area_;
     }
 
+    // Slice 28.3: one queued goal detected in Match::tick, pending
+    // persistence + wire emission by SimServer. Match itself owns no
+    // IPgClient / IEventLog — the domain-simulation ↔ persistence
+    // separation established in Slice 13 is preserved by exposing
+    // detected goals through this drain-on-read structure, exactly as
+    // Snapshot() already does for wire state.
+    //
+    // `kicker_slot` is nullopt when Match cannot attribute the goal to
+    // a slot — e.g. the ball was dribbled into the region (no kick
+    // fired since match start), or the last kicker was cleared by a
+    // previous goal. Encoded as kGoalKickerSlotUnknown = 0 on the
+    // wire (see ADR §22.25).
+    struct PendingGoal {
+        TickNum                tick_num{0};
+        std::uint8_t           goal_region_index{0};
+        std::optional<SlotId>  kicker_slot{std::nullopt};
+    };
+
+    // Slice 28.3: hand the caller the goals detected since the last
+    // drain and clear the internal queue in one atomic step. SimServer
+    // calls this after `match_->tick()` each frame and pushes every
+    // returned entry to the async EventLog. Match retains no reference.
+    // Test callers use this same API to assert emission.
+    std::vector<PendingGoal>      drainPendingGoals();
+
     // Test-only accessor. Kept out of hot paths.
     physics::IPhysicsWorld*       physics_for_tests() noexcept { return physics_.get(); }
 
@@ -159,6 +184,36 @@ private:
     // tickBall's default `skip_rest_snap = false` path is preserved
     // byte-identically.
     int                                         kick_alive_ticks_remaining_{0};
+
+    // Slice 28.3: last kicker for Goal event attribution.
+    //
+    // Set whenever the release-on-kick path fires (BallControl returns
+    // `kicked = true`) to the slot that was the ball's owner
+    // immediately before the release, i.e. whichever slot's Intent
+    // asserted `wants_kick`. Read once by the post-physics goal-
+    // detection loop below; cleared after a goal fires so a subsequent
+    // goal in a different region is not misattributed to a stale
+    // kicker. nullopt on match start and after every emitted goal.
+    // Written into the ADR §22.25 v1 payload's kicker_slot_id field
+    // (u16 LE, offset 2..3); nullopt → kGoalKickerSlotUnknown = 0.
+    std::optional<SlotId>                       last_kicker_slot_{std::nullopt};
+
+    // Slice 28.3: previous-tick goal-region containment for edge-
+    // triggered goal detection.
+    //
+    // Set at the tail of tick() to whichever `GoalRegion::index` the
+    // ball's post-physics AABB check landed in, or nullopt when the
+    // ball was outside every region (the common case). A goal fires
+    // only on the transition `nullopt/other -> index_i`, so the ball
+    // sitting still inside the region across many ticks (which Slice
+    // 28.3 arranges by zeroing ball velocity on emit) emits exactly
+    // one row.
+    std::optional<std::uint8_t>                 prev_ball_goal_region_index_{std::nullopt};
+
+    // Slice 28.3: drain queue for goals detected in tick(). SimServer
+    // consumes via drainPendingGoals() after each tick. Kept small and
+    // stack-friendly; a well-behaved M2 match emits << 100 goals total.
+    std::vector<PendingGoal>                    pending_goals_;
 
     bool                                        ended_{false};
 };
