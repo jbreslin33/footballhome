@@ -141,10 +141,28 @@ public:
         std::string firstPaidAt;           // ISO8601 or empty
         std::string lastPaidAt;            // ISO8601 or empty
         double      lastAmount    = 0.0;
+        int         daysOverdue   = 0;     // 'overdue' → days since last covered cycle ended;
+                                           // 'never'   → days since la_registered_at;
+                                           // 'behind' / 'current' → 0.
+        // Normalized due-date on the membership row (migration 117).
+        // `nextDueAt` is a UTC ISO-8601 midnight timestamp, e.g.
+        // '2026-07-03T00:00:00Z'.  Empty when no anchor is set.
+        // `nextDueSource` ∈ {'la_seed','payment_advance','operator_override'}.
+        std::string nextDueAt;
+        std::string nextDueSource;
         std::vector<RecentTxn> recentTxns; // last-2-calendar-months window
     };
     std::vector<MemberRow>
     loadMembersForProgram(long long programId);
+
+    // Operator override — set / update the next_due_at anchor on the
+    // (open) membership row identified by la_registration_id.  Writes
+    // next_due_source='operator_override' + touches next_due_updated_at.
+    // `iso` must be a valid ISO-8601 date or timestamptz string that
+    // Postgres accepts.  Returns true when a row was updated.
+    bool setOperatorNextDueByRegistration(long long laRegistrationId,
+                                          const std::string& iso,
+                                          const std::string& note);
 
 private:
     Database* db_;

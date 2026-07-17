@@ -228,6 +228,63 @@ int PersonPayments::syncFromLa() {
         {std::to_string(result.newLastUpdatedMs),
          std::to_string(result.newLastId)}
     );
+
+    // 5. Payment-advance: recompute `next_due_at` on every open
+    //    membership row whose next_due_at was NOT set by an operator
+    //    override.  Uses the same math as the migration-117 backfill,
+    //    so this is the ONE place the rule lives and it runs on every
+    //    payment sync (i.e. every payments-screen load).
+    //
+    //    Rule (paraphrased user directive 2026-07-15):
+    //      • Anchor = la_registered_at.
+    //      • cycles_paid  = ROUND(sum(qualifying $) / 35), min 0.
+    //      • next_due_at  = first_friday_of_month(anchor + (cycles_paid + 1) months).
+    //    Any operator dropdown pick is preserved (source='operator_override').
+    try {
+        db_->query(
+            "WITH sums AS ("
+            "  SELECT m.id AS mid,"
+            "         m.la_registered_at,"
+            "         COALESCE(SUM("
+            "             CASE WHEN pp.txn_type ILIKE 'REFUND%' THEN -pp.amount"
+            "                  ELSE pp.amount END"
+            "         ), 0)::numeric AS net_paid"
+            "    FROM person_la_memberships m"
+            "    LEFT JOIN person_payments pp"
+            "      ON pp.la_registration_id = m.la_registration_id"
+            "   WHERE m.ended_at IS NULL"
+            "     AND m.la_registration_id IS NOT NULL"
+            "     AND m.la_registered_at   IS NOT NULL"
+            "     AND (m.next_due_source IS DISTINCT FROM 'operator_override'"
+            "          OR m.next_due_at IS NULL)"
+            "   GROUP BY m.id, m.la_registered_at"
+            "),"
+            "computed AS ("
+            "  SELECT mid, la_registered_at,"
+            "         GREATEST(0, ROUND(net_paid / 35.0)::int) AS cycles_paid"
+            "    FROM sums"
+            ")"
+            "UPDATE person_la_memberships m"
+            "   SET next_due_at         = (first_friday_of_month("
+            "                                m.la_registered_at"
+            "                                + ((c.cycles_paid + 1) * interval '1 month')"
+            "                              ))::timestamptz,"
+            "       next_due_source     = CASE"
+            "         WHEN c.cycles_paid > 0 THEN 'payment_advance'"
+            "         ELSE 'la_seed'"
+            "       END,"
+            "       next_due_updated_at = now()"
+            "  FROM computed c"
+            " WHERE c.mid = m.id"
+            "   AND m.next_due_source IS DISTINCT FROM 'operator_override'"
+        );
+    } catch (const std::exception& e) {
+        // Non-fatal — the sync itself succeeded; leave next_due_at
+        // as-is and surface the error in logs.
+        std::cerr << "[PersonPayments::syncFromLa] next_due_at recompute failed: "
+                  << e.what() << std::endl;
+    }
+
     return written;
 }
 
@@ -526,6 +583,17 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "   WHERE pc.pay_cycle_start <= w.prev_start"
         "     AND pc.pay_cycle_end   >  w.prev_start"
         "),"
+        // End of the last covered cycle per registration.  Used to
+        // compute `days_overdue`: for an 'overdue' member (nothing
+        // covers the previous or current cycle) the clock starts the
+        // moment their last paid-for coverage window ended.  For a
+        // 'never'-paid member there is no coverage row, so the SELECT
+        // falls back to la_registered_at instead.
+        "last_covered_end AS ("
+        "  SELECT la_registration_id, MAX(pay_cycle_end) AS end_ts"
+        "    FROM payment_coverage"
+        "   GROUP BY la_registration_id"
+        "),"
         "last_amt AS ("
         "  SELECT DISTINCT ON (pp.la_registration_id)"
         "         pp.la_registration_id, pp.amount AS last_amount"
@@ -560,18 +628,70 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       a.la_user_id,"
         "       m.la_registration_id      AS la_registration_id,"
         "       TO_CHAR(m.la_registered_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS la_registered_iso,"
+        // Normalized due-date anchor (migration 117).  Read directly
+        // from the membership row so the operator dropdown override
+        // takes effect immediately without waiting for the CTE math
+        // above to rewrite itself.
+        "       TO_CHAR(m.next_due_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS next_due_iso,"
+        "       m.next_due_source          AS next_due_source,"
         "       COALESCE(agg.total_paid,     0) AS total_paid,"        "       COALESCE(agg.total_refunded, 0) AS total_refunded,"
         "       COALESCE(agg.txn_count,      0) AS txn_count,"
         "       TO_CHAR(agg.first_paid_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS first_paid_iso,"
         "       TO_CHAR(agg.last_paid_at  AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS last_paid_iso,"
         "       COALESCE(la.last_amount, 0) AS last_amount,"
         "       COALESCE(recent.txns, '[]'::jsonb) AS recent_txns,"
+        // Status: when next_due_at is populated (post-migration 117),
+        // it's the authoritative anchor and beats the derived cycle
+        // math — so operator dropdown overrides take effect the next
+        // page load.  Falls back to the coverage CTEs for the small
+        // set of rows where next_due_at is somehow still NULL.
         "       CASE"
+        "         WHEN m.next_due_at IS NOT NULL AND m.next_due_at > now()"
+        "                                                   THEN 'current'"
+        "         WHEN m.next_due_at IS NOT NULL            THEN 'overdue'"
         "         WHEN agg.last_paid_at IS NULL             THEN 'never'"
         "         WHEN cc.la_registration_id IS NOT NULL    THEN 'current'"
         "         WHEN cp.la_registration_id IS NOT NULL    THEN 'behind'"
         "         ELSE 'overdue'"
-        "       END AS status"
+        "       END AS status,"
+        // days_overdue: whole calendar days between "when the money
+        // was due" and today (UTC).  Sources of the due date:
+        //   • 'never'   → la_registered_at (their signup starts the
+        //                 clock; a brand-new prorate signup is
+        //                 therefore N days overdue where N = today −
+        //                 reg_date)
+        //   • 'overdue' → end of the last cycle they had coverage for
+        //                 (i.e. the first uncovered moment); e.g. if
+        //                 their last payment covered through the May
+        //                 cycle (ends May 15 exclusive), on July 15
+        //                 they are 61 days overdue.
+        //   • 'behind'  → 0 (they're within the grace of the current
+        //                 cycle after covering the previous cycle).
+        //   • 'current' → 0.
+        // Wrapped in GREATEST(0, …) so we never surface a negative
+        // count if la_registered_at is in the future for any reason.
+        //
+        // As with `status` above, next_due_at wins when set — the
+        // dropdown override then propagates to the badge on next
+        // page load.
+        "       CASE"
+        "         WHEN m.next_due_at IS NOT NULL AND m.next_due_at > now()"
+        "           THEN 0"
+        "         WHEN m.next_due_at IS NOT NULL"
+        "           THEN GREATEST(0, ((now() AT TIME ZONE 'UTC')::date"
+        "                             - (m.next_due_at AT TIME ZONE 'UTC')::date))"
+        "         WHEN agg.last_paid_at IS NULL AND m.la_registered_at IS NULL"
+        "           THEN 0"
+        "         WHEN agg.last_paid_at IS NULL"
+        "           THEN GREATEST(0, ((now() AT TIME ZONE 'UTC')::date"
+        "                             - (m.la_registered_at AT TIME ZONE 'UTC')::date))"
+        "         WHEN cc.la_registration_id IS NOT NULL THEN 0"
+        "         WHEN cp.la_registration_id IS NOT NULL THEN 0"
+        "         WHEN lce.end_ts IS NOT NULL"
+        "           THEN GREATEST(0, ((now() AT TIME ZONE 'UTC')::date"
+        "                             - (lce.end_ts AT TIME ZONE 'UTC')::date))"
+        "         ELSE 0"
+        "       END AS days_overdue"
         "  FROM person_la_memberships m"
         "  JOIN persons p ON p.id = m.person_id"
         "  LEFT JOIN aliases a          ON a.person_id           = p.id"
@@ -582,9 +702,15 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "  LEFT JOIN recent             ON recent.la_registration_id = m.la_registration_id"
         "  LEFT JOIN covers_current  cc ON cc.la_registration_id     = m.la_registration_id"
         "  LEFT JOIN covers_previous cp ON cp.la_registration_id     = m.la_registration_id"
+        "  LEFT JOIN last_covered_end lce ON lce.la_registration_id  = m.la_registration_id"
         " WHERE m.la_program_id = $1::bigint AND m.ended_at IS NULL"
         " ORDER BY"
+        // Sort matches the same next_due_at-first logic used by
+        // `status` above so operator-overridden rows land in the
+        // right group.
         "   CASE"
+        "     WHEN m.next_due_at IS NOT NULL AND m.next_due_at > now() THEN 3"  // current
+        "     WHEN m.next_due_at IS NOT NULL                            THEN 1"  // overdue
         "     WHEN agg.last_paid_at IS NULL             THEN 0"
         "     WHEN cc.la_registration_id IS NOT NULL    THEN 3"   // current
         "     WHEN cp.la_registration_id IS NOT NULL    THEN 2"   // behind
@@ -611,6 +737,10 @@ PersonPayments::loadMembersForProgram(long long programId) {
         if (!r["phone_call"].is_null()) m.phoneCall = r["phone_call"].as<bool>();
         if (!r["la_registered_iso"].is_null())
             m.laRegisteredAt = r["la_registered_iso"].c_str();
+        if (!r["next_due_iso"].is_null())
+            m.nextDueAt = r["next_due_iso"].c_str();
+        if (!r["next_due_source"].is_null())
+            m.nextDueSource = r["next_due_source"].c_str();
         if (!r["status"].is_null())     m.status    = r["status"].c_str();
         if (!r["total_paid"].is_null())      m.totalPaid     = r["total_paid"].as<double>();
         if (!r["total_refunded"].is_null())  m.totalRefunded = r["total_refunded"].as<double>();
@@ -618,6 +748,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         if (!r["first_paid_iso"].is_null())  m.firstPaidAt   = r["first_paid_iso"].c_str();
         if (!r["last_paid_iso"].is_null())   m.lastPaidAt    = r["last_paid_iso"].c_str();
         if (!r["last_amount"].is_null())     m.lastAmount    = r["last_amount"].as<double>();
+        if (!r["days_overdue"].is_null())    m.daysOverdue   = r["days_overdue"].as<int>();
 
         if (!r["recent_txns"].is_null()) {
             try {
@@ -646,4 +777,41 @@ PersonPayments::loadMembersForProgram(long long programId) {
         out.push_back(std::move(m));
     }
     return out;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Operator override: set next_due_at on the currently-open
+// person_la_memberships row for a given la_registration_id.  Called by
+// PaymentsController when the operator picks a Friday from the dropdown
+// on the payments card.
+//
+// Semantics:
+//   • Writes `next_due_at`, marks `next_due_source='operator_override'`,
+//     touches `next_due_updated_at`, and stores an optional note.
+//   • ONLY updates the open (ended_at IS NULL) row for the reg — closed
+//     rows are historical and should stay put.
+//   • `iso` is parsed by Postgres (accepts 'YYYY-MM-DD',
+//     'YYYY-MM-DDTHH:MM:SSZ', etc.).
+// ────────────────────────────────────────────────────────────────────────
+bool PersonPayments::setOperatorNextDueByRegistration(long long laRegistrationId,
+                                                      const std::string& iso,
+                                                      const std::string& note) {
+    if (laRegistrationId <= 0 || iso.empty()) return false;
+    if (!db_) return false;
+
+    // Note is optional — pass NULL when empty so we don't overwrite
+    // any prior explanatory text with a blank on a bare-friday update.
+    const char* sql =
+        "UPDATE person_la_memberships"
+        "   SET next_due_at         = $2::timestamptz,"
+        "       next_due_source     = 'operator_override',"
+        "       next_due_updated_at = now(),"
+        "       next_due_note       = COALESCE(NULLIF($3::text, ''), next_due_note)"
+        " WHERE la_registration_id = $1::bigint"
+        "   AND ended_at IS NULL";
+    auto res = db_->query(
+        sql,
+        {std::to_string(laRegistrationId), iso, note}
+    );
+    return res.affected_rows() > 0;
 }

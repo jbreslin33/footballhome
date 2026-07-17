@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <ctime>
 #include <iostream>
+#include <sstream>
+#include <vector>
 
 #include "../database/Database.h"
 #include "../models/PersonLinker.h"
@@ -117,6 +119,24 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
 
     PersonLinker linker;
 
+    // Deferred payment/next-due snapshot writes — collected during the
+    // per-record loop, then flushed as one multi-VALUES UPDATE below.
+    // Collapses one round-trip-per-rec into one round-trip-per-program,
+    // cutting ~30ms × N per sync for large programs (pickup: 80 recs).
+    //
+    // We inline values via Database::escape() (which uses
+    // pqxx::connection::quote — safely quotes text, integers go through
+    // to_string) rather than pqxx exec_params, which is capped at 16
+    // parameters by our Database::query wrapper (libpqxx 6 variadic).
+    struct PendingSnap {
+        long long regId;
+        long long ownedCents;
+        long long paidCents;
+        std::string paymentStatus;
+    };
+    std::vector<PendingSnap> pendingSnaps;
+    pendingSnaps.reserve(recs.size());
+
     for (auto& rec : recs) {
         std::string statusRaw;
         if (auto it = rec.find("registrationStatus"); it != rec.end() && it->is_string()) {
@@ -210,49 +230,19 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 // and payment-advance moves are never touched here — the
                 // CASE clauses below only rewrite when the value is NULL.
                 if (regId > 0) {
-                    try {
-                        auto* db = Database::getInstance();
-                        // Reach back into the map we populated a few
-                        // lines up so we don't re-parse the LA record.
-                        const LaPayment& lpSnap = out.paymentByRegistration[regId];
-                        const long long ownedCents = static_cast<long long>(
-                            std::llround(lpSnap.totalDue   * 100.0));
-                        const long long paidCents  = static_cast<long long>(
-                            std::llround(lpSnap.amountPaid * 100.0));
-                        db->query(
-                            "UPDATE person_la_memberships"
-                            "   SET la_amount_owed_cents = $2::int,"
-                            "       la_amount_paid_cents = $3::int,"
-                            "       la_payment_status    = NULLIF($4, ''),"
-                            "       la_snapshot_at       = now(),"
-                            "       next_due_at = CASE"
-                            "         WHEN next_due_at   IS NOT NULL THEN next_due_at"
-                            "         WHEN la_registered_at IS NULL  THEN NULL"
-                            "         ELSE (first_friday_of_month("
-                            "                 la_registered_at + interval '1 month'"
-                            "               ))::timestamptz"
-                            "       END,"
-                            "       next_due_source = CASE"
-                            "         WHEN next_due_source IS NOT NULL THEN next_due_source"
-                            "         WHEN la_registered_at IS NULL    THEN NULL"
-                            "         ELSE 'la_seed'"
-                            "       END,"
-                            "       next_due_updated_at = CASE"
-                            "         WHEN next_due_at   IS NOT NULL   THEN next_due_updated_at"
-                            "         WHEN la_registered_at IS NULL    THEN next_due_updated_at"
-                            "         ELSE now()"
-                            "       END"
-                            " WHERE la_registration_id = $1::bigint"
-                            "   AND ended_at IS NULL",
-                            {std::to_string(regId),
-                             std::to_string(ownedCents),
-                             std::to_string(paidCents),
-                             lpSnap.paymentStatus});
-                    } catch (const std::exception& e) {
-                        std::cerr << "[la-sync program=" << programId
-                                  << "] snapshot/seed failed regId=" << regId
-                                  << ": " << e.what() << std::endl;
-                    }
+                    // Defer to the batched flush below; keep the value
+                    // pipeline (LaPayment → cents → status) identical to
+                    // the historical per-record path so semantics don't
+                    // drift.
+                    const LaPayment& lpSnap = out.paymentByRegistration[regId];
+                    PendingSnap snap;
+                    snap.regId         = regId;
+                    snap.ownedCents    = static_cast<long long>(
+                        std::llround(lpSnap.totalDue   * 100.0));
+                    snap.paidCents     = static_cast<long long>(
+                        std::llround(lpSnap.amountPaid * 100.0));
+                    snap.paymentStatus = lpSnap.paymentStatus;
+                    pendingSnaps.push_back(std::move(snap));
                 }
             }
         } catch (const std::exception& e) {
@@ -262,6 +252,61 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
         }
 
         out.recs.push_back(std::move(rec));
+    }
+
+    // Flush deferred snapshots as ONE multi-VALUES UPDATE.  Values are
+    // escaped via Database::escape() (backed by pqxx::connection::quote)
+    // to sidestep the 16-parameter cap in Database::query and to keep
+    // the payload SQL-injection-safe.  Semantics are byte-identical to
+    // the per-record UPDATE that used to run inside the loop: the
+    // CASE clauses reference plm.* so operator overrides + payment
+    // advances remain untouched, and (la_registration_id, ended_at IS
+    // NULL) still matches exactly one row per snapshot.
+    if (!pendingSnaps.empty()) {
+        try {
+            auto* db = Database::getInstance();
+            std::ostringstream valuesSql;
+            for (std::size_t i = 0; i < pendingSnaps.size(); ++i) {
+                const auto& s = pendingSnaps[i];
+                if (i) valuesSql << ",";
+                valuesSql << "("  << s.regId       << "::bigint,"
+                                  << s.ownedCents  << "::int,"
+                                  << s.paidCents   << "::int,"
+                          << db->escape(s.paymentStatus) << "::text)";
+            }
+            const std::string sql =
+                "UPDATE person_la_memberships plm "
+                "   SET la_amount_owed_cents = v.owed_cents,"
+                "       la_amount_paid_cents = v.paid_cents,"
+                "       la_payment_status    = NULLIF(v.pay_status, ''),"
+                "       la_snapshot_at       = now(),"
+                "       next_due_at = CASE"
+                "         WHEN plm.next_due_at      IS NOT NULL THEN plm.next_due_at"
+                "         WHEN plm.la_registered_at IS NULL     THEN NULL"
+                "         ELSE (first_friday_of_month("
+                "                 plm.la_registered_at + interval '1 month'"
+                "               ))::timestamptz"
+                "       END,"
+                "       next_due_source = CASE"
+                "         WHEN plm.next_due_source  IS NOT NULL THEN plm.next_due_source"
+                "         WHEN plm.la_registered_at IS NULL     THEN NULL"
+                "         ELSE 'la_seed'"
+                "       END,"
+                "       next_due_updated_at = CASE"
+                "         WHEN plm.next_due_at      IS NOT NULL THEN plm.next_due_updated_at"
+                "         WHEN plm.la_registered_at IS NULL     THEN plm.next_due_updated_at"
+                "         ELSE now()"
+                "       END "
+                "  FROM (VALUES " + valuesSql.str() + ") AS v(reg_id, owed_cents, paid_cents, pay_status) "
+                " WHERE plm.la_registration_id = v.reg_id "
+                "   AND plm.ended_at IS NULL";
+            db->query(sql);
+        } catch (const std::exception& e) {
+            std::cerr << "[la-sync program=" << programId
+                      << "] bulk snapshot/seed failed for "
+                      << pendingSnaps.size() << " row(s): "
+                      << e.what() << std::endl;
+        }
     }
 
     // End-of-sync sweep: close any OPEN membership rows for this program
