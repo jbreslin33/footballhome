@@ -36,6 +36,12 @@ private:
     int boysProgramId_;
     int girlsProgramId_;
 
-    Response handleGetForProgram(const std::string& programKey, long long programId);
-    Response handleGetMembersForProgram(const std::string& programKey, long long programId);
+    Response handleGetForProgram(const std::string& programKey,
+                                 long long programId,
+                                 const LaSyncMap& sync);
+    Response handleGetMembersForProgram(const std::string& programKey,
+                                        long long programId,
+                                        const LaSyncMap& sync);
+    // Operator override: POST /api/payments/members/:regId/next-due.
+    Response handleSetNextDue(const Request& request);
 };

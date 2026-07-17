@@ -1,10 +1,13 @@
 #include "LaProgramSync.h"
 
 #include <cctype>
+#include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <ctime>
 #include <iostream>
 
+#include "../database/Database.h"
 #include "../models/PersonLinker.h"
 #include "LeagueAppsService.h"
 
@@ -108,7 +111,9 @@ std::string extractRegisteredIso(const nlohmann::json& rec) {
 LaProgramSync::Result LaProgramSync::run(int programId) {
     Result out;
 
+    const auto t0 = std::chrono::steady_clock::now();
     auto recs = LeagueAppsService::getInstance().fetchProgramRegistrations(programId);
+    const auto tFetch = std::chrono::steady_clock::now();
 
     PersonLinker linker;
 
@@ -194,6 +199,61 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 // recordMembership doc + billing-badge.js.
                 const std::string regIso = extractRegisteredIso(rec);
                 linker.recordMembership(r.personId, programId, regId, regIso);
+
+                // Snapshot LA-authoritative billing state onto the
+                // membership row (migration 117) — payments card reads
+                // these directly rather than re-fetching LA per render.
+                //
+                // Also SEED `next_due_at` on rows that don't have one
+                // yet: 1st Friday of the month AFTER their la_registered_at.
+                // Operator overrides (`next_due_source='operator_override'`)
+                // and payment-advance moves are never touched here — the
+                // CASE clauses below only rewrite when the value is NULL.
+                if (regId > 0) {
+                    try {
+                        auto* db = Database::getInstance();
+                        // Reach back into the map we populated a few
+                        // lines up so we don't re-parse the LA record.
+                        const LaPayment& lpSnap = out.paymentByRegistration[regId];
+                        const long long ownedCents = static_cast<long long>(
+                            std::llround(lpSnap.totalDue   * 100.0));
+                        const long long paidCents  = static_cast<long long>(
+                            std::llround(lpSnap.amountPaid * 100.0));
+                        db->query(
+                            "UPDATE person_la_memberships"
+                            "   SET la_amount_owed_cents = $2::int,"
+                            "       la_amount_paid_cents = $3::int,"
+                            "       la_payment_status    = NULLIF($4, ''),"
+                            "       la_snapshot_at       = now(),"
+                            "       next_due_at = CASE"
+                            "         WHEN next_due_at   IS NOT NULL THEN next_due_at"
+                            "         WHEN la_registered_at IS NULL  THEN NULL"
+                            "         ELSE (first_friday_of_month("
+                            "                 la_registered_at + interval '1 month'"
+                            "               ))::timestamptz"
+                            "       END,"
+                            "       next_due_source = CASE"
+                            "         WHEN next_due_source IS NOT NULL THEN next_due_source"
+                            "         WHEN la_registered_at IS NULL    THEN NULL"
+                            "         ELSE 'la_seed'"
+                            "       END,"
+                            "       next_due_updated_at = CASE"
+                            "         WHEN next_due_at   IS NOT NULL   THEN next_due_updated_at"
+                            "         WHEN la_registered_at IS NULL    THEN next_due_updated_at"
+                            "         ELSE now()"
+                            "       END"
+                            " WHERE la_registration_id = $1::bigint"
+                            "   AND ended_at IS NULL",
+                            {std::to_string(regId),
+                             std::to_string(ownedCents),
+                             std::to_string(paidCents),
+                             lpSnap.paymentStatus});
+                    } catch (const std::exception& e) {
+                        std::cerr << "[la-sync program=" << programId
+                                  << "] snapshot/seed failed regId=" << regId
+                                  << ": " << e.what() << std::endl;
+                    }
+                }
             }
         } catch (const std::exception& e) {
             std::cerr << "[la-sync program=" << programId
@@ -209,6 +269,18 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
     // what makes the sync AUTHORITATIVE — the DB after sync reflects
     // exactly the LA console for this program at this moment.
     linker.closeStaleMemberships(static_cast<long long>(programId), out.activeUserIds);
+
+    const auto tDone = std::chrono::steady_clock::now();
+    const auto fetchMs = std::chrono::duration_cast<std::chrono::milliseconds>(tFetch - t0).count();
+    const auto dbMs    = std::chrono::duration_cast<std::chrono::milliseconds>(tDone  - tFetch).count();
+    const auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tDone  - t0).count();
+    std::cerr << "[la-sync program=" << programId
+              << "] recs=" << out.recs.size()
+              << " active=" << out.activeUserIds.size()
+              << " fetch=" << fetchMs << "ms"
+              << " db=" << dbMs << "ms"
+              << " total=" << totalMs << "ms"
+              << std::endl;
 
     return out;
 }

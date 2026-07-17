@@ -2,10 +2,13 @@
 #include "Crypto.h"
 #include "../database/Database.h"
 #include <cstdio>
+#include <chrono>
+#include <future>
 #include <sstream>
 #include <regex>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 Response Controller::jsonResponse(const std::string& json) {
@@ -196,4 +199,136 @@ bool Controller::requireBearer(const Request& request) {
     }
 
     return true;
+}
+// ────────────────────────────────────────────────────────────────────────────
+// LA-sync route primitives.  See doc block in Controller.h.
+//
+// Pattern:  every la<Verb>(router, path, programs, handler) call registers
+// a route whose dispatch is:
+//   1. Run LaProgramSync::run() for each programId in `programs` — in
+//      PARALLEL when there is more than one (std::async).  This satisfies
+//      the STRICT rule: LA is queried on every request that renders
+//      LA-derived state, DB gets upserted, then the handler reads the DB.
+//   2. Aggregate results into an LaSyncMap keyed by programId.  Programs
+//      whose sync threw are absent from the map (already logged); the
+//      handler decides whether to serve stale DB state or 5xx.
+//   3. Invoke handler(req, syncMap).
+//
+// Handlers must never fetch LA directly — the whole point is that this
+// wrapper is the only path.  scripts/enforce-la-sync.sh flags handlers
+// that read person_la_memberships without going through a la* wrapper.
+// ────────────────────────────────────────────────────────────────────────────
+
+Controller::LaSyncMap Controller::syncPrograms(const std::vector<int>& programs) {
+    LaSyncMap out;
+    if (programs.empty()) return out;
+
+    // Single-program fast path skips thread setup / joining overhead —
+    // by far the common case (rosters + payments per-tab endpoints).
+    if (programs.size() == 1) {
+        try {
+            LaProgramSync sync;
+            out.emplace(programs[0], sync.run(programs[0]));
+        } catch (const std::exception& e) {
+            std::cerr << "[laSync program=" << programs[0]
+                      << "] failed: " << e.what() << std::endl;
+        }
+        return out;
+    }
+
+    // Multi-program fan-out.  A 4-program screen now takes MAX(single) not
+    // SUM(all four) — payments-tabs are the biggest beneficiary.  We
+    // std::launch::async so the runtime creates real threads (deferred
+    // launch here would serialise the .get()s).
+    std::vector<std::future<std::pair<int, LaProgramSync::Result>>> futures;
+    futures.reserve(programs.size());
+    for (int pid : programs) {
+        futures.push_back(std::async(std::launch::async, [pid]() {
+            LaProgramSync sync;
+            return std::make_pair(pid, sync.run(pid));
+        }));
+    }
+    for (auto& f : futures) {
+        try {
+            auto p = f.get();
+            out.emplace(p.first, std::move(p.second));
+        } catch (const std::exception& e) {
+            std::cerr << "[laSync] parallel branch failed: "
+                      << e.what() << std::endl;
+        }
+    }
+    return out;
+}
+
+// ── Static-programs overloads ──────────────────────────────────────────────
+// Wrap a router.<verb>() registration with an automatic LA sync before
+// dispatch.  `programs` is captured by value so the handler always sees
+// the exact list its author declared, even if the caller's local mutates.
+
+void Controller::laGet(Router& router, const std::string& path,
+                       std::vector<int> programs, LaHandler handler) {
+    router.get(path, [programs = std::move(programs),
+                      handler  = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programs);
+        return handler(req, sync);
+    });
+}
+void Controller::laPost(Router& router, const std::string& path,
+                        std::vector<int> programs, LaHandler handler) {
+    router.post(path, [programs = std::move(programs),
+                       handler  = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programs);
+        return handler(req, sync);
+    });
+}
+void Controller::laPut(Router& router, const std::string& path,
+                       std::vector<int> programs, LaHandler handler) {
+    router.put(path, [programs = std::move(programs),
+                      handler  = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programs);
+        return handler(req, sync);
+    });
+}
+void Controller::laDel(Router& router, const std::string& path,
+                       std::vector<int> programs, LaHandler handler) {
+    router.del(path, [programs = std::move(programs),
+                      handler  = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programs);
+        return handler(req, sync);
+    });
+}
+
+// ── Dynamic-programs overloads (programs decided at request time) ──────────
+
+void Controller::laGet(Router& router, const std::string& path,
+                       LaProgramsForRequest programsForRequest, LaHandler handler) {
+    router.get(path, [programsForRequest = std::move(programsForRequest),
+                      handler            = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programsForRequest(req));
+        return handler(req, sync);
+    });
+}
+void Controller::laPost(Router& router, const std::string& path,
+                        LaProgramsForRequest programsForRequest, LaHandler handler) {
+    router.post(path, [programsForRequest = std::move(programsForRequest),
+                       handler            = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programsForRequest(req));
+        return handler(req, sync);
+    });
+}
+void Controller::laPut(Router& router, const std::string& path,
+                       LaProgramsForRequest programsForRequest, LaHandler handler) {
+    router.put(path, [programsForRequest = std::move(programsForRequest),
+                      handler            = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programsForRequest(req));
+        return handler(req, sync);
+    });
+}
+void Controller::laDel(Router& router, const std::string& path,
+                       LaProgramsForRequest programsForRequest, LaHandler handler) {
+    router.del(path, [programsForRequest = std::move(programsForRequest),
+                      handler            = std::move(handler)](const Request& req) {
+        auto sync = Controller::syncPrograms(programsForRequest(req));
+        return handler(req, sync);
+    });
 }

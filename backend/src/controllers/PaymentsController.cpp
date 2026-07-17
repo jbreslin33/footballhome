@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <regex>
 #include <sstream>
 #include <unordered_map>
 #include <utility>
@@ -53,46 +54,83 @@ PaymentsController::PaymentsController()
 PaymentsController::~PaymentsController() = default;
 
 void PaymentsController::registerRoutes(Router& router, const std::string& prefix) {
-    router.get(prefix + "/mens", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetForProgram("mens", mensProgramId_);
-    });
-    router.get(prefix + "/womens", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetForProgram("womens", womensProgramId_);
-    });
-    router.get(prefix + "/boys", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetForProgram("boys", boysProgramId_);
-    });
-    router.get(prefix + "/girls", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetForProgram("girls", girlsProgramId_);
-    });
+    // ── Payment history per program ──
+    // Every route below is registered through laGet(), which mandates a
+    // LaProgramSync::run() for {programId} BEFORE the handler runs.  That
+    // satisfies the STRICT rule (LA → DB → render) — see
+    // .github/copilot-instructions.md § Membership Data Flow.  The
+    // handler still calls payments_->syncFromLa() for the LA
+    // transactions-2 cursor (separate from the program registration
+    // sync that laGet handles).
+    laGet(router, prefix + "/mens", {mensProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetForProgram("mens", mensProgramId_, sync);
+        });
+    laGet(router, prefix + "/womens", {womensProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetForProgram("womens", womensProgramId_, sync);
+        });
+    laGet(router, prefix + "/boys", {boysProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetForProgram("boys", boysProgramId_, sync);
+        });
+    laGet(router, prefix + "/girls", {girlsProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetForProgram("girls", girlsProgramId_, sync);
+        });
 
+    // ── Members board per program ──
     // Members view — one row per person on the program, joined with the
     // last-2-calendar-months window of transactions + lifetime aggregates
-    // + computed status ("what have you done for me lately").
-    router.get(prefix + "/mens/members", [this](const Request& req) {
+    // + computed status ("what have you done for me lately").  Uses the
+    // LaSyncMap payload to reconcile LA's authoritative paymentStatus
+    // against our locally computed status.
+    laGet(router, prefix + "/mens/members", {mensProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetMembersForProgram("mens", mensProgramId_, sync);
+        });
+    laGet(router, prefix + "/womens/members", {womensProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetMembersForProgram("womens", womensProgramId_, sync);
+        });
+    laGet(router, prefix + "/boys/members", {boysProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetMembersForProgram("boys", boysProgramId_, sync);
+        });
+    laGet(router, prefix + "/girls/members", {girlsProgramId_},
+        [this](const Request& req, const LaSyncMap& sync) {
+            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            return this->handleGetMembersForProgram("girls", girlsProgramId_, sync);
+        });
+
+    // POST /api/payments/members/:regId/next-due
+    // Write-only endpoint (operator override).  No LA-derived RENDER on
+    // the response body (just {ok:true, laRegistrationId, nextDueAt,
+    // nextDueSource}) so this stays on router.post and is exempt from
+    // the STRICT rule — see enforce-la-sync.sh whitelist.
+    router.post(prefix + "/members/:regId/next-due", [this](const Request& req) {
         if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetMembersForProgram("mens", mensProgramId_);
-    });
-    router.get(prefix + "/womens/members", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetMembersForProgram("womens", womensProgramId_);
-    });
-    router.get(prefix + "/boys/members", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetMembersForProgram("boys", boysProgramId_);
-    });
-    router.get(prefix + "/girls/members", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-        return this->handleGetMembersForProgram("girls", girlsProgramId_);
+        return this->handleSetNextDue(req);
     });
 }
 
 Response PaymentsController::handleGetForProgram(const std::string& programKey,
-                                                 long long programId) {
+                                                 long long programId,
+                                                 const LaSyncMap& sync) {
+    // The `laGet` wrapper already ran LaProgramSync::run(programId) before
+    // dispatching here, so person_la_memberships is already refreshed.
+    // The `sync` map is unused on this endpoint (the response is payment
+    // transactions, not member rows) but we accept it to keep every
+    // laGet handler signature identical — grep-friendly + refactor-safe.
+    (void)sync;
+
     // Sync new LA transactions first so the payments table reflects
     // reality on every page hit.  Non-fatal — we still return whatever
     // we have persisted if the sync fails.
@@ -147,29 +185,24 @@ Response PaymentsController::handleGetForProgram(const std::string& programKey,
 }
 
 Response PaymentsController::handleGetMembersForProgram(const std::string& programKey,
-                                                        long long programId) {
-    // 1. Refresh membership state — pulls the latest LA registrations for
-    //    this program and upserts person_la_memberships (ended_at gets set
-    //    for anyone LA has dropped, new rows inserted for fresh regs).
-    //    Non-fatal: fall through if LA is unreachable and use whatever we
-    //    have in the DB.
-    //
-    //    We ALSO capture LA's authoritative per-registration `amountPaid`
-    //    + `paymentStatus` from the same fetch so step 5 can reconcile
-    //    our locally computed status against LA on every load.  If LA is
-    //    unreachable, `laPayments` stays empty and step 5 no-ops (leaves
-    //    every member with `discrepancy=null`) — we still serve stale
-    //    state rather than 5xx-ing, but we never *silently* misclassify.
+                                                        long long programId,
+                                                        const LaSyncMap& sync) {
+    // 1. Membership state has ALREADY been refreshed by laGet's wrapper
+    //    (LaProgramSync::run(programId) fired before dispatch).  All we
+    //    need from the sync result is LA's authoritative
+    //    paymentByRegistration map for the reconciliation pass below.
+    //    If the sync entry is absent, the sync failed — laReachable
+    //    stays false and step 5 no-ops (every member gets
+    //    discrepancy=null) rather than misclassifying.
     std::unordered_map<long long, LaProgramSync::LaPayment> laPayments;
     bool laReachable = false;
-    try {
-        LaProgramSync sync;
-        auto syncResult = sync.run(static_cast<int>(programId));
-        laPayments = std::move(syncResult.paymentByRegistration);
+    if (auto it = sync.find(static_cast<int>(programId)); it != sync.end()) {
+        laPayments = it->second.paymentByRegistration;
         laReachable = true;
-    } catch (const std::exception& e) {
-        std::cerr << "[PaymentsController::members] LaProgramSync failed for program "
-                  << programId << ": " << e.what() << std::endl;
+    } else {
+        std::cerr << "[PaymentsController::members] LaSyncMap missing program "
+                  << programId << " — reconciliation disabled this request"
+                  << std::endl;
     }
 
     // 2. Refresh payment cursor — cheap after the first pass on this
@@ -234,6 +267,9 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["firstPaidAt"]   = m.firstPaidAt.empty() ? json(nullptr) : json(m.firstPaidAt);
         row["lastPaidAt"]    = m.lastPaidAt.empty()  ? json(nullptr) : json(m.lastPaidAt);
         row["lastAmount"]    = m.lastAmount;
+        row["daysOverdue"]   = m.daysOverdue;
+        row["nextDueAt"]     = m.nextDueAt.empty()     ? json(nullptr) : json(m.nextDueAt);
+        row["nextDueSource"] = m.nextDueSource.empty() ? json(nullptr) : json(m.nextDueSource);
 
         // Reconciliation.  Skip entirely if LA was unreachable OR if we
         // never resolved a registrationId for this membership row (e.g.
@@ -360,5 +396,71 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         {"mismatches",  std::move(mismatches)},
     };
     out["members"]     = std::move(members);
+    return Response(HttpStatus::OK, out.dump());
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// POST /api/payments/members/:regId/next-due
+//
+// Operator picks a Friday from the dropdown on a payments card; we
+// write it to person_la_memberships.next_due_at, stamped as
+// next_due_source='operator_override'.  The next GET /members request
+// will read this back and reflect it in the badge / dropdown state.
+//
+// Body:   {"nextDueAt":"YYYY-MM-DD","note":"optional"}
+// Path:   :regId is la_registration_id (numeric).
+// ────────────────────────────────────────────────────────────────────────
+Response PaymentsController::handleSetNextDue(const Request& request) {
+    // Extract regId from path.  Route pattern:
+    //   /api/payments/members/:regId/next-due
+    static const std::regex pathRe(R"(/api/payments/members/([0-9]+)/next-due)");
+    std::smatch mm;
+    const std::string& path = request.getPath();
+    if (!std::regex_search(path, mm, pathRe)) {
+        return badRequest("invalid registration id in path");
+    }
+    long long regId = 0;
+    try { regId = std::stoll(mm[1].str()); } catch (...) { regId = 0; }
+    if (regId <= 0) return badRequest("invalid registration id");
+
+    // Parse body.
+    std::string iso;
+    std::string note;
+    try {
+        auto j = json::parse(request.getBody());
+        if (j.contains("nextDueAt") && j["nextDueAt"].is_string()) {
+            iso = j["nextDueAt"].get<std::string>();
+        }
+        if (j.contains("note") && j["note"].is_string()) {
+            note = j["note"].get<std::string>();
+        }
+    } catch (const std::exception& e) {
+        return badRequest(std::string("invalid JSON body: ") + e.what());
+    }
+    if (iso.empty()) return badRequest("nextDueAt is required");
+
+    // Basic sanity: accept YYYY-MM-DD or ISO-8601 with time.  Reject
+    // anything obviously non-date so we don't hand garbage to postgres.
+    static const std::regex isoRe(
+        R"(^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$)");
+    if (!std::regex_match(iso, isoRe)) {
+        return badRequest("nextDueAt must be YYYY-MM-DD or ISO-8601");
+    }
+
+    try {
+        bool ok = payments_->setOperatorNextDueByRegistration(regId, iso, note);
+        if (!ok) {
+            return errorResponse(HttpStatus::NOT_FOUND,
+                                 "no open membership found for that registration id");
+        }
+    } catch (const std::exception& e) {
+        return internalErr(std::string("Failed to set next due: ") + e.what());
+    }
+
+    json out = json::object();
+    out["ok"]               = true;
+    out["laRegistrationId"] = regId;
+    out["nextDueAt"]        = iso;
+    out["nextDueSource"]    = "operator_override";
     return Response(HttpStatus::OK, out.dump());
 }
