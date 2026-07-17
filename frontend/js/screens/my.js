@@ -1,18 +1,26 @@
 // MyScreen — signed-in player's unified week view + chat.
 //
 // Post-Slice-7 (2026-07-17): single-screen layout, no tabs.
-//   * Section 1: Upcoming events (next 14 days) the caller is roster-
-//     eligible for.  Each event has four buttons:
+//   * Section 1: Chat, compressed to the newest message with an
+//     expand toggle for older messages.
+//   * Section 2: Events for the current week the caller is roster-
+//     eligible for.  Rolling one-week window that flips over at
+//     Sunday 20:00 local — before the cutover the window ends on the
+//     upcoming Sunday, after the cutover it slides to the following
+//     Sunday (see _weekWindowEnd).  Each event has four buttons:
 //         Going / Not Going          → per-event override (fh_event_rsvps)
 //         Recurring Going / Not Going → standing pref     (fh_recurring_rsvps)
 //     The effective state is highlighted.  A per-event override always
 //     wins over the standing preference for that specific event.
-//   * Section 2: Club chat, newest message on top, input above.
 //
 // Backend surface (all already exist — no new endpoints needed):
 //   GET  /api/calendar/upcoming?days=14  → { events: [{fh_event_id, kind,
 //                                                      category, my_rsvp,
-//                                                      my_rsvp_eligible, ...}] }
+//                                                      my_rsvp_eligible,
+//                                                      starts_at, ...}] }
+//     We fetch 14 days so next week is pre-loaded the instant the
+//     Sunday-20:00 cutover ticks over; client filters to the current
+//     week before rendering.
 //   POST /api/calendar/rsvp              → { fh_event_id, response }
 //   GET  /api/calendar/my-standing       → { prefs: [{kind, category,
 //                                                     response, active}] }
@@ -215,6 +223,35 @@ class MyScreen extends Screen {
 
   // ────── Events section ────────────────────────────────────────────
 
+  // Rolling one-week window that flips over at Sunday 8pm local.
+  //
+  //   * Mon 00:00  → shows Mon..Sun of the same week (7 days).
+  //   * Sat        → shows Sat + Sun (still this week).
+  //   * Sun before 20:00 → shows only Sun (still this week).
+  //   * Sun 20:00 onward → flips to next week (Mon..Sun of next week).
+  //
+  // Rationale: pickup/practice for next week is scheduled but people
+  // shouldn't see it (and can't RSVP to it) until the current week is
+  // effectively over — 8pm Sun is the agreed cutover.
+  _weekWindowEnd() {
+    const now  = new Date();
+    const dow  = now.getDay();                        // 0=Sun..6=Sat
+    const daysToSunday = (7 - dow) % 7;               // 0 if today is Sun
+
+    // Sunday of THIS week at 20:00 local.
+    const sunCutover = new Date(now);
+    sunCutover.setDate(now.getDate() + daysToSunday);
+    sunCutover.setHours(20, 0, 0, 0);
+
+    // End-of-Sunday (23:59:59.999) for the "shown" week.  If we're
+    // before the Sunday-8pm cutover, the shown week ends this Sunday.
+    // Otherwise it ends next Sunday.
+    const shownSun = new Date(sunCutover);
+    if (now >= sunCutover) shownSun.setDate(shownSun.getDate() + 7);
+    shownSun.setHours(23, 59, 59, 999);
+    return shownSun;
+  }
+
   _renderEvents() {
     const box = this.find('#my-events');
     if (!box) return;
@@ -222,20 +259,34 @@ class MyScreen extends Screen {
     // Filter to eligible-only.  Backend returns my_rsvp_eligible=null
     // for anonymous callers and true/false for authed callers; we only
     // want events the caller can actually RSVP to.
-    const list = (this.events || []).filter(e => e.my_rsvp_eligible === true);
+    //
+    // Also trim to the current one-week window (see _weekWindowEnd) so
+    // the screen never shows next week's schedule until the Sun 8pm
+    // cutover — the backend intentionally returns days=14 so we always
+    // have next week pre-fetched for the moment the cutover ticks over.
+    const weekEnd = this._weekWindowEnd();
+    const list = (this.events || []).filter(e => {
+      if (e.my_rsvp_eligible !== true) return false;
+      if (!e.starts_at) return true;                  // undated → keep
+      const t = new Date(e.starts_at);
+      return !isNaN(t) && t <= weekEnd;
+    });
 
     const sub = this.find('#my-subtitle');
     if (sub) {
       sub.textContent = list.length
-        ? `${list.length} event${list.length !== 1 ? 's' : ''} in the next 14 days`
-        : 'Nothing on your calendar for the next 14 days';
+        ? `${list.length} event${list.length !== 1 ? 's' : ''} this week`
+        : 'Nothing on your calendar this week';
     }
 
     if (list.length === 0) {
       box.innerHTML = `
         <div class="empty-state" style="padding: var(--space-4); text-align:center; opacity: 0.7;">
           <div style="font-size:2rem; margin-bottom:8px;">📅</div>
-          <div>Nothing on your calendar for the next 14 days.</div>
+          <div>Nothing on your calendar this week.</div>
+          <div style="font-size:0.85rem; margin-top:6px; opacity:0.7;">
+            Next week's schedule shows up Sunday at 8pm.
+          </div>
         </div>`;
       return;
     }
