@@ -280,6 +280,7 @@ target_link_libraries(sim_auth PUBLIC sim_flags OpenSSL::Crypto)
 add_library(sim_net STATIC
     src/net/BinaryV1Serializer.cpp
     src/net/InputFrame.cpp
+    src/net/MatchEventFrame.cpp
     src/net/ScenarioMetaFrame.cpp
     src/net/WebSocketFrame.cpp
     src/net/WebSocketHandshake.cpp

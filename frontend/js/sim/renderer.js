@@ -93,6 +93,17 @@ class FhSimRenderer {
         this._BALL_TRAIL_MAX       = 24;   // ~0.4 s of history at 60 fps
         this._BALL_TRAIL_MIN_SPEED = 0.5;  // m/s; matches M1 rest threshold band
 
+        // Slice 28.4: goal-flash overlay state. When a MATCH_EVENT of
+        // type Goal arrives, client.js calls triggerGoalFlash(regionIndex)
+        // to set `_goalFlashUntilMs` in the near future; every subsequent
+        // render() paints a translucent full-screen tint until that
+        // deadline. Colour is derived from region index so the two
+        // goals in GoalDrillScenario (west=0, east=1) flash different
+        // hues — human observers can tell the two apart at a glance.
+        this._goalFlashUntilMs    = 0;
+        this._goalFlashRegionIdx  = 0;
+        this._GOAL_FLASH_MS       = 1500;   // ~1.5 s total
+
         this.resize();
     }
 
@@ -102,6 +113,22 @@ class FhSimRenderer {
         // Accept null explicitly (unset). Anything else stored verbatim;
         // renderer reads mode + vertices at draw time.
         this.scenarioMeta = meta || null;
+    }
+
+    // Slice 28.4: kick off a goal-flash animation. Called by client.js
+    // whenever the server pushes a MATCH_EVENT with event_type=Goal
+    // that decodes cleanly. `regionIndex` tunes the flash colour so
+    // the two GoalDrillScenario goals are visually distinguishable.
+    // Rapid re-triggers extend the flash window rather than truncating
+    // it, so a burst of two goals within the flash duration keeps the
+    // overlay lit until the last-triggered goal's window closes.
+    triggerGoalFlash(regionIndex) {
+        const now = performance.now();
+        const until = now + this._GOAL_FLASH_MS;
+        if (until > this._goalFlashUntilMs) {
+            this._goalFlashUntilMs = until;
+        }
+        this._goalFlashRegionIdx = regionIndex | 0;
     }
 
     resize() {
@@ -530,7 +557,52 @@ class FhSimRenderer {
         this.drawPlayableArea();
         this.drawEntities(snap);
         this.drawBall(snap);
+        this._drawGoalFlash();
         this.drawHud(status || {});
+    }
+
+    // Slice 28.4: full-screen translucent tint painted while the
+    // goal-flash window is open. The alpha fades linearly over the
+    // window so the flash decays instead of hard-cutting to nothing.
+    // West goal (regionIndex 0) → cool blue; east goal (index 1) →
+    // warm orange; any other index → neutral green fallback so a
+    // future scenario with more regions still gets *some* visual.
+    _drawGoalFlash() {
+        const now = performance.now();
+        const remain = this._goalFlashUntilMs - now;
+        if (remain <= 0) return;
+
+        const t = Math.min(1, remain / this._GOAL_FLASH_MS);   // 1 → 0
+        // Peak alpha 0.45 so pitch + ball stay visible underneath.
+        const alpha = 0.45 * t;
+
+        let rgb;
+        switch (this._goalFlashRegionIdx) {
+            case 0:  rgb = '65, 155, 255';  break;   // west — cool blue
+            case 1:  rgb = '255, 140,  60'; break;   // east — warm orange
+            default: rgb = ' 90, 220, 120'; break;   // neutral green
+        }
+
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.fillStyle = 'rgba(' + rgb + ', ' + alpha.toFixed(3) + ')';
+        ctx.fillRect(0, 0, this.cssW, this.cssH);
+
+        // Big centered "GOAL!" label, alpha-matched to the tint so it
+        // fades in step. Font sized to viewport height so mobile +
+        // desktop both get readable letters without a hard-coded px.
+        const fontPx = Math.max(48, Math.floor(this.cssH * 0.22));
+        ctx.font         = 'bold ' + fontPx + 'px system-ui, sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle    = 'rgba(255, 255, 255, ' + Math.min(1, t * 1.2).toFixed(3) + ')';
+        ctx.strokeStyle  = 'rgba(0, 0, 0, ' + Math.min(0.9, t).toFixed(3) + ')';
+        ctx.lineWidth    = Math.max(2, fontPx * 0.06);
+        const cx = this.cssW * 0.5;
+        const cy = this.cssH * 0.5;
+        ctx.strokeText('GOAL!', cx, cy);
+        ctx.fillText  ('GOAL!', cx, cy);
+        ctx.restore();
     }
 }
 

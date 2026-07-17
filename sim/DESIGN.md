@@ -12,7 +12,9 @@
 >
 > **Slice 28.2 (`Scenario::goalRegions()` + `GoalDrillScenario`, migration 222, scenario_id=6):** landed 2026-07-17. 48/48 sim tests green.
 >
-> **Slice 28.3 (`Match::tick` post-physics goal-detection + Goal event emission per ADR §22.25 v1 payload):** landed 2026-07-17. 49/49 sim tests green. Next up is Slice 28.4 (`MatchEventFrame` wire msg_type 0x04 + HELLO_ACK capability bit 2 + frontend goal-flash).
+> **Slice 28.3 (`Match::tick` post-physics goal-detection + Goal event emission per ADR §22.25 v1 payload):** landed 2026-07-17. 49/49 sim tests green.
+>
+> **Slice 28.4 (`MatchEventFrame` wire msg_type 0x04 + HELLO_ACK capability bit 2 + frontend goal-flash):** landed 2026-07-17. 50/50 sim tests green. Next up is Slice 28.5 (determinism golden `goal_from_kick_east_200_ticks_seed_42`).
 
 ---
 
@@ -641,6 +643,7 @@ Multi-byte fields are **little-endian**.
 | 0x01 | HELLO | client → server | u32 client_capabilities |
 | 0x02 | HELLO_ACK | server → client | u64 match_id, u16 your_slot_or_0, u32 tick_hz, u16 wire_capability_bits (§7.1 addendum, Slice 15.4) |
 | 0x03 | SCENARIO_META | server → client | see 7.4 — sent once immediately after HELLO_ACK when `wire_capability_bits & kWireCapScenarioMeta` is set (Slice 17.7a) |
+| 0x04 | MATCH_EVENT | server → client | see 7.6 — pushed per-tick for each `sim_match_events` row the server writes when `wire_capability_bits & kWireCapMatchEventFrame` is set (Slice 28.4, wire-side sibling to ADR §22.25) |
 | 0x10 | SNAPSHOT | server → client | see 7.2 |
 | 0x20 | INPUT | client → server | see 7.3 |
 | 0x30 | CLAIM_SLOT | client → server | u16 slot_id |
@@ -744,6 +747,23 @@ Multi-byte fields are **little-endian**.
 - Path: `/sim` (proxied through nginx to `footballhome_sim:9100`)
 - Subprotocol header: `Sec-WebSocket-Protocol: fh-sim.v1.bearer.<JWT>`
 - Server validates JWT (shared secret with `footballhome_backend`), attaches `JwtClaims` to `ClientId`.
+
+### 7.6 MATCH_EVENT payload (Slice 28.4)
+
+```
+[u32 tick_num]              // matches sim_match_events.tick_num
+[u8  event_type]            // matches persistence::EventType byte value
+[u16 event_payload_len]     // == sim_match_events.payload length
+[u8  event_payload[event_payload_len]]
+```
+
+**Variable size**: `7 + event_payload_len` bytes for the frame payload; plus 4 bytes for the outer frame header. For a Goal event (event_type=9) with the ADR §22.25 v1 payload (5 bytes), the total on-the-wire is exactly **16 bytes**. Sent by the server whenever it writes a row to `sim_match_events` that clients need to observe live — Slice 28.4 emits Goal only; future event types slot in without a codec change. Gated on `kWireCapMatchEventFrame` (bit 2) in the HELLO_ACK's `wire_capability_bits`.
+
+**Byte-lockstep with the DB payload.** The `event_type` byte + `event_payload` bytes are exactly what landed in `sim_match_events.event_type` + `sim_match_events.payload`. Migration 221's `sim_decode_event()` and any client-side port decode the same bytes — there is deliberately no wire-specific payload format. Consumers already know the versioning rule from ADR §22.25 (`event_type >= 9` ⇒ first payload byte is a version tag; `event_type in (1..8)` grandfathered unversioned).
+
+**Unknown event types are legitimate.** Clients that don't recognise an `event_type` MUST skip the frame silently — unknown types are not a protocol error and MUST NOT tear down the session. This is the same forward-compat rule as SCENARIO_META's mode byte and the SNAPSHOT ball trailer's u16-length prefix.
+
+**Forward-compat extension hook.** The `event_payload_len` u16 lets a Goal-v2 payload grow to (say) 12 bytes without touching either the frame header or the event_type byte. v1 clients parse `payload[0..4]` (per ADR §22.25) and ignore `payload[5..11]`; v2 clients decode the whole 12-byte payload. See ADR §22.25 for the full versioning contract.
 
 ## 8. Database schema
 
@@ -3022,7 +3042,7 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 - 28.1 [x] Migration 221 (event schema versioning per §22.25) — first byte of `sim_match_events.payload` = version tag for `event_type >= 9`; `event_type in (1..8)` remain grandfathered unversioned. Add `EventType::Goal` at id **9** (next available in the append-only enum after `ScenarioReset=8`). `sim_decode_event()` extended per §22.25's decoder contract. **No wire change in 28.1** — Slice 28.4 is the client-visible slice that bumps wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04). Landed 2026-07-16.
 - 28.2 [x] `Scenario::goalRegions()` API — `struct GoalRegion { Vec3 min; Vec3 max; u8 index; }` + `virtual std::vector<GoalRegion> goalRegions() const { return {}; }` default on `Scenario`. `EmptyPitchScenario` (and every other pre-28 scenario) grandfathered at empty via the default. New `GoalDrillScenario` (scenario_id=6, migration 222) returns two AABBs at the pitch ends: west (index 0, x∈[-54.5,-52.5]) and east (index 1, x∈[+52.5,+54.5]), both 7.32 m wide × 2.44 m tall × 2 m deep. Same 105×68 pitch + ±15 m slot spawns + centre-spot ball as `BallOnPitch2v0Scenario`; unclaimed slots idle. 48/48 sim tests green. Landed 2026-07-17.
 - 28.3 [x] `Match::tick` post-physics goal-detection loop. Iterates `scenario_->goalRegions()` after Hard-pass and before scenario checks; edge-triggered emit when the ball's AABB inclusion transitions from `nullopt` (or a different region) into a region. On emit: pushes a `Match::PendingGoal { tick_num, goal_region_index, kicker_slot }` where `tick_num = clock_->current() + 1` (aligned with the post-advance snapshot tick_num), zeroes ball velocity via `physics_->setVelocity(*ball_, math::Vec3{})`, and clears `last_kicker_slot_` so the next goal requires a fresh kick attribution. `Match::drainPendingGoals()` returns pending goals destructively (swap-and-clear). `SimServer::run()` drains after each tick and pushes `EventRow{ event_type = Goal, payload = encodeGoalPayloadV1(region, kicker_wire) }` to `event_log_` (5-byte ADR §22.25 v1 layout: `[u8 version=1][u8 region_index][u16 kicker_slot_id LE][u8 reserved=0]`, `kicker_wire = kGoalKickerSlotUnknown` when kicker unknown). Grandfather clause preserved: scenarios with `goalRegions().empty()` (every pre-28 scenario) never enter the detection block. `test_match_goal_detection` (8 cases) covers empty-regions no-op, outside-region no-op, first-tick emit, no-repeat on sitting ball, velocity zeroing, correct region index, destructive drain, and tick_num semantics. `test_determinism` + `test_canonical_hash` still byte-identical (grandfather clause holds). Landed 2026-07-17.
-- 28.4 Frontend goal-flash animation + score HUD.
+- 28.4 [x] Frontend goal-flash animation + score HUD. Wire-side lands `MsgType::MatchEvent = 0x04` (§7.6) + `kWireCapMatchEventFrame` (bit 2 in HELLO_ACK's `wire_capability_bits`) + a new C++ codec (`sim/src/net/MatchEventFrame.{hpp,cpp}`) that wraps one `sim_match_events` row per frame: `[u32 tick_num][u8 event_type][u16 event_payload_len][u8 event_payload[len]]`. Byte-lockstep with the DB payload so migration 221's decoders and any client-side port share the same bytes; forward-compat via the u16 event_payload_len prefix per ADR §22.25's versioning rule. `SimServer::run()` broadcasts a MATCH_EVENT frame in the same drain step that pushes the `EventRow` to `event_log_` — wire and DB in lockstep, no scheduling drift. Drain is unconditional (whether or not `event_log_` / clients are attached) so PendingGoal never accumulates in headless matches. Frontend: `MSG.MATCH_EVENT`, `WIRE_CAP.MATCH_EVENT_FRAME`, `EVENT_TYPE.GOAL=9`, `decodeMatchEvent()`, `decodeGoalPayloadV1()` in [frontend/js/sim/wire.js](frontend/js/sim/wire.js); `onMatchEvent` callback in [frontend/js/sim/transport.js](frontend/js/sim/transport.js); `triggerGoalFlash(regionIndex)` + `_drawGoalFlash()` in [frontend/js/sim/renderer.js](frontend/js/sim/renderer.js) paints a ~1.5s full-screen translucent tint (west=cool blue, east=warm orange, other=neutral green) with a large centered "GOAL!" label that fades linearly; [frontend/js/sim/client.js](frontend/js/sim/client.js) wires goal receipt to the renderer + bumps `state.goalCount`. `test_match_event_frame` (9 cases): constants pinned, byte layout locked for Goal + empty-payload frames, oversize-payload refused, round-trip Goal + empty-payload, malformed-input rejection (short buffer, wrong version, wrong msg_type, event_payload_len mismatch). Determinism goldens still byte-identical (wire-only addition; no state or hash impact). 50/50 sim tests green. Landed 2026-07-17.
 - 28.5 Determinism goldens: `goal_from_kick_east_200_ticks_seed_42`.
 
 **Slice 28 exit gate**: coach opens `GoalDrill`, kicks the ball into the goal AABB, sees goal-flash on both clients, event logged in `sim_match_events` with version-1 payload.
@@ -3046,7 +3066,7 @@ Tick in place as work lands. All must be green for M2 to be considered complete.
 - [x] Cross-arch determinism CI green for every M2 scenario shipped so far (`test_determinism` includes `BallOnPitchWithDefender400` = `0x71f639d918a32830`).
 - [ ] Two players can pass the ball to each other and the receiver can control it (Slice 26).
 - [ ] Player-player collisions resolved deterministically without ball being knocked away from its owner (Slice 27).
-- [ ] Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal` (Slice 28). *(Storage side complete in Slice 28.3; wire-visible goal-flash lands in 28.4; determinism golden lands in 28.5.)*
+- [ ] Kicked ball crossing a goal region produces a versioned `MatchEvent::Goal` (Slice 28). *(Storage side complete in Slice 28.3; wire-visible goal-flash complete in Slice 28.4; determinism golden lands in 28.5.)*
 - [ ] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at end of M2 (§22.14 invariant — carried through M1 exit criteria, must survive M2).
 - [ ] No new §21 ship-blocker items opened during M2 without a matching closure or explicit revisit-condition timestamp.
 

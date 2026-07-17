@@ -7,6 +7,7 @@
 #include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
 #include "net/InputFrame.hpp"
+#include "net/MatchEventFrame.hpp"
 #include "net/ScenarioMetaFrame.hpp"
 #include "net/WireFormat.hpp"
 #include "persistence/IPgClient.hpp"
@@ -93,33 +94,55 @@ void SimServer::run(std::function<std::int64_t()> steady_now_ms)
         const std::uint64_t new_tick_count =
             ticks_executed_.fetch_add(1, std::memory_order_relaxed) + 1u;
 
-        // Slice 28.3: drain the Match's pending goals into the async
-        // event log, one EventRow per goal, encoded per ADR §22.25 v1
-        // (5-byte payload: [ver=1][region][slot_lo][slot_hi][rsv=0]).
-        // Drain-and-clear is atomic on the vector; Match retains no
-        // reference. Emitted AFTER broadcastSnapshot so the wire
-        // ordering is (snapshot showing ball at rest inside goal
-        // region) → (Goal event row landing in Postgres) — matching
-        // the "ref sees ball cross, then blows the whistle" mental
-        // model that Slice 28.4's client-side goal-flash will lean on.
+        // Slice 28.3 / 28.4: drain Match's pending goals AFTER the
+        // snapshot broadcast so the wire ordering is
+        //   (snapshot: ball at rest inside goal region)
+        //   (MATCH_EVENT: Goal event)
+        // — matching the "ref sees the ball cross, then whistles" mental
+        // model. Drain is unconditional (whether or not event_log_ or
+        // clients are attached) so PendingGoal never accumulates inside
+        // Match — a headless / in-memory match still cycles its state.
         //
-        // No wire emission here — Slice 28.4 lands the MatchEventFrame
-        // (msg_type 0x04) that pushes Goal events to connected
-        // clients. Slice 28.3 is DB-only.
-        if (event_log_ != nullptr) {
-            auto goals = match_->drainPendingGoals();
-            for (const auto& g : goals) {
-                const std::uint16_t kicker_wire =
-                    g.kicker_slot.has_value()
-                        ? static_cast<std::uint16_t>(*g.kicker_slot)
-                        : persistence::kGoalKickerSlotUnknown;
+        // For each drained goal we (a) push an EventRow with the ADR
+        // §22.25 v1 payload to `event_log_` when persistence is
+        // attached, and (b) broadcast a MATCH_EVENT frame (§7.6,
+        // msg_type 0x04) to every connected client carrying the SAME
+        // event_type + payload bytes. Wire and DB are byte-lockstep so
+        // migration-221's sim_decode_event() and any client-side port
+        // decode the same bytes.
+        auto goals = match_->drainPendingGoals();
+        for (const auto& g : goals) {
+            const std::uint16_t kicker_wire =
+                g.kicker_slot.has_value()
+                    ? static_cast<std::uint16_t>(*g.kicker_slot)
+                    : persistence::kGoalKickerSlotUnknown;
+            auto payload = persistence::encodeGoalPayloadV1(
+                g.goal_region_index, kicker_wire);
+
+            if (event_log_ != nullptr) {
                 persistence::EventRow ev;
                 ev.match_id   = cfg_.match_id;
                 ev.tick_num   = g.tick_num;
                 ev.event_type = persistence::EventType::Goal;
-                ev.payload    = persistence::encodeGoalPayloadV1(
-                    g.goal_region_index, kicker_wire);
+                ev.payload    = payload;   // copy: DB path takes ownership
                 event_log_->push(std::move(ev));
+            }
+
+            // Wire broadcast. `payload` is std::vector<std::byte>;
+            // std::byte and std::uint8_t are layout-compatible so
+            // reinterpret_cast gives us the u8 span the codec needs.
+            if (!client_slot_.empty()) {
+                const std::uint8_t* pay_u8 =
+                    reinterpret_cast<const std::uint8_t*>(payload.data());
+                const auto frame = net::encodeMatchEventFrame(
+                    static_cast<std::uint32_t>(g.tick_num),
+                    static_cast<std::uint8_t>(persistence::EventType::Goal),
+                    std::span<const std::uint8_t>(pay_u8, payload.size()));
+                if (!frame.empty()) {
+                    for (const auto& [cid, _slot] : client_slot_) {
+                        (void)transport_->send(cid, frame);
+                    }
+                }
             }
         }
 
@@ -276,6 +299,10 @@ void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& claims)
     // Slice 17.7a: bit 1 (kWireCapScenarioMeta) tells the client to expect
     // exactly one SCENARIO_META frame immediately after HELLO_ACK carrying
     // the scenario's playable-area polygon + constraint mode.
+    // Slice 28.4 (§7.6 / ADR §22.25 wire-side): bit 2 (kWireCapMatchEventFrame)
+    // tells the client that this server WILL emit MATCH_EVENT frames
+    // (msg_type 0x04) for goal detection etc.; storage-side row goes to
+    // sim_match_events, wire-side row goes to every connected client.
     // Slice 26.2 (ADR §22.23): bit 3 (kWireCapInputKickTrailer) tells the
     // client that this server will accept the length-prefixed kick trailer
     // on INPUT frames — the client uses this to enable its kick UI. Set
@@ -285,6 +312,7 @@ void SimServer::handleConnect(ClientId cid, const auth::JwtClaims& claims)
     constexpr std::uint16_t kSessionCaps =
         net::kWireCapSnapshotBallTrailer
       | net::kWireCapScenarioMeta
+      | net::kWireCapMatchEventFrame
       | net::kWireCapInputKickTrailer;
     const auto ack = net::encodeHelloAckFrame(cfg_.match_id, slot, cfg_.tick_hz,
                                               kSessionCaps);

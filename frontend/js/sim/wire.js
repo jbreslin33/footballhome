@@ -33,6 +33,7 @@ const MSG = Object.freeze({
     HELLO:         0x01,
     HELLO_ACK:     0x02,
     SCENARIO_META: 0x03,   // Slice 17.7a
+    MATCH_EVENT:   0x04,   // Slice 28.4 (§7.6 / ADR §22.25 wire-side)
     SNAPSHOT:      0x10,
     INPUT:         0x20,
     CLAIM_SLOT:    0x30,
@@ -69,15 +70,47 @@ const MOTION_STATE = Object.freeze({
 // Bit 0 = server may append the v1.1 ball trailer to SNAPSHOT payloads.
 // Bit 1 = server will send one SCENARIO_META frame immediately after
 //         HELLO_ACK (Slice 17.7a).
-// Bit 2 reserved for Slice 28 MATCH_EVENT frame.
+// Bit 2 = server will emit MATCH_EVENT frames (msg_type 0x04) for
+//         goal detection etc. (Slice 28.4 / §7.6 / ADR §22.25 wire-side).
+//         When present the client should listen for these and drive
+//         its goal-flash HUD off them; when absent, no 0x04 traffic
+//         should arrive and stray 0x04 frames are a protocol error.
 // Bit 3 = server accepts 28-byte INPUT payloads with kick trailer
 //         (Slice 26.2 / ADR §22.23). When absent, clients MUST send
 //         only 16-byte baseline payloads.
 const WIRE_CAP = Object.freeze({
     SNAPSHOT_BALL_TRAILER: 0x0001,
     SCENARIO_META:         0x0002,
+    MATCH_EVENT_FRAME:     0x0004,
     INPUT_KICK_TRAILER:    0x0008,
 });
+
+// Slice 28.4 (§7.6 / ADR §22.25 wire-side): match-event type ids that
+// the client actually acts on. Numbering matches persistence::EventType
+// in sim/src/persistence/EventTypes.hpp — append-only. Only the event
+// types the client CARES about are named here; the codec passes through
+// unknown ids intact so a future server can emit new events without a
+// frontend release.
+const EVENT_TYPE = Object.freeze({
+    MATCH_START:       1,
+    MATCH_END:         2,
+    CLIENT_CONNECT:    3,
+    CLIENT_DISCONNECT: 4,
+    SLOT_CLAIM:        5,
+    SLOT_RELEASE:      6,
+    SCENARIO_SUCCESS:  7,
+    SCENARIO_RESET:    8,
+    GOAL:              9,
+});
+
+// Slice 28.4: Goal payload v1 layout (5 bytes, ADR §22.25):
+//   [0] version tag (must equal 1)
+//   [1] goal region index (0 = west, 1 = east in GoalDrillScenario)
+//   [2..3] kicker_slot_id, u16 LE (0 = unknown kicker)
+//   [4] reserved (currently 0)
+const GOAL_PAYLOAD_V1_BYTES     = 5;
+const GOAL_PAYLOAD_V1_VERSION   = 1;
+const GOAL_KICKER_SLOT_UNKNOWN  = 0;
 
 // Slice 17.7a (§7.4): SCENARIO_META mode enum. Wire values are frozen
 // in sim/src/net/ScenarioMetaFrame.hpp via static_assert against
@@ -109,6 +142,11 @@ const SNAPSHOT_TRAILER_LEN_BYTES = 2;   // u16 length prefix
 const BALL_REGION_BYTES    = 30;
 const SCENARIO_META_HEADER_BYTES = 3;   // u8 mode + u16 count
 const SCENARIO_META_VERTEX_BYTES = 8;   // f32 x + f32 y
+
+// Slice 28.4 (§7.6 / ADR §22.25 wire-side): MATCH_EVENT frame header
+// (inside the frame payload, after the 4-byte frame header):
+//   [u32 tick_num][u8 event_type][u16 event_payload_len]
+const MATCH_EVENT_HEADER_BYTES = 7;
 
 // ---------------------------------------------------------------------------
 // Encoders
@@ -310,6 +348,62 @@ function decodeScenarioMeta(bytes) {
     return { mode, vertices };
 }
 
+// Decode a MATCH_EVENT message (Slice 28.4, §7.6). Returns:
+//   { tickNum, eventType, payload: Uint8Array }
+// or null on malformed input. See sim/src/net/MatchEventFrame.cpp for
+// the reference C++ decoder — the byte layout must stay byte-identical.
+//
+// Layout:
+//   [frame hdr 4][u32 tick_num][u8 event_type][u16 payload_len][payload...]
+//
+// `payload` is an owning Uint8Array copy of the trailing bytes so the
+// caller can safely retain it past the underlying WebSocket buffer's
+// lifetime. Unknown event_types return successfully — callers decide
+// what to do (typically: ignore).
+function decodeMatchEvent(bytes) {
+    const hdr = peekFrameHeader(bytes);
+    if (!hdr || hdr.msgType !== MSG.MATCH_EVENT) return null;
+    if (hdr.payloadLen < MATCH_EVENT_HEADER_BYTES) return null;
+    if (bytes.byteLength !== FRAME_HEADER_BYTES + hdr.payloadLen) return null;
+
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const base = FRAME_HEADER_BYTES;
+    const tickNum        = dv.getUint32(base + 0, true);
+    const eventType      = dv.getUint8 (base + 4);
+    const eventPayloadSz = dv.getUint16(base + 5, true);
+
+    const expectedPayload = MATCH_EVENT_HEADER_BYTES + eventPayloadSz;
+    if (hdr.payloadLen !== expectedPayload) return null;
+
+    // Copy out so caller can retain past the WS message lifetime.
+    const start = base + MATCH_EVENT_HEADER_BYTES;
+    const src   = new Uint8Array(bytes.buffer,
+                                 bytes.byteOffset + start,
+                                 eventPayloadSz);
+    const payload = new Uint8Array(eventPayloadSz);
+    payload.set(src);
+
+    return { tickNum, eventType, payload };
+}
+
+// Decode a Goal event's payload (5-byte ADR §22.25 v1 layout). Returns:
+//   { version, regionIndex, kickerSlot }
+// or null on wrong length / unknown version. `kickerSlot === 0` means
+// "unknown kicker" (loose ball or attribution cleared) per the ADR.
+// Bytes past position 4 are ignored so a future v1.1 with extra tail
+// bytes still decodes here.
+function decodeGoalPayloadV1(payload) {
+    if (!payload || payload.byteLength < GOAL_PAYLOAD_V1_BYTES) return null;
+    const version = payload[0];
+    if (version !== GOAL_PAYLOAD_V1_VERSION) return null;
+    return {
+        version,
+        regionIndex: payload[1],
+        kickerSlot:  payload[2] | (payload[3] << 8),
+        // payload[4] reserved
+    };
+}
+
 // Export as a global namespace so classic <script> tags can consume it
 // without ES-module glue (matches the rest of frontend/js/*).
 window.FhSimWire = Object.freeze({
@@ -319,6 +413,7 @@ window.FhSimWire = Object.freeze({
     INPUT_FLAG,
     MOTION_STATE,
     WIRE_CAP,
+    EVENT_TYPE,
     SCENARIO_MODE,
     BALL_OWNER_LOOSE,
     FRAME_HEADER_BYTES,
@@ -336,9 +431,15 @@ window.FhSimWire = Object.freeze({
     BALL_REGION_BYTES,
     SCENARIO_META_HEADER_BYTES,
     SCENARIO_META_VERTEX_BYTES,
+    MATCH_EVENT_HEADER_BYTES,
+    GOAL_PAYLOAD_V1_BYTES,
+    GOAL_PAYLOAD_V1_VERSION,
+    GOAL_KICKER_SLOT_UNKNOWN,
     encodeInput,
     peekFrameHeader,
     decodeHelloAck,
     decodeSnapshot,
     decodeScenarioMeta,
+    decodeMatchEvent,
+    decodeGoalPayloadV1,
 });

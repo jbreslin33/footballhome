@@ -26,6 +26,11 @@ enum class MsgType : std::uint8_t {
     HelloAck     = 0x02,
     ScenarioMeta = 0x03,   // Slice 17.7a (§7.4): scenario metadata, once
                            //                     immediately after HELLO_ACK
+    MatchEvent   = 0x04,   // Slice 28.4 (§7.6, ADR §22.25 wire-side sibling):
+                           //   server-pushed match-event frame carrying one
+                           //   sim_match_events row (event_type + versioned
+                           //   payload). Broadcast per-tick when the server
+                           //   advertises kWireCapMatchEventFrame.
     Snapshot     = 0x10,
     Input        = 0x20,
     ClaimSlot    = 0x30,
@@ -99,7 +104,14 @@ inline constexpr std::uint16_t kBallOwnerLoose          = 0xFFFFu;
 //   bit 0 = SnapshotBallTrailer   // SNAPSHOT may carry the v1.1 ball trailer
 //   bit 1 = ScenarioMeta          // Server WILL emit SCENARIO_META once,
 //                                 // immediately after HELLO_ACK (Slice 17.7a)
-//   bit 2 = (reserved for MatchEventFrame — Slice 28 / ADR §22.24)
+//   bit 2 = MatchEventFrame       // Server WILL emit MATCH_EVENT frames
+//                                 // (msg_type 0x04) for match events whose
+//                                 // storage-side row is written to
+//                                 // sim_match_events (Slice 28.4, wire-side
+//                                 // sibling to storage ADR §22.25). Clients
+//                                 // that see this bit unset MUST NOT expect
+//                                 // any 0x04 traffic and should treat any
+//                                 // stray 0x04 frame as a protocol error.
 //   bit 3 = InputKickTrailer      // Server accepts the length-prefixed
 //                                 // kick trailer on INPUT frames; client
 //                                 // MUST grey out its kick UI when this
@@ -107,6 +119,7 @@ inline constexpr std::uint16_t kBallOwnerLoose          = 0xFFFFu;
 // -----------------------------------------------------------------------
 inline constexpr std::uint16_t kWireCapSnapshotBallTrailer = 1u << 0;
 inline constexpr std::uint16_t kWireCapScenarioMeta        = 1u << 1;
+inline constexpr std::uint16_t kWireCapMatchEventFrame     = 1u << 2;   // Slice 28.4
 inline constexpr std::uint16_t kWireCapInputKickTrailer    = 1u << 3;   // Slice 26.2
 
 // -----------------------------------------------------------------------
@@ -156,5 +169,39 @@ inline constexpr std::size_t kMaxSnapshotEntities =
 // Max vertices that fit in one SCENARIO_META under the u16 payload cap.
 inline constexpr std::size_t kMaxScenarioMetaVertices =
     (kMaxPayloadBytes - kScenarioMetaHeaderBytes) / kScenarioMetaVertexBytes;
+
+// -----------------------------------------------------------------------
+// MATCH_EVENT payload layout (§7.6, Slice 28.4 / ADR §22.25 wire-side).
+//
+// Sent by the server whenever it writes a row to `sim_match_events` that
+// clients need to see live (Slice 28.4 currently emits Goal only; future
+// events will piggy-back here). The frame wraps ONE sim_match_events row:
+// event_type + tick_num + the exact versioned payload bytes that also
+// landed in Postgres. Keeping DB and wire in byte-lockstep means every
+// wire consumer (goal-flash HUD, live scoreboard) already knows the
+// migration-221 decoder rules — no parallel wire-specific payload spec.
+//
+// Payload layout (variable, min = kMatchEventHeaderBytes = 7):
+//   [u32 tick_num]                // matches sim_match_events.tick_num
+//   [u8  event_type]              // matches persistence::EventType byte value
+//   [u16 event_payload_len]       // == sim_match_events.payload length
+//   [u8  event_payload[event_payload_len]]
+//
+// For a Goal event (event_type=9), event_payload_len == kGoalPayloadV1Bytes
+// (=5) and the bytes are the ADR §22.25 v1 layout:
+//   [u8 ver=1][u8 region][u16 kicker_slot_id LE][u8 reserved=0]
+//
+// Total on-the-wire for a Goal frame: kFrameHeaderBytes(4)
+//                                     + kMatchEventHeaderBytes(7)
+//                                     + kGoalPayloadV1Bytes(5) = 16 bytes.
+//
+// The u16 event_payload_len is the forward-compat hook: a Goal-v2 payload
+// growing to 12 bytes bumps only event_payload_len; v1 decoders parse
+// [0..4] and ignore [5..11] (per ADR §22.25's "readers parse what they
+// know, skip the tail" convention). Unknown event_types are legitimate
+// too — clients that don't recognise an event_type MUST skip the frame
+// and continue reading, NOT tear down the session.
+// -----------------------------------------------------------------------
+inline constexpr std::size_t kMatchEventHeaderBytes = 4 + 1 + 2;   // 7
 
 } // namespace fh::sim::net

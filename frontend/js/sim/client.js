@@ -257,6 +257,33 @@ async function resolveSimJwt(matchId) {
             renderer.setScenarioMeta(meta);
         },
 
+        onMatchEvent: (ev) => {
+            // Slice 28.4: server pushed a sim_match_events row that we
+            // should react to visually. Only Goal (event_type=9) is
+            // actioned in this slice; other event types decode fine
+            // but land as a no-op here so a future server can add
+            // events without a frontend release.
+            if (ev.eventType !== FhSimWire.EVENT_TYPE.GOAL) {
+                return;
+            }
+            const p = FhSimWire.decodeGoalPayloadV1(ev.payload);
+            if (!p) {
+                // Wrong length, wrong version, or truncated. Drop
+                // silently — flashing the screen on a malformed
+                // payload would be noisier than the miss.
+                console.warn('[sim] MATCH_EVENT Goal payload malformed', ev);
+                return;
+            }
+            renderer.triggerGoalFlash(p.regionIndex);
+            state.goalCount = (state.goalCount || 0) + 1;
+            state.lastGoal  = { tick: ev.tickNum, region: p.regionIndex,
+                                kicker: p.kickerSlot };
+            console.log('[sim] GOAL region=' + p.regionIndex
+                        + ' kicker=' + p.kickerSlot
+                        + ' tick=' + ev.tickNum
+                        + ' total=' + state.goalCount);
+        },
+
         onSnapshot: (snap) => {
             const now = performance.now();
             interpolator.pushSnapshot(snap, now);

@@ -24,6 +24,12 @@ class FhSimTransport {
     //                           WIRE_CAP.SCENARIO_META
     //   onSnapshot(snap):     { tick, matchTimeMs, entities: [...],
     //                           ball: null | {...} }
+    //   onMatchEvent(ev):     { tickNum, eventType, payload: Uint8Array }
+    //                         — Slice 28.4; server pushes one frame per
+    //                           sim_match_events row it writes when the
+    //                           server advertises WIRE_CAP.MATCH_EVENT_FRAME.
+    //                           The payload bytes are the same versioned
+    //                           bytes stored in Postgres (see ADR §22.25).
     //   onEvent(bytes):       raw EVENT payload (M1+ — kept as a hook)
     //   onClose(evt):         WebSocket CloseEvent
     //   onError(err):         transport-level error string
@@ -34,6 +40,7 @@ class FhSimTransport {
         this.onHelloAck     = opts.onHelloAck     || function () {};
         this.onScenarioMeta = opts.onScenarioMeta || function () {};
         this.onSnapshot     = opts.onSnapshot     || function () {};
+        this.onMatchEvent   = opts.onMatchEvent   || function () {};
         this.onEvent        = opts.onEvent        || function () {};
         this.onClose        = opts.onClose        || function () {};
         this.onError        = opts.onError        || function () {};
@@ -86,6 +93,15 @@ class FhSimTransport {
             case FhSimWire.MSG.SCENARIO_META: {
                 const meta = FhSimWire.decodeScenarioMeta(dv);
                 if (meta) this.onScenarioMeta(meta);
+                return;
+            }
+            case FhSimWire.MSG.MATCH_EVENT: {
+                // Slice 28.4: server-pushed sim_match_events row.
+                // Malformed frames are silently dropped — the wire
+                // spec says "unknown / broken event frames MUST NOT
+                // tear down the session".
+                const ev = FhSimWire.decodeMatchEvent(dv);
+                if (ev) this.onMatchEvent(ev);
                 return;
             }
             case FhSimWire.MSG.SNAPSHOT: {
