@@ -4,7 +4,7 @@
 **Owner:** footballhome
 **Scope:** authoritative multi-player tactical football simulator, server-side C++, browser client, binary wire, member-only auth.
 
-> **Slice 26 status (2026-07-16):** fully **CLOSED**. Final goldens: `kExpectedHashPassEast400 = 0xd2287a0b3981f04d`, `kExpectedHashPassReceive200 = 0xdaa7989a56a58f5f` (47/47 sim tests green, 11 determinism goldens internal). Next real work is **Slice 27 (player-player collisions)** — blocked on **ADR §22.24** landing.
+> **Slice 26 status (2026-07-16):** fully **CLOSED**. Final goldens: `kExpectedHashPassEast400 = 0xd2287a0b3981f04d`, `kExpectedHashPassReceive200 = 0xdaa7989a56a58f5f` (47/47 sim tests green, 11 determinism goldens internal). Next real work is **Slice 27 (player-player collisions)** — blocked on **ADR §22.24** landing. **ADR §22.25 (event-payload versioning + `EventType::Goal=9`) drafted 2026-07-16** to unblock Slice 28 whenever Slice 27 lands.
 
 ---
 
@@ -2540,7 +2540,7 @@ So the wire needs 8 additional bytes on the kick tick. Same shape of problem §2
 
 + **Additive, HTTP-1.1-style extensibility carried through to the client → server direction.** Slice 27's collisions ADR and Slice 28's shots ADR (`MatchEvent::Goal`) both have precedent for adding fields without version bumps. The trailer's u16 length prefix means a future `kick_power_hint` promotion to a full `curl_axis` (adding 4 bytes) is a `kInputKickRegionBytes` bump with legacy 28-byte payloads still decoding cleanly against older servers (they parse first 10 bytes, ignore the tail).
 + **Wire version stays `0x01`.** No decoder branches on version anywhere in the stack. Consistent with §22.20's decision for SNAPSHOT.
-+ **Server-side capability negotiation reuses the HELLO_ACK bit-flag channel** established in §22.20. Bit 3 slots in without any new payload widening. Bit assignments so far: bit 0 = SnapshotBallTrailer (§22.20), bit 1 = ScenarioMeta (§22.22), bit 2 = MatchEventFrame (reserved for Slice 28 / ADR §22.24), bit 3 = InputKickTrailer (this ADR). Remaining 12 bits free.
++ **Server-side capability negotiation reuses the HELLO_ACK bit-flag channel** established in §22.20. Bit 3 slots in without any new payload widening. Bit assignments so far: bit 0 = SnapshotBallTrailer (§22.20), bit 1 = ScenarioMeta (§22.22), bit 2 = MatchEventFrame (reserved for Slice 28.4 — storage-side design in §22.25), bit 3 = InputKickTrailer (this ADR). Remaining 12 bits free.
 + **`sim_match_inputs.payload` stays queryable with a single decoder function.** Migration 218 extends `sim_decode_input` additively — no `_v2` variant, no column-level branching. Non-kick rows continue to decode with the same 5-field jsonb shape they've always had.
 + **UX contract is explicit.** Client MUST grey out the kick button when bit 3 is unset. Older sims (pre-Slice-26.2) that don't send bit 3 automatically get a kick-disabled client — no confusing "kick button lights up but nothing happens" state. Slice 26.2 client code adds a `state.capabilities.canKick` boolean fed from the HELLO_ACK parse; the kick handler no-ops when it's false.
 
@@ -2558,6 +2558,119 @@ So the wire needs 8 additional bytes on the kick tick. Same shape of problem §2
 - **M4 WASM lockstep client (§20) forces Fixed64 words on INPUT too** — that's the natural v2 boundary shared with §22.20's SNAPSHOT-side rewrite. This ADR does not close that door.
 
 **Refs**: §7.3 (INPUT payload — v1.1 addendum is this ADR), §7.1 (HELLO_ACK cap-bit table — bit 3 added here), §22.0 (ADR append-only rule), §22.20 (SNAPSHOT-trailer extension pattern this ADR mirrors), §22.22 (SCENARIO_META cap-bit precedent), §24.6 (M2 → M3 transition prereq item that this ADR closes), §24.3 Slice 26.1 (`physical.pass_power` attribute row this ADR's trailer will drive), §24.3 Slice 26.2 (implementation slice that lands this ADR), §21.3 (pre-M3 fix list — `sim_decode_input` version handling now defined explicitly by migration 218).
+
+### 22.24 [reserved 2026-07-16] Player-player collision resolution — Slice 27
+
+**Status**: **reserved, not drafted.** Placeholder integer for the Slice 27 collision-resolution decision (circle-circle positional-clamp + tangential-slide vs alternatives; `body_mass` vs `contact_radius` weighting; ball-owned exclusion rule). Draft to land alongside Slice 27.1 implementation. Whoever picks up Slice 27 first drafts this ADR against the recommendation at §24.3 → "Player-player collisions" bullet list, then implements. Do not implement Slice 27 code before this ADR lands — the decision matrix has real trade-offs that need explicit review (elastic-vs-clamp affects downstream shot mechanics, mass-vs-radius affects the attribute registry footprint).
+
+**When you draft this**: mirror §22.23's structure (Status / Context / Options considered / Chosen / Layout or Algorithm / Constants / Decoder or Emitter contract / When to revisit / Refs). Options to enumerate: (a) positional-clamp only, (b) positional-clamp + tangential-slide, (c) impulse-based elastic with restitution=0.2, (d) impulse-based inelastic (positional + zero-velocity along normal), (e) sweep-based (CCD) for high-speed contacts. Recommendation from §24.3 is (b) — cheap, deterministic, coach-legible, no restitution to tune.
+
+### 22.25 [2026-07-16] `sim_match_events.payload` versioning + `EventType::Goal` (id=9) — Slice 28
+
+**Status**: **draft, not yet implemented.** Locks the payload-versioning convention for new `sim_match_events` event types starting with `Goal` (Slice 28.1). Existing event types (`MatchStart`=1 through `ScenarioReset`=8) are **grandfathered unversioned** — retrofit forbidden. Migration 221 will land the `sim_decode_event` extension + the enum addition; no code change to existing event emitters. Goal-emitting code path is Slice 28.3 (`Match::tick` post-physics goal-detection loop), gated by Slice 28.2's `Scenario::goalRegions()` API.
+
+**Context**: §21.3 pre-M3 fix list flagged that `sim_matches.result BYTEA` had no versioned schema. That fix was resolved for the `result` column when the M0 `MatchEnd` handler was landed in Slice 13 — the column carries the 8-byte canonical hash today and nothing else. **The unresolved half of that same concern is `sim_match_events.payload`**: today it's a per-event-type ad-hoc blob (empty for `MatchStart`; 8-byte hash big-endian for `MatchEnd`; empty-or-slot-id for `ClientConnect`/`SlotClaim`/…) with the format documented only in `sim/src/persistence/EventTypes.hpp`'s comment and migration 201's `sim_decode_event()` function. That's tenable for the M0/M1 event types (1..8), which are transport-scope events whose payloads have never had a reason to grow. **Slice 28 breaks that**: `Goal` will carry payload data that we will absolutely want to extend later (add ball position on v2, add assist-slot on v3, add xG estimate on v4, …). Without a version convention, either every extension mutates the payload layout retroactively (breaking `sim_decode_event` on historical rows), or every event grows a bespoke "does this look like the new shape?" branch in decoders.
+
+**Options considered**:
+
+1. **A — first byte of `payload` is version tag on every NEW event type; grandfather 1..8 unversioned.** Migration 221 extends `sim_decode_event()` with a branch: for `event_type >= 9`, read `payload[0]` as version and dispatch to a per-version decoder. For `event_type in (1..8)`, keep the existing layout (empty / 8-byte hash / etc.) unchanged. Wire-audit stability preserved; no historical row rewrite.
+2. **B — retrofit version byte on every event type**, migrating existing rows. Rejected: (a) `MatchEnd`'s 8-byte hash is byte-for-byte the FNV-1a-64 canonical hash, and any prefix would break `fh-sim-replay --verify`'s `memcmp` against `Match::hash()`; (b) requires backfilling every `sim_match_events` row in production DBs (single-row today, non-trivial as multi-match orchestration lands and event volume grows); (c) the retrofit itself would violate the "wire-visible byte contract, never renumber" invariant §22.9 applies to registry IDs and that `EventType` inherits from.
+3. **C — version tag as a new column** (`sim_match_events.payload_version SMALLINT NOT NULL DEFAULT 0`). Rejected: (a) doubles the row width for a byte-level concern, (b) NULL vs 0 vs "grandfathered legacy" ambiguity, (c) `payload` remains ambiguous when accessed without the column, (d) forever-more the ops decoder needs both `event_type` AND `payload_version` to route.
+4. **D — new table `sim_match_events_v2` with a strict schema.** Rejected: forks `AsyncPgLog<EventRow>`'s single write path into two paths, forks `sim_decode_event` into two functions, forks `fh-sim-replay`'s event-load logic — for a per-event-type concern that option A solves inside the existing table with 1 byte.
+5. **E — `EventType::Goal` payload starts with a version byte, later event types decide independently.** Legitimate but weaker than A — it locks the pattern only for `Goal`, leaves the next event type (10, 11, …) to re-negotiate the same convention. A codifies the rule for all future events.
+
+**Chosen**: **Option A — first byte of payload is version tag for event types with id ≥ 9; existing 1..8 grandfathered unversioned.** Convention:
+
+- **Grandfathered** (`event_type` in 1..8): payload layout is exactly what `sim_decode_event()` decodes today. Never gains a version byte. Documented in `EventTypes.hpp` inline comments.
+- **Versioned** (`event_type` ≥ 9): payload MUST start with `[u8 version]` at offset 0. Version 0 is reserved (represents "unversioned" — reserved because it collides with grandfather semantics and MUST NOT be emitted for a new event type). First real version is `1`. `sim_decode_event()` for `event_type ≥ 9` reads `payload[0]`, branches on version, and returns the appropriate jsonb shape.
+- **Version bump is APPEND-ONLY** per the same §22.9 stability rule — a v2 layout MUST be a strict superset of v1 (add fields at the tail, never rearrange). A schema-breaking change requires a new `event_type` id, not a v2.
+- **Unknown versions** are decoded as `{version: N, payload_hex: '...'}` — the sim never rejects unknown-version rows; ops tooling degrades gracefully.
+
+**Goal payload v1 layout** (5 bytes total):
+
+```
+[u8  version]           // offset 0     — always 1 in Slice 28
+[u8  goal_region_index] // offset 1     — 0..N-1 index into Scenario::goalRegions()
+[u16 kicker_slot_id]    // offset 2..3  — SlotId of the last kicker; 0 = unknown
+                        //                (loose ball with no recent kick,
+                        //                 or scenario-triggered goal)
+[u8  reserved]          // offset 4     — MUST be 0 in v1 emitters; readers ignore
+```
+
+Rationale for each field:
+
+- `version` (1 byte): the whole point of this ADR.
+- `goal_region_index` (1 byte): which of the scenario's goal AABBs the ball crossed into. `Scenario::goalRegions()` returns an ordered vector, index is the position. Scenario decides what each index means (home / away / drill / etc.). u8 caps at 255 regions, plenty for M2 (two goals) and any conceivable M3+ drill.
+- `kicker_slot_id` (2 bytes): last slot to assert `wants_kick` before the ball entered the region. Enables "who scored" attribution without a separate `LastKickerLog`. u16 matches the width used in `SlotClaim` payloads (grandfathered event 5).
+  - Value `0` means "no recent kicker" — either the goal was scenario-triggered (drills that spawn moving balls), or `wants_kick` was never asserted since ball entry to the current owner (e.g., own goal from a dribble carry crossing the line). Kept explicit rather than implicit-null so `sim_decode_event` doesn't have to branch on NULL vs 0.
+  - Slot IDs in production are 1..22, so 0 is safely disjoint.
+- `reserved` (1 byte): padding to 5 bytes and forward-compat headroom. v2 will consume this byte for something (candidate: `ball_speed_at_entry` as u8 m/s * 8 for xG-lite).
+
+**Decoder contract** (`sim_decode_event` in migration 221, extending migration 201):
+
+```sql
+-- Existing branches for event_type in (1..8) unchanged.
+-- New branch:
+IF evt_type >= 9 THEN
+    IF payload IS NULL OR length(payload) < 1 THEN
+        RETURN jsonb_build_object('error', 'missing version byte');
+    END IF;
+
+    v := get_byte(payload, 0);
+
+    IF evt_type = 9 THEN  -- Goal
+        IF v = 1 THEN
+            RETURN jsonb_build_object(
+                'event_type',       'goal',
+                'version',          1,
+                'goal_region_index', get_byte(payload, 1),
+                'kicker_slot_id',    (get_byte(payload, 2) * 256) + get_byte(payload, 3),
+                'payload_hex',       encode(payload, 'hex')
+            );
+        ELSE
+            RETURN jsonb_build_object(
+                'event_type',   'goal',
+                'version',       v,
+                'payload_hex',   encode(payload, 'hex'),
+                'note',          'unknown goal payload version'
+            );
+        END IF;
+    END IF;
+
+    -- Future event types (10, 11, …) branch here.
+
+    RETURN jsonb_build_object(
+        'event_type',  evt_type,
+        'version',      v,
+        'payload_hex', encode(payload, 'hex'),
+        'note',        'unknown versioned event type'
+    );
+END IF;
+```
+
+**Emitter contract** (Slice 28.3, `Match::tick`):
+
+- Once per tick, after physics integration but before snapshot construction, check the ball's current position against every `AABB` returned by `scenario_->goalRegions()`.
+- If the ball entered a new region this tick (i.e. was outside all regions last tick, inside region N this tick), enqueue an `EventRow` with `event_type = 9`, `tick_num = current_tick`, and the 5-byte v1 Goal payload described above.
+- `kicker_slot_id` is populated from `Match`'s existing `last_kicker_slot_` tracking (new field added in Slice 28.3, cleared when a slot claims ownership via Rule 1, set when a slot's INPUT includes `wants_kick=true`).
+- After the event is enqueued, `Match` may reset the ball to the centre spot for continuation, or fire `ScenarioSuccess` (event 7) if `Scenario::checkSuccess(...)` transitions true because of the goal. That's a scenario-per-scenario policy decision, NOT part of this ADR.
+
+**Constants** (`sim/src/persistence/EventTypes.hpp` additions):
+
+- `EventType::Goal = 9`
+- `kGoalPayloadV1Bytes = 5`
+- `kGoalPayloadV1Version = 1`
+- `kGoalKickerSlotUnknown = 0`
+
+**When to revisit**:
+
+- **A new event type wants a non-versioned payload** (e.g. a raw canonical hash again, like `MatchEnd`). Rejected pre-emptively — versioning is the whole reason we're here. If a future event genuinely wants zero payload overhead, the event carries a `version=0` sentinel and the decoder documents "0 = no-body event for id N".
+- **The reserved byte at offset 4 is claimed.** That becomes Goal v2. Extension MUST be backward-compatible per the append-only rule: readers of v1 continue to work against a v2 emitter (they read the 5 bytes they know about and ignore the rest); readers of v2 detect `version == 1` and don't read the extended fields.
+- **`goal_region_index` needs more than 255 values.** Bump to u16, that's a v2. In practice not remotely a concern for M2/M3 (a drill with 256+ goals doesn't exist as a design pattern).
+- **`kicker_slot_id` needs assist attribution.** v2 adds `[u16 assist_slot_id]` at offset 5. Extends payload to 7 bytes total. Decoder reads it only if `length(payload) >= 7 && version >= 2`.
+- **Cross-match determinism gate**: goal events are emitted into `sim_match_events` and thus become part of any cross-arch replay diff. Slice 28.5's determinism golden (`goal_from_kick_east_200_ticks_seed_42`) MUST include a Goal event with predictable payload bytes. If the golden hash drifts because of an unintended `kicker_slot_id` change, that's a real bug in `Match`'s last-kicker tracking, not a golden-update situation.
+
+**Refs**: §8 (schema — `sim_match_events` row shape unchanged; only payload semantic gains a rule), §16.6 (Slice 13 persistence spec — where `EventTypes.hpp` was defined), §21.3 (pre-M3 fix list — half of "no versioned schema" is now closed for `sim_match_events.payload`; the other half was closed for `sim_matches.result` in Slice 13 already), §22.9 (registry ID / enum stability rule that `EventType` inherits from), §22.12 (persistence architecture ADR), §22.23 (parallel wire-side length-prefixed extension pattern — this ADR is the storage-side sibling), §24.3 Slice 28.1 (implementation slice that lands migration 221 + the `EventType::Goal = 9` enum value), §24.3 Slice 28.3 (goal-detection loop that emits the payload), §24.3 Slice 28.5 (determinism golden that locks it).
 
 ---
 
@@ -2786,7 +2899,7 @@ From [§15](#15-milestone-plan): **"Multi-player interactions: collisions, first
 - Slice numbering: 24.x through 25.x already shipped (see §24.3 log). Forward slices continue at 26.x for pass primitive, 27.x for collisions, 28.x for shots, 29.x for M2 close-out. Slice numbers do NOT track milestone number — they are a repo-wide monotonic counter that jumped from 18 (M1 close) to 24 (first M2 slice) intentionally to leave 19–23 unused for future reserved work.
 - Each slice ends with a green ctest gate (47/47 as of Slice 24.3b) plus a coach-visible demo reachable from `frontend/tactical-games.html`.
 - Every determinism gate (§22.1 bit-exact, §22.2 Fixed64, §22.9 registry ID stability, §22.14 write policy, ADR §22.18 profile-row storage, §16.6 boot-time drift guard) MUST stay green at the end of every slice. Any golden hash rotation MUST be intentional (i.e., the scenario producing the new hash is what exercises the new mechanic — see Slice 24.3b's `kExpectedHashBallOnPitchWithDefender400` rotation for the pattern).
-- New ADRs land at the next available integer in chronological order — never re-numbered per §22.0. §22.23 landed 2026-07-16 (Slice 26.2 kick trailer); §22.24 is reserved for the Slice 27 collision-resolution decision (draft below). **Next available for a new ADR is §22.25.**
+- New ADRs land at the next available integer in chronological order — never re-numbered per §22.0. §22.23 landed 2026-07-16 (Slice 26.2 kick trailer); §22.24 is reserved for the Slice 27 collision-resolution decision (draft below); §22.25 landed 2026-07-16 (Slice 28 event-payload versioning + `EventType::Goal=9`). **Next available for a new ADR is §22.26.**
 - SQL migrations continue at 218+ (216 landed with Slice 24.3b as `216-sim-attr-press-resistance.sql`; 217 landed with Slice 26.1 as `217-sim-attr-pass-power.sql`).
 - CI lint gate (`sim/Dockerfile`) gains a new script per invariant added — same shape as the four M1-era checks (`check_no_floats`, `check_no_bad_rng`, `check_no_hardcoded_attrs`, `check_profile_write_policy`).
 
@@ -2836,12 +2949,12 @@ Grouped by subsystem, mirroring §23.2's checkbox style. Tick in place as work l
 - [ ] Ball-player collision behavior: currently the ball glues 0.4 m ahead of the owner. Non-owner slots that intersect the ball's radius during the physics step MUST NOT kick the ball (only `wants_kick` does). Guard with a "ball-owned excludes ball from collision list" check in BasicPhysics.
 - [ ] Determinism goldens: `two_humans_collide_head_on_200_ticks_seed_42`, `collision_ball_passthrough_owned_400_ticks_seed_42`.
 
-**Shots (net-boundary interaction)** (forward slice 28 — not started)
+**Shots (net-boundary interaction)** (forward slice 28 — not started; **§22.25 drafted 2026-07-16**)
 
 - [ ] `Scenario::goalRegions()` — vector of axis-aligned rectangles per goal. `EmptyPitchScenario` returns empty; a new `GoalDrillScenario` returns two rectangles at pitch ends.
-- [ ] `Match::tick` post-physics: if `ball.position` crosses a `goalRegions[i]` rectangle, log a `MatchEvent::Goal` (new event type — migration 221) and freeze the ball on the goal line. Detection is AABB inclusion, not swept-line — M2 accepts the tunneling risk (a 15 m/s kick over one 50 ms tick moves the ball 0.75 m, and goal areas are ≥ 5 m deep, so tunneling requires kick_speed > 100 m/s which is unphysical).
-- [ ] `sim_match_events.result` versioning per §21.3 (first byte = version tag). Migration 221 introduces version=1 payload with `[u8 version][u8 event_subtype][u16 slot_id][3×f32 ball_pos]` for the Goal event. This closes §21.3's `sim_matches.result BYTEA has no versioned schema` before we accumulate any legacy blobs.
-- [ ] Frontend goal-flash animation on Goal event. Wire-side: append MATCH_EVENT frame type (msg_type 0x04, capability bit 2). ADR §22.24 draft covers this.
+- [ ] `Match::tick` post-physics: if `ball.position` crosses a `goalRegions[i]` rectangle, log a `MatchEvent::Goal` (event_type=9, migration 221) and freeze the ball on the goal line. Detection is AABB inclusion, not swept-line — M2 accepts the tunneling risk (a 15 m/s kick over one 50 ms tick moves the ball 0.75 m, and goal areas are ≥ 5 m deep, so tunneling requires kick_speed > 100 m/s which is unphysical).
+- [ ] `sim_match_events.payload` versioning per **ADR §22.25** (drafted 2026-07-16; first byte = version tag for `event_type ≥ 9`; `event_type in (1..8)` grandfathered unversioned). Migration 221 introduces the version=1 Goal payload: `[u8 version][u8 goal_region_index][u16 kicker_slot_id][u8 reserved]` = 5 bytes total (see §22.25's Goal payload v1 layout for field semantics).
+- [ ] Frontend goal-flash animation on Goal event. Wire-side: append MATCH_EVENT frame type (msg_type 0x04, HELLO_ACK capability bit 2) — covered by §22.25's "when to revisit" clause on the wire-side sibling to the storage-side ADR. Slice 28.4 lands the wire message; Slice 28.1–28.3 keep the goal event storage-only.
 - [ ] Determinism golden: `goal_from_kick_east_200_ticks_seed_42`.
 
 **M2 close-out** (Slice 29)
@@ -2896,9 +3009,9 @@ Slice numbering continues from Slice 18 (M1 close-out). §16.7 warm-daemon-pool 
 
 **Slice 27 exit gate**: coach opens `BallOnPitchWithDefender`, the defender can no longer occupy the same 2D position as the coach; when the coach tries to walk through the defender they slide off. Ball ownership survives close contact (defender presses ≠ collides through ball).
 
-**Slice 28 — Shots on goal + versioned match events** (not started)
+**Slice 28 — Shots on goal + versioned match events** (not started; **ADR §22.25 drafted 2026-07-16** — implementation blocked only on Slice 27 landing first per §24 ordering)
 
-- 28.1 Migration 221 (event schema versioning per §21.3 pre-M3 fix) — first byte of `sim_match_events.payload` = version tag. Add `EventType::Goal` at id 5. Wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04). ADR §22.24 draft.
+- 28.1 Migration 221 (event schema versioning per §22.25) — first byte of `sim_match_events.payload` = version tag for `event_type >= 9`; `event_type in (1..8)` remain grandfathered unversioned. Add `EventType::Goal` at id **9** (next available in the append-only enum after `ScenarioReset=8`). `sim_decode_event()` extended per §22.25's decoder contract. **No wire change in 28.1** — Slice 28.4 is the client-visible slice that bumps wire v1.2 capability bit 2 for `MatchEventFrame` (msg_type 0x04).
 - 28.2 `Scenario::goalRegions()` API. `EmptyPitchScenario` returns empty. New `GoalDrillScenario` returns two AABBs at pitch ends.
 - 28.3 `Match::tick` post-physics goal-detection loop.
 - 28.4 Frontend goal-flash animation + score HUD.
@@ -2945,7 +3058,7 @@ Tick in place as work lands. All must be green for M2 to be considered complete.
 Analogous to §21.2 and §21.7. Track new blockers here as they emerge. Currently known before Slice 26 starts:
 
 - [x] **Wire v1.2 vs additive v1.1 extension.** Resolved 2026-07-16 as ADR §22.23: option (a) — length-prefixed extension trailer on INPUT, mirroring §22.20's SNAPSHOT-trailer pattern; server-declared HELLO_ACK cap bit 3 (`kWireCapInputKickTrailer`) gates the client's use of the trailer. Slice 26.2 implements the ADR; no wire version bump.
-- [ ] **`sim_match_events.payload` versioning** (already on §21.3 pre-M3 list). Slice 28.1 forces this to land in M2, one milestone earlier than the §21.3 estimate. First byte = version tag. Migration 217 introduces version=1 layout for `MatchEvent::Goal`.
+- [ ] **`sim_match_events.payload` versioning** (already on §21.3 pre-M3 list). Slice 28.1 forces this to land in M2, one milestone earlier than the §21.3 estimate. Resolved as **ADR §22.25 (drafted 2026-07-16)**: first byte of payload = version tag for `event_type ≥ 9`; `event_type in (1..8)` grandfathered unversioned. Migration 221 introduces the version=1 Goal payload (5 bytes: `[u8 version][u8 goal_region_index][u16 kicker_slot_id][u8 reserved]`) and `EventType::Goal = 9`.
 - [ ] **DefenderController → AiController migration path.** Slice 24.3a's DefenderController is a hand-rolled controller. When M3's utility-AI lands, the migration is: (a) create a `PursueBallBehavior` `IBehavior` implementation, (b) plug it into `AiController` with concept gate on `pursue_ball_carrier` (concept added in M3), (c) delete `DefenderController.{hpp,cpp}`. Migration should be a single M3 slice; catalogue as pre-M3 sanity check that no scenario uses `DefenderController` as a stable API before then.
 - [ ] **Collision → determinism-golden rotation surface.** Slice 27 rotates 3 goldens. Confirm no third-party (external test harness, replay tool) depends on the specific hashes before flipping. Currently the only consumer is `sim/tests/test_determinism.cpp` in-tree.
 - [ ] **Ball trailer format capacity.** ADR §22.20's trailer is length-prefixed but the outer SNAPSHOT frame length is u16 (~64 KB cap). With 22 slots + 1 ball at ~30 bytes each we're at ~700 bytes/snapshot. M4+ (11v11 = 22 slots + ball + potentially event annotations) plus any per-slot extension pushes toward the cap. Not an M2 blocker; catalogue for M4 planning.
