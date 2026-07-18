@@ -321,8 +321,9 @@ class MyScreen extends Screen {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const going = rsvps.filter(r => r && r.response === 'yes');
     const notGoing = rsvps.filter(r => r && r.response === 'no');
+    const notResponded = rsvps.filter(r => r && !r.response);
 
-    if (!going.length && !notGoing.length) {
+    if (!going.length && !notGoing.length && !notResponded.length) {
       return `
         <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
                     border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
@@ -340,13 +341,16 @@ class MyScreen extends Screen {
     const notGoingNames = notGoing
       .map(r => (r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim()))
       .filter(Boolean);
+    const notRespondedNames = notResponded
+      .map(r => (r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim()))
+      .filter(Boolean);
     const chip = (name, tone) => `
       <span style="display:inline-flex; align-items:center;
                    padding:3px 8px; border-radius:9999px; font-size:0.78rem; font-weight:700;
                    white-space:nowrap;
-                   color:${tone === 'yes' ? '#bbf7d0' : '#fecaca'};
-                   background:${tone === 'yes' ? 'rgba(22,101,52,0.34)' : 'rgba(127,29,29,0.28)'};
-                   border:1px solid ${tone === 'yes' ? 'rgba(34,197,94,0.34)' : 'rgba(248,113,113,0.32)'};">
+                   color:${tone === 'yes' ? '#bbf7d0' : tone === 'no' ? '#fecaca' : '#cbd5e1'};
+                   background:${tone === 'yes' ? 'rgba(22,101,52,0.34)' : tone === 'no' ? 'rgba(127,29,29,0.28)' : 'rgba(71,85,105,0.34)'};
+                   border:1px solid ${tone === 'yes' ? 'rgba(34,197,94,0.34)' : tone === 'no' ? 'rgba(248,113,113,0.32)' : 'rgba(148,163,184,0.28)'};">
         ${this.escapeHtml(name)}
       </span>`;
 
@@ -357,18 +361,26 @@ class MyScreen extends Screen {
           <span style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
                        color:rgba(226,232,240,0.78);">Who's going</span>
           <span style="font-size:0.82rem; font-weight:800; color:#bbf7d0;">${going.length} going</span>
+          ${notResponded.length ? `<span style="font-size:0.82rem; font-weight:800; color:#cbd5e1;">${notResponded.length} not responded</span>` : ''}
           ${notGoing.length ? `<span style="font-size:0.82rem; font-weight:800; color:#fecaca;">${notGoing.length} not going</span>` : ''}
         </div>
         ${goingNames.length ? `
-          <details open style="font-size:0.82rem; color:rgba(226,232,240,0.7); margin-bottom:${notGoingNames.length ? '7px' : '0'};">
+          <details open style="font-size:0.82rem; color:rgba(226,232,240,0.7); margin-bottom:${(notRespondedNames.length || notGoingNames.length) ? '7px' : '0'};">
             <summary style="cursor:pointer; font-weight:800; color:#bbf7d0; margin-bottom:6px;">Show all going</summary>
             <div style="display:flex; flex-wrap:wrap; gap:5px;">
               ${goingNames.map(name => chip(name, 'yes')).join('')}
             </div>
           </details>` : `
-          <div style="font-size:0.84rem; color:rgba(226,232,240,0.72); margin-bottom:${notGoingNames.length ? '7px' : '0'};">
+          <div style="font-size:0.84rem; color:rgba(226,232,240,0.72); margin-bottom:${(notRespondedNames.length || notGoingNames.length) ? '7px' : '0'};">
             Nobody has marked going yet.
           </div>`}
+        ${notRespondedNames.length ? `
+          <details open style="font-size:0.82rem; color:rgba(226,232,240,0.7); margin-bottom:${notGoingNames.length ? '7px' : '0'};">
+            <summary style="cursor:pointer; font-weight:800; color:#cbd5e1; margin-bottom:6px;">Not responded</summary>
+            <div style="display:flex; flex-wrap:wrap; gap:5px;">
+              ${notRespondedNames.map(name => chip(name, 'none')).join('')}
+            </div>
+          </details>` : ''}
         ${notGoingNames.length ? `
           <details style="font-size:0.82rem; color:rgba(226,232,240,0.7);">
             <summary style="cursor:pointer; font-weight:700; color:#fecaca;">Not going</summary>

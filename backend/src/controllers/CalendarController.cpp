@@ -337,28 +337,64 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
-                            'person_id',    p.id,
-                            'first_name',   p.first_name,
-                            'last_name',    p.last_name,
-                            'name',         NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
-                            'response',     er.response,
-                            'created_via',  er.created_via,
-                            'responded_at', to_char(er.responded_at AT TIME ZONE 'UTC',
-                                                     'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                                        'person_id',      roster.person_id,
+                                                        'first_name',     roster.first_name,
+                                                        'last_name',      roster.last_name,
+                                                        'name',           roster.name,
+                                                        'response',       roster.response,
+                                                        'created_via',    roster.created_via,
+                                                        'responded_at',   roster.responded_at,
+                                                        'is_pickup_only', roster.is_pickup_only
                         )
-                        ORDER BY CASE er.response
+                                                ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
-                                   WHEN 'maybe' THEN 2
-                                   WHEN 'no' THEN 3
+                                                                     WHEN 'no' THEN 2
+                                                                     WHEN 'maybe' THEN 3
                                    ELSE 4
                                  END,
-                                 p.last_name ASC,
-                                 p.first_name ASC,
-                                 p.id ASC
+                                                                 roster.last_name ASC,
+                                                                 roster.first_name ASC,
+                                                                 roster.person_id ASC
                     )
-                    FROM fh_event_rsvps er
-                    JOIN persons p ON p.id = er.person_id
-                    WHERE er.fh_event_id = fe.id
+                                        FROM (
+                                                SELECT DISTINCT ON (p.id)
+                                                             p.id AS person_id,
+                                                             p.first_name,
+                                                             p.last_name,
+                                                             NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), '') AS name,
+                                                             er.response,
+                                                             er.created_via,
+                                                             CASE
+                                                                     WHEN er.responded_at IS NULL THEN NULL
+                                                                     ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
+                                                                                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                                             END AS responded_at,
+                                                             CASE
+                                                                     WHEN fe.category = 'mens' THEN NOT EXISTS (
+                                                                             SELECT 1
+                                                                                 FROM roster_assignments ra_sel
+                                                                                WHERE ra_sel.domain             = 'mens'
+                                                                                    AND ra_sel.removed_at         IS NULL
+                                                                                    AND ra_sel.leagueapps_user_id = ple.leagueapps_user_id
+                                                                                    AND ra_sel.team_id            IN (35, 120, 121, 122)
+                                                                     )
+                                                                     ELSE false
+                                                             END AS is_pickup_only
+                                                    FROM fh_event_teams fet
+                                                    JOIN player_rsvp_eligibility ple
+                                                        ON ple.team_id = fet.team_id
+                                                    JOIN external_person_aliases epa
+                                                        ON epa.provider = 'leagueapps'
+                                                     AND epa.external_user_id = ple.leagueapps_user_id::text
+                                                    JOIN persons p ON p.id = epa.person_id
+                                                    LEFT JOIN fh_event_rsvps er
+                                                        ON er.fh_event_id = fe.id
+                                                     AND er.person_id   = p.id
+                                                 WHERE fet.fh_event_id = fe.id
+                                                 ORDER BY p.id
+                                        ) roster
+                                        WHERE roster.is_pickup_only = false
+                                             OR roster.response = 'yes'
                 ), '[]'::jsonb) AS rsvps_json,
                 CASE
                     WHEN $1::int = 0 THEN NULL
