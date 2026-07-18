@@ -14,13 +14,13 @@
 //     wins over the standing preference for that specific event.
 //
 // Backend surface (all already exist — no new endpoints needed):
-//   GET  /api/calendar/upcoming?days=14  → { events: [{fh_event_id, kind,
+//   GET  /api/calendar/upcoming?days=7   → { events: [{fh_event_id, kind,
 //                                                      category, my_rsvp,
 //                                                      my_rsvp_eligible,
 //                                                      starts_at, ...}] }
-//     We fetch 14 days so next week is pre-loaded the instant the
-//     Sunday-20:00 cutover ticks over; client filters to the current
-//     week before rendering.
+//     The backend now enforces the one-week window in America/New_York,
+//     so the player screen only sees the current week until Sunday 20:00,
+//     then flips to the next week at the cutover.
 //   POST /api/calendar/rsvp              → { fh_event_id, response }
 //   GET  /api/calendar/my-standing       → { prefs: [{kind, category,
 //                                                     response, active}] }
@@ -86,7 +86,7 @@ class MyScreen extends Screen {
   async _bootstrap() {
     try {
       const [upRes, standingRes] = await Promise.all([
-        this._fetch('/api/calendar/upcoming?days=14'),
+        this._fetch('/api/calendar/upcoming?days=7'),
         this._fetch('/api/calendar/my-standing').catch((err) => {
           console.warn('[my] my-standing load failed:', err.message);
           return { prefs: [] };
@@ -256,17 +256,13 @@ class MyScreen extends Screen {
     const box = this.find('#my-events');
     if (!box) return;
 
-    // Filter to eligible-only.  Backend returns my_rsvp_eligible=null
-    // for anonymous callers and true/false for authed callers; we only
-    // want events the caller can actually RSVP to.
-    //
-    // Also trim to the current one-week window (see _weekWindowEnd) so
-    // the screen never shows next week's schedule until the Sun 8pm
-    // cutover — the backend intentionally returns days=14 so we always
-    // have next week pre-fetched for the moment the cutover ticks over.
+    // Keep the current-week window trim, but do not drop events purely
+    // because the backend has not marked them as eligible for this caller.
+    // That lets the player-facing schedule show the upcoming pickup/practice
+    // options immediately, while the RSVP write path still enforces the
+    // roster eligibility rule server-side.
     const weekEnd = this._weekWindowEnd();
     const list = (this.events || []).filter(e => {
-      if (e.my_rsvp_eligible !== true) return false;
       if (!e.starts_at) return true;                  // undated → keep
       const t = new Date(e.starts_at);
       return !isNaN(t) && t <= weekEnd;
@@ -295,6 +291,30 @@ class MyScreen extends Screen {
       <h2 style="margin: 0 0 var(--space-3); font-size:1.1rem;">This Week</h2>
       ${list.map(e => this._renderEventCard(e)).join('')}
     `;
+  }
+
+  _eventTitle(ev) {
+    const kind = ev.kind || '';
+    const category = ev.category || '';
+
+    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Match',
+                         meeting: 'Meeting', camp: 'Camp' };
+    const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls', staff: 'Staff' };
+    const kindLabel  = kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
+    const catLabel   = catLabels[category] || category || '';
+
+    if (kindLabel && catLabel) return `${kindLabel} · ${catLabel}`;
+    if (kindLabel) return kindLabel;
+    if (catLabel) return catLabel;
+
+    // Fall back to the tagged team names if classification is missing.
+    const teams = Array.isArray(ev.teams) ? ev.teams : [];
+    const teamNames = teams
+      .map(t => (t && (t.name || t.display_name)) || '')
+      .filter(Boolean);
+    if (teamNames.length) return teamNames.join(' · ');
+
+    return 'Event';
   }
 
   _renderEventCard(ev) {
@@ -327,7 +347,7 @@ class MyScreen extends Screen {
 
     const dateStr = this._eventDateStr(ev.starts_at);
     const timeStr = this._eventTimeStr(ev.starts_at);
-    const title   = ev.summary || 'Event';
+    const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
 
     // Show a subtle hint on recurring buttons when it would only apply

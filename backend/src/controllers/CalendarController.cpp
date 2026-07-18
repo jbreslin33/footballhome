@@ -261,7 +261,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         //                               currently underway so the
         //                               live day view isn't empty
         //                               right after kickoff.
-        //   * starts_at <= now() + N days
+        //   * starts_at falls inside the currently visible one-week
+        //                               window in America/New_York:
+        //                               current week until Sunday 20:00 ET,
+        //                               then next week after the cutover.
         //
         // rsvps_open_now is computed here so the frontend doesn't
         // have to re-implement §6.5.2's window check just to decide
@@ -354,13 +357,39 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             WHERE ge.deleted_at IS NULL
               AND ge.status <> 'cancelled'
               AND ge.starts_at >= now() - INTERVAL '1 hour'
-              AND ge.starts_at <= now() + ($1::int * INTERVAL '1 day')
+              AND ge.starts_at >= CASE
+                    WHEN (now() AT TIME ZONE 'America/New_York') >=
+                         (date_trunc('week', now() AT TIME ZONE 'America/New_York')
+                          + INTERVAL '6 days'
+                          + INTERVAL '20 hours')
+                    THEN timezone('UTC',
+                        (date_trunc('week', (now() AT TIME ZONE 'America/New_York') + INTERVAL '7 days')::timestamp))
+                    ELSE timezone('UTC',
+                        (date_trunc('week', now() AT TIME ZONE 'America/New_York')::timestamp))
+                END
+              AND ge.starts_at < CASE
+                    WHEN (now() AT TIME ZONE 'America/New_York') >=
+                         (date_trunc('week', now() AT TIME ZONE 'America/New_York')
+                          + INTERVAL '6 days'
+                          + INTERVAL '20 hours')
+                    THEN timezone('UTC',
+                        (date_trunc('week', (now() AT TIME ZONE 'America/New_York') + INTERVAL '7 days')::timestamp
+                         + INTERVAL '6 days'
+                         + INTERVAL '23 hours'
+                         + INTERVAL '59 minutes'
+                         + INTERVAL '59 seconds'))
+                    ELSE timezone('UTC',
+                        (date_trunc('week', now() AT TIME ZONE 'America/New_York')::timestamp
+                         + INTERVAL '6 days'
+                         + INTERVAL '23 hours'
+                         + INTERVAL '59 minutes'
+                         + INTERVAL '59 seconds'))
+                END
             ORDER BY ge.starts_at ASC, ge.id ASC
             LIMIT 500
         )SQL";
 
-        pqxx::result rows = db->query(sql, {std::to_string(days),
-                                            std::to_string(personId)});
+        pqxx::result rows = db->query(sql, {std::to_string(personId)});
 
         json events = json::array();
         events.get_ref<json::array_t&>().reserve(rows.size());
