@@ -22,9 +22,12 @@ or decision you are working on.
 ## Aider Context Maps
 
 - `aider/calendar.md`: copy/paste file packs for Google Calendar/event work.
+- `aider/members.md`: copy/paste file packs for the Members screen.
 - `aider/membership.md`: copy/paste file packs for LeagueApps membership work.
 - `aider/payments.md`: copy/paste file packs for payment work.
+- `aider/rosters.md`: copy/paste file packs for roster work.
 - `aider/rsvp.md`: copy/paste file packs for RSVP work with small local models.
+- `aider/sim.md`: copy/paste file packs for simulator work.
 
 ## Architecture Decision Records
 
