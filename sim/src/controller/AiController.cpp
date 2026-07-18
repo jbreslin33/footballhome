@@ -11,6 +11,7 @@
 #include "controller/AiController.hpp"
 
 #include "behavior/IBehavior.hpp"
+#include "behavior/JockeyBehavior.hpp"
 #include "behavior/PursueBallCarrierBehavior.hpp"
 #include "math/Fixed64.hpp"
 
@@ -85,7 +86,7 @@ AiController::defaultBehaviors(Role role)
     //                (BallOnPitchWithDefenderScenario spawns Role::Any
     //                slots + Match dispatches the Defender-kind case
     //                to AiController with this bag).
-    //   Slice 31.2 — JockeyBehavior, MarkOpponentBehavior added.
+    //   Slice 31.2 — JockeyBehavior skeleton added; MarkOpponentBehavior follows.
     //   Slice 33.2 — Feint1v1Behavior added under an attacker role.
     //
     // Slice 30.2 lands the first real bag under Role::Any because the
@@ -98,6 +99,7 @@ AiController::defaultBehaviors(Role role)
     switch (role) {
         case Role::Any:
             bag.push_back(std::make_unique<behavior::PursueBallCarrierBehavior>());
+            bag.push_back(std::make_unique<behavior::JockeyBehavior>());
             return bag;
         case Role::GK:
         case Role::LCB:

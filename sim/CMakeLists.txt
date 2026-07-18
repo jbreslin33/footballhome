@@ -249,6 +249,7 @@ add_library(sim_gameplay STATIC
     src/controller/HumanController.cpp
     src/controller/WanderController.cpp
     src/controller/AiController.cpp
+    src/behavior/JockeyBehavior.cpp
     src/behavior/PursueBallCarrierBehavior.cpp
     src/scenario/EmptyPitchScenario.cpp
     src/scenario/BallOnPitchScenario.cpp

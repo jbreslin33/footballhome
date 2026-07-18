@@ -1,0 +1,139 @@
+// footballhome sim - JockeyBehavior tests (Slice 31.2 skeleton)
+
+#include "awareness/AwarenessView.hpp"
+#include "behavior/JockeyBehavior.hpp"
+#include "common/EntityState.hpp"
+#include "common/M0Registry.generated.hpp"
+#include "controller/Intent.hpp"
+#include "math/Fixed64.hpp"
+#include "math/Vec3.hpp"
+#include "profile/ConceptSet.hpp"
+#include "test_harness.hpp"
+
+#include <string>
+
+using fh::sim::EntityId;
+using fh::sim::EntityState;
+using fh::sim::MotionState;
+using fh::sim::SlotId;
+using fh::sim::TickNum;
+using fh::sim::awareness::AwarenessView;
+using fh::sim::behavior::JockeyBehavior;
+using fh::sim::controller::Intent;
+using fh::sim::math::Fixed64;
+using fh::sim::math::Vec3;
+using fh::sim::profile::ConceptSet;
+
+namespace {
+
+AwarenessView makeView(const Vec3& defender_pos,
+                       const Vec3& carrier_pos,
+                       bool include_carrier = true)
+{
+    AwarenessView v;
+    v.tick         = TickNum{0};
+    v.time_seconds = Fixed64::zero();
+
+    EntityState defender{};
+    defender.id       = EntityId{2};
+    defender.slot_id  = SlotId{2};
+    defender.position = defender_pos;
+    defender.motion   = MotionState::Idle;
+    v.entities.push_back(defender);
+
+    if (include_carrier) {
+        EntityState carrier{};
+        carrier.id       = EntityId{3};
+        carrier.slot_id  = SlotId{3};
+        carrier.position = carrier_pos;
+        carrier.motion   = MotionState::Jog;
+        v.entities.push_back(carrier);
+    }
+
+    v.ball_owner = SlotId{3};
+    return v;
+}
+
+ConceptSet jockeyConcepts()
+{
+    ConceptSet c;
+    c.plug(fh::sim::m0::kJockey, Fixed64::one());
+    return c;
+}
+
+} // namespace
+
+FH_TEST(required_concepts_is_jockey)
+{
+    JockeyBehavior b;
+    const auto reqs = b.requiredConcepts();
+    FH_EXPECT_EQ(reqs.size(), std::size_t{1});
+    FH_EXPECT_EQ(reqs[0], fh::sim::m0::kJockey);
+}
+
+FH_TEST(min_mastery_is_zero_presence_gated)
+{
+    JockeyBehavior b;
+    FH_EXPECT_EQ(b.minMastery(), Fixed64::zero());
+}
+
+FH_TEST(utility_abstains_without_opposing_ball_owner)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
+
+    v.ball_owner.reset();
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::zero());
+
+    v.ball_owner = SlotId{2};
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::zero());
+}
+
+FH_TEST(utility_claims_tick_against_other_ball_owner)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::one());
+}
+
+FH_TEST(moves_toward_ball_carrier_without_pressing_or_dribbling)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto v = makeView(Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+                            Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()});
+
+    const Intent intent = b.execute(v, SlotId{2}, concepts);
+    FH_EXPECT_EQ(intent.desired_direction.x, Fixed64::one());
+    FH_EXPECT_EQ(intent.desired_direction.y, Fixed64::zero());
+    FH_EXPECT(!intent.wants_dribble);
+    FH_EXPECT(!intent.wants_to_press);
+    FH_EXPECT(!intent.wants_sprint);
+    FH_EXPECT(!intent.wants_walk);
+}
+
+FH_TEST(idles_when_carrier_missing_or_same_position)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+
+    const auto missing = makeView(Vec3{}, Vec3{}, /*include_carrier=*/false);
+    const Intent missing_intent = b.execute(missing, SlotId{2}, concepts);
+    FH_EXPECT_EQ(missing_intent.desired_direction.x, Fixed64::zero());
+    FH_EXPECT_EQ(missing_intent.desired_direction.y, Fixed64::zero());
+
+    const auto same = makeView(Vec3{}, Vec3{});
+    const Intent same_intent = b.execute(same, SlotId{2}, concepts);
+    FH_EXPECT_EQ(same_intent.desired_direction.x, Fixed64::zero());
+    FH_EXPECT_EQ(same_intent.desired_direction.y, Fixed64::zero());
+}
+
+FH_TEST(id_string_is_jockey)
+{
+    JockeyBehavior b;
+    FH_EXPECT_EQ(std::string(b.id()), std::string("jockey"));
+}
+
+FH_TEST_MAIN()

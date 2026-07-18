@@ -371,16 +371,16 @@ FH_TEST(all_behaviors_abstaining_falls_through_to_idle)
     FH_EXPECT(out.desired_direction.x == Fixed64::zero());
 }
 
-FH_TEST(default_behaviors_slice_30_2_role_any_pursues_others_empty)
+FH_TEST(default_behaviors_slice_31_2_role_any_pursues_and_jockeys_others_empty)
 {
-    // Slice 30.2: Role::Any grew a real bag of {PursueBallCarrierBehavior}
+    // Slice 31.2: Role::Any has {PursueBallCarrierBehavior, JockeyBehavior}
     // (BallOnPitchWithDefenderScenario spawns Role::Any slots and its
     // `Defender` unclaimed-kind now dispatches through AiController).
     // Every other role remains an empty placeholder until later slices
     // populate them (§25.3):
-    //   Slice 31.2 — Jockey/MarkOpponent
+    //   Slice 31.x — MarkOpponent
     //   Slice 33.2 — Feint1v1
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  1u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  2u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  0u);
@@ -388,12 +388,12 @@ FH_TEST(default_behaviors_slice_30_2_role_any_pursues_others_empty)
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 0u);
 
-    // Lock the Role::Any bag's identity — pursue_ball_carrier by id
-    // string, so any future slice that swaps behaviors in/out of the
-    // Role::Any bag (e.g. Slice 31.4 adding JockeyBehavior beside
-    // pursue) must update this assertion deliberately.
+    // Lock the Role::Any bag's identity by id string, so future slices
+    // that swap behaviors in/out of the bag must update this assertion
+    // deliberately.
     const auto bag = AiController::defaultBehaviors(Role::Any);
     FH_EXPECT_EQ(std::string(bag[0]->id()), std::string("pursue_ball_carrier"));
+    FH_EXPECT_EQ(std::string(bag[1]->id()), std::string("jockey"));
 }
 
 int main()
