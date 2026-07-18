@@ -32,7 +32,7 @@
 >
 > **Slice 30.2 (`PursueBallCarrierBehavior` + `DefenderController` deletion + `Scenario::applyConceptOverrides` hook + migration 224 for `pressing` concept id=3):** landed 2026-07-17 (`0196196f`). First real `IBehavior` — replicates all five branches of the deleted `DefenderController::decide()` (owner-hold, no-ball, ball-entity-missing, on-ball, pursue) at intent level. `AiController::defaultBehaviors(Role::Any) = {PursueBallCarrierBehavior}`; `Match.cpp` swaps both `UnclaimedControllerKind::Defender` dispatch sites (spawn + reclaim) to construct `AiController(Role::Any, slot.profile.concepts, defaultBehaviors(Role::Any))`; `releaseSlot` reordered so profile-reset + concept-overlay run BEFORE controller construction. `BallOnPitchWithDefenderScenario` plugs `pressing = 1.0` for SlotId{2} via new `applyConceptOverrides` scenario hook. `test_defender_pursuit.cpp` (10 tests) → `test_pursue_ball_carrier_behavior.cpp` (13 tests). 52/52 container ctest green. **`BallOnPitchWithDefender400` golden STABLE at `0x71f639d918a32830`** — no rotation (intent stream bit-identical). All 11 goldens byte-identical. Closes §24.6 DefenderController migration item; meets Slice 30 exit gate.
 >
-> **Next up:** add the `defender_marks_stationary_target_200` determinism golden. The jockey golden is locked; the remaining defender golden should exercise scenario-authored `mark_target` and `MarkOpponentBehavior` selection.
+> **Next up:** start Slice 32 utility-AI hysteresis. Slice 31 defender behaviors now have concrete role bags plus both first defender determinism goldens locked (`jockeys_dribbler` and `marks_stationary_target`).
 
 ---
 
@@ -3330,7 +3330,7 @@ Grouped by subsystem, mirroring §24.2. Tick in place as work lands.
 - [x] Role-specific defender behavior bags — `AiController::defaultBehaviors()` now returns `{PursueBallCarrierBehavior, JockeyBehavior, MarkOpponentBehavior}` for concrete defensive roles `LCB`, `RCB`, and `CDM`; `Role::Any` is empty again. `Match` passes each defender-kind slot's concrete `Slot::role` into `AiController`, and `BallOnPitchWithDefenderScenario` now spawns slot 2 as `Role::LCB`. Validated by `test_ai_controller`, `test_ball_on_pitch_with_defender_scenario`, and `sudo make sim-deploy` (`55/55` ctests + registry probe).
 - [ ] Role-aware behavior utility refinement — once team/side context exists, defensive behaviors can prefer `LCB`/`RCB`/`CDM` differently and attacker roles can open `1v1_beat` + `pressing`. Keep this as utility scoring, not a separate behavior registration surface.
 - [x] Determinism golden: `defender_jockeys_dribbler_200_ticks_seed_42` — test-only fixture claims a lateral dribbler and spawns an unclaimed `LCB` with only `jockey` plugged so `AiController` selects `JockeyBehavior` from the concrete defender bag. Locked at `0x868f3c8ba8f86fbd`, validated by `sudo make sim-deploy` (`55/55` ctests + registry probe).
-- [ ] Determinism golden: `defender_marks_stationary_target_200_ticks_seed_42`.
+- [x] Determinism golden: `defender_marks_stationary_target_200_ticks_seed_42` — test-only fixture spawns a stationary target and an unclaimed `LCB` with only `marking` plugged plus `mark_target=SlotId{1}` so `AiController` selects `MarkOpponentBehavior` from the concrete defender bag. Locked at `0x603b1f6fda001167`, validated by `sudo make sim-deploy` (`55/55` ctests + registry probe).
 
 **Attacker behaviors + first pattern (Slice 33)**
 
@@ -3388,7 +3388,7 @@ Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 op
 - 31.2 [x] `JockeyBehavior` + `MarkOpponentBehavior` skeleton implementations. `SlotSpawn::mark_target` field added and threaded through `Slot` + `AiController`.
 - 31.3 [x] Migration 226 nine-attribute M3 batch (`marking_technique` id=16, `standing_tackle` id=17, `interception` id=18, `feint` id=19, `first_time_pass` id=20, `aggression` id=21, `positioning_sense` id=22, `composure` id=23, `anticipation` id=24). Pulled ahead before 31.2 behavior implementation so `JockeyBehavior::utility()` + `MarkOpponentBehavior::utility()` can consume generated constants immediately; the attacker-facing four sit dormant until Slice 33's attacker behaviors + Slice 32's hysteresis knobs consume them.
 - 31.4 [x] `AiController::defaultBehaviors()` wired to include `{PursueBallCarrierBehavior, JockeyBehavior, MarkOpponentBehavior}` for concrete defensive roles `LCB`/`RCB`/`CDM`; `Role::Any` returns `{}` again. `BallOnPitchWithDefenderScenario` slot 2 now spawns as `Role::LCB`. No golden rotation: the scenario still only plugs `pressing`, so behavior selection remains pursue-only until a scenario plugs `jockey`/`marking`.
-- 31.5 [ ] Determinism goldens: `defender_jockeys_dribbler_200` landed; `defender_marks_stationary_target_200` remains.
+- 31.5 [x] Determinism goldens: `defender_jockeys_dribbler_200` and `defender_marks_stationary_target_200` landed.
 
 **Slice 31 exit gate**: coach opens `BallOnPitchWithDefender`, defender jockeys instead of blindly chasing when the coach dribbles laterally; defender abandons jockey and commits to press when coach dribbles straight at goal.
 

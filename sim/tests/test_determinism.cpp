@@ -169,6 +169,67 @@ private:
     std::vector<fh::sim::scenario::SlotSpawn> slots_;
 };
 
+// Slice 31.5: test-only fixture for the first MarkOpponentBehavior
+// determinism golden. Slot 1 is a stationary unclaimed target; slot 2 is
+// an LCB Defender-kind AI with only `marking` plugged and mark_target set
+// to SlotId{1}, so the defender behavior bag selects MarkOpponentBehavior.
+class MarkStationaryTargetScenario : public fh::sim::scenario::Scenario {
+public:
+    MarkStationaryTargetScenario()
+    {
+        pitch_.length_m = Fixed64::fromInt(105);
+        pitch_.width_m  = Fixed64::fromInt(68);
+
+        fh::sim::scenario::SlotSpawn target;
+        target.slot     = SlotId{1};
+        target.position = Vec3{Fixed64::fromInt(5),
+                               Fixed64::zero(),
+                               Fixed64::zero()};
+        target.heading  = fh::sim::math::FX_PI;
+        target.role     = fh::sim::Role::Any;
+        slots_.push_back(target);
+
+        fh::sim::scenario::SlotSpawn marker;
+        marker.slot        = SlotId{2};
+        marker.position    = Vec3{Fixed64::zero(),
+                                  Fixed64::zero(),
+                                  Fixed64::zero()};
+        marker.heading     = Fixed64::zero();
+        marker.role        = fh::sim::Role::LCB;
+        marker.mark_target = SlotId{1};
+        slots_.push_back(marker);
+    }
+
+    std::string id() const override { return "test_mark_stationary_target"; }
+    std::string displayName() const override { return "Test — mark stationary target"; }
+    fh::sim::scenario::PitchSpec pitch() const override { return pitch_; }
+    fh::sim::scenario::PlayableArea playableArea() const override { return {}; }
+    std::vector<fh::sim::scenario::SlotSpawn> initialSpawns() const override { return slots_; }
+    std::optional<BallSpawn> ballSpawn() const override { return std::nullopt; }
+    bool checkSuccess(const fh::sim::awareness::WorldView& w) const override { (void)w; return false; }
+    bool checkReset(const fh::sim::awareness::WorldView& w) const override { (void)w; return false; }
+    std::vector<std::string> hints() const override { return {}; }
+
+    fh::sim::scenario::UnclaimedControllerKind unclaimedControllerFor(SlotId slot) const override
+    {
+        return (slot == SlotId{2})
+            ? fh::sim::scenario::UnclaimedControllerKind::Defender
+            : fh::sim::scenario::UnclaimedControllerKind::Idle;
+    }
+
+    void applyConceptOverrides(SlotId slot,
+                               fh::sim::profile::ConceptSet& concepts) const override
+    {
+        if (slot == SlotId{2}) {
+            concepts.plug(fh::sim::m0::kMarking, Fixed64::one());
+        }
+    }
+
+private:
+    fh::sim::scenario::PitchSpec pitch_;
+    std::vector<fh::sim::scenario::SlotSpawn> slots_;
+};
+
 std::unique_ptr<Match> makeMatch(std::uint64_t seed) {
     MatchConfig cfg;
     cfg.id       = 1;
@@ -292,6 +353,15 @@ constexpr std::uint64_t kExpectedHashBallOnPitchWithDefender400 =
 // real defender posture golden before hysteresis or goal/team awareness lands.
 constexpr std::uint64_t kExpectedHashDefenderJockeysDribbler200 =
     0x868f3c8ba8f86fbdULL;
+
+// Slice 31.5: cross-arch determinism proof for MarkOpponentBehavior. Slot 1
+// is an idle stationary target at (+5, 0). Slot 2 is an unclaimed LCB
+// Defender-kind AI with only `marking` plugged and mark_target=SlotId{1}, so
+// AiController selects MarkOpponentBehavior from the concrete defensive-role
+// bag. No ball is spawned, keeping the golden focused on scenario-authored
+// slot pairing and target-follow movement.
+constexpr std::uint64_t kExpectedHashDefenderMarksStationaryTarget200 =
+    0x603b1f6fda001167ULL;
 
 // Slice 26.6: cross-arch golden for a short pass east. Locks the M2
 // kick primitive introduced in Slice 26.3 (BallControl release-on-kick,
@@ -825,6 +895,36 @@ FH_TEST(defender_jockeys_dribbler_200_ticks_seed_42) {
                 kExpectedHashDefenderJockeysDribbler200));
     }
     FH_EXPECT_EQ(h, kExpectedHashDefenderJockeysDribbler200);
+}
+
+// Slice 31.5: first mark-target posture golden. See constant comment above.
+FH_TEST(defender_marks_stationary_target_200_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<MarkStationaryTargetScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    for (int i = 0; i < 200; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== defender_marks_stationary_target_200_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashDefenderMarksStationaryTarget200) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashDefenderMarksStationaryTarget200)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashDefenderMarksStationaryTarget200));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashDefenderMarksStationaryTarget200);
 }
 
 // Slice 26.6: cross-arch determinism proof for a short pass east.
