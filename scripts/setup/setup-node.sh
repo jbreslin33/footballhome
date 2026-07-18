@@ -29,6 +29,6 @@ fi
 
 if [ -f "$REPO_ROOT/package.json" ]; then
   print_status "Installing Node.js dependencies..."
-  (cd "$REPO_ROOT" && npm install --silent)
+  (cd "$REPO_ROOT" && npm install)
   print_success "Node dependencies installed"
 fi

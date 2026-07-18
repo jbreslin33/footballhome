@@ -14,6 +14,14 @@ print_error()   { echo -e "${RED}✗${NC} $1" >&2; }
 
 OS_TYPE="$(uname -s)"
 
+run_podman() {
+  if [ "$OS_TYPE" = "Linux" ] && [ "$EUID" -ne 0 ]; then
+    sudo podman "$@"
+  else
+    podman "$@"
+  fi
+}
+
 # Locate repo root from any setup script location
 setup_repo_root() {
   local d="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"

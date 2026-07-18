@@ -19,10 +19,10 @@ fi
 
 if [ -f "$REPO_ROOT/.docker/scraper/Dockerfile" ]; then
   print_status "Building scraper+VPN container image..."
-  if podman build -t footballhome-scraper:latest "$REPO_ROOT/.docker/scraper" > /tmp/scraper-build.log 2>&1; then
+  if run_podman build -t footballhome-scraper:latest "$REPO_ROOT/.docker/scraper"; then
     print_success "Scraper image built: footballhome-scraper:latest"
   else
-    print_warning "Scraper image build failed — see /tmp/scraper-build.log"
+    print_warning "Scraper image build failed"
   fi
 else
   print_warning ".docker/scraper/Dockerfile missing — skipping scraper image build"

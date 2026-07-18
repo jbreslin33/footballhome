@@ -19,6 +19,21 @@ set -e
 cd "$(dirname "$0")"
 source scripts/setup/_lib.sh
 
+# ── Arg parsing ───────────────────────────────────────────────────────
+SKIP=""
+ONLY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --skip) SKIP="$2"; shift 2 ;;
+    --only) ONLY="$2"; shift 2 ;;
+    -h|--help)
+      sed -n '2,16p' "$0"
+      exit 0 ;;
+    *)
+      echo "Unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
 # Load LE_EMAIL (and any other vars) from env file if present, so the
 # nginx step can auto-issue a cert without the caller exporting it.
 # On a fresh clone env may not exist yet (it's decrypted from env.age by
@@ -35,28 +50,11 @@ echo -e "${BLUE}Football Home - First-Time Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx -> gcal -> aider
+# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx -> gcal
 # (age must precede vpn so scrape-vpn.conf.age is decrypted before vpn step reads it)
 # (gcal runs last — needs node deps + env decrypted + podman DB up so its unit files can be installed and fired once)
-# (aider is standalone — CLI only, no service — safe to run any time)
 STEPS=(base age podman node chrome env scraper vendor sim)
 [ "$OS_TYPE" = "Linux" ] && STEPS+=(vpn nginx gcal)
-STEPS+=(aider)
-
-# ── Arg parsing ───────────────────────────────────────────────────────
-SKIP=""
-ONLY=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --skip) SKIP="$2"; shift 2 ;;
-    --only) ONLY="$2"; shift 2 ;;
-    -h|--help)
-      sed -n '2,16p' "$0"
-      exit 0 ;;
-    *)
-      echo "Unknown arg: $1" >&2; exit 2 ;;
-  esac
-done
 
 step_enabled() {
   local s="$1"
@@ -161,14 +159,3 @@ echo "     Email:    soccer@lighthouse1893.org"
 echo "     Password: 1893Soccer!"
 echo "     Name:     James Breslin"
 echo ""
-
-# ── aider / local-AI hint ─────────────────────────────────────────────
-if command -v aider &> /dev/null; then
-  echo -e "${BLUE}Local AI (aider):${NC}"
-  echo "  From your client machine (Mac/laptop) run ollama, then SSH in with a reverse tunnel:"
-  echo -e "     ${YELLOW}ssh -R 11434:localhost:11434 $(whoami)@$(hostname -f 2>/dev/null || hostname)${NC}"
-  echo "  On this host, cd into the repo and run:"
-  echo -e "     ${YELLOW}aider${NC}"
-  echo "  (Config: .aider.conf.yml — defaults to ollama_chat/qwen2.5-coder:7b)"
-  echo ""
-fi

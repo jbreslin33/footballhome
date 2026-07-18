@@ -7,9 +7,8 @@ source "$(dirname "$0")/_lib.sh"
 if ! command -v podman &> /dev/null; then
   if [ "$OS_TYPE" = "Linux" ]; then
     print_status "Installing Podman..."
-    sudo apt-get update -qq
+    sudo apt-get update
     sudo apt-get install -y podman
-    systemctl --user enable --now podman.socket || true
   elif [ "$OS_TYPE" = "Darwin" ]; then
     if ! command -v brew &> /dev/null; then
       print_error "Homebrew required to install Podman: https://brew.sh"
@@ -93,11 +92,11 @@ else
 fi
 
 # ── Verify Podman is reachable ────────────────────────────────────────
-if ! podman ps &> /dev/null; then
+if ! run_podman ps; then
   if [ "$OS_TYPE" = "Darwin" ]; then
     print_error "Podman machine not running — try: podman machine start"
   else
-    print_error "Podman not responding — try: systemctl --user restart podman.socket"
+    print_error "Rootful Podman not responding — try: sudo podman ps"
   fi
   exit 1
 fi
