@@ -37,6 +37,7 @@
 #include "controller/Intent.hpp"
 #include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
+#include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
 #include "test_harness.hpp"
 
@@ -53,6 +54,7 @@ using fh::sim::behavior::PursueBallCarrierBehavior;
 using fh::sim::controller::Intent;
 using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
+using fh::sim::profile::AttributeSet;
 using fh::sim::profile::ConceptSet;
 
 namespace {
@@ -102,6 +104,11 @@ ConceptSet pressingConcepts()
     ConceptSet c;
     c.plug(fh::sim::m0::kPressing, Fixed64::one());
     return c;
+}
+
+AttributeSet emptyAttrs()
+{
+    return AttributeSet{};
 }
 
 } // namespace
@@ -260,7 +267,8 @@ FH_TEST(utility_is_constant_one) {
                             /*include_ball=*/true,
                             Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()});
     const auto  concepts = pressingConcepts();
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::one());
+    const auto  attrs = emptyAttrs();
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, attrs, attrs), Fixed64::one());
 
     // Also constant when self owns the ball — utility() doesn't inspect
     // the view in Slice 30.2, but lock the invariant so a future edit
@@ -271,12 +279,12 @@ FH_TEST(utility_is_constant_one) {
                        Vec3{Fixed64::fromFraction(4, 10), Fixed64::zero(),
                             Fixed64::zero()});
     v2.ball_owner = SlotId{2};
-    FH_EXPECT_EQ(b.utility(v2, SlotId{2}, concepts), Fixed64::one());
+    FH_EXPECT_EQ(b.utility(v2, SlotId{2}, concepts, attrs, attrs), Fixed64::one());
 
     // And constant when there is no ball — same reason.
     const auto v3 = makeView(Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()},
                              /*include_ball=*/false);
-    FH_EXPECT_EQ(b.utility(v3, SlotId{2}, concepts), Fixed64::one());
+    FH_EXPECT_EQ(b.utility(v3, SlotId{2}, concepts, attrs, attrs), Fixed64::one());
 }
 
 FH_TEST(required_concepts_is_pressing) {

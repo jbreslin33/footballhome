@@ -37,7 +37,9 @@ public:
 
     math::Fixed64          utility(const awareness::AwarenessView& view,
                                    SlotId                          self,
-                                   const profile::ConceptSet&      concepts) override;
+                                   const profile::ConceptSet&      concepts,
+                                   const profile::AttributeSet&    technical,
+                                   const profile::AttributeSet&    mental) override;
 
     controller::Intent     execute(const awareness::AwarenessView& view,
                                    SlotId                          self,

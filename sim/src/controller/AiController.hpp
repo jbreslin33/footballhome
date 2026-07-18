@@ -28,6 +28,7 @@
 #include "behavior/IBehavior.hpp"
 #include "common/Role.hpp"
 #include "controller/IPlayerController.hpp"
+#include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
 
 #include <memory>
@@ -58,8 +59,21 @@ public:
           concepts_(std::move(concepts)),
           behaviors_(std::move(behaviors)) {}
 
+        AiController(Role                                              role,
+                                 profile::ConceptSet                               concepts,
+                                 profile::AttributeSet                             technical,
+                                 profile::AttributeSet                             mental,
+                                 std::vector<std::unique_ptr<behavior::IBehavior>> behaviors) noexcept
+                : role_(role),
+                    concepts_(std::move(concepts)),
+                    technical_(std::move(technical)),
+                    mental_(std::move(mental)),
+                    behaviors_(std::move(behaviors)) {}
+
     Role                        role() const noexcept { return role_; }
     const profile::ConceptSet&  concepts() const noexcept { return concepts_; }
+        const profile::AttributeSet& technical() const noexcept { return technical_; }
+        const profile::AttributeSet& mental() const noexcept { return mental_; }
 
     // Number of behaviors in the bag. Public for tests + scenario-spawn
     // assertions that want to sanity-check the factory wired what they
@@ -83,6 +97,8 @@ public:
 private:
     Role                                              role_{Role::Any};
     profile::ConceptSet                               concepts_{};
+    profile::AttributeSet                             technical_{};
+    profile::AttributeSet                             mental_{};
     std::vector<std::unique_ptr<behavior::IBehavior>> behaviors_{};
 };
 

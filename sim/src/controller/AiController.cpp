@@ -54,7 +54,7 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
             continue;
         }
 
-        const math::Fixed64 score = b->utility(view, self, concepts_);
+        const math::Fixed64 score = b->utility(view, self, concepts_, technical_, mental_);
 
         // Zero-utility behaviors abstain (per IBehavior::utility contract).
         // First survivor becomes champion; subsequent survivors must

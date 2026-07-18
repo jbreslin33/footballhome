@@ -21,12 +21,19 @@ math::Fixed64 JockeyBehavior::minMastery() const
 math::Fixed64 JockeyBehavior::utility(
     const awareness::AwarenessView& view,
     SlotId                          self,
-    const profile::ConceptSet&      /*concepts*/)
+    const profile::ConceptSet&      /*concepts*/,
+    const profile::AttributeSet&    /*technical*/,
+    const profile::AttributeSet&    mental)
 {
     if (!view.ball_owner.has_value() || *view.ball_owner == self) {
         return math::Fixed64::zero();
     }
-    return math::Fixed64::one();
+
+    const math::Fixed64 positioning = mental.get(
+        m0::kPositioningSense, math::Fixed64::fromFraction(1, 2));
+    const math::Fixed64 composure = mental.get(
+        m0::kComposure, math::Fixed64::fromFraction(3, 5));
+    return (positioning + composure) / 2;
 }
 
 controller::Intent JockeyBehavior::execute(

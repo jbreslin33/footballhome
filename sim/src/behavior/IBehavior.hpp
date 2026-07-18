@@ -16,6 +16,7 @@
 #include "common/IdTypes.hpp"
 #include "controller/Intent.hpp"
 #include "math/Fixed64.hpp"
+#include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
 
 #include <vector>
@@ -35,7 +36,9 @@ public:
     // Higher score wins in utility-AI selection. Return zero to abstain.
     virtual math::Fixed64 utility(const awareness::AwarenessView& view,
                                   SlotId                          self,
-                                  const profile::ConceptSet&      concepts) = 0;
+                                  const profile::ConceptSet&      concepts,
+                                  const profile::AttributeSet&    technical,
+                                  const profile::AttributeSet&    mental) = 0;
 
     // Produce this tick's Intent when this behavior is selected.
     virtual controller::Intent execute(const awareness::AwarenessView& view,

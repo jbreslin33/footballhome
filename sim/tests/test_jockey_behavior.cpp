@@ -7,6 +7,7 @@
 #include "controller/Intent.hpp"
 #include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
+#include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
 #include "test_harness.hpp"
 
@@ -22,6 +23,7 @@ using fh::sim::behavior::JockeyBehavior;
 using fh::sim::controller::Intent;
 using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
+using fh::sim::profile::AttributeSet;
 using fh::sim::profile::ConceptSet;
 
 namespace {
@@ -61,6 +63,11 @@ ConceptSet jockeyConcepts()
     return c;
 }
 
+AttributeSet emptyAttrs()
+{
+    return AttributeSet{};
+}
+
 } // namespace
 
 FH_TEST(required_concepts_is_jockey)
@@ -81,21 +88,41 @@ FH_TEST(utility_abstains_without_opposing_ball_owner)
 {
     JockeyBehavior b;
     const auto concepts = jockeyConcepts();
+    const auto technical = emptyAttrs();
+    const auto mental = emptyAttrs();
     auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
 
     v.ball_owner.reset();
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::zero());
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental), Fixed64::zero());
 
     v.ball_owner = SlotId{2};
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::zero());
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental), Fixed64::zero());
 }
 
-FH_TEST(utility_claims_tick_against_other_ball_owner)
+FH_TEST(utility_uses_positioning_sense_and_composure)
 {
     JockeyBehavior b;
     const auto concepts = jockeyConcepts();
+    const auto technical = emptyAttrs();
+    AttributeSet mental;
+    mental.set(fh::sim::m0::kPositioningSense, Fixed64::fromFraction(4, 5));
+    mental.set(fh::sim::m0::kComposure, Fixed64::fromFraction(3, 5));
     const auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts), Fixed64::one());
+    const Fixed64 expected =
+        (Fixed64::fromFraction(4, 5) + Fixed64::fromFraction(3, 5)) / 2;
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental),
+                 expected);
+}
+
+FH_TEST(utility_uses_neutral_defaults_when_attrs_absent)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto technical = emptyAttrs();
+    const auto mental = emptyAttrs();
+    const auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental),
+                 Fixed64::fromFraction(11, 20));
 }
 
 FH_TEST(moves_toward_ball_carrier_without_pressing_or_dribbling)

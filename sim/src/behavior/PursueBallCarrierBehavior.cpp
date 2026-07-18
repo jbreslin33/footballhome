@@ -30,7 +30,9 @@ math::Fixed64 PursueBallCarrierBehavior::minMastery() const
 math::Fixed64 PursueBallCarrierBehavior::utility(
     const awareness::AwarenessView& /*view*/,
     SlotId                          /*self*/,
-    const profile::ConceptSet&      /*concepts*/)
+    const profile::ConceptSet&      /*concepts*/,
+    const profile::AttributeSet&    /*technical*/,
+    const profile::AttributeSet&    /*mental*/)
 {
     // Constant 1.0 in Slice 30.2 — the M3 opening bag is single-behavior,
     // so magnitude is unobservable (see class comment).

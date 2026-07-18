@@ -31,6 +31,7 @@
 #include "controller/Intent.hpp"
 #include "math/Fixed64.hpp"
 #include "math/Vec3.hpp"
+#include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
 #include "test_harness.hpp"
 
@@ -51,6 +52,7 @@ using fh::sim::controller::AiController;
 using fh::sim::controller::Intent;
 using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
+using fh::sim::profile::AttributeSet;
 using fh::sim::profile::ConceptSet;
 
 namespace {
@@ -95,7 +97,9 @@ public:
 
     Fixed64 utility(const AwarenessView& /*view*/,
                     SlotId               /*self*/,
-                    const ConceptSet&    /*concepts*/) override
+                    const ConceptSet&    /*concepts*/,
+                    const AttributeSet&  /*technical*/,
+                    const AttributeSet&  /*mental*/) override
     {
         ++utility_calls_;
         return fixed_utility_;

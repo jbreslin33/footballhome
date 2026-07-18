@@ -135,6 +135,8 @@ void Match::spawnInitialSlots()
                 slot.controller = std::make_unique<controller::AiController>(
                     Role::Any,
                     slot.profile.concepts,
+                    slot.profile.technical,
+                    slot.profile.mental,
                     controller::AiController::defaultBehaviors(Role::Any));
                 break;
             case scenario::UnclaimedControllerKind::Wander:
@@ -663,6 +665,8 @@ void Match::releaseSlot(SlotId slot_id)
             s.controller = std::make_unique<controller::AiController>(
                 Role::Any,
                 s.profile.concepts,
+                s.profile.technical,
+                s.profile.mental,
                 controller::AiController::defaultBehaviors(Role::Any));
             break;
         case scenario::UnclaimedControllerKind::Wander:
