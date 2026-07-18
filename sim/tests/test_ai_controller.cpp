@@ -86,15 +86,18 @@ public:
                  std::vector<ConceptId>        required,
                  Fixed64                       min_mastery,
                  Fixed64                       fixed_utility,
-                 Intent                        execute_intent) noexcept
+                 Intent                        execute_intent,
+                 TickNum                       min_ticks = TickNum{10}) noexcept
         : id_(id),
           required_(std::move(required)),
           min_mastery_(min_mastery),
           fixed_utility_(fixed_utility),
-          execute_intent_(execute_intent) {}
+            execute_intent_(execute_intent),
+            min_ticks_(min_ticks) {}
 
     std::vector<ConceptId> requiredConcepts() const override { return required_; }
     Fixed64                minMastery()       const override { return min_mastery_; }
+        TickNum                minTicks()         const override { return min_ticks_; }
 
     Fixed64 utility(const AwarenessView& /*view*/,
                     SlotId               /*self*/,
@@ -118,6 +121,8 @@ public:
 
     const char* id() const override { return id_.data(); }
 
+    void setUtility(Fixed64 utility) noexcept { fixed_utility_ = utility; }
+
     int utility_calls() const noexcept { return utility_calls_; }
     int execute_calls() const noexcept { return execute_calls_; }
 
@@ -127,6 +132,7 @@ private:
     Fixed64                min_mastery_;
     Fixed64                fixed_utility_;
     Intent                 execute_intent_;
+    TickNum                min_ticks_;
     int                    utility_calls_{0};
     int                    execute_calls_{0};
 };
@@ -143,10 +149,11 @@ MockHandle makeMock(std::string_view       id,
                     std::vector<ConceptId> required,
                     Fixed64                min_mastery,
                     Fixed64                fixed_utility,
-                    Intent                 execute_intent)
+                    Intent                 execute_intent,
+                    TickNum                min_ticks = TickNum{10})
 {
     auto owned = std::make_unique<MockBehavior>(
-        id, std::move(required), min_mastery, fixed_utility, execute_intent);
+        id, std::move(required), min_mastery, fixed_utility, execute_intent, min_ticks);
     MockBehavior* raw = owned.get();
     return MockHandle{std::move(owned), raw};
 }
@@ -376,6 +383,90 @@ FH_TEST(all_behaviors_abstaining_falls_through_to_idle)
     FH_EXPECT_EQ(raw->utility_calls(), 1);
     FH_EXPECT_EQ(raw->execute_calls(), 0);
     FH_EXPECT(out.desired_direction.x == Fixed64::zero());
+}
+
+FH_TEST(min_ticks_keeps_current_behavior_before_reselection)
+{
+    auto first = makeMock(
+        "mock_current",
+        /*required=*/{ConceptId{1}},
+        /*min_mastery=*/Fixed64::fromFloat(0.1f),
+        /*fixed_utility=*/Fixed64::fromFloat(0.6f),
+        /*execute_intent=*/makeIntent(Fixed64::fromFloat(1.0f)),
+        /*min_ticks=*/TickNum{10});
+    auto second = makeMock(
+        "mock_challenger",
+        /*required=*/{ConceptId{1}},
+        /*min_mastery=*/Fixed64::fromFloat(0.1f),
+        /*fixed_utility=*/Fixed64::fromFloat(0.5f),
+        /*execute_intent=*/makeIntent(Fixed64::fromFloat(2.0f)),
+        /*min_ticks=*/TickNum{10});
+    MockBehavior* raw_first  = first.raw;
+    MockBehavior* raw_second = second.raw;
+
+    ConceptSet concepts;
+    concepts.plug(ConceptId{1}, Fixed64::fromFloat(0.8f));
+
+    std::vector<std::unique_ptr<IBehavior>> bag;
+    bag.emplace_back(std::move(first.owned));
+    bag.emplace_back(std::move(second.owned));
+
+    AiController c(Role::Any, std::move(concepts), std::move(bag));
+    auto v = makeSelfOnlyView(SlotId{1});
+    Intent out = c.decide(v, SlotId{1});
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(1.0f));
+
+    raw_first->setUtility(Fixed64::fromFloat(0.4f));
+    raw_second->setUtility(Fixed64::fromFloat(0.9f));
+    v.tick = TickNum{5};
+    out = c.decide(v, SlotId{1});
+
+    FH_EXPECT_EQ(raw_first->execute_calls(), 2);
+    FH_EXPECT_EQ(raw_second->execute_calls(), 0);
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(1.0f));
+}
+
+FH_TEST(switch_penalty_delays_near_equal_challenger_after_min_ticks)
+{
+    auto first = makeMock(
+        "mock_current",
+        /*required=*/{ConceptId{1}},
+        /*min_mastery=*/Fixed64::fromFloat(0.1f),
+        /*fixed_utility=*/Fixed64::fromFloat(0.6f),
+        /*execute_intent=*/makeIntent(Fixed64::fromFloat(1.0f)),
+        /*min_ticks=*/TickNum{1});
+    auto second = makeMock(
+        "mock_challenger",
+        /*required=*/{ConceptId{1}},
+        /*min_mastery=*/Fixed64::fromFloat(0.1f),
+        /*fixed_utility=*/Fixed64::fromFloat(0.5f),
+        /*execute_intent=*/makeIntent(Fixed64::fromFloat(2.0f)),
+        /*min_ticks=*/TickNum{1});
+    MockBehavior* raw_first  = first.raw;
+    MockBehavior* raw_second = second.raw;
+
+    ConceptSet concepts;
+    concepts.plug(ConceptId{1}, Fixed64::fromFloat(0.8f));
+
+    std::vector<std::unique_ptr<IBehavior>> bag;
+    bag.emplace_back(std::move(first.owned));
+    bag.emplace_back(std::move(second.owned));
+
+    AiController c(Role::Any, std::move(concepts), std::move(bag));
+    auto v = makeSelfOnlyView(SlotId{1});
+    Intent out = c.decide(v, SlotId{1});
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(1.0f));
+
+    raw_first->setUtility(Fixed64::fromFloat(0.80f));
+    raw_second->setUtility(Fixed64::fromFloat(0.90f));
+    v.tick = TickNum{1};
+    out = c.decide(v, SlotId{1});
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(1.0f));
+
+    v.tick = TickNum{6};
+    out = c.decide(v, SlotId{1});
+    FH_EXPECT_EQ(raw_second->execute_calls(), 1);
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(2.0f));
 }
 
 FH_TEST(default_behaviors_slice_31_4_defensive_roles_get_defender_bag)

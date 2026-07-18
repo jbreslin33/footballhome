@@ -112,6 +112,8 @@ private:
     profile::AttributeSet                             mental_{};
     std::optional<SlotId>                              mark_target_{};
     std::vector<std::unique_ptr<behavior::IBehavior>> behaviors_{};
+    behavior::IBehavior*                               current_behavior_{nullptr};
+    TickNum                                            current_behavior_started_at_{0};
 };
 
 } // namespace fh::sim::controller

@@ -18,11 +18,53 @@
 
 namespace fh::sim::controller {
 
+namespace {
+
+constexpr math::Fixed64 kHysteresisBonus = math::Fixed64::fromFraction(1, 8);
+constexpr math::Fixed64 kHysteresisDecayMultiplier = math::Fixed64::fromFraction(19, 20);
+
+bool gateOpen(const behavior::IBehavior& behavior,
+              const profile::ConceptSet& concepts)
+{
+    const math::Fixed64 min_mastery = behavior.minMastery();
+    for (const ConceptId cid : behavior.requiredConcepts()) {
+        if (!concepts.has(cid, min_mastery)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+math::Fixed64 switchPenalty(TickNum ticks_since_switch)
+{
+    math::Fixed64 penalty = kHysteresisBonus;
+    for (TickNum i = 0; i < ticks_since_switch; ++i) {
+        penalty *= kHysteresisDecayMultiplier;
+    }
+    return penalty;
+}
+
+} // namespace
+
 Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
 {
     // Fast path: empty bag. Preserves M0 skeleton behavior byte-for-byte.
     if (behaviors_.empty()) {
         return idle();
+    }
+
+    const TickNum now = view.tick;
+    const TickNum ticks_since_switch = current_behavior_ == nullptr
+        ? TickNum{0}
+        : static_cast<TickNum>(now - current_behavior_started_at_);
+
+    if (current_behavior_ != nullptr && ticks_since_switch < current_behavior_->minTicks()
+        && gateOpen(*current_behavior_, concepts_)) {
+        const math::Fixed64 current_score = current_behavior_->utility(
+            view, self, concepts_, technical_, mental_, mark_target_);
+        if (current_score > math::Fixed64::zero()) {
+            return current_behavior_->execute(view, self, concepts_, mark_target_);
+        }
     }
 
     // Argmax over gated behaviors. `best` is nullptr until we see the
@@ -43,20 +85,15 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
         // + any positive mastery via ConceptSet::has (matches the
         // §25.2 PursueBallCarrierBehavior spec: minMastery = 0.0
         // means "any positive value opens the gate").
-        const math::Fixed64 min_mastery = b->minMastery();
-        bool gated_open = true;
-        for (const ConceptId cid : b->requiredConcepts()) {
-            if (!concepts_.has(cid, min_mastery)) {
-                gated_open = false;
-                break;
-            }
-        }
-        if (!gated_open) {
+        if (!gateOpen(*b, concepts_)) {
             continue;
         }
 
-        const math::Fixed64 score = b->utility(
+        math::Fixed64 score = b->utility(
             view, self, concepts_, technical_, mental_, mark_target_);
+        if (current_behavior_ != nullptr && b.get() != current_behavior_) {
+            score -= switchPenalty(ticks_since_switch);
+        }
 
         // Zero-utility behaviors abstain (per IBehavior::utility contract).
         // First survivor becomes champion; subsequent survivors must
@@ -73,7 +110,12 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
     }
 
     if (best == nullptr) {
+        current_behavior_ = nullptr;
         return idle();
+    }
+    if (best != current_behavior_) {
+        current_behavior_ = best;
+        current_behavior_started_at_ = now;
     }
     return best->execute(view, self, concepts_, mark_target_);
 }

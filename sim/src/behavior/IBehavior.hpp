@@ -34,6 +34,10 @@ public:
     // Minimum mastery on each required concept for the gate to open.
     virtual math::Fixed64 minMastery() const = 0;
 
+    // Minimum commitment once selected. The controller may switch sooner only
+    // when this behavior's gate closes or its utility drops to zero.
+    virtual TickNum minTicks() const { return TickNum{10}; }
+
     // Higher score wins in utility-AI selection. Return zero to abstain.
     virtual math::Fixed64 utility(const awareness::AwarenessView& view,
                                   SlotId                          self,
