@@ -121,11 +121,19 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "  ${STEP}. Build app containers + load schema/bootstrap data:"
-echo -e "     ${YELLOW}make rebuild${NC}"
+if [ "$OS_TYPE" = "Linux" ]; then
+  echo -e "     ${YELLOW}sudo make rebuild${NC}"
+else
+  echo -e "     ${YELLOW}make rebuild${NC}"
+fi
 STEP=$((STEP+1))
 echo ""
 echo "  ${STEP}. Sync all Lighthouse data (APSL + CASA):"
-echo -e "     ${YELLOW}make lighthouse${NC}"
+if [ "$OS_TYPE" = "Linux" ]; then
+  echo -e "     ${YELLOW}sudo make lighthouse${NC}"
+else
+  echo -e "     ${YELLOW}make lighthouse${NC}"
+fi
 STEP=$((STEP+1))
 echo ""
 echo "  ${STEP}. Open in your browser:"

@@ -155,13 +155,21 @@ echo ""
 #   209 = physical.max_dribble_speed + max_carry_sprint_speed (attrs 11+12, Slice 25.2)
 #   216 = physical.press_resistance (attr 13, Slice 24.3b)
 #   217 = physical.pass_power (attr 14, Slice 26.1)
-echo -e "${YELLOW}🔧 Regenerating sim registry header from migrations 200 + 208 + 209 + 216 + 217...${NC}"
+#   220 = physical.body_mass (attr 15, Slice 27.3)
+#   224 = pressing concept (Slice 30.2)
+#   225 = marking + jockey concepts (Slice 31.1)
+#   226 = M3 behavior attribute batch (Slice 31.3)
+echo -e "${YELLOW}🔧 Regenerating sim registry header from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224 + 225 + 226...${NC}"
 awk -f sim/scripts/gen_registry_header.awk \
     database/migrations/200-sim-registries.sql \
     database/migrations/208-sim-attr-dribble-efficiency.sql \
     database/migrations/209-sim-attr-carry-speeds.sql \
     database/migrations/216-sim-attr-press-resistance.sql \
     database/migrations/217-sim-attr-pass-power.sql \
+    database/migrations/220-sim-attr-body-mass.sql \
+    database/migrations/224-sim-concept-pressing.sql \
+    database/migrations/225-sim-concept-marking-jockey.sql \
+    database/migrations/226-sim-attr-m3-batch.sql \
     > sim/src/common/M0Registry.generated.hpp
 echo -e "${GREEN}✓ sim/src/common/M0Registry.generated.hpp regenerated${NC}"
 echo ""
@@ -196,7 +204,7 @@ for i in $(seq 1 120); do
     sleep 1
     if [ "$i" -eq 120 ]; then
         echo -e " ${RED}✗ Timeout${NC}"
-        $DOCKER logs footballhome_db | tail -20
+        $DOCKER logs footballhome_db
         exit 1
     fi
 done

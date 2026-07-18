@@ -18,6 +18,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+lighthouse.log
 
 # Dynamic Docker compose files
 docker-compose.override.yml
@@ -74,6 +75,9 @@ footballhome-git-crypt.key.env
 /env
 /env.backup.local
 .aider*
+.la-probe-token.json
+media/*.mov
+media/*.mp4
 # frontend/vendor/ is tracked - vis-network library needed for schema viewer
 # Large binary files from roster scraping
 *.xlsx
@@ -83,4 +87,3 @@ scripts/__pycache__/
 
 env.bak-*
 *.bak-20*
-.la-probe-token.json

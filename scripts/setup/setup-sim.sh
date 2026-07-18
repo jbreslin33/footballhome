@@ -3,9 +3,13 @@
 #
 # The sim tests build natively on the host (not in a container), so we
 # need the same libraries the sim container will link. Right now that's:
+#   - g++ / make (C++20 compiler + standard build tools)
 #   - cmake     (build system, C++20)
+#   - ninja-build (generator used by the sim CMake workflow)
+#   - pkg-config (discovers libpqxx)
 #   - libssl-dev (OpenSSL headers/lib for HMAC-SHA256 in JwtVerifier;
 #                 keeps the sim on the same crypto stack as the backend)
+#   - libpqxx-dev (Postgres client C++ bindings for sim persistence tests)
 #   - qemu-user-static (optional — enables cross-arch determinism test)
 #
 # Everything here is idempotent.
@@ -15,6 +19,23 @@ source "$(dirname "$0")/_lib.sh"
 if [ "$OS_TYPE" != "Linux" ]; then
   print_warning "sim setup only supports Linux hosts right now (macOS uses container build); skipping."
   exit 0
+fi
+
+# ── compiler + build tools ───────────────────────────────────────────
+MISSING_PACKAGES=()
+for pkg in g++ make ninja-build pkg-config libpqxx-dev; do
+  if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+    MISSING_PACKAGES+=("$pkg")
+  fi
+done
+
+if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
+  print_status "Installing sim build packages: ${MISSING_PACKAGES[*]}..."
+  sudo apt-get update -qq
+  sudo apt-get install -y "${MISSING_PACKAGES[@]}"
+  print_success "sim build packages installed"
+else
+  print_success "sim build packages already installed"
 fi
 
 # ── cmake ─────────────────────────────────────────────────────────────
