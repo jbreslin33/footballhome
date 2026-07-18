@@ -9,6 +9,11 @@ A comprehensive team management system for football/soccer leagues, built with C
 - macOS or Linux
 - Git
 
+On the production Linux host, Podman runs rootful. Prefix container and database
+targets with `sudo` there (for example `sudo make build`, `sudo make sync-apsl`,
+and `sudo make shell-db`). Plain `make ...` examples are suitable for local
+setups where your container engine is already accessible to your user.
+
 ### First-Time Setup (4 steps, then syncs forever)
 
 ```bash
@@ -24,19 +29,19 @@ cp .env.example env
 ./setup.sh
 
 # Step 4: Build images + start containers (DB auto-loads schema + bootstrap data)
-make build
+sudo make build
 ```
 
 You now have a running system at **http://localhost:3000** with an empty database (schema + lookup tables only).
 
 ```bash
 # From here on, it's just syncs (run these now AND every week):
-make sync-apsl
-make sync-csl
-make sync-casa
+sudo make sync-apsl
+sudo make sync-csl
+sudo make sync-casa
 
 # Lighthouse-only refresh (APSL + CASA)
-make sync-lighthouse
+sudo make sync-lighthouse
 ```
 
 **What each step does:**
@@ -46,19 +51,19 @@ make sync-lighthouse
 | 1 | `git clone` | Gets the code | Never |
 | 2 | `cp .env.example env` | Creates credentials file | Never |
 | 3 | `./setup.sh` | Installs Podman, Node.js, npm packages, vis-network | Never (unless new machine) |
-| 4 | `make build` | Builds Docker images, starts containers, DB loads schema | Only if images change |
-| 5+ | `make sync-*` | Scrape → parse → curate → UPSERT league data | Weekly (or whenever you want fresh data) |
+| 4 | `sudo make build` | Builds Docker images, starts containers, DB loads schema | Only if images change |
+| 5+ | `sudo make sync-*` | Scrape → parse → curate → UPSERT league data | Weekly (or whenever you want fresh data) |
 
 ## 🔄 Ongoing Workflow
 
 ### Weekly League Update (non-destructive, idempotent)
 
 ```bash
-make backup              # safety net (pg_dump → backups/)
-make sync-lighthouse     # Lighthouse 1893 SC + Boys Club + U23
-make sync-apsl           # scrape → parse → curate → UPSERT
-make sync-csl            # scrape → parse → curate → UPSERT
-make sync-casa           # scrape → parse → curate → UPSERT
+sudo make backup              # safety net (pg_dump → backups/)
+sudo make sync-lighthouse     # Lighthouse 1893 SC + Boys Club + U23
+sudo make sync-apsl           # scrape → parse → curate → UPSERT
+sudo make sync-csl            # scrape → parse → curate → UPSERT
+sudo make sync-casa           # scrape → parse → curate → UPSERT
 ```
 
 Each `sync` command is **fully isolated** to one league. Running it on an empty DB does a full load. Running it on a live DB updates changed data. User-generated data (RSVPs, tactical boards, practices) is never touched.
@@ -79,14 +84,14 @@ make sync-csl            # UPSERT corrected data (or just: make sync-csl does bo
 make scrape-apsl         # fetch HTML only (no parse or load)
 make parse-apsl          # regenerate SQL from cached HTML only
 make audit               # run data quality checks
-make shell-db            # connect to database shell
+sudo make shell-db       # connect to database shell
 ```
 
 ### Backup & Restore
 
 ```bash
-make backup              # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
-make restore             # restore latest (or BACKUP=file.sql)
+sudo make backup         # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
+sudo make restore        # restore latest (or BACKUP=file.sql)
 ```
 
 **Automated daily backups** run via cron at 3am:
@@ -116,16 +121,17 @@ VPN config: `/etc/wireguard/scrape-vpn.conf` (not in repo — manual setup per m
 ### Dev Reset (destructive — wipes ALL data)
 
 ```bash
-make rebuild             # destroys DB volume, rebuilds from scratch
-make sync                # re-sync all leagues
+sudo make backup         # required safety net first
+sudo make rebuild        # destroys DB volume, rebuilds from scratch
+sudo make sync           # re-sync all leagues
 ```
 
-⚠️ This destroys all user-generated data. Use `make backup` first if needed.
+This destroys all user-generated data. Use `sudo make backup` first.
 
 ### Schema Migration (preserves data)
 
 ```bash
-make migrate             # applies pending migrations in database/migrations/
+sudo make migrate        # applies pending migrations in database/migrations/
 ```
 
 Use migrations when you need to change the schema on a database with user data you want to keep. Write a numbered SQL file in `database/migrations/`, then also update `00-schema.sql` so future `make rebuild` gets the new schema.
@@ -304,12 +310,12 @@ That's it. `make up` starts all three containers (db, backend, frontend). The si
 
 ```bash
 # 1. Build new image
-make build
+sudo make build
 
 # 2. Replace old backend container with new image
-podman stop footballhome_frontend footballhome_backend
-podman rm footballhome_frontend footballhome_backend
-make up
+sudo podman stop footballhome_frontend footballhome_backend
+sudo podman rm footballhome_frontend footballhome_backend
+sudo make up
 ```
 
 > **Why the extra steps?** `make build` creates a new image, but `podman-compose up -d` won't replace a container that already exists with the same name. You must remove the old container first. The frontend container depends on the backend, so it must be removed too.
@@ -324,11 +330,11 @@ make logs-backend
 make audit
 
 # Check for duplicate clubs
-make shell-db
+sudo make shell-db
 # Then: SELECT name, count(*) FROM clubs GROUP BY name HAVING count(*) > 1;
 
 # If a sync broke something
-make restore        # roll back to last backup
+sudo make restore        # roll back to last backup
 ```
 
 ## 📋 Make Targets Reference
