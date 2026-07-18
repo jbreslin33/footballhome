@@ -746,9 +746,9 @@ Runs to completion in seconds. Idempotent. Safe to invoke concurrently
 
 Two candidates:
 
-a) **systemd `.timer`** (owned by host, like the existing
-   `scrape-vpn.compose.yml`). Pros: simple, host-managed, restart on
-   failure, unit files fit the existing pattern.
+a) **systemd `.timer`** (owned by host, like the existing sync/scraper host
+  automation). Pros: simple, host-managed, restart on failure, unit files fit
+  the existing pattern.
 b) **pg_cron** invoking a small wrapper — but pg_cron can't run
    arbitrary Node, so this would need a signal + external worker
    anyway. Skip.

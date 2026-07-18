@@ -6,9 +6,9 @@
 # Why this exists:
 #   The host-level WireGuard tunnel re-routes ALL host traffic through
 #   the VPN, which kills inbound SSH sessions when working remotely.
-#   This script runs WireGuard inside an isolated podman/docker container
-#   network namespace so only scraper traffic is tunneled. Host SSH is
-#   never affected.
+#   This script runs WireGuard inside an isolated rootful Podman container
+#   network namespace so only scraper traffic is tunneled. Host SSH is never
+#   affected.
 #
 # Commands:
 #   ./scrape-vpn.sh up         Build (if needed) + start the container
@@ -46,8 +46,6 @@ export REPO_ROOT
 
 CONTAINER="footballhome_scraper"
 IMAGE="footballhome-scraper:latest"
-COMPOSE_FILE="$REPO_ROOT/compose/scrape-vpn.compose.yml"
-PROJECT="footballhome_scrape"
 WG_INTERFACE="${WG_INTERFACE:-scrape-vpn}"
 
 # Per-user staging dir for the WireGuard config so rootless podman can
@@ -59,8 +57,8 @@ WG_STAGE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/footballhome/wireguard"
 # ── Detect engine ─────────────────────────────────────────────────────
 ENGINE_BIN="$(command -v podman 2>/dev/null || command -v docker 2>/dev/null || true)"
 if [ -z "$ENGINE_BIN" ]; then
-  echo "❌ Neither podman nor docker is installed." >&2
-  echo "   Install podman: sudo apt install -y podman podman-compose" >&2
+  echo "❌ Podman is not installed." >&2
+  echo "   Install podman: sudo apt install -y podman" >&2
   exit 1
 fi
 
@@ -78,8 +76,6 @@ fi
 engine() { "${ENGINE_PREFIX[@]}" "$ENGINE_BIN" "$@"; }
 # Back-compat: some helpers reference $ENGINE for display only.
 ENGINE="${ENGINE_PREFIX[*]:+${ENGINE_PREFIX[*]} }$ENGINE_BIN"
-
-COMPOSE="$(command -v podman-compose 2>/dev/null || command -v docker-compose 2>/dev/null || true)"
 
 # ── Helpers ───────────────────────────────────────────────────────────
 container_exists() { engine container exists "$CONTAINER" 2>/dev/null; }
@@ -144,10 +140,8 @@ cmd_up() {
 
   echo "🚀 Starting $CONTAINER (VPN interface: $WG_INTERFACE)..."
 
-  # Run the container with the same arguments compose would use. We use
-  # `run` directly (not compose) because compose's privileges/cap_add
-  # handling is inconsistent across podman versions, and we want this
-  # script to work in plain podman/docker without compose installed.
+  # Run the container directly instead of through compose because compose's
+  # privileges/cap_add handling is inconsistent across podman versions.
   engine run -d \
     --name "$CONTAINER" \
     --hostname scraper \

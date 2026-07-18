@@ -100,7 +100,6 @@ Do not run destructive targets on a live data set without explicit approval.
 
 ```text
 backend/          C++ HTTP server
-compose/          supplemental compose files
 config/           runtime configs and ignored local key material
 database/         bootstrap SQL, migrations, scraper pipeline, DB docs
 docs/             cross-cutting designs and ADRs
