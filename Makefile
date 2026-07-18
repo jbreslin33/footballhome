@@ -719,56 +719,56 @@ vpn-status: scrape-vpn-status
 
 # Status — read-only summary of which P# have been posted.
 post-status:
-	@node post-to-instagram.js exhibit-status
+	@node scripts/social/post-to-instagram.js exhibit-status
 
 # Next — post the lowest-numbered unposted poster (cron uses this).
 post-next:
-	@node post-to-instagram.js exhibit-next --yes
+	@node scripts/social/post-to-instagram.js exhibit-next --yes
 
 # Per-poster post targets (post-1 .. post-20). Skips the y/n confirm.
-post-1:  ; @node post-to-instagram.js exhibit 1  --yes
-post-2:  ; @node post-to-instagram.js exhibit 2  --yes
-post-3:  ; @node post-to-instagram.js exhibit 3  --yes
-post-4:  ; @node post-to-instagram.js exhibit 4  --yes
-post-5:  ; @node post-to-instagram.js exhibit 5  --yes
-post-6:  ; @node post-to-instagram.js exhibit 6  --yes
-post-7:  ; @node post-to-instagram.js exhibit 7  --yes
-post-8:  ; @node post-to-instagram.js exhibit 8  --yes
-post-9:  ; @node post-to-instagram.js exhibit 9  --yes
-post-10: ; @node post-to-instagram.js exhibit 10 --yes
-post-11: ; @node post-to-instagram.js exhibit 11 --yes
-post-12: ; @node post-to-instagram.js exhibit 12 --yes
-post-13: ; @node post-to-instagram.js exhibit 13 --yes
-post-14: ; @node post-to-instagram.js exhibit 14 --yes
-post-15: ; @node post-to-instagram.js exhibit 15 --yes
-post-16: ; @node post-to-instagram.js exhibit 16 --yes
-post-17: ; @node post-to-instagram.js exhibit 17 --yes
-post-18: ; @node post-to-instagram.js exhibit 18 --yes
-post-19: ; @node post-to-instagram.js exhibit 19 --yes
-post-20: ; @node post-to-instagram.js exhibit 20 --yes
+post-1:  ; @node scripts/social/post-to-instagram.js exhibit 1  --yes
+post-2:  ; @node scripts/social/post-to-instagram.js exhibit 2  --yes
+post-3:  ; @node scripts/social/post-to-instagram.js exhibit 3  --yes
+post-4:  ; @node scripts/social/post-to-instagram.js exhibit 4  --yes
+post-5:  ; @node scripts/social/post-to-instagram.js exhibit 5  --yes
+post-6:  ; @node scripts/social/post-to-instagram.js exhibit 6  --yes
+post-7:  ; @node scripts/social/post-to-instagram.js exhibit 7  --yes
+post-8:  ; @node scripts/social/post-to-instagram.js exhibit 8  --yes
+post-9:  ; @node scripts/social/post-to-instagram.js exhibit 9  --yes
+post-10: ; @node scripts/social/post-to-instagram.js exhibit 10 --yes
+post-11: ; @node scripts/social/post-to-instagram.js exhibit 11 --yes
+post-12: ; @node scripts/social/post-to-instagram.js exhibit 12 --yes
+post-13: ; @node scripts/social/post-to-instagram.js exhibit 13 --yes
+post-14: ; @node scripts/social/post-to-instagram.js exhibit 14 --yes
+post-15: ; @node scripts/social/post-to-instagram.js exhibit 15 --yes
+post-16: ; @node scripts/social/post-to-instagram.js exhibit 16 --yes
+post-17: ; @node scripts/social/post-to-instagram.js exhibit 17 --yes
+post-18: ; @node scripts/social/post-to-instagram.js exhibit 18 --yes
+post-19: ; @node scripts/social/post-to-instagram.js exhibit 19 --yes
+post-20: ; @node scripts/social/post-to-instagram.js exhibit 20 --yes
 
 # Per-poster preview targets (preview-1 .. preview-20). Render + show only;
 # never posts. Useful for "look at slide N before clicking post-N".
-preview-1:  ; @node post-to-instagram.js exhibit 1  preview
-preview-2:  ; @node post-to-instagram.js exhibit 2  preview
-preview-3:  ; @node post-to-instagram.js exhibit 3  preview
-preview-4:  ; @node post-to-instagram.js exhibit 4  preview
-preview-5:  ; @node post-to-instagram.js exhibit 5  preview
-preview-6:  ; @node post-to-instagram.js exhibit 6  preview
-preview-7:  ; @node post-to-instagram.js exhibit 7  preview
-preview-8:  ; @node post-to-instagram.js exhibit 8  preview
-preview-9:  ; @node post-to-instagram.js exhibit 9  preview
-preview-10: ; @node post-to-instagram.js exhibit 10 preview
-preview-11: ; @node post-to-instagram.js exhibit 11 preview
-preview-12: ; @node post-to-instagram.js exhibit 12 preview
-preview-13: ; @node post-to-instagram.js exhibit 13 preview
-preview-14: ; @node post-to-instagram.js exhibit 14 preview
-preview-15: ; @node post-to-instagram.js exhibit 15 preview
-preview-16: ; @node post-to-instagram.js exhibit 16 preview
-preview-17: ; @node post-to-instagram.js exhibit 17 preview
-preview-18: ; @node post-to-instagram.js exhibit 18 preview
-preview-19: ; @node post-to-instagram.js exhibit 19 preview
-preview-20: ; @node post-to-instagram.js exhibit 20 preview
+preview-1:  ; @node scripts/social/post-to-instagram.js exhibit 1  preview
+preview-2:  ; @node scripts/social/post-to-instagram.js exhibit 2  preview
+preview-3:  ; @node scripts/social/post-to-instagram.js exhibit 3  preview
+preview-4:  ; @node scripts/social/post-to-instagram.js exhibit 4  preview
+preview-5:  ; @node scripts/social/post-to-instagram.js exhibit 5  preview
+preview-6:  ; @node scripts/social/post-to-instagram.js exhibit 6  preview
+preview-7:  ; @node scripts/social/post-to-instagram.js exhibit 7  preview
+preview-8:  ; @node scripts/social/post-to-instagram.js exhibit 8  preview
+preview-9:  ; @node scripts/social/post-to-instagram.js exhibit 9  preview
+preview-10: ; @node scripts/social/post-to-instagram.js exhibit 10 preview
+preview-11: ; @node scripts/social/post-to-instagram.js exhibit 11 preview
+preview-12: ; @node scripts/social/post-to-instagram.js exhibit 12 preview
+preview-13: ; @node scripts/social/post-to-instagram.js exhibit 13 preview
+preview-14: ; @node scripts/social/post-to-instagram.js exhibit 14 preview
+preview-15: ; @node scripts/social/post-to-instagram.js exhibit 15 preview
+preview-16: ; @node scripts/social/post-to-instagram.js exhibit 16 preview
+preview-17: ; @node scripts/social/post-to-instagram.js exhibit 17 preview
+preview-18: ; @node scripts/social/post-to-instagram.js exhibit 18 preview
+preview-19: ; @node scripts/social/post-to-instagram.js exhibit 19 preview
+preview-20: ; @node scripts/social/post-to-instagram.js exhibit 20 preview
 
 # Operator dashboard — starts a local-only HTTP server on 127.0.0.1:3010
 # that serves the 20-button dashboard at http://localhost:3010/.

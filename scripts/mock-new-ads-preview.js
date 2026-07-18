@@ -2,7 +2,7 @@
 // scripts/mock-new-ads-preview.js
 // Renders a pixel-close Instagram feed mockup for the 4 NEW direct-mode club
 // ads (Mens, Womens, Boys K-12, Girls K-12) in a 2x2 grid, using the locally
-// generated card PNGs and the captions from create-ad.js.
+// generated card PNGs and the captions from scripts/ads/create-ad.js.
 //
 // Usage:
 //   node scripts/mock-new-ads-preview.js

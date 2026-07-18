@@ -509,7 +509,7 @@ class LeadsScreen extends Screen {
     // them today).
     const ALWAYS_SHOW = [
       // Currently-live ads (as of 2026-06-20).  Update when ads are
-      // launched / paused via create-ad.js.
+      // launched / paused via scripts/ads/create-ad.js.
       'U23 Men',
       'Youth (Grades 1\u20136)',
       'Boys Club (Grades 1\u20136)',
@@ -715,12 +715,12 @@ class LeadsScreen extends Screen {
       '821845431008120':  "Men's Club",
       '3929429224026650': "Women's Club",
       // Tri County Women — form id TBD (no live ad yet).
-      // U11/U12 Travel lead forms created 2026-06-20 via create-ad.js —
+      // U11/U12 Travel lead forms created 2026-06-20 via scripts/ads/create-ad.js —
       // ads share boys-club / girls-club LeagueApps URLs but use
       // utm_content=*-u11u12-travel to distinguish in funnel reports.
       '966641426206505':  'Boys Club (U11/U12)',
       '1666471931283440': 'Girls Club (U11/U12)',
-      // Trial-pathway lead forms created 2026-07-04 via create-ad.js.
+      // Trial-pathway lead forms created 2026-07-04 via scripts/ads/create-ad.js.
       // Both ads point at the SAME Men's Club LeagueApps URL and are
       // differentiated only by utm_content=apsl-trials / liga1-trials.
       '1452427476902521': 'APSL Trials',

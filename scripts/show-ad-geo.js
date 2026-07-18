@@ -2,7 +2,7 @@
 // scripts/show-ad-geo.js — Print live targeting + region-of-click breakdown for all active ads
 //
 // Reads META_ADS_TOKEN + META_AD_ACCOUNT_ID from env. Pulls each ad's adset
-// targeting (so we see the actual live geo, not what create-ad.js *originally*
+// targeting (so we see the actual live geo, not what scripts/ads/create-ad.js *originally*
 // posted — it may have been edited in Ads Manager), plus a region-broken-down
 // insights row to show where impressions / clicks / leads actually came from.
 

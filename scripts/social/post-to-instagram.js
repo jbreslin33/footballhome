@@ -1,10 +1,12 @@
-require('dotenv').config();
 const readline = require('readline');
 const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { generateCard, findLogo } = require('./generate-match-card');
-const postLog = require('./scripts/exhibit-post-log');
+const postLog = require('../exhibit-post-log');
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+require('dotenv').config({ path: path.join(REPO_ROOT, 'env') });
 
 const INSTAGRAM_USER_ID = process.env.INSTAGRAM_USER_ID || '27772857462308985';
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
@@ -217,7 +219,7 @@ if (command === 'photo') {
   const imageUrl = args[1];
   const caption = args.slice(2).join(' ');
   if (!imageUrl || !caption) {
-    console.log('Usage: node post-to-instagram.js photo <image_url> <caption>');
+    console.log('Usage: node scripts/social/post-to-instagram.js photo <image_url> <caption>');
     process.exit(1);
   }
   postPhoto(imageUrl, caption);
@@ -225,7 +227,7 @@ if (command === 'photo') {
 } else if (command === 'match-result') {
   const [, imageUrl, homeTeam, awayTeam, homeScore, awayScore, league, date] = args;
   if (!imageUrl || !homeTeam) {
-    console.log('Usage: node post-to-instagram.js match-result <image_url> <home_team> <away_team> <home_score> <away_score> <league> <date>');
+    console.log('Usage: node scripts/social/post-to-instagram.js match-result <image_url> <home_team> <away_team> <home_score> <away_score> <league> <date>');
     process.exit(1);
   }
   const caption = matchResultCaption(homeTeam, awayTeam, homeScore, awayScore, league, date);
@@ -235,7 +237,7 @@ if (command === 'photo') {
 } else if (command === 'upcoming') {
   const [, imageUrl, opponent, date, time, venue] = args;
   if (!imageUrl || !opponent) {
-    console.log('Usage: node post-to-instagram.js upcoming <image_url> <opponent> <date> <time> <venue>');
+    console.log('Usage: node scripts/social/post-to-instagram.js upcoming <image_url> <opponent> <date> <time> <venue>');
     process.exit(1);
   }
   const caption = upcomingMatchCaption(opponent, date, time, venue);
@@ -245,7 +247,7 @@ if (command === 'photo') {
 } else if (command === 'standings') {
   const [, imageUrl, position, played, won, drawn, lost, points] = args;
   if (!imageUrl || !position) {
-    console.log('Usage: node post-to-instagram.js standings <image_url> <position> <played> <won> <drawn> <lost> <points>');
+    console.log('Usage: node scripts/social/post-to-instagram.js standings <image_url> <position> <played> <won> <drawn> <lost> <points>');
     process.exit(1);
   }
   const caption = standingsCaption(position, played, won, drawn, lost, points);
@@ -255,11 +257,11 @@ if (command === 'photo') {
 // --- NEW: Auto-generate + preview + confirm ---
 
 } else if (command === 'auto-result') {
-  // node post-to-instagram.js auto-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
+  // node scripts/social/post-to-instagram.js auto-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
   (async () => {
     const [, homeTeam, awayTeam, homeScore, awayScore, league, date, time, venue] = args;
     if (!homeTeam) {
-      console.log('Usage: node post-to-instagram.js auto-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>');
+      console.log('Usage: node scripts/social/post-to-instagram.js auto-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>');
       process.exit(1);
     }
 
@@ -305,13 +307,13 @@ if (command === 'photo') {
   // Match-result post tailored for the Philly Grassroots Cup: country-flag
   // graphics, country emojis in the caption, cup-correct hashtags.
   // Usage:
-  //   node post-to-instagram.js grassroots-result \
+  //   node scripts/social/post-to-instagram.js grassroots-result \
   //     "Puerto Rico" 🇵🇷 "Israel" 🇮🇱 3 1 "Group Stage Game 2" "June 14, 2026" "Lighthouse Field" \
   //     ["optional extra blurb"]
   (async () => {
     const [, homeTeam, homeFlag, awayTeam, awayFlag, homeScore, awayScore, stage, date, venue, blurb] = args;
     if (!homeTeam || !awayTeam || homeScore === undefined || awayScore === undefined) {
-      console.log('Usage: node post-to-instagram.js grassroots-result <home> <homeFlag> <away> <awayFlag> <home_score> <away_score> <stage> <date> <venue> [blurb]');
+      console.log('Usage: node scripts/social/post-to-instagram.js grassroots-result <home> <homeFlag> <away> <awayFlag> <home_score> <away_score> <stage> <date> <venue> [blurb]');
       process.exit(1);
     }
 
@@ -363,11 +365,11 @@ if (command === 'photo') {
   })();
 
 } else if (command === 'auto-announcement') {
-  // node post-to-instagram.js auto-announcement "Lighthouse 1893 SC" "Sewell Old Boys FC" "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
+  // node scripts/social/post-to-instagram.js auto-announcement "Lighthouse 1893 SC" "Sewell Old Boys FC" "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
   (async () => {
     const [, homeTeam, awayTeam, league, date, time, venue] = args;
     if (!homeTeam) {
-      console.log('Usage: node post-to-instagram.js auto-announcement <home> <away> <league> <date> <time> <venue>');
+      console.log('Usage: node scripts/social/post-to-instagram.js auto-announcement <home> <away> <league> <date> <time> <venue>');
       process.exit(1);
     }
 
@@ -430,13 +432,13 @@ if (command === 'photo') {
       console.log(`   Public URL:   ${PUBLIC_BASE}/${filename}`);
       openImage(filepath);
     } else {
-      console.log('Usage: node post-to-instagram.js preview-only <match-result|match-announcement> ...');
+      console.log('Usage: node scripts/social/post-to-instagram.js preview-only <match-result|match-announcement> ...');
     }
   })();
 
 } else if (command === 'recruit') {
-  // node post-to-instagram.js recruit <key>
-  // e.g. node post-to-instagram.js recruit grassroots-brazil
+  // node scripts/social/post-to-instagram.js recruit <key>
+  // e.g. node scripts/social/post-to-instagram.js recruit grassroots-brazil
   (async () => {
     const key = args[1];
     const post = ORGANIC_POSTS[key];
@@ -470,12 +472,12 @@ if (command === 'photo') {
   })();
 
 } else if (command === 'exhibit' || command === 'exhibit-next') {
-  // node post-to-instagram.js exhibit 1                    # render + post P1 carousel
-  // node post-to-instagram.js exhibit 1 single             # render + post P1 as ONE 4:5 tile (no slides)
-  // node post-to-instagram.js exhibit 1 preview            # carousel preview, no post
-  // node post-to-instagram.js exhibit 1 single preview     # single preview, no post
-  // node post-to-instagram.js exhibit 1 --yes              # skip the y/n confirm (for buttons/cron)
-  // node post-to-instagram.js exhibit-next [--yes]         # post the lowest-numbered un-posted P# (1..20)
+  // node scripts/social/post-to-instagram.js exhibit 1                    # render + post P1 carousel
+  // node scripts/social/post-to-instagram.js exhibit 1 single             # post P1 as one 4:5 tile
+  // node scripts/social/post-to-instagram.js exhibit 1 preview            # carousel preview, no post
+  // node scripts/social/post-to-instagram.js exhibit 1 single preview     # single preview, no post
+  // node scripts/social/post-to-instagram.js exhibit 1 --yes              # skip the y/n confirm
+  // node scripts/social/post-to-instagram.js exhibit-next [--yes]         # post next unposted P#
   //
   // Renders directly from frontend/exhibit/lighthouse-history.html (the
   // printed museum poster IS the source). No intermediate JSON.
@@ -519,8 +521,8 @@ if (command === 'photo') {
     } else {
       posterNum = parseInt(positionals[0], 10);
       if (!posterNum) {
-        console.log('Usage: node post-to-instagram.js exhibit <posterNum> [single] [preview] [--yes]');
-        console.log('       node post-to-instagram.js exhibit-next [--yes]');
+        console.log('Usage: node scripts/social/post-to-instagram.js exhibit <posterNum> [single] [preview] [--yes]');
+        console.log('       node scripts/social/post-to-instagram.js exhibit-next [--yes]');
         process.exit(1);
       }
     }
@@ -650,7 +652,7 @@ if (command === 'photo') {
   })();
 
 } else if (command === 'exhibit-status') {
-  // node post-to-instagram.js exhibit-status
+  // node scripts/social/post-to-instagram.js exhibit-status
   //
   // Prints a 1-line-per-poster summary of what's been posted, what's
   // next, and how many times each poster has been re-posted. Read-only;
@@ -674,34 +676,34 @@ if (command === 'photo') {
   console.log(`Lighthouse 1893 SC - Instagram Posting Tool
 
 Usage (manual - requires pre-hosted image URL):
-  node post-to-instagram.js photo <image_url> <caption>
-  node post-to-instagram.js match-result <image_url> <home> <away> <score_h> <score_a> <league> <date>
-  node post-to-instagram.js upcoming <image_url> <opponent> <date> <time> <venue>
+  node scripts/social/post-to-instagram.js photo <image_url> <caption>
+  node scripts/social/post-to-instagram.js match-result <image_url> <home> <away> <score_h> <score_a> <league> <date>
+  node scripts/social/post-to-instagram.js upcoming <image_url> <opponent> <date> <time> <venue>
 
 Usage (auto-generate image + preview + confirm):
-  node post-to-instagram.js auto-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
-  node post-to-instagram.js auto-announcement <home> <away> <league> <date> <time> <venue>
-  node post-to-instagram.js grassroots-result <home> <homeFlag> <away> <awayFlag> <score_h> <score_a> <stage> <date> <venue> [blurb]
+  node scripts/social/post-to-instagram.js auto-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
+  node scripts/social/post-to-instagram.js auto-announcement <home> <away> <league> <date> <time> <venue>
+  node scripts/social/post-to-instagram.js grassroots-result <home> <homeFlag> <away> <awayFlag> <score_h> <score_a> <stage> <date> <venue> [blurb]
 
 Usage (recruiting / organic campaign posts):
-  node post-to-instagram.js recruit grassroots-brazil
-  node post-to-instagram.js recruit grassroots-puertorico
-  node post-to-instagram.js recruit u23-mens
-  node post-to-instagram.js recruit u23-womens
+  node scripts/social/post-to-instagram.js recruit grassroots-brazil
+  node scripts/social/post-to-instagram.js recruit grassroots-puertorico
+  node scripts/social/post-to-instagram.js recruit u23-mens
+  node scripts/social/post-to-instagram.js recruit u23-womens
 
 Usage (Lighthouse history exhibit — 20-poster carousel campaign):
-  node post-to-instagram.js exhibit <posterNum>                  Generate + post P# carousel
-  node post-to-instagram.js exhibit <posterNum> single           Generate + post P# as one 4:5 tile
-  node post-to-instagram.js exhibit <posterNum> preview          Carousel preview only
-  node post-to-instagram.js exhibit <posterNum> single preview   Single-tile preview only
-  node post-to-instagram.js exhibit <posterNum> --yes            Skip y/n confirm (button / cron use)
-  node post-to-instagram.js exhibit-next [--yes]                 Post the lowest-numbered unposted P#
-  node post-to-instagram.js exhibit-status                       List which P# have been posted
+  node scripts/social/post-to-instagram.js exhibit <posterNum>                  Generate + post P# carousel
+  node scripts/social/post-to-instagram.js exhibit <posterNum> single           Generate + post P# as one 4:5 tile
+  node scripts/social/post-to-instagram.js exhibit <posterNum> preview          Carousel preview only
+  node scripts/social/post-to-instagram.js exhibit <posterNum> single preview   Single-tile preview only
+  node scripts/social/post-to-instagram.js exhibit <posterNum> --yes            Skip y/n confirm (button / cron use)
+  node scripts/social/post-to-instagram.js exhibit-next [--yes]                 Post the lowest-numbered unposted P#
+  node scripts/social/post-to-instagram.js exhibit-status                       List which P# have been posted
 
 Usage (preview only - no posting):
-  node post-to-instagram.js preview-only match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
-  node post-to-instagram.js preview-only match-announcement <home> <away> <league> <date> <time> <venue>
+  node scripts/social/post-to-instagram.js preview-only match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
+  node scripts/social/post-to-instagram.js preview-only match-announcement <home> <away> <league> <date> <time> <venue>
 
 Example:
-  node post-to-instagram.js auto-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"`);
+  node scripts/social/post-to-instagram.js auto-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"`);
 }

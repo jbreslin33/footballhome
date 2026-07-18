@@ -59,7 +59,7 @@ Instagram-business-login flow at
 `https://developers.facebook.com/apps/1177405337805460/instagram-business/API-setup/`.
 Re-issuing also changed the IG business user ID, so `INSTAGRAM_USER_ID`
 in `env` was bumped from `26233831926285183` → `27772857462308985`
-and `post-to-instagram.js` was patched to read it from env (was
+and `scripts/social/post-to-instagram.js` was patched to read it from env (was
 hardcoded). Poster 16 posted as media `18123919870732720`.
 
 To prevent another lockout, add a 50-day cron that calls

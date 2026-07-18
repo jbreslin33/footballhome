@@ -35,7 +35,7 @@ const VARIANTS = {
   // to signal "summer trials to earn a 2026-2027 roster spot."  Both
   // funnel to the same Men's Club LeagueApps registration link
   // (utm_content differentiates which of the two trials the lead is
-  // interested in); see create-ad.js specs `apsl-trials` and
+  // interested in); see scripts/ads/create-ad.js specs `apsl-trials` and
   // `liga1-trials`.  APSL variant swaps the soccer-ball icon for the
   // APSL league logo via the optional `logo` field.
   'apsl-trials':  { word: 'APSL',  wordSize: 160, wordSpacing: 6, brand: 'LIGHTHOUSE 1893 MENS CLUB', badge: '2026-2027 SEASON', sub: 'SEMI-PRO LEAGUE',   logo: 'leagues/apsl.png', soccerText: 'AMERICAN PREMIER SOCCER LEAGUE', soccerSize: 62, soccerSpacing: 4, heroPill: 'SUMMER TRIALS', file: 'apsl-trials-ad.png'  },

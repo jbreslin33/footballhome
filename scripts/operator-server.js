@@ -10,7 +10,7 @@
 //   GET  /api/status             → JSON: which P# are posted, lastPosted, etc.
 //   GET  /api/titles             → JSON: { 1: { title, sub, kicker }, ... }
 //                                   (scraped from frontend/exhibit/lighthouse-history.html)
-//   POST /api/post/:n            → start a `node post-to-instagram.js exhibit N --yes` job
+//   POST /api/post/:n            → start a `node scripts/social/post-to-instagram.js exhibit N --yes` job
 //                                   body (optional): { mode: 'carousel' | 'single' }
 //                                   returns: { jobId }
 //   POST /api/preview/:n         → start a render-only preview job (no post)
@@ -107,7 +107,7 @@ function startJob({ kind, posterNum, scriptArgs }) {
 
   const child = spawn(
     process.execPath,
-    [path.join(REPO_ROOT, 'post-to-instagram.js'), ...scriptArgs],
+    [path.join(REPO_ROOT, 'scripts', 'social', 'post-to-instagram.js'), ...scriptArgs],
     { cwd: REPO_ROOT, env: process.env }
   );
   job.status = 'running';

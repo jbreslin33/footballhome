@@ -111,7 +111,7 @@ Working tree for the calendar workstream is clean at HEAD. The
 separate billing-refactor workstream still has uncommitted drift
 (deleted `BillingController.*`, `BillingExpectations.*`,
 `BillingProjector.*`; untracked `117-next-due-at.sql`,
-`118-drop-billing-expectations.sql`, `wire-snoop.js`,
+`118-drop-billing-expectations.sql`, `sim/scripts/wire-snoop.js`,
 `backend/.dockerignore`). Do NOT stage those \u2014 they belong to a
 parallel agent.
 

@@ -1,11 +1,13 @@
-require('dotenv').config();
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const LOGOS_DIR = path.join(__dirname, 'frontend', 'images', 'teams', 'logos');
-const FLAGS_DIR = path.join(__dirname, 'frontend', 'images', 'flags');
-const POSTS_DIR = path.join(__dirname, 'frontend', 'images', 'posts');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+require('dotenv').config({ path: path.join(REPO_ROOT, 'env') });
+
+const LOGOS_DIR = path.join(REPO_ROOT, 'frontend', 'images', 'teams', 'logos');
+const FLAGS_DIR = path.join(REPO_ROOT, 'frontend', 'images', 'flags');
+const POSTS_DIR = path.join(REPO_ROOT, 'frontend', 'images', 'posts');
 
 // Country name -> ISO 3166-1 alpha-2 (used to look up flag files in FLAGS_DIR).
 // Add entries here when posting cards for additional national teams.
@@ -1018,10 +1020,10 @@ async function main() {
   const type = args[0];
 
   if (type === 'match-result') {
-    // node generate-match-card.js match-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
+    // node scripts/social/generate-match-card.js match-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
     const [, homeTeam, awayTeam, homeScore, awayScore, league, date, time, venue] = args;
     if (!homeTeam) {
-      console.log('Usage: node generate-match-card.js match-result <home> <away> <home_score> <away_score> <league> <date> <time> <venue>');
+      console.log('Usage: node scripts/social/generate-match-card.js match-result <home> <away> <home_score> <away_score> <league> <date> <time> <venue>');
       process.exit(1);
     }
     const homeLogo = findLogo(homeTeam);
@@ -1037,10 +1039,10 @@ async function main() {
     return { filepath, filename };
 
   } else if (type === 'match-announcement') {
-    // node generate-match-card.js match-announcement "Lighthouse 1893 SC" "Sewell Old Boys FC" "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
+    // node scripts/social/generate-match-card.js match-announcement "Lighthouse 1893 SC" "Sewell Old Boys FC" "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
     const [, homeTeam, awayTeam, league, date, time, venue] = args;
     if (!homeTeam) {
-      console.log('Usage: node generate-match-card.js match-announcement <home> <away> <league> <date> <time> <venue>');
+      console.log('Usage: node scripts/social/generate-match-card.js match-announcement <home> <away> <league> <date> <time> <venue>');
       process.exit(1);
     }
     const homeLogo = findLogo(homeTeam);
@@ -1057,9 +1059,9 @@ async function main() {
 
   } else if (type === 'grassroots-brazil') {
     const lighthouseLogo = findLogo('lighthouse-1893');
-    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
-    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
-    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const welovejunkLogo = path.join(REPO_ROOT, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(REPO_ROOT, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('grassroots-cup-ad', {
       country: 'Brazil', flagEmoji: '🇧🇷',
       colorPrimary: '#009C3B', colorSecondary: '#002776', colorAccent: '#FFDF00',
@@ -1073,15 +1075,15 @@ async function main() {
 
   } else if (type === 'trial-pathway') {
     const lighthouseLogo = findLogo('lighthouse-1893');
-    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
-    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
-    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
-    const apslLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'apsl.png');
-    const openCupLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'us-open-cup.png');
-    const amateurLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'ussoccer.png');
-    const fifaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'fifa.png');
-    const epsaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'epsa.png');
-    const concacafLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'concacaf.png');
+    const welovejunkLogo = path.join(REPO_ROOT, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(REPO_ROOT, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'casa.png');
+    const apslLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'apsl.png');
+    const openCupLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'us-open-cup.png');
+    const amateurLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'ussoccer.png');
+    const fifaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'fifa.png');
+    const epsaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'epsa.png');
+    const concacafLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'concacaf.png');
     const { filepath, filename } = await generateCard('trial-pathway-ad', {
       lighthouseLogo, welovejunkLogo, complexLogo, casaLogo, apslLogo, openCupLogo, amateurLogo, fifaLogo, epsaLogo, concacafLogo,
       filename: 'trial-pathway-ad.png',
@@ -1091,9 +1093,9 @@ async function main() {
 
   } else if (type === 'grassroots-puertorico') {
     const lighthouseLogo = findLogo('lighthouse-1893');
-    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
-    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
-    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const welovejunkLogo = path.join(REPO_ROOT, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(REPO_ROOT, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('grassroots-cup-ad', {
       country: 'Puerto Rico', flagEmoji: '🇵🇷',
       colorPrimary: '#ED0000', colorSecondary: '#0023A0', colorAccent: '#ffffff',
@@ -1107,9 +1109,9 @@ async function main() {
 
   } else if (type === 'u23-mens') {
     const lighthouseLogo = findLogo('lighthouse-1893');
-    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
-    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
-    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const welovejunkLogo = path.join(REPO_ROOT, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(REPO_ROOT, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('u23-ad', {
       division: "Men's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
@@ -1124,9 +1126,9 @@ async function main() {
 
   } else if (type === 'u23-womens') {
     const lighthouseLogo = findLogo('lighthouse-1893');
-    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
-    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
-    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const welovejunkLogo = path.join(REPO_ROOT, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(REPO_ROOT, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('u23-ad', {
       division: "Women's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
@@ -1141,9 +1143,9 @@ async function main() {
 
   } else if (type === 'u23-womens-flyer') {
     const lighthouseLogo = findLogo('lighthouse-1893');
-    const welovejunkLogo = path.join(__dirname, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
-    const complexLogo = path.join(__dirname, 'frontend', 'images', 'lighthouse-complex.png');
-    const casaLogo = path.join(__dirname, 'frontend', 'images', 'leagues', 'casa.png');
+    const welovejunkLogo = path.join(REPO_ROOT, 'frontend', 'images', 'sponsors', 'welovejunk_logo.png');
+    const complexLogo = path.join(REPO_ROOT, 'frontend', 'images', 'lighthouse-complex.png');
+    const casaLogo = path.join(REPO_ROOT, 'frontend', 'images', 'leagues', 'casa.png');
     const { filepath, filename } = await generateCard('u23-flyer', {
       division: "Women's",
       colorPrimary: '#1565C0', colorSecondary: '#0D47A1',
@@ -1161,19 +1163,21 @@ async function main() {
     console.log(`Match Card Generator
 
 Usage:
-  node generate-match-card.js match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
-  node generate-match-card.js match-announcement <home> <away> <league> <date> <time> <venue>
-  node generate-match-card.js grassroots-brazil
-  node generate-match-card.js grassroots-puertorico
-  node generate-match-card.js u23-mens
-  node generate-match-card.js u23-womens
-  node generate-match-card.js u23-womens-flyer
+  node scripts/social/generate-match-card.js match-result <home> <away> <score_h> <score_a> <league> <date> <time> <venue>
+  node scripts/social/generate-match-card.js match-announcement <home> <away> <league> <date> <time> <venue>
+  node scripts/social/generate-match-card.js grassroots-brazil
+  node scripts/social/generate-match-card.js grassroots-puertorico
+  node scripts/social/generate-match-card.js u23-mens
+  node scripts/social/generate-match-card.js u23-womens
+  node scripts/social/generate-match-card.js u23-womens-flyer
 
 Example:
-  node generate-match-card.js match-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
+  node scripts/social/generate-match-card.js match-result "Lighthouse 1893 SC" "Sewell Old Boys FC" 1 3 "APSL" "March 29, 2026" "5:30 PM" "Northeast High School"
 `);
   }
 }
 
 module.exports = { generateCard, findLogo, findFlag, matchResultHTML, matchAnnouncementHTML, gameDayHTML, lineupHTML, grassrootsCupAdHTML, u23AdHTML, u23FlyerHTML, POSTS_DIR };
-main();
+if (require.main === module) {
+  main();
+}

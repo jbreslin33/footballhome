@@ -13,4 +13,4 @@
 
 PATH=/usr/local/bin:/usr/bin:/bin
 REPO_PATH=/home/jbreslin/sandbox/github/footballhome
-0 9 * * * cd $REPO_PATH && /usr/bin/env node post-to-instagram.js exhibit-next --yes >> $REPO_PATH/scripts/exhibit-cron.log 2>&1
+0 9 * * * cd $REPO_PATH && /usr/bin/env node scripts/social/post-to-instagram.js exhibit-next --yes >> $REPO_PATH/scripts/exhibit-cron.log 2>&1

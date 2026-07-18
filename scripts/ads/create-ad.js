@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// create-ad.js — Create a boosted Instagram ad via Meta Marketing API
+// scripts/ads/create-ad.js — Create a boosted Instagram ad via Meta Marketing API
 //
 // Usage:
-//   node create-ad.js u23-mens --budget 10 --days 5
-//   node create-ad.js u23-womens --budget 5 --days 3
-//   node create-ad.js grassroots-brazil --budget 20 --days 7
+//   node scripts/ads/create-ad.js u23-mens --budget 10 --days 5
+//   node scripts/ads/create-ad.js u23-womens --budget 5 --days 3
+//   node scripts/ads/create-ad.js grassroots-brazil --budget 20 --days 7
 //
 // Options:
 //   --budget  Daily budget in USD (default: 5)
@@ -13,7 +13,9 @@
 //   --age-max Maximum age (default: 40)
 //   --dry-run Print what would be created without actually creating it
 
-require('dotenv').config({ path: __dirname + '/env' });
+const path = require('path');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+require('dotenv').config({ path: path.join(REPO_ROOT, 'env') });
 
 const AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID;   // act_XXXXXXXXXX
 const PAGE_ID       = process.env.META_PAGE_ID;
@@ -677,7 +679,7 @@ const formIdArg = getArg('--form-id', null);  // skip form creation if provided
 
 // ── Validate ──────────────────────────────────────────────────────────
 if (!adKey || !ADS[adKey]) {
-  console.error(`\nUsage: node create-ad.js <ad-key> [options]\n`);
+  console.error(`\nUsage: node scripts/ads/create-ad.js <ad-key> [options]\n`);
   console.error(`Available ad keys:\n  ${Object.keys(ADS).join('\n  ')}\n`);
   console.error(`Options:\n  --budget <USD/day>  (default: 5)\n  --days <n>          (default: 3)\n  --age-min <n>       (default: 16)\n  --age-max <n>       (default: 40)\n  --dry-run\n`);
   process.exit(1);
@@ -873,7 +875,7 @@ async function run() {
 
    When ready to go live, either:
    - Turn it on in Ads Manager, OR
-   - Run: node create-ad.js ${adKey} --budget ${dailyBudgetUSD} --days ${days}  (and activate in Ads Manager)
+  - Run: node scripts/ads/create-ad.js ${adKey} --budget ${dailyBudgetUSD} --days ${days}  (and activate in Ads Manager)
 `);
 }
 
