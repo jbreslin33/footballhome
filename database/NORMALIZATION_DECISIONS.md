@@ -221,6 +221,42 @@ LEFT JOIN users u ON c.user_id = u.id;
 
 ---
 
+## Deferred Data Hardening Decisions (2026-06-26 audit)
+
+### `persons.birth_date` remains nullable
+
+Do not add `NOT NULL` to `persons.birth_date`.
+
+Rationale:
+
+- Most scraped league pages do not expose player DOB.
+- Available DOB coverage is incomplete and source-specific.
+- Existing backfill pipelines preserve DOBs when available.
+- Eligibility-sensitive surfaces should enforce DOB requirements where DOB
+    matters, such as youth eligibility checks, rather than on the global `persons`
+    table.
+
+### Empty `persons.last_name` rows were merge cleanup, not schema cleanup
+
+The audit item for `persons.last_name` was not a NULL problem. The affected rows
+had empty strings, were scraper stubs, and were resolved through person merge
+work. No new global schema rule is needed from that incident.
+
+### `mens_team_columns.mutex_group` stays text for now
+
+The audit item mentioning `mens_team_columns.internal_role` was based on the
+wrong column name. The actual concept is `mens_team_columns.mutex_group`, which
+currently has only one known value. Do not normalize it into a lookup table until
+there are multiple durable mutex groups.
+
+### Migrations are forward-only
+
+Do not edit applied migration files to roll back changes. Write a new migration
+that changes the schema forward. Keep `database/data/00-schema.sql` aligned with
+the migrated schema so fresh rebuilds match live databases.
+
+---
+
 ## 🚀 Next Steps
 
 ### **Before Running Migration:**
