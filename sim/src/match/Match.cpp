@@ -81,6 +81,7 @@ void Match::spawnInitialSlots()
         slot.entity  = eid;
         slot.owner   = std::nullopt;
         slot.role    = s.role;
+        slot.mark_target = s.mark_target;
         slot.profile.physical = m0::defaultPhysical();
         slot.profile.concepts = m0::defaultConcepts();
         // Slice 24.3b: scenario hook to override specific physical
@@ -137,6 +138,7 @@ void Match::spawnInitialSlots()
                     slot.profile.concepts,
                     slot.profile.technical,
                     slot.profile.mental,
+                    slot.mark_target,
                     controller::AiController::defaultBehaviors(Role::Any));
                 break;
             case scenario::UnclaimedControllerKind::Wander:
@@ -667,6 +669,7 @@ void Match::releaseSlot(SlotId slot_id)
                 s.profile.concepts,
                 s.profile.technical,
                 s.profile.mental,
+                s.mark_target,
                 controller::AiController::defaultBehaviors(Role::Any));
             break;
         case scenario::UnclaimedControllerKind::Wander:

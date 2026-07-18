@@ -28,6 +28,7 @@ struct Slot {
     profile::PlayerProfile                       profile;
     std::optional<ClientId>                      owner;       // set if human (session-scoped)
     std::optional<PersonId>                      person;      // set if human (persistent identity)
+    std::optional<SlotId>                        mark_target; // scenario-authored AI assignment
     Role                                         role{Role::Any};
 
     // Stamina lives here (not on the physics entity) because it is a

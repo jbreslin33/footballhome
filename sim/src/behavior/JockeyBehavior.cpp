@@ -23,7 +23,8 @@ math::Fixed64 JockeyBehavior::utility(
     SlotId                          self,
     const profile::ConceptSet&      /*concepts*/,
     const profile::AttributeSet&    /*technical*/,
-    const profile::AttributeSet&    mental)
+    const profile::AttributeSet&    mental,
+    std::optional<SlotId>           /*mark_target*/)
 {
     if (!view.ball_owner.has_value() || *view.ball_owner == self) {
         return math::Fixed64::zero();
@@ -39,7 +40,8 @@ math::Fixed64 JockeyBehavior::utility(
 controller::Intent JockeyBehavior::execute(
     const awareness::AwarenessView& view,
     SlotId                          self,
-    const profile::ConceptSet&      /*concepts*/)
+    const profile::ConceptSet&      /*concepts*/,
+    std::optional<SlotId>           /*mark_target*/)
 {
     if (!view.ball_owner.has_value() || *view.ball_owner == self) {
         return controller::idle();

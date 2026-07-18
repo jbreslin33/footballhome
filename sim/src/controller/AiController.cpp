@@ -12,6 +12,7 @@
 
 #include "behavior/IBehavior.hpp"
 #include "behavior/JockeyBehavior.hpp"
+#include "behavior/MarkOpponentBehavior.hpp"
 #include "behavior/PursueBallCarrierBehavior.hpp"
 #include "math/Fixed64.hpp"
 
@@ -54,7 +55,8 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
             continue;
         }
 
-        const math::Fixed64 score = b->utility(view, self, concepts_, technical_, mental_);
+        const math::Fixed64 score = b->utility(
+            view, self, concepts_, technical_, mental_, mark_target_);
 
         // Zero-utility behaviors abstain (per IBehavior::utility contract).
         // First survivor becomes champion; subsequent survivors must
@@ -73,7 +75,7 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
     if (best == nullptr) {
         return idle();
     }
-    return best->execute(view, self, concepts_);
+    return best->execute(view, self, concepts_, mark_target_);
 }
 
 std::vector<std::unique_ptr<behavior::IBehavior>>
@@ -100,6 +102,7 @@ AiController::defaultBehaviors(Role role)
         case Role::Any:
             bag.push_back(std::make_unique<behavior::PursueBallCarrierBehavior>());
             bag.push_back(std::make_unique<behavior::JockeyBehavior>());
+            bag.push_back(std::make_unique<behavior::MarkOpponentBehavior>());
             return bag;
         case Role::GK:
         case Role::LCB:

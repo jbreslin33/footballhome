@@ -1,8 +1,4 @@
-// footballhome sim - JockeyBehavior
-//
-// Slice 31.2 opening skeleton: concept-gated defensive jockey posture.
-// This behavior moves toward the current ball carrier without asserting
-// dribble or press, so it positions but does not commit to a tackle.
+// footballhome sim - MarkOpponentBehavior
 
 #pragma once
 
@@ -10,9 +6,9 @@
 
 namespace fh::sim::behavior {
 
-class JockeyBehavior final : public IBehavior {
+class MarkOpponentBehavior final : public IBehavior {
 public:
-    JockeyBehavior() noexcept = default;
+    MarkOpponentBehavior() noexcept = default;
 
     std::vector<ConceptId> requiredConcepts() const override;
     math::Fixed64          minMastery() const override;
@@ -29,7 +25,7 @@ public:
                                    const profile::ConceptSet&      concepts,
                                    std::optional<SlotId>           mark_target = std::nullopt) override;
 
-    const char*            id() const override { return "jockey"; }
+    const char*            id() const override { return "mark_opponent"; }
 };
 
 } // namespace fh::sim::behavior

@@ -42,6 +42,7 @@
 #include "test_harness.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 
 using fh::sim::EntityId;
@@ -268,7 +269,8 @@ FH_TEST(utility_is_constant_one) {
                             Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()});
     const auto  concepts = pressingConcepts();
     const auto  attrs = emptyAttrs();
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, attrs, attrs), Fixed64::one());
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, attrs, attrs, std::nullopt),
+                 Fixed64::one());
 
     // Also constant when self owns the ball — utility() doesn't inspect
     // the view in Slice 30.2, but lock the invariant so a future edit
@@ -279,12 +281,14 @@ FH_TEST(utility_is_constant_one) {
                        Vec3{Fixed64::fromFraction(4, 10), Fixed64::zero(),
                             Fixed64::zero()});
     v2.ball_owner = SlotId{2};
-    FH_EXPECT_EQ(b.utility(v2, SlotId{2}, concepts, attrs, attrs), Fixed64::one());
+    FH_EXPECT_EQ(b.utility(v2, SlotId{2}, concepts, attrs, attrs, std::nullopt),
+                 Fixed64::one());
 
     // And constant when there is no ball — same reason.
     const auto v3 = makeView(Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()},
                              /*include_ball=*/false);
-    FH_EXPECT_EQ(b.utility(v3, SlotId{2}, concepts, attrs, attrs), Fixed64::one());
+    FH_EXPECT_EQ(b.utility(v3, SlotId{2}, concepts, attrs, attrs, std::nullopt),
+                 Fixed64::one());
 }
 
 FH_TEST(required_concepts_is_pressing) {

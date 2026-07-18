@@ -36,6 +36,7 @@
 #include "test_harness.hpp"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -99,7 +100,8 @@ public:
                     SlotId               /*self*/,
                     const ConceptSet&    /*concepts*/,
                     const AttributeSet&  /*technical*/,
-                    const AttributeSet&  /*mental*/) override
+                    const AttributeSet&  /*mental*/,
+                    std::optional<SlotId> /*mark_target*/) override
     {
         ++utility_calls_;
         return fixed_utility_;
@@ -107,7 +109,8 @@ public:
 
     Intent execute(const AwarenessView& /*view*/,
                    SlotId               /*self*/,
-                   const ConceptSet&    /*concepts*/) override
+                   const ConceptSet&    /*concepts*/,
+                   std::optional<SlotId> /*mark_target*/) override
     {
         ++execute_calls_;
         return execute_intent_;
@@ -375,16 +378,15 @@ FH_TEST(all_behaviors_abstaining_falls_through_to_idle)
     FH_EXPECT(out.desired_direction.x == Fixed64::zero());
 }
 
-FH_TEST(default_behaviors_slice_31_2_role_any_pursues_and_jockeys_others_empty)
+FH_TEST(default_behaviors_slice_31_2_role_any_pursues_jockeys_and_marks_others_empty)
 {
-    // Slice 31.2: Role::Any has {PursueBallCarrierBehavior, JockeyBehavior}
-    // (BallOnPitchWithDefenderScenario spawns Role::Any slots and its
-    // `Defender` unclaimed-kind now dispatches through AiController).
-    // Every other role remains an empty placeholder until later slices
-    // populate them (§25.3):
-    //   Slice 31.x — MarkOpponent
+    // Slice 31.2: Role::Any has {PursueBallCarrierBehavior,
+    // JockeyBehavior, MarkOpponentBehavior} (BallOnPitchWithDefenderScenario
+    // spawns Role::Any slots and its `Defender` unclaimed-kind now dispatches
+    // through AiController). Every other role remains an empty placeholder
+    // until later slices populate them (§25.3):
     //   Slice 33.2 — Feint1v1
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  2u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  3u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  0u);
@@ -398,6 +400,7 @@ FH_TEST(default_behaviors_slice_31_2_role_any_pursues_and_jockeys_others_empty)
     const auto bag = AiController::defaultBehaviors(Role::Any);
     FH_EXPECT_EQ(std::string(bag[0]->id()), std::string("pursue_ball_carrier"));
     FH_EXPECT_EQ(std::string(bag[1]->id()), std::string("jockey"));
+    FH_EXPECT_EQ(std::string(bag[2]->id()), std::string("mark_opponent"));
 }
 
 int main()

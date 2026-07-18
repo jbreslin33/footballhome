@@ -11,6 +11,7 @@
 #include "profile/ConceptSet.hpp"
 #include "test_harness.hpp"
 
+#include <optional>
 #include <string>
 
 using fh::sim::EntityId;
@@ -93,10 +94,12 @@ FH_TEST(utility_abstains_without_opposing_ball_owner)
     auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
 
     v.ball_owner.reset();
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental), Fixed64::zero());
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt),
+                 Fixed64::zero());
 
     v.ball_owner = SlotId{2};
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental), Fixed64::zero());
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt),
+                 Fixed64::zero());
 }
 
 FH_TEST(utility_uses_positioning_sense_and_composure)
@@ -110,7 +113,7 @@ FH_TEST(utility_uses_positioning_sense_and_composure)
     const auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
     const Fixed64 expected =
         (Fixed64::fromFraction(4, 5) + Fixed64::fromFraction(3, 5)) / 2;
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental),
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt),
                  expected);
 }
 
@@ -121,7 +124,7 @@ FH_TEST(utility_uses_neutral_defaults_when_attrs_absent)
     const auto technical = emptyAttrs();
     const auto mental = emptyAttrs();
     const auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
-    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental),
+    FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt),
                  Fixed64::fromFraction(11, 20));
 }
 

@@ -96,6 +96,7 @@ struct SlotSpawn {
     std::optional<PersonId>               ai_profile_source;
     std::optional<profile::ConceptSet>    ai_concepts;
     std::optional<profile::PlayerProfile> ai_profile;
+    std::optional<SlotId>                 mark_target;
 };
 
 // Slice 24.3a: which controller kind Match should build for an

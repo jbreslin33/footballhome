@@ -19,6 +19,7 @@
 #include "profile/AttributeSet.hpp"
 #include "profile/ConceptSet.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace fh::sim::behavior {
@@ -38,12 +39,14 @@ public:
                                   SlotId                          self,
                                   const profile::ConceptSet&      concepts,
                                   const profile::AttributeSet&    technical,
-                                  const profile::AttributeSet&    mental) = 0;
+                                const profile::AttributeSet&    mental,
+                                std::optional<SlotId>           mark_target) = 0;
 
     // Produce this tick's Intent when this behavior is selected.
     virtual controller::Intent execute(const awareness::AwarenessView& view,
                                        SlotId                          self,
-                                       const profile::ConceptSet&      concepts) = 0;
+                                    const profile::ConceptSet&      concepts,
+                                    std::optional<SlotId>           mark_target) = 0;
 
     // Stable identifier for logs (e.g. "mark_opponent", "cover_shadow").
     virtual const char* id() const = 0;

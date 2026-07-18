@@ -32,6 +32,7 @@
 #include "profile/ConceptSet.hpp"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -55,25 +56,35 @@ public:
     AiController(Role                                              role,
                  profile::ConceptSet                               concepts,
                  std::vector<std::unique_ptr<behavior::IBehavior>> behaviors) noexcept
-        : role_(role),
-          concepts_(std::move(concepts)),
-          behaviors_(std::move(behaviors)) {}
+                : AiController(role, std::move(concepts), {}, {}, std::nullopt,
+                                             std::move(behaviors)) {}
 
         AiController(Role                                              role,
                                  profile::ConceptSet                               concepts,
                                  profile::AttributeSet                             technical,
                                  profile::AttributeSet                             mental,
                                  std::vector<std::unique_ptr<behavior::IBehavior>> behaviors) noexcept
+                : AiController(role, std::move(concepts), std::move(technical),
+                                             std::move(mental), std::nullopt, std::move(behaviors)) {}
+
+        AiController(Role                                              role,
+                                 profile::ConceptSet                               concepts,
+                                 profile::AttributeSet                             technical,
+                                 profile::AttributeSet                             mental,
+                                 std::optional<SlotId>                              mark_target,
+                                 std::vector<std::unique_ptr<behavior::IBehavior>> behaviors) noexcept
                 : role_(role),
                     concepts_(std::move(concepts)),
                     technical_(std::move(technical)),
                     mental_(std::move(mental)),
+                    mark_target_(mark_target),
                     behaviors_(std::move(behaviors)) {}
 
     Role                        role() const noexcept { return role_; }
     const profile::ConceptSet&  concepts() const noexcept { return concepts_; }
-        const profile::AttributeSet& technical() const noexcept { return technical_; }
-        const profile::AttributeSet& mental() const noexcept { return mental_; }
+    const profile::AttributeSet& technical() const noexcept { return technical_; }
+    const profile::AttributeSet& mental() const noexcept { return mental_; }
+    std::optional<SlotId>       markTarget() const noexcept { return mark_target_; }
 
     // Number of behaviors in the bag. Public for tests + scenario-spawn
     // assertions that want to sanity-check the factory wired what they
@@ -99,6 +110,7 @@ private:
     profile::ConceptSet                               concepts_{};
     profile::AttributeSet                             technical_{};
     profile::AttributeSet                             mental_{};
+    std::optional<SlotId>                              mark_target_{};
     std::vector<std::unique_ptr<behavior::IBehavior>> behaviors_{};
 };
 

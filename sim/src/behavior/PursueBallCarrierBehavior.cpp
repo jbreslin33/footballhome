@@ -32,7 +32,8 @@ math::Fixed64 PursueBallCarrierBehavior::utility(
     SlotId                          /*self*/,
     const profile::ConceptSet&      /*concepts*/,
     const profile::AttributeSet&    /*technical*/,
-    const profile::AttributeSet&    /*mental*/)
+    const profile::AttributeSet&    /*mental*/,
+    std::optional<SlotId>           /*mark_target*/)
 {
     // Constant 1.0 in Slice 30.2 — the M3 opening bag is single-behavior,
     // so magnitude is unobservable (see class comment).
@@ -42,7 +43,8 @@ math::Fixed64 PursueBallCarrierBehavior::utility(
 controller::Intent PursueBallCarrierBehavior::execute(
     const awareness::AwarenessView& view,
     SlotId                          self,
-    const profile::ConceptSet&      /*concepts*/)
+    const profile::ConceptSet&      /*concepts*/,
+    std::optional<SlotId>           /*mark_target*/)
 {
     // Branch 1: THIS slot already owns the ball. Hold position with
     // wants_dribble asserted so BallControl's Rule 2 retention still
