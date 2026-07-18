@@ -1,8 +1,8 @@
 // footballhome sim - JockeyBehavior
 //
-// Slice 31.2 opening skeleton: concept-gated defensive jockey posture.
-// This behavior moves toward the current ball carrier without asserting
-// dribble or press, so it positions but does not commit to a tackle.
+// Concept-gated defensive jockey posture. The behavior positions near the
+// current ball carrier without asserting dribble or press, so it contains
+// the carrier but does not commit to a tackle.
 
 #pragma once
 

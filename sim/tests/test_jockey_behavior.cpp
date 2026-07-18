@@ -31,7 +31,8 @@ namespace {
 
 AwarenessView makeView(const Vec3& defender_pos,
                        const Vec3& carrier_pos,
-                       bool include_carrier = true)
+                       bool include_carrier = true,
+                       const Vec3& carrier_velocity = Vec3{})
 {
     AwarenessView v;
     v.tick         = TickNum{0};
@@ -49,6 +50,7 @@ AwarenessView makeView(const Vec3& defender_pos,
         carrier.id       = EntityId{3};
         carrier.slot_id  = SlotId{3};
         carrier.position = carrier_pos;
+        carrier.velocity = carrier_velocity;
         carrier.motion   = MotionState::Jog;
         v.entities.push_back(carrier);
     }
@@ -102,6 +104,30 @@ FH_TEST(utility_abstains_without_opposing_ball_owner)
                  Fixed64::zero());
 }
 
+FH_TEST(utility_abstains_when_positions_missing_or_ball_is_more_relevant)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto technical = emptyAttrs();
+    const auto mental = emptyAttrs();
+
+    const auto missing_carrier = makeView(Vec3{}, Vec3{}, /*include_carrier=*/false);
+    FH_EXPECT_EQ(b.utility(missing_carrier, SlotId{2}, concepts, technical, mental, std::nullopt),
+                 Fixed64::zero());
+
+    auto loose_ball_nearby = makeView(
+        Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
+    EntityState ball{};
+    ball.id       = EntityId{1};
+    ball.slot_id  = SlotId{0};
+    ball.position = Vec3{Fixed64::fromInt(1), Fixed64::zero(), Fixed64::zero()};
+    loose_ball_nearby.entities.push_back(ball);
+    loose_ball_nearby.ball = ball.id;
+
+    FH_EXPECT_EQ(b.utility(loose_ball_nearby, SlotId{2}, concepts, technical, mental, std::nullopt),
+                 Fixed64::zero());
+}
+
 FH_TEST(utility_uses_positioning_sense_and_composure)
 {
     JockeyBehavior b;
@@ -142,6 +168,23 @@ FH_TEST(moves_to_goal_side_cushion_without_pressing_or_dribbling)
     FH_EXPECT(!intent.wants_to_press);
     FH_EXPECT(!intent.wants_sprint);
     FH_EXPECT(!intent.wants_walk);
+}
+
+FH_TEST(moves_to_carrier_path_cushion_when_carrier_is_moving)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto v = makeView(
+        Vec3{Fixed64::fromInt(4), Fixed64::fromInt(-4), Fixed64::zero()},
+        Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()},
+        /*include_carrier=*/true,
+        Vec3{Fixed64::zero(), Fixed64::one(), Fixed64::zero()});
+
+    const Intent intent = b.execute(v, SlotId{2}, concepts);
+    FH_EXPECT_EQ(intent.desired_direction.x, Fixed64::zero());
+    FH_EXPECT_EQ(intent.desired_direction.y, Fixed64::one());
+    FH_EXPECT(!intent.wants_dribble);
+    FH_EXPECT(!intent.wants_to_press);
 }
 
 FH_TEST(backs_away_when_inside_jockey_cushion)
