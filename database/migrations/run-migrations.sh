@@ -22,7 +22,8 @@ ENGINE=$(command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 DB_EXEC="$ENGINE exec -i footballhome_db"
 
 # Ensure schema_migrations table exists (for DBs created before this feature)
-$DB_EXEC psql -U footballhome_user -d footballhome -q <<'SQL'
+echo "🔎 Ensuring schema_migrations exists..."
+$DB_EXEC psql -U footballhome_user -d footballhome <<'SQL'
 CREATE TABLE IF NOT EXISTS schema_migrations (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL UNIQUE,
@@ -39,11 +40,14 @@ for migration in "$SCRIPT_DIR"/[0-9]*.sql; do
     [ -f "$migration" ] || continue
     filename=$(basename "$migration")
 
+    echo "   🔎 Checking: $filename"
+
     # Check if already applied
     already_applied=$($DB_EXEC psql -U footballhome_user -d footballhome -tAc \
-        "SELECT 1 FROM schema_migrations WHERE filename = '$filename';" 2>/dev/null)
+        "SELECT 1 FROM schema_migrations WHERE filename = '$filename';")
 
     if [ "$already_applied" = "1" ]; then
+        echo "   ✓ Already applied: $filename"
         SKIPPED=$((SKIPPED + 1))
         continue
     fi
@@ -52,7 +56,7 @@ for migration in "$SCRIPT_DIR"/[0-9]*.sql; do
     $DB_EXEC psql -U footballhome_user -d footballhome < "$migration"
 
     # Record migration
-    $DB_EXEC psql -U footballhome_user -d footballhome -q -c \
+    $DB_EXEC psql -U footballhome_user -d footballhome -c \
         "INSERT INTO schema_migrations (filename) VALUES ('$filename');"
 
     APPLIED=$((APPLIED + 1))

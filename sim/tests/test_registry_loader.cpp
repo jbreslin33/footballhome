@@ -50,6 +50,16 @@ std::vector<RegistryRow> canonicalM0Attrs()
         // Slice 27.3: body_mass for the positional-clamp + tangential-
         // slide collision resolver split (migration 220, ADR §22.24).
         {15, "physical.body_mass",              "physical"},
+        // Slice 31.3: M3 behavior attribute batch (migration 226).
+        {16, "technical.marking_technique",     "technical"},
+        {17, "technical.standing_tackle",       "technical"},
+        {18, "technical.interception",          "technical"},
+        {19, "technical.feint",                 "technical"},
+        {20, "technical.first_time_pass",       "technical"},
+        {21, "mental.aggression",               "mental"},
+        {22, "mental.positioning_sense",        "mental"},
+        {23, "mental.composure",                "mental"},
+        {24, "mental.anticipation",             "mental"},
     };
 }
 
@@ -83,7 +93,7 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     AttributeRegistry reg;
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{15});
+    FH_EXPECT_EQ(reg.size(), std::size_t{24});
     // Round-trip lookup by id.
     const auto* e = reg.find(static_cast<fh::sim::AttrId>(3));
     FH_EXPECT(e != nullptr);
@@ -115,6 +125,16 @@ FH_TEST(load_attribute_registry_populates_and_indexes)
     const auto bmd = reg.lookup("physical.body_mass");
     FH_EXPECT(bmd.has_value());
     FH_EXPECT_EQ(*bmd, fh::sim::AttrId{15});
+    // Slice 31.3: M3 behavior attribute batch.
+    FH_EXPECT_EQ(fh::sim::m0::kMarkingTechnique, fh::sim::AttrId{16});
+    FH_EXPECT_EQ(fh::sim::m0::kStandingTackle, fh::sim::AttrId{17});
+    FH_EXPECT_EQ(fh::sim::m0::kInterception, fh::sim::AttrId{18});
+    FH_EXPECT_EQ(fh::sim::m0::kFeint, fh::sim::AttrId{19});
+    FH_EXPECT_EQ(fh::sim::m0::kFirstTimePass, fh::sim::AttrId{20});
+    FH_EXPECT_EQ(fh::sim::m0::kAggression, fh::sim::AttrId{21});
+    FH_EXPECT_EQ(fh::sim::m0::kPositioningSense, fh::sim::AttrId{22});
+    FH_EXPECT_EQ(fh::sim::m0::kComposure, fh::sim::AttrId{23});
+    FH_EXPECT_EQ(fh::sim::m0::kAnticipation, fh::sim::AttrId{24});
 }
 
 FH_TEST(load_attribute_registry_clears_prior_contents)
@@ -128,7 +148,7 @@ FH_TEST(load_attribute_registry_clears_prior_contents)
     reg.addEntry(static_cast<fh::sim::AttrId>(999), "junk.key", "junk");
     fh::sim::persistence::loadAttributeRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{15});
+    FH_EXPECT_EQ(reg.size(), std::size_t{24});
     FH_EXPECT(reg.find(static_cast<fh::sim::AttrId>(999)) == nullptr);
 }
 
@@ -226,8 +246,8 @@ FH_TEST(verify_passes_when_db_matches_compile_time_catalog)
 FH_TEST(verify_throws_on_missing_attribute_row)
 {
     auto rows = canonicalM0Attrs();
-    rows.pop_back();   // Slice 27.3: drop kBodyMass (id=15, now the
-                       // tail entry after migration 220).
+    rows.pop_back();   // Slice 31.3: drop kAnticipation (id=24, now the
+                       // tail entry after migration 226).
 
     InMemoryPgClient db;
     db.seedAttributeRegistry(std::move(rows));
@@ -245,7 +265,7 @@ FH_TEST(verify_throws_on_missing_attribute_row)
         threw = true;
         FH_EXPECT(e.context() == "verifyM0RegistryConsistency");
         const std::string msg{e.what()};
-        FH_EXPECT(msg.find("id=15") != std::string::npos);
+        FH_EXPECT(msg.find("id=24") != std::string::npos);
         FH_EXPECT(msg.find("missing") != std::string::npos);
     }
     FH_EXPECT(threw);

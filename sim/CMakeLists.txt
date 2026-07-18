@@ -116,6 +116,7 @@ set(SIM_MIGRATION_FILE
 #   220 = physical.body_mass (Slice 27.3)
 #   224 = pressing concept (Slice 30.2)
 #   225 = marking + jockey concepts (Slice 31.1)
+#   226 = M3 behavior attribute batch (Slice 31.3)
 set(SIM_MIGRATION_EXTRA_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/208-sim-attr-dribble-efficiency.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/209-sim-attr-carry-speeds.sql
@@ -123,7 +124,8 @@ set(SIM_MIGRATION_EXTRA_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/217-sim-attr-pass-power.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/220-sim-attr-body-mass.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/224-sim-concept-pressing.sql
-    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/225-sim-concept-marking-jockey.sql)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/225-sim-concept-marking-jockey.sql
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/226-sim-attr-m3-batch.sql)
 set(SIM_GEN_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/M0Registry.generated.hpp)
 set(SIM_GEN_SCRIPT
@@ -136,7 +138,7 @@ if(EXISTS ${SIM_MIGRATION_FILE})
         OUTPUT  ${SIM_GEN_HEADER}
         COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} > ${SIM_GEN_HEADER}
         DEPENDS ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} ${SIM_GEN_SCRIPT}
-        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224 + 225"
+        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224 + 225 + 226"
         VERBATIM)
     add_custom_target(gen_m0_registry ALL DEPENDS ${SIM_GEN_HEADER})
 else()
@@ -155,6 +157,7 @@ else()
             "        database/migrations/220-sim-attr-body-mass.sql \\\n"
             "        database/migrations/224-sim-concept-pressing.sql \\\n"
             "        database/migrations/225-sim-concept-marking-jockey.sql \\\n"
+            "        database/migrations/226-sim-attr-m3-batch.sql \\\n"
             "        > sim/src/common/M0Registry.generated.hpp")
     endif()
     message(STATUS
