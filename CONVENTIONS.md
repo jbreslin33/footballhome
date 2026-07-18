@@ -89,6 +89,8 @@ section in its README listing the first files to load.
 - Operational scripts belong under `scripts/` or the subsystem they operate on.
   Use focused subdirectories such as `scripts/setup/`, `scripts/debug/`,
   `scripts/ads/`, or `sim/scripts/` when a category grows.
+- Repo-managed host service/timer templates belong under `systemd/`; setup
+  scripts install them into `/etc/systemd/system/`.
 - Scraper output belongs under `database/scraped-html/<league>/`, never root.
 - Generated SQL for league data belongs under
   `database/scripts/leagues/<continent>/<country>/<league>/sql/`.
