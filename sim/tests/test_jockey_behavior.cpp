@@ -125,7 +125,7 @@ FH_TEST(utility_uses_neutral_defaults_when_attrs_absent)
                  Fixed64::fromFraction(11, 20));
 }
 
-FH_TEST(moves_toward_ball_carrier_without_pressing_or_dribbling)
+FH_TEST(moves_to_goal_side_cushion_without_pressing_or_dribbling)
 {
     JockeyBehavior b;
     const auto concepts = jockeyConcepts();
@@ -139,6 +139,34 @@ FH_TEST(moves_toward_ball_carrier_without_pressing_or_dribbling)
     FH_EXPECT(!intent.wants_to_press);
     FH_EXPECT(!intent.wants_sprint);
     FH_EXPECT(!intent.wants_walk);
+}
+
+FH_TEST(backs_away_when_inside_jockey_cushion)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto v = makeView(Vec3{Fixed64::fromInt(3), Fixed64::zero(), Fixed64::zero()},
+                            Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()});
+
+    const Intent intent = b.execute(v, SlotId{2}, concepts);
+    FH_EXPECT_EQ(intent.desired_direction.x, Fixed64::fromInt(-1));
+    FH_EXPECT_EQ(intent.desired_direction.y, Fixed64::zero());
+    FH_EXPECT(!intent.wants_dribble);
+    FH_EXPECT(!intent.wants_to_press);
+}
+
+FH_TEST(idles_when_already_at_jockey_cushion)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto v = makeView(Vec3{Fixed64::fromInt(2), Fixed64::zero(), Fixed64::zero()},
+                            Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()});
+
+    const Intent intent = b.execute(v, SlotId{2}, concepts);
+    FH_EXPECT_EQ(intent.desired_direction.x, Fixed64::zero());
+    FH_EXPECT_EQ(intent.desired_direction.y, Fixed64::zero());
+    FH_EXPECT(!intent.wants_dribble);
+    FH_EXPECT(!intent.wants_to_press);
 }
 
 FH_TEST(idles_when_carrier_missing_or_same_position)

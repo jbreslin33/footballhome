@@ -59,12 +59,27 @@ controller::Intent JockeyBehavior::execute(
         return controller::idle();
     }
 
-    const math::Vec3 diff{
-        carrier_pos->x - my_pos->x,
-        carrier_pos->y - my_pos->y,
+    const math::Vec3 carrier_to_defender{
+        my_pos->x - carrier_pos->x,
+        my_pos->y - carrier_pos->y,
         math::Fixed64::zero()};
-    const math::Fixed64 dist = diff.length();
+    const math::Fixed64 dist = carrier_to_defender.length();
     if (dist == math::Fixed64::zero()) {
+        return controller::idle();
+    }
+
+    const math::Vec3 goal_side = carrier_to_defender.normalized();
+    const math::Fixed64 cushion = math::Fixed64::fromInt(2);
+    const math::Vec3 target{
+        carrier_pos->x + goal_side.x * cushion,
+        carrier_pos->y + goal_side.y * cushion,
+        math::Fixed64::zero()};
+
+    const math::Vec3 diff{
+        target.x - my_pos->x,
+        target.y - my_pos->y,
+        math::Fixed64::zero()};
+    if (diff.length() == math::Fixed64::zero()) {
         return controller::idle();
     }
 
