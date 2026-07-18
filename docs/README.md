@@ -19,6 +19,10 @@ or decision you are working on.
 - `handoff-sim-normalize-profiles.md`: handoff notes for simulator profile
   normalization.
 
+## Aider Context Maps
+
+- `aider/rsvp.md`: copy/paste file packs for RSVP work with small local models.
+
 ## Architecture Decision Records
 
 Use `adr/` for durable decisions that cross subsystem boundaries or should remain
