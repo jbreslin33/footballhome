@@ -31,7 +31,7 @@ Tracked encrypted secret bundles:
 - `env.age` decrypts to ignored plaintext `env`.
 - `scrape-vpn.conf.age` decrypts to ignored plaintext `scrape-vpn.conf`.
 - `apsl-credentials.conf.age` decrypts to ignored plaintext
-  `apsl-credentials.conf`.
+  `apsl-credentials.conf` for authenticated APSL TeamPass DOB scraping.
 
 `setup.sh` runs `scripts/setup/setup-age.sh`, which installs `age` if needed and
 decrypts the `.age` files after prompting for the passphrase. The plaintext files

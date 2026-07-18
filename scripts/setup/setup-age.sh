@@ -16,9 +16,11 @@
 # Unattended runs:
 #   AGE_PASSPHRASE='...' ./setup.sh
 #
-# Re-encrypting after editing the plaintext:
+# Re-encrypting after editing plaintext:
+#   age -p -o env.age env
 #   age -p -o scrape-vpn.conf.age scrape-vpn.conf
-#   git add scrape-vpn.conf.age && git commit -m "rotate vpn key"
+#   age -p -o apsl-credentials.conf.age apsl-credentials.conf
+#   git add *.age && git commit -m "Rotate encrypted runtime secrets"
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
