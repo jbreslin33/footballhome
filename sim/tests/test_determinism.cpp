@@ -23,6 +23,11 @@
 #include "match/Match.hpp"
 #include "match/MatchClock.hpp"
 #include "match/Snapshot.hpp"
+#include "awareness/AwarenessView.hpp"
+#include "behavior/IBehavior.hpp"
+#include "common/EntityState.hpp"
+#include "common/Role.hpp"
+#include "controller/AiController.hpp"
 #include "physics/BasicPhysics.hpp"
 #include "physics/StubPhysics.hpp"
 #include "common/M0Registry.generated.hpp"
@@ -38,19 +43,31 @@
 #include "math/Fixed64.hpp"
 #include "math/FixedMath.hpp"
 #include "persistence/EventTypes.hpp"
+#include "profile/AttributeSet.hpp"
+#include "profile/ConceptSet.hpp"
 #include "profile/PlayerProfile.hpp"
 #include "test_harness.hpp"
 
 #include <cstdint>
 #include <cstdio>
+#include <sstream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 using fh::sim::ClientId;
+using fh::sim::ConceptId;
 using fh::sim::PersonId;
+using fh::sim::EntityId;
+using fh::sim::EntityState;
+using fh::sim::MotionState;
+using fh::sim::Role;
 using fh::sim::SlotId;
+using fh::sim::TickNum;
+using fh::sim::awareness::AwarenessView;
+using fh::sim::behavior::IBehavior;
+using fh::sim::controller::AiController;
 using fh::sim::controller::Intent;
 using fh::sim::match::canonicalDump;
 using fh::sim::match::fnv1a64;
@@ -62,6 +79,8 @@ using fh::sim::math::Fixed64;
 using fh::sim::math::Vec3;
 using fh::sim::physics::BasicPhysics;
 using fh::sim::physics::StubPhysics;
+using fh::sim::profile::AttributeSet;
+using fh::sim::profile::ConceptSet;
 using fh::sim::scenario::BallOnPitchScenario;
 using fh::sim::scenario::BallSpawn;
 using fh::sim::scenario::EmptyPitchScenario;
@@ -230,6 +249,68 @@ private:
     std::vector<fh::sim::scenario::SlotSpawn> slots_;
 };
 
+class AlternatingUtilityBehavior : public IBehavior {
+public:
+    AlternatingUtilityBehavior(const char* id,
+                                                             ConceptId concept_id,
+                               bool high_on_even_tick,
+                               Fixed64 intent_x) noexcept
+        : id_(id),
+                    concept_(concept_id),
+          high_on_even_tick_(high_on_even_tick),
+          intent_x_(intent_x) {}
+
+    std::vector<ConceptId> requiredConcepts() const override { return {concept_}; }
+    Fixed64 minMastery() const override { return Fixed64::zero(); }
+
+    Fixed64 utility(const AwarenessView& view,
+                    SlotId /*self*/,
+                    const ConceptSet& /*concepts*/,
+                    const AttributeSet& /*technical*/,
+                    const AttributeSet& /*mental*/,
+                    std::optional<SlotId> /*mark_target*/) override
+    {
+        const bool even_tick = (view.tick % 2u) == 0u;
+        const bool high = even_tick == high_on_even_tick_;
+        return high ? Fixed64::fromFraction(101, 200)
+                : Fixed64::fromFraction(99, 200);
+    }
+
+    Intent execute(const AwarenessView& /*view*/,
+                   SlotId /*self*/,
+                   const ConceptSet& /*concepts*/,
+                   std::optional<SlotId> /*mark_target*/) override
+    {
+        Intent intent;
+        intent.desired_direction = Vec3{intent_x_, Fixed64::zero(), Fixed64::zero()};
+        return intent;
+    }
+
+    const char* id() const override { return id_; }
+
+private:
+    const char* id_;
+    ConceptId concept_;
+    bool high_on_even_tick_;
+    Fixed64 intent_x_;
+};
+
+AwarenessView makeOscillationView(TickNum tick)
+{
+    AwarenessView view;
+    view.tick = tick;
+    view.time_seconds = Fixed64::fromFraction(static_cast<std::int32_t>(tick), 20);
+
+    EntityState self{};
+    self.id = EntityId{2};
+    self.slot_id = SlotId{2};
+    self.position = Vec3{};
+    self.motion = MotionState::Idle;
+    view.entities.push_back(self);
+
+    return view;
+}
+
 std::unique_ptr<Match> makeMatch(std::uint64_t seed) {
     MatchConfig cfg;
     cfg.id       = 1;
@@ -362,6 +443,15 @@ constexpr std::uint64_t kExpectedHashDefenderJockeysDribbler200 =
 // slot pairing and target-follow movement.
 constexpr std::uint64_t kExpectedHashDefenderMarksStationaryTarget200 =
     0x603b1f6fda001167ULL;
+
+// Slice 32.2: deterministic transition-trace golden for utility-AI
+// hysteresis. Two test-only behaviors stand in for press and jockey with
+// near-equal utilities that alternate winner every tick (0.505 vs 0.495). A
+// raw argmax would switch almost every tick; Slice 32.1's minTicks lockout
+// plus fixed-point decaying switch penalty should hold transitions to a
+// small, deterministic count over 400 ticks.
+constexpr std::uint64_t kExpectedHashNoOscillationJockeyPress400 =
+    0xcebce8b37113b617ULL;
 
 // Slice 26.6: cross-arch golden for a short pass east. Locks the M2
 // kick primitive introduced in Slice 26.3 (BallControl release-on-kick,
@@ -925,6 +1015,67 @@ FH_TEST(defender_marks_stationary_target_200_ticks_seed_42) {
                 kExpectedHashDefenderMarksStationaryTarget200));
     }
     FH_EXPECT_EQ(h, kExpectedHashDefenderMarksStationaryTarget200);
+}
+
+// Slice 32.2: no-oscillation utility-AI golden. This deliberately uses a
+// direct AiController fixture instead of a full Match because the contract
+// under test is behavior selection cadence, not physics or ball control.
+// The emitted trace is still fixed-point and cross-arch diffable.
+FH_TEST(no_oscillation_between_jockey_and_press_400_ticks_seed_42) {
+    ConceptSet concepts;
+    concepts.plug(fh::sim::m0::kPressing, Fixed64::one());
+    concepts.plug(fh::sim::m0::kJockey, Fixed64::one());
+
+    std::vector<std::unique_ptr<IBehavior>> bag;
+    bag.push_back(std::make_unique<AlternatingUtilityBehavior>(
+        "press", fh::sim::m0::kPressing, true, Fixed64::one()));
+    bag.push_back(std::make_unique<AlternatingUtilityBehavior>(
+        "jockey", fh::sim::m0::kJockey, false, Fixed64::fromInt(-1)));
+
+    AiController controller(Role::LCB,
+                            std::move(concepts),
+                            AttributeSet{},
+                            AttributeSet{},
+                            std::move(bag));
+
+    std::ostringstream trace;
+    std::string previous;
+    int transitions = 0;
+
+    for (TickNum tick = 0; tick < 400; ++tick) {
+        const AwarenessView view = makeOscillationView(tick);
+        const Intent intent = controller.decide(view, SlotId{2});
+        const std::string current = controller.currentBehaviorId();
+        if (!previous.empty() && current != previous) {
+            ++transitions;
+        }
+        previous = current;
+
+        trace << "tick=" << tick
+              << " behavior=" << current
+              << " intent_x_raw=" << intent.desired_direction.x.raw
+              << "\n";
+    }
+    trace << "transitions=" << transitions << "\n";
+
+    FH_EXPECT(transitions <= 8);
+
+    const std::string canonical = trace.str();
+    std::fputs("=== no_oscillation_between_jockey_and_press_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashNoOscillationJockeyPress400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashNoOscillationJockeyPress400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashNoOscillationJockeyPress400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashNoOscillationJockeyPress400);
 }
 
 // Slice 26.6: cross-arch determinism proof for a short pass east.

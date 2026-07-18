@@ -90,6 +90,10 @@ public:
     // assertions that want to sanity-check the factory wired what they
     // expected.
     std::size_t behaviorCount() const noexcept { return behaviors_.size(); }
+    const char* currentBehaviorId() const noexcept
+    {
+        return current_behavior_ == nullptr ? "" : current_behavior_->id();
+    }
 
     Intent      decide(const awareness::AwarenessView& view,
                        SlotId self) override;
