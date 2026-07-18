@@ -25,6 +25,7 @@
 #include "match/Snapshot.hpp"
 #include "physics/BasicPhysics.hpp"
 #include "physics/StubPhysics.hpp"
+#include "common/M0Registry.generated.hpp"
 #include "scenario/BallOnPitchScenario.hpp"
 #include "scenario/BallOnPitchWithDefenderScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
@@ -45,6 +46,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 using fh::sim::ClientId;
 using fh::sim::PersonId;
@@ -94,6 +96,72 @@ public:
     bool checkReset(const fh::sim::awareness::WorldView& w) const override
         { (void)w; return false; }
     std::vector<std::string> hints() const override { return {}; }
+
+private:
+    fh::sim::scenario::PitchSpec pitch_;
+    BallSpawn ball_;
+    std::vector<fh::sim::scenario::SlotSpawn> slots_;
+};
+
+// Slice 31.5: test-only fixture for the first JockeyBehavior determinism
+// golden. Slot 1 is human-claimed and dribbles laterally; slot 2 is an LCB
+// Defender-kind AI with only `jockey` plugged, so the defender behavior bag
+// selects JockeyBehavior rather than the higher-utility pursue behavior.
+class JockeyVsLateralDribblerScenario : public fh::sim::scenario::Scenario {
+public:
+    JockeyVsLateralDribblerScenario()
+    {
+        pitch_.length_m = Fixed64::fromInt(105);
+        pitch_.width_m  = Fixed64::fromInt(68);
+
+        ball_.position = Vec3{Fixed64::fromFraction(-47, 10),
+                              Fixed64::zero(),
+                              Fixed64::zero()};
+        ball_.velocity = Vec3{};
+
+        fh::sim::scenario::SlotSpawn attacker;
+        attacker.slot     = SlotId{1};
+        attacker.position = Vec3{Fixed64::fromInt(-5),
+                                 Fixed64::zero(),
+                                 Fixed64::zero()};
+        attacker.heading  = Fixed64::zero();
+        attacker.role     = fh::sim::Role::Any;
+        slots_.push_back(attacker);
+
+        fh::sim::scenario::SlotSpawn defender;
+        defender.slot     = SlotId{2};
+        defender.position = Vec3{Fixed64::fromInt(-5),
+                                 Fixed64::fromInt(-4),
+                                 Fixed64::zero()};
+        defender.heading  = fh::sim::math::FX_PI;
+        defender.role     = fh::sim::Role::LCB;
+        slots_.push_back(defender);
+    }
+
+    std::string id() const override { return "test_jockey_lateral_dribbler"; }
+    std::string displayName() const override { return "Test — jockey lateral dribbler"; }
+    fh::sim::scenario::PitchSpec pitch() const override { return pitch_; }
+    fh::sim::scenario::PlayableArea playableArea() const override { return {}; }
+    std::vector<fh::sim::scenario::SlotSpawn> initialSpawns() const override { return slots_; }
+    std::optional<BallSpawn> ballSpawn() const override { return ball_; }
+    bool checkSuccess(const fh::sim::awareness::WorldView& w) const override { (void)w; return false; }
+    bool checkReset(const fh::sim::awareness::WorldView& w) const override { (void)w; return false; }
+    std::vector<std::string> hints() const override { return {}; }
+
+    fh::sim::scenario::UnclaimedControllerKind unclaimedControllerFor(SlotId slot) const override
+    {
+        return (slot == SlotId{2})
+            ? fh::sim::scenario::UnclaimedControllerKind::Defender
+            : fh::sim::scenario::UnclaimedControllerKind::Idle;
+    }
+
+    void applyConceptOverrides(SlotId slot,
+                               fh::sim::profile::ConceptSet& concepts) const override
+    {
+        if (slot == SlotId{2}) {
+            concepts.plug(fh::sim::m0::kJockey, Fixed64::one());
+        }
+    }
 
 private:
     fh::sim::scenario::PitchSpec pitch_;
@@ -214,6 +282,16 @@ constexpr std::uint64_t kExpectedHashSoftDrill400 = 0x700808840ecc3183ULL;
 // WorldView / AwarenessView, trips the hash.
 constexpr std::uint64_t kExpectedHashBallOnPitchWithDefender400 =
     0x71f639d918a32830ULL;
+
+// Slice 31.5: cross-arch determinism proof for JockeyBehavior. Slot 1 is
+// human-claimed, takes first touch on tick 1, and dribbles north. Slot 2 is
+// an unclaimed LCB Defender-kind AI with only the `jockey` concept plugged,
+// so AiController selects JockeyBehavior from the concrete defensive-role bag.
+// The defender targets the deterministic 2 m lane behind the carrier's
+// velocity vector and never asserts press/dribble. 200 ticks locks the first
+// real defender posture golden before hysteresis or goal/team awareness lands.
+constexpr std::uint64_t kExpectedHashDefenderJockeysDribbler200 =
+    0x868f3c8ba8f86fbdULL;
 
 // Slice 26.6: cross-arch golden for a short pass east. Locks the M2
 // kick primitive introduced in Slice 26.3 (BallControl release-on-kick,
@@ -707,6 +785,46 @@ FH_TEST(ball_on_pitch_with_defender_400_ticks_seed_42) {
                 kExpectedHashBallOnPitchWithDefender400));
     }
     FH_EXPECT_EQ(h, kExpectedHashBallOnPitchWithDefender400);
+}
+
+// Slice 31.5: first defender posture golden. See constant comment above.
+FH_TEST(defender_jockeys_dribbler_200_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<JockeyVsLateralDribblerScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile profile;
+    profile.physical = fh::sim::m0::defaultPhysical();
+    profile.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{7}, PersonId{7}, std::move(profile));
+
+    Intent in;
+    in.desired_direction = Vec3{Fixed64::zero(), Fixed64::one(), Fixed64::zero()};
+    in.wants_dribble = true;
+    m->applyInput(ClientId{7}, in);
+
+    for (int i = 0; i < 200; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== defender_jockeys_dribbler_200_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashDefenderJockeysDribbler200) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashDefenderJockeysDribbler200)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashDefenderJockeysDribbler200));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashDefenderJockeysDribbler200);
 }
 
 // Slice 26.6: cross-arch determinism proof for a short pass east.
