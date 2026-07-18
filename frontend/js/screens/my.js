@@ -317,6 +317,68 @@ class MyScreen extends Screen {
     return 'Event';
   }
 
+  _eventRsvpHtml(ev) {
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const going = rsvps.filter(r => r && r.response === 'yes');
+    const notGoing = rsvps.filter(r => r && r.response === 'no');
+
+    if (!going.length && !notGoing.length) {
+      return `
+        <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
+                    border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
+          <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                      color:rgba(226,232,240,0.75); margin-bottom:4px;">
+            RSVPs
+          </div>
+          <div style="font-size:0.88rem; color:rgba(226,232,240,0.72);">No RSVPs yet.</div>
+        </div>`;
+    }
+
+    const goingNames = going
+      .map(r => (r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim()))
+      .filter(Boolean);
+    const notGoingNames = notGoing
+      .map(r => (r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim()))
+      .filter(Boolean);
+    const chip = (name, tone) => `
+      <span style="display:inline-flex; align-items:center;
+                   padding:3px 8px; border-radius:9999px; font-size:0.78rem; font-weight:700;
+                   white-space:nowrap;
+                   color:${tone === 'yes' ? '#bbf7d0' : '#fecaca'};
+                   background:${tone === 'yes' ? 'rgba(22,101,52,0.34)' : 'rgba(127,29,29,0.28)'};
+                   border:1px solid ${tone === 'yes' ? 'rgba(34,197,94,0.34)' : 'rgba(248,113,113,0.32)'};">
+        ${this.escapeHtml(name)}
+      </span>`;
+
+    return `
+      <div style="background:rgba(15,23,42,0.52); border:1px solid rgba(148,163,184,0.22);
+                  border-radius:8px; padding:9px 10px; margin-bottom: var(--space-3);">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:7px;">
+          <span style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                       color:rgba(226,232,240,0.78);">Who's going</span>
+          <span style="font-size:0.82rem; font-weight:800; color:#bbf7d0;">${going.length} going</span>
+          ${notGoing.length ? `<span style="font-size:0.82rem; font-weight:800; color:#fecaca;">${notGoing.length} not going</span>` : ''}
+        </div>
+        ${goingNames.length ? `
+          <details open style="font-size:0.82rem; color:rgba(226,232,240,0.7); margin-bottom:${notGoingNames.length ? '7px' : '0'};">
+            <summary style="cursor:pointer; font-weight:800; color:#bbf7d0; margin-bottom:6px;">Show all going</summary>
+            <div style="display:flex; flex-wrap:wrap; gap:5px;">
+              ${goingNames.map(name => chip(name, 'yes')).join('')}
+            </div>
+          </details>` : `
+          <div style="font-size:0.84rem; color:rgba(226,232,240,0.72); margin-bottom:${notGoingNames.length ? '7px' : '0'};">
+            Nobody has marked going yet.
+          </div>`}
+        ${notGoingNames.length ? `
+          <details style="font-size:0.82rem; color:rgba(226,232,240,0.7);">
+            <summary style="cursor:pointer; font-weight:700; color:#fecaca;">Not going</summary>
+            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;">
+              ${notGoingNames.map(name => chip(name, 'no')).join('')}
+            </div>
+          </details>` : ''}
+      </div>`;
+  }
+
   _renderEventCard(ev) {
     const kind      = ev.kind || '';
     const category  = ev.category || '';
@@ -349,6 +411,7 @@ class MyScreen extends Screen {
     const timeStr = this._eventTimeStr(ev.starts_at);
     const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
+    const rsvpHtml = this._eventRsvpHtml(ev);
 
     // Show a subtle hint on recurring buttons when it would only apply
     // to future events (per-event override is set, so this event is
@@ -371,6 +434,7 @@ class MyScreen extends Screen {
         </div>
         <div style="font-weight:500; margin-bottom:2px;">${this.escapeHtml(title)}</div>
         ${venue ? `<div style="opacity:0.7; font-size:0.85rem; margin-bottom: var(--space-3);">${this.escapeHtml(venue)}</div>` : `<div style="margin-bottom: var(--space-3);"></div>`}
+        ${rsvpHtml}
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           ${this._btn('Going',      'yes', per === 'yes', 'solid',   evYesSaving,
                      `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
@@ -461,6 +525,16 @@ class MyScreen extends Screen {
       if (ev) {
         ev.my_rsvp = (body && body.rsvp && body.rsvp.response) || response;
         ev.my_rsvp_created_via = 'manual';
+        if (body && body.rsvp && body.rsvp.person_id) {
+          const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+          ev.rsvps = rsvps.filter(r => r.person_id !== body.rsvp.person_id);
+          ev.rsvps.push({
+            person_id: body.rsvp.person_id,
+            response: ev.my_rsvp,
+            created_via: 'manual',
+            name: 'You',
+          });
+        }
       }
     } catch (err) {
       console.error('[my] event RSVP failed:', err);

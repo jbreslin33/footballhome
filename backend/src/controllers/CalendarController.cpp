@@ -334,8 +334,34 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     JOIN teams t ON t.id = fet.team_id
                     WHERE fet.fh_event_id = fe.id
                 ), '[]'::jsonb) AS teams_json,
+                COALESCE((
+                    SELECT jsonb_agg(
+                        jsonb_build_object(
+                            'person_id',    p.id,
+                            'first_name',   p.first_name,
+                            'last_name',    p.last_name,
+                            'name',         NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
+                            'response',     er.response,
+                            'created_via',  er.created_via,
+                            'responded_at', to_char(er.responded_at AT TIME ZONE 'UTC',
+                                                     'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                        )
+                        ORDER BY CASE er.response
+                                   WHEN 'yes' THEN 1
+                                   WHEN 'maybe' THEN 2
+                                   WHEN 'no' THEN 3
+                                   ELSE 4
+                                 END,
+                                 p.last_name ASC,
+                                 p.first_name ASC,
+                                 p.id ASC
+                    )
+                    FROM fh_event_rsvps er
+                    JOIN persons p ON p.id = er.person_id
+                    WHERE er.fh_event_id = fe.id
+                ), '[]'::jsonb) AS rsvps_json,
                 CASE
-                    WHEN $2::int = 0 THEN NULL
+                    WHEN $1::int = 0 THEN NULL
                     ELSE EXISTS (
                         SELECT 1
                         FROM   fh_event_teams fet
@@ -345,7 +371,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                             ON epa.provider = 'leagueapps'
                            AND epa.external_user_id = ple.leagueapps_user_id::text
                         WHERE  fet.fh_event_id = fe.id
-                          AND  epa.person_id   = $2::int
+                          AND  epa.person_id   = $1::int
                     )
                 END AS my_rsvp_eligible
             FROM fh_events   fe
@@ -353,7 +379,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             JOIN gcal_calendars gc ON gc.id = ge.calendar_id
             LEFT JOIN fh_event_rsvps mr
                    ON mr.fh_event_id = fe.id
-                  AND mr.person_id   = $2::int
+                  AND mr.person_id   = $1::int
             WHERE ge.deleted_at IS NULL
               AND ge.status <> 'cancelled'
               AND ge.starts_at >= now() - INTERVAL '1 hour'
@@ -429,6 +455,11 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 ev["teams"] = json::parse(row["teams_json"].c_str());
             } catch (...) {
                 ev["teams"] = json::array();
+            }
+            try {
+                ev["rsvps"] = json::parse(row["rsvps_json"].c_str());
+            } catch (...) {
+                ev["rsvps"] = json::array();
             }
             events.push_back(std::move(ev));
         }
