@@ -16,8 +16,6 @@ or decision you are working on.
 - `calendar-design.md`: Google Calendar and RSVP layering design.
 - `operations-design.md`: active cross-cutting operational follow-ups.
 - `SCRAPER_VPN.md`: scraper VPN setup and operations.
-- `handoff-sim-normalize-profiles.md`: handoff notes for simulator profile
-  normalization.
 
 ## Aider Context Maps
 

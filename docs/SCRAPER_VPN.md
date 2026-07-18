@@ -5,7 +5,7 @@ to go through a WireGuard tunnel. The original setup ran `wg-quick` on
 the **host**, which routes *every* host packet through the VPN — that
 drops inbound SSH sessions when working remotely.
 
-This setup runs WireGuard inside a dedicated podman/docker container so
+This setup runs WireGuard inside a dedicated rootful Podman container so
 **only** scraper traffic is tunneled. SSH, the dev DB, the backend, and
 the browser stay on the normal host network.
 
@@ -32,7 +32,7 @@ the browser stay on the normal host network.
 ## One-time setup
 
 ```bash
-# 1. Install podman (rootless OK)
+# 1. Install podman
 sudo apt install -y podman
 
 # 2. Install your WireGuard config (root-owned, /etc/wireguard read-only
@@ -40,7 +40,8 @@ sudo apt install -y podman
 sudo ./scripts/setup/setup-wireguard.sh import /path/to/provider.conf
 # This creates /etc/wireguard/scrape-vpn.conf
 
-# 3. Build + start the scraper container
+# 3. Build + start the scraper container. The script uses sudo podman on
+#    this host so WireGuard can set the container network namespace sysctls.
 make scrape-vpn-up
 ```
 
@@ -54,13 +55,13 @@ The existing scrape targets work unchanged:
 ```bash
 make scrape-apsl              # auto-routes through the container
 make scrape-csl-standings
-make events-apsl
+make scrape-apsl-teams
 ```
 
-`scripts/vpn-wrap.sh` (called by all the per-league scripts) now routes
-through `scripts/scrape-vpn.sh exec`, which `podman exec`s into the
-running scraper container. The container is started on first use and
-stays up for fast subsequent runs (`make scrape-vpn-down` to stop it).
+`scripts/vpn-wrap.sh` (called by all the per-league scripts) routes through
+`scripts/scrape-vpn.sh exec`, which runs `sudo podman exec` into the scraper
+container on this host. The container is started on first use and stays up for
+fast subsequent runs (`make scrape-vpn-down` to stop it).
 
 ## Direct access
 

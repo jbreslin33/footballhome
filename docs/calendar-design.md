@@ -105,15 +105,11 @@ form. Revisit if volume grows past ~50/week.
   Saturday pickup DSL description, they MUST use "This and following
   events" (not "This event only") or only one instance updates.
 
-### 0.5 Off-limits drift on disk
+### 0.5 Worktree hygiene
 
-Working tree for the calendar workstream is clean at HEAD. The
-separate billing-refactor workstream still has uncommitted drift
-(deleted `BillingController.*`, `BillingExpectations.*`,
-`BillingProjector.*`; untracked `117-next-due-at.sql`,
-`118-drop-billing-expectations.sql`, `sim/scripts/wire-snoop.js`,
-`backend/.dockerignore`). Do NOT stage those \u2014 they belong to a
-parallel agent.
+Check `git status --short` before calendar work. Do not stage unrelated drift
+from parallel workstreams; keep calendar commits scoped to gcal/FH event, RSVP,
+and reminder surfaces.
 
 ---
 
