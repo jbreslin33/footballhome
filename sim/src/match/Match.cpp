@@ -115,31 +115,26 @@ void Match::spawnInitialSlots()
         //   Idle     -> IdleController   (zero RNG; solo-play default
         //               so a lone joystick user is not fought by an
         //               AI; Slice 24.2).
-        //   Defender -> AiController with defaultBehaviors(Role::Any)
-        //               = {PursueBallCarrierBehavior} (zero RNG; jogs
-        //               toward the ball; Slice 24.3a semantics
-        //               replicated at IBehavior::execute() level in
-        //               Slice 30.2, gated by the `pressing` concept
-        //               plugged via applyConceptOverrides above).
+        //   Defender -> AiController with defaultBehaviors(slot.role)
+        //               (zero RNG; defensive roles receive the current
+        //               defender behavior bag, gated by concepts plugged
+        //               via applyConceptOverrides above).
         // See Scenario::unclaimedControllerFor() for the enum contract.
         switch (scenario_->unclaimedControllerFor(s.slot)) {
             case scenario::UnclaimedControllerKind::Idle:
                 slot.controller = std::make_unique<controller::IdleController>();
                 break;
             case scenario::UnclaimedControllerKind::Defender:
-                // Slice 30.2: swap DefenderController → AiController
-                // with the pursue bag. slot.profile.concepts is copied
-                // in (AiController owns its own ConceptSet copy) — the
-                // `pressing` concept was plugged just above by
-                // applyConceptOverrides so PursueBallCarrierBehavior's
-                // presence-gate opens on the very first decide() call.
+                // Defender-kind dispatches through AiController. The slot's
+                // concrete Role selects the behavior bag; concepts decide
+                // which behaviors in that bag can actually open.
                 slot.controller = std::make_unique<controller::AiController>(
-                    Role::Any,
+                    slot.role,
                     slot.profile.concepts,
                     slot.profile.technical,
                     slot.profile.mental,
                     slot.mark_target,
-                    controller::AiController::defaultBehaviors(Role::Any));
+                    controller::AiController::defaultBehaviors(slot.role));
                 break;
             case scenario::UnclaimedControllerKind::Wander:
             default:
@@ -660,17 +655,16 @@ void Match::releaseSlot(SlotId slot_id)
             s.controller = std::make_unique<controller::IdleController>();
             break;
         case scenario::UnclaimedControllerKind::Defender:
-            // Slice 30.2: Defender-kind now dispatches to AiController
-            // with the pursue bag instead of the deleted
-            // DefenderController. Slot's ConceptSet is copied in
-            // (AiController owns its own copy).
+            // Defender-kind dispatches to AiController with the behavior bag
+            // selected by the slot's concrete Role. Slot's ConceptSet is
+            // copied in (AiController owns its own copy).
             s.controller = std::make_unique<controller::AiController>(
-                Role::Any,
+                s.role,
                 s.profile.concepts,
                 s.profile.technical,
                 s.profile.mental,
                 s.mark_target,
-                controller::AiController::defaultBehaviors(Role::Any));
+                controller::AiController::defaultBehaviors(s.role));
             break;
         case scenario::UnclaimedControllerKind::Wander:
         default:

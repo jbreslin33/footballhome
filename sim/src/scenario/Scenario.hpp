@@ -114,12 +114,10 @@ struct SlotSpawn {
 enum class UnclaimedControllerKind : std::uint8_t {
     Wander   = 0,   // WanderController — M0/M1 default, consumes RNG
     Idle     = 1,   // IdleController   — Slice 24.2, zero RNG
-    Defender = 2,   // AiController + defaultBehaviors(Role::Any) =
-                    // {PursueBallCarrierBehavior}. Zero RNG, gated by
-                    // the `pressing` concept (which the scenario plugs
-                    // via applyConceptOverrides for the defender slot).
-                    // Slice 24.3a semantics preserved at IBehavior
-                    // level (Slice 30.2). Enum name is the *intent*
+    Defender = 2,   // AiController + defaultBehaviors(slot.role). Zero RNG,
+                    // gated by concepts the scenario plugs via
+                    // applyConceptOverrides for the defender slot.
+                    // Enum name is the *intent*
                     // (a defender-like AI); it is not the concrete
                     // controller class.
 };

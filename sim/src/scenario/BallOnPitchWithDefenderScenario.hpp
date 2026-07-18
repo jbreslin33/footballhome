@@ -3,8 +3,8 @@
 // Slice 24.3a demo scenario: identical geometry to BallOnPitchScenario
 // (105 m × 68 m pitch, ball at centre spot at rest, SlotId{1} 5 m west
 // facing east, SlotId{2} 5 m east facing west) but slot 2 is spawned
-// with a DefenderController — an AI that jogs toward the ball every
-// tick instead of standing still. Slot 1 stays Idle so the human
+// as an LCB with Defender-kind AiController policy — an AI that jogs
+// toward the ball every tick instead of standing still. Slot 1 stays Idle so the human
 // client can claim it and take the ball; the point of the demo is to
 // give the Slice 25.2 sprint-with-ball feature a *reason* — outrun
 // the AI or lose ground.
@@ -35,7 +35,7 @@ class BallOnPitchWithDefenderScenario : public Scenario {
 public:
     // Interactive: ball at centre spot at rest, SlotId{1} 5 m west
     // facing east (human-claimable, defaults to Idle when unclaimed),
-    // SlotId{2} 5 m east facing west (Defender, jogs toward the ball).
+    // SlotId{2} 5 m east facing west (LCB Defender-kind AI, jogs toward the ball).
     BallOnPitchWithDefenderScenario() noexcept;
 
     std::string           id() const override          { return "ball_on_pitch_with_defender"; }

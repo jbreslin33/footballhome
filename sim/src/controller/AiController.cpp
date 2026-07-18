@@ -84,30 +84,24 @@ AiController::defaultBehaviors(Role role)
     // Behavior bags grow slice-by-slice; the switch is exhaustive so a
     // reviewer can see at a glance which roles have real bags today
     // and which are still empty placeholders for later milestones.
-    //   Slice 30.2 — Role::Any → {PursueBallCarrierBehavior}
-    //                (BallOnPitchWithDefenderScenario spawns Role::Any
-    //                slots + Match dispatches the Defender-kind case
-    //                to AiController with this bag).
-    //   Slice 31.2 — JockeyBehavior skeleton added; MarkOpponentBehavior follows.
+    //   Slice 30.2 — temporary Role::Any bridge → {PursueBallCarrierBehavior}
+    //                while all scenarios still spawned Role::Any slots.
+    //   Slice 31.2 — JockeyBehavior and MarkOpponentBehavior skeletons added.
+    //   Slice 31.4 — concrete defensive roles own the defender bag; Role::Any
+    //                reverts to an empty placeholder.
     //   Slice 33.2 — Feint1v1Behavior added under an attacker role.
-    //
-    // Slice 30.2 lands the first real bag under Role::Any because the
-    // scenario's SlotSpawn.role is Role::Any (the Role enum is reserved
-    // for later M-side role assignments and every current scenario uses
-    // Role::Any). Once M3+ scenarios start assigning GK/LCB/RCB/etc.,
-    // the pursue bag will move under the appropriate specific role and
-    // Role::Any will revert to `{}`.
     std::vector<std::unique_ptr<behavior::IBehavior>> bag;
     switch (role) {
         case Role::Any:
+        case Role::GK:
+            return bag;   // empty — reserved for later milestones
+        case Role::LCB:
+        case Role::RCB:
+        case Role::CDM:
             bag.push_back(std::make_unique<behavior::PursueBallCarrierBehavior>());
             bag.push_back(std::make_unique<behavior::JockeyBehavior>());
             bag.push_back(std::make_unique<behavior::MarkOpponentBehavior>());
             return bag;
-        case Role::GK:
-        case Role::LCB:
-        case Role::RCB:
-        case Role::CDM:
         case Role::ST9:
         case Role::ST10:
             return bag;   // empty — reserved for later milestones

@@ -36,7 +36,7 @@ BallOnPitchWithDefenderScenario::BallOnPitchWithDefenderScenario() noexcept
     spawns_.push_back(s1);
 
     // Slot 2: DEFENDER spawn 5 m east of ball facing west. On tick 0
-    // its DefenderController will start jogging west toward the ball;
+    // its AiController will start jogging west toward the ball;
     // whoever claimed slot 1 needs to get the ball first, or catch up
     // and shoulder past. Slice 24.3b will add the actual contest bit.
     SlotSpawn s2;
@@ -45,7 +45,7 @@ BallOnPitchWithDefenderScenario::BallOnPitchWithDefenderScenario() noexcept
                              math::Fixed64::zero(),
                              math::Fixed64::zero()};
     s2.heading  = math::FX_PI;             // facing -x (west, toward the ball)
-    s2.role     = Role::Any;
+    s2.role     = Role::LCB;
     spawns_.push_back(s2);
 }
 

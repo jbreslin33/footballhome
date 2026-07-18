@@ -378,26 +378,24 @@ FH_TEST(all_behaviors_abstaining_falls_through_to_idle)
     FH_EXPECT(out.desired_direction.x == Fixed64::zero());
 }
 
-FH_TEST(default_behaviors_slice_31_2_role_any_pursues_jockeys_and_marks_others_empty)
+FH_TEST(default_behaviors_slice_31_4_defensive_roles_get_defender_bag)
 {
-    // Slice 31.2: Role::Any has {PursueBallCarrierBehavior,
-    // JockeyBehavior, MarkOpponentBehavior} (BallOnPitchWithDefenderScenario
-    // spawns Role::Any slots and its `Defender` unclaimed-kind now dispatches
-    // through AiController). Every other role remains an empty placeholder
-    // until later slices populate them (§25.3):
+    // Slice 31.4: concrete defensive roles have {PursueBallCarrierBehavior,
+    // JockeyBehavior, MarkOpponentBehavior}. Role::Any returns to being an
+    // empty placeholder; attacker roles remain empty until later slices (§25.3):
     //   Slice 33.2 — Feint1v1
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  3u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  0u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  0u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::CDM).size(),  0u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  3u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  3u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::CDM).size(),  3u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 0u);
 
-    // Lock the Role::Any bag's identity by id string, so future slices
+    // Lock the defensive bag's identity by id string, so future slices
     // that swap behaviors in/out of the bag must update this assertion
     // deliberately.
-    const auto bag = AiController::defaultBehaviors(Role::Any);
+    const auto bag = AiController::defaultBehaviors(Role::LCB);
     FH_EXPECT_EQ(std::string(bag[0]->id()), std::string("pursue_ball_carrier"));
     FH_EXPECT_EQ(std::string(bag[1]->id()), std::string("jockey"));
     FH_EXPECT_EQ(std::string(bag[2]->id()), std::string("mark_opponent"));
