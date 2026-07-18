@@ -26,6 +26,8 @@ docker-compose.override.yml
 # Temporary working files
 lighthouse_*.txt
 *_extraction.txt
+/path/
+/test.py
 
 # Docker data
 /docker/data/
