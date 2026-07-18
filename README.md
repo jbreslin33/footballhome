@@ -1,382 +1,121 @@
-# Football Home ⚽
+# Football Home
 
-A comprehensive team management system for football/soccer leagues, built with C++, Vanilla JavaScript, and PostgreSQL.
+Football Home is the Lighthouse 1893 football operations app: rosters, RSVPs,
+LeagueApps membership sync, Google Calendar event layering, social/lead ops, and
+the deterministic C++ tactical simulator.
 
-## 🚀 Quick Start (New Machine)
+This README is only the repo entrypoint. Project-wide rules live in
+`CONVENTIONS.md`; deeper design docs live beside the subsystem or under `docs/`.
 
-### Prerequisites
+## Start Here
 
-- macOS or Linux
-- Git
+- Rules and source-of-truth boundaries: `CONVENTIONS.md`
+- Documentation index: `docs/README.md`
+- Simulator entrypoint: `sim/README.md`
+- Simulator design/roadmap: `sim/DESIGN.md`
+- Setup scripts: `setup.sh` and `scripts/setup/`
 
-On the production Linux host, Podman runs rootful. Prefix container and database
-targets with `sudo` there (for example `sudo make build`, `sudo make sync-apsl`,
-and `sudo make shell-db`). Plain `make ...` examples are suitable for local
-setups where your container engine is already accessible to your user.
+## Runtime Stack
 
-### First-Time Setup (4 steps, then syncs forever)
+- Frontend: vanilla JavaScript SPA served by nginx on port 3000.
+- Backend: custom C++ HTTP server on port 3001.
+- Database: PostgreSQL with pg_cron on port 5432.
+- Sync worker: LeagueApps conversion sidecar.
+- Simulator: C++ deterministic sim service plus per-match sim containers.
+- Container engine on this host: rootful Podman.
+
+## Secrets and Config
+
+Tracked encrypted secret bundles:
+
+- `env.age` decrypts to ignored plaintext `env`.
+- `scrape-vpn.conf.age` decrypts to ignored plaintext `scrape-vpn.conf`.
+- `apsl-credentials.conf.age` decrypts to ignored plaintext
+  `apsl-credentials.conf`.
+
+`setup.sh` runs `scripts/setup/setup-age.sh`, which installs `age` if needed and
+decrypts the `.age` files after prompting for the passphrase. The plaintext files
+are runtime inputs and must not be committed.
+
+`.env.example` is a non-secret key template only. The normal server path is to
+decrypt `env.age`, not to hand-build `env` from the template.
+
+## First-Time Setup
+
+On the production Linux host, Podman runs rootful. Use `sudo` for container and
+database targets.
 
 ```bash
-# Step 1: Clone
 git clone https://github.com/jbreslin33/footballhome.git
 cd footballhome
-
-# Step 2: Credentials
-cp .env.example env
-# Edit env with your Google OAuth / Docker Hub credentials (optional)
-
-# Step 3: Install system dependencies (Podman, Node.js, npm packages)
 ./setup.sh
-
-# Step 4: Build images + start containers (DB auto-loads schema + bootstrap data)
-sudo make build
+sudo make rebuild
+sudo make lighthouse
 ```
 
-You now have a running system at **http://localhost:3000** with an empty database (schema + lookup tables only).
+`./setup.sh` installs host dependencies, decrypts encrypted config, prepares the
+scraper/VPN path, installs systemd timers where applicable, and prints the next
+steps. `sudo make rebuild` is destructive, so use it only for a fresh host or when
+a rebuild has been approved.
+
+Local URL after startup:
+
+```text
+http://localhost:3000
+```
+
+## Common Commands
+
+Run `make help` for the full target list.
 
 ```bash
-# From here on, it's just syncs (run these now AND every week):
-sudo make sync-apsl
-sudo make sync-csl
-sudo make sync-casa
-
-# Lighthouse-only refresh (APSL + CASA)
-sudo make sync-lighthouse
+sudo make ps                 # show running containers
+sudo make up                 # start the stack
+sudo make down               # stop the stack
+sudo make deploy             # rebuild and replace backend/frontend services
+sudo make migrate            # apply database migrations without wiping data
+sudo make backup             # pg_dump snapshot under backups/
+sudo make restore            # restore latest backup, or BACKUP=file.sql
+sudo make lighthouse         # refresh Lighthouse APSL + CASA data
+sudo make sync-lighthouse    # legacy Lighthouse sync target
+sudo make shell-db           # database shell
+sudo make sim-deploy         # rebuild sim image, run sim tests, verify registry
 ```
 
-**What each step does:**
-
-| Step | Command | What it does | Run again? |
-|------|---------|-------------|------------|
-| 1 | `git clone` | Gets the code | Never |
-| 2 | `cp .env.example env` | Creates credentials file | Never |
-| 3 | `./setup.sh` | Installs Podman, Node.js, npm packages, vis-network | Never (unless new machine) |
-| 4 | `sudo make build` | Builds Docker images, starts containers, DB loads schema | Only if images change |
-| 5+ | `sudo make sync-*` | Scrape → parse → curate → UPSERT league data | Weekly (or whenever you want fresh data) |
-
-## 🔄 Ongoing Workflow
-
-### Weekly League Update (non-destructive, idempotent)
+Destructive reset:
 
 ```bash
-sudo make backup              # safety net (pg_dump → backups/)
-sudo make sync-lighthouse     # Lighthouse 1893 SC + Boys Club + U23
-sudo make sync-apsl           # scrape → parse → curate → UPSERT
-sudo make sync-csl            # scrape → parse → curate → UPSERT
-sudo make sync-casa           # scrape → parse → curate → UPSERT
+sudo make backup
+sudo make rebuild
+sudo make lighthouse
 ```
 
-Each `sync` command is **fully isolated** to one league. Running it on an empty DB does a full load. Running it on a live DB updates changed data. User-generated data (RSVPs, tactical boards, practices) is never touched.
+Do not run destructive targets on a live data set without explicit approval.
 
-### Fix a Curation Issue
+## Project Layout
 
-```bash
-# Edit the league's config.json to add a clubFamilies entry
-# e.g., "falco fc": "falcons" in csl/config.json
-
-make parse-csl           # re-generate SQL with new curation rule
-make sync-csl            # UPSERT corrected data (or just: make sync-csl does both)
+```text
+backend/          C++ HTTP server
+compose/          supplemental compose files
+database/         bootstrap SQL, migrations, scraper pipeline, DB docs
+docs/             cross-cutting designs and ADRs
+frontend/         vanilla JS SPA and static assets
+scripts/          operational, setup, sync, social, and debug scripts
+sim/              deterministic C++ tactical simulator
+systemd/          host timer/service units
 ```
 
-### Debugging Sub-Steps
-
-```bash
-make scrape-apsl         # fetch HTML only (no parse or load)
-make parse-apsl          # regenerate SQL from cached HTML only
-make audit               # run data quality checks
-sudo make shell-db       # connect to database shell
-```
-
-### Backup & Restore
-
-```bash
-sudo make backup         # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
-sudo make restore        # restore latest (or BACKUP=file.sql)
-```
-
-**Automated daily backups** run via cron at 3am:
-- Keeps last 7 daily + 4 weekly snapshots (Sundays)
-- Logs to `backups/cron.log`
-- Script: `scripts/backup-db.sh`
-
-To install (already done on the dev machine):
-```bash
-crontab -e
-# Add: 0 3 * * * /path/to/footballhome/scripts/backup-db.sh >> /path/to/footballhome/backups/cron.log 2>&1
-```
-
-### VPN for Scraping
-
-Some league websites block server IPs. Scraping uses a WireGuard VPN:
-
-```bash
-make vpn-up              # bring up WireGuard tunnel (scrape-vpn)
-make vpn-down            # tear down tunnel
-make vpn-status          # check tunnel status
-```
-
-Scrape commands automatically wrap through VPN via `scripts/vpn-wrap.sh`.
-VPN config: `/etc/wireguard/scrape-vpn.conf` (not in repo — manual setup per machine).
-
-### Dev Reset (destructive — wipes ALL data)
-
-```bash
-sudo make backup         # required safety net first
-sudo make rebuild        # destroys DB volume, rebuilds from scratch
-sudo make sync           # re-sync all leagues
-```
-
-This destroys all user-generated data. Use `sudo make backup` first.
-
-### Schema Migration (preserves data)
-
-```bash
-sudo make migrate        # applies pending migrations in database/migrations/
-```
-
-Use migrations when you need to change the schema on a database with user data you want to keep. Write a numbered SQL file in `database/migrations/`, then also update `00-schema.sql` so future `make rebuild` gets the new schema.
-
-Example: adding a column
-```sql
--- database/migrations/002-add-phone-to-users.sql
-ALTER TABLE users ADD COLUMN phone VARCHAR(20);
-```
-
-## 🏗️ Architecture
-
-```
-Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
-```
-
-**Stack:**
-- **Frontend**: Vanilla JavaScript FSM-based SPA (port 3000)
-- **Backend**: Custom C++ HTTP server (port 3001)
-- **Database**: PostgreSQL 15 with pg_cron (port 5432)
-
-### Design Principles
-
-1. **Leagues are isolated** — each league has its own sync command, its own SQL files, its own scraper. Syncing one league never touches another.
-2. **Everything is idempotent** — `make sync-*` uses UPSERT (`ON CONFLICT DO UPDATE`). Run it once or a hundred times, same result.
-3. **Curation rules are the real asset** — scrapers and parsers are plumbing. The `clubFamilies` mappings in each league's `config.json` are what make cross-league deduplication work correctly. These grow over time as new edge cases are found.
-4. **User data is sacred** — league syncs never delete user-generated data (RSVPs, practices, tactical boards, chat).
-
-## 🔐 Demo Login
-
-- **Email**: `soccer@lighthouse1893.org`
-- **Password**: `1893Soccer!`
-
-## 📁 Project Structure
-
-```
-├── frontend/                  # Vanilla JS frontend with FSM
-│   ├── js/
-│   │   ├── screens/          # Screen components (extend Screen base class)
-│   │   ├── screen-manager.js # FSM controller
-│   │   └── app.js            # Application entry
-│   └── css/
-├── backend/                   # C++ HTTP server
-│   ├── src/
-│   │   ├── core/             # HTTP framework (Router, Request, Response)
-│   │   ├── controllers/      # Route handlers
-│   │   ├── services/         # Business logic
-│   │   ├── models/           # Database models
-│   │   └── database/         # PostgreSQL client
-│   └── CMakeLists.txt
-├── database/
-│   ├── data/                 # Bootstrap SQL (schema + lookups + seasons + admin users)
-│   ├── migrations/           # Forward-only schema migrations (make migrate)
-│   ├── scraped-html/         # Cached HTML from league websites
-│   └── scripts/
-│       ├── leagues/          # Per-league pipelines
-│       │   └── north-america/usa/
-│       │       ├── apsl/     # config.json, scrape.sh, parse.sh, generate-sql.js, curate-sql.js, load.sh, sql/
-│       │       ├── csl/
-│       │       └── casa/
-│       ├── scrapers/         # Match event scrapers
-│       ├── domain/           # Domain models + repositories
-│       └── infrastructure/   # Parsers + fetchers
-├── backups/                  # pg_dump snapshots (gitignored)
-├── Makefile                  # All targets (make help for full list)
-└── docker-compose.yml        # Container orchestration
-```
-
-## ⚽ Features
-
-### League Management
-- **Multi-League Support**: APSL, CSL, CASA with automated scraping and SQL generation
-- **Division Tracking**: Conferences, divisions, standings per league
-- **Cross-League Curation**: Automatic deduplication of shared clubs via `clubFamilies` rules
-
-### Team Management
-- **Roster Management**: Track players, jersey numbers, positions
-- **Multiple Teams**: Users can manage multiple teams across leagues
-- **Role-Based Access**: Admin, Coach, Player roles with appropriate permissions
-
-### Game Day
-- **Game Day Roster**: Select players for match lineup, auto-save to DB
-- **Game Day Lineup**: Drag-and-drop formation builder with fit-to-screen mode
-- **Instagram Match Card**: Royal blue card with team logos, scores, roster — screenshot and share
-- **League Branding**: Cards dynamically show APSL / CASA / CSL branding based on match source
-
-### Event Management
-- **Practice Scheduling**: Create and manage team practices
-- **Match Tracking**: View upcoming and past matches from league schedule
-- **RSVP System**: Players can respond to events in-app
-
-## 🗄️ Data Pipeline
-
-### How Sync Works
-
-Every league follows the same pipeline:
-
-```
-Website → Scrape HTML → Parse → Generate SQL → Curate (cross-league dedup) → UPSERT into DB
-```
-
-This is triggered by a single command per league: `make sync-apsl`
-
-### Three Categories of Data
-
-| Category | Source | Sync method | Recoverable? |
-|----------|--------|-------------|-------------|
-| Bootstrap (schema, lookups, seasons, logos, chat config) | `database/data/*.sql` | Auto-loaded on first DB start | Always — from git |
-| League data (teams, matches, standings, rosters) | League websites | `make sync-*` (scrape → UPSERT) | Always — re-scrape from website |
-| User data (RSVPs, lineups, practices, tactical boards) | User input in app | Written by backend to DB | Only from `make backup` (daily cron at 3am) |
-
-### Curation Rules (the real asset)
-
-Each league's `config.json` contains `clubFamilies` — explicit mappings that tell the system which team names across leagues are the same club:
-
-```json
-{
-  "clubFamilies": {
-    "lighthouse boys club": "lighthouse-1893-sc",
-    "lighthouse old timers club": "lighthouse-1893-sc",
-    "falco fc": "falcons"
-  }
-}
-```
-
-The curation chain runs in dependency order:
-- **APSL** — baseline (no dedup needed)
-- **CSL** — curates against APSL clubs
-- **CASA** — curates against APSL + CSL clubs
-
-When you find a duplicate or mismatch, add a `clubFamilies` entry and re-sync. The rule is permanent — it fixes that edge case forever.
-
-### External Source Systems
-
-| Source | What it provides | Sync command |
-|--------|-----------------|--------------|
-| APSL website | clubs, teams, matches, standings, rosters | `make sync-apsl` |
-| CSL website | clubs, teams, matches, standings, rosters | `make sync-csl` |
-| CASA website | clubs, teams, matches, standings, rosters | `make sync-casa` |
-
-For normal Lighthouse operations, use `make sync-lighthouse`. It runs APSL and CASA in the expected order.
-
-All sources follow the same pattern: fetch → parse → curate → UPSERT.
-
-## 🐳 Container Services
-
-```bash
-make ps             # Show running containers
-make logs           # View all logs
-make logs-db        # View database logs
-make logs-backend   # View backend logs
-make shell-db       # Connect to database shell
-make up             # Start containers (no rebuild)
-make down           # Stop containers
-```
-
-## 🔧 Troubleshooting
-
-### Site Down?
-
-```bash
-# 1. Check container status
-make ps
-
-# 2. If containers are stopped, start them
-make up
-```
-
-That's it. `make up` starts all three containers (db, backend, frontend). The site should be back at https://footballhome.org within seconds.
-
-### Deploying Code Changes
-
-**Frontend changes** (JS/CSS): No rebuild needed — files are volume-mounted. Just refresh the browser.
-
-**Backend changes** (C++): Must rebuild the image and replace the container:
-
-```bash
-# 1. Build new image
-sudo make build
-
-# 2. Replace old backend container with new image
-sudo podman stop footballhome_frontend footballhome_backend
-sudo podman rm footballhome_frontend footballhome_backend
-sudo make up
-```
-
-> **Why the extra steps?** `make build` creates a new image, but `podman-compose up -d` won't replace a container that already exists with the same name. You must remove the old container first. The frontend container depends on the backend, so it must be removed too.
-
-### Other Issues
-
-```bash
-# View logs for errors
-make logs-backend
-
-# Run data quality audit
-make audit
-
-# Check for duplicate clubs
-sudo make shell-db
-# Then: SELECT name, count(*) FROM clubs GROUP BY name HAVING count(*) > 1;
-
-# If a sync broke something
-sudo make restore        # roll back to last backup
-```
-
-## 📋 Make Targets Reference
-
-Run `make help` for the full list. Key targets:
-
-| Target | Description |
-|--------|-------------|
-| `make sync-apsl` | Full sync: scrape → parse → curate → UPSERT |
-| `make sync-csl` | Full sync for CSL |
-| `make sync-casa` | Full sync for CASA |
-| `make sync-lighthouse` | Lighthouse refresh: APSL + CASA |
-| `make build` | Build images + start containers |
-| `make rebuild` | Destroy everything + fresh build (wipes DB) |
-| `make migrate` | Apply pending schema migrations (preserves data) |
-| `make up` / `make down` | Start / stop containers |
-| `make backup` / `make restore` | pg_dump snapshot / restore |
-| `make safe-rebuild` | Backup + rebuild (safety net) |
-| `make vpn-up` / `make vpn-down` | WireGuard tunnel for scraping |
-| `make scrape-apsl` | Fetch HTML only |
-| `make parse-apsl` | Regenerate SQL from cached HTML only |
-| `make shell-db` | Database shell |
-| `make audit` | Data quality checks |
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License.
-
-## 👤 Author
-
-**James Breslin**
-- GitHub: [@jbreslin33](https://github.com/jbreslin33)
-- Email: jbreslin@footballhome.org
-
----
-
-Built with ❤️ for football/soccer team management
+Root is intentionally small: first-class entrypoints, encrypted config bundles,
+and canonical documentation only.
+
+## Data Source Boundaries
+
+- LeagueApps is the source of truth for membership. Football Home syncs it on
+  request paths before rendering LeagueApps-derived membership state.
+- Google Calendar owns event timing and tags. Football Home layers RSVPs and app
+  state on top.
+- League websites are the source for scraped league data. Sync commands are
+  idempotent and use UPSERTs.
+- User-created app data is recoverable only from database backups.
+
+See `CONVENTIONS.md` for the strict implementation rules behind these boundaries.
