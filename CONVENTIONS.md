@@ -86,6 +86,9 @@ section in its README listing the first files to load.
 - Root is for first-class entrypoints and metadata: `Makefile`, `build.sh`,
   `setup.sh`, `docker-compose.yml`, `package.json`, `README.md`,
   `CONVENTIONS.md`, and encrypted secrets such as `env.age`.
+- `config/` is for small repo-managed runtime configs and ignored local key
+  material mounted into containers or installed onto the host, for example the
+  nginx site config, Meta ZIP allowlists, and LeagueApps `.p12` / `.pem` files.
 - Operational scripts belong under `scripts/` or the subsystem they operate on.
   Use focused subdirectories such as `scripts/setup/`, `scripts/debug/`,
   `scripts/ads/`, or `sim/scripts/` when a category grows.

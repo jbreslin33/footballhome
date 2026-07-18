@@ -40,6 +40,10 @@ are runtime inputs and must not be committed.
 `env.example` is a non-secret key template only. The normal server path is to
 decrypt `env.age`, not to hand-build `env` from the template.
 
+`config/` contains tracked runtime configs such as the host nginx site and Meta
+ZIP allowlists. Ignored LeagueApps `.p12` / `.pem` key material may also live
+there because backend containers mount `config/` read-only at `/app/config`.
+
 ## First-Time Setup
 
 On the production Linux host, Podman runs rootful. Use `sudo` for container and
@@ -97,6 +101,7 @@ Do not run destructive targets on a live data set without explicit approval.
 ```text
 backend/          C++ HTTP server
 compose/          supplemental compose files
+config/           runtime configs and ignored local key material
 database/         bootstrap SQL, migrations, scraper pipeline, DB docs
 docs/             cross-cutting designs and ADRs
 frontend/         vanilla JS SPA and static assets
