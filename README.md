@@ -37,7 +37,7 @@ Tracked encrypted secret bundles:
 decrypts the `.age` files after prompting for the passphrase. The plaintext files
 are runtime inputs and must not be committed.
 
-`.env.example` is a non-secret key template only. The normal server path is to
+`env.example` is a non-secret key template only. The normal server path is to
 decrypt `env.age`, not to hand-build `env` from the template.
 
 ## First-Time Setup

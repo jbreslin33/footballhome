@@ -6,10 +6,10 @@ REPO_ROOT="$(setup_repo_root)"
 cd "$REPO_ROOT"
 
 if [ ! -f env ]; then
-  print_status "Creating env from .env.example..."
-  cp .env.example env
+  print_status "Creating env from env.example..."
+  cp env.example env
   chmod 600 env
-  print_success "env file created from .env.example"
+  print_success "env file created from env.example"
 else
   print_success "env file already exists"
 fi
