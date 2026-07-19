@@ -64,6 +64,7 @@ class App {
       leads: new LeadsScreen(this.navigation, this.auth),
       leadsAnalytics: new LeadsAnalyticsScreen(this.navigation, this.auth),
       members: new MembersScreen(this.navigation, this.auth),
+      peopleWorkbench: new PeopleWorkbenchScreen(this.navigation, this.auth),
       mensGameEligibility: new MensGameEligibilityScreen(this.navigation, this.auth),
       mensRoster: new MensRosterScreen(this.navigation, this.auth),
       boysRoster: new BoysRosterScreen(this.navigation, this.auth),
@@ -136,6 +137,7 @@ class App {
     this.screenManager.register('leads-analytics', this.screens.leadsAnalytics);
     // Unified Members board (URL: `#members`).
     this.screenManager.register('members', this.screens.members);
+    this.screenManager.register('people-workbench', this.screens.peopleWorkbench);
     this.screenManager.register('mens-game-eligibility', this.screens.mensGameEligibility);
     this.screenManager.register('mens-roster', this.screens.mensRoster);
     this.screenManager.register('boys-roster', this.screens.boysRoster);

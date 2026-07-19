@@ -327,6 +327,63 @@ class AdminClubScreen extends Screen {
       return;
     }
 
+    if (section === 'people-directory') {
+      this.navigation.goTo('members', {
+        clubId: this.clubId,
+        clubName: this.clubName,
+        variant: 'active',
+        mode: 'people',
+        title: 'People Directory',
+        subtitle: 'One Lighthouse person graph: contact, account, player, coach/admin, membership, and roster links',
+      });
+      return;
+    }
+
+    if (['accounts', 'player-records', 'staff-records', 'person-duplicates', 'person-data-issues'].includes(section)) {
+      const viewMap = {
+        accounts: {
+          title: 'Accounts',
+          subtitle: 'Login users and their linked Lighthouse person records',
+          description: 'Review account ownership, sign-in state, and person-link quality before broader person cleanup.',
+          action: 'accounts',
+        },
+        'player-records': {
+          title: 'Players',
+          subtitle: 'Lighthouse player records and role flags',
+          description: 'Inspect player-role state separately from scraped opponent-player data.',
+          action: 'players',
+        },
+        'staff-records': {
+          title: 'Coaches & Admins',
+          subtitle: 'Coach, team admin, and club admin assignments',
+          description: 'Review staff roles, assignments, and current access relationships.',
+          action: 'staff',
+        },
+        'person-duplicates': {
+          title: 'Duplicates / Merges',
+          subtitle: 'Duplicate Lighthouse people and review merge history',
+          description: 'Find likely duplicates and prepare merge decisions with existing person links intact.',
+          action: 'duplicates',
+        },
+        'person-data-issues': {
+          title: 'Data Issues',
+          subtitle: 'Missing links, bad contacts, roster mismatches, and membership sync issues',
+          description: 'Use this workbench to triage the common data-quality exceptions that block clean person workflows.',
+          action: 'data-issues',
+        },
+      };
+      const view = viewMap[section];
+      this.navigation.goTo('people-workbench', {
+        clubId: this.clubId,
+        clubName: this.clubName,
+        view: view.action,
+        title: view.title,
+        subtitle: view.subtitle,
+        description: view.description,
+      });
+      return;
+    }
+
     if (section === 'admin-calendar') {
       // Google Calendar mirror view (agenda list).  See
       // screens/calendar.js + docs/calendar-design.md §10.1.

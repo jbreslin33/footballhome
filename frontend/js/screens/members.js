@@ -101,6 +101,13 @@ class MembersScreen extends Screen {
   onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
+    const peopleMode = params?.mode === 'people';
+    const title = params?.title || (peopleMode ? 'People Directory' : 'Membership');
+    const subtitle = params?.subtitle || (peopleMode
+      ? 'One Lighthouse person graph: contact, account, player, coach/admin, membership, and roster links'
+      : 'Members grouped by sub-program');
+    if (this.find('#members-title')) this.find('#members-title').textContent = title;
+    if (this.find('#members-subtitle')) this.find('#members-subtitle').textContent = subtitle;
     // Which LA sub-program is currently in focus.  `null` == no
     // program-specific selection.  Mutually exclusive with
     // `categoryFilter` — clicking a program chip clears categoryFilter
