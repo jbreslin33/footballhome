@@ -146,27 +146,50 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
             "ORDER BY merged_at DESC",
             { personIdStr });
 
+        // ── FH account (users row linked to this person) ─────────────
+        pqxx::result accountRes = db_->query(
+            "SELECT id, is_active, last_login_at, last_seen_at, created_at "
+            "FROM users WHERE person_id = $1 LIMIT 1",
+            { personIdStr });
+
         // ── Roster / team assignments ────────────────────────────────
-        // Every roster row for this person's player record, current
-        // (left_at IS NULL) first, then historical.  Includes club +
-        // division context so the UI can group / disambiguate the
-        // frequent "same team name, different division" case.
+        // Legacy soccer roster rows (player_id keyed) PLUS current LA-era
+        // roster_assignments (leagueapps_user_id).  Lighthouse mens/youth
+        // boards write the latter; scraped opponents often only have the
+        // former.  Merge both into the same `teams` array for the UI.
         pqxx::result teamsRes = db_->query(
+            "SELECT * FROM ( "
             "SELECT r.id AS roster_id, r.team_id, r.jersey_number, "
-            "       r.joined_at, r.left_at, "
+            "       r.joined_at::timestamptz AS joined_at, "
+            "       r.left_at::timestamptz AS left_at, "
             "       t.name AS team_name, t.slug AS team_slug, "
             "       t.gender_category, t.club_id, "
             "       c.name AS club_name, "
-            "       d.name AS division_name "
+            "       d.name AS division_name, "
+            "       'legacy'::text AS source "
             "FROM rosters r "
             "JOIN players pl ON pl.id = r.player_id "
             "JOIN teams t   ON t.id = r.team_id "
             "LEFT JOIN clubs c     ON c.id = t.club_id "
             "LEFT JOIN divisions d ON d.id = t.division_id "
             "WHERE pl.person_id = $1 "
-            "ORDER BY (r.left_at IS NULL) DESC, r.joined_at DESC "
+            "UNION ALL "
+            "SELECT ra.id AS roster_id, ra.team_id, NULL::int AS jersey_number, "
+            "       ra.assigned_at AS joined_at, ra.removed_at AS left_at, "
+            "       t.name AS team_name, t.slug AS team_slug, "
+            "       t.gender_category, t.club_id, "
+            "       c.name AS club_name, "
+            "       d.name AS division_name, "
+            "       'assignment'::text AS source "
+            "FROM roster_assignments ra "
+            "JOIN teams t ON t.id = ra.team_id "
+            "LEFT JOIN clubs c     ON c.id = t.club_id "
+            "LEFT JOIN divisions d ON d.id = t.division_id "
+            "WHERE ra.leagueapps_user_id = $2::bigint "
+            ") AS team_rows "
+            "ORDER BY (left_at IS NULL) DESC, joined_at DESC NULLS LAST "
             "LIMIT 100",
-            { personIdStr });
+            { personIdStr, std::to_string(laUserId) });
 
         // ── RSVP eligibility (per-team grants keyed by LA user id) ───
         // These are the teams a player is *allowed* to RSVP to; the
@@ -394,6 +417,21 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
         }
         json << "]";
 
+        // FH login account (users row), or null when the person has none.
+        json << ",\"account\":";
+        if (accountRes.empty()) {
+            json << "null";
+        } else {
+            const auto& a = accountRes[0];
+            json << "{"
+                 <<     "\"userId\":" << a["id"].as<int>()
+                 <<     ",\"isActive\":" << boolField(a["is_active"])
+                 <<     ",\"lastLoginAt\":" << strOrNull(a["last_login_at"])
+                 <<     ",\"lastSeenAt\":" << strOrNull(a["last_seen_at"])
+                 <<     ",\"createdAt\":" << strOrNull(a["created_at"])
+                 << "}";
+        }
+
         // Team assignments (current + historical roster rows).
         json << ",\"teams\":[";
         {
@@ -410,9 +448,10 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
                      <<     ",\"clubId\":"       << intOrNull(row["club_id"])
                      <<     ",\"clubName\":"     << strOrNull(row["club_name"])
                      <<     ",\"divisionName\":" << strOrNull(row["division_name"])
-                     <<     ",\"jerseyNumber\":" << strOrNull(row["jersey_number"])
+                     <<     ",\"jerseyNumber\":" << intOrNull(row["jersey_number"])
                      <<     ",\"joinedAt\":"     << strOrNull(row["joined_at"])
                      <<     ",\"leftAt\":"       << strOrNull(row["left_at"])
+                     <<     ",\"source\":"       << strOrNull(row["source"])
                      << "}";
             }
         }

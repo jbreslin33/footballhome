@@ -67,20 +67,29 @@ Open follow-ups:
 
 ## Club Admin People
 
-Club Admin should default to Lighthouse people only. Membership belongs under
-People because `person_la_memberships` is attached to `persons`, but the Members
-board remains a focused workflow inside the broader People area.
+Club Admin defaults to Lighthouse people only (`person_la_memberships`
+with `ended_at IS NULL`). Membership, accounts (`users`), players,
+coaches/admins, roster connections (`roster_assignments`), and RSVP
+eligibility all hang off `persons`. Scraped league/opponent-only people
+stay in System Admin / League Data until an identity-resolution workflow
+links them to a Lighthouse person.
+
+Shipped:
+
+- People Directory workbench (`GET /api/admin/people`) — one row per
+  Lighthouse person with contact, account, player, staff, membership,
+  roster teams, RSVP teams, duplicate signals, and data-issue flags.
+- Lens views under People: Accounts, Players, Coaches & Admins,
+  Duplicates / Merges, Data Issues (same endpoint, `?view=` filter).
+- Person profile includes the linked FH `users` account and merges
+  legacy `rosters` with LA `roster_assignments`.
 
 Open follow-ups:
 
-- Add a People Directory workbench that shows one row per Lighthouse `persons`
-  record with contact, account, player, coach/admin, membership, billing,
-  roster, and RSVP status.
-- Add Accounts, Players, Coaches & Admins, Duplicates / Merges, and Data Issues
-  views under People as focused lenses on the same person graph.
-- Keep scraped league/opponent-only people out of Club Admin by default. Put
-  those records in System Admin / League Data until an identity-resolution
-  workflow links them to a Lighthouse person.
-- Add a later identity-resolution workflow for connecting current Lighthouse
-  people to scraped league identities with admin-confirmed matches, not
-  automatic name-only merges.
+- Add a later identity-resolution workflow for connecting current
+  Lighthouse people to scraped league identities with admin-confirmed
+  matches, not automatic name-only merges.
+- Wire merge/unmerge actions into the Duplicates lens (API already
+  exists at `/api/persons/merge`).
+- Expand RSVP eligibility editing beyond the mens board into the
+  People Directory card drill-down.

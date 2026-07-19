@@ -59,6 +59,12 @@ class PersonScreen extends Screen {
             <div id="ps-phones-wrap" style="margin-top: var(--space-3);"></div>
           </section>
 
+          <!-- FH login account (users row linked to this person) -->
+          <section class="ps-card" id="ps-account-card">
+            <h2 class="ps-card-title">Football Home account</h2>
+            <div id="ps-account-body"></div>
+          </section>
+
           <!-- LA memberships (current + past).  Past rows render greyed
                with an "ended" timestamp so an admin can tell whether
                someone was previously paused / dropped. -->
@@ -357,6 +363,7 @@ class PersonScreen extends Screen {
     // Header card.
     this._renderHeaderCard(data);
     this._renderContactCard(data.contact || { emails: [], phones: [] });
+    this._renderAccountCard(data.account || null);
     this._renderMembershipsCard(data.memberships || []);
     this._renderTeamsCard(data.teams || []);
     this._renderRsvpCard(data.rsvpEligibility || [], data.upcomingMatches || []);
@@ -444,6 +451,42 @@ class PersonScreen extends Screen {
 
     this.element.querySelector('#ps-emails-wrap').innerHTML = emailsHtml;
     this.element.querySelector('#ps-phones-wrap').innerHTML = phonesHtml;
+  }
+
+  _renderAccountCard(account) {
+    const el = this.element.querySelector('#ps-account-body');
+    if (!el) return;
+    if (!account) {
+      el.innerHTML = `<div class="ps-empty">No Football Home login account linked</div>`;
+      return;
+    }
+    const active = account.isActive !== false;
+    el.innerHTML = `
+      <div class="ps-row">
+        <span class="ps-row-label">User id</span>
+        <span class="ps-row-value">#${this._escape(String(account.userId))}</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Status</span>
+        <span class="ps-row-value">
+          <span class="ps-pill ${active ? 'member' : 'dropped'}">
+            ${active ? 'active' : 'inactive'}
+          </span>
+        </span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Last seen</span>
+        <span class="ps-row-value">${this._fmtDateTime(account.lastSeenAt)}</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Last login</span>
+        <span class="ps-row-value">${this._fmtDateTime(account.lastLoginAt)}</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Account created</span>
+        <span class="ps-row-value">${this._fmtDateTime(account.createdAt)}</span>
+      </div>
+    `;
   }
 
   _renderMembershipsCard(memberships) {
@@ -550,6 +593,9 @@ class PersonScreen extends Screen {
       const jersey = t.jerseyNumber
         ? `<span class="ps-jersey">#${this._escape(String(t.jerseyNumber))}</span>`
         : '';
+      const source = t.source === 'assignment'
+        ? ' · LA roster'
+        : (t.source === 'legacy' ? ' · legacy roster' : '');
       const dateBit = past
         ? `left ${this._fmtDate(t.leftAt)}`
         : `since ${this._fmtDate(t.joinedAt)}`;
@@ -557,7 +603,7 @@ class PersonScreen extends Screen {
         <div class="ps-line ${past ? 'past' : ''}">
           <span class="ps-line-primary">
             ${jersey}${this._escape(t.teamName)}
-            <span style="opacity:0.6; font-weight:400;">${context}</span>
+            <span style="opacity:0.6; font-weight:400;">${context}${source}</span>
           </span>
           <span class="ps-line-meta">${dateBit}</span>
         </div>`;

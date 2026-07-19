@@ -6,7 +6,12 @@
 class PersonLinker;
 
 // ────────────────────────────────────────────────────────────────────────────
-// AdminLaBackfillController — POST /api/admin/leagueapps-link/backfill
+// AdminLaBackfillController — Club Admin membership + people APIs
+//
+//   POST /api/admin/leagueapps-link/backfill
+//   GET  /api/admin/members
+//   GET  /api/admin/people          — Lighthouse person-graph directory
+//   POST /api/admin/membership/sync
 //
 // Operator-driven sweep that walks one or more LA programs, calls
 // PersonLinker::linkLa on every active registration, and reports a
@@ -40,6 +45,7 @@ private:
     Response handleBackfill(const Request& request);
     Response handleProbe(const Request& request);
     Response handleMembers(const Request& request, const LaSyncMap& sync);
+    Response handlePeople(const Request& request);
     Response handleSyncMemberships(const Request& request);
 
 };
