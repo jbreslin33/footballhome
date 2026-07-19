@@ -63,7 +63,8 @@ git pull origin main
 #   make setup-dev-lbreslin
 ```
 
-Each slot script: worktree → `dev-up` → restore mirror (if dump exists) → nginx vhost.
+Each slot script: worktree → `dev-up` → restore mirror (if dump exists) →
+**Membership sync** (LeagueApps → slot DB) → nginx vhost.
 
 After prod is up and you have a fresh dump:
 
@@ -89,7 +90,8 @@ sudo make setup-dev-slot DEV=jbreslin   # or: ./scripts/setup/setup-dev-jbreslin
 
 **Browse immediately (no DNS):** `http://<server-ip>:3010` (jbreslin) or `:3020` (lbreslin).
 
-Then Membership → **Sync now** (LeagueApps → your mirror DB → UI).
+Membership sync runs during setup; re-run anytime with
+`make dev-membership-sync DEV=jbreslin` (or Members → **Sync now** in the UI).
 
 `dev-init` (inside the setup scripts) creates `/srv/footballhome-dev-<slug>` and
 symlinks `env` from prod so LeagueApps keys work.
@@ -168,6 +170,7 @@ make setup-dev-slot DEV=<slug>
 make dev-init DEV=<slug>              # low-level pieces
 make dev-up DEV=<slug>
 make dev-restore-mirror DEV=<slug>
+make dev-membership-sync DEV=<slug>   # LeagueApps Membership → Sync now
 make dev-nginx DEV=<slug>
 make dev-ps DEV=<slug>
 make dev-down DEV=<slug>              # DEV_WIPE=1 drops volume

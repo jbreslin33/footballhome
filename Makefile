@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore dev-mirror restore-mirror setup-dev-slots setup-dev-slot setup-dev-jbreslin setup-dev-lbreslin dev-init dev-up dev-down dev-restore-mirror dev-nginx dev-ps safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 check-la-sync
+.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore dev-mirror restore-mirror setup-dev-slots setup-dev-slot setup-dev-jbreslin setup-dev-lbreslin dev-init dev-up dev-down dev-restore-mirror dev-membership-sync dev-nginx dev-ps safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 check-la-sync
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -94,6 +94,7 @@ help:
 	@echo "  make dev-init DEV=jbreslin           Create /srv/footballhome-dev-<slug> worktree"
 	@echo "  make dev-up DEV=jbreslin             Start db+backend+frontend on that slot's ports"
 	@echo "  make dev-restore-mirror DEV=jbreslin Load prod dump into that slot's DB"
+	@echo "  make dev-membership-sync DEV=jbreslin  LeagueApps Membership → Sync now (CLI)"
 	@echo "  make dev-nginx DEV=jbreslin          Install nginx vhost for <slug>.dev.footballhome.org"
 	@echo "  make dev-ps DEV=jbreslin             Show that slot's containers"
 	@echo "  make dev-down DEV=jbreslin           Stop slot (DEV_WIPE=1 also drops DB volume)"
@@ -581,6 +582,10 @@ dev-down:
 dev-restore-mirror:
 	@test -n "$(DEV)" || (echo "Usage: make dev-restore-mirror DEV=jbreslin"; exit 1)
 	@DEV=$(DEV) ./scripts/dev/dev-restore-mirror.sh
+
+dev-membership-sync:
+	@test -n "$(DEV)" || (echo "Usage: make dev-membership-sync DEV=jbreslin"; exit 1)
+	@DEV=$(DEV) ./scripts/dev/dev-membership-sync.sh
 
 dev-nginx:
 	@test -n "$(DEV)" || (echo "Usage: sudo make dev-nginx DEV=jbreslin"; exit 1)

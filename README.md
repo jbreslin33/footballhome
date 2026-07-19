@@ -28,9 +28,8 @@ cd /srv/footballhome
 # or: make setup-dev-jbreslin / make setup-dev-lbreslin
 
 sudo make backup && sudo make dev-mirror
-./setup.sh --only dev-slots          # restore mirror into every slot
-# browse http://SERVER:3010  (lbreslin → :3020)
-# → Membership → Sync now → code → PR → merge
+./setup.sh --only dev-slots          # restore mirror + membership sync per slot
+# browse http://SERVER:3010  (lbreslin → :3020) → code → PR → merge
 
 # ship to live
 cd /srv/footballhome && git pull && sudo make migrate && sudo make deploy

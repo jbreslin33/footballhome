@@ -107,7 +107,22 @@ print_status "Restoring DB mirror into $FH_DEV_SLUG"
   fi
 )
 
-# ── 5. Host nginx vhost ───────────────────────────────────────────────
+# ── 5. Membership sync (LeagueApps → this slot's DB) ──────────────────
+# Same as Club Admin → Members → "Sync now". Needs healthy backend + LA keys
+# from the shared env symlink. Skip with DEV_SLOTS_SKIP_MEMBERSHIP_SYNC=1.
+if [ "${DEV_SLOTS_SKIP_MEMBERSHIP_SYNC:-0}" = "1" ]; then
+  print_warning "skipping membership sync (DEV_SLOTS_SKIP_MEMBERSHIP_SYNC=1)"
+else
+  print_status "Running LeagueApps membership sync for $FH_DEV_SLUG"
+  if [ -f "$REPO_ROOT/scripts/dev/dev-membership-sync.sh" ]; then
+    DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-membership-sync.sh" || \
+      print_warning "membership sync failed for $FH_DEV_SLUG — use Members → Sync now in the UI"
+  else
+    print_warning "dev-membership-sync.sh missing — skip"
+  fi
+fi
+
+# ── 6. Host nginx vhost ───────────────────────────────────────────────
 print_status "Installing nginx vhost for ${FH_DEV_HOST_PREFIX}.dev.footballhome.org"
 if [ "$EUID" -eq 0 ]; then
   DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-nginx.sh"
@@ -116,7 +131,7 @@ else
     print_warning "nginx install needs sudo — run: sudo make dev-nginx DEV=$FH_DEV_SLUG"
 fi
 
-# ── 6. Optional TLS (only when asked — needs DNS) ─────────────────────
+# ── 7. Optional TLS (only when asked — needs DNS) ─────────────────────
 DOMAIN="${FH_DEV_HOST_PREFIX}.dev.footballhome.org"
 if [ "${DEV_SLOTS_OBTAIN_CERT:-0}" = "1" ] || [ "${DEV_SLOTS_OBTAIN_CERT:-}" = "yes" ]; then
   if command -v dig >/dev/null 2>&1; then
