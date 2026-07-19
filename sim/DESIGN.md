@@ -32,7 +32,7 @@
 >
 > **Slice 30.2 (`PursueBallCarrierBehavior` + `DefenderController` deletion + `Scenario::applyConceptOverrides` hook + migration 224 for `pressing` concept id=3):** landed 2026-07-17 (`0196196f`). First real `IBehavior` — replicates all five branches of the deleted `DefenderController::decide()` (owner-hold, no-ball, ball-entity-missing, on-ball, pursue) at intent level. `AiController::defaultBehaviors(Role::Any) = {PursueBallCarrierBehavior}`; `Match.cpp` swaps both `UnclaimedControllerKind::Defender` dispatch sites (spawn + reclaim) to construct `AiController(Role::Any, slot.profile.concepts, defaultBehaviors(Role::Any))`; `releaseSlot` reordered so profile-reset + concept-overlay run BEFORE controller construction. `BallOnPitchWithDefenderScenario` plugs `pressing = 1.0` for SlotId{2} via new `applyConceptOverrides` scenario hook. `test_defender_pursuit.cpp` (10 tests) → `test_pursue_ball_carrier_behavior.cpp` (13 tests). 52/52 container ctest green. **`BallOnPitchWithDefender400` golden STABLE at `0x71f639d918a32830`** — no rotation (intent stream bit-identical). All 11 goldens byte-identical. Closes §24.6 DefenderController migration item; meets Slice 30 exit gate.
 >
-> **Slice 33.3 (`pattern_being_beaten_1v1`):** landed 2026-07-19. Migration 230 seeds the first M3 pattern registry row, live `Match` now passes the boot-loaded `PatternRegistry` into `RecognitionSystem`, and recognition can surface the pattern to a nearby non-owner when the ball carrier sharply reverses direction within the recent five-tick window. `sudo make sim-deploy` passed after the Slice 33.3 integration patch.
+> **Slice 33.5 (`attacker_feints_past_defender_400_ticks_seed_42`):** landed 2026-07-19. Locks the first attacker-behavior determinism golden at `0xcee6855c275f58f4`: a test-only ST9 takes first touch, releases back to `AiController(Feint1v1Behavior)`, then feints laterally away from a nearby stationary defender. `sudo make sim-deploy` passed 56/56 ctests, `test_determinism`, and live DB registry consistency.
 
 ---
 
@@ -3336,7 +3336,7 @@ Grouped by subsystem, mirroring §24.2. Tick in place as work lands.
 
 - [x] `Feint1v1Behavior` — requires `1v1_beat` (concept id=6). `utility()` scores higher when: (a) self owns ball, (b) exactly one defender within `kFeintDefenderRadius = 3.0 m`, (c) `technical.feint × mental.composure` scales the score. `execute()` produces `Intent{ desired_direction = lateral_of_defender_heading, wants_dribble = true }`; ST9/ST10 striker bags include it as the first attacker behavior. Cadence is controlled by internal `next_feint_tick` state on the behavior to avoid utility-AI oscillation micro-flip-flopping the feint direction. Validated by `test_feint_1v1_behavior`, `test_ai_controller`, and `sudo make sim-deploy` (`56/56` ctests + registry probe).
 - [x] First `sim_pattern_registry` entry: `pattern_being_beaten_1v1` (from §12.5 defensive_read). Recognition fires when: (a) self is a nearby non-owner, (b) self is within `kFeintDefenderRadius` of the ball carrier, (c) ball carrier velocity has reversed direction within the recent five-tick window, and (d) the perceiver has nonzero recognition skill for the pattern. Populates `AwarenessView::recognized_patterns`; `JockeyBehavior::utility()` consumption remains future work once the defender behavior starts reacting to recognized patterns. First non-empty test of the Recognition pipeline that shipped identity-pass in M0.
-- [ ] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42`.
+- [x] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42` — test-only fixture claims ST9 for one tick to take first touch, releases back to an unclaimed ST9 `AiController` with only `1v1_beat` plugged, then locks `Feint1v1Behavior` carrying the owned ball laterally away from a stationary nearby defender. Locked at `0xcee6855c275f58f4`, validated by `sudo make sim-deploy` (`56/56` ctests + registry probe).
 
 **Utility-AI hysteresis (Slice 32 — ADR §22.26)**
 
@@ -3406,7 +3406,7 @@ Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 op
 - 33.2 [x] `Feint1v1Behavior` implementation. Landed 2026-07-18: ST9/ST10 striker bags include `{Feint1v1Behavior}`; `sudo make sim-deploy` passed 56/56 ctests, `test_determinism`, and live DB registry consistency.
 - 33.3 [x] `pattern_being_beaten_1v1` in `sim_pattern_registry` (migration 230 — first M3 pattern). Landed 2026-07-19: `RecognitionSystem` tracks per-carrier recent velocity samples and fires the pattern for nearby non-owners with recognition skill; live `Match` passes the boot-loaded `PatternRegistry` into recognition; `sudo make sim-deploy` passed.
 - 33.4 [ ] `AiController::defaultBehaviors()` extended/tuned for attacking roles beyond the first ST9/ST10 feint behavior: `{Feint1v1Behavior, /* future: shoot, pass */}`.
-- 33.5 [ ] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42`.
+- 33.5 [x] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42`. Landed 2026-07-19 at `0xcee6855c275f58f4`; `sudo make sim-deploy` passed 56/56 ctests, `test_determinism`, and live DB registry consistency.
 
 **Slice 33 exit gate**: coach spawns a scenario with an `AiController(Forward)` attacker and human defender; the attacker feints past the defender when the defender commits early to press.
 

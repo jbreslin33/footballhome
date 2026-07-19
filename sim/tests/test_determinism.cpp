@@ -249,6 +249,68 @@ private:
     std::vector<fh::sim::scenario::SlotSpawn> slots_;
 };
 
+// Slice 33.5: test-only fixture for the first Feint1v1Behavior determinism
+// golden. Slot 1 starts human-claimable so the script can take first touch,
+// then release back to an ST9 AiController with only `1v1_beat` plugged.
+// Slot 2 idles as the nearby defender that opens the feint utility gate.
+class AttackerFeintsPastDefenderScenario : public fh::sim::scenario::Scenario {
+public:
+    AttackerFeintsPastDefenderScenario()
+    {
+        pitch_.length_m = Fixed64::fromInt(105);
+        pitch_.width_m  = Fixed64::fromInt(68);
+
+        ball_.position = Vec3{Fixed64::fromFraction(3, 10),
+                              Fixed64::zero(),
+                              Fixed64::zero()};
+        ball_.velocity = Vec3{};
+
+        fh::sim::scenario::SlotSpawn attacker;
+        attacker.slot     = SlotId{1};
+        attacker.position = Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()};
+        attacker.heading  = Fixed64::zero();
+        attacker.role     = fh::sim::Role::ST9;
+        slots_.push_back(attacker);
+
+        fh::sim::scenario::SlotSpawn defender;
+        defender.slot     = SlotId{2};
+        defender.position = Vec3{Fixed64::fromInt(2), Fixed64::zero(), Fixed64::zero()};
+        defender.heading  = fh::sim::math::FX_PI;
+        defender.role     = fh::sim::Role::Any;
+        slots_.push_back(defender);
+    }
+
+    std::string id() const override { return "test_attacker_feints_past_defender"; }
+    std::string displayName() const override { return "Test — attacker feints past defender"; }
+    fh::sim::scenario::PitchSpec pitch() const override { return pitch_; }
+    fh::sim::scenario::PlayableArea playableArea() const override { return {}; }
+    std::vector<fh::sim::scenario::SlotSpawn> initialSpawns() const override { return slots_; }
+    std::optional<BallSpawn> ballSpawn() const override { return ball_; }
+    bool checkSuccess(const fh::sim::awareness::WorldView& w) const override { (void)w; return false; }
+    bool checkReset(const fh::sim::awareness::WorldView& w) const override { (void)w; return false; }
+    std::vector<std::string> hints() const override { return {}; }
+
+    fh::sim::scenario::UnclaimedControllerKind unclaimedControllerFor(SlotId slot) const override
+    {
+        return (slot == SlotId{1})
+            ? fh::sim::scenario::UnclaimedControllerKind::Defender
+            : fh::sim::scenario::UnclaimedControllerKind::Idle;
+    }
+
+    void applyConceptOverrides(SlotId slot,
+                               fh::sim::profile::ConceptSet& concepts) const override
+    {
+        if (slot == SlotId{1}) {
+            concepts.plug(fh::sim::m0::k1v1Beat, Fixed64::one());
+        }
+    }
+
+private:
+    fh::sim::scenario::PitchSpec pitch_;
+    BallSpawn ball_;
+    std::vector<fh::sim::scenario::SlotSpawn> slots_;
+};
+
 class AlternatingUtilityBehavior : public IBehavior {
 public:
     AlternatingUtilityBehavior(const char* id,
@@ -452,6 +514,15 @@ constexpr std::uint64_t kExpectedHashDefenderMarksStationaryTarget200 =
 // small, deterministic count over 400 ticks.
 constexpr std::uint64_t kExpectedHashNoOscillationJockeyPress400 =
     0xcebce8b37113b617ULL;
+
+// Slice 33.5: cross-arch determinism proof for Feint1v1Behavior. Slot 1
+// takes first touch via a one-tick human script, releases back to an ST9
+// AiController with only `1v1_beat` plugged, then feints laterally away from
+// a stationary defender within 3 m. Locks the first attacker behavior path:
+// concept gate, one-defender utility, cooldown state, lateral intent, and
+// BallControl owned-ball glue after AI execution.
+constexpr std::uint64_t kExpectedHashAttackerFeintsPastDefender400 =
+    0xcee6855c275f58f4ULL;
 
 // Slice 26.6: cross-arch golden for a short pass east. Locks the M2
 // kick primitive introduced in Slice 26.3 (BallControl release-on-kick,
@@ -1508,6 +1579,50 @@ FH_TEST(collision_ball_passthrough_owned_400_ticks_seed_42) {
                 kExpectedHashCollisionBallPassthrough400));
     }
     FH_EXPECT_EQ(h, kExpectedHashCollisionBallPassthrough400);
+}
+
+// Slice 33.5: first attacker-behavior golden for Feint1v1Behavior. See
+// kExpectedHashAttackerFeintsPastDefender400 above for the setup rationale.
+FH_TEST(attacker_feints_past_defender_400_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<AttackerFeintsPastDefenderScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile profile;
+    profile.physical = fh::sim::m0::defaultPhysical();
+    profile.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{11}, PersonId{11}, std::move(profile));
+
+    Intent first_touch;
+    first_touch.desired_direction =
+        Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    first_touch.wants_dribble = true;
+    m->applyInput(ClientId{11}, first_touch);
+    m->tick();
+
+    m->releaseSlot(SlotId{1});
+    for (int i = 0; i < 399; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== attacker_feints_past_defender_400_ticks_seed_42 ===\n",
+               stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashAttackerFeintsPastDefender400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashAttackerFeintsPastDefender400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(
+                kExpectedHashAttackerFeintsPastDefender400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashAttackerFeintsPastDefender400);
 }
 
 FH_TEST_MAIN()
