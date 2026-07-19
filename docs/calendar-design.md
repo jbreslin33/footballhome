@@ -1091,14 +1091,10 @@ would see.
 - [x] **W3** — seed `gcal_team_aliases` for Boys + Womens.
       DONE 2026-07-17 via migration `122-gcal-aliases-boys-womens.sql`
       (7 rows: `boys → u8/u12/u16`, `womens/women → tri county`).
-- [ ] **W3 follow-up (option C, deferred)** — create virtual Practice
-      + Pickup pool teams for Women / Boys / Girls (mirror Mens
-      teams 908/909), wire `player_rsvp_eligibility` from the
-      corresponding LA program IDs (`5064686` Women Pickup, `5064618`
-      Boys Pickup, `5064662` Girls Pickup per copilot-instructions
-      membership-flow section), then add the alias rows. Do this
-      when ops starts tagging non-Mens practice/pickup events. Also
-      seed Girls once a `gender_category='girls'` team exists.
+- [x] **W3 follow-up (option C)** — landed 2026-07-19 via migration
+      `232-non-mens-practice-pickup-pools.sql` (Women/Boys/Girls
+      Practice + Pickup pools 918–923, gcal aliases, LA membership
+      RSVP backfill).
 
 **Explicitly out of scope, per §1.1:** any "create event in FH" UI or
 an FH → gcal writer. If we ever want that, it requires a design-doc
