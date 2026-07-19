@@ -255,10 +255,9 @@ class MembersScreen extends Screen {
         return;
       }
       // Card body → open the PersonScreen for that member.  Guard so
-      // clicks on the action buttons (Email / Text / Call / Save) or
-      // any inner anchor stay in-place — they've already returned above
-      // if handled, but anchors haven't.  Also skip if there's no LA
-      // user id (rare: manual FH-member with no LA alias).
+      // clicks on the View button (or any inner control) stay with their
+      // own handler.  Also skip if there's no LA user id (rare: manual
+      // FH-member with no LA alias).
       const anchorInside = e.target.closest('a, button, input, textarea, select, label');
       if (anchorInside) return;
       const card = e.target.closest('.paused-card[data-la-user-id]');
