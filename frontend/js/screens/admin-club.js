@@ -20,9 +20,9 @@ class AdminClubScreen extends Screen {
           </p>
         </div>
 
-        <!-- ── Club-admin funnel · Member → Billing → Roster → RSVP Eligibility ──
+        <!-- ── Club-admin funnel · People → Billing → Roster → RSVP Eligibility ──
              These four sections gate each other in order:
-               1. Member       — are you in the club?
+               1. People       — who is this Lighthouse human, and are they in the club?
                2. Billing      — if so, are you paid up?
                3. Roster       — assigned to which team?
                4. RSVP Elig.   — which team events can you RSVP for?
@@ -35,11 +35,11 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-recruitment" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">👥 Member</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">👥 People</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 1 — are you in the club? LA-synced roster of every active / pickup registration, filterable by Men · Women · Boys · Girls.
+          Step 1 — Lighthouse human records: membership, accounts, player/coach/admin roles, duplicates, and data issues. Scraped league/opponent people stay in System Admin unless linked to Lighthouse.
         </p>
-        <div id="section-membership" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <div id="section-people"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">💰 Billing</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -71,15 +71,15 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-reminders" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📲 Media &amp; Socials</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📣 Communications</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Instagram posts, printable flyers, ad previews, public exhibits, and coach-facing messaging.
+          Outbound club voice: recipient-first messages, public social posts, and reusable poster/flyer assets.
         </p>
-        <div id="section-media" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <div id="section-communications"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Structure</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Teams &amp; Structure</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Events, users, players, teams, venues, tactical boards, and club-wide settings.
+          Teams, venues, tactical boards, and club-wide settings. Human records live under People.
         </p>
         <div id="section-structure" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
       </div>
@@ -129,19 +129,57 @@ class AdminClubScreen extends Screen {
       `).join('');
     };
 
-    // ── Membership ─────────────────────────────────────────────────────
-    // Single tile that opens the unified Members board.  The board has
-    // an Active / Pickup toggle and category chips (Men / Women / Boys /
-    // Girls) so the coach can reach any of the 8 LA sub-programs (4
-    // categories × 2 variants) from one place without leaving the screen.
-    //
-    // Deep-link tile ids (`members-mens`, `members-girls`, etc.) are
-    // still honored by handleSubNavigation() below, so any external
-    // bookmark / hash-route pointing at a specific slice keeps working.
-    const membershipTiles = [
-      { id: 'members', icon: '👥', label: 'Members', description: 'Unified board — Active / Pickup toggle, filter by Men / Women / Boys / Girls' },
+    const renderGroupsInto = (elId, groups) => {
+      const el = this.find(elId);
+      if (!el) return;
+      el.innerHTML = groups.map(group => `
+        <div style="margin-bottom: var(--space-4);">
+          <div style="font-weight: 700; margin-bottom: var(--space-2); opacity: 0.88;">${group.label}</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);">
+            ${group.tiles.map(section => `
+              <button class="btn btn-lg btn-secondary sub-nav-btn"
+                      data-section="${section.id}"
+                      style="height: auto; padding: var(--space-3); text-align: left;">
+                <div style="font-size: 2rem; margin-bottom: var(--space-1);">${section.icon}</div>
+                <div style="font-weight: 600; margin-bottom: var(--space-1);">${section.label}</div>
+                <div style="opacity: 0.7; font-size: 0.85rem;">${section.description}</div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    };
+
+    // ── People ─────────────────────────────────────────────────────────
+    // Lighthouse human-record workbench.  Membership is a person-connected
+    // workflow, so the existing Members board lives here.  Scraped league
+    // or opponent-only identities belong in System Admin / League Data until
+    // they are explicitly linked to a Lighthouse person.
+    const peopleGroups = [
+      {
+        label: 'Membership',
+        tiles: [
+          { id: 'members', icon: '👥', label: 'Members', description: 'LA-synced board — Active / Pickup toggle, filter by Men / Women / Boys / Girls' },
+        ],
+      },
+      {
+        label: 'Records',
+        tiles: [
+          { id: 'people-directory', icon: '🧾', label: 'People Directory', description: 'One Lighthouse person graph: contact, account, player, coach/admin, membership, and roster links' },
+          { id: 'accounts', icon: '🔐', label: 'Accounts', description: 'Login users connected to Lighthouse persons' },
+          { id: 'player-records', icon: '⚽', label: 'Players', description: 'Lighthouse player records and role flags, separate from scraped opponent players' },
+          { id: 'staff-records', icon: '🧢', label: 'Coaches & Admins', description: 'Coach, team admin, and club admin assignments' },
+        ],
+      },
+      {
+        label: 'Cleanup',
+        tiles: [
+          { id: 'person-duplicates', icon: '🔎', label: 'Duplicates / Merges', description: 'Find duplicate Lighthouse people and review merge history' },
+          { id: 'person-data-issues', icon: '⚠️', label: 'Data Issues', description: 'Missing links, bad contacts, account gaps, roster mismatches, and membership sync issues' },
+        ],
+      },
     ];
-    renderInto('#section-membership', membershipTiles);
+    renderGroupsInto('#section-people', peopleGroups);
 
     // ── Recruitment ────────────────────────────────────────────────────
     // Step 0 of the funnel — the world before someone is a member.
@@ -184,21 +222,36 @@ class AdminClubScreen extends Screen {
     ];
     renderInto('#section-schedule', scheduleTiles);
 
-    // ── Media & Socials ────────────────────────────────────────────────
-    // Everything that ends up in front of a prospect or member — IG
-    // posts (holiday / promo / content), printable flyers, ad preview,
-    // public exhibit pages, and coach-facing canned messages.
-    const mediaTiles = [
-      { id: 'holiday-posts',   icon: '🎉',  label: 'Holiday Posts',     description: 'Instagram holiday posts' },
-      { id: 'promo-posts',     icon: '📢',  label: 'Promo Posts',       description: 'Instagram promotional posts' },
-      { id: 'content-posts',   icon: '📷',  label: 'Content Posts',     description: 'Upload photos & videos to Instagram' },
-      { id: 'flyers',          icon: '🖨️', label: 'Flyers',            description: 'Printable recruitment flyers with QR codes' },
-      { id: 'ad-preview',      icon: '📱',  label: 'Ad Preview',        description: 'See exactly what your ads look like' },
-      { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits',   description: 'Publicly shareable poster boards & history pages' },
-      { id: 'exhibit-social',  icon: '📲',  label: 'Exhibit → Social',  description: 'Preview IG carousel / 4:5 single / long poster renders' },
-      { id: 'messages',        icon: '💬',  label: 'Messages',          description: 'Canned responses & welcome messages per team' },
+    // ── Communications ─────────────────────────────────────────────────
+    // Outbound club voice.  Messages are recipient-first; socials are
+    // channel-first; posters/flyers are assets that can be printed,
+    // shared directly, or exported into social formats.
+    const communicationGroups = [
+      {
+        label: 'Messages',
+        tiles: [
+          { id: 'messages', icon: '💬', label: 'Messages', description: 'Canned responses, welcomes, broadcasts, and follow-up copy per team' },
+        ],
+      },
+      {
+        label: 'Socials',
+        tiles: [
+          { id: 'holiday-posts', icon: '🎉', label: 'Holiday Posts', description: 'Instagram holiday posts' },
+          { id: 'promo-posts', icon: '📢', label: 'Promo Posts', description: 'Instagram promotional posts' },
+          { id: 'content-posts', icon: '📷', label: 'Content Posts', description: 'Upload photos & videos to Instagram' },
+          { id: 'ad-preview', icon: '📱', label: 'Ad Preview', description: 'See exactly what your ads look like' },
+        ],
+      },
+      {
+        label: 'Posters & Assets',
+        tiles: [
+          { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
+          { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits', description: 'Publicly shareable poster boards & history pages' },
+          { id: 'exhibit-social', icon: '📲', label: 'Exhibit → Social', description: 'Export poster assets as IG carousel, 4:5 single, or long poster renders' },
+        ],
+      },
     ];
-    renderInto('#section-media', mediaTiles);
+    renderGroupsInto('#section-communications', communicationGroups);
 
     // ── 💰 Billing funnel section ────────────────────────────────────
     // Step 2 of the club-admin funnel.  Everything money-related lives
@@ -229,12 +282,10 @@ class AdminClubScreen extends Screen {
       rosterTiles.filter(t => t.target)
     );
 
-    // ── Structure ──────────────────────────────────────────────────────
-    // Club structural entities — users, players, teams, venues,
-    // tactical boards, and club-wide settings.
+    // ── Teams & Structure ──────────────────────────────────────────────
+    // Club structural entities.  Users, players, coaches, and admins are
+    // human-role records, so they live under People instead of Structure.
     const structureTiles = [
-      { id: 'users',    icon: '👤',  label: 'Users',    description: 'Manage user accounts' },
-      { id: 'players',  icon: '⚽',  label: 'Players',  description: 'Manage player records' },
       { id: 'teams',    icon: '👥',  label: 'Teams',    description: 'Manage teams' },
       { id: 'venues',   icon: '🏟️', label: 'Venues',   description: 'Manage venues' },
       { id: 'tactics',  icon: '🧠',  label: 'Tactics',  description: 'Club-wide tactical boards' },

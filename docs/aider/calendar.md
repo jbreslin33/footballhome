@@ -8,6 +8,16 @@ Read this context map. Add the smallest pack for my task, then wait for my next 
 Task:
 ```
 
+## How To Use This File
+
+1. Add only this file first when the calendar/event task is vague.
+2. Pick exactly one pack below, unless the task explicitly crosses calendar and
+	RSVP boundaries.
+3. Keep Google Calendar source-of-truth design in `docs/calendar-design.md`;
+	keep only file-selection guidance here.
+4. Validate calendar or RSVP behavior with the smallest relevant backend,
+	frontend, script, or migration check before widening scope.
+
 ## Calendar Sync And Classification
 
 Use when Google Calendar events are missing, stale, misclassified, or not showing

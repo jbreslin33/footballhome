@@ -7,6 +7,16 @@ Read this context map. Add the smallest pack for my task, then wait for my next 
 Task:
 ```
 
+## How To Use This File
+
+1. Add only this file first when the LeagueApps membership task is vague.
+2. Pick exactly one pack below, unless the task explicitly crosses member,
+	payment, or roster surfaces.
+3. Treat `CONVENTIONS.md` as the durable source-of-truth contract for membership
+	freshness and authority.
+4. Validate membership-path backend changes with `make check-la-sync` or the
+	closest narrower check before deploy.
+
 ## Source-Of-Truth Contract
 
 Use when checking whether a route correctly syncs LeagueApps before reading

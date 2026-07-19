@@ -7,6 +7,16 @@ Read this context map. Add the smallest pack for my task, then wait for my next 
 Task:
 ```
 
+## How To Use This File
+
+1. Add only this file first when the RSVP task is vague.
+2. Pick exactly one pack below, unless the task explicitly crosses calendar sync,
+	reminders, or legacy event RSVP.
+3. Treat `docs/calendar-design.md` as the source-of-truth design for Google
+	Calendar ownership and RSVP layering.
+4. Prefer the Google Calendar RSVP packs unless the task explicitly names the
+	older chat/event RSVP flow.
+
 ## Player RSVP Screen
 
 Use for the signed-in player's My Schedule screen, per-event RSVP buttons,

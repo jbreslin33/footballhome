@@ -7,6 +7,16 @@ Read this context map. Add the smallest pack for my task, then wait for my next 
 Task:
 ```
 
+## How To Use This File
+
+1. Add only this file first when the payment task is vague.
+2. Pick exactly one pack below, unless the task explicitly crosses LeagueApps
+	membership freshness or person-profile surfaces.
+3. Use the LeagueApps payment freshness pack when payment status depends on fresh
+	registration data.
+4. Keep billing workflow details here as file-routing hints, not durable product
+	policy.
+
 ## Payment Screen UI
 
 Use for the Payments screen layout, filters, status chips, card display,

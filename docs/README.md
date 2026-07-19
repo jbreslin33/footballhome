@@ -19,7 +19,10 @@ or decision you are working on.
 
 ## Aider Context Maps
 
+- `aider/README.md`: folder-level rules for AI/aider file-pack maps.
 - `aider/calendar.md`: copy/paste file packs for Google Calendar/event work.
+- `aider/communications.md`: copy/paste file packs for messages, socials, and
+  poster/flyer communications work.
 - `aider/members.md`: copy/paste file packs for the Members screen.
 - `aider/membership.md`: copy/paste file packs for LeagueApps membership work.
 - `aider/payments.md`: copy/paste file packs for payment work.

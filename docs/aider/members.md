@@ -7,6 +7,16 @@ Read this context map. Add the smallest pack for my task, then wait for my next 
 Task:
 ```
 
+## How To Use This File
+
+1. Add only this file first when the Members-screen task is vague.
+2. Pick exactly one pack below, unless the task explicitly crosses membership,
+	payments, or roster boundaries.
+3. For LeagueApps-derived membership freshness, use the membership source-of-truth
+	pack instead of guessing from frontend symptoms.
+4. Keep screen workflow notes here brief; move durable membership rules to
+	`CONVENTIONS.md`.
+
 ## Members Screen UI
 
 Use for the admin Members screen layout, filters, sorting, grouped member cards,

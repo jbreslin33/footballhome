@@ -48,3 +48,39 @@ Open follow-ups:
   contact history with active LeagueApps registration state.
 - Add frontend filters/templates so operators can send the follow-up touches
   without copying text by hand.
+
+## Club Admin Communications
+
+Club Admin now groups outbound tools under Communications: Messages, Socials,
+and Posters & Assets. The message button should remain available contextually
+on person/lead/roster/payment surfaces, but those entry points should converge
+on one communications composer when the workflow grows beyond copy/paste.
+
+Open follow-ups:
+
+- Add a shared composer that can be opened from Members, Leads, Rosters, RSVPs,
+  Payments, and event non-responder lists with recipient context prefilled.
+- Keep poster and flyer assets reusable: printable exports, direct sharing, and
+  social exports should come from the same asset source when possible.
+- Add campaign grouping only when one workflow needs to bundle messages,
+  socials, posters, and lead follow-ups around a single goal.
+
+## Club Admin People
+
+Club Admin should default to Lighthouse people only. Membership belongs under
+People because `person_la_memberships` is attached to `persons`, but the Members
+board remains a focused workflow inside the broader People area.
+
+Open follow-ups:
+
+- Add a People Directory workbench that shows one row per Lighthouse `persons`
+  record with contact, account, player, coach/admin, membership, billing,
+  roster, and RSVP status.
+- Add Accounts, Players, Coaches & Admins, Duplicates / Merges, and Data Issues
+  views under People as focused lenses on the same person graph.
+- Keep scraped league/opponent-only people out of Club Admin by default. Put
+  those records in System Admin / League Data until an identity-resolution
+  workflow links them to a Lighthouse person.
+- Add a later identity-resolution workflow for connecting current Lighthouse
+  people to scraped league identities with admin-confirmed matches, not
+  automatic name-only merges.

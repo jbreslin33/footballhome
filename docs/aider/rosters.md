@@ -7,6 +7,16 @@ Read this context map. Add the smallest pack for my task, then wait for my next 
 Task:
 ```
 
+## How To Use This File
+
+1. Add only this file first when the roster task is vague.
+2. Pick exactly one pack below, unless the task explicitly crosses membership,
+	RSVP, payment, or public match-card surfaces.
+3. Use `docs/aider/membership.md` when roster inclusion depends on LeagueApps
+	membership authority.
+4. Add the relevant frontend board and backend payload files together when the
+	task changes displayed roster data.
+
 ## Rosters Hub UI
 
 Use for the top-level Rosters screen, roster category tabs, and routing into
