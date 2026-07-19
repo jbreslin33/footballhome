@@ -83,13 +83,15 @@ Shipped:
   Duplicates / Merges, Data Issues (same endpoint, `?view=` filter).
 - Person profile includes the linked FH `users` account and merges
   legacy `rosters` with LA `roster_assignments`.
+- Duplicates lens groups shared-email / name+DOB collisions and can
+  call `/api/persons/merge` (keep/drop). Person profile can unmerge.
+- Person profile RSVP card toggles grants via
+  `PUT /api/mens-roster/rsvp-eligibility` (same set as the board).
 
 Open follow-ups:
 
 - Add a later identity-resolution workflow for connecting current
   Lighthouse people to scraped league identities with admin-confirmed
   matches, not automatic name-only merges.
-- Wire merge/unmerge actions into the Duplicates lens (API already
-  exists at `/api/persons/merge`).
-- Expand RSVP eligibility editing beyond the mens board into the
-  People Directory card drill-down.
+- Expand RSVP team catalog beyond mens-selection teams when women /
+  boys / girls eligibility tables are ready.

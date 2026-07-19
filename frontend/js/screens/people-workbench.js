@@ -128,6 +128,22 @@ class PeopleWorkbenchScreen extends Screen {
         this._load();
         return;
       }
+
+      const mergeBtn = e.target.closest('[data-merge-keep][data-merge-drop]');
+      if (mergeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        this._mergePersons(
+          Number(mergeBtn.getAttribute('data-merge-keep')),
+          Number(mergeBtn.getAttribute('data-merge-drop')),
+          mergeBtn
+        );
+        return;
+      }
+
+      // Ignore clicks on action buttons inside cards.
+      if (e.target.closest('[data-stop-nav]')) return;
+
       const card = e.target.closest('[data-la-user-id]');
       if (card) {
         const laId = card.getAttribute('data-la-user-id');
@@ -241,10 +257,183 @@ class PeopleWorkbenchScreen extends Screen {
       return;
     }
     if (empty) empty.style.display = 'none';
+
+    if (this.view === 'duplicates') {
+      list.style.display = 'flex';
+      list.style.flexDirection = 'column';
+      list.style.gap = 'var(--space-3)';
+      list.style.gridTemplateColumns = '';
+      list.innerHTML = this._duplicatesHtml();
+      return;
+    }
+
     list.style.display = 'grid';
     list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
     list.style.gap = 'var(--space-2)';
     list.innerHTML = this._people.map((p) => this._cardHtml(p)).join('');
+  }
+
+  // Group duplicate candidates by shared email or name+DOB so the
+  // operator can pick a keep / drop pair and call /api/persons/merge.
+  _duplicatesHtml() {
+    const groups = new Map();
+    const add = (key, label, person) => {
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, { key, label, people: [] });
+      const g = groups.get(key);
+      if (!g.people.some((p) => p.person_id === person.person_id)) {
+        g.people.push(person);
+      }
+    };
+
+    for (const p of this._people) {
+      if (p.email_duplicate && p.email) {
+        add(`email:${String(p.email).toLowerCase()}`, `Shared email · ${p.email}`, p);
+      }
+      if (p.name_dob_duplicate) {
+        const fn = String(p.first_name || '').toLowerCase();
+        const ln = String(p.last_name || '').toLowerCase();
+        const dob = p.dob || '';
+        add(`name:${fn}|${ln}|${dob}`, `Matching name + DOB · ${p.first_name || ''} ${p.last_name || ''} ${dob}`.trim(), p);
+      }
+    }
+
+    // Merge-history-only people (no live collision) still show as cards.
+    const groupedIds = new Set();
+    for (const g of groups.values()) {
+      for (const p of g.people) groupedIds.add(p.person_id);
+    }
+    const mergeOnly = this._people.filter((p) => p.has_merge_history && !groupedIds.has(p.person_id));
+
+    const parts = [];
+    for (const g of groups.values()) {
+      if (g.people.length < 2) continue;
+      // Prefer keep candidate with LA alias + account + most roster links.
+      const ranked = [...g.people].sort((a, b) => this._keepScore(b) - this._keepScore(a));
+      parts.push(`
+        <div style="border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+                    padding: var(--space-3); background: var(--bg-secondary);">
+          <div style="font-weight:700; margin-bottom: var(--space-2);">${this._esc(g.label)}</div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                      gap: var(--space-2);">
+            ${ranked.map((p, idx) => this._dupCardHtml(p, ranked, idx === 0)).join('')}
+          </div>
+        </div>
+      `);
+    }
+
+    if (mergeOnly.length) {
+      parts.push(`
+        <div style="border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+                    padding: var(--space-3);">
+          <div style="font-weight:700; margin-bottom: var(--space-2);">Merge history only</div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                      gap: var(--space-2);">
+            ${mergeOnly.map((p) => this._cardHtml(p)).join('')}
+          </div>
+          <p style="margin: var(--space-2) 0 0; font-size:0.8rem; opacity:0.7;">
+            Open the person profile to reverse a merge if needed.
+          </p>
+        </div>
+      `);
+    }
+
+    if (!parts.length) {
+      return `<div style="opacity:0.6; text-align:center; padding: var(--space-6);">
+        No mergeable duplicate groups found.
+      </div>`;
+    }
+    return parts.join('');
+  }
+
+  _keepScore(p) {
+    let s = 0;
+    if (p.leagueapps_user_id) s += 8;
+    if (p.has_fh_account) s += 4;
+    if (p.player_id) s += 2;
+    s += Number(p.roster_count || 0);
+    s += Number(p.rsvp_count || 0);
+    if (p.email) s += 1;
+    if (p.phone) s += 1;
+    return s;
+  }
+
+  _dupCardHtml(p, group, suggestedKeep) {
+    const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Person #${p.person_id}`;
+    const laId = p.leagueapps_user_id ? String(p.leagueapps_user_id) : '';
+    const others = group.filter((o) => o.person_id !== p.person_id);
+    const mergeBtns = others.map((o) => `
+      <button type="button" class="btn btn-secondary" data-stop-nav
+              data-merge-keep="${p.person_id}" data-merge-drop="${o.person_id}"
+              style="padding:4px 10px; font-size:0.75rem; font-weight:700;">
+        Keep this · drop #${o.person_id}
+      </button>
+    `).join('');
+
+    return `
+      <div ${laId ? `data-la-user-id="${this._esc(laId)}"` : ''}
+           style="padding: var(--space-3); border: 1px solid ${suggestedKeep ? '#10b981' : 'var(--color-border)'};
+                  border-radius: var(--radius-md); background: var(--bg-primary);
+                  display:flex; flex-direction:column; gap:6px;
+                  ${laId ? 'cursor:pointer;' : ''}">
+        <div style="font-weight:600;">
+          ${this._esc(name)}
+          <span style="opacity:0.55; font-weight:500; font-size:0.8rem;">#${p.person_id}</span>
+          ${suggestedKeep ? this._chip('#0b3a2e', '#a7f3d0', '#10b981', 'Suggested keep') : ''}
+        </div>
+        <div style="font-size:0.8rem; opacity:0.75;">
+          ${p.email ? this._esc(p.email) : 'no email'}
+          · ${p.has_fh_account ? 'has account' : 'no account'}
+          · roster ${p.roster_count || 0}
+          · RSVP ${p.rsvp_count || 0}
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;" data-stop-nav>
+          ${mergeBtns}
+        </div>
+      </div>
+    `;
+  }
+
+  async _mergePersons(keepId, dropId, btn) {
+    if (!keepId || !dropId || keepId === dropId) return;
+    const keep = this._people.find((p) => p.person_id === keepId);
+    const drop = this._people.find((p) => p.person_id === dropId);
+    const keepName = keep
+      ? `${keep.first_name || ''} ${keep.last_name || ''}`.trim() || `#${keepId}`
+      : `#${keepId}`;
+    const dropName = drop
+      ? `${drop.first_name || ''} ${drop.last_name || ''}`.trim() || `#${dropId}`
+      : `#${dropId}`;
+    const ok = window.confirm(
+      `Merge people?\n\nKeep: ${keepName} (#${keepId})\nDrop: ${dropName} (#${dropId})\n\n` +
+      `Child rows move onto the kept person. This can be reversed from the person profile.`
+    );
+    if (!ok) return;
+
+    const prev = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Merging…';
+    }
+    try {
+      // API param names are historical (LA keep / GM drop) — same keep/drop semantics.
+      const res = await this.auth.fetch('/api/persons/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ laPersonId: keepId, gmPersonId: dropId }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      await this._load();
+    } catch (err) {
+      alert(`Merge failed: ${err.message || err}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
+    }
   }
 
   _cardHtml(p) {

@@ -268,6 +268,24 @@ class PersonScreen extends Screen {
     div.querySelector('#ps-open-payments')
       .addEventListener('click', () => this._openPayments());
 
+    // Inline RSVP toggles + unmerge actions (delegation — chips are
+    // rebuilt on every _render).
+    div.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-rsvp-team-id]');
+      if (chip) {
+        e.preventDefault();
+        const teamId = Number(chip.getAttribute('data-rsvp-team-id'));
+        const want = chip.getAttribute('data-elig-on') !== '1';
+        this._toggleRsvp(teamId, want, chip);
+        return;
+      }
+      const unmergeBtn = e.target.closest('[data-unmerge-id]');
+      if (unmergeBtn) {
+        e.preventDefault();
+        this._unmerge(Number(unmergeBtn.getAttribute('data-unmerge-id')), unmergeBtn);
+      }
+    });
+
     return div;
   }
 
@@ -355,6 +373,11 @@ class PersonScreen extends Screen {
     const p = data.person || {};
     const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || '(unnamed)';
 
+    this._personId = data.personId || null;
+    this._rsvpElig = new Set(
+      (data.rsvpEligibility || []).map((e) => Number(e.teamId)).filter(Boolean)
+    );
+
     // Update the header bar.
     this.element.querySelector('#person-title').textContent = name;
     this.element.querySelector('#person-subtitle').textContent =
@@ -370,6 +393,19 @@ class PersonScreen extends Screen {
     this._renderBillingCard(data.billing, data.chargeFlags || []);
     this._renderRecentRsvpsCard(data.recentRsvps || []);
     this._renderDataQualityCard(data.overrides || [], data.merges || []);
+  }
+
+  // Mens-selection teams — keep in sync with rsvp-eligibility.js /
+  // MensRosterController.cpp `kEligibilityTeams`.
+  _rsvpTeams() {
+    return [
+      { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb' },
+      { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2' },
+      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6' },
+      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa' },
+      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b' },
+      { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981' },
+    ];
   }
 
   _renderHeaderCard(data) {
@@ -617,29 +653,36 @@ class PersonScreen extends Screen {
     const cntEl      = this.element.querySelector('#ps-rsvp-count');
     const upCntEl    = this.element.querySelector('#ps-upcoming-count');
 
-    cntEl.textContent   = eligibility.length ? String(eligibility.length) : '';
+    const granted = this._rsvpElig || new Set(
+      (eligibility || []).map((e) => Number(e.teamId)).filter(Boolean)
+    );
+    cntEl.textContent   = granted.size ? String(granted.size) : '';
     upCntEl.textContent = upcoming.length    ? String(upcoming.length)    : '';
 
-    if (!eligibility.length) {
-      teamsEl.innerHTML = `<div class="ps-empty">
-        No RSVP eligibility grants
-      </div>`;
-    } else {
-      teamsEl.innerHTML = eligibility.map(e => {
-        const bits = [];
-        if (e.clubName)     bits.push(this._escape(e.clubName));
-        if (e.divisionName) bits.push(this._escape(e.divisionName));
-        const context = bits.length ? ` · ${bits.join(' · ')}` : '';
-        return `
-          <div class="ps-line">
-            <span class="ps-line-primary">
-              ${this._escape(e.teamName)}
-              <span style="opacity:0.6; font-weight:400;">${context}</span>
-            </span>
-            <span class="ps-line-meta">granted ${this._fmtDate(e.grantedAt)}</span>
-          </div>`;
-      }).join('');
-    }
+    // Inline set-replace toggles — same PUT as the RSVP Eligibility board
+    // and mens roster modal, so Club Admin can fix grants without leaving
+    // the person profile.
+    teamsEl.innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom: var(--space-2);">
+        ${this._rsvpTeams().map((t) => {
+          const on = granted.has(t.id);
+          return `<button type="button"
+                    data-rsvp-team-id="${t.id}"
+                    data-elig-on="${on ? '1' : '0'}"
+                    title="${this._escape(t.label)}"
+                    style="padding:4px 10px; border-radius:999px; font-size:0.75rem;
+                           font-weight:700; cursor:pointer;
+                           border:1px solid ${t.color};
+                           background:${on ? t.color : 'transparent'};
+                           color:${on ? '#fff' : t.color};">
+                    ${this._escape(t.short)}
+                  </button>`;
+        }).join('')}
+      </div>
+      <div style="font-size:0.75rem; opacity:0.65; margin-bottom: var(--space-2);">
+        Tap a team to grant or revoke RSVP eligibility for this person.
+      </div>
+    `;
 
     if (!upcoming.length) {
       upEl.innerHTML = `<div class="ps-empty">
@@ -661,6 +704,43 @@ class PersonScreen extends Screen {
           </span>
         </div>`;
     }).join('');
+  }
+
+  async _toggleRsvp(teamId, want, chipEl) {
+    if (!this.leagueAppsUserId || !teamId) return;
+    const set = this._rsvpElig || new Set();
+    const had = set.has(teamId);
+    if (want) set.add(teamId); else set.delete(teamId);
+    this._rsvpElig = set;
+    this._paintRsvpChip(chipEl, teamId, want);
+
+    try {
+      const r = await this.auth.fetch('/api/mens-roster/rsvp-eligibility', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leagueAppsUserId: Number(this.leagueAppsUserId),
+          teamIds: Array.from(set),
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const cntEl = this.element.querySelector('#ps-rsvp-count');
+      if (cntEl) cntEl.textContent = set.size ? String(set.size) : '';
+    } catch (err) {
+      if (had) set.add(teamId); else set.delete(teamId);
+      this._rsvpElig = set;
+      this._paintRsvpChip(chipEl, teamId, had);
+      alert(`Failed to save RSVP eligibility: ${err.message || err}`);
+    }
+  }
+
+  _paintRsvpChip(chipEl, teamId, on) {
+    if (!chipEl) return;
+    const team = this._rsvpTeams().find((t) => t.id === teamId);
+    if (!team) return;
+    chipEl.setAttribute('data-elig-on', on ? '1' : '0');
+    chipEl.style.background = on ? team.color : 'transparent';
+    chipEl.style.color = on ? '#fff' : team.color;
   }
 
   // ── Recent RSVP responses ─────────────────────────────────────────
@@ -753,18 +833,53 @@ class PersonScreen extends Screen {
           Merge history
         </h3>
         ${merges.map(m => `
-          <div class="ps-row">
+          <div class="ps-row" style="align-items:center;">
             <span class="ps-row-label">
               ${m.reversedAt ? 'reversed' : 'merged'}
               ${m.reversedAt
                 ? ` ${this._fmtDate(m.reversedAt)}`
                 : ` ${this._fmtDate(m.mergedAt)}`}
             </span>
-            <span class="ps-row-value">
+            <span class="ps-row-value" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               #${m.droppedPersonId} → #${m.keptPersonId}
+              ${!m.reversedAt ? `
+                <button type="button" class="btn btn-secondary"
+                        data-unmerge-id="${m.id}"
+                        style="padding:2px 8px; font-size:0.7rem; font-weight:700;">
+                  Unmerge
+                </button>` : ''}
             </span>
           </div>`).join('')}
       `;
+    }
+  }
+
+  async _unmerge(mergeId, btn) {
+    if (!mergeId) return;
+    const ok = window.confirm(
+      `Reverse merge #${mergeId}?\n\nThe dropped person row and snapshotted child data will be restored.`
+    );
+    if (!ok) return;
+    const prev = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '…';
+    }
+    try {
+      const res = await this.auth.fetch(`/api/persons/unmerge/${mergeId}`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      await this._load();
+    } catch (err) {
+      alert(`Unmerge failed: ${err.message || err}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
     }
   }
 
