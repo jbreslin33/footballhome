@@ -76,6 +76,9 @@ std::vector<RegistryRow> canonicalM0Concepts()
         // concepts used by the first true defender-behavior slice.
         {4, "marking",      "defensive"},
         {5, "jockey",       "defensive"},
+        // Slice 33.1: 1v1_beat (migration 229) — gates the first
+        // attacker feint behavior.
+        {6, "1v1_beat",     "on_ball"},
     };
 }
 
@@ -179,7 +182,7 @@ FH_TEST(load_concept_registry_populates)
     ConceptRegistry reg;
     fh::sim::persistence::loadConceptRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{4});
+    FH_EXPECT_EQ(reg.size(), std::size_t{5});
     const auto* e = reg.find(static_cast<fh::sim::ConceptId>(1));
     FH_EXPECT(e != nullptr);
     FH_EXPECT(e->key == "run_to_point");
@@ -196,6 +199,11 @@ FH_TEST(load_concept_registry_populates)
     FH_EXPECT(j->key == "jockey");
     FH_EXPECT_EQ(fh::sim::m0::kMarking, fh::sim::ConceptId{4});
     FH_EXPECT_EQ(fh::sim::m0::kJockey, fh::sim::ConceptId{5});
+    // Slice 33.1: 1v1_beat lands at id=6 (migration 229).
+    const auto* beat = reg.find(static_cast<fh::sim::ConceptId>(6));
+    FH_EXPECT(beat != nullptr);
+    FH_EXPECT(beat->key == "1v1_beat");
+    FH_EXPECT_EQ(fh::sim::m0::k1v1Beat, fh::sim::ConceptId{6});
 }
 
 FH_TEST(load_concept_registry_throws_when_db_empty)
@@ -222,6 +230,23 @@ FH_TEST(load_pattern_registry_allows_empty_db)
     reg.addEntry(static_cast<fh::sim::PatternId>(999), "junk", "junk");
     fh::sim::persistence::loadPatternRegistryFromDb(reg, db);
     FH_EXPECT(reg.empty());
+}
+
+FH_TEST(load_pattern_registry_populates_first_m3_pattern)
+{
+    InMemoryPgClient db;
+    db.seedPatternRegistry({{1, "pattern_being_beaten_1v1", "defensive_read"}});
+
+    PatternRegistry reg;
+    fh::sim::persistence::loadPatternRegistryFromDb(reg, db);
+
+    FH_EXPECT_EQ(reg.size(), std::size_t{1});
+    const auto* pattern = reg.find(static_cast<fh::sim::PatternId>(1));
+    FH_EXPECT(pattern != nullptr);
+    FH_EXPECT(pattern->key == "pattern_being_beaten_1v1");
+    const auto id = reg.lookup("pattern_being_beaten_1v1");
+    FH_EXPECT(id.has_value());
+    FH_EXPECT_EQ(*id, fh::sim::PatternId{1});
 }
 
 // ============================================================================

@@ -27,6 +27,7 @@
 #include "match/Snapshot.hpp"
 #include "math/RngDet.hpp"
 #include "physics/IPhysicsWorld.hpp"
+#include "registry/PatternRegistry.hpp"
 #include "scenario/Scenario.hpp"
 
 #include <cstdint>
@@ -47,6 +48,7 @@ struct MatchConfig {
     std::unique_ptr<physics::IPhysicsWorld>    physics;
     std::unique_ptr<scenario::Scenario>        scenario;
     std::unique_ptr<MatchClock>                clock;
+    const registry::PatternRegistry*           pattern_registry{nullptr};
 };
 
 class Match {

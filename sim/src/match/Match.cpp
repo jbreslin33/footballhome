@@ -44,7 +44,9 @@ Match::Match(MatchConfig cfg)
     , physics_(std::move(cfg.physics))
     , scenario_(std::move(cfg.scenario))
     , clock_(std::move(cfg.clock))
-    , recognition_{}
+    , recognition_(cfg.pattern_registry != nullptr
+        ? awareness::RecognitionSystem{*cfg.pattern_registry}
+        : awareness::RecognitionSystem{})
     , rng_(cfg.seed)
 {
     spawnInitialSlots();

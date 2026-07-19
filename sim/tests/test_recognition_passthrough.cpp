@@ -1,8 +1,8 @@
 // footballhome sim - RecognitionSystem M0 identity pass-through tests
 //
 // M0 exit criterion: RecognitionSystem::apply is an identity copy of
-// WorldView into AwarenessView, with recognized_patterns always empty
-// regardless of what's in the perceiver's PlayerProfile.
+// WorldView into AwarenessView. Slice 33.3 adds the first explicit pattern
+// recognizer without changing the entity pass-through contract.
 //
 // This test locks that invariant in so we don't accidentally start filtering
 // entities before M4.
@@ -14,6 +14,8 @@
 #include "profile/PlayerProfile.hpp"
 #include "registry/PatternRegistry.hpp"
 #include "test_harness.hpp"
+
+#include <algorithm>
 
 using fh::sim::EntityId;
 using fh::sim::MotionState;
@@ -38,6 +40,7 @@ WorldView make_world_with_two_players()
 
     fh::sim::EntityState a;
     a.id       = EntityId{1};
+    a.slot_id  = SlotId{1};
     a.position = Vec3{Fixed64::fromDouble(1.0),
                       Fixed64::fromDouble(2.0),
                       Fixed64::zero()};
@@ -49,6 +52,7 @@ WorldView make_world_with_two_players()
 
     fh::sim::EntityState b;
     b.id       = EntityId{2};
+    b.slot_id  = SlotId{2};
     b.position = Vec3{Fixed64::fromDouble(-3.0),
                       Fixed64::fromDouble(1.0),
                       Fixed64::zero()};
@@ -60,6 +64,45 @@ WorldView make_world_with_two_players()
     w.entities = {a, b};
     w.ball     = std::nullopt;   // no ball in M0
     return w;
+}
+
+WorldView make_one_v_one_world(TickNum tick, const Vec3& carrier_velocity)
+{
+    WorldView world;
+    world.tick = tick;
+    world.time_seconds = Fixed64::zero();
+    world.ball_owner = SlotId{1};
+
+    fh::sim::EntityState carrier;
+    carrier.id       = EntityId{10};
+    carrier.slot_id  = SlotId{1};
+    carrier.position = Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()};
+    carrier.velocity = carrier_velocity;
+    carrier.motion   = MotionState::Jog;
+
+    fh::sim::EntityState defender;
+    defender.id       = EntityId{11};
+    defender.slot_id  = SlotId{2};
+    defender.position = Vec3{Fixed64::fromInt(2), Fixed64::zero(), Fixed64::zero()};
+    defender.velocity = Vec3{};
+    defender.motion   = MotionState::Jog;
+
+    world.entities = {carrier, defender};
+    return world;
+}
+
+PlayerProfile profileWithBeatRecognition(PatternId pattern_id)
+{
+    PlayerProfile profile;
+    profile.recognition.set(pattern_id, Fixed64::one());
+    return profile;
+}
+
+bool containsPattern(const AwarenessView& view, PatternId pattern_id)
+{
+    return std::find(view.recognized_patterns.begin(),
+                     view.recognized_patterns.end(),
+                     pattern_id) != view.recognized_patterns.end();
 }
 
 } // namespace
@@ -104,11 +147,10 @@ FH_TEST(recognition_pass_through_ball_optional_matches)
     FH_EXPECT_EQ(av.ball.has_value(), w.ball.has_value());
 }
 
-FH_TEST(recognition_pass_through_recognized_patterns_always_empty_in_M0)
+FH_TEST(recognition_pass_through_recognized_patterns_empty_without_matching_world_state)
 {
-    // Even if a PatternRegistry has entries AND the perceiver has recognition
-    // skill for one of them, M0 must NOT populate recognized_patterns.
-    // (M4 flips this — this test will need updating then.)
+    // Even with a PatternRegistry entry and recognition skill, no pattern
+    // fires unless the corresponding world-state predicate is true.
     PatternRegistry patterns;
     patterns.addEntry(1, "pattern_2v1_defender", "defensive_read");
 
@@ -119,6 +161,69 @@ FH_TEST(recognition_pass_through_recognized_patterns_always_empty_in_M0)
     const AwarenessView av = sys.apply(make_world_with_two_players(),
                                        profile, SlotId{0});
     FH_EXPECT(av.recognized_patterns.empty());
+}
+
+FH_TEST(pattern_being_beaten_1v1_fires_on_nearby_carrier_reversal)
+{
+    PatternRegistry patterns;
+    patterns.addEntry(1, "pattern_being_beaten_1v1", "defensive_read");
+
+    RecognitionSystem sys{patterns};
+    const PlayerProfile profile = profileWithBeatRecognition(PatternId{1});
+
+    const AwarenessView first = sys.apply(
+        make_one_v_one_world(TickNum{0}, Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()}),
+        profile,
+        SlotId{2});
+    FH_EXPECT(first.recognized_patterns.empty());
+
+    const AwarenessView second = sys.apply(
+        make_one_v_one_world(TickNum{1}, Vec3{-Fixed64::one(), Fixed64::zero(), Fixed64::zero()}),
+        profile,
+        SlotId{2});
+    FH_EXPECT(containsPattern(second, PatternId{1}));
+}
+
+FH_TEST(pattern_being_beaten_1v1_requires_recognition_skill)
+{
+    PatternRegistry patterns;
+    patterns.addEntry(1, "pattern_being_beaten_1v1", "defensive_read");
+
+    RecognitionSystem sys{patterns};
+    const PlayerProfile profile{};
+
+    (void)sys.apply(
+        make_one_v_one_world(TickNum{0}, Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()}),
+        profile,
+        SlotId{2});
+    const AwarenessView second = sys.apply(
+        make_one_v_one_world(TickNum{1}, Vec3{-Fixed64::one(), Fixed64::zero(), Fixed64::zero()}),
+        profile,
+        SlotId{2});
+    FH_EXPECT(second.recognized_patterns.empty());
+}
+
+FH_TEST(pattern_being_beaten_1v1_requires_nearby_non_owner)
+{
+    PatternRegistry patterns;
+    patterns.addEntry(1, "pattern_being_beaten_1v1", "defensive_read");
+
+    RecognitionSystem sys{patterns};
+    const PlayerProfile profile = profileWithBeatRecognition(PatternId{1});
+
+    (void)sys.apply(
+        make_one_v_one_world(TickNum{0}, Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()}),
+        profile,
+        SlotId{2});
+
+    WorldView far_world = make_one_v_one_world(
+        TickNum{1}, Vec3{-Fixed64::one(), Fixed64::zero(), Fixed64::zero()});
+    far_world.entities[1].position = Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()};
+    const AwarenessView far_view = sys.apply(far_world, profile, SlotId{2});
+    FH_EXPECT(far_view.recognized_patterns.empty());
+
+    const AwarenessView owner_view = sys.apply(far_world, profile, SlotId{1});
+    FH_EXPECT(owner_view.recognized_patterns.empty());
 }
 
 FH_TEST_MAIN()

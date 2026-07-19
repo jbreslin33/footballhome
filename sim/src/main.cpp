@@ -661,6 +661,7 @@ int main(int /*argc*/, char** /*argv*/)
     mcfg.seed           = seed;
     mcfg.server_version = FH_SIM_GIT_DESCRIBE;
     mcfg.physics  = std::make_unique<fh::sim::physics::BasicPhysics>();
+    mcfg.pattern_registry = &pattern_registry;
     // Slice 15.5 + Slice 18.x + Slice 24.3a: pick the Scenario matching
     // the resolved scenario_id. Keep this switch in lock-step with
     // sim/src/tools/Replay.cpp::makeScenario and sim_scenarios.code_id

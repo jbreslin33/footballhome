@@ -10,6 +10,7 @@
 
 #include "controller/AiController.hpp"
 
+#include "behavior/Feint1v1Behavior.hpp"
 #include "behavior/IBehavior.hpp"
 #include "behavior/JockeyBehavior.hpp"
 #include "behavior/MarkOpponentBehavior.hpp"
@@ -146,7 +147,8 @@ AiController::defaultBehaviors(Role role)
             return bag;
         case Role::ST9:
         case Role::ST10:
-            return bag;   // empty — reserved for later milestones
+            bag.push_back(std::make_unique<behavior::Feint1v1Behavior>());
+            return bag;
     }
     return bag;
 }

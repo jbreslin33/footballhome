@@ -473,15 +473,14 @@ FH_TEST(default_behaviors_slice_31_4_defensive_roles_get_defender_bag)
 {
     // Slice 31.4: concrete defensive roles have {PursueBallCarrierBehavior,
     // JockeyBehavior, MarkOpponentBehavior}. Role::Any returns to being an
-    // empty placeholder; attacker roles remain empty until later slices (§25.3):
-    //   Slice 33.2 — Feint1v1
+    // empty placeholder; Slice 33.2 adds the first attacker behavior to ST roles.
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  3u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  3u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::CDM).size(),  3u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  0u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 0u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  1u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 1u);
 
     // Lock the defensive bag's identity by id string, so future slices
     // that swap behaviors in/out of the bag must update this assertion
@@ -490,6 +489,9 @@ FH_TEST(default_behaviors_slice_31_4_defensive_roles_get_defender_bag)
     FH_EXPECT_EQ(std::string(bag[0]->id()), std::string("pursue_ball_carrier"));
     FH_EXPECT_EQ(std::string(bag[1]->id()), std::string("jockey"));
     FH_EXPECT_EQ(std::string(bag[2]->id()), std::string("mark_opponent"));
+
+    const auto striker_bag = AiController::defaultBehaviors(Role::ST9);
+    FH_EXPECT_EQ(std::string(striker_bag[0]->id()), std::string("feint_1v1"));
 }
 
 int main()

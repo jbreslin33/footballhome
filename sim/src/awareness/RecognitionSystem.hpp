@@ -23,14 +23,18 @@
 #include "profile/PlayerProfile.hpp"
 #include "registry/PatternRegistry.hpp"
 
+#include <optional>
+#include <unordered_map>
+#include <vector>
+
 namespace fh::sim::awareness {
 
 class RecognitionSystem {
 public:
     RecognitionSystem() = default;
 
-    // The registry is a non-owning reference kept for M4+; M0 does not use
-    // it. Passing an empty registry is the intended M0 configuration.
+    // The registry is a non-owning reference. Passing an empty registry keeps
+    // the identity-pass behavior for matches with no registered patterns.
     explicit RecognitionSystem(const registry::PatternRegistry& patterns) noexcept
         : patterns_(&patterns)
     {}
@@ -45,7 +49,21 @@ public:
                         SlotId                          self) const;
 
 private:
+    struct VelocitySample {
+        TickNum    tick{0};
+        math::Vec3 velocity{};
+    };
+
+    void updateCarrierHistory(const WorldView& world) const;
+    bool carrierChangedDirectionRecently(const WorldView& world,
+                                         const EntityState& carrier) const;
+    bool shouldRecognizeBeingBeaten1v1(const WorldView& world,
+                                       SlotId           self) const;
+
     const registry::PatternRegistry* patterns_{nullptr};
+    mutable std::optional<TickNum> last_history_tick_{};
+    mutable std::unordered_map<SlotId, std::vector<VelocitySample>> carrier_velocity_history_{};
+    mutable std::optional<SlotId> changed_direction_carrier_{};
 };
 
 } // namespace fh::sim::awareness
