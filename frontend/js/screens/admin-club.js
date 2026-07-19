@@ -65,27 +65,11 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-schedule" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <!-- ── Below the funnel · still evaluating layout ────────────
-             Everything below is either a viewing lens on the same
-             underlying data (Team Dashboards) or supporting infra
-             (Media, Structure).  Grouping here is provisional. -->
-
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧩 Team Dashboards</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📢 Reminders</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Aggregated per-team views — grouped by club (Mens · Womens · Boys · Girls). Lineups, practice, pickup, game-day eligibility.
+          Event RSVP nudges. Mens reminders are live now; this section is the home for expanding the same workflow to women, boys, and girls.
         </p>
-
-        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👨 Mens Club</h4>
-        <div id="dash-mens" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
-
-        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👩 Womens Club</h4>
-        <div id="dash-womens" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
-
-        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👦 Boys Club</h4>
-        <div id="dash-boys" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
-
-        <h4 style="margin: var(--space-3) 0 var(--space-1); opacity: 0.85; font-size: 0.95rem;">👧 Girls Club</h4>
-        <div id="dash-girls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);"></div>
+        <div id="section-reminders" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📲 Media &amp; Socials</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -171,65 +155,15 @@ class AdminClubScreen extends Screen {
     ];
     renderInto('#section-recruitment', recruitmentTiles);
 
-    // ── Team Dashboards ────────────────────────────────────────────────
-    // Grouped by club (Mens / Womens / Boys / Girls).  Each tile is a
-    // lens on the same underlying data (matches, rosters, RSVPs);
-    // filter params tell the target screen which slice to render.  The
-    // shared `youth-*` screens honor gender / sex filters incrementally
-    // — until then they render the full youth set and ignore the
-    // filter (no error, just unfiltered).
-    const mensDashTiles = [
-      { id: 'mens-lineups',   target: 'mens-lineups',       params: { gender: 'mens',   matchType: 'game'    }, icon: '🧩', label: 'Mens Dashboard',           description: 'Men\'s teams — LA pool, per-team rosters, next match, starters & bench' },
-      { id: 'mens-practice',  target: 'mens-practice-dash', params: { gender: 'mens',   kind: 'practice'     }, icon: '🏃', label: 'Mens Practice',            description: 'Add / edit / delete men\'s practices — shared across all mens teams' },
-      { id: 'mens-pickup',    target: 'mens-pickup-dash',   params: { gender: 'mens',   kind: 'pickup'       }, icon: '⚡', label: 'Mens Pickup',              description: 'Add / edit / delete men\'s pickup sessions — shared across all mens teams' },
-      { id: 'series-editor',  target: 'admin-series-editor',params: {},                                          icon: '🔁', label: 'Recurring Series',         description: 'Weekly templates — every Sunday 8pm the next week\'s matches are auto-materialised' },
-      { id: 'apsl-dash',      target: 'mens-lineups',       params: { gender: 'mens',   division: 'apsl'     }, icon: '🏆', label: 'APSL',                     description: 'APSL teams only — standings, schedule, rosters' },
-      { id: 'liga1-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga1'    }, icon: '🏆', label: 'Liga 1',                   description: 'CASA Liga 1 teams — standings, schedule, rosters' },
-      { id: 'liga2-dash',     target: 'mens-lineups',       params: { gender: 'mens',   division: 'liga2'    }, icon: '🏆', label: 'Liga 2',                   description: 'CASA Liga 2 teams — standings, schedule, rosters' },
-      { id: 'tricounty-dash', target: 'mens-lineups',       params: { gender: 'mens',   division: 'tricounty'}, icon: '🏆', label: 'Tri County',               description: 'Tri County league teams — standings, schedule, rosters' },
-      { id: 'mens-game-elig', target: 'mens-game-eligibility', params: { gender: 'mens' },                        icon: '🎯', label: 'Game Eligibility',         description: 'Projected 35-player APSL & Liga 1 rosters — game-day availability & call-ups' },
-      // (2026-07-12) `mens-roster-board` moved to 🎽 Roster funnel section.
-      // (2026-07-13) `mens-delinquent`  removed — Payments screen (Overdue chip) covers this.
-      { id: 'mens-events-reminders', target: 'mens-events-reminders', params: {},                                    icon: '📢', label: 'Mens Reminders',           description: 'All upcoming men\'s events (games · practice · pickup) — one tap to nudge non-responders' },
+    // ── Reminders ────────────────────────────────────────────────────
+    // Mens reminders are the only live implementation today.  Keep the
+    // tile data category-scoped so women/boys/girls can become adjacent
+    // tiles without changing the click routing shape.
+    const reminderTiles = [
+      { id: 'event-reminders-mens', target: 'mens-events-reminders', params: { category: 'mens' }, icon: '📢', label: 'Event Reminders', description: 'Mens events now; same workflow can expand to women, boys, and girls' },
     ];
-
-    const womensDashTiles = [
-      { id: 'womens-lineups',  target: 'womens-lineups',      params: { gender: 'womens', matchType: 'game' }, icon: '🧩', label: 'Womens Dashboard',       description: 'Women\'s teams — LA pool, per-team rosters, next match, starters & bench' },
-      { id: 'womens-practice', target: 'womens-practice-dash',params: { gender: 'womens', kind: 'practice'  }, icon: '🏃', label: 'Womens Practice',        description: 'Add / edit / delete women\'s practices — shared across all women\'s teams' },
-      { id: 'womens-pickup',   target: 'womens-pickup-dash',  params: { gender: 'womens', kind: 'pickup'    }, icon: '⚡', label: 'Womens Pickup',          description: 'Add / edit / delete women\'s pickup sessions — shared across all women\'s teams' },
-    ];
-
-    // Youth shared screens (practice, pickup, dashboard) appear under
-    // both Boys and Girls because the youth program is one unit
-    // physically — same practices, same pickups, same coaches.  Tile
-    // ids differ (`boys-*` vs `girls-*`) so click routing stays clean
-    // even though target + params are identical.
-    const boysDashTiles = [
-      { id: 'boys-lineups',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', matchType: 'game' }, icon: '🧩', label: 'Boys Dashboard',       description: 'Boys teams — roster, schedule, attendance' },
-      // (2026-07-12) `boys-roster` moved to 🎽 Roster funnel section.
-      { id: 'boys-practice',  target: 'youth-practice-dash', params: { gender: 'youth', sex: 'boys', kind: 'practice' }, icon: '🏃', label: 'Boys Practice',        description: 'Add / edit / delete boys practices' },
-      { id: 'boys-pickup',    target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'boys', kind: 'pickup'   }, icon: '⚡', label: 'Boys Pickup',          description: 'Add / edit / delete boys pickup sessions' },
-      { id: 'u8-boys-dash',   target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u8'  }, icon: '👦', label: 'U8 Boys',              description: 'U8 boys teams — roster, schedule, attendance' },
-      { id: 'u10-boys-dash',  target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u10' }, icon: '👦', label: 'U10 Boys',             description: 'U10 boys teams — roster, schedule, attendance' },
-      { id: 'u12-boys-dash',  target: 'youth-roster',        params: { gender: 'youth', sex: 'boys', ageGroup: 'u12' }, icon: '👦', label: 'U12 Boys',             description: 'U12 boys teams — roster, schedule, attendance' },
-    ];
-
-    const girlsDashTiles = [
-      { id: 'girls-lineups',  target: 'youth-roster',        params: { gender: 'youth', sex: 'girls', matchType: 'game' }, icon: '🧩', label: 'Girls Dashboard',    description: 'Girls teams — roster, schedule, attendance' },
-      // (2026-07-12) `girls-roster` moved to 🎽 Roster funnel section.
-      { id: 'girls-practice', target: 'youth-practice-dash', params: { gender: 'youth', sex: 'girls', kind: 'practice' }, icon: '🏃', label: 'Girls Practice',      description: 'Add / edit / delete girls practices' },
-      { id: 'girls-pickup',   target: 'youth-pickup-dash',   params: { gender: 'youth', sex: 'girls', kind: 'pickup'   }, icon: '⚡', label: 'Girls Pickup',        description: 'Add / edit / delete girls pickup sessions' },
-    ];
-
-    const dashTiles = [...mensDashTiles, ...womensDashTiles, ...boysDashTiles, ...girlsDashTiles];
-    // Stash for handleSubNavigation so it can look up the target screen
-    // + params by tile id without a giant switch.
-    this._dashTiles = dashTiles;
-
-    renderInto('#dash-mens',   mensDashTiles);
-    renderInto('#dash-womens', womensDashTiles);
-    renderInto('#dash-boys',   boysDashTiles);
-    renderInto('#dash-girls',  girlsDashTiles);
+    this._dashTiles = reminderTiles;
+    renderInto('#section-reminders', reminderTiles);
 
     // ── RSVP ──────────────────────────────────────────────────────────
     // Single diagnostic tile — opens the RSVP-eligibility board with
@@ -314,12 +248,9 @@ class AdminClubScreen extends Screen {
   }
   
   handleSubNavigation(section) {
-    // Team-dashboard tiles: single lookup routes to the right screen
-    // with filter params (gender / matchType / division / ageGroup /
-    // sex).  This handles Mens/Womens/Youth Dashboard, Practice /
-    // Pickup variants, APSL / Liga 1 / Liga 2 / Tri County, and
-    // U8/U10/U12 Boys.  Target screens can honor filters
-    // incrementally.
+    // Tile lookup routes reusable surfaces with params.  Reminders use
+    // category params so the current mens-only screen can grow into the
+    // same workflow for women, boys, and girls later.
     const dashTile = (this._dashTiles || []).find(t => t.id === section);
     if (dashTile) {
       this.navigation.goTo(dashTile.target, {
