@@ -82,8 +82,14 @@ Shipped:
 - Lens views under People: Accounts, Players, Coaches & Admins,
   Duplicates / Merges, Data Issues (same endpoint, `?view=` filter).
 - Members screen is a slim LeagueApps membership mirror (name + DOB +
-  View per card). Contact, onboarding, and the LeagueApps Manager
-  member link live on the Person profile.
+  View/Edit per card via shared `PersonActions`). Contact, onboarding,
+  and the LeagueApps Manager member link live on the Person profile.
+- **Person View/Edit is the consistent player drill-down** across
+  Members, People Directory, Payments, Rosters, RSVP boards, Lineups,
+  and Game Day. Lineup zone/RSVP controls stay local; identity work
+  goes through Person (`PersonActions` → `PersonScreen`).
+- Person profile loads by LA user id or `persons.id`
+  (`GET /api/persons/la/:id` or `GET /api/persons/:personId`).
 - Person profile includes the linked FH `users` account and merges
   legacy `rosters` with LA `roster_assignments`, plus an Open in
   LeagueApps deep-link to `memberDetails`.

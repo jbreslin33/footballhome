@@ -1165,7 +1165,7 @@ class MembersScreen extends Screen {
     groupsEl.innerHTML = html || `<div style="opacity:0.6; text-align:center; padding: var(--space-4);">No matches.</div>`;
   }
 
-  // Slim membership mirror card: name + DOB + View.  Contact,
+  // Slim membership mirror card: name + DOB + View/Edit.  Contact,
   // onboarding, and LeagueApps actions live on the Person profile.
   _renderCard(m, _sinceLabel, _groupVariant) {
     const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)';
@@ -1174,26 +1174,17 @@ class MembersScreen extends Screen {
       ? `<div style="font-size:0.8rem; opacity:0.75;">${this._esc(this._fmtDob(dob))}</div>`
       : `<div style="font-size:0.8rem; opacity:0.45;">No DOB</div>`;
 
-    // Prefer the shared PersonActions handler (profile only — no Edit
-    // on this mirror).  Label is "View" to match the Members IA.
-    let viewBtn = '';
-    if (m.leagueapps_user_id || m.person_id) {
-      const laAttr = m.leagueapps_user_id
-        ? `data-la-user-id="${this._esc(String(m.leagueapps_user_id))}"`
-        : '';
-      const pidAttr = m.person_id
-        ? `data-person-id="${this._esc(String(m.person_id))}"`
-        : '';
-      viewBtn =
-        `<button type="button" class="person-action" data-action="profile"
-                 ${laAttr} ${pidAttr} data-return-to="members"
-                 title="Open profile for ${this._esc(name)}"
-                 style="padding:5px 10px; border-radius:4px; cursor:pointer;
-                        background:#0891b2; color:#fff; border:none;
-                        font-size:0.75rem; font-weight:700;">
-           View
-         </button>`;
-    }
+    const viewEdit = (window.PersonActions)
+      ? window.PersonActions.buttonsHtml(
+          {
+            leagueAppsUserId: m.leagueapps_user_id,
+            personId:         m.person_id,
+            firstName:        m.first_name,
+            fullName:         name,
+          },
+          { returnTo: 'members', size: 'md' }
+        )
+      : '';
 
     return `
       <div class="paused-card"
@@ -1206,8 +1197,8 @@ class MembersScreen extends Screen {
             ${m.leagueapps_user_id ? 'cursor:pointer;' : ''}">
         <div style="font-weight:600;">${this._esc(name)}</div>
         ${dobLine}
-        ${viewBtn
-          ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${viewBtn}</div>`
+        ${viewEdit
+          ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${viewEdit}</div>`
           : ''}
       </div>
     `;

@@ -15,6 +15,8 @@
 // Navigation
 // ──────────
 //   this.navigation.goTo('person', { leagueAppsUserId: '12345' })
+//   this.navigation.goTo('person', { personId: 42 })
+//   this.navigation.goTo('person', { personId: 42, edit: '1' })
 //
 // A `returnTo` hint lets the back button pop to the caller's screen.
 // If absent we fall back to the browser's own history.
@@ -24,6 +26,7 @@ class PersonScreen extends Screen {
     this.navigation = navigation;
     this.auth = auth;
     this.leagueAppsUserId = null;
+    this.personId = null;
     this._returnTo = null;
     this._returnToParams = null;
   }
@@ -309,19 +312,26 @@ class PersonScreen extends Screen {
   }
 
   onEnter(params) {
-    // Accept both { leagueAppsUserId } and { laUserId } for flexibility.
-    const raw = params?.leagueAppsUserId ?? params?.laUserId ?? null;
-    this.leagueAppsUserId = raw != null ? String(raw) : null;
+    // Accept LA user id and/or personId.  PersonActions may send either
+    // (or both).  Prefer the explicit LA id when present; otherwise load
+    // by persons.id via GET /api/persons/:personId.
+    const rawLa = params?.leagueAppsUserId ?? params?.laUserId ?? null;
+    this.leagueAppsUserId = rawLa != null && String(rawLa) !== ''
+      ? String(rawLa)
+      : null;
+    const rawPid = params?.personId ?? null;
+    this.personId = rawPid != null && String(rawPid) !== ''
+      ? String(rawPid)
+      : null;
     this._returnTo = params?.returnTo || null;
     this._returnToParams = params?.returnToParams || null;
-    // `edit=1` is set by the shared PersonActions ✎ EDIT button.  We
-    // don't have a distinct edit tab yet — for now we just remember
-    // the intent so a future edit UI can pick it up without any of
-    // the ~20 callers needing to change how they navigate here.
+    // `edit=1` is set by the shared PersonActions Edit button.  Both
+    // View and Edit land on this same Person hub; Edit remembers the
+    // operator intent as editable controls expand here.
     this._editMode = params?.edit === '1' || params?.edit === true;
 
-    if (!this.leagueAppsUserId) {
-      this._showError('No leagueAppsUserId provided');
+    if (!this.leagueAppsUserId && !this.personId) {
+      this._showError('No leagueAppsUserId or personId provided');
       return;
     }
     this._load();
@@ -361,13 +371,24 @@ class PersonScreen extends Screen {
     loading.style.display = 'block';
 
     try {
-      const res = await this.auth.fetch(
-        `/api/persons/la/${encodeURIComponent(this.leagueAppsUserId)}`);
+      const url = this.leagueAppsUserId
+        ? `/api/persons/la/${encodeURIComponent(this.leagueAppsUserId)}`
+        : `/api/persons/${encodeURIComponent(this.personId)}`;
+      const res = await this.auth.fetch(url);
       if (!res.ok) {
         const txt = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status}${txt ? ' — ' + txt : ''}`);
       }
       const data = await res.json();
+      // Keep both keys in sync so RSVP / LA deep-links work after a
+      // personId-only entry.
+      if (data.leagueAppsUserId != null && data.leagueAppsUserId !== '') {
+        this.leagueAppsUserId = String(data.leagueAppsUserId);
+      }
+      if (data.personId != null) {
+        this.personId = String(data.personId);
+        this._personId = data.personId;
+      }
       this._render(data);
       loading.style.display = 'none';
       body.style.display = 'block';
@@ -399,8 +420,11 @@ class PersonScreen extends Screen {
 
     // Update the header bar.
     this.element.querySelector('#person-title').textContent = name;
+    const laPart = data.leagueAppsUserId
+      ? `LA user ${data.leagueAppsUserId}`
+      : 'No LA alias';
     this.element.querySelector('#person-subtitle').textContent =
-      `LA user ${data.leagueAppsUserId} · FH person #${data.personId}`;
+      `${laPart} · FH person #${data.personId}${this._editMode ? ' · Edit' : ''}`;
 
     // Header card.
     this._renderHeaderCard(data);

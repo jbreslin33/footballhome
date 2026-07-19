@@ -26,6 +26,14 @@ void PersonProfileController::registerRoutes(Router& router, const std::string& 
         [this](const Request& req, const LaSyncMap& sync) {
             return this->handleGetByLaUserId(req, sync);
         });
+
+    // GET /api/persons/:personId — same bundle, keyed by persons.id
+    // (used when a card only has personId, e.g. game-day lineup).
+    laGet(router, prefix + "/:personId",
+        [](const Request&) { return Controller::allLaProgramIds(); },
+        [this](const Request& req, const LaSyncMap& sync) {
+            return this->handleGetByPersonId(req, sync);
+        });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -46,11 +54,6 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
 
     try {
         // ── Bridge: LA user id → persons.id ─────────────────────────
-        // Alias table stores external_user_id as TEXT (LA ids are
-        // numeric today but the column is provider-agnostic).  laGet()
-        // ran LaProgramSync for every program in leagueapps_programs
-        // before we got here, so any current LA user's alias is fresh.
-        // A miss here means: not a member of any LA program → 404.
         pqxx::result aliasRes = db_->query(
             "SELECT person_id FROM external_person_aliases "
             "WHERE provider = 'leagueapps' AND external_user_id = $1 "
@@ -62,8 +65,20 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
                 "No person alias found for that LeagueApps user id");
         }
         const int personId = aliasRes[0]["person_id"].as<int>();
-        const std::string personIdStr = std::to_string(personId);
+        return buildProfile(personId, laUserId);
+    } catch (const std::exception& e) {
+        std::cerr << "PersonProfileController::handleGetByLaUserId error: "
+                  << e.what() << std::endl;
+        return errorResponse(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
 
+// ────────────────────────────────────────────────────────────────────────────
+// Shared profile bundle (personId + optional LA user id)
+// ────────────────────────────────────────────────────────────────────────────
+Response PersonProfileController::buildProfile(int personId, long long laUserId) {
+    const std::string personIdStr = std::to_string(personId);
+    try {
         // ── Person core ──────────────────────────────────────────────
         pqxx::result pRes = db_->query(
             "SELECT id, first_name, last_name, birth_date, "
@@ -261,7 +276,9 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
         // ── Assemble the JSON payload ────────────────────────────────
         std::ostringstream json;
         json << "{"
-             << "\"leagueAppsUserId\":\"" << laUserId << "\""
+             << "\"leagueAppsUserId\":" << (laUserId > 0
+                ? (std::string("\"") + std::to_string(laUserId) + "\"")
+                : std::string("null"))
              << ",\"personId\":" << personId
              << ",\"person\":{"
              <<     "\"firstName\":\"" << jsonEscape(p["first_name"].c_str()) << "\""
@@ -526,7 +543,52 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
         return Response(HttpStatus::OK, json.str());
 
     } catch (const std::exception& e) {
-        std::cerr << "PersonProfileController::handleGetByLaUserId error: "
+        std::cerr << "PersonProfileController::buildProfile error: "
+                  << e.what() << std::endl;
+        return errorResponse(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/persons/:personId
+// ────────────────────────────────────────────────────────────────────────────
+Response PersonProfileController::handleGetByPersonId(const Request& request,
+                                                      const LaSyncMap& sync) {
+    (void)sync;
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    int personId = 0;
+    if (!extractPersonId(request.getPath(), personId)) {
+        return errorResponse(HttpStatus::BAD_REQUEST,
+            "personId must be a positive integer");
+    }
+
+    try {
+        pqxx::result exists = db_->query(
+            "SELECT id FROM persons WHERE id = $1 LIMIT 1",
+            { std::to_string(personId) });
+        if (exists.empty()) {
+            return errorResponse(HttpStatus::NOT_FOUND, "Person not found");
+        }
+
+        long long laUserId = 0;
+        pqxx::result aliasRes = db_->query(
+            "SELECT external_user_id FROM external_person_aliases "
+            "WHERE provider = 'leagueapps' AND person_id = $1 "
+            "LIMIT 1",
+            { std::to_string(personId) });
+        if (!aliasRes.empty() && !aliasRes[0]["external_user_id"].is_null()) {
+            try {
+                laUserId = std::stoll(aliasRes[0]["external_user_id"].c_str());
+            } catch (const std::exception&) {
+                laUserId = 0;
+            }
+        }
+        return buildProfile(personId, laUserId);
+    } catch (const std::exception& e) {
+        std::cerr << "PersonProfileController::handleGetByPersonId error: "
                   << e.what() << std::endl;
         return errorResponse(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
@@ -546,6 +608,20 @@ bool PersonProfileController::extractLaUserId(const std::string& path,
         return false;
     }
     return laUserId > 0;
+}
+
+bool PersonProfileController::extractPersonId(const std::string& path,
+                                              int& personId) const {
+    // Exact /api/persons/:digits — not /la/, /merge, /overrides, etc.
+    static const std::regex re(R"(/api/persons/(\d+)/?$)");
+    std::smatch m;
+    if (!std::regex_search(path, m, re) || m.size() < 2) return false;
+    try {
+        personId = std::stoi(m[1].str());
+    } catch (const std::exception&) {
+        return false;
+    }
+    return personId > 0;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

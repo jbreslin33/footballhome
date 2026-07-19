@@ -143,13 +143,14 @@ class PeopleWorkbenchScreen extends Screen {
 
       // Ignore clicks on action buttons inside cards.
       if (e.target.closest('[data-stop-nav]')) return;
+      if (e.target.closest('a, button, input, textarea, select, label')) return;
 
-      const card = e.target.closest('[data-la-user-id]');
+      const card = e.target.closest('[data-la-user-id], [data-person-id]');
       if (card) {
         const laId = card.getAttribute('data-la-user-id');
-        if (!laId) return;
-        this.navigation.goTo('person', {
-          leagueAppsUserId: laId,
+        const personId = card.getAttribute('data-person-id');
+        if (!laId && !personId) return;
+        const params = {
           returnTo: 'people-workbench',
           returnToParams: {
             clubId: this.clubId,
@@ -159,7 +160,10 @@ class PeopleWorkbenchScreen extends Screen {
             subtitle: this.find('#people-workbench-subtitle')?.textContent,
             description: this.find('#people-workbench-description')?.textContent,
           },
-        });
+        };
+        if (laId) params.leagueAppsUserId = laId;
+        if (personId) params.personId = personId;
+        this.navigation.goTo('person', params);
       }
     });
 
@@ -372,10 +376,11 @@ class PeopleWorkbenchScreen extends Screen {
 
     return `
       <div ${laId ? `data-la-user-id="${this._esc(laId)}"` : ''}
+           data-person-id="${p.person_id || ''}"
            style="padding: var(--space-3); border: 1px solid ${suggestedKeep ? '#10b981' : 'var(--color-border)'};
                   border-radius: var(--radius-md); background: var(--bg-primary);
                   display:flex; flex-direction:column; gap:6px;
-                  ${laId ? 'cursor:pointer;' : ''}">
+                  ${(laId || p.person_id) ? 'cursor:pointer;' : ''}">
         <div style="font-weight:600;">
           ${this._esc(name)}
           <span style="opacity:0.55; font-weight:500; font-size:0.8rem;">#${p.person_id}</span>
@@ -388,6 +393,17 @@ class PeopleWorkbenchScreen extends Screen {
           · RSVP ${p.rsvp_count || 0}
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;" data-stop-nav>
+          ${window.PersonActions
+            ? window.PersonActions.buttonsHtml(
+                {
+                  leagueAppsUserId: p.leagueapps_user_id,
+                  personId: p.person_id,
+                  firstName: p.first_name,
+                  fullName: name,
+                },
+                { returnTo: 'people-workbench', size: 'md' }
+              )
+            : ''}
           ${mergeBtns}
         </div>
       </div>
@@ -439,7 +455,7 @@ class PeopleWorkbenchScreen extends Screen {
   _cardHtml(p) {
     const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Person #${p.person_id}`;
     const laId = p.leagueapps_user_id ? String(p.leagueapps_user_id) : '';
-    const clickable = !!laId;
+    const clickable = !!(laId || p.person_id);
 
     const chips = [];
     if (p.has_fh_account) {
@@ -493,8 +509,21 @@ class PeopleWorkbenchScreen extends Screen {
       ? `<div style="font-size:0.8rem; opacity:0.75; word-break:break-word;">${contactBits.join(' · ')}</div>`
       : `<div style="font-size:0.8rem; opacity:0.55;">No contact on file</div>`;
 
+    const actions = window.PersonActions
+      ? window.PersonActions.buttonsHtml(
+          {
+            leagueAppsUserId: p.leagueapps_user_id,
+            personId: p.person_id,
+            firstName: p.first_name,
+            fullName: name,
+          },
+          { returnTo: 'people-workbench', size: 'md' }
+        )
+      : '';
+
     return `
-      <div ${clickable ? `data-la-user-id="${this._esc(laId)}"` : ''}
+      <div ${laId ? `data-la-user-id="${this._esc(laId)}"` : ''}
+           data-person-id="${p.person_id || ''}"
            style="padding: var(--space-3); border: 1px solid var(--color-border);
                   border-radius: var(--radius-md); background: var(--bg-secondary);
                   display:flex; flex-direction:column; gap:6px;
@@ -505,7 +534,9 @@ class PeopleWorkbenchScreen extends Screen {
         ${rosterLine}
         ${rsvpLine}
         ${issueHtml}
-        ${!clickable ? `<div style="font-size:0.75rem; opacity:0.55;">No LA alias — open from Members after sync</div>` : ''}
+        ${actions
+          ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;" data-stop-nav>${actions}</div>`
+          : ''}
       </div>
     `;
   }

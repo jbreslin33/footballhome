@@ -12,15 +12,16 @@
 //
 // Route (registered under prefix "/api/persons"):
 //   GET /api/persons/la/:leagueAppsUserId
+//   GET /api/persons/:personId
 //
-// Bridges the LA user id → persons.id via external_person_aliases
+// Bridges LA user id ↔ persons.id via external_person_aliases
 // (provider='leagueapps'), then bundles a person's core identity +
 // contact + LA memberships + upcoming bill + open charge flags +
 // field-level overrides + merge history into one JSON payload.
 //
 // Payload shape (see .cpp for the full JSON layout):
 //   {
-//     "leagueAppsUserId": "12345",
+//     "leagueAppsUserId": "12345" | null,
 //     "personId":         42,
 //     "person":       { firstName, lastName, birthDate, … },
 //     "contact":      { emails: [ … ], phones: [ … ] },
@@ -48,9 +49,9 @@
 //
 // Returns:
 //   200  — bundle above
-//   400  — leagueAppsUserId not a positive integer
+//   400  — id not a positive integer
 //   401  — missing/invalid bearer
-//   404  — no external_person_aliases row for that LA user id
+//   404  — person / LA alias not found
 //   500  — DB error
 //
 // Auth: bearer-token presence (same as the other admin controllers).
@@ -66,10 +67,13 @@ private:
     Database* db_;
 
     Response handleGetByLaUserId(const Request& request, const LaSyncMap& sync);
+    Response handleGetByPersonId(const Request& request, const LaSyncMap& sync);
+    Response buildProfile(int personId, long long laUserId);
 
     // Path parser — returns false if the path doesn't match or the id
     // isn't a positive integer.  Trailing slashes tolerated.
     bool extractLaUserId(const std::string& path, long long& laUserId) const;
+    bool extractPersonId(const std::string& path, int& personId) const;
 
     // JSON-string helpers (no JSON lib in this project — same manual
     // string-building pattern as the other Phase-N controllers).
