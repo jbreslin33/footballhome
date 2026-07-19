@@ -4,8 +4,12 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Creates /srv/footballhome-dev-<slug>, starts db+backend+frontend on that
-# slot's ports, restores the prod DB mirror, installs the host nginx
-# vhost. Safe to re-run (server migrate / rebuild).
+# slot's ports, restores the prod DB mirror, runs Membership sync, installs
+# the host nginx vhost.
+#
+# Fail-fast + verbose: any step failure exits non-zero immediately so it
+# can be diagnosed. Prints "100% SUCCESS" only when every required step
+# completed.
 #
 # Usage:
 #   ./scripts/setup/setup-dev-slot.sh jbreslin
@@ -13,9 +17,11 @@
 #   sudo DEV_SLOTS_OBTAIN_CERT=1 LE_EMAIL=you@example.com \
 #     ./scripts/setup/setup-dev-slot.sh jbreslin
 #
-# Called by: setup-dev-slots.sh (all rows in config/dev-slots.conf)
-#            setup-dev-jbreslin.sh / setup-dev-lbreslin.sh wrappers
-#            setup.sh step `dev-slots` (Linux)
+# Optional skips (explicit only):
+#   DEV_SLOTS_SKIP_MEMBERSHIP_SYNC=1
+#   DEV_SLOTS_SKIP_NGINX=1
+#
+# Called by: setup-dev-slots.sh / setup-dev-jbreslin.sh / setup.sh `dev-slots`
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -euo pipefail
@@ -40,125 +46,141 @@ if [ "$OS_TYPE" != "Linux" ]; then
   exit 0
 fi
 
-load_dev_slot "$SLUG"
-print_status "Bootstrapping developer slot: $FH_DEV_SLUG"
-print_status "  dir=$FH_DEV_DIR  fe=:$FH_DEV_FRONTEND_PORT  be=:$FH_DEV_BACKEND_PORT"
-print_status "  url=$FH_DEV_FRONTEND_URL"
+STEP=0
+step() {
+  STEP=$((STEP + 1))
+  echo ""
+  print_status "── step ${STEP}: $* ──"
+}
 
-# ── 1. Worktree / clone + env symlink ─────────────────────────────────
+fail() {
+  print_error "$*"
+  print_error "slot $SLUG STOPPED — fix above, then re-run: ./scripts/setup/setup-dev-slot.sh $SLUG"
+  exit 1
+}
+
+load_dev_slot "$SLUG"
+DOMAIN="${FH_DEV_HOST_PREFIX}.dev.footballhome.org"
 PROD_ROOT="${PROD_ROOT:-/srv/footballhome}"
 export PROD_ROOT
 export FH_DEV_DIR
-DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-init.sh"
 
-# Prefer running compose from the slot checkout so bind-mounts match the
-# branch that developer is working on.
+echo ""
+print_status "Bootstrapping developer slot: $FH_DEV_SLUG"
+echo "     dir=$FH_DEV_DIR"
+echo "     frontend=:$FH_DEV_FRONTEND_PORT  backend=:$FH_DEV_BACKEND_PORT  db=:$FH_DEV_DB_PORT"
+echo "     url=$FH_DEV_FRONTEND_URL"
+echo "     prod=$PROD_ROOT"
+echo "     fail-fast=on  verbose=on"
+
+# ── 1. Worktree / clone + env symlink ─────────────────────────────────
+step "dev-init (worktree + env symlink)"
+DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-init.sh" \
+  || fail "dev-init failed"
+
 SLOT_ROOT="$FH_DEV_DIR"
-if [ ! -d "$SLOT_ROOT" ]; then
-  print_error "dev-init did not create $SLOT_ROOT"
-  exit 1
-fi
+[ -d "$SLOT_ROOT" ] || fail "dev-init did not create $SLOT_ROOT"
+print_success "checkout ready: $SLOT_ROOT"
 
-# Ensure slot has latest scripts from the checkout we're setting up from
-# (worktree already shares git; clone path may lag — pull).
 if [ -d "$SLOT_ROOT/.git" ] || [ -f "$SLOT_ROOT/.git" ]; then
   git -C "$SLOT_ROOT" fetch origin main 2>/dev/null || true
 fi
 
 # ── 2. Ensure a mirror dump exists on the host ────────────────────────
+step "ensure prod DB mirror dump"
 MIRROR_GZ="$PROD_ROOT/backups/dev-mirror.sql.gz"
 MIRROR_SQL="$PROD_ROOT/backups/dev-mirror.sql"
-if [ ! -f "$MIRROR_GZ" ] && [ ! -f "$MIRROR_SQL" ]; then
-  if [ -d "$PROD_ROOT" ] && [ -f "$PROD_ROOT/Makefile" ]; then
-    print_status "No mirror dump yet — taking prod backup + dev-mirror"
-    ( cd "$PROD_ROOT" && make backup && make dev-mirror ) || \
-      print_warning "Could not build mirror (prod DB down?). Slot will start empty."
-  else
-    print_warning "No $MIRROR_GZ and no prod checkout at $PROD_ROOT"
-  fi
+if [ -f "$MIRROR_GZ" ]; then
+  print_status "using existing $MIRROR_GZ ($(du -h "$MIRROR_GZ" | awk '{print $1}'))"
+elif [ -f "$MIRROR_SQL" ]; then
+  print_status "using existing $MIRROR_SQL ($(du -h "$MIRROR_SQL" | awk '{print $1}'))"
+else
+  [ -d "$PROD_ROOT" ] && [ -f "$PROD_ROOT/Makefile" ] \
+    || fail "no mirror dump and no prod checkout at $PROD_ROOT"
+  print_status "no mirror yet — running: make backup && make dev-mirror (in $PROD_ROOT)"
+  ( cd "$PROD_ROOT" && make backup && make dev-mirror ) \
+    || fail "could not build mirror (is prod DB up?)"
+  [ -f "$MIRROR_GZ" ] || [ -f "$MIRROR_SQL" ] \
+    || fail "backup/dev-mirror finished but no dump at $MIRROR_GZ"
+  print_success "mirror dump created"
 fi
 
 # ── 3. Bring stack up (from slot checkout) ────────────────────────────
-print_status "Starting containers for $FH_DEV_SLUG"
+step "dev-up (containers db+backend+frontend)"
 (
-  cd "$SLOT_ROOT"
-  # Slot may be on older commit during first migrate — always prefer the
-  # orchestrating repo's compose/scripts if slot lacks them.
-  if [ ! -f "$SLOT_ROOT/docker-compose.dev.yml" ]; then
-    print_warning "slot missing docker-compose.dev.yml — using $REPO_ROOT"
+  if [ -f "$SLOT_ROOT/docker-compose.dev.yml" ]; then
+    cd "$SLOT_ROOT"
+    DEV="$FH_DEV_SLUG" ./scripts/dev/dev-up.sh
+  else
+    print_status "slot missing docker-compose.dev.yml — using $REPO_ROOT"
     cd "$REPO_ROOT"
     FH_DEV_DIR="$SLOT_ROOT" DEV="$FH_DEV_SLUG" ./scripts/dev/dev-up.sh
-  else
-    DEV="$FH_DEV_SLUG" ./scripts/dev/dev-up.sh
   fi
-)
+) || fail "dev-up failed — check podman/docker logs for footballhome_*_${FH_DEV_SLUG}"
+print_success "containers up for $FH_DEV_SLUG"
 
 # ── 4. Restore mirror into this slot's DB ─────────────────────────────
-print_status "Restoring DB mirror into $FH_DEV_SLUG"
+step "dev-restore-mirror"
+RESTORE_SCRIPT="$REPO_ROOT/scripts/dev/dev-restore-mirror.sh"
+[ -f "$SLOT_ROOT/scripts/dev/dev-restore-mirror.sh" ] && RESTORE_SCRIPT="$SLOT_ROOT/scripts/dev/dev-restore-mirror.sh"
 (
-  cd "$SLOT_ROOT"
-  if [ -f ./scripts/dev/dev-restore-mirror.sh ]; then
-    DEV="$FH_DEV_SLUG" ./scripts/dev/dev-restore-mirror.sh || \
-      print_warning "mirror restore failed for $FH_DEV_SLUG (stack is still up)"
-  else
-    cd "$REPO_ROOT"
-    DEV="$FH_DEV_SLUG" ./scripts/dev/dev-restore-mirror.sh || \
-      print_warning "mirror restore failed for $FH_DEV_SLUG"
-  fi
-)
+  cd "$(dirname "$RESTORE_SCRIPT")/../.."
+  DEV="$FH_DEV_SLUG" "$RESTORE_SCRIPT"
+) || fail "mirror restore failed"
+print_success "DB mirror restored into $FH_DEV_SLUG"
 
 # ── 5. Membership sync (LeagueApps → this slot's DB) ──────────────────
-# Same as Club Admin → Members → "Sync now". Needs healthy backend + LA keys
-# from the shared env symlink. Skip with DEV_SLOTS_SKIP_MEMBERSHIP_SYNC=1.
+step "membership sync (LeagueApps → Sync now)"
 if [ "${DEV_SLOTS_SKIP_MEMBERSHIP_SYNC:-0}" = "1" ]; then
-  print_warning "skipping membership sync (DEV_SLOTS_SKIP_MEMBERSHIP_SYNC=1)"
+  print_warning "SKIPPED membership sync (DEV_SLOTS_SKIP_MEMBERSHIP_SYNC=1)"
 else
-  print_status "Running LeagueApps membership sync for $FH_DEV_SLUG"
-  if [ -f "$REPO_ROOT/scripts/dev/dev-membership-sync.sh" ]; then
-    DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-membership-sync.sh" || \
-      print_warning "membership sync failed for $FH_DEV_SLUG — use Members → Sync now in the UI"
-  else
-    print_warning "dev-membership-sync.sh missing — skip"
-  fi
+  [ -f "$REPO_ROOT/scripts/dev/dev-membership-sync.sh" ] \
+    || fail "missing $REPO_ROOT/scripts/dev/dev-membership-sync.sh"
+  DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-membership-sync.sh" \
+    || fail "membership sync failed — diagnose LA keys / network, then re-run"
+  print_success "membership sync 100% for $FH_DEV_SLUG"
 fi
 
 # ── 6. Host nginx vhost ───────────────────────────────────────────────
-print_status "Installing nginx vhost for ${FH_DEV_HOST_PREFIX}.dev.footballhome.org"
-if [ "$EUID" -eq 0 ]; then
-  DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-nginx.sh"
+step "nginx vhost ($DOMAIN)"
+if [ "${DEV_SLOTS_SKIP_NGINX:-0}" = "1" ]; then
+  print_warning "SKIPPED nginx (DEV_SLOTS_SKIP_NGINX=1)"
 else
-  sudo DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-nginx.sh" || \
-    print_warning "nginx install needs sudo — run: sudo make dev-nginx DEV=$FH_DEV_SLUG"
+  if [ "$EUID" -eq 0 ]; then
+    DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-nginx.sh" \
+      || fail "dev-nginx failed"
+  else
+    sudo DEV="$FH_DEV_SLUG" "$REPO_ROOT/scripts/dev/dev-nginx.sh" \
+      || fail "dev-nginx needs sudo — re-run with sudo or: sudo make dev-nginx DEV=$FH_DEV_SLUG"
+  fi
+  print_success "nginx vhost installed for $DOMAIN"
 fi
 
 # ── 7. Optional TLS (only when asked — needs DNS) ─────────────────────
-DOMAIN="${FH_DEV_HOST_PREFIX}.dev.footballhome.org"
+step "TLS certbot (optional)"
 if [ "${DEV_SLOTS_OBTAIN_CERT:-0}" = "1" ] || [ "${DEV_SLOTS_OBTAIN_CERT:-}" = "yes" ]; then
-  if command -v dig >/dev/null 2>&1; then
-    if ! dig +short "$DOMAIN" A | grep -q .; then
-      print_warning "DNS for $DOMAIN not resolving yet — skip certbot (re-run later)"
-    else
-      print_status "Obtaining TLS cert for $DOMAIN"
-      EMAIL="${LE_EMAIL:-}"
-      if [ -z "$EMAIL" ] && [ -f "$REPO_ROOT/env" ]; then
-        # shellcheck disable=SC1091
-        EMAIL="$(set -a; source "$REPO_ROOT/env"; set +a; echo "${LE_EMAIL:-}")"
-      fi
-      if [ -n "$EMAIL" ]; then
-        sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect \
-          || print_warning "certbot failed for $DOMAIN — check DNS / rate limits"
-      else
-        print_warning "LE_EMAIL unset — skip certbot for $DOMAIN"
-      fi
-    fi
-  else
-    print_warning "dig not installed — skip cert DNS check; run certbot manually"
+  command -v dig >/dev/null 2>&1 || fail "dig not installed — needed to verify DNS before certbot"
+  if ! dig +short "$DOMAIN" A | grep -q .; then
+    fail "DNS for $DOMAIN not resolving yet — create A record, then re-run with DEV_SLOTS_OBTAIN_CERT=1"
   fi
+  print_status "DNS OK for $DOMAIN"
+  EMAIL="${LE_EMAIL:-}"
+  if [ -z "$EMAIL" ] && [ -f "$REPO_ROOT/env" ]; then
+    # shellcheck disable=SC1091
+    EMAIL="$(set -a; source "$REPO_ROOT/env"; set +a; echo "${LE_EMAIL:-}")"
+  fi
+  [ -n "$EMAIL" ] || fail "LE_EMAIL unset — export LE_EMAIL=you@example.com for certbot"
+  print_status "certbot --nginx -d $DOMAIN -m $EMAIL"
+  sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect \
+    || fail "certbot failed for $DOMAIN — check DNS / rate limits"
+  print_success "TLS cert issued for $DOMAIN"
 else
   print_status "TLS skipped (set DEV_SLOTS_OBTAIN_CERT=1 after DNS is live)"
 fi
 
-print_success "Developer slot ready: $FH_DEV_SLUG"
+echo ""
+print_success "100% SUCCESS — developer slot ready: $FH_DEV_SLUG"
 echo "     http://127.0.0.1:${FH_DEV_FRONTEND_PORT}"
 echo "     https://${DOMAIN}   (after DNS + cert)"
 echo "     Checkout: $SLOT_ROOT"
+echo "     Re-run:   ./scripts/setup/setup-dev-slot.sh $FH_DEV_SLUG"
