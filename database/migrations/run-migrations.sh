@@ -24,7 +24,9 @@ if command -v podman >/dev/null 2>&1; then
 else
     ENGINE=$(command -v docker 2>/dev/null)
 fi
-DB_EXEC="$ENGINE exec -i footballhome_db"
+# Per-developer stacks use footballhome_db_<slug>; override with FH_DB_CONTAINER.
+DB_CONTAINER="${FH_DB_CONTAINER:-footballhome_db}"
+DB_EXEC="$ENGINE exec -i $DB_CONTAINER"
 
 # Ensure schema_migrations table exists (for DBs created before this feature)
 echo "🔎 Ensuring schema_migrations exists..."

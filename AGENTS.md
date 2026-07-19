@@ -4,14 +4,17 @@
 
 Canonical workflow: [`docs/dev-environment.md`](docs/dev-environment.md).
 
+**Default for humans:** per-developer stacks on the production **host**
+(`make dev-up DEV=jbreslin|lbreslin`) → browser `http://SERVER:3010` / `:3020`
+→ PR → prod `git pull` / migrate / deploy.
+
 ```text
-DB mirror + LA sync on :3000  →  PR → merge main  →  prod git pull + migrate/deploy
+/srv/footballhome-dev-<slug>  +  mirror DB  +  LA Sync
+        →  PR → merge main  →  /srv/footballhome pull + deploy
 ```
 
-- Develop and verify on the **dev mirror stack** (`localhost:3000`).
-- Do **not** claim a UI change is live on footballhome.org until a human has
-  run the ship steps on `/srv/footballhome` (see below).
-- Never point compose at production Postgres.
+- Do **not** claim a UI change is live on footballhome.org until prod ship ran.
+- Never point a dev compose file at the production Postgres volume.
 
 ## Cursor Cloud specific instructions
 

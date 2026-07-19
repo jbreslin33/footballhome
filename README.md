@@ -18,24 +18,27 @@ This README is only the repo entrypoint. Project-wide rules live in
 
 ## How We Develop
 
-Canonical path for every coder (jbreslin, lbreslin, Cursor agents):
+Canonical path for **jbreslin** and **lbreslin** (same server, isolated stacks):
 
-1. **Dev stack** with a **prod DB mirror** + LeagueApps sync (`localhost:3000`)
-2. Change code → verify on the mirror → open PR → merge to `main`
-3. On the **live server** (`/srv/footballhome`): `git pull`, then
-   `sudo make migrate` / `sudo make deploy` as needed
+```bash
+# once on the host
+cd /srv/footballhome && sudo make backup && sudo make dev-mirror
+sudo make dev-init DEV=jbreslin          # or DEV=lbreslin
+cd /srv/footballhome-dev-jbreslin
+sudo make dev-up DEV=jbreslin
+sudo make dev-restore-mirror DEV=jbreslin
+# browse http://SERVER:3010  (lbreslin → :3020)
+# → Membership → Sync now → code → PR → merge
 
-```text
-prod:  make backup && make dev-mirror   →  share backups/dev-mirror.sql.gz
-dev:   make up && make restore-mirror   →  Members Sync → code → PR
-prod:  git pull && make migrate|deploy  →  footballhome.org updated
+# ship to live
+cd /srv/footballhome && git pull && sudo make migrate && sudo make deploy
 ```
 
-Full chain, Cursor Cloud secrets, and ship checklist:
-[`docs/dev-environment.md`](docs/dev-environment.md).  
-Print the live-ship steps anytime: `./scripts/dev/ship-to-live.sh`
+Slots/ports: `config/dev-slots.conf`.  
+Full guide: [`docs/dev-environment.md`](docs/dev-environment.md).  
+Ship checklist: `./scripts/dev/ship-to-live.sh`
 
-Merging to GitHub alone does **not** update the live site.
+Merging to GitHub alone does **not** update footballhome.org.
 
 ## Runtime Stack
 

@@ -1,170 +1,157 @@
 # How We Develop
 
-This is the **canonical** Football Home development workflow for every
-coder (including Cursor Cloud agents). Do not invent a parallel path.
+Canonical workflow for every coder (**jbreslin**, **lbreslin**, agents).
 
 ```text
-┌─────────────────────┐     dump      ┌──────────────────────────┐
-│  Production host    │ ───────────►  │  Dev stack (you / lbreslin│
-│  /srv/footballhome  │  DEV_MIRROR   │  Cursor Cloud or local)  │
-│  footballhome.org   │               │  own Postgres volume     │
-└─────────┬───────────┘               └────────────┬─────────────┘
-          │                                        │
-          │  git pull + deploy                     │  code + test
-          │                                        │  PR → merge main
-          ◄────────────────────────────────────────┘
+┌──────────────────────┐   dump    ┌─────────────────────────────────┐
+│ Production           │ ────────► │ Per-dev stack on SAME server    │
+│ /srv/footballhome    │           │ /srv/footballhome-dev-<slug>    │
+│ footballhome.org     │           │ <slug>.dev.footballhome.org     │
+│ :3000 / :3001 / :5432│           │ own ports + own DB volume       │
+└──────────┬───────────┘           └───────────────┬─────────────────┘
+           │                                       │
+           │  git pull + migrate/deploy            │  code + browser test
+           │                                       │  PR → merge main
+           ◄───────────────────────────────────────┘
 ```
 
 ## Rules
 
-1. **Develop against a DB mirror + live LeagueApps sync** — not an empty DB,
-   and not by pointing compose at prod Postgres.
-2. **Ship only through GitHub `main`**, then update the production host.
-3. **Never commit** plaintext `env`, dumps under `backups/`, or other secrets.
-
-Editing directly on production is an emergency escape hatch, not the default.
-
-## Roles
-
-| Who / where | Does |
-|---|---|
-| Prod host maintainer | Refresh mirror dumps; pull/deploy after merges |
-| Developer (local or Cursor) | Restore mirror, run stack, change code, open PR |
-| GitHub `main` | Source of truth for code |
+1. **Test on your personal server stack** (DB mirror + LeagueApps sync).
+2. **Ship only via GitHub `main`**, then update **prod** checkout.
+3. Never point a dev compose file at the production Postgres volume.
+4. Do not commit plaintext `env` or `backups/`.
 
 ---
 
-## A. Production host — publish a fresh mirror
+## A. Slots (you + lbreslin)
 
-Run on `/srv/footballhome` whenever devs need fresher data (weekly is fine;
-before big membership work is better).
+Ports live in [`config/dev-slots.conf`](../config/dev-slots.conf):
+
+| DEV | Frontend | Backend | DB | URL |
+|---|---|---|---|---|
+| `jbreslin` | 3010 | 3011 | 5440 | `https://jbreslin.dev.footballhome.org` |
+| `lbreslin` | 3020 | 3021 | 5442 | `https://lbreslin.dev.footballhome.org` |
+
+Add a row for each new person, pick free ports, commit.
+
+---
+
+## B. One-time: create your stack (on the server)
+
+SSH to the host. From **production** checkout:
 
 ```bash
 cd /srv/footballhome
+git pull origin main
+
+# Fresh mirror for all devs
 sudo make backup
 sudo make dev-mirror
-# → backups/dev-mirror.sql.gz  (gitignored)
+
+# Your personal checkout + stack
+sudo make dev-init DEV=jbreslin          # or DEV=lbreslin
+cd /srv/footballhome-dev-jbreslin
+sudo make dev-up DEV=jbreslin
+sudo make dev-restore-mirror DEV=jbreslin
+
+# Optional pretty URL (needs DNS A record → this host)
+sudo make dev-nginx DEV=jbreslin
+# sudo certbot --nginx -d jbreslin.dev.footballhome.org
 ```
 
-Give developers that file (scp, shared private storage, etc.), **or** host it
-privately and set Cursor Runtime Secret `DEV_MIRROR_URL` to a signed URL.
+**Browse immediately (no DNS):** `http://<server-ip>:3010` (jbreslin) or `:3020` (lbreslin).
 
-Also ensure teammates have the `age` passphrase so they can decrypt `env.age`
-(`AGE_PASSPHRASE` as a Cursor Runtime Secret, or interactive `./setup.sh`).
+Then Membership → **Sync now** (LeagueApps → your mirror DB → UI).
+
+`dev-init` creates a git worktree under `/srv/footballhome-dev-<slug>` and
+symlinks `env` from prod so LeagueApps keys work.
 
 ---
 
-## B. Developer machine / Cursor Cloud — boot the stack
-
-### B1. One-time Cursor Environment (Cloud)
-
-1. [Cloud Agents → Environments](https://cursor.com/dashboard/cloud-agents)
-2. Environment for `jbreslin33/footballhome`
-3. Runtime Secrets:
-   - `AGE_PASSPHRASE` (required)
-   - `DEV_MIRROR_URL` (recommended — points at `dev-mirror.sql.gz`)
-4. First agent run: stack comes up via `.cursor/environment.json`
-5. Confirm mirror restore + `http://localhost:3000`
-6. **Save snapshot** — all future agents use this environment
-
-Repo files: `.cursor/environment.json`, `.cursor/Dockerfile`,
-`scripts/dev/cloud-*.sh`, `AGENTS.md`.
-
-### B2. Local clone
+## C. Day-to-day (each developer)
 
 ```bash
-git clone https://github.com/jbreslin33/footballhome.git
-cd footballhome
-./setup.sh                          # decrypts env.age (prompts or AGE_PASSPHRASE=)
-# place backups/dev-mirror.sql.gz   # from prod, or set DEV_MIRROR_URL
-sudo make up                        # Podman on Linux; Docker works too
-make restore-mirror
-# open http://localhost:3000
-```
+ssh you@server
+cd /srv/footballhome-dev-jbreslin
 
-Cursor Cloud uses Docker; the production host uses Podman. The Makefile
-auto-detects `ENGINE` / `COMPOSE`.
+git fetch origin
+git checkout -b cursor/my-feature-xxxx origin/main   # or pull latest
+# edit frontend/backend…
 
-### B3. Every day on the mirror
+# if backend C++ changed:
+sudo make dev-up DEV=jbreslin          # rebuilds that slot's backend
 
-```bash
-# stack already up
-make restore-mirror                 # when you grabbed a newer dump
-# UI: Membership → Sync now        # LeagueApps → mirror DB → render
-# edit code, verify on :3000
-git checkout -b cursor/my-change-xxxx
-# … commit …
-git push -u origin HEAD
+# browser: http://SERVER:3010  or  https://jbreslin.dev.footballhome.org
+# Membership → Sync now when you need fresher LA data
+
+git add … && git commit && git push -u origin HEAD
 # open PR → merge to main
 ```
 
-LeagueApps remains membership source of truth for **freshness** after restore
-(`CONVENTIONS.md` LA → DB → render).
-
----
-
-## C. Ship to the live server (whole chain)
-
-After the PR is **merged to `main`**, on the production host:
+Refresh mirror when data feels stale (prod maintainer):
 
 ```bash
 cd /srv/footballhome
-git fetch origin main
-git checkout main
-git pull origin main
-
-# Schema changes?
-sudo make migrate
-
-# Backend C++ changed?
-sudo make deploy
-
-# Frontend-only JS/CSS/HTML: bind-mounted — usually live after pull.
-# Hard-refresh the browser (cache-control is already no-store).
-
-sudo make ps                        # confirm containers healthy
-# smoke: open https://footballhome.org → Membership → Sync now
+sudo make backup && sudo make dev-mirror
+cd /srv/footballhome-dev-jbreslin
+sudo make dev-restore-mirror DEV=jbreslin
 ```
 
-Cheat sheet (prints the same steps):
+Stop slot (keeps DB volume):
 
 ```bash
+sudo make dev-down DEV=jbreslin
+# wipe that slot's DB: sudo make dev-down DEV=jbreslin DEV_WIPE=1
+```
+
+---
+
+## D. Ship to live (after PR merges)
+
+```bash
+cd /srv/footballhome
+git pull origin main
+sudo make migrate          # if migrations landed
+sudo make deploy           # if backend C++ changed
+# frontend-only: pull + hard refresh usually enough
+```
+
+Or print the checklist: `./scripts/dev/ship-to-live.sh`
+
+| Change | Prod action |
+|---|---|
+| Frontend only | `git pull` + hard refresh |
+| Migration | `git pull` → `sudo make migrate` |
+| Backend C++ | `git pull` → `sudo make deploy` |
+
+Dev stacks are **not** updated by shipping prod — each person `git pull`s
+their own `/srv/footballhome-dev-<slug>` when they want new `main`.
+
+---
+
+## E. Commands cheat sheet
+
+```bash
+make dev-init DEV=<slug>
+make dev-up DEV=<slug>
+make dev-restore-mirror DEV=<slug>
+make dev-nginx DEV=<slug>
+make dev-ps DEV=<slug>
+make dev-down DEV=<slug>              # DEV_WIPE=1 drops volume
+make backup && make dev-mirror        # on prod checkout
 ./scripts/dev/ship-to-live.sh
 ```
 
-| Change type | Prod action |
-|---|---|
-| Frontend JS/HTML/CSS only | `git pull` (+ hard refresh) |
-| New SQL migration | `git pull` → `sudo make migrate` |
-| Backend C++ | `git pull` → `sudo make deploy` |
-| Both | `git pull` → `migrate` → `deploy` |
-| Fresh mirror for other devs | `sudo make backup && sudo make dev-mirror` |
+Compose file: `docker-compose.dev.yml` (db + backend + frontend only — no
+sim / podman.sock, so it won’t fight production’s sim orchestrator).
 
 ---
 
-## D. What “done” means
+## F. Cursor Cloud / laptop (optional)
 
-A change is **not live** until section C has run on `/srv/footballhome`.
-Merging to GitHub alone does not update footballhome.org.
+Still supported via `.cursor/environment.json` and local Docker, but the
+**default team path is per-dev stacks on the server** so everyone gets a
+real browser URL without DinD on a laptop.
 
-A change is **verified in dev** only when exercised on the mirror stack at
-`localhost:3000` (or equivalent), not by staring at production.
-
----
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| Live site still old after merge | Section C not run on prod |
-| Dev Members empty / wrong | Restore mirror; then Sync now |
-| `AGE_PASSPHRASE unset` | Add Cursor secret or run `./setup.sh` |
-| OAuth login fails on cloud | Separate redirect URI, or use API bearer JWT |
-| Accidentally on prod DB | Stop — compose must use local volume only |
-
-## Related
-
-- `README.md` — short entry + common commands  
-- `CONVENTIONS.md` — LA → DB → render and repo rules  
-- `AGENTS.md` — Cursor Cloud agent runbook  
-- `Makefile` — `backup`, `dev-mirror`, `restore-mirror`, `deploy`, `migrate`  
+See also: `AGENTS.md`, `README.md`, `CONVENTIONS.md`.
