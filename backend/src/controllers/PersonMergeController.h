@@ -11,10 +11,13 @@
 // Routes (registered under prefix "/api/persons"):
 //   POST /api/persons/merge             body: { laPersonId, gmPersonId }
 //   POST /api/persons/unmerge/:mergeId
+//   POST /api/persons/link-scraped      body: { keepPersonId, scrapedPersonId }
+//   GET  /api/persons/:personId/scraped-match-candidates
 //   GET  /api/persons/:personId/merges
 //
-// All routes require a Bearer Authorization header (presence check only;
-// JWT verification is the same TODO as the other Phase 1/2 controllers).
+// link-scraped is the admin-confirmed identity-resolution path: keep a
+// Lighthouse person, drop a scraped-only person (no open LA membership),
+// reusing PersonMerge so the link is reversible via unmerge.
 // ────────────────────────────────────────────────────────────────────────────
 class PersonMergeController : public Controller {
 public:
@@ -29,15 +32,21 @@ private:
     Response handleMerge   (const Request& request);
     Response handleUnmerge (const Request& request);
     Response handleListMerges(const Request& request);
+    Response handleScrapedMatchCandidates(const Request& request);
+    Response handleLinkScraped(const Request& request);
 
     // Path parsers — return false if the path doesn't match.
     bool extractMergeId (const std::string& path, int& mergeId) const;
     bool extractPersonId(const std::string& path, int& personId) const;
+    bool extractScrapedCandidatesPersonId(const std::string& path, int& personId) const;
 
     // Body parser for {laPersonId, gmPersonId}.  Returns false if either
     // is missing or not a valid integer.
     bool extractMergeBody(const std::string& body,
                           int& laPersonId, int& gmPersonId) const;
+    // Body parser for { keepPersonId, scrapedPersonId }.
+    bool extractLinkScrapedBody(const std::string& body,
+                                int& keepPersonId, int& scrapedPersonId) const;
 
     // Same X-User-Id header convention as PersonOverrideController.
     std::optional<int> extractActingUserId(const Request& request) const;

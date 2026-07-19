@@ -67,20 +67,47 @@ Open follow-ups:
 
 ## Club Admin People
 
-Club Admin should default to Lighthouse people only. Membership belongs under
-People because `person_la_memberships` is attached to `persons`, but the Members
-board remains a focused workflow inside the broader People area.
+Club Admin defaults to Lighthouse people only (`person_la_memberships`
+with `ended_at IS NULL`). Membership, accounts (`users`), players,
+coaches/admins, roster connections (`roster_assignments`), and RSVP
+eligibility all hang off `persons`. Scraped league/opponent-only people
+stay in System Admin / League Data until an identity-resolution workflow
+links them to a Lighthouse person.
+
+Shipped:
+
+- People Directory workbench (`GET /api/admin/people`) — one row per
+  Lighthouse person with contact, account, player, staff, membership,
+  roster teams, RSVP teams, duplicate signals, and data-issue flags.
+- Lens views under People: Accounts, Players, Coaches & Admins,
+  Duplicates / Merges, Data Issues (same endpoint, `?view=` filter).
+- Members screen is a slim LeagueApps membership mirror (name + DOB +
+  View/Edit per card via shared `PersonActions`). Contact, onboarding,
+  and the LeagueApps Manager member link live on the Person profile.
+- **Person View/Edit is the consistent player drill-down** across
+  Members, People Directory, Payments, Rosters, RSVP boards, Lineups,
+  and Game Day. Lineup zone/RSVP controls stay local; identity work
+  goes through Person (`PersonActions` → `PersonScreen`).
+- Person profile loads by LA user id or `persons.id`
+  (`GET /api/persons/la/:id` or `GET /api/persons/:personId`).
+- Person profile includes the linked FH `users` account and merges
+  legacy `rosters` with LA `roster_assignments`, plus an Open in
+  LeagueApps deep-link to `memberDetails`.
+- Duplicates lens groups shared-email / name+DOB collisions and can
+  call `/api/persons/merge` (keep/drop). Person profile can unmerge.
+- Person profile RSVP card toggles grants via
+  `PUT /api/mens-roster/rsvp-eligibility` (same set as the board).
+- Admin-confirmed scraped identity linking:
+  `GET /api/persons/:id/scraped-match-candidates` +
+  `POST /api/persons/link-scraped` (reuses PersonMerge; reversible).
+- RSVP eligibility catalog includes Men, Women (901/918/919), Boys
+  (911/916/917/920/921), and Girls (922/923 Practice/Pickup pools).
+- Migration `232-non-mens-practice-pickup-pools.sql` creates the
+  non-mens Practice/Pickup pools + gcal aliases + eligibility backfill.
 
 Open follow-ups:
 
-- Add a People Directory workbench that shows one row per Lighthouse `persons`
-  record with contact, account, player, coach/admin, membership, billing,
-  roster, and RSVP status.
-- Add Accounts, Players, Coaches & Admins, Duplicates / Merges, and Data Issues
-  views under People as focused lenses on the same person graph.
-- Keep scraped league/opponent-only people out of Club Admin by default. Put
-  those records in System Admin / League Data until an identity-resolution
-  workflow links them to a Lighthouse person.
-- Add a later identity-resolution workflow for connecting current Lighthouse
-  people to scraped league identities with admin-confirmed matches, not
-  automatic name-only merges.
+- Girls competitive/home teams beyond Practice/Pickup when a dedicated
+  girls selection board exists (girls currently play on boys youth teams).
+- Auto-grant Women Practice/Pickup from a future `domain='womens'`
+  roster board (today seeded from open LA memberships).

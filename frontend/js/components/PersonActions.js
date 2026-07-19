@@ -3,25 +3,13 @@
 // One shared component that renders the standard action-button
 // cluster attached to every "person card" across the app:
 //
-//   👤 PROFILE   → open the universal PersonScreen (view mode)
-//   ✎  EDIT     → open the universal PersonScreen (edit mode intent)
+//   View   → open the universal PersonScreen (view mode)
+//   Edit   → open the universal PersonScreen (edit mode intent)
 //
-// Rationale (2026-07-14, user directive):
-//   The frontend has ~49 different person-card implementations across
-//   ~22 screens (rosters, RSVP boards, payments, members, admin,
-//   team dashboards, …).  Every one had its own click behaviour —
-//   some navigated to `#person`, some opened a modal, some did
-//   nothing at all.  That inconsistency made it impossible to give
-//   the operator a single mental model ("click here to drill in").
-//
-//   Rather than rewrite every card's markup at once, this component
-//   ships just the ACTION ROW as a string of HTML — each card owns
-//   its own visual layout and drops the row wherever it fits.  A
-//   single delegated document-level click handler routes every
-//   `.person-action` button through `navigation.goTo('person', …)`
-//   without any per-screen wiring.  Idempotent, capture-phase so it
-//   beats screen-local `.br-profile` / `.mr-profile` handlers, safe
-//   to install as many times as you want.
+// Product rule: clicking a player/person on any admin screen uses
+// this same View/Edit interface (PersonScreen) — not per-screen
+// modals or one-off profile UIs.  Lineup/zone/RSVP controls stay
+// local; identity and person-graph edits go through Person.
 //
 // Usage
 // ─────
@@ -40,19 +28,16 @@
 // ───────
 //   returnTo       screen slug to hint the person page's back-nav
 //                  (defaults to whatever the browser history knows).
-//   showProfile    include the 👤 PROFILE button (default true).
-//   showEdit       include the ✎ EDIT button (default true).
+//   showProfile    include the View button (default true).
+//   showEdit       include the Edit button (default true).
 //   size           'sm' (default; matches roster chip sizing) | 'md'
 //   btnBaseStyle   extra CSS appended to each button's inline style.
 //
 // EDIT mode note
 // ──────────────
-//   PersonScreen doesn't currently render a distinct edit tab — the
-//   EDIT button forwards `edit=1` in the nav params and PersonScreen
-//   will pick that up when the edit UI ships.  For now both buttons
-//   land on the same profile page; the EDIT button still gives the
-//   operator a consistent affordance to "change this person's info"
-//   and lets us add the edit UI later without touching 20+ callers.
+//   PersonScreen remembers `edit=1` from the Edit button.  Both
+//   buttons land on the same Person hub; Edit signals the operator
+//   intent to change FH-owned fields as that surface grows.
 
 class PersonActions {
   static buttonsHtml(person, opts = {}) {
@@ -85,15 +70,15 @@ class PersonActions {
     if (showProfile) {
       parts.push(
         `<button type="button" class="person-action" data-action="profile" ${keyAttrs}`
-        + ` title="Open profile for ${PersonActions.esc(name)}"`
-        + ` style="${base} background:#0891b2; color:#fff;">👤 PROFILE</button>`
+        + ` title="View ${PersonActions.esc(name)}"`
+        + ` style="${base} background:#0891b2; color:#fff;">View</button>`
       );
     }
     if (showEdit) {
       parts.push(
         `<button type="button" class="person-action" data-action="edit" ${keyAttrs}`
         + ` title="Edit ${PersonActions.esc(name)}"`
-        + ` style="${base} background:#f59e0b; color:#111;">✎ EDIT</button>`
+        + ` style="${base} background:#f59e0b; color:#111;">Edit</button>`
       );
     }
     return parts.join('');

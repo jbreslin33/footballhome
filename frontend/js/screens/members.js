@@ -1,6 +1,9 @@
-// MembersScreen — Club-admin view of everyone currently on an
-// active- or paused-variant LA sub-program (Men / Women / Boys / Girls,
-// or their paused counterparts).
+// MembersScreen — Club-admin mirror of LeagueApps membership buckets
+// (Men / Women / Boys / Girls × Club/Pickup, plus paused variants).
+//
+// Purpose: see who's in which bucket, search, open Person.  Cards are
+// intentionally slim (name + DOB + View).  Contact, onboarding, and the
+// LeagueApps manager deep-link live on the Person profile.
 //
 // Data source: `GET /api/admin/{paused-,}members?variant=…`, which reads
 // the `person_la_memberships` junction table populated by PersonLinker.
@@ -252,10 +255,9 @@ class MembersScreen extends Screen {
         return;
       }
       // Card body → open the PersonScreen for that member.  Guard so
-      // clicks on the action buttons (Email / Text / Call / Save) or
-      // any inner anchor stay in-place — they've already returned above
-      // if handled, but anchors haven't.  Also skip if there's no LA
-      // user id (rare: manual FH-member with no LA alias).
+      // clicks on the View button (or any inner control) stay with their
+      // own handler.  Also skip if there's no LA user id (rare: manual
+      // FH-member with no LA alias).
       const anchorInside = e.target.closest('a, button, input, textarea, select, label');
       if (anchorInside) return;
       const card = e.target.closest('.paused-card[data-la-user-id]');
@@ -1163,112 +1165,25 @@ class MembersScreen extends Screen {
     groupsEl.innerHTML = html || `<div style="opacity:0.6; text-align:center; padding: var(--space-4);">No matches.</div>`;
   }
 
-  _renderCard(m, sinceLabel, groupVariant) {
-    const name  = `${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)';
-    const email = m.email || '';
-    const phone = m.phone || '';
-    const phoneDigits = this._phoneDigits(phone);
-    const dob   = m.dob || '';
-    const joined = m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '';
-    // Dormancy chip — sits right under the name so it's the first
-    // thing an admin scans.  See `_activityChip` for the color bands.
-    const activityChip = this._activityChip(m);
-    // Cross-membership chip — flags whether the person is ALSO
-    // enrolled in the sibling program (pickup ↔ active) within the
-    // same category (men / women / boys / girls).  Admin manually
-    // copies active members into pickup on the LA console; this chip
-    // is the visual signal for who still needs that copy.
-    const crossChip = this._crossMembershipChip(m, groupVariant);
-    // "Next step" widget — sends the right onboarding message for the
-    // person's current state (no account / never logged in / done).
-    // See `_onboardingSection` for the copy per state.
-    const onboardingSection = this._onboardingSection(m);
-    // Youth (boys/girls) usually have contact info on the parent row;
-    // the API returns the parent value when the child has none and flags
-    // it so we can label it clearly.
-    const emailViaParent = !!m.email_via_parent;
-    const phoneViaParent = !!m.phone_via_parent;
-    const parentTag = m.parent_name
-      ? ` <span style="opacity:0.6; font-size:0.7rem;">(via ${this._esc(m.parent_name)})</span>`
-      : ` <span style="opacity:0.6; font-size:0.7rem;">(via parent)</span>`;
-
+  // Slim membership mirror card: name + DOB + View/Edit.  Contact,
+  // onboarding, and LeagueApps actions live on the Person profile.
+  _renderCard(m, _sinceLabel, _groupVariant) {
+    const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)';
+    const dob  = m.dob || '';
     const dobLine = dob
-      ? `<div style="font-size:0.8rem; opacity:0.75;">🎂 ${this._esc(this._fmtDob(dob))}</div>`
-      : '';
-    const emailLine = email
-      ? `<div style="font-size:0.85rem; opacity:0.85;">✉ ${this._esc(email)}${emailViaParent ? parentTag : ''}</div>`
-      : '';
-    const phoneLine = phone
-      ? `<div style="font-size:0.85rem; opacity:0.85;">📞 ${this._esc(this._fmtPhone(phone))}${phoneViaParent ? parentTag : ''}</div>`
-      : '';
+      ? `<div style="font-size:0.8rem; opacity:0.75;">${this._esc(this._fmtDob(dob))}</div>`
+      : `<div style="font-size:0.8rem; opacity:0.45;">No DOB</div>`;
 
-    const buttons = [];
-    if (email) {
-      // Gmail compose (not mailto:) so it opens in the operator's Gmail
-      // tab rather than Apple Mail / Outlook.  Pre-fill a short body
-      // that asks the recipient to reply — that reply is what opens
-      // a communication channel even for people who aren't on FH yet.
-      const subject = `Football Home — checking in`;
-      const body    =
-        `Hey ${(m.first_name || '').trim() || 'there'},\n\n` +
-        `Just checking in — please reply and let me know you got this so ` +
-        `I know I have the right email for you.\n\n` +
-        `--James Breslin\nSoccer Director at Lighthouse`;
-      const gmailUrl =
-        `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
-        `&to=${encodeURIComponent(email)}` +
-        `&su=${encodeURIComponent(subject)}` +
-        `&body=${encodeURIComponent(body)}`;
-      buttons.push(
-        `<a href="${gmailUrl}" target="_blank" rel="noopener"
-             style="padding:5px 10px; border-radius:4px; text-decoration:none;
-                    background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
-                    font-size:0.75rem; font-weight:700;">✉️ Email</a>`
-      );
-    }
-    if (phoneDigits && m.phone_sms !== false) {
-      buttons.push(
-        `<a href="sms:${phoneDigits}"
-             style="padding:5px 10px; border-radius:4px; text-decoration:none;
-                    background:#3a2e05; color:#fde68a; border:1px solid #d97706;
-                    font-size:0.75rem; font-weight:700;">💬 Text</a>`
-      );
-    }
-    if (phoneDigits && m.phone_call !== false) {
-      buttons.push(
-        `<a href="tel:${phoneDigits}"
-             style="padding:5px 10px; border-radius:4px; text-decoration:none;
-                    background:#1f2937; color:#e5e7eb; border:1px solid #4b5563;
-                    font-size:0.75rem; font-weight:700;">📞 Call</a>`
-      );
-    }
-    // "Save" → download a single-contact vCard.  Always offered (even
-    // when there's no phone/email) so admins can still stash a name +
-    // DOB + person_id reference in their phone book.
-    if (m.person_id) {
-      buttons.push(
-        `<button type="button" data-vcard-person-id="${m.person_id}"
-                 style="padding:5px 10px; border-radius:4px; cursor:pointer;
-                        background:#111827; color:#c7d2fe; border:1px solid #4b5563;
-                        font-size:0.75rem; font-weight:700;">👤 Save</button>`
-      );
-    }
-    // 👤 PROFILE / ✎ EDIT — shared component (2026-07-14).  Same
-    // markup + behaviour as every other person card on the site.
-    if (window.PersonActions) {
-      const actions = window.PersonActions.buttonsHtml(
-        {
-          leagueAppsUserId: m.leagueapps_user_id,
-          personId:         m.person_id,
-          firstName:        m.first_name,
-          fullName:         `${m.first_name || ''} ${m.last_name || ''}`.trim(),
-        },
-        { returnTo: 'members', size: 'md' }
-      );
-      if (actions) buttons.push(actions);
-    }
-    const btnRow = buttons.length
-      ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${buttons.join('')}</div>`
+    const viewEdit = (window.PersonActions)
+      ? window.PersonActions.buttonsHtml(
+          {
+            leagueAppsUserId: m.leagueapps_user_id,
+            personId:         m.person_id,
+            firstName:        m.first_name,
+            fullName:         name,
+          },
+          { returnTo: 'members', size: 'md' }
+        )
       : '';
 
     return `
@@ -1281,16 +1196,10 @@ class MembersScreen extends Screen {
             display:flex; flex-direction:column; gap:4px;
             ${m.leagueapps_user_id ? 'cursor:pointer;' : ''}">
         <div style="font-weight:600;">${this._esc(name)}</div>
-        ${activityChip}
-        ${crossChip}
-        ${onboardingSection}
         ${dobLine}
-        ${emailLine}
-        ${phoneLine}
-        ${joined ? `<div style="font-size:0.75rem; opacity:0.6; margin-top: var(--space-1);">
-                      ${this._esc(sinceLabel)} ${this._esc(joined)}
-                    </div>` : ''}
-        ${btnRow}
+        ${viewEdit
+          ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${viewEdit}</div>`
+          : ''}
       </div>
     `;
   }

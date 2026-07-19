@@ -1493,9 +1493,17 @@ class GameDayLineupScreen extends Screen {
           style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
           📋 Edit Attendance
         </button>
+        <button class="pitch-popover-item" data-action="view-person" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          View Person
+        </button>
+        <button class="pitch-popover-item" data-action="edit-person" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          Edit Person
+        </button>
         <button class="pitch-popover-item" data-action="edit-player" data-player-id="${playerId}"
           style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
-          ✏️ Edit Player
+          Lineup details…
         </button>
       </div>
     `);
@@ -1529,6 +1537,12 @@ class GameDayLineupScreen extends Screen {
       } else if (action === 'attendance') {
         this._dismissPitchPopover();
         this.openAttendancePopup(pid);
+      } else if (action === 'view-person') {
+        this._dismissPitchPopover();
+        this._openPersonProfile(pid, false);
+      } else if (action === 'edit-person') {
+        this._dismissPitchPopover();
+        this._openPersonProfile(pid, true);
       } else if (action === 'edit-player') {
         this._dismissPitchPopover();
         this.openEditPlayerModal(pid);
@@ -1656,9 +1670,17 @@ class GameDayLineupScreen extends Screen {
           style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
           📋 Edit Attendance
         </button>
+        <button class="pitch-popover-item" data-action="view-person" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          View Person
+        </button>
+        <button class="pitch-popover-item" data-action="edit-person" data-player-id="${playerId}"
+          style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
+          Edit Person
+        </button>
         <button class="pitch-popover-item" data-action="edit-player" data-player-id="${playerId}"
           style="display:block;width:100%;text-align:left;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:0.82rem;">
-          ✏️ Edit Player
+          Lineup details…
         </button>
       </div>
     `);
@@ -1685,6 +1707,12 @@ class GameDayLineupScreen extends Screen {
       } else if (action === 'attendance') {
         this._dismissPitchPopover();
         this.openAttendancePopup(pid);
+      } else if (action === 'view-person') {
+        this._dismissPitchPopover();
+        this._openPersonProfile(pid, false);
+      } else if (action === 'edit-person') {
+        this._dismissPitchPopover();
+        this._openPersonProfile(pid, true);
       } else if (action === 'edit-player') {
         this._dismissPitchPopover();
         this.openEditPlayerModal(pid);
@@ -1844,6 +1872,21 @@ class GameDayLineupScreen extends Screen {
     document.body.appendChild(overlay);
   }
 
+  // Open the shared Person View/Edit hub for a lineup player.
+  _openPersonProfile(playerId, edit) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return;
+    const params = { returnTo: 'game-day-lineup' };
+    if (player.leagueAppsUserId) params.leagueAppsUserId = player.leagueAppsUserId;
+    if (player.personId) params.personId = player.personId;
+    if (edit) params.edit = '1';
+    if (!params.leagueAppsUserId && !params.personId) {
+      this.showLineupToast('No person record linked to this player yet');
+      return;
+    }
+    this.navigation.goTo('person', params);
+  }
+
   openEditPlayerModal(playerId, slotIndex) {
     this._dismissPitchPopover(); // clear any stale popover before opening modal
     const player = this.getPlayerById(playerId);
@@ -1916,6 +1959,7 @@ class GameDayLineupScreen extends Screen {
             <h3 style="margin:0;font-size:1rem;">${eligIcon} ${player.firstName || ''} ${player.lastName || ''}</h3>
             <div style="font-size:0.75rem;color:var(--text-muted);">${pos} · #${player.jerseyNumber || '—'} · ${prac} sessions</div>
             <div style="font-size:0.72rem;color:var(--text-muted);">Reg: ${registeredStr} · Paid: ${paidStr} · DOB: ${dobStr}</div>
+            <div id="ep-person-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;"></div>
           </div>
           <button class="attendance-close-btn">✕</button>
         </div>
@@ -2070,6 +2114,21 @@ class GameDayLineupScreen extends Screen {
       </div>
     `;
     document.body.appendChild(overlay);
+
+    // Shared View/Edit → PersonScreen (identity / contact / memberships).
+    // Lineup-specific controls stay in this modal.
+    const actionsHost = overlay.querySelector('#ep-person-actions');
+    if (actionsHost && window.PersonActions && (player.personId || player.leagueAppsUserId)) {
+      actionsHost.innerHTML = window.PersonActions.buttonsHtml(
+        {
+          leagueAppsUserId: player.leagueAppsUserId,
+          personId: player.personId,
+          firstName: player.firstName,
+          fullName: `${player.firstName || ''} ${player.lastName || ''}`.trim(),
+        },
+        { returnTo: 'game-day-lineup', size: 'md' }
+      );
+    }
 
     // Load sessions async
     const matchId = this.navigation?.context?.match?.id;

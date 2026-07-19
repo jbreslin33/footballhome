@@ -19,8 +19,9 @@ Task:
 
 ## Members Screen UI
 
-Use for the admin Members screen layout, filters, sorting, grouped member cards,
-bulk actions, and person drill-down links.
+Use for the admin Members screen layout, filters, sorting, slim grouped member
+cards (name + DOB + View), bulk actions, and person drill-down links. Contact
+and LeagueApps Manager links live on Person profile, not on Members cards.
 
 ```text
 /add frontend/js/screens/members.js frontend/js/components/FilterBar.js frontend/js/components/PersonActions.js frontend/js/screens/person.js
@@ -51,4 +52,12 @@ contact, billing, or roster details.
 
 ```text
 /add frontend/js/screens/person.js backend/src/controllers/PersonProfileController.cpp backend/src/controllers/PersonProfileController.h backend/src/services/LaProgramSync.cpp backend/src/services/LaProgramSync.h
+```
+## People Directory / Workbench
+
+Use for Club Admin People Directory and the Accounts / Players / Staff /
+Duplicates / Data Issues lenses on the Lighthouse person graph.
+
+```text
+/add frontend/js/screens/people-workbench.js frontend/js/screens/admin-club.js backend/src/controllers/AdminLaBackfillController.cpp backend/src/controllers/AdminLaBackfillController.h docs/operations-design.md
 ```

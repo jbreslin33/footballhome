@@ -1559,6 +1559,16 @@ class PaymentsScreen extends Screen {
     const statusPill = this.renderFlagStatusPill(f.status);
     const actions = f.status === 'pending'
       ? `
+        ${window.PersonActions
+          ? window.PersonActions.buttonsHtml(
+              {
+                leagueAppsUserId: f.laUserId,
+                firstName: f.firstName,
+                fullName: `${f.firstName || ''} ${f.lastName || ''}`.trim(),
+              },
+              { returnTo: 'payments', size: 'sm' }
+            )
+          : ''}
         <button data-open-la-user="${f.laUserId}"
                 style="padding:4px 8px; border-radius:4px; cursor:pointer;
                        background:#1e3a8a; color:#dbeafe; border:1px solid #3b82f6;
@@ -1573,7 +1583,16 @@ class PaymentsScreen extends Screen {
                        font-size:0.7rem; font-weight:700;">🚫 Cancel</button>`
       : (f.resolvedNote
           ? `<span style="opacity:0.7; font-size:0.75rem;">${this.escape(f.resolvedNote)}</span>`
-          : '');
+          : (window.PersonActions
+              ? window.PersonActions.buttonsHtml(
+                  {
+                    leagueAppsUserId: f.laUserId,
+                    firstName: f.firstName,
+                    fullName: `${f.firstName || ''} ${f.lastName || ''}`.trim(),
+                  },
+                  { returnTo: 'payments', size: 'sm' }
+                )
+              : ''));
     return `
       <tr style="border-bottom:1px solid var(--border-color, #374151);">
         <td style="padding:6px 10px;">${statusPill}</td>

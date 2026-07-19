@@ -1,4 +1,7 @@
-// AdminClubScreen - Placeholder for club-level administration
+// AdminClubScreen — Lighthouse club operations hub.
+// Person is the hub: users, roster connections, and RSVP ability all
+// hang off persons.  Scraped league/opponent-only people stay in
+// System Admin until linked into a Lighthouse membership.
 class AdminClubScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -16,18 +19,17 @@ class AdminClubScreen extends Screen {
           <span style="font-size: 3rem; display: block; margin-bottom: var(--space-2);">🏢</span>
           <h2 id="club-name-display" style="margin-bottom: var(--space-2);">Club Name</h2>
           <p style="opacity: 0.8;">
-            Admin level: <strong>CLUB</strong>
+            Admin level: <strong>CLUB</strong> · Lighthouse people only
           </p>
         </div>
 
         <!-- ── Club-admin funnel · People → Billing → Roster → RSVP Eligibility ──
-             These four sections gate each other in order:
-               1. People       — who is this Lighthouse human, and are they in the club?
-               2. Billing      — if so, are you paid up?
+             Person is the hub. Everything below derives from persons:
+               1. People       — who is this Lighthouse human? (users, roles, links)
+               2. Billing      — if a member, are they paid up?
                3. Roster       — assigned to which team?
-               4. RSVP Elig.   — which team events can you RSVP for?
-             Layout below this block (Team Dashboards, Media, Structure, misc)
-             is still being evaluated and is intentionally left below the fold. -->
+               4. RSVP Elig.   — which team events can they RSVP for?
+             Outside-club / scraped people: System Admin. -->
 
         <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">🎯 Recruitment</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -37,7 +39,7 @@ class AdminClubScreen extends Screen {
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">👥 People</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 1 — Lighthouse human records: membership, accounts, player/coach/admin roles, duplicates, and data issues. Scraped league/opponent people stay in System Admin unless linked to Lighthouse.
+          Step 1 — Lighthouse <code>persons</code> and everything that derives from them: users, players, coaches/admins, membership, roster connections, RSVP ability. Scraped league/opponent people stay in System Admin unless linked.
         </p>
         <div id="section-people"></div>
 
@@ -151,31 +153,31 @@ class AdminClubScreen extends Screen {
     };
 
     // ── People ─────────────────────────────────────────────────────────
-    // Lighthouse human-record workbench.  Membership is a person-connected
-    // workflow, so the existing Members board lives here.  Scraped league
-    // or opponent-only identities belong in System Admin / League Data until
-    // they are explicitly linked to a Lighthouse person.
+    // Person hub for Lighthouse only.  Directory shows the full graph
+    // (account / player / staff / roster / RSVP).  Members remains the
+    // LA membership workflow.  Lens tiles open the same workbench with
+    // a focused filter.  Scraped/opponent people: System Admin.
     const peopleGroups = [
       {
-        label: 'Membership',
+        label: 'Person hub',
         tiles: [
-          { id: 'members', icon: '👥', label: 'Members', description: 'LA-synced board — Active / Pickup toggle, filter by Men / Women / Boys / Girls' },
+          { id: 'people-directory', icon: '🧾', label: 'People Directory', description: 'One row per Lighthouse person — account, player, staff, roster teams, RSVP eligibility' },
+          { id: 'members', icon: '👥', label: 'Members', description: 'LA membership board — Active / Pickup, Men / Women / Boys / Girls' },
         ],
       },
       {
-        label: 'Records',
+        label: 'Derived from persons',
         tiles: [
-          { id: 'people-directory', icon: '🧾', label: 'People Directory', description: 'One Lighthouse person graph: contact, account, player, coach/admin, membership, and roster links' },
-          { id: 'accounts', icon: '🔐', label: 'Accounts', description: 'Login users connected to Lighthouse persons' },
-          { id: 'player-records', icon: '⚽', label: 'Players', description: 'Lighthouse player records and role flags, separate from scraped opponent players' },
-          { id: 'staff-records', icon: '🧢', label: 'Coaches & Admins', description: 'Coach, team admin, and club admin assignments' },
+          { id: 'accounts', icon: '🔐', label: 'Accounts', description: 'users rows linked to Lighthouse persons — sign-in and activity' },
+          { id: 'player-records', icon: '⚽', label: 'Players', description: 'players linked to Lighthouse persons (not scraped opponents)' },
+          { id: 'staff-records', icon: '🧢', label: 'Coaches & Admins', description: 'Coach, team admin, and club admin roles on Lighthouse people' },
         ],
       },
       {
         label: 'Cleanup',
         tiles: [
-          { id: 'person-duplicates', icon: '🔎', label: 'Duplicates / Merges', description: 'Find duplicate Lighthouse people and review merge history' },
-          { id: 'person-data-issues', icon: '⚠️', label: 'Data Issues', description: 'Missing links, bad contacts, account gaps, roster mismatches, and membership sync issues' },
+          { id: 'person-duplicates', icon: '🔎', label: 'Duplicates / Merges', description: 'Shared emails, matching name+DOB, and merge history' },
+          { id: 'person-data-issues', icon: '⚠️', label: 'Data Issues', description: 'Missing contact, account, LA alias, roster, or RSVP links' },
         ],
       },
     ];
@@ -209,7 +211,7 @@ class AdminClubScreen extends Screen {
     // glance who's eligible for which mens-selection team (APSL,
     // Liga 1, Liga 2, Adult, Practice, Pickup) and toggle grants.
     const rsvpTiles = [
-      { id: 'rsvp-eligibility', icon: '🗳️', label: 'RSVP Eligibility', description: 'Debug board — who can RSVP for Pickup, Practice, APSL, Liga 1, Liga 2, Adult (tabs: All / Men / Women / Boys / Girls)' },
+      { id: 'rsvp-eligibility', icon: '🗳️', label: 'RSVP Eligibility', description: 'Men / Women / Boys / Girls — home teams plus Practice & Pickup pools' },
     ];
     renderInto('#section-rsvp', rsvpTiles);
 
@@ -327,48 +329,43 @@ class AdminClubScreen extends Screen {
       return;
     }
 
-    if (section === 'people-directory') {
-      this.navigation.goTo('members', {
-        clubId: this.clubId,
-        clubName: this.clubName,
-        variant: 'active',
-        mode: 'people',
-        title: 'People Directory',
-        subtitle: 'One Lighthouse person graph: contact, account, player, coach/admin, membership, and roster links',
-      });
-      return;
-    }
-
-    if (['accounts', 'player-records', 'staff-records', 'person-duplicates', 'person-data-issues'].includes(section)) {
+    if (section === 'people-directory' ||
+        ['accounts', 'player-records', 'staff-records', 'person-duplicates', 'person-data-issues'].includes(section)) {
       const viewMap = {
+        'people-directory': {
+          title: 'People Directory',
+          subtitle: 'Lighthouse person graph',
+          description: 'One row per Lighthouse person with account, player, staff, roster, and RSVP links.',
+          action: 'directory',
+        },
         accounts: {
           title: 'Accounts',
-          subtitle: 'Login users and their linked Lighthouse person records',
-          description: 'Review account ownership, sign-in state, and person-link quality before broader person cleanup.',
+          subtitle: 'Login users linked to Lighthouse persons',
+          description: 'Review account ownership, sign-in state, and activity on Lighthouse people.',
           action: 'accounts',
         },
         'player-records': {
           title: 'Players',
-          subtitle: 'Lighthouse player records and role flags',
-          description: 'Inspect player-role state separately from scraped opponent-player data.',
+          subtitle: 'Lighthouse player records',
+          description: 'Player rows linked to Lighthouse persons — not scraped opponent-only players.',
           action: 'players',
         },
         'staff-records': {
           title: 'Coaches & Admins',
-          subtitle: 'Coach, team admin, and club admin assignments',
-          description: 'Review staff roles, assignments, and current access relationships.',
+          subtitle: 'Staff roles on Lighthouse people',
+          description: 'Coach, team admin, and club admin assignments derived from persons.',
           action: 'staff',
         },
         'person-duplicates': {
           title: 'Duplicates / Merges',
-          subtitle: 'Duplicate Lighthouse people and review merge history',
-          description: 'Find likely duplicates and prepare merge decisions with existing person links intact.',
+          subtitle: 'Duplicate signals and merge history',
+          description: 'Shared emails, matching name+DOB, and people touched by merges.',
           action: 'duplicates',
         },
         'person-data-issues': {
           title: 'Data Issues',
-          subtitle: 'Missing links, bad contacts, roster mismatches, and membership sync issues',
-          description: 'Use this workbench to triage the common data-quality exceptions that block clean person workflows.',
+          subtitle: 'Broken person-graph links',
+          description: 'Missing contact, account, LA alias, roster assignment, or RSVP eligibility.',
           action: 'data-issues',
         },
       };

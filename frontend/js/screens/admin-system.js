@@ -14,7 +14,7 @@ class AdminSystemScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🛡️ Super Admin Dashboard</h1>
-        <p class="subtitle">System-level administration</p>
+          <p class="subtitle">System-level administration · league/scraped data outside Club Admin</p>
       </div>
       
       <div class="admin-container">
@@ -1059,7 +1059,7 @@ class AdminSystemScreen extends Screen {
       content.innerHTML = `
         <div class="players-view">
           <h2>🏃 Players Report</h2>
-          <p class="subtitle">View all players by league, season, and team</p>
+          <p class="subtitle">Scraped league/opponent players by league, season, and team. Lighthouse club people live under Club Admin → People.</p>
           
           <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
             <div>

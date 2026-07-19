@@ -178,6 +178,17 @@ void AdminLaBackfillController::registerRoutes(Router& router,
     router.post(prefix + "/membership/sync", [this](const Request& req) {
         return this->handleSyncMemberships(req);
     });
+
+    // GET /api/admin/people
+    // One row per current Lighthouse person (open person_la_memberships).
+    // Bundles the person graph Club Admin needs: account (users), player,
+    // coach/admin roles, roster_assignments teams, RSVP eligibility, and
+    // data-issue / duplicate signals.  DB-only — Membership sync is owned
+    // by /api/admin/membership/sync + Members; this endpoint reads the
+    // derived FH tables that hang off persons.
+    router.get(prefix + "/people", [this](const Request& req) {
+        return this->handlePeople(req);
+    });
 }
 
 // TEMPORARY probe endpoint: GET /api/admin/la-probe?path=<la-path>
@@ -775,6 +786,324 @@ Response AdminLaBackfillController::handleMembers(const Request& request, const 
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     return respondMembers(resolveVariant(request, "active"), resolveCategory(request));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/admin/people
+//
+// Club Admin People Directory — one row per current Lighthouse person.
+// A person is in scope iff they have an open person_la_memberships row
+// (ended_at IS NULL).  Scraped league/opponent-only people are intentionally
+// excluded; System Admin owns those until they are linked into LA membership.
+//
+// Optional filters (applied server-side so lens tiles stay cheap):
+//   ?view=directory|accounts|players|staff|duplicates|data-issues
+//   ?category=men|women|boys|girls
+//   ?q=<search substring against name/email/phone>
+//
+// Response:
+//   { success, data: { view, total, people: [ { person_id, … } ] } }
+// ────────────────────────────────────────────────────────────────────────────
+Response AdminLaBackfillController::handlePeople(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    std::string view = request.getQueryParam("view");
+    for (auto& ch : view) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    if (view.empty()) view = "directory";
+    if (view != "directory" && view != "accounts" && view != "players" &&
+        view != "staff" && view != "duplicates" && view != "data-issues") {
+        view = "directory";
+    }
+
+    const std::string category = resolveCategory(request);
+    std::string q = request.getQueryParam("q");
+    // Bound search length; lowercased for ILIKE.
+    if (q.size() > 80) q = q.substr(0, 80);
+    for (auto& ch : q) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+
+    try {
+        auto* db = Database::getInstance();
+
+        // One flat query: Lighthouse persons + derived graph columns.
+        // Roster / RSVP hang off leagueapps_user_id via external_person_aliases.
+        // Staff roles hang off users → admins / coaches.person_id.
+        auto rows = db->query(
+            "WITH lighthouse AS ( "
+            "  SELECT DISTINCT plm.person_id "
+            "    FROM person_la_memberships plm "
+            "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "   WHERE plm.ended_at IS NULL "
+            "     AND ($1 = '' OR lp.category = $1) "
+            "), primary_email AS ( "
+            "  SELECT DISTINCT ON (pem.person_id) pem.person_id, pem.email "
+            "    FROM person_emails pem "
+            "   ORDER BY pem.person_id, pem.is_primary DESC NULLS LAST, "
+            "            pem.created_at DESC NULLS LAST, pem.id DESC "
+            "), primary_phone AS ( "
+            "  SELECT DISTINCT ON (pph.person_id) pph.person_id, pph.phone_number "
+            "    FROM person_phones pph "
+            "   ORDER BY pph.person_id, pph.is_primary DESC NULLS LAST, "
+            "            pph.created_at DESC NULLS LAST, pph.id DESC "
+            "), membership_summary AS ( "
+            "  SELECT plm.person_id, "
+            "         string_agg(DISTINCT lp.category, ',' ORDER BY lp.category) AS categories, "
+            "         string_agg(DISTINCT lp.variant,  ',' ORDER BY lp.variant)  AS variants, "
+            "         bool_or(lp.variant = 'active') AS has_active, "
+            "         bool_or(lp.variant = 'pickup') AS has_pickup "
+            "    FROM person_la_memberships plm "
+            "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "   WHERE plm.ended_at IS NULL "
+            "   GROUP BY plm.person_id "
+            "), roster_summary AS ( "
+            "  SELECT epa.person_id, "
+            "         count(*)::int AS roster_count, "
+            "         string_agg(t.name, ', ' ORDER BY t.name) AS roster_teams "
+            "    FROM roster_assignments ra "
+            "    JOIN external_person_aliases epa "
+            "      ON epa.provider = 'leagueapps' "
+            "     AND epa.external_user_id = ra.leagueapps_user_id::text "
+            "    JOIN teams t ON t.id = ra.team_id "
+            "   WHERE ra.removed_at IS NULL "
+            "   GROUP BY epa.person_id "
+            "), rsvp_summary AS ( "
+            "  SELECT epa.person_id, "
+            "         count(*)::int AS rsvp_count, "
+            "         string_agg(t.name, ', ' ORDER BY t.name) AS rsvp_teams "
+            "    FROM player_rsvp_eligibility pre "
+            "    JOIN external_person_aliases epa "
+            "      ON epa.provider = 'leagueapps' "
+            "     AND epa.external_user_id = pre.leagueapps_user_id::text "
+            "    JOIN teams t ON t.id = pre.team_id "
+            "   GROUP BY epa.person_id "
+            "), coach_flag AS ( "
+            "  SELECT DISTINCT c.person_id "
+            "    FROM coaches c "
+            "    JOIN lighthouse lh ON lh.person_id = c.person_id "
+            "), club_admin_flag AS ( "
+            "  SELECT DISTINCT u.person_id "
+            "    FROM club_admins ca "
+            "    JOIN admins a ON a.id = ca.admin_id "
+            "    JOIN users u ON u.id = a.user_id "
+            "    JOIN lighthouse lh ON lh.person_id = u.person_id "
+            "   WHERE ca.ended_at IS NULL "
+            "), team_admin_flag AS ( "
+            "  SELECT DISTINCT u.person_id "
+            "    FROM team_admins ta "
+            "    JOIN admins a ON a.id = ta.admin_id "
+            "    JOIN users u ON u.id = a.user_id "
+            "    JOIN lighthouse lh ON lh.person_id = u.person_id "
+            "   WHERE ta.ended_at IS NULL "
+            "), email_dupes AS ( "
+            "  SELECT lower(pem.email) AS email_key "
+            "    FROM person_emails pem "
+            "    JOIN lighthouse lh ON lh.person_id = pem.person_id "
+            "   WHERE pem.email IS NOT NULL AND pem.email <> '' "
+            "   GROUP BY lower(pem.email) "
+            "  HAVING count(DISTINCT pem.person_id) > 1 "
+            "), name_dupes AS ( "
+            "  SELECT lower(pe.first_name) AS fn, lower(pe.last_name) AS ln, "
+            "         pe.birth_date AS dob "
+            "    FROM persons pe "
+            "    JOIN lighthouse lh ON lh.person_id = pe.id "
+            "   WHERE pe.first_name IS NOT NULL AND pe.last_name IS NOT NULL "
+            "     AND pe.birth_date IS NOT NULL "
+            "   GROUP BY lower(pe.first_name), lower(pe.last_name), pe.birth_date "
+            "  HAVING count(*) > 1 "
+            "), merge_touch AS ( "
+            "  SELECT DISTINCT x.person_id "
+            "    FROM ( "
+            "      SELECT kept_person_id AS person_id FROM person_merges "
+            "       WHERE reversed_at IS NULL "
+            "      UNION ALL "
+            "      SELECT dropped_person_id FROM person_merges "
+            "       WHERE reversed_at IS NULL "
+            "    ) x "
+            "    JOIN lighthouse lh ON lh.person_id = x.person_id "
+            ") "
+            "SELECT pe.id AS person_id, pe.first_name, pe.last_name, "
+            "       TO_CHAR(pe.birth_date, 'YYYY-MM-DD') AS dob, "
+            "       COALESCE(pem.email, '') AS email, "
+            "       COALESCE(pph.phone_number, '') AS phone, "
+            "       epa.external_user_id AS leagueapps_user_id, "
+            "       u.id AS user_id, "
+            "       (u.id IS NOT NULL) AS has_fh_account, "
+            "       COALESCE(u.is_active, FALSE) AS account_active, "
+            "       CASE WHEN u.last_seen_at IS NULL THEN NULL "
+            "            ELSE GREATEST(0, "
+            "                 EXTRACT(EPOCH FROM (NOW() - u.last_seen_at))::bigint / 86400) "
+            "       END AS days_since_activity, "
+            "       pl.id AS player_id, "
+            "       (cf.person_id IS NOT NULL) AS is_coach, "
+            "       (caf.person_id IS NOT NULL) AS is_club_admin, "
+            "       (taf.person_id IS NOT NULL) AS is_team_admin, "
+            "       COALESCE(ms.categories, '') AS membership_categories, "
+            "       COALESCE(ms.variants, '') AS membership_variants, "
+            "       COALESCE(ms.has_active, FALSE) AS has_active, "
+            "       COALESCE(ms.has_pickup, FALSE) AS has_pickup, "
+            "       COALESCE(rs.roster_count, 0) AS roster_count, "
+            "       COALESCE(rs.roster_teams, '') AS roster_teams, "
+            "       COALESCE(vs.rsvp_count, 0) AS rsvp_count, "
+            "       COALESCE(vs.rsvp_teams, '') AS rsvp_teams, "
+            "       (ed.email_key IS NOT NULL) AS email_duplicate, "
+            "       (nd.fn IS NOT NULL) AS name_dob_duplicate, "
+            "       (mt.person_id IS NOT NULL) AS has_merge_history "
+            "  FROM lighthouse lh "
+            "  JOIN persons pe ON pe.id = lh.person_id "
+            "  LEFT JOIN primary_email pem ON pem.person_id = pe.id "
+            "  LEFT JOIN primary_phone pph ON pph.person_id = pe.id "
+            "  LEFT JOIN external_person_aliases epa "
+            "         ON epa.person_id = pe.id "
+            "        AND epa.provider = 'leagueapps' "
+            "        AND epa.external_user_id IS NOT NULL "
+            "        AND epa.external_user_id <> '' "
+            "  LEFT JOIN users u ON u.person_id = pe.id "
+            "  LEFT JOIN players pl ON pl.person_id = pe.id "
+            "  LEFT JOIN membership_summary ms ON ms.person_id = pe.id "
+            "  LEFT JOIN roster_summary rs ON rs.person_id = pe.id "
+            "  LEFT JOIN rsvp_summary vs ON vs.person_id = pe.id "
+            "  LEFT JOIN coach_flag cf ON cf.person_id = pe.id "
+            "  LEFT JOIN club_admin_flag caf ON caf.person_id = pe.id "
+            "  LEFT JOIN team_admin_flag taf ON taf.person_id = pe.id "
+            "  LEFT JOIN email_dupes ed ON ed.email_key = lower(pem.email) "
+            "  LEFT JOIN name_dupes nd "
+            "         ON nd.fn = lower(pe.first_name) "
+            "        AND nd.ln = lower(pe.last_name) "
+            "        AND nd.dob IS NOT DISTINCT FROM pe.birth_date "
+            "  LEFT JOIN merge_touch mt ON mt.person_id = pe.id "
+            " WHERE ($2 = '' OR "
+            "        lower(pe.first_name) LIKE '%' || $2 || '%' OR "
+            "        lower(pe.last_name)  LIKE '%' || $2 || '%' OR "
+            "        lower(COALESCE(pem.email, '')) LIKE '%' || $2 || '%' OR "
+            "        COALESCE(pph.phone_number, '') LIKE '%' || $2 || '%') "
+            " ORDER BY pe.last_name, pe.first_name",
+            { category, q });
+
+        std::ostringstream out;
+        out << "{\"success\":true,\"data\":{"
+            << "\"view\":" << jsonEscape(view) << ","
+            << "\"category\":" << jsonEscape(category) << ","
+            << "\"people\":[";
+
+        bool first = true;
+        std::size_t total = 0;
+        std::size_t accounts = 0, players = 0, staff = 0, duplicates = 0, issues = 0;
+
+        for (const auto& row : rows) {
+            const bool hasAccount = !row["has_fh_account"].is_null() && row["has_fh_account"].as<bool>();
+            const bool hasPlayer  = !row["player_id"].is_null();
+            const bool isCoach    = !row["is_coach"].is_null() && row["is_coach"].as<bool>();
+            const bool isClubAdm  = !row["is_club_admin"].is_null() && row["is_club_admin"].as<bool>();
+            const bool isTeamAdm  = !row["is_team_admin"].is_null() && row["is_team_admin"].as<bool>();
+            const bool isStaff    = isCoach || isClubAdm || isTeamAdm;
+            const bool emailDup   = !row["email_duplicate"].is_null() && row["email_duplicate"].as<bool>();
+            const bool nameDup    = !row["name_dob_duplicate"].is_null() && row["name_dob_duplicate"].as<bool>();
+            const bool mergeHist  = !row["has_merge_history"].is_null() && row["has_merge_history"].as<bool>();
+            const bool isDup      = emailDup || nameDup || mergeHist;
+
+            const std::string email = row["email"].c_str();
+            const std::string phone = row["phone"].c_str();
+            const std::string laUid = row["leagueapps_user_id"].is_null()
+                ? "" : row["leagueapps_user_id"].c_str();
+            const int rosterCount = row["roster_count"].as<int>();
+            const int rsvpCount   = row["rsvp_count"].as<int>();
+
+            // Data-issue signals — missing contact/links that block clean
+            // Club Admin workflows (onboarding, roster, RSVP).
+            std::vector<std::string> issueList;
+            if (email.empty()) issueList.push_back("missing_email");
+            if (phone.empty()) issueList.push_back("missing_phone");
+            if (laUid.empty()) issueList.push_back("missing_la_alias");
+            if (!hasAccount) issueList.push_back("no_fh_account");
+            if (!hasPlayer) issueList.push_back("no_player");
+            if (!laUid.empty() && rosterCount == 0) issueList.push_back("no_roster");
+            if (!laUid.empty() && rosterCount > 0 && rsvpCount == 0) {
+                issueList.push_back("no_rsvp");
+            }
+            const bool hasIssues = !issueList.empty();
+
+            if (hasAccount) ++accounts;
+            if (hasPlayer)  ++players;
+            if (isStaff)    ++staff;
+            if (isDup)      ++duplicates;
+            if (hasIssues)  ++issues;
+
+            // Lens filter — keep totals for all rows above, then decide
+            // whether this row belongs in the requested view.
+            bool include = true;
+            if (view == "accounts") include = hasAccount;
+            else if (view == "players") include = hasPlayer;
+            else if (view == "staff") include = isStaff;
+            else if (view == "duplicates") include = isDup;
+            else if (view == "data-issues") include = hasIssues;
+            if (!include) continue;
+
+            if (!first) out << ",";
+            first = false;
+            ++total;
+
+            const std::string firstName = row["first_name"].is_null() ? "" : row["first_name"].c_str();
+            const std::string lastName  = row["last_name"].is_null()  ? "" : row["last_name"].c_str();
+            const std::string dob       = row["dob"].is_null()        ? "" : row["dob"].c_str();
+            const std::string daysStr   = row["days_since_activity"].is_null()
+                ? std::string("null")
+                : std::to_string(row["days_since_activity"].as<long long>());
+            const bool accountActive = !row["account_active"].is_null() && row["account_active"].as<bool>();
+            const bool hasActive     = !row["has_active"].is_null() && row["has_active"].as<bool>();
+            const bool hasPickup     = !row["has_pickup"].is_null() && row["has_pickup"].as<bool>();
+
+            out << "{"
+                <<   "\"person_id\":" << row["person_id"].as<int>()
+                << ",\"first_name\":" << jsonEscape(firstName)
+                << ",\"last_name\":"  << jsonEscape(lastName)
+                << ",\"dob\":"        << jsonEscape(dob)
+                << ",\"email\":"      << jsonEscape(email)
+                << ",\"phone\":"      << jsonEscape(phone)
+                << ",\"leagueapps_user_id\":" << (laUid.empty() ? std::string("null") : jsonEscape(laUid))
+                << ",\"user_id\":" << (row["user_id"].is_null()
+                    ? "null" : std::to_string(row["user_id"].as<int>()))
+                << ",\"has_fh_account\":" << (hasAccount ? "true" : "false")
+                << ",\"account_active\":" << (accountActive ? "true" : "false")
+                << ",\"days_since_activity\":" << daysStr
+                << ",\"player_id\":" << (row["player_id"].is_null()
+                    ? "null" : std::to_string(row["player_id"].as<int>()))
+                << ",\"is_coach\":" << (isCoach ? "true" : "false")
+                << ",\"is_club_admin\":" << (isClubAdm ? "true" : "false")
+                << ",\"is_team_admin\":" << (isTeamAdm ? "true" : "false")
+                << ",\"membership_categories\":" << jsonEscape(row["membership_categories"].c_str())
+                << ",\"membership_variants\":" << jsonEscape(row["membership_variants"].c_str())
+                << ",\"has_active\":" << (hasActive ? "true" : "false")
+                << ",\"has_pickup\":" << (hasPickup ? "true" : "false")
+                << ",\"roster_count\":" << rosterCount
+                << ",\"roster_teams\":" << jsonEscape(row["roster_teams"].c_str())
+                << ",\"rsvp_count\":" << rsvpCount
+                << ",\"rsvp_teams\":" << jsonEscape(row["rsvp_teams"].c_str())
+                << ",\"email_duplicate\":" << (emailDup ? "true" : "false")
+                << ",\"name_dob_duplicate\":" << (nameDup ? "true" : "false")
+                << ",\"has_merge_history\":" << (mergeHist ? "true" : "false")
+                << ",\"issues\":[";
+            for (std::size_t i = 0; i < issueList.size(); ++i) {
+                if (i) out << ",";
+                out << jsonEscape(issueList[i]);
+            }
+            out << "]}";
+        }
+
+        out << "],\"total\":" << total
+            << ",\"counts\":{"
+            <<   "\"accounts\":" << accounts
+            <<  ",\"players\":" << players
+            <<  ",\"staff\":" << staff
+            <<  ",\"duplicates\":" << duplicates
+            <<  ",\"data_issues\":" << issues
+            << "}}}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "AdminLaBackfillController::handlePeople error: "
+                  << e.what() << std::endl;
+        return internalErr(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

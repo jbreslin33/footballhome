@@ -1127,6 +1127,8 @@ class MensRosterScreen extends Screen {
       { id: 122, label: 'Adult',    color: '#a78bfa' },
       { id: 908, label: 'Practice', color: '#f59e0b' },
       { id: 909, label: 'Pickup',   color: '#10b981' },
+      // Women / boys grants are editable on the RSVP Eligibility board
+      // and person profile; mens roster modal stays mens-focused.
     ];
 
     // Fetch current set first so we can pre-check the boxes.

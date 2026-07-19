@@ -15,6 +15,8 @@
 // Navigation
 // ──────────
 //   this.navigation.goTo('person', { leagueAppsUserId: '12345' })
+//   this.navigation.goTo('person', { personId: 42 })
+//   this.navigation.goTo('person', { personId: 42, edit: '1' })
 //
 // A `returnTo` hint lets the back button pop to the caller's screen.
 // If absent we fall back to the browser's own history.
@@ -24,6 +26,7 @@ class PersonScreen extends Screen {
     this.navigation = navigation;
     this.auth = auth;
     this.leagueAppsUserId = null;
+    this.personId = null;
     this._returnTo = null;
     this._returnToParams = null;
   }
@@ -57,6 +60,12 @@ class PersonScreen extends Screen {
             <h2 class="ps-card-title">Contact</h2>
             <div id="ps-emails-wrap"></div>
             <div id="ps-phones-wrap" style="margin-top: var(--space-3);"></div>
+          </section>
+
+          <!-- FH login account (users row linked to this person) -->
+          <section class="ps-card" id="ps-account-card">
+            <h2 class="ps-card-title">Football Home account</h2>
+            <div id="ps-account-body"></div>
           </section>
 
           <!-- LA memberships (current + past).  Past rows render greyed
@@ -122,6 +131,19 @@ class PersonScreen extends Screen {
             <h2 class="ps-card-title">Data quality</h2>
             <div id="ps-overrides-wrap"></div>
             <div id="ps-merges-wrap" style="margin-top: var(--space-3);"></div>
+          </section>
+
+          <!-- Scraped league/opponent identity candidates (admin-confirmed link). -->
+          <section class="ps-card" id="ps-scraped-card">
+            <h2 class="ps-card-title">
+              Scraped identity matches
+              <span id="ps-scraped-count" class="ps-count"></span>
+            </h2>
+            <p style="margin: 0 0 var(--space-2); font-size:0.85rem; opacity:0.7;">
+              Name matches against scraped league/opponent people with no LA membership.
+              Confirm to merge their roster onto this Lighthouse person (reversible).
+            </p>
+            <div id="ps-scraped-list"></div>
           </section>
 
         </div>
@@ -262,23 +284,54 @@ class PersonScreen extends Screen {
     div.querySelector('#ps-open-payments')
       .addEventListener('click', () => this._openPayments());
 
+    // Inline RSVP toggles + unmerge actions (delegation — chips are
+    // rebuilt on every _render).
+    div.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-rsvp-team-id]');
+      if (chip) {
+        e.preventDefault();
+        const teamId = Number(chip.getAttribute('data-rsvp-team-id'));
+        const want = chip.getAttribute('data-elig-on') !== '1';
+        this._toggleRsvp(teamId, want, chip);
+        return;
+      }
+      const unmergeBtn = e.target.closest('[data-unmerge-id]');
+      if (unmergeBtn) {
+        e.preventDefault();
+        this._unmerge(Number(unmergeBtn.getAttribute('data-unmerge-id')), unmergeBtn);
+        return;
+      }
+      const linkBtn = e.target.closest('[data-link-scraped]');
+      if (linkBtn) {
+        e.preventDefault();
+        this._linkScraped(Number(linkBtn.getAttribute('data-link-scraped')), linkBtn);
+      }
+    });
+
     return div;
   }
 
   onEnter(params) {
-    // Accept both { leagueAppsUserId } and { laUserId } for flexibility.
-    const raw = params?.leagueAppsUserId ?? params?.laUserId ?? null;
-    this.leagueAppsUserId = raw != null ? String(raw) : null;
+    // Accept LA user id and/or personId.  PersonActions may send either
+    // (or both).  Prefer the explicit LA id when present; otherwise load
+    // by persons.id via GET /api/persons/:personId.
+    const rawLa = params?.leagueAppsUserId ?? params?.laUserId ?? null;
+    this.leagueAppsUserId = rawLa != null && String(rawLa) !== ''
+      ? String(rawLa)
+      : null;
+    const rawPid = params?.personId ?? null;
+    this.personId = rawPid != null && String(rawPid) !== ''
+      ? String(rawPid)
+      : null;
     this._returnTo = params?.returnTo || null;
     this._returnToParams = params?.returnToParams || null;
-    // `edit=1` is set by the shared PersonActions ✎ EDIT button.  We
-    // don't have a distinct edit tab yet — for now we just remember
-    // the intent so a future edit UI can pick it up without any of
-    // the ~20 callers needing to change how they navigate here.
+    // `edit=1` is set by the shared PersonActions Edit button.  Both
+    // View and Edit land on this same Person hub; Edit remembers the
+    // operator intent as editable controls expand here.
     this._editMode = params?.edit === '1' || params?.edit === true;
 
-    if (!this.leagueAppsUserId) {
-      this._showError('No leagueAppsUserId provided');
+    if (!this.leagueAppsUserId && !this.personId) {
+      this._showError('No leagueAppsUserId or personId provided');
       return;
     }
     this._load();
@@ -318,13 +371,24 @@ class PersonScreen extends Screen {
     loading.style.display = 'block';
 
     try {
-      const res = await this.auth.fetch(
-        `/api/persons/la/${encodeURIComponent(this.leagueAppsUserId)}`);
+      const url = this.leagueAppsUserId
+        ? `/api/persons/la/${encodeURIComponent(this.leagueAppsUserId)}`
+        : `/api/persons/${encodeURIComponent(this.personId)}`;
+      const res = await this.auth.fetch(url);
       if (!res.ok) {
         const txt = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status}${txt ? ' — ' + txt : ''}`);
       }
       const data = await res.json();
+      // Keep both keys in sync so RSVP / LA deep-links work after a
+      // personId-only entry.
+      if (data.leagueAppsUserId != null && data.leagueAppsUserId !== '') {
+        this.leagueAppsUserId = String(data.leagueAppsUserId);
+      }
+      if (data.personId != null) {
+        this.personId = String(data.personId);
+        this._personId = data.personId;
+      }
       this._render(data);
       loading.style.display = 'none';
       body.style.display = 'block';
@@ -349,25 +413,66 @@ class PersonScreen extends Screen {
     const p = data.person || {};
     const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || '(unnamed)';
 
+    this._personId = data.personId || null;
+    this._rsvpElig = new Set(
+      (data.rsvpEligibility || []).map((e) => Number(e.teamId)).filter(Boolean)
+    );
+
     // Update the header bar.
     this.element.querySelector('#person-title').textContent = name;
+    const laPart = data.leagueAppsUserId
+      ? `LA user ${data.leagueAppsUserId}`
+      : 'No LA alias';
     this.element.querySelector('#person-subtitle').textContent =
-      `LA user ${data.leagueAppsUserId} · FH person #${data.personId}`;
+      `${laPart} · FH person #${data.personId}${this._editMode ? ' · Edit' : ''}`;
 
     // Header card.
     this._renderHeaderCard(data);
     this._renderContactCard(data.contact || { emails: [], phones: [] });
+    this._renderAccountCard(data.account || null);
     this._renderMembershipsCard(data.memberships || []);
     this._renderTeamsCard(data.teams || []);
     this._renderRsvpCard(data.rsvpEligibility || [], data.upcomingMatches || []);
     this._renderBillingCard(data.billing, data.chargeFlags || []);
     this._renderRecentRsvpsCard(data.recentRsvps || []);
     this._renderDataQualityCard(data.overrides || [], data.merges || []);
+    this._loadScrapedCandidates(data.personId);
+  }
+
+  // Mens-selection + women/boys teams — keep in sync with
+  // rsvp-eligibility.js / MensRosterController.cpp `kEligibilityTeams`.
+  _rsvpTeams() {
+    return [
+      { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
+      { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
+      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6', category: 'men' },
+      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa', category: 'men' },
+      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
+      { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
+      { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
+      { id: 918, short: 'Pract.', label: 'Women Practice', color: '#f59e0b', category: 'women' },
+      { id: 919, short: 'Pickup', label: 'Women Pickup',   color: '#10b981', category: 'women' },
+      { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
+      { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
+      { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
+      { id: 920, short: 'Pract.', label: 'Boys Practice', color: '#f59e0b', category: 'boys' },
+      { id: 921, short: 'Pickup', label: 'Boys Pickup',   color: '#10b981', category: 'boys' },
+      { id: 922, short: 'Pract.', label: 'Girls Practice', color: '#f59e0b', category: 'girls' },
+      { id: 923, short: 'Pickup', label: 'Girls Pickup',   color: '#10b981', category: 'girls' },
+    ];
+  }
+
+  // Matches Payments / MensRoster LA deep-link scheme.  Hardcoded site
+  // id mirrors PaymentsScreen.laSiteId (41983) — UI-only value; backend
+  // canonical is LEAGUEAPPS_SITE_ID in env.
+  _laManagerUrl(uid) {
+    return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
   }
 
   _renderHeaderCard(data) {
     const p = data.person || {};
     const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim() || '(unnamed)';
+    const laUid = data.leagueAppsUserId || this.leagueAppsUserId;
 
     const pills = [];
     if (p.fhMemberAt) {
@@ -398,9 +503,20 @@ class PersonScreen extends Screen {
       ['Updated', this._fmtDateTime(p.updatedAt)],
     ];
 
+    const laLink = laUid
+      ? `<div style="margin-top: var(--space-3);">
+           <a class="btn btn-secondary btn-sm" target="_blank" rel="noopener"
+              href="${this._escape(this._laManagerUrl(laUid))}"
+              title="Open this member in LeagueApps Manager">
+             Open in LeagueApps →
+           </a>
+         </div>`
+      : '';
+
     const html = `
       <p class="ps-name">${this._escape(fullName)}</p>
       <div class="ps-meta">${pills.join('') || '<span class="ps-row-value muted">No status</span>'}</div>
+      ${laLink}
       <div style="margin-top: var(--space-3);">
         ${rows.map(([k, v]) => `
           <div class="ps-row">
@@ -444,6 +560,42 @@ class PersonScreen extends Screen {
 
     this.element.querySelector('#ps-emails-wrap').innerHTML = emailsHtml;
     this.element.querySelector('#ps-phones-wrap').innerHTML = phonesHtml;
+  }
+
+  _renderAccountCard(account) {
+    const el = this.element.querySelector('#ps-account-body');
+    if (!el) return;
+    if (!account) {
+      el.innerHTML = `<div class="ps-empty">No Football Home login account linked</div>`;
+      return;
+    }
+    const active = account.isActive !== false;
+    el.innerHTML = `
+      <div class="ps-row">
+        <span class="ps-row-label">User id</span>
+        <span class="ps-row-value">#${this._escape(String(account.userId))}</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Status</span>
+        <span class="ps-row-value">
+          <span class="ps-pill ${active ? 'member' : 'dropped'}">
+            ${active ? 'active' : 'inactive'}
+          </span>
+        </span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Last seen</span>
+        <span class="ps-row-value">${this._fmtDateTime(account.lastSeenAt)}</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Last login</span>
+        <span class="ps-row-value">${this._fmtDateTime(account.lastLoginAt)}</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-row-label">Account created</span>
+        <span class="ps-row-value">${this._fmtDateTime(account.createdAt)}</span>
+      </div>
+    `;
   }
 
   _renderMembershipsCard(memberships) {
@@ -550,6 +702,9 @@ class PersonScreen extends Screen {
       const jersey = t.jerseyNumber
         ? `<span class="ps-jersey">#${this._escape(String(t.jerseyNumber))}</span>`
         : '';
+      const source = t.source === 'assignment'
+        ? ' · LA roster'
+        : (t.source === 'legacy' ? ' · legacy roster' : '');
       const dateBit = past
         ? `left ${this._fmtDate(t.leftAt)}`
         : `since ${this._fmtDate(t.joinedAt)}`;
@@ -557,7 +712,7 @@ class PersonScreen extends Screen {
         <div class="ps-line ${past ? 'past' : ''}">
           <span class="ps-line-primary">
             ${jersey}${this._escape(t.teamName)}
-            <span style="opacity:0.6; font-weight:400;">${context}</span>
+            <span style="opacity:0.6; font-weight:400;">${context}${source}</span>
           </span>
           <span class="ps-line-meta">${dateBit}</span>
         </div>`;
@@ -571,29 +726,53 @@ class PersonScreen extends Screen {
     const cntEl      = this.element.querySelector('#ps-rsvp-count');
     const upCntEl    = this.element.querySelector('#ps-upcoming-count');
 
-    cntEl.textContent   = eligibility.length ? String(eligibility.length) : '';
+    const granted = this._rsvpElig || new Set(
+      (eligibility || []).map((e) => Number(e.teamId)).filter(Boolean)
+    );
+    cntEl.textContent   = granted.size ? String(granted.size) : '';
     upCntEl.textContent = upcoming.length    ? String(upcoming.length)    : '';
 
-    if (!eligibility.length) {
-      teamsEl.innerHTML = `<div class="ps-empty">
-        No RSVP eligibility grants
-      </div>`;
-    } else {
-      teamsEl.innerHTML = eligibility.map(e => {
-        const bits = [];
-        if (e.clubName)     bits.push(this._escape(e.clubName));
-        if (e.divisionName) bits.push(this._escape(e.divisionName));
-        const context = bits.length ? ` · ${bits.join(' · ')}` : '';
-        return `
-          <div class="ps-line">
-            <span class="ps-line-primary">
-              ${this._escape(e.teamName)}
-              <span style="opacity:0.6; font-weight:400;">${context}</span>
-            </span>
-            <span class="ps-line-meta">granted ${this._fmtDate(e.grantedAt)}</span>
-          </div>`;
-      }).join('');
+    // Inline set-replace toggles — same PUT as the RSVP Eligibility board
+    // and mens roster modal, so Club Admin can fix grants without leaving
+    // the person profile.
+    const byCat = {};
+    for (const t of this._rsvpTeams()) {
+      (byCat[t.category] || (byCat[t.category] = [])).push(t);
     }
+    const catOrder = ['men', 'women', 'boys', 'girls'];
+    const catLabel = { men: 'Men', women: 'Women', boys: 'Boys', girls: 'Girls' };
+    teamsEl.innerHTML = `
+      ${catOrder.map((cat) => {
+        const teams = byCat[cat] || [];
+        if (!teams.length) return '';
+        return `
+          <div style="margin-bottom: var(--space-2);">
+            <div style="font-size:0.7rem; font-weight:700; opacity:0.65;
+                        letter-spacing:0.04em; text-transform:uppercase; margin-bottom:4px;">
+              ${catLabel[cat] || cat}
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${teams.map((t) => {
+                const on = granted.has(t.id);
+                return `<button type="button"
+                          data-rsvp-team-id="${t.id}"
+                          data-elig-on="${on ? '1' : '0'}"
+                          title="${this._escape(t.label)}"
+                          style="padding:4px 10px; border-radius:999px; font-size:0.75rem;
+                                 font-weight:700; cursor:pointer;
+                                 border:1px solid ${t.color};
+                                 background:${on ? t.color : 'transparent'};
+                                 color:${on ? '#fff' : t.color};">
+                          ${this._escape(t.short)}
+                        </button>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('')}
+      <div style="font-size:0.75rem; opacity:0.65; margin-bottom: var(--space-2);">
+        Tap a team to grant or revoke RSVP eligibility for this person.
+      </div>
+    `;
 
     if (!upcoming.length) {
       upEl.innerHTML = `<div class="ps-empty">
@@ -615,6 +794,43 @@ class PersonScreen extends Screen {
           </span>
         </div>`;
     }).join('');
+  }
+
+  async _toggleRsvp(teamId, want, chipEl) {
+    if (!this.leagueAppsUserId || !teamId) return;
+    const set = this._rsvpElig || new Set();
+    const had = set.has(teamId);
+    if (want) set.add(teamId); else set.delete(teamId);
+    this._rsvpElig = set;
+    this._paintRsvpChip(chipEl, teamId, want);
+
+    try {
+      const r = await this.auth.fetch('/api/mens-roster/rsvp-eligibility', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leagueAppsUserId: Number(this.leagueAppsUserId),
+          teamIds: Array.from(set),
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const cntEl = this.element.querySelector('#ps-rsvp-count');
+      if (cntEl) cntEl.textContent = set.size ? String(set.size) : '';
+    } catch (err) {
+      if (had) set.add(teamId); else set.delete(teamId);
+      this._rsvpElig = set;
+      this._paintRsvpChip(chipEl, teamId, had);
+      alert(`Failed to save RSVP eligibility: ${err.message || err}`);
+    }
+  }
+
+  _paintRsvpChip(chipEl, teamId, on) {
+    if (!chipEl) return;
+    const team = this._rsvpTeams().find((t) => t.id === teamId);
+    if (!team) return;
+    chipEl.setAttribute('data-elig-on', on ? '1' : '0');
+    chipEl.style.background = on ? team.color : 'transparent';
+    chipEl.style.color = on ? '#fff' : team.color;
   }
 
   // ── Recent RSVP responses ─────────────────────────────────────────
@@ -707,18 +923,137 @@ class PersonScreen extends Screen {
           Merge history
         </h3>
         ${merges.map(m => `
-          <div class="ps-row">
+          <div class="ps-row" style="align-items:center;">
             <span class="ps-row-label">
               ${m.reversedAt ? 'reversed' : 'merged'}
               ${m.reversedAt
                 ? ` ${this._fmtDate(m.reversedAt)}`
                 : ` ${this._fmtDate(m.mergedAt)}`}
             </span>
-            <span class="ps-row-value">
+            <span class="ps-row-value" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               #${m.droppedPersonId} → #${m.keptPersonId}
+              ${!m.reversedAt ? `
+                <button type="button" class="btn btn-secondary"
+                        data-unmerge-id="${m.id}"
+                        style="padding:2px 8px; font-size:0.7rem; font-weight:700;">
+                  Unmerge
+                </button>` : ''}
             </span>
           </div>`).join('')}
       `;
+    }
+  }
+
+  async _unmerge(mergeId, btn) {
+    if (!mergeId) return;
+    const ok = window.confirm(
+      `Reverse merge #${mergeId}?\n\nThe dropped person row and snapshotted child data will be restored.`
+    );
+    if (!ok) return;
+    const prev = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '…';
+    }
+    try {
+      const res = await this.auth.fetch(`/api/persons/unmerge/${mergeId}`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      await this._load();
+    } catch (err) {
+      alert(`Unmerge failed: ${err.message || err}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
+    }
+  }
+
+  async _loadScrapedCandidates(personId) {
+    const list = this.element.querySelector('#ps-scraped-list');
+    const count = this.element.querySelector('#ps-scraped-count');
+    if (!list || !personId) return;
+    list.innerHTML = `<div class="ps-empty">Looking for scraped matches…</div>`;
+    try {
+      const res = await this.auth.fetch(
+        `/api/persons/${personId}/scraped-match-candidates`
+      );
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+      if (count) count.textContent = candidates.length ? String(candidates.length) : '';
+      if (!candidates.length) {
+        list.innerHTML = `<div class="ps-empty">No scraped name matches</div>`;
+        return;
+      }
+      list.innerHTML = candidates.map((c) => {
+        const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || `Person #${c.personId}`;
+        const teams = c.teamNames || 'no current roster';
+        const clubs = c.clubNames ? ` · ${c.clubNames}` : '';
+        const dobBit = c.dob
+          ? `${c.dobMatch ? 'DOB match' : 'DOB'} ${c.dob}`
+          : 'no DOB';
+        return `
+          <div class="ps-row" style="align-items:center; flex-wrap:wrap; gap:8px;">
+            <span class="ps-row-label" style="flex:1; min-width:160px;">
+              <strong>${this._escape(name)}</strong>
+              <span style="opacity:0.55;"> #${c.personId}</span>
+              <div style="font-size:0.8rem; opacity:0.75; margin-top:2px;">
+                ${this._escape(teams)}${this._escape(clubs)}
+              </div>
+              <div style="font-size:0.75rem; opacity:0.6;">${this._escape(dobBit)}</div>
+            </span>
+            <button type="button" class="btn btn-secondary"
+                    data-link-scraped="${c.personId}"
+                    style="padding:4px 10px; font-size:0.75rem; font-weight:700;">
+              Link to this person
+            </button>
+          </div>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="ps-empty">Could not load scraped matches: ${this._escape(err.message || String(err))}</div>`;
+    }
+  }
+
+  async _linkScraped(scrapedPersonId, btn) {
+    if (!this._personId || !scrapedPersonId) return;
+    const ok = window.confirm(
+      `Link scraped person #${scrapedPersonId} onto Lighthouse person #${this._personId}?\n\n` +
+      `Their player/roster rows move onto this person. Reversible via Unmerge.`
+    );
+    if (!ok) return;
+    const prev = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Linking…';
+    }
+    try {
+      const res = await this.auth.fetch('/api/persons/link-scraped', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keepPersonId: this._personId,
+          scrapedPersonId,
+        }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      await this._load();
+    } catch (err) {
+      alert(`Link failed: ${err.message || err}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
     }
   }
 

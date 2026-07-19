@@ -1007,22 +1007,21 @@ class LineupsScreen extends Screen {
         ? 'var(--text-muted)'
         : (age >= 18 ? '#f59e0b' : '#38bdf8');
       const onSet = new Set(p.onRosterOn || []);
-      // Edit button — only render for matched persons (need a personId).
-      // Opens a dedicated LA-pool modal showing email/phone/payment etc.
-      const editBtnHTML = p.personId ? `
-        <button
-          type="button"
-          data-edit-card="laPool"
-          data-person-id="${p.personId}"
-          title="Edit ${name}"
-          style="
-            background: transparent; border: 1px solid var(--border-color);
-            color: var(--text-muted); border-radius: 4px;
-            padding: 1px 6px; font-size: 0.75em; cursor: pointer;
-            line-height: 1.2;
-          "
-        >✏️</button>
-      ` : '';
+      // View/Edit — shared PersonScreen.  Lineup zone/team pills stay local.
+      const personActions = (window.PersonActions && (p.personId || p.leagueAppsUserId))
+        ? window.PersonActions.buttonsHtml(
+            {
+              leagueAppsUserId: p.leagueAppsUserId,
+              personId: p.personId,
+              firstName: p.firstName,
+              fullName: `${p.firstName || ''} ${p.lastName || ''}`.trim() || name,
+            },
+            { returnTo: 'lineups', size: 'sm' }
+          )
+        : '';
+      const editBtnHTML = personActions
+        ? `<span style="display:inline-flex; gap:4px; flex-wrap:wrap;">${personActions}</span>`
+        : '';
       // Unmatched LA users (no local person row) can't be added to a roster
       // until they're married to a person, so suppress pills and show flag.
       // Layout: 3 rows grouped by team purpose so the eye can scan quickly.
@@ -2477,20 +2476,29 @@ class LineupsScreen extends Screen {
     // Drag-to-merge removed — no draggable cards.
     const draggable = '';
 
-    // Toggle / edit controls.  Edit (✏️) shows for EVERY card kind so the
-    // detail modal is always reachable; S/B only when we have a playerId.
-    //   Player kind — Starter (S) + Bench (B) + Edit (✏️)
-    //   Coach  kind — Edit only
-    const editBtn = `
+    // View/Edit → PersonScreen.  Keep a compact "⋯" for lineup-only modal
+    // (coach mark / LA-only details) when needed.
+    const personActions = (window.PersonActions && (personId || entry.leagueAppsUserId))
+      ? window.PersonActions.buttonsHtml(
+          {
+            leagueAppsUserId: entry.leagueAppsUserId,
+            personId,
+            firstName: entry.firstName,
+            fullName: `${entry.firstName || ''} ${entry.lastName || ''}`.trim(),
+          },
+          { returnTo: 'lineups', size: 'sm' }
+        )
+      : '';
+    const lineupDetailBtn = `
       <button
         data-edit-card="${kind}"
         data-team-id="${td.team.id}"
         ${personId
           ? `data-person-id="${personId}"`
           : `data-external-user-id="${this._escape(entry.externalUserId || '')}" data-chat-id="${entry.chatId || ''}"`}
-        title="Edit…"
+        title="Lineup details…"
         style="all:unset;cursor:pointer;width:22px;height:22px;line-height:20px;text-align:center;border-radius:4px;font-size:0.75em;border:1px solid var(--border-color);color:var(--text-muted);"
-      >✏️</button>
+      >⋯</button>
     `;
     let controls = '';
     if (kind === 'player' && playerId != null) {
@@ -2513,7 +2521,7 @@ class LineupsScreen extends Screen {
       const zoneLetter = { starter: 'S', bench: 'B', alternate: 'A', null: 'N' }[currentZone];
       const c = zoneColors[currentZone];
       controls = `
-        <span style="display:inline-flex;gap:4px;align-items:center;">
+        <span style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;">
           <select
             data-zone-select="1"
             data-team-id="${td.team.id}"
@@ -2529,12 +2537,18 @@ class LineupsScreen extends Screen {
             <option value="bench"     ${currentZone === 'bench'     ? 'selected' : ''}>B</option>
             <option value="alternate" ${currentZone === 'alternate' ? 'selected' : ''}>A</option>
           </select>
-          ${editBtn}
+          ${personActions}
+          ${lineupDetailBtn}
         </span>
       `;
     } else {
       // player without playerId (column with no match) OR coach
-      controls = editBtn;
+      controls = `
+        <span style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;">
+          ${personActions}
+          ${lineupDetailBtn}
+        </span>
+      `;
     }
 
     return `
