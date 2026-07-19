@@ -7,6 +7,9 @@ This directory contains the deterministic C++ tactical simulator.
 For simulator work, load these first:
 
 - `sim/DESIGN.md` for the active roadmap, architecture, and current slice status.
+- When context is tight, load only the relevant AI context pack in
+  `sim/DESIGN.md` section `25.3a AI context packs` instead of reading the full
+  design file.
 - `sim/CMakeLists.txt` for build targets, registry codegen, and test wiring.
 - `sim/src/common/M0Registry.generated.hpp` only when touching registry-backed
   attributes or concepts.

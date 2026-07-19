@@ -2933,7 +2933,40 @@ Grouped by subsystem, mirroring §16.1's checkbox style. Tick boxes in place as 
 - [ ] Backend `GET /api/sim/matches?status=running` returns all live matches (`sim_running_matches` join `sim_matches`) for the admin dashboard tile.
 - [ ] Load test extension of [sim/tests/test_async_pg_log_load.cpp](sim/tests/test_async_pg_log_load.cpp): 20 concurrent matches spawned via test harness → each pushing 22 slots × 20 Hz × 5 s of input rows → zero dropped rows aggregate.
 
-### 23.3 Slice sequence
+### 25.3 Slice sequence
+
+### 25.3a AI context packs
+
+Purpose: keep future AI work inside the token budget. For a targeted slice,
+load this section, the matching slice row below, and only the files listed in
+that pack. Do not read all of `sim/DESIGN.md` unless the pack says the design
+itself is the work surface.
+
+**Always load for simulator code changes**
+
+- [sim/README.md](README.md) — simulator entrypoint and validation policy.
+- [sim/CMakeLists.txt](CMakeLists.txt) — source/test registration and registry codegen list.
+- [sim/tests/CMakeLists.txt](tests/CMakeLists.txt) — test target registration when adding tests.
+- [sim/src/common/M0Registry.generated.hpp](src/common/M0Registry.generated.hpp) — only when touching registry-backed concepts/attributes.
+
+**Concept/behavior paths**
+
+- `pressing`: [database/migrations/224-sim-concept-pressing.sql](../database/migrations/224-sim-concept-pressing.sql), [sim/src/behavior/PursueBallCarrierBehavior.cpp](src/behavior/PursueBallCarrierBehavior.cpp), [sim/src/controller/AiController.cpp](src/controller/AiController.cpp), [sim/tests/test_pursue_ball_carrier_behavior.cpp](tests/test_pursue_ball_carrier_behavior.cpp).
+- `marking` / `jockey`: [database/migrations/225-sim-concept-marking-jockey.sql](../database/migrations/225-sim-concept-marking-jockey.sql), [sim/src/behavior/MarkOpponentBehavior.cpp](src/behavior/MarkOpponentBehavior.cpp), [sim/src/behavior/JockeyBehavior.cpp](src/behavior/JockeyBehavior.cpp), [sim/tests/test_mark_opponent_behavior.cpp](tests/test_mark_opponent_behavior.cpp), [sim/tests/test_jockey_behavior.cpp](tests/test_jockey_behavior.cpp).
+- `1v1_beat`: [database/migrations/229-sim-concept-1v1-beat.sql](../database/migrations/229-sim-concept-1v1-beat.sql), [sim/src/behavior/Feint1v1Behavior.cpp](src/behavior/Feint1v1Behavior.cpp), [sim/src/controller/AiController.cpp](src/controller/AiController.cpp), [sim/tests/test_feint_1v1_behavior.cpp](tests/test_feint_1v1_behavior.cpp).
+- `pattern_being_beaten_1v1`: [database/migrations/230-sim-pattern-being-beaten-1v1.sql](../database/migrations/230-sim-pattern-being-beaten-1v1.sql), [sim/src/awareness/RecognitionSystem.cpp](src/awareness/RecognitionSystem.cpp), [sim/src/match/Match.cpp](src/match/Match.cpp), [sim/src/main.cpp](src/main.cpp), [sim/tests/test_recognition_passthrough.cpp](tests/test_recognition_passthrough.cpp), [sim/tests/test_registry_loader.cpp](tests/test_registry_loader.cpp).
+
+**Slice 34 packs**
+
+- 34.1 `OneVsOneAttackDefendScenario`: [database/migrations/231-sim-scenarios-1v1-attack-defend.sql](../database/migrations/231-sim-scenarios-1v1-attack-defend.sql), [sim/src/scenario/OneVsOneAttackDefendScenario.hpp](src/scenario/OneVsOneAttackDefendScenario.hpp), [sim/src/scenario/OneVsOneAttackDefendScenario.cpp](src/scenario/OneVsOneAttackDefendScenario.cpp), [sim/src/main.cpp](src/main.cpp), [sim/src/tools/Replay.cpp](src/tools/Replay.cpp), [sim/tests/test_one_v_one_attack_defend_scenario.cpp](tests/test_one_v_one_attack_defend_scenario.cpp).
+- 34.2 `ai_profile_source` loading: [sim/src/scenario/Scenario.hpp](src/scenario/Scenario.hpp), [sim/src/match/Match.hpp](src/match/Match.hpp), [sim/src/match/Match.cpp](src/match/Match.cpp), [sim/src/persistence/ProfileStore.hpp](src/persistence/ProfileStore.hpp), [sim/src/persistence/ProfileStore.cpp](src/persistence/ProfileStore.cpp), [sim/tests/test_profile_store.cpp](tests/test_profile_store.cpp), [sim/tests/test_one_v_one_attack_defend_scenario.cpp](tests/test_one_v_one_attack_defend_scenario.cpp).
+- 34.3 frontend tile: [frontend/tactical-games.html](../frontend/tactical-games.html), [frontend/js/sim/client.js](../frontend/js/sim/client.js), [frontend/js/sim/transport.js](../frontend/js/sim/transport.js), [frontend/js/sim/wire.js](../frontend/js/sim/wire.js), [sim/src/main.cpp](src/main.cpp).
+- 34.4 positioning concepts: [database/migrations/232-sim-concept-positioning.sql](../database/migrations/232-sim-concept-positioning.sql), [sim/CMakeLists.txt](CMakeLists.txt), [sim/src/common/M0Registry.generated.hpp](src/common/M0Registry.generated.hpp), [sim/tests/test_registry_loader.cpp](tests/test_registry_loader.cpp).
+- 34.5 determinism golden: [sim/tests/test_determinism.cpp](tests/test_determinism.cpp), [sim/src/scenario/OneVsOneAttackDefendScenario.cpp](src/scenario/OneVsOneAttackDefendScenario.cpp), [sim/src/match/Match.cpp](src/match/Match.cpp), [sim/src/mechanics/BallControl.cpp](src/mechanics/BallControl.cpp), [sim/src/physics/BasicPhysics.cpp](src/physics/BasicPhysics.cpp).
+
+Validation hints: for doc-only context-pack edits, `git diff --check` is enough.
+For simulator behavior, scenario, registry, or persistence edits, finish with
+`sudo make sim-deploy`.
 
 Slice numbering continues from Slice 13 (M0 close-out). Each slice ends with a green ctest gate + a working end-to-end demo. Sub-slices break down individual green-gate landings within the slice (same shape as §16.6's sub-slices 1–9 including 6.1 and 8.1).
 
