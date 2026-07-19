@@ -40,6 +40,7 @@
 #include "scenario/BallOnPitchWithDefenderScenario.hpp"
 #include "scenario/EmptyPitchScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
+#include "scenario/OneVsOneAttackDefendScenario.hpp"
 #include "scenario/SoftDrillScenario.hpp"
 #include "server/SimServer.hpp"
 
@@ -684,6 +685,9 @@ int main(int /*argc*/, char** /*argv*/)
             break;
         case 6:
             mcfg.scenario = std::make_unique<fh::sim::scenario::GoalDrillScenario>();
+            break;
+        case 7:
+            mcfg.scenario = std::make_unique<fh::sim::scenario::OneVsOneAttackDefendScenario>();
             break;
         case 0:
         default:

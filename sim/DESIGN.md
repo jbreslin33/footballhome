@@ -32,7 +32,7 @@
 >
 > **Slice 30.2 (`PursueBallCarrierBehavior` + `DefenderController` deletion + `Scenario::applyConceptOverrides` hook + migration 224 for `pressing` concept id=3):** landed 2026-07-17 (`0196196f`). First real `IBehavior` — replicates all five branches of the deleted `DefenderController::decide()` (owner-hold, no-ball, ball-entity-missing, on-ball, pursue) at intent level. `AiController::defaultBehaviors(Role::Any) = {PursueBallCarrierBehavior}`; `Match.cpp` swaps both `UnclaimedControllerKind::Defender` dispatch sites (spawn + reclaim) to construct `AiController(Role::Any, slot.profile.concepts, defaultBehaviors(Role::Any))`; `releaseSlot` reordered so profile-reset + concept-overlay run BEFORE controller construction. `BallOnPitchWithDefenderScenario` plugs `pressing = 1.0` for SlotId{2} via new `applyConceptOverrides` scenario hook. `test_defender_pursuit.cpp` (10 tests) → `test_pursue_ball_carrier_behavior.cpp` (13 tests). 52/52 container ctest green. **`BallOnPitchWithDefender400` golden STABLE at `0x71f639d918a32830`** — no rotation (intent stream bit-identical). All 11 goldens byte-identical. Closes §24.6 DefenderController migration item; meets Slice 30 exit gate.
 >
-> **Slice 33.5 (`attacker_feints_past_defender_400_ticks_seed_42`):** landed 2026-07-19. Locks the first attacker-behavior determinism golden at `0xcee6855c275f58f4`: a test-only ST9 takes first touch, releases back to `AiController(Feint1v1Behavior)`, then feints laterally away from a nearby stationary defender. `sudo make sim-deploy` passed 56/56 ctests, `test_determinism`, and live DB registry consistency.
+> **Slice 34.1 (`OneVsOneAttackDefendScenario`):** landed 2026-07-19. Adds scenario_id=7 plus migration 231 for the first 1v1 attack-vs-defend drill: human-claimable ST9 starts on the ball at x=-15, LCB Defender-kind AI starts at x=+10 with `mark_target=SlotId{1}` and optional defender `ai_profile_source` reserved for Slice 34.2. Runtime and replay factories map id 7 to the scenario. `sudo make sim-deploy` passed 57/57 ctests, `test_determinism`, and live DB registry consistency; migration 231 was applied to live DB.
 
 ---
 
@@ -3412,7 +3412,7 @@ Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 op
 
 **Slice 34 — 1v1 attack-vs-defend scenario**
 
-- 34.1 [ ] `OneVsOneAttackDefendScenario` (scenario_id=7) + migration 231 (`231-sim-scenarios-1v1-attack-defend.sql`).
+- 34.1 [x] `OneVsOneAttackDefendScenario` (scenario_id=7) + migration 231 (`231-sim-scenarios-1v1-attack-defend.sql`). Landed 2026-07-19: runtime/replay factories map id 7 to the new scenario, Slot 1 is a human-claimable ST9 attacker starting on the ball at x=-15, Slot 2 is an LCB Defender-kind AI at x=+10 with `mark_target=SlotId{1}` and optional defender `ai_profile_source` for Slice 34.2, goal regions mirror `GoalDrillScenario`, and `test_one_v_one_attack_defend_scenario` covers geometry/controller policy/concept plugs/success/reset. `sudo make sim-deploy` passed 57/57 ctests plus registry consistency; migration 231 applied to live DB.
 - 34.2 [ ] `ProfileStore::load(person_id)` wired into `Match::spawnInitialSlots` per `SlotSpawn::ai_profile_source`. First consumer of the field (§21.2 M1-blocker item 1 wiring completes).
 - 34.3 [ ] Frontend tile in [frontend/tactical-games.html](frontend/tactical-games.html); coach can pick which real fh-member's profile drives the AI defender.
 - 34.4 [ ] Migration 232 (`return_to_base` id=7, `stay_in_zone` id=8) — wired but unused in M3, ships for concept-catalog completeness.

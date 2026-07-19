@@ -20,6 +20,7 @@
 #include "scenario/EmptyPitchScenario.hpp"
 #include "scenario/GoalDrillScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
+#include "scenario/OneVsOneAttackDefendScenario.hpp"
 #include "scenario/SoftDrillScenario.hpp"
 
 #include <algorithm>
@@ -45,6 +46,7 @@ namespace {
 //   4 = BallOnPitchWithDefenderScenario  (M2 Slice 24.3a demo; migration 215)
 //   5 = BallOnPitch2v0Scenario           (M2 Slice 26.3 demo; migration 219)
 //   6 = GoalDrillScenario                (M2 Slice 28.2 demo; migration 222)
+//   7 = OneVsOneAttackDefendScenario     (M3 Slice 34.1 demo; migration 231)
 // Anything else is unknown — throw loudly rather than silently
 // substituting a scenario, because a hash mismatch after replay would
 // be nearly impossible to debug from the outside.
@@ -71,13 +73,17 @@ std::unique_ptr<scenario::Scenario> makeScenario(std::int16_t scenario_id)
     if (scenario_id == 6) {
         return std::make_unique<scenario::GoalDrillScenario>();
     }
+    if (scenario_id == 7) {
+        return std::make_unique<scenario::OneVsOneAttackDefendScenario>();
+    }
     throw std::runtime_error(
         "replayMatch: unknown scenario_id=" + std::to_string(scenario_id) +
         " (known: 0=EmptyPitchScenario, 1=BallOnPitchScenario, "
         "2=HalfPitchScenario, 3=SoftDrillScenario, "
         "4=BallOnPitchWithDefenderScenario, "
         "5=BallOnPitch2v0Scenario, "
-        "6=GoalDrillScenario)");
+        "6=GoalDrillScenario, "
+        "7=OneVsOneAttackDefendScenario)");
 }
 
 // M0 default profile — see M0 limitation note in Replay.hpp.

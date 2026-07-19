@@ -261,6 +261,7 @@ add_library(sim_gameplay STATIC
     src/scenario/BallOnPitch2v0Scenario.cpp
     src/scenario/BallOnPitchWithDefenderScenario.cpp
     src/scenario/GoalDrillScenario.cpp
+    src/scenario/OneVsOneAttackDefendScenario.cpp
     src/scenario/HalfPitchScenario.cpp
     src/scenario/SoftDrillScenario.cpp
     src/match/MatchClock.cpp
