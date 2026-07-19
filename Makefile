@@ -1,4 +1,4 @@
-.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 check-la-sync
+.PHONY: all help clean build deploy up restart down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore dev-mirror restore-mirror safe-rebuild er emergency-rebuild sync sync-apsl sync-csl sync-casa sync-lighthouse migrate vpn-up vpn-down vpn-status scrape-vpn-up scrape-vpn-down scrape-vpn-status scrape-vpn-shell scrape-vpn-logs scrape-vpn-rebuild lighthouse lighthouse-apsl lighthouse-apsl-standings lighthouse-apsl-team lighthouse-casa lighthouse-casa-liga1 lighthouse-casa-liga2 check-la-sync
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -78,7 +78,10 @@ help:
 	@echo "  make er                  🚨 Emergency rebuild — full one-shot recovery (preserves user data)"
 	@echo "  make er FORCE=1          Same, no confirmation prompt"
 	@echo "  make backup              Snapshot DB (pg_dump → backups/)"
+	@echo "  make dev-mirror          Copy latest backup → backups/dev-mirror.sql.gz"
 	@echo "  make restore             Restore latest backup (or BACKUP=file.sql)"
+	@echo "  make restore-mirror      Restore prod mirror into *dev* DB (drop public first)"
+	@echo "  ./scripts/dev/ship-to-live.sh   Print prod ship checklist (git pull → migrate/deploy)"
 	@echo "  make safe-rebuild        Backup + rebuild (safety net)"
 	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
 	@echo "  make load-user-data      Load exported user data (after sync)"
@@ -501,12 +504,27 @@ backup:
 	@$(DB_EXEC) pg_dump -U footballhome_user footballhome > backups/backup-$$(date +%Y%m%d-%H%M%S).sql
 	@echo "✓ Backup saved: $$(ls -t backups/backup-*.sql | head -1)"
 
+# Refresh the canonical file used by scripts/dev/restore-mirror.sh
+# (dev Cursor/local stacks). Run on production after `make backup`.
+dev-mirror:
+	@mkdir -p backups
+	$(eval LATEST := $(shell ls -t backups/backup-*.sql 2>/dev/null | head -1))
+	@if [ -z "$(LATEST)" ]; then echo "❌ No backup found. Run: make backup"; exit 1; fi
+	@cp "$(LATEST)" backups/dev-mirror.sql
+	@gzip -kf backups/dev-mirror.sql
+	@echo "✓ Dev mirror: backups/dev-mirror.sql.gz (from $(LATEST))"
+	@echo "  Copy that file to your Cursor/local stack (gitignored), or host it and set DEV_MIRROR_URL."
+
 restore:
 	$(eval BACKUP_FILE := $(or $(BACKUP),$(shell ls -t backups/backup-*.sql 2>/dev/null | head -1)))
 	@if [ -z "$(BACKUP_FILE)" ]; then echo "❌ No backup found. Run: make backup"; exit 1; fi
 	@echo "♻️  Restoring from $(BACKUP_FILE)..."
 	@$(DB_EXEC) psql -U footballhome_user -d footballhome < $(BACKUP_FILE)
 	@echo "✓ Restored from $(BACKUP_FILE)"
+
+# Restore into the *dev* compose DB (drops public schema first). See docs/dev-environment.md.
+restore-mirror:
+	@./scripts/dev/restore-mirror.sh
 
 safe-rebuild: backup rebuild
 	@echo "✓ Safe rebuild complete (backup in backups/)"

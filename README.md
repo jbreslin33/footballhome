@@ -11,9 +11,31 @@ This README is only the repo entrypoint. Project-wide rules live in
 
 - Rules and source-of-truth boundaries: `CONVENTIONS.md`
 - Documentation index: `docs/README.md`
+- **How we develop (mirror → PR → live):** `docs/dev-environment.md`
 - Simulator entrypoint: `sim/README.md`
 - Simulator design/roadmap: `sim/DESIGN.md`
 - Setup scripts: `setup.sh` and `scripts/setup/`
+
+## How We Develop
+
+Canonical path for every coder (jbreslin, lbreslin, Cursor agents):
+
+1. **Dev stack** with a **prod DB mirror** + LeagueApps sync (`localhost:3000`)
+2. Change code → verify on the mirror → open PR → merge to `main`
+3. On the **live server** (`/srv/footballhome`): `git pull`, then
+   `sudo make migrate` / `sudo make deploy` as needed
+
+```text
+prod:  make backup && make dev-mirror   →  share backups/dev-mirror.sql.gz
+dev:   make up && make restore-mirror   →  Members Sync → code → PR
+prod:  git pull && make migrate|deploy  →  footballhome.org updated
+```
+
+Full chain, Cursor Cloud secrets, and ship checklist:
+[`docs/dev-environment.md`](docs/dev-environment.md).  
+Print the live-ship steps anytime: `./scripts/dev/ship-to-live.sh`
+
+Merging to GitHub alone does **not** update the live site.
 
 ## Runtime Stack
 
@@ -79,11 +101,14 @@ sudo make down               # stop the stack
 sudo make deploy             # rebuild and replace backend/frontend services
 sudo make migrate            # apply database migrations without wiping data
 sudo make backup             # pg_dump snapshot under backups/
+sudo make dev-mirror         # latest backup → backups/dev-mirror.sql.gz
 sudo make restore            # restore latest backup, or BACKUP=file.sql
+make restore-mirror          # restore prod mirror into *dev* DB
 sudo make lighthouse         # refresh Lighthouse APSL + CASA data
 sudo make sync-lighthouse    # legacy Lighthouse sync target
 sudo make shell-db           # database shell
 sudo make sim-deploy         # rebuild sim image, run sim tests, verify registry
+./scripts/dev/ship-to-live.sh  # print prod ship checklist
 ```
 
 Destructive reset:

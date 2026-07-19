@@ -1,0 +1,21 @@
+{
+  "name": "footballhome-dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "./scripts/dev/cloud-install.sh",
+  "start": "./scripts/dev/cloud-start.sh",
+  "terminals": [
+    {
+      "name": "stack",
+      "command": "./scripts/dev/cloud-stack.sh",
+      "description": "Bring up db + backend + frontend via docker compose and keep them healthy"
+    }
+  ],
+  "ports": [
+    { "name": "frontend", "port": 3000 },
+    { "name": "backend", "port": 3001 },
+    { "name": "postgres", "port": 5432 }
+  ]
+}

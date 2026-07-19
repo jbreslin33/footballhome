@@ -8,12 +8,19 @@ tool-specific bootstrap only.
 
 ## Repository Contract
 
-- Workspace root is `/srv/footballhome`.
-- Production and local container workflows use rootful Podman on Linux. Use
-  `sudo podman ...` and `sudo make ...` for container and database operations.
-- `docker` is not installed on this host; the engine is `podman`.
+- **How we develop** is documented in `docs/dev-environment.md`: work on a
+  **DB mirror + LeagueApps sync**, open a PR to `main`, then on the production
+  host `git pull` and `make migrate` / `make deploy` as needed. Merging to
+  GitHub alone does not update footballhome.org.
+- Production workspace root is `/srv/footballhome`. Cursor Cloud / laptop
+  checkouts use their own path and their **own** Postgres volume — never the
+  production database socket/URL.
+- Production host container workflows use rootful Podman (`sudo podman …`,
+  `sudo make …`). Cursor Cloud uses Docker; the Makefile auto-detects
+  `ENGINE` / `COMPOSE`.
 - Before running commands or editing files, check the local context in this
-  order: `pwd`, `make help`, `sudo podman ps`, then read the relevant files.
+  order: `pwd`, `make help`, container `ps` (`sudo podman ps` on prod;
+  `docker compose --env-file env ps` in Cloud), then read the relevant files.
 - Do not run destructive targets such as `make rebuild`, `make safe-rebuild`,
   volume removal, or container volume resets without explicit approval. Run
   `make backup` first when destructive work is approved.
@@ -331,6 +338,8 @@ paths. `make deploy` runs the same check.
 
 ## AI Workflow
 
+- Default development loop: `docs/dev-environment.md` (mirror DB → test on
+  `:3000` → PR → prod `git pull` / deploy). Cursor Cloud details: `AGENTS.md`.
 - Start from the smallest relevant context set. Prefer the local subsystem README
   or design doc over broad repo exploration.
 - For simulator work, start with `sim/README.md`, then `sim/DESIGN.md`, then the
@@ -340,10 +349,10 @@ paths. `make deploy` runs the same check.
   `scripts/enforce-la-sync.sh`.
 - For frontend screen work, start with `frontend/js/app.js`, the target screen,
   and adjacent screen classes.
-- For setup/deploy work, start with `setup.sh`, `scripts/setup/`, `build.sh`,
-  `Makefile`, and `docker-compose.yml`.
-- After substantive edits, run the narrowest executable validation that can
-  falsify the change before expanding scope.
+- For setup/deploy work, start with `docs/dev-environment.md`, then `setup.sh`,
+  `scripts/setup/`, `scripts/dev/`, `Makefile`, and `docker-compose.yml`.
+- After substantive edits, validate on the **dev mirror stack**, not by assuming
+  footballhome.org updated. Run the narrowest check that can falsify the change.
 
 ## Version Control
 
