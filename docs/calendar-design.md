@@ -309,6 +309,7 @@ CREATE TABLE fh_events (
     category       TEXT,                        -- 'mens' | 'womens' | 'boys' | 'girls' | 'staff' | NULL
     team_id        INT REFERENCES teams(id),
     is_home        BOOLEAN,
+    opponent       TEXT,
     facility_id    INT,                         -- future: facilities table
     -- RSVP window (see §6.5).  NULL means RSVPs open immediately once event
     -- is visible in FH (i.e. no restriction).  Set for pickup-style events.
@@ -423,6 +424,24 @@ Team: Pickup
 Club: Mens, Womens
 ```
 
+For a mens APSL match:
+
+```
+Team: APSL
+Club: Mens
+Type: Match
+Opponent: Vereinigung Erzgebirge
+Home: Yes
+```
+
+For a mens APSL practice:
+
+```
+Team: APSL
+Club: Mens
+Type: Practice
+```
+
 Players and coaches never see the gcal event directly — the
 description is treated as pure code. This is a deliberate design
 choice: it lets ops evolve the DSL forever without collateral damage
@@ -438,8 +457,9 @@ and `mens.` all collapse to the same key.
 |-----------|---------------|------------------------------------------------------------------------------------|
 | `Team:`   | ✅ for RSVP    | `Pickup` \| `Practice` \| `APSL` \| `Liga 1` \| `Liga 2` \| `Adult` \| … (extensible via `gcal_team_aliases`) |
 | `Club:`   | ✅ with `Team:` | `Mens` \| `Womens` \| `Boys` \| `Girls` (list-friendly: `Mens, Womens`)             |
-| `Type:`   | optional      | `practice` \| `pickup` \| `match` \| `meeting` \| `camp` \| `other` (alias: `Kind:`). Overrides the auto-inferred kind. |
+| `Type:`   | optional      | `Practice` \| `Pickup` \| `Match` \| `Meeting` \| `Camp` \| `Other` (alias: `Kind:`). Overrides the auto-inferred kind. Values are normalized internally. |
 | `Home:`   | optional      | `Yes` \| `No` \| `Neutral`. Sets `fh_events.is_home`. Only meaningful on matches.  |
+| `Opponent:` | optional    | Free-form opponent name. Only meaningful on matches; rendered as the FH opponent instead of guessing from the Google title. |
 | `Notes:`  | optional      | Free text. Stored verbatim in `fh_events.fh_notes`; rendered in the card body.     |
 
 **Multi-club events.** `Team:` and `Club:` are both **list-friendly** —
@@ -784,17 +804,17 @@ mirror.
 
 ## 10. Frontend implications
 
-**Current state (2026-07-18):** FH has a unified calendar page. Related
-screens that exist today:
+**Current state (2026-07-18):** FH has a unified Soccer Calendar page.
+Related screens that exist today:
 
-- `calendar.js` — Google Calendar mirror agenda with RSVP state
+- `calendar.js` — read-only Soccer Calendar mirror with week, month, and agenda views
 - `club-events.js` — club events + RSVP override (chat-driven)
 - `mens-events-reminders.js` — pickup RSVP nudges
 - `my.js` — per-user "My Schedule"
 
 ### 10.1 New Calendar screen
 
-Add `frontend/js/screens/calendar.js` — a `CalendarScreen extends
+`frontend/js/screens/calendar.js` is a `CalendarScreen extends
 Screen` following the existing OOP pattern (no framework, per
 [.github/copilot-instructions.md](../.github/copilot-instructions.md)).
 
@@ -809,10 +829,17 @@ learning curve. Concretely:
   look like 4 weeks out" question.
 - Tertiary view: **agenda list** (chronological, 14 days ahead) —
   this is what small screens and email digests use.
+- Navigation: **Previous / Today / Next** controls move the active
+  week, month, or agenda range. The frontend passes `start=<iso>` to
+  `/api/calendar/upcoming` so admins can page backward and forward
+  through the mirrored Google Calendar schedule.
 - Color-coding by `fh_events.kind` (pickup=blue, practice=green,
   match=red, meeting=grey). Same color on all three views.
-- Non-classified `gcal_events` (§6.4) are hidden from the public
-  view; admins get a toggle to show them.
+- Non-classified Google soccer events (§6.4) are included on the
+  Club Admin Soccer Calendar so ops can see the real gcal schedule
+  even before DSL/classification catches up. This includes every
+  synced event on the Soccer calendar plus any event whose Google
+  title contains "Soccer". Player-facing surfaces stay classified-only.
 - Clicking a cell → **Event detail screen**.
 
 ### 10.2 Event detail screen — the read-only / editable split
@@ -844,6 +871,7 @@ Calendar and it flows into FH on the next sync (≤5 min). This is
 | Category (mens/womens/boys/girls/staff) | `fh_events.category` |
 | Team linkage    | `fh_events.team_id` |
 | Home/away flag  | `fh_events.is_home` |
+| Opponent         | `fh_events.opponent` |
 | Coach notes (FH-only, not synced to gcal) | `fh_events.fh_notes` |
 | Availability / RSVPs | `fh_event_rsvps` |
 | Attendance (post-event check-in) | `fh_event_attendance` *(future table)* |
@@ -880,8 +908,8 @@ read from `fh_events`:
       Also honors view-as impersonation (see §10.5).
 
 First deliverable for M1: sync worker + `/api/calendar/upcoming`
-returning DB rows + a minimal agenda-list version of `calendar.js`.
-Week/month grids can come after.
+returning DB rows + the week/month/agenda Soccer Calendar in
+`calendar.js`.
 
 ### 10.5 View-as impersonation on `/api/calendar/*`
 
@@ -968,14 +996,13 @@ would see.
       Unauthenticated (schedule-only, no PII); RSVP writes gain
       auth in Slice 6.
 - [x] **Slice 5:** `CalendarScreen` (`frontend/js/screens/calendar.js`)
-      renders the §10.1 agenda list — bucketed by date (Today,
-      Tomorrow, This week, Next week, Later), color-coded by
-      `kind`, with the read-only §10.2 fields + Slice 4's
-      `rsvps_open_now` flag turned into a green "RSVPs open" pill
-      or an amber "Opens Sun Jul 19 8:00 PM" countdown label.
-      Reached via a new `admin-calendar` tile added under the
-      Schedule section of `admin-club.js` (§10.1). Week and month
-      grid views are follow-ups.
+  renders the §10.1 week grid, month grid, and agenda list,
+  color-coded by `kind`, with FH-translated event labels over
+  the read-only §10.2 Google Calendar fields. The Club Admin
+  surface requests `include_unclassified=1` and defaults to 90
+  days so it shows the broad gcal soccer schedule beyond the
+  Sunday 20:00 RSVP window. Reached via the `admin-calendar` tile
+  in `admin-club.js`.
 - [x] **Slice 6:** RSVP write endpoint — `POST /api/calendar/rsvp`
       with the §6.5.2 window check, wired to `fh_event_rsvps`.
       Session-gated (see `MyController::requireSession` pattern,
@@ -1004,7 +1031,7 @@ would see.
          seeded with 8 Mens rows, `fh_event_teams` junction (3NF),
          `fh_events.team_id` DROPPED.
       2. Classifier `scripts/gcal-classify.js` — DSL Pass A parses
-         `Team:` / `Club:` / `Type:` / `Home:` / `Notes:` from the
+         `Team:` / `Club:` / `Type:` / `Home:` / `Opponent:` / `Notes:` from the
          gcal description, cross-products Club × Team, resolves via
          aliases, DELETE-then-INSERT junction rows, upserts
          `fh_events`. Legacy Pass B regex excludes `Team:`-tagged

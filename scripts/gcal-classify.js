@@ -176,8 +176,9 @@ async function classifyPattern(pg, p) {
 //
 //   Team:    Pickup | Practice | APSL | Liga 1 | Liga 2 | Adult | ...
 //   Club:    Mens   | Womens   | Boys | Girls        (list-friendly)
-//   Type:    practice | pickup | match | meeting | camp | other   (alias: Kind:)
+//   Type:    Practice | Pickup | Match | Meeting | Camp | Other   (alias: Kind:)
 //   Home:    Yes    | No       | Neutral                          (matches only)
+//   Opponent: free-form opponent name                          (matches only)
 //   Notes:   free-form text; stored in fh_events.fh_notes verbatim.
 //
 // Team + Club are lists-of-values: either comma-separated on one line
@@ -185,6 +186,9 @@ async function classifyPattern(pg, p) {
 // cross-product with all Club values to produce (club, team) pairs;
 // each pair looks up gcal_team_aliases → team_id and adds one
 // fh_event_teams row.
+//
+// Values are normalized internally, so `Type: Match` and `Type: match`
+// classify the same way. Use Title Case in Google Calendar descriptions.
 //
 // Derivation rules when Type: is not explicit:
 //   * If any resolved team_alias is 'pickup'    → kind='pickup'
@@ -215,13 +219,13 @@ function jsNormAlias(s) {
 
 // Parse one description body into a tag bundle. Returns:
 //   { teams: string[], clubs: string[], kind: string|null,
-//     isHome: boolean|null, notes: string|null }
+//     isHome: boolean|null, opponent: string|null, notes: string|null }
 // All returned strings are POST-normalized via jsNormAlias EXCEPT
 // notes (rendered verbatim to fh_events.fh_notes). Empty arrays are
 // possible: a description with `Notes:` but no Team: is legal — the
 // legacy classifier or a later manual classification handles kind.
 function parseDsl(description) {
-  const out = { teams: [], clubs: [], kind: null, isHome: null, notes: null };
+  const out = { teams: [], clubs: [], kind: null, isHome: null, opponent: null, notes: null };
   if (!description) return out;
 
   // gcal often HTML-encodes the description into `<br>`-separated
@@ -274,6 +278,9 @@ function parseDsl(description) {
         else if (n === 'neutral') out.isHome = null;
         break;
       }
+      case 'opponent':
+        out.opponent = out.opponent == null ? val : (out.opponent + ' ' + val);
+        break;
       case 'notes':
         // Preserve exact user text — no normalize. Multiple `Notes:`
         // lines concatenate with newline separators.
@@ -401,20 +408,22 @@ async function classifyDsl(pg) {
       // churn when nothing meaningfully changed.
       const upsertSql = `
         WITH upsert AS (
-          INSERT INTO fh_events (gcal_event_id, kind, category, is_home, fh_notes, rsvps_open_at)
-          SELECT $1, $2, $3, $4, $5, ${RSVPS_OPEN_AT_SQL}
+          INSERT INTO fh_events (gcal_event_id, kind, category, is_home, opponent, fh_notes, rsvps_open_at)
+          SELECT $1, $2, $3, $4, $5, $6, ${RSVPS_OPEN_AT_SQL}
           FROM   gcal_events ge
           WHERE  ge.id = $1
           ON CONFLICT (gcal_event_id) DO UPDATE SET
             kind          = EXCLUDED.kind,
             category      = EXCLUDED.category,
             is_home       = EXCLUDED.is_home,
+            opponent      = EXCLUDED.opponent,
             fh_notes      = EXCLUDED.fh_notes,
             rsvps_open_at = EXCLUDED.rsvps_open_at,
             updated_at    = now()
           WHERE fh_events.kind          IS DISTINCT FROM EXCLUDED.kind
              OR fh_events.category      IS DISTINCT FROM EXCLUDED.category
              OR fh_events.is_home       IS DISTINCT FROM EXCLUDED.is_home
+             OR fh_events.opponent      IS DISTINCT FROM EXCLUDED.opponent
              OR fh_events.fh_notes      IS DISTINCT FROM EXCLUDED.fh_notes
              OR fh_events.rsvps_open_at IS DISTINCT FROM EXCLUDED.rsvps_open_at
           RETURNING id
@@ -425,7 +434,7 @@ async function classifyDsl(pg) {
       `;
       const { rows: [upRow] } = await client.query(
         upsertSql,
-        [ev.id, kind, category, dsl.isHome, dsl.notes],
+        [ev.id, kind, category, dsl.isHome, dsl.opponent, dsl.notes],
       );
       if (upRow.wrote) stats.upserted += 1;
       const fhEventId = upRow.fh_event_id;

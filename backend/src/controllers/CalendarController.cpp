@@ -44,6 +44,38 @@ json boolOrNull(const pqxx::row& row, const char* col) {
     return f.as<bool>();
 }
 
+json longLongOrNull(const pqxx::row& row, const char* col) {
+    const auto& f = row[col];
+    if (f.is_null()) return nullptr;
+    return f.as<long long>();
+}
+
+std::string urlDecode(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (c == '+') { out.push_back(' '); continue; }
+        if (c == '%' && i + 2 < s.size()) {
+            auto hex = [](char h) -> int {
+                if (h >= '0' && h <= '9') return h - '0';
+                if (h >= 'a' && h <= 'f') return 10 + (h - 'a');
+                if (h >= 'A' && h <= 'F') return 10 + (h - 'A');
+                return -1;
+            };
+            int hi = hex(s[i + 1]);
+            int lo = hex(s[i + 2]);
+            if (hi >= 0 && lo >= 0) {
+                out.push_back(static_cast<char>((hi << 4) | lo));
+                i += 2;
+                continue;
+            }
+        }
+        out.push_back(c);
+    }
+    return out;
+}
+
 // ─── Optional session resolution ────────────────────────────────────
 //
 // The read endpoint is intentionally public (see header) but we want
@@ -231,6 +263,11 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         if (days > 90) days = 90;
     }
 
+    const bool includeUnclassified =
+        request.getQueryParam("include_unclassified") == "1" ||
+        request.getQueryParam("include_unclassified") == "true";
+    const std::string startParam = urlDecode(request.getQueryParam("start"));
+
     // Optional session — enriches each event with the caller's RSVP.
     // Anonymous callers see `my_rsvp: null` on every event; no auth
     // error is raised here (write endpoint enforces auth).
@@ -248,23 +285,22 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
     try {
         auto* db = Database::getInstance();
 
-        // The query joins the FH classification (fh_events) to its
-        // Google mirror row (gcal_events) and the calendar metadata
-        // (gcal_calendars).  Filters:
+        // The query starts from the Google mirror row (gcal_events),
+        // joins calendar metadata, and LEFT JOINs FH classification.
+        // Default callers still see classified FH events only.  Admin
+        // Soccer Calendar can pass include_unclassified=1 to also show
+        // raw soccer-calendar Google rows while ops catches up on DSL
+        // tagging/classification.  Filters:
         //   * deleted_at IS NULL     — respects the tombstone contract
         //   * status <> 'cancelled'  — belt-and-suspenders; the sync
         //                              worker sets deleted_at when
         //                              status flips to 'cancelled' but
         //                              guarding both makes the query
         //                              correct regardless of order.
-        //   * starts_at >= now() - 1h — include events that are
-        //                               currently underway so the
-        //                               live day view isn't empty
-        //                               right after kickoff.
-        //   * starts_at falls inside the currently visible one-week
-        //                               window in America/New_York:
-        //                               current week until Sunday 20:00 ET,
-        //                               then next week after the cutover.
+        //   * start omitted: starts_at >= now() - 1h and < now()+?days.
+        //   * start present: starts_at >= start and < start+?days so
+        //                    the admin calendar can page backward and
+        //                    forward like Google Calendar.
         //
         // rsvps_open_now is computed here so the frontend doesn't
         // have to re-implement §6.5.2's window check just to decide
@@ -308,9 +344,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 ge.status,
                 ge.html_link,
                 ge.raw->>'hangoutLink' AS hangout_link,
-                fe.kind,
+                COALESCE(fe.kind, 'other') AS kind,
                 fe.category,
                 fe.is_home,
+                fe.opponent,
                 fe.fh_notes,
                 CASE
                     WHEN fe.rsvps_open_at IS NULL THEN NULL
@@ -397,7 +434,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                              OR roster.response = 'yes'
                 ), '[]'::jsonb) AS rsvps_json,
                 CASE
-                    WHEN $1::int = 0 THEN NULL
+                    WHEN $1::int = 0 OR fe.id IS NULL THEN NULL
                     ELSE EXISTS (
                         SELECT 1
                         FROM   fh_event_teams fet
@@ -410,55 +447,43 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                           AND  epa.person_id   = $1::int
                     )
                 END AS my_rsvp_eligible
-            FROM fh_events   fe
-            JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                        FROM gcal_events ge
             JOIN gcal_calendars gc ON gc.id = ge.calendar_id
+                        LEFT JOIN fh_events fe ON fe.gcal_event_id = ge.id
             LEFT JOIN fh_event_rsvps mr
                    ON mr.fh_event_id = fe.id
                   AND mr.person_id   = $1::int
             WHERE ge.deleted_at IS NULL
-              AND ge.status <> 'cancelled'
-              AND ge.starts_at >= now() - INTERVAL '1 hour'
+                            AND COALESCE(ge.status, '') <> 'cancelled'
               AND ge.starts_at >= CASE
-                    WHEN (now() AT TIME ZONE 'America/New_York') >=
-                         (date_trunc('week', now() AT TIME ZONE 'America/New_York')
-                          + INTERVAL '6 days'
-                          + INTERVAL '20 hours')
-                    THEN timezone('UTC',
-                        (date_trunc('week', (now() AT TIME ZONE 'America/New_York') + INTERVAL '7 days')::timestamp))
-                    ELSE timezone('UTC',
-                        (date_trunc('week', now() AT TIME ZONE 'America/New_York')::timestamp))
+                  WHEN $4 = '' THEN now() - INTERVAL '1 hour'
+                  ELSE $4::timestamptz
                 END
               AND ge.starts_at < CASE
-                    WHEN (now() AT TIME ZONE 'America/New_York') >=
-                         (date_trunc('week', now() AT TIME ZONE 'America/New_York')
-                          + INTERVAL '6 days'
-                          + INTERVAL '20 hours')
-                    THEN timezone('UTC',
-                        (date_trunc('week', (now() AT TIME ZONE 'America/New_York') + INTERVAL '7 days')::timestamp
-                         + INTERVAL '6 days'
-                         + INTERVAL '23 hours'
-                         + INTERVAL '59 minutes'
-                         + INTERVAL '59 seconds'))
-                    ELSE timezone('UTC',
-                        (date_trunc('week', now() AT TIME ZONE 'America/New_York')::timestamp
-                         + INTERVAL '6 days'
-                         + INTERVAL '23 hours'
-                         + INTERVAL '59 minutes'
-                         + INTERVAL '59 seconds'))
+                  WHEN $4 = '' THEN now() + ($2::int * INTERVAL '1 day')
+                  ELSE $4::timestamptz + ($2::int * INTERVAL '1 day')
                 END
+                               AND (
+                                        fe.id IS NOT NULL
+                                   OR ($3::bool AND (gc.role = 'soccer' OR ge.summary ILIKE '%Soccer%'))
+                               )
             ORDER BY ge.starts_at ASC, ge.id ASC
             LIMIT 500
         )SQL";
 
-        pqxx::result rows = db->query(sql, {std::to_string(personId)});
+        pqxx::result rows = db->query(sql, {
+            std::to_string(personId),
+            std::to_string(days),
+                        includeUnclassified ? "true" : "false",
+            startParam,
+        });
 
         json events = json::array();
         events.get_ref<json::array_t&>().reserve(rows.size());
 
         for (const auto& row : rows) {
             json ev;
-            ev["fh_event_id"]       = row["fh_event_id"].as<long long>();
+            ev["fh_event_id"]       = longLongOrNull(row, "fh_event_id");
             ev["gcal_event_id"]     = row["gcal_event_id"].as<long long>();
             ev["calendar_role"]     = row["calendar_role"].c_str();
             ev["calendar_time_zone"]= row["calendar_time_zone"].c_str();
@@ -476,6 +501,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["kind"]              = row["kind"].c_str();
             ev["category"]          = textOrNull(row, "category");
             ev["is_home"]           = boolOrNull(row, "is_home");
+            ev["opponent"]          = textOrNull(row, "opponent");
             ev["fh_notes"]          = textOrNull(row, "fh_notes");
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
@@ -505,6 +531,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             {"count",  events.size()},
             {"events", std::move(events)},
         };
+        if (!startParam.empty()) {
+            body["start"] = startParam;
+        }
         return jsonOk(body);
 
     } catch (const std::exception& e) {

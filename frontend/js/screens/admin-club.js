@@ -59,9 +59,9 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗓️ Calendar</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗓️ Soccer Calendar</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Google Calendar owns event timing and tags. Football Home mirrors it here and layers RSVP state on top.
+          Google Calendar owns event timing and tags. Football Home mirrors soccer events here and translates FH details when classification exists.
         </p>
         <div id="section-schedule" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
@@ -180,7 +180,7 @@ class AdminClubScreen extends Screen {
     // schedule entry pointed at the mirror instead of the retired FH
     // matches/practices board so this section has one clear purpose.
     const scheduleTiles = [
-      { id: 'admin-calendar', icon: '🗓️', label: 'Calendar', description: 'Google Calendar mirror for soccer@ + sports@. To add/change events, edit them in gcal.' },
+      { id: 'admin-calendar', icon: '🗓️', label: 'Soccer Calendar', description: 'FH-translated soccer events from Google Calendar. To add/change timing, edit them in gcal.' },
     ];
     renderInto('#section-schedule', scheduleTiles);
 
@@ -230,10 +230,9 @@ class AdminClubScreen extends Screen {
     );
 
     // ── Structure ──────────────────────────────────────────────────────
-    // Club structural entities — events, users, players, teams,
-    // venues, tactical boards, and club-wide settings.
+    // Club structural entities — users, players, teams, venues,
+    // tactical boards, and club-wide settings.
     const structureTiles = [
-      { id: 'events',   icon: '📅',  label: 'Events',   description: 'Club events & RSVPs' },
       { id: 'users',    icon: '👤',  label: 'Users',    description: 'Manage user accounts' },
       { id: 'players',  icon: '⚽',  label: 'Players',  description: 'Manage player records' },
       { id: 'teams',    icon: '👥',  label: 'Teams',    description: 'Manage teams' },
@@ -254,14 +253,6 @@ class AdminClubScreen extends Screen {
         clubId:   this.clubId,
         clubName: this.clubName,
         ...dashTile.params,
-      });
-      return;
-    }
-
-    if (section === 'events') {
-      this.navigation.goTo('club-events', {
-        clubId: this.clubId,
-        clubName: this.clubName
       });
       return;
     }

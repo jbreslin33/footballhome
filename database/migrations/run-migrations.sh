@@ -17,8 +17,13 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Auto-detect container engine
-ENGINE=$(command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+# Auto-detect container engine. This host runs rootful Podman; plain
+# `podman exec` points at the wrong namespace and cannot see app containers.
+if command -v podman >/dev/null 2>&1; then
+    ENGINE="sudo podman"
+else
+    ENGINE=$(command -v docker 2>/dev/null)
+fi
 DB_EXEC="$ENGINE exec -i footballhome_db"
 
 # Ensure schema_migrations table exists (for DBs created before this feature)
