@@ -19,8 +19,9 @@ Task:
 
 ## Members Screen UI
 
-Use for the admin Members screen layout, filters, sorting, grouped member cards,
-bulk actions, and person drill-down links.
+Use for the admin Members screen layout, filters, sorting, slim grouped member
+cards (name + DOB + View), bulk actions, and person drill-down links. Contact
+and LeagueApps Manager links live on Person profile, not on Members cards.
 
 ```text
 /add frontend/js/screens/members.js frontend/js/components/FilterBar.js frontend/js/components/PersonActions.js frontend/js/screens/person.js

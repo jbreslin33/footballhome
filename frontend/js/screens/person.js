@@ -438,9 +438,17 @@ class PersonScreen extends Screen {
     ];
   }
 
+  // Matches Payments / MensRoster LA deep-link scheme.  Hardcoded site
+  // id mirrors PaymentsScreen.laSiteId (41983) — UI-only value; backend
+  // canonical is LEAGUEAPPS_SITE_ID in env.
+  _laManagerUrl(uid) {
+    return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
+  }
+
   _renderHeaderCard(data) {
     const p = data.person || {};
     const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim() || '(unnamed)';
+    const laUid = data.leagueAppsUserId || this.leagueAppsUserId;
 
     const pills = [];
     if (p.fhMemberAt) {
@@ -471,9 +479,20 @@ class PersonScreen extends Screen {
       ['Updated', this._fmtDateTime(p.updatedAt)],
     ];
 
+    const laLink = laUid
+      ? `<div style="margin-top: var(--space-3);">
+           <a class="btn btn-secondary btn-sm" target="_blank" rel="noopener"
+              href="${this._escape(this._laManagerUrl(laUid))}"
+              title="Open this member in LeagueApps Manager">
+             Open in LeagueApps →
+           </a>
+         </div>`
+      : '';
+
     const html = `
       <p class="ps-name">${this._escape(fullName)}</p>
       <div class="ps-meta">${pills.join('') || '<span class="ps-row-value muted">No status</span>'}</div>
+      ${laLink}
       <div style="margin-top: var(--space-3);">
         ${rows.map(([k, v]) => `
           <div class="ps-row">

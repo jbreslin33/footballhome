@@ -81,8 +81,12 @@ Shipped:
   roster teams, RSVP teams, duplicate signals, and data-issue flags.
 - Lens views under People: Accounts, Players, Coaches & Admins,
   Duplicates / Merges, Data Issues (same endpoint, `?view=` filter).
+- Members screen is a slim LeagueApps membership mirror (name + DOB +
+  View per card). Contact, onboarding, and the LeagueApps Manager
+  member link live on the Person profile.
 - Person profile includes the linked FH `users` account and merges
-  legacy `rosters` with LA `roster_assignments`.
+  legacy `rosters` with LA `roster_assignments`, plus an Open in
+  LeagueApps deep-link to `memberDetails`.
 - Duplicates lens groups shared-email / name+DOB collisions and can
   call `/api/persons/merge` (keep/drop). Person profile can unmerge.
 - Person profile RSVP card toggles grants via
