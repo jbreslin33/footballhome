@@ -11,6 +11,7 @@ This README is only the repo entrypoint. Project-wide rules live in
 
 - Rules and source-of-truth boundaries: `CONVENTIONS.md`
 - Documentation index: `docs/README.md`
+- Permanent Cursor Cloud / agent dev loop: `docs/dev-environment.md`
 - Simulator entrypoint: `sim/README.md`
 - Simulator design/roadmap: `sim/DESIGN.md`
 - Setup scripts: `setup.sh` and `scripts/setup/`

@@ -15,6 +15,8 @@ or decision you are working on.
 
 - `calendar-design.md`: Google Calendar and RSVP layering design.
 - `operations-design.md`: active cross-cutting operational follow-ups.
+- `dev-environment.md`: permanent Cursor Cloud Environment (Docker stack +
+  secrets) vs production host deploy path.
 - `SCRAPER_VPN.md`: scraper VPN setup and operations.
 
 ## Aider Context Maps
