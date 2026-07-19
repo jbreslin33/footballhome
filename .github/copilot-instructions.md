@@ -3,15 +3,21 @@
 `CONVENTIONS.md` is the canonical source for repository rules. Read it before
 making code, setup, database, documentation, or workflow changes.
 
+**How we develop:** `docs/dev-environment.md` — DB mirror + LeagueApps sync →
+PR → prod `git pull` / `make migrate` / `make deploy`. Cursor Cloud: `AGENTS.md`.
+
 ## Pre-Work Checks
 
 Before running commands or editing files:
 
-1. Run `pwd` and confirm the workspace is `/srv/footballhome`.
+1. Run `pwd`. Production host is `/srv/footballhome`; Cursor Cloud / laptop
+   checkouts use their own path with a **separate** DB volume.
 2. Run `make help` so available targets are not guessed.
-3. Run `sudo podman ps` before container or database work. Podman is rootful on
-   this host; plain `podman ps` is the wrong namespace.
+3. Before container or database work: on prod `sudo podman ps`; in Cloud
+   `docker compose --env-file env ps`.
 4. Read the relevant existing file before editing it.
+5. Verify UI changes on the **dev mirror** (`localhost:3000`), not by assuming
+   footballhome.org updated.
 
 ## Safety Rules
 

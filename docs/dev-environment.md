@@ -1,102 +1,170 @@
-# Permanent Dev Environment
+# How We Develop
 
-Two workable modes:
-
-1. **Dev DB mirror + LeagueApps sync** (permanent solution)  
-2. **Edit directly on production** (fast, dangerous)
-
-If you want agents / local to test Members like prod without risking
-footballhome.org, you need (1).
-
-## Mental model
-
-| Place | Role |
-|---|---|
-| Dev stack (Cursor Cloud or local Docker/Podman) | Own Postgres **volume** seeded from a prod dump; reads LeagueApps with decrypted `env` |
-| GitHub `main` | Code only |
-| Production `/srv/footballhome` | Live site — `git pull` + deploy/migrate |
+This is the **canonical** Football Home development workflow for every
+coder (including Cursor Cloud agents). Do not invent a parallel path.
 
 ```text
-prod:  make backup  →  backups/dev-mirror.sql(.gz)
-         ↓ copy / DEV_MIRROR_URL
-dev:   compose up  →  restore-mirror  →  LA Sync (fresh membership)
-         ↓ PR → merge
-prod:  git pull  →  make deploy / migrate
+┌─────────────────────┐     dump      ┌──────────────────────────┐
+│  Production host    │ ───────────►  │  Dev stack (you / lbreslin│
+│  /srv/footballhome  │  DEV_MIRROR   │  Cursor Cloud or local)  │
+│  footballhome.org   │               │  own Postgres volume     │
+└─────────┬───────────┘               └────────────┬─────────────┘
+          │                                        │
+          │  git pull + deploy                     │  code + test
+          │                                        │  PR → merge main
+          ◄────────────────────────────────────────┘
 ```
 
-## Why a mirror (not empty DB)
+## Rules
 
-- Membership screens also need accounts, roster links, RSVP grants, billing
-  flags, etc. that an empty DB + one Sync does not fully recreate.
-- Permanent = **persistent volume + refreshable dump**, not “sync from
-  scratch every cold boot.”
-- LeagueApps stays source of truth for membership *freshness* after restore
-  (LA → mirror DB → render).
+1. **Develop against a DB mirror + live LeagueApps sync** — not an empty DB,
+   and not by pointing compose at prod Postgres.
+2. **Ship only through GitHub `main`**, then update the production host.
+3. **Never commit** plaintext `env`, dumps under `backups/`, or other secrets.
 
-Never point compose at production Postgres.
+Editing directly on production is an emergency escape hatch, not the default.
 
-## One-time / recurring: refresh the mirror from prod
+## Roles
 
-On the production host:
+| Who / where | Does |
+|---|---|
+| Prod host maintainer | Refresh mirror dumps; pull/deploy after merges |
+| Developer (local or Cursor) | Restore mirror, run stack, change code, open PR |
+| GitHub `main` | Source of truth for code |
+
+---
+
+## A. Production host — publish a fresh mirror
+
+Run on `/srv/footballhome` whenever devs need fresher data (weekly is fine;
+before big membership work is better).
 
 ```bash
 cd /srv/footballhome
 sudo make backup
-cp "$(ls -t backups/backup-*.sql | head -1)" backups/dev-mirror.sql
-gzip -kf backups/dev-mirror.sql
+sudo make dev-mirror
+# → backups/dev-mirror.sql.gz  (gitignored)
 ```
 
-Get `backups/dev-mirror.sql.gz` onto the machine that runs the dev stack
-(scp, private object storage, etc.). That path is **gitignored** — do not
-commit dumps.
+Give developers that file (scp, shared private storage, etc.), **or** host it
+privately and set Cursor Runtime Secret `DEV_MIRROR_URL` to a signed URL.
 
-Optional Cursor Runtime Secret: `DEV_MIRROR_URL` = signed URL to that file.
-`scripts/dev/restore-mirror.sh` downloads it on boot.
+Also ensure teammates have the `age` passphrase so they can decrypt `env.age`
+(`AGE_PASSPHRASE` as a Cursor Runtime Secret, or interactive `./setup.sh`).
 
-## Cursor Cloud Environment
+---
 
-Repo scaffolding:
+## B. Developer machine / Cursor Cloud — boot the stack
 
-- `.cursor/environment.json` + `.cursor/Dockerfile`
-- `scripts/dev/cloud-{install,start,stack}.sh`
-- `scripts/dev/restore-mirror.sh`
-- `AGENTS.md`
+### B1. One-time Cursor Environment (Cloud)
 
-Dashboard setup:
+1. [Cloud Agents → Environments](https://cursor.com/dashboard/cloud-agents)
+2. Environment for `jbreslin33/footballhome`
+3. Runtime Secrets:
+   - `AGE_PASSPHRASE` (required)
+   - `DEV_MIRROR_URL` (recommended — points at `dev-mirror.sql.gz`)
+4. First agent run: stack comes up via `.cursor/environment.json`
+5. Confirm mirror restore + `http://localhost:3000`
+6. **Save snapshot** — all future agents use this environment
 
-1. Environment for this repo  
-2. Runtime Secrets: `AGE_PASSPHRASE` (required), `DEV_MIRROR_URL` (recommended)  
-3. First agent run: stack up → mirror restore → Members Sync  
-4. **Save snapshot** (warm tools + ideally filled Docker volume)  
-5. All future Cloud Agents use this environment  
+Repo files: `.cursor/environment.json`, `.cursor/Dockerfile`,
+`scripts/dev/cloud-*.sh`, `AGENTS.md`.
 
-## Local (same idea)
+### B2. Local clone
 
 ```bash
-./setup.sh                    # decrypt env.age
-# place backups/dev-mirror.sql.gz
-sudo make up                  # or docker compose --env-file env up -d
-./scripts/dev/restore-mirror.sh
-# open http://localhost:3000 → Members → Sync now
+git clone https://github.com/jbreslin33/footballhome.git
+cd footballhome
+./setup.sh                          # decrypts env.age (prompts or AGE_PASSPHRASE=)
+# place backups/dev-mirror.sql.gz   # from prod, or set DEV_MIRROR_URL
+sudo make up                        # Podman on Linux; Docker works too
+make restore-mirror
+# open http://localhost:3000
 ```
 
-## Ship to production
+Cursor Cloud uses Docker; the production host uses Podman. The Makefile
+auto-detects `ENGINE` / `COMPOSE`.
+
+### B3. Every day on the mirror
+
+```bash
+# stack already up
+make restore-mirror                 # when you grabbed a newer dump
+# UI: Membership → Sync now        # LeagueApps → mirror DB → render
+# edit code, verify on :3000
+git checkout -b cursor/my-change-xxxx
+# … commit …
+git push -u origin HEAD
+# open PR → merge to main
+```
+
+LeagueApps remains membership source of truth for **freshness** after restore
+(`CONVENTIONS.md` LA → DB → render).
+
+---
+
+## C. Ship to the live server (whole chain)
+
+After the PR is **merged to `main`**, on the production host:
 
 ```bash
 cd /srv/footballhome
+git fetch origin main
+git checkout main
 git pull origin main
-sudo make deploy    # backend C++ changes
-sudo make migrate   # new migrations
-# frontend bind-mount usually picks up JS without rebuild
+
+# Schema changes?
+sudo make migrate
+
+# Backend C++ changed?
+sudo make deploy
+
+# Frontend-only JS/CSS/HTML: bind-mounted — usually live after pull.
+# Hard-refresh the browser (cache-control is already no-store).
+
+sudo make ps                        # confirm containers healthy
+# smoke: open https://footballhome.org → Membership → Sync now
 ```
 
-## OAuth note
+Cheat sheet (prints the same steps):
 
-Cloud/local Google login may need a separate redirect URI; API testing can
-use a bearer JWT. See `AGENTS.md`.
+```bash
+./scripts/dev/ship-to-live.sh
+```
+
+| Change type | Prod action |
+|---|---|
+| Frontend JS/HTML/CSS only | `git pull` (+ hard refresh) |
+| New SQL migration | `git pull` → `sudo make migrate` |
+| Backend C++ | `git pull` → `sudo make deploy` |
+| Both | `git pull` → `migrate` → `deploy` |
+| Fresh mirror for other devs | `sudo make backup && sudo make dev-mirror` |
+
+---
+
+## D. What “done” means
+
+A change is **not live** until section C has run on `/srv/footballhome`.
+Merging to GitHub alone does not update footballhome.org.
+
+A change is **verified in dev** only when exercised on the mirror stack at
+`localhost:3000` (or equivalent), not by staring at production.
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Live site still old after merge | Section C not run on prod |
+| Dev Members empty / wrong | Restore mirror; then Sync now |
+| `AGE_PASSPHRASE unset` | Add Cursor secret or run `./setup.sh` |
+| OAuth login fails on cloud | Separate redirect URI, or use API bearer JWT |
+| Accidentally on prod DB | Stop — compose must use local volume only |
 
 ## Related
 
-- `AGENTS.md` — cloud agent runbook  
-- `README.md` — production host setup  
-- `CONVENTIONS.md` — LA → DB → render  
+- `README.md` — short entry + common commands  
+- `CONVENTIONS.md` — LA → DB → render and repo rules  
+- `AGENTS.md` — Cursor Cloud agent runbook  
+- `Makefile` — `backup`, `dev-mirror`, `restore-mirror`, `deploy`, `migrate`  

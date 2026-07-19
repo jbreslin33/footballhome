@@ -81,6 +81,7 @@ help:
 	@echo "  make dev-mirror          Copy latest backup → backups/dev-mirror.sql.gz"
 	@echo "  make restore             Restore latest backup (or BACKUP=file.sql)"
 	@echo "  make restore-mirror      Restore prod mirror into *dev* DB (drop public first)"
+	@echo "  ./scripts/dev/ship-to-live.sh   Print prod ship checklist (git pull → migrate/deploy)"
 	@echo "  make safe-rebuild        Backup + rebuild (safety net)"
 	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
 	@echo "  make load-user-data      Load exported user data (after sync)"
