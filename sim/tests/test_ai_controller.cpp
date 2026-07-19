@@ -469,11 +469,12 @@ FH_TEST(switch_penalty_delays_near_equal_challenger_after_min_ticks)
     FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(2.0f));
 }
 
-FH_TEST(default_behaviors_slice_31_4_defensive_roles_get_defender_bag)
+FH_TEST(default_behaviors_slice_33_4_roles_get_correct_bags)
 {
-    // Slice 31.4: concrete defensive roles have {PursueBallCarrierBehavior,
-    // JockeyBehavior, MarkOpponentBehavior}. Role::Any returns to being an
-    // empty placeholder; Slice 33.2 adds the first attacker behavior to ST roles.
+    // Slice 33.4: defensive roles get 3 behaviors (pursue, jockey, mark),
+    // attacker roles (ST9, ST10) get 1 behavior (feint_1v1),
+    // and Role::Any, GK remain empty. (No Role::Forward enum yet —
+    // 1v1 attacker slots use ST9; see OneVsOneAttackDefendScenario.)
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  3u);
@@ -482,16 +483,18 @@ FH_TEST(default_behaviors_slice_31_4_defensive_roles_get_defender_bag)
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  1u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 1u);
 
-    // Lock the defensive bag's identity by id string, so future slices
-    // that swap behaviors in/out of the bag must update this assertion
-    // deliberately.
-    const auto bag = AiController::defaultBehaviors(Role::LCB);
-    FH_EXPECT_EQ(std::string(bag[0]->id()), std::string("pursue_ball_carrier"));
-    FH_EXPECT_EQ(std::string(bag[1]->id()), std::string("jockey"));
-    FH_EXPECT_EQ(std::string(bag[2]->id()), std::string("mark_opponent"));
+    // Lock the defensive bag's identity by id string.
+    const auto lcb_bag = AiController::defaultBehaviors(Role::LCB);
+    FH_EXPECT_EQ(std::string(lcb_bag[0]->id()), std::string("pursue_ball_carrier"));
+    FH_EXPECT_EQ(std::string(lcb_bag[1]->id()), std::string("jockey"));
+    FH_EXPECT_EQ(std::string(lcb_bag[2]->id()), std::string("mark_opponent"));
 
-    const auto striker_bag = AiController::defaultBehaviors(Role::ST9);
-    FH_EXPECT_EQ(std::string(striker_bag[0]->id()), std::string("feint_1v1"));
+    // Lock the attacking bag's identity by id string.
+    const auto st9_bag = AiController::defaultBehaviors(Role::ST9);
+    FH_EXPECT_EQ(std::string(st9_bag[0]->id()), std::string("feint_1v1"));
+
+    const auto st10_bag = AiController::defaultBehaviors(Role::ST10);
+    FH_EXPECT_EQ(std::string(st10_bag[0]->id()), std::string("feint_1v1"));
 }
 
 int main()

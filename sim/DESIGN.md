@@ -3409,7 +3409,7 @@ Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 op
 - 33.1 [x] Migration 229 (`1v1_beat` id=6). Landed 2026-07-18: codegen exposes `k1v1Beat`; `sudo make sim-deploy` passed 55/55 ctests, `test_determinism`, and live DB registry consistency.
 - 33.2 [x] `Feint1v1Behavior` implementation. Landed 2026-07-18: ST9/ST10 striker bags include `{Feint1v1Behavior}`; `sudo make sim-deploy` passed 56/56 ctests, `test_determinism`, and live DB registry consistency.
 - 33.3 [x] `pattern_being_beaten_1v1` in `sim_pattern_registry` (migration 230 — first M3 pattern). Landed 2026-07-19: `RecognitionSystem` tracks per-carrier recent velocity samples and fires the pattern for nearby non-owners with recognition skill; live `Match` passes the boot-loaded `PatternRegistry` into recognition; `sudo make sim-deploy` passed.
-- 33.4 [ ] `AiController::defaultBehaviors()` extended/tuned for attacking roles beyond the first ST9/ST10 feint behavior: `{Feint1v1Behavior, /* future: shoot, pass */}`.
+- 33.4 [x] `AiController::defaultBehaviors()` attacking-role bags locked for ST9/ST10 as `{Feint1v1Behavior}` (future shoot/pass stay commented placeholders). Landed 2026-07-19: `test_ai_controller` asserts bag identity for LCB/RCB/CDM + ST9/ST10; 1v1 attacker slots continue to use `Role::ST9` (no `Role::Forward` enum yet).
 - 33.5 [x] Determinism golden: `attacker_feints_past_defender_400_ticks_seed_42`. Landed 2026-07-19 at `0xcee6855c275f58f4`; `sudo make sim-deploy` passed 56/56 ctests, `test_determinism`, and live DB registry consistency.
 
 **Slice 33 exit gate**: coach spawns a scenario with an `AiController(Forward)` attacker and human defender; the attacker feints past the defender when the defender commits early to press.
