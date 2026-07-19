@@ -70,6 +70,24 @@ cd /srv/footballhome
 aider                     # reads .aider.conf.yml, talks to your ollama
 ```
 
+## OpenRouter on fishtown
+
+For hosted models, keep the key in the repo-local ignored `env` file:
+
+```bash
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+
+Then launch aider from the repo root with:
+
+```bash
+./scripts/aider-openrouter.sh
+```
+
+The launcher exports variables from `env` for the aider process only. It uses
+`.aider.openrouter.yml` when present, otherwise it falls back to
+`AIDER_OPENROUTER_MODEL` or `openrouter/anthropic/claude-sonnet-4`.
+
 ## Troubleshooting
 
 **"Connection refused" from aider on fishtown**
