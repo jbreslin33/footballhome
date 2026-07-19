@@ -102,7 +102,7 @@ class PeopleWorkbenchScreen extends Screen {
       },
       duplicates: {
         title: 'Duplicates / Merges',
-        description: 'Shared emails, matching name+DOB pairs, and people touched by merge history.',
+        description: 'Grouped by shared email or name+DOB. Keep one person and drop the other; reverse from the person profile.',
       },
       'data-issues': {
         title: 'Data Issues',
