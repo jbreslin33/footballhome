@@ -426,9 +426,15 @@ class PersonScreen extends Screen {
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
+      { id: 918, short: 'Pract.', label: 'Women Practice', color: '#f59e0b', category: 'women' },
+      { id: 919, short: 'Pickup', label: 'Women Pickup',   color: '#10b981', category: 'women' },
       { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
       { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
       { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
+      { id: 920, short: 'Pract.', label: 'Boys Practice', color: '#f59e0b', category: 'boys' },
+      { id: 921, short: 'Pickup', label: 'Boys Pickup',   color: '#10b981', category: 'boys' },
+      { id: 922, short: 'Pract.', label: 'Girls Practice', color: '#f59e0b', category: 'girls' },
+      { id: 923, short: 'Pickup', label: 'Girls Pickup',   color: '#10b981', category: 'girls' },
     ];
   }
 
@@ -686,23 +692,40 @@ class PersonScreen extends Screen {
     // Inline set-replace toggles — same PUT as the RSVP Eligibility board
     // and mens roster modal, so Club Admin can fix grants without leaving
     // the person profile.
+    const byCat = {};
+    for (const t of this._rsvpTeams()) {
+      (byCat[t.category] || (byCat[t.category] = [])).push(t);
+    }
+    const catOrder = ['men', 'women', 'boys', 'girls'];
+    const catLabel = { men: 'Men', women: 'Women', boys: 'Boys', girls: 'Girls' };
     teamsEl.innerHTML = `
-      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom: var(--space-2);">
-        ${this._rsvpTeams().map((t) => {
-          const on = granted.has(t.id);
-          return `<button type="button"
-                    data-rsvp-team-id="${t.id}"
-                    data-elig-on="${on ? '1' : '0'}"
-                    title="${this._escape(t.label)}"
-                    style="padding:4px 10px; border-radius:999px; font-size:0.75rem;
-                           font-weight:700; cursor:pointer;
-                           border:1px solid ${t.color};
-                           background:${on ? t.color : 'transparent'};
-                           color:${on ? '#fff' : t.color};">
-                    ${this._escape(t.short)}
-                  </button>`;
-        }).join('')}
-      </div>
+      ${catOrder.map((cat) => {
+        const teams = byCat[cat] || [];
+        if (!teams.length) return '';
+        return `
+          <div style="margin-bottom: var(--space-2);">
+            <div style="font-size:0.7rem; font-weight:700; opacity:0.65;
+                        letter-spacing:0.04em; text-transform:uppercase; margin-bottom:4px;">
+              ${catLabel[cat] || cat}
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${teams.map((t) => {
+                const on = granted.has(t.id);
+                return `<button type="button"
+                          data-rsvp-team-id="${t.id}"
+                          data-elig-on="${on ? '1' : '0'}"
+                          title="${this._escape(t.label)}"
+                          style="padding:4px 10px; border-radius:999px; font-size:0.75rem;
+                                 font-weight:700; cursor:pointer;
+                                 border:1px solid ${t.color};
+                                 background:${on ? t.color : 'transparent'};
+                                 color:${on ? '#fff' : t.color};">
+                          ${this._escape(t.short)}
+                        </button>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('')}
       <div style="font-size:0.75rem; opacity:0.65; margin-bottom: var(--space-2);">
         Tap a team to grant or revoke RSVP eligibility for this person.
       </div>

@@ -794,8 +794,9 @@ namespace {
 // Display / grant catalog.  Order: mens home → mens pool → women → boys.
 const int kEligibilityTeams[] = {
     35, 120, 121, 122, 908, 909,   // mens
-    901,                           // women — Tri County
-    911, 916, 917                  // boys — U16 / U8 / U12 Youth League
+    901, 918, 919,                 // women — Tri County + Practice/Pickup
+    911, 916, 917, 920, 921,       // boys — Youth League + Practice/Pickup
+    922, 923                       // girls — Practice/Pickup
 };
 
 bool isEligibilityTeamId(int teamId) {

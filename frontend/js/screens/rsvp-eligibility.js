@@ -108,9 +108,15 @@ class RsvpEligibilityScreen extends Screen {
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
+      { id: 918, short: 'Pract.', label: 'Women Practice', color: '#f59e0b', category: 'women' },
+      { id: 919, short: 'Pickup', label: 'Women Pickup',   color: '#10b981', category: 'women' },
       { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
       { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
       { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
+      { id: 920, short: 'Pract.', label: 'Boys Practice', color: '#f59e0b', category: 'boys' },
+      { id: 921, short: 'Pickup', label: 'Boys Pickup',   color: '#10b981', category: 'boys' },
+      { id: 922, short: 'Pract.', label: 'Girls Practice', color: '#f59e0b', category: 'girls' },
+      { id: 923, short: 'Pickup', label: 'Girls Pickup',   color: '#10b981', category: 'girls' },
     ];
   }
 
@@ -118,9 +124,6 @@ class RsvpEligibilityScreen extends Screen {
     const cat = String(category || '').toLowerCase();
     const all = this._teams();
     if (!cat || cat === 'all') return all;
-    // Girls has no dedicated eligibility teams yet — show empty rather
-    // than mens chips so we don't imply the wrong grants.
-    if (cat === 'girls') return [];
     return all.filter((t) => t.category === cat);
   }
 

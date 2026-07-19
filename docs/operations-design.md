@@ -90,11 +90,14 @@ Shipped:
 - Admin-confirmed scraped identity linking:
   `GET /api/persons/:id/scraped-match-candidates` +
   `POST /api/persons/link-scraped` (reuses PersonMerge; reversible).
-- RSVP eligibility catalog expanded beyond mens to Women (901) and
-  Boys (911/916/917); board chips are category-scoped.
+- RSVP eligibility catalog includes Men, Women (901/918/919), Boys
+  (911/916/917/920/921), and Girls (922/923 Practice/Pickup pools).
+- Migration `232-non-mens-practice-pickup-pools.sql` creates the
+  non-mens Practice/Pickup pools + gcal aliases + eligibility backfill.
 
 Open follow-ups:
 
-- Girls eligibility teams when those roster/gcal aliases exist.
-- Non-mens Practice/Pickup pool teams (mirrors of 908/909) when ops
-  wants those RSVP surfaces.
+- Girls competitive/home teams beyond Practice/Pickup when a dedicated
+  girls selection board exists (girls currently play on boys youth teams).
+- Auto-grant Women Practice/Pickup from a future `domain='womens'`
+  roster board (today seeded from open LA memberships).

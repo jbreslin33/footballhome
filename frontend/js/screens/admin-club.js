@@ -211,7 +211,7 @@ class AdminClubScreen extends Screen {
     // glance who's eligible for which mens-selection team (APSL,
     // Liga 1, Liga 2, Adult, Practice, Pickup) and toggle grants.
     const rsvpTiles = [
-      { id: 'rsvp-eligibility', icon: '🗳️', label: 'RSVP Eligibility', description: 'Who can RSVP for which team — Men (APSL/Liga/Adult/Practice/Pickup), Women (Tri County), Boys (U8/U12/U16)' },
+      { id: 'rsvp-eligibility', icon: '🗳️', label: 'RSVP Eligibility', description: 'Men / Women / Boys / Girls — home teams plus Practice & Pickup pools' },
     ];
     renderInto('#section-rsvp', rsvpTiles);
 
