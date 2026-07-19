@@ -29,12 +29,29 @@ AGE_PASSPHRASE="$AGE_PASSPHRASE" ./scripts/setup/setup-age.sh
 ./scripts/dev/cloud-stack.sh &
 ```
 
+### DB mirror (required for permanent dev)
+
+Permanent testing needs a **prod DB mirror** in the local compose volume,
+plus LeagueApps sync for freshness — not an empty DB.
+
+```bash
+# if dump / DEV_MIRROR_URL present:
+./scripts/dev/restore-mirror.sh
+```
+
+Sources (first hit wins): `BACKUP=…`, `backups/dev-mirror.sql(.gz)`,
+newest `backups/backup-*.sql*`, or Runtime Secret `DEV_MIRROR_URL`.
+
+On prod (human): `sudo make backup` → copy to `backups/dev-mirror.sql.gz`
+(or host privately and set `DEV_MIRROR_URL`). Dumps are gitignored.
+
 ### How to test UI changes (Members / Person / Club Admin)
 
-1. Prefer the cloud stack at `http://localhost:3000` — **not** footballhome.org.
-2. Open Membership → Sync now (LeagueApps → DB → render).
-3. Confirm slim cards / Person View·Edit / etc. against synced data.
-4. Hard-refresh if the browser cached old JS.
+1. Prefer the cloud/local stack at `http://localhost:3000` — **not** footballhome.org.
+2. Ensure mirror restore ran (or restore manually).
+3. Open Membership → Sync now (LeagueApps → mirror DB → render).
+4. Confirm slim cards / Person View·Edit / etc.
+5. Hard-refresh if the browser cached old JS.
 
 Production (`footballhome.org`) only updates after a human `git pull` on
 `/srv/footballhome`. Do not tell the user a UI change is live on prod until
