@@ -8,13 +8,15 @@ tool-specific bootstrap only.
 
 ## Repository Contract
 
-- **How we develop** is documented in `docs/dev-environment.md`: work on a
-  **DB mirror + LeagueApps sync**, open a PR to `main`, then on the production
-  host `git pull` and `make migrate` / `make deploy` as needed. Merging to
-  GitHub alone does not update footballhome.org.
-- Production workspace root is `/srv/footballhome`. Cursor Cloud / laptop
-  checkouts use their own path and their **own** Postgres volume — never the
-  production database socket/URL.
+- **How we develop** is documented in `docs/dev-environment.md`: each coder
+  has a **per-developer stack on the production host**
+  (`/srv/footballhome-dev-<slug>`, `make dev-up DEV=…`) with its own DB
+  mirror + LeagueApps sync, opens a PR to `main`, then prod
+  (`/srv/footballhome`) gets `git pull` + `make migrate` / `make deploy`.
+  Merging to GitHub alone does not update footballhome.org.
+- Production workspace root is `/srv/footballhome`. Dev slots use
+  `/srv/footballhome-dev-<slug>` and **own** Postgres volumes — never the
+  production database volume.
 - Production host container workflows use rootful Podman (`sudo podman …`,
   `sudo make …`). Cursor Cloud uses Docker; the Makefile auto-detects
   `ENGINE` / `COMPOSE`.
