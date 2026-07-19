@@ -61,12 +61,10 @@ public:
     // registrationDate / dateRegistered / signupDate — see
     // LaProgramSync::extractRegisteredIso).  Populated on INSERT and
     // back-filled on the update-existing branch when the column is
-    // still NULL.  Never overwrites an existing non-NULL value (the
-    // BillingController manual backfill has the same rule).  Pass ""
+    // still NULL.  Never overwrites an existing non-NULL value.  Pass ""
     // when unknown.  The projected-prorate math (billing-badge.js)
     // silently returns $0 without it, so populating this from the
-    // primary sync path is what makes mid-cycle signups auto-prorate
-    // without an operator hitting /api/billing/la-reg-backfill.
+    // primary sync path is what makes mid-cycle signups auto-prorate.
     // Best-effort: logs + swallows on DB errors (does not throw).
     void recordMembership(int personId,
                           long long programId,

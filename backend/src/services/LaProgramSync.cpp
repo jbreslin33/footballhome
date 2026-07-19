@@ -62,13 +62,9 @@ long long extractRegistrationId(const nlohmann::json& rec) {
 // names depending on program vintage / API version; try the common
 // suspects in a defined priority order and normalise to ISO.
 //
-// KEEP IN SYNC with BillingController::extractRegisteredIso — that
-// endpoint (POST /api/billing/la-reg-backfill) does the same job for
-// pre-existing NULL rows; the two extractors must agree so the manual
-// backfill and this primary-path write always resolve to the same
-// value.  Returns "" when nothing matches (recordMembership then
-// leaves la_registered_at NULL, and projected-prorate silently shows
-// $0 as before).
+// Keep this as the single source for deriving registration time from LA.
+// Returns "" when nothing matches (recordMembership then leaves
+// la_registered_at NULL, and projected-prorate silently shows $0 as before).
 std::string extractRegisteredIso(const nlohmann::json& rec) {
     static const char* kCandidates[] = {
         "registrationDate",
@@ -214,9 +210,8 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 // update).  Without this, mid-cycle signups land with a
                 // NULL reg-date and billing-badge.projectedProrate
                 // returns $0 (tooltip: "no LA registration date on
-                // record") until an operator manually hits
-                // /api/billing/la-reg-backfill.  See PersonLinker.h
-                // recordMembership doc + billing-badge.js.
+                // record").  See PersonLinker.h recordMembership doc
+                // + billing-badge.js.
                 const std::string regIso = extractRegisteredIso(rec);
                 linker.recordMembership(r.personId, programId, regId, regIso);
 

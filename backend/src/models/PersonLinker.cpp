@@ -338,10 +338,8 @@ void PersonLinker::recordMembership(int personId,
         //    Also backfill `la_registered_at` if we now know it and the
         //    row doesn't have one yet — this is the auto-population
         //    path that makes the projected-prorate cell work for
-        //    mid-cycle signups without an operator hitting the manual
-        //    /api/billing/la-reg-backfill endpoint (never overwrites
-        //    an existing non-NULL value; see BillingController's same
-        //    rule).
+        //    mid-cycle signups without an operator backfill (never
+        //    overwrites an existing non-NULL value).
         auto hit = db_->query(
             "SELECT 1 FROM person_la_memberships "
             " WHERE person_id = $1::int AND la_program_id = $2::bigint AND ended_at IS NULL "
