@@ -37,7 +37,7 @@ class RsvpEligibilityScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🗳️ RSVP Eligibility</h1>
-        <p class="subtitle" id="rsvp-elig-subtitle">Who can RSVP for which mens team</p>
+        <p class="subtitle" id="rsvp-elig-subtitle">Who can RSVP for which team</p>
       </div>
 
       <div style="padding: var(--space-4);">
@@ -96,17 +96,32 @@ class RsvpEligibilityScreen extends Screen {
   }
 
   // Team catalog — MUST match MensRosterController.cpp `kEligibilityTeams`.
-  // Colors match the per-player modal in mens-roster.js
-  // openRsvpEligibilityModal().
+  // `category` scopes chips on member cards (Women members see women teams,
+  // etc.).  Full grant set is still loaded/saved so toggling one category
+  // never wipes another category's grants.
   _teams() {
     return [
-      { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb' },
-      { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2' },
-      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6' },
-      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa' },
-      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b' },
-      { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981' },
+      { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
+      { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
+      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6', category: 'men' },
+      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa', category: 'men' },
+      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
+      { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
+      { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
+      { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
+      { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
+      { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
     ];
+  }
+
+  _teamsForCategory(category) {
+    const cat = String(category || '').toLowerCase();
+    const all = this._teams();
+    if (!cat || cat === 'all') return all;
+    // Girls has no dedicated eligibility teams yet — show empty rather
+    // than mens chips so we don't imply the wrong grants.
+    if (cat === 'girls') return [];
+    return all.filter((t) => t.category === cat);
   }
 
   onEnter(params) {
@@ -457,6 +472,7 @@ class RsvpEligibilityScreen extends Screen {
         // Refresh sort-pill counts too — the "No account" / "Dormant"
         // chip counters are scoped to the current category.
         this._renderSortPills();
+        this._renderLegend();
         this._renderGroups();
       },
     }]);
@@ -465,7 +481,9 @@ class RsvpEligibilityScreen extends Screen {
   _renderLegend() {
     const el = this.find('#rsvp-elig-legend');
     if (!el) return;
-    el.innerHTML = this._teams().map(t => `
+    const teams = this._teamsForCategory(this.categoryFilter);
+    el.innerHTML = teams.length
+      ? teams.map(t => `
       <span style="display:inline-flex; align-items:center; gap:4px;
                    padding:3px 8px; border-radius:999px;
                    background:${t.color}22; color:${t.color};
@@ -473,7 +491,8 @@ class RsvpEligibilityScreen extends Screen {
         <span style="width:8px; height:8px; border-radius:2px; background:${t.color};"></span>
         ${t.label} <span style="opacity:0.6;">#${t.id}</span>
       </span>
-    `).join(' ');
+    `).join(' ')
+      : `<span style="opacity:0.6;">No eligibility teams for this category yet.</span>`;
   }
 
   // ── Card grid ────────────────────────────────────────────────────
@@ -509,7 +528,7 @@ class RsvpEligibilityScreen extends Screen {
       );
       totalShown += members.length;
       if (filter && members.length === 0) return '';
-      const cards = members.map(m => this._renderCard(m)).join('');
+      const cards = members.map(m => this._renderCard(m, g.category)).join('');
       return `
         <section style="margin-bottom: var(--space-5);">
           <h3 style="margin: 0 0 var(--space-2); opacity:0.9;">
@@ -537,18 +556,25 @@ class RsvpEligibilityScreen extends Screen {
     this._updateSubtitle(totalShown);
   }
 
-  _renderCard(m) {
+  _renderCard(m, groupCategory) {
     const name  = `${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)';
     const email = m.email || '';
     const phone = m.phone || '';
     const uid   = (m.leagueapps_user_id == null) ? '' : String(m.leagueapps_user_id);
     const noUid = !uid;
     const set   = this._elig.get(uid) || new Set();
+    const memberCat = String(groupCategory || m.category || '').toLowerCase();
+    const teams = this._teamsForCategory(
+      this.categoryFilter || memberCat || null
+    );
 
     // Team-eligibility chip row.  Each chip is an atomic toggle —
     // click flips it, PUT saves the new set.  Filled = granted,
     // outline = not granted, disabled = no LA user id (can't set).
-    const eligChips = this._teams().map(t => {
+    // Full grant set stays in `_elig` so other-category grants survive.
+    const eligChips = teams.length === 0
+      ? `<div style="font-size:0.75rem; opacity:0.6;">No eligibility teams for this category yet.</div>`
+      : teams.map(t => {
       const on = set.has(t.id);
       const bg     = on ? t.color        : 'transparent';
       const fg     = on ? '#fff'         : t.color;

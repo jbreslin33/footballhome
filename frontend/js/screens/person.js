@@ -130,6 +130,19 @@ class PersonScreen extends Screen {
             <div id="ps-merges-wrap" style="margin-top: var(--space-3);"></div>
           </section>
 
+          <!-- Scraped league/opponent identity candidates (admin-confirmed link). -->
+          <section class="ps-card" id="ps-scraped-card">
+            <h2 class="ps-card-title">
+              Scraped identity matches
+              <span id="ps-scraped-count" class="ps-count"></span>
+            </h2>
+            <p style="margin: 0 0 var(--space-2); font-size:0.85rem; opacity:0.7;">
+              Name matches against scraped league/opponent people with no LA membership.
+              Confirm to merge their roster onto this Lighthouse person (reversible).
+            </p>
+            <div id="ps-scraped-list"></div>
+          </section>
+
         </div>
       </div>
 
@@ -283,6 +296,12 @@ class PersonScreen extends Screen {
       if (unmergeBtn) {
         e.preventDefault();
         this._unmerge(Number(unmergeBtn.getAttribute('data-unmerge-id')), unmergeBtn);
+        return;
+      }
+      const linkBtn = e.target.closest('[data-link-scraped]');
+      if (linkBtn) {
+        e.preventDefault();
+        this._linkScraped(Number(linkBtn.getAttribute('data-link-scraped')), linkBtn);
       }
     });
 
@@ -393,18 +412,23 @@ class PersonScreen extends Screen {
     this._renderBillingCard(data.billing, data.chargeFlags || []);
     this._renderRecentRsvpsCard(data.recentRsvps || []);
     this._renderDataQualityCard(data.overrides || [], data.merges || []);
+    this._loadScrapedCandidates(data.personId);
   }
 
-  // Mens-selection teams — keep in sync with rsvp-eligibility.js /
-  // MensRosterController.cpp `kEligibilityTeams`.
+  // Mens-selection + women/boys teams — keep in sync with
+  // rsvp-eligibility.js / MensRosterController.cpp `kEligibilityTeams`.
   _rsvpTeams() {
     return [
-      { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb' },
-      { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2' },
-      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6' },
-      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa' },
-      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b' },
-      { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981' },
+      { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
+      { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
+      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6', category: 'men' },
+      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa', category: 'men' },
+      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
+      { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
+      { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
+      { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
+      { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
+      { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
     ];
   }
 
@@ -876,6 +900,90 @@ class PersonScreen extends Screen {
       await this._load();
     } catch (err) {
       alert(`Unmerge failed: ${err.message || err}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
+    }
+  }
+
+  async _loadScrapedCandidates(personId) {
+    const list = this.element.querySelector('#ps-scraped-list');
+    const count = this.element.querySelector('#ps-scraped-count');
+    if (!list || !personId) return;
+    list.innerHTML = `<div class="ps-empty">Looking for scraped matches…</div>`;
+    try {
+      const res = await this.auth.fetch(
+        `/api/persons/${personId}/scraped-match-candidates`
+      );
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+      if (count) count.textContent = candidates.length ? String(candidates.length) : '';
+      if (!candidates.length) {
+        list.innerHTML = `<div class="ps-empty">No scraped name matches</div>`;
+        return;
+      }
+      list.innerHTML = candidates.map((c) => {
+        const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || `Person #${c.personId}`;
+        const teams = c.teamNames || 'no current roster';
+        const clubs = c.clubNames ? ` · ${c.clubNames}` : '';
+        const dobBit = c.dob
+          ? `${c.dobMatch ? 'DOB match' : 'DOB'} ${c.dob}`
+          : 'no DOB';
+        return `
+          <div class="ps-row" style="align-items:center; flex-wrap:wrap; gap:8px;">
+            <span class="ps-row-label" style="flex:1; min-width:160px;">
+              <strong>${this._escape(name)}</strong>
+              <span style="opacity:0.55;"> #${c.personId}</span>
+              <div style="font-size:0.8rem; opacity:0.75; margin-top:2px;">
+                ${this._escape(teams)}${this._escape(clubs)}
+              </div>
+              <div style="font-size:0.75rem; opacity:0.6;">${this._escape(dobBit)}</div>
+            </span>
+            <button type="button" class="btn btn-secondary"
+                    data-link-scraped="${c.personId}"
+                    style="padding:4px 10px; font-size:0.75rem; font-weight:700;">
+              Link to this person
+            </button>
+          </div>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="ps-empty">Could not load scraped matches: ${this._escape(err.message || String(err))}</div>`;
+    }
+  }
+
+  async _linkScraped(scrapedPersonId, btn) {
+    if (!this._personId || !scrapedPersonId) return;
+    const ok = window.confirm(
+      `Link scraped person #${scrapedPersonId} onto Lighthouse person #${this._personId}?\n\n` +
+      `Their player/roster rows move onto this person. Reversible via Unmerge.`
+    );
+    if (!ok) return;
+    const prev = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Linking…';
+    }
+    try {
+      const res = await this.auth.fetch('/api/persons/link-scraped', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keepPersonId: this._personId,
+          scrapedPersonId,
+        }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+      await this._load();
+    } catch (err) {
+      alert(`Link failed: ${err.message || err}`);
       if (btn) {
         btn.disabled = false;
         btn.textContent = prev;

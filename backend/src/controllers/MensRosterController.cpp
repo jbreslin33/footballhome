@@ -780,19 +780,23 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
 // player card already carries `leagueAppsUserId` so no ID resolution is
 // needed on either side.
 //
-// Team catalog is the four mens selection teams (35/120/121/122) plus
-// the two pool teams (908/909).  Grants for other teams are ignored on
-// write and hidden on read (defensive — an admin could add rows via SQL
-// but the UI is not designed for arbitrary team_ids).
+// Team catalog is the mens selection + pool teams, plus real Women and
+// Boys teams that already have gcal aliases / roster boards.  Grants
+// for other teams are ignored on write and hidden on read.
+// Changes here MUST be mirrored in:
+//   frontend/js/screens/rsvp-eligibility.js  (_teams)
+//   frontend/js/screens/person.js            (_rsvpTeams)
+//   frontend/js/screens/mens-roster.js       (openRsvpEligibilityModal)
 // ────────────────────────────────────────────────────────────────────────────
 
 namespace {
 
-// The full set of teams the player-card popup exposes as checkboxes.
-// Order matches the display order in the popup: home teams first, then
-// pool teams.  Changes here MUST be mirrored in the frontend
-// mens-roster.js RSVP_ELIGIBILITY_TEAMS constant.
-const int kEligibilityTeams[] = { 35, 120, 121, 122, 908, 909 };
+// Display / grant catalog.  Order: mens home → mens pool → women → boys.
+const int kEligibilityTeams[] = {
+    35, 120, 121, 122, 908, 909,   // mens
+    901,                           // women — Tri County
+    911, 916, 917                  // boys — U16 / U8 / U12 Youth League
+};
 
 bool isEligibilityTeamId(int teamId) {
     for (int t : kEligibilityTeams) if (t == teamId) return true;

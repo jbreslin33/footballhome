@@ -87,11 +87,14 @@ Shipped:
   call `/api/persons/merge` (keep/drop). Person profile can unmerge.
 - Person profile RSVP card toggles grants via
   `PUT /api/mens-roster/rsvp-eligibility` (same set as the board).
+- Admin-confirmed scraped identity linking:
+  `GET /api/persons/:id/scraped-match-candidates` +
+  `POST /api/persons/link-scraped` (reuses PersonMerge; reversible).
+- RSVP eligibility catalog expanded beyond mens to Women (901) and
+  Boys (911/916/917); board chips are category-scoped.
 
 Open follow-ups:
 
-- Add a later identity-resolution workflow for connecting current
-  Lighthouse people to scraped league identities with admin-confirmed
-  matches, not automatic name-only merges.
-- Expand RSVP team catalog beyond mens-selection teams when women /
-  boys / girls eligibility tables are ready.
+- Girls eligibility teams when those roster/gcal aliases exist.
+- Non-mens Practice/Pickup pool teams (mirrors of 908/909) when ops
+  wants those RSVP surfaces.
