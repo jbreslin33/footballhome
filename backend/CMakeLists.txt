@@ -92,7 +92,6 @@ set(SOURCES
     src/controllers/StreamController.cpp
     src/controllers/EligibilityController.cpp
     src/controllers/SocialController.cpp
-    src/controllers/InternalRosterController.cpp
     src/controllers/PublicController.cpp
     src/controllers/MatchSeriesController.cpp
     src/controllers/MyController.cpp

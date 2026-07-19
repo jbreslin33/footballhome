@@ -3103,17 +3103,6 @@ ALTER SEQUENCE public.player_eligibilities_id_seq OWNED BY public.player_eligibi
 
 
 --
--- Name: player_planner_notes; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.player_planner_notes (
-    player_id integer NOT NULL,
-    "position" character varying(30),
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
 -- Name: player_positions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -31622,14 +31611,6 @@ COPY public.player_eligibilities (id, player_id, source_system_id, category, sta
 
 
 --
--- Data for Name: player_planner_notes; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.player_planner_notes (player_id, "position", updated_at) FROM stdin;
-\.
-
-
---
 -- Data for Name: player_positions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -40191,7 +40172,6 @@ COPY public.schema_migrations (id, filename, applied_at) FROM stdin;
 36	036-chat-event-count-when-canceled.sql	2026-05-20 16:41:10.005896+00
 37	037-leagues-last-scraped-at.sql	2026-05-20 16:41:13.990002+00
 38	038-remove-family-discount.sql	2026-05-20 16:41:19.469383+00
-39	039-player-planner-notes.sql	2026-05-20 16:41:25.010454+00
 40	040-leads.sql	2026-05-22 13:23:08.553318+00
 41	041-persons-leagueapps-payment-status.sql	2026-05-31 02:52:19.791915+00
 42	042-leagueapps-person-aliases.sql	2026-05-31 03:06:42.536116+00
@@ -42721,14 +42701,6 @@ ALTER TABLE ONLY public.player_eligibilities
 
 ALTER TABLE ONLY public.player_eligibilities
     ADD CONSTRAINT player_eligibilities_unique UNIQUE (player_id, source_system_id, category, subdivision);
-
-
---
--- Name: player_planner_notes player_planner_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_planner_notes
-    ADD CONSTRAINT player_planner_notes_pkey PRIMARY KEY (player_id);
 
 
 --
@@ -46148,14 +46120,6 @@ ALTER TABLE ONLY public.player_eligibilities
 
 ALTER TABLE ONLY public.player_eligibilities
     ADD CONSTRAINT player_eligibilities_source_system_id_fkey FOREIGN KEY (source_system_id) REFERENCES public.source_systems(id);
-
-
---
--- Name: player_planner_notes player_planner_notes_player_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_planner_notes
-    ADD CONSTRAINT player_planner_notes_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.players(id) ON DELETE CASCADE;
 
 
 --

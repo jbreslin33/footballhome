@@ -34,14 +34,6 @@ badges, and youth roster payload shape.
 /add frontend/js/screens/boys-roster.js frontend/js/screens/youth-roster.js backend/src/controllers/BoysRosterController.cpp backend/src/controllers/BoysRosterController.h backend/src/models/BoysRoster.cpp backend/src/models/BoysRoster.h backend/src/controllers/YouthRosterController.cpp backend/src/controllers/YouthRosterController.h backend/src/models/YouthRoster.cpp backend/src/models/YouthRoster.h
 ```
 
-## Internal Roster Board
-
-Use for the internal drag/drop roster board and manual team/attribute edits.
-
-```text
-/add frontend/js/screens/internal-roster.js backend/src/controllers/InternalRosterController.cpp backend/src/controllers/InternalRosterController.h
-```
-
 ## Game-Day Roster
 
 Use for match-day 18/20 roster selection, lineup roster data, and public match

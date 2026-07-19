@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS team_eligible_genders (
 );
 
 COMMENT ON TABLE team_eligible_genders IS
-  'Which gender buckets each team accepts for internal-roster assignment.  '
+  'Which gender buckets each team accepts for roster and lineup assignment.  '
   'Replaces the scalar teams.gender_category for eligibility checks; the '
   'scalar column is kept as a coarse primary tag consumed by legacy '
   'callers (event reminders, leads classifier).';

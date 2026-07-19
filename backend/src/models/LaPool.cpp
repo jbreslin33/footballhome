@@ -158,7 +158,7 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
     //
     // Every mens/womens team the club owns is eligible for pill toggles,
     // including pool teams (Practice / Pickup) — those are legitimate
-    // "internal-roster only" columns on the Lineups screen.  The old
+    // working-roster columns on the Lineups screen.  The old
     // name-based exclusion (`^(pickup|training|pool)`) was dropped when
     // Practice / Pickup became first-class mens_team_columns.
     json teamsJson = json::array();

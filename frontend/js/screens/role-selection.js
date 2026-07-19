@@ -50,14 +50,6 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="summer-planner" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏟️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Summer Planner</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Assign players to summer squads</div>
-          </div>
-        </button>
-
         <a href="/tactical-games.html" class="btn btn-lg btn-primary" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
           <span style="font-size: 2rem;">⚽</span>
           <div style="flex: 1; text-align: left;">
@@ -223,8 +215,6 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'club-admin') {
       // Club Admin - fetch user's club and go to club admin dashboard
       this.loadClubAdmin();
-    } else if (role === 'summer-planner') {
-      this.navigation.goTo('internal-roster');
     } else if (role === 'player') {
       // Player - jump straight to their unified weekly schedule.
       // (Team-picking is intentionally skipped; MyController resolves

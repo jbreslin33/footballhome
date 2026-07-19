@@ -14,7 +14,7 @@ Common route families include:
 - `/api/admin`, `/api/leads`, `/api/ads`, `/api/social`: operations surfaces.
 - `/api/calendar`, `/api/events`, `/api/my`: Google Calendar/FH event layering,
 	RSVP, reminders, and player self-service.
-- `/api/mens-roster`, `/api/boys-roster`, `/api/youth-roster`, `/api/internal`:
+- `/api/mens-roster`, `/api/boys-roster`, `/api/youth-roster`:
 	roster and eligibility surfaces.
 - `/api/payments`, `/api/person-billing`, `/api/charge-flags`: payment and
 	billing operations.

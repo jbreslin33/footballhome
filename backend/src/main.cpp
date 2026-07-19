@@ -47,7 +47,6 @@
 #include "controllers/StreamController.h"
 #include "controllers/EligibilityController.h"
 #include "controllers/SocialController.h"
-#include "controllers/InternalRosterController.h"
 #include "controllers/PublicController.h"
 #include "controllers/MatchSeriesController.h"
 #include "controllers/MyController.h"
@@ -104,7 +103,6 @@ private:
     std::shared_ptr<StreamController> stream_controller_;
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<SocialController> social_controller_;
-    std::shared_ptr<InternalRosterController> internal_roster_controller_;
     std::shared_ptr<PublicController> public_controller_;
     std::shared_ptr<MatchSeriesController> match_series_controller_;
     std::shared_ptr<MyController> my_controller_;
@@ -175,7 +173,6 @@ public:
         stream_controller_ = std::make_shared<StreamController>();
         eligibility_controller_ = std::make_shared<EligibilityController>();
         social_controller_ = std::make_shared<SocialController>();
-        internal_roster_controller_ = std::make_shared<InternalRosterController>();
         public_controller_ = std::make_shared<PublicController>();
         match_series_controller_ = std::make_shared<MatchSeriesController>();
         my_controller_ = std::make_shared<MyController>();
@@ -455,7 +452,6 @@ private:
         router_.useController("/api", stream_controller_);
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/social", social_controller_);
-        router_.useController("/api/internal", internal_roster_controller_);
         router_.useController("/api/public", public_controller_);
         // Recurring event series admin surface (GET/POST/PUT/DELETE
         // CRUD).  The Sunday-8pm materialisation cron was retired
