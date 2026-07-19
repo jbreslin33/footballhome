@@ -21,12 +21,14 @@ This README is only the repo entrypoint. Project-wide rules live in
 Canonical path for **jbreslin** and **lbreslin** (same server, isolated stacks):
 
 ```bash
-# once on the host
-cd /srv/footballhome && sudo make backup && sudo make dev-mirror
-sudo make dev-init DEV=jbreslin          # or DEV=lbreslin
-cd /srv/footballhome-dev-jbreslin
-sudo make dev-up DEV=jbreslin
-sudo make dev-restore-mirror DEV=jbreslin
+# once / after server migrate — rebuildable via setup.sh
+cd /srv/footballhome
+./setup.sh --only dev-slots          # jbreslin + lbreslin (config/dev-slots.conf)
+# or: make setup-dev-slots
+# or: make setup-dev-jbreslin / make setup-dev-lbreslin
+
+sudo make backup && sudo make dev-mirror
+./setup.sh --only dev-slots          # restore mirror into every slot
 # browse http://SERVER:3010  (lbreslin → :3020)
 # → Membership → Sync now → code → PR → merge
 
@@ -77,13 +79,16 @@ database targets.
 ```bash
 git clone https://github.com/jbreslin33/footballhome.git
 cd footballhome
-./setup.sh
-sudo make rebuild
+./setup.sh                 # includes Linux step `dev-slots` (jbreslin + lbreslin)
+sudo make rebuild          # production stack
 sudo make lighthouse
+sudo make backup && sudo make dev-mirror
+./setup.sh --only dev-slots   # refresh mirrors into every developer stack
 ```
 
 `./setup.sh` installs host dependencies, decrypts encrypted config, prepares the
-scraper/VPN path, installs systemd timers where applicable, and prints the next
+scraper/VPN path, installs systemd timers, bootstraps per-developer stacks from
+`config/dev-slots.conf` (see `scripts/setup/setup-dev-*.sh`), and prints the next
 steps. `sudo make rebuild` is destructive, so use it only for a fresh host or when
 a rebuild has been approved.
 

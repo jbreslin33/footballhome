@@ -278,3 +278,11 @@ echo -e "${YELLOW}🔄 Next step: Sync league data${NC}"
 echo "  sudo make lighthouse                           # Sync Lighthouse data"
 echo "  sudo make sync                                 # Sync all leagues"
 echo ""
+if [ "$OS_TYPE" = "Linux" ]; then
+  echo -e "${YELLOW}👥 Developer stacks (same host — rebuildable):${NC}"
+  echo "  sudo make backup && sudo make dev-mirror"
+  echo "  ./setup.sh --only dev-slots                  # or: make setup-dev-slots"
+  echo "  # one person: make setup-dev-jbreslin | make setup-dev-lbreslin"
+  echo "  # docs: docs/dev-environment.md"
+  echo ""
+fi

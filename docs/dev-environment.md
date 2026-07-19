@@ -37,34 +37,61 @@ Add a row for each new person, pick free ports, commit.
 
 ---
 
-## B. One-time: create your stack (on the server)
+## B. Create / rebuild developer stacks (on the server)
 
-SSH to the host. From **production** checkout:
+Everything below is **idempotent** — re-run after a server migrate.
+
+### Preferred: `setup.sh` (all slots)
+
+From the **production** checkout (`/srv/footballhome`):
 
 ```bash
 cd /srv/footballhome
 git pull origin main
 
-# Fresh mirror for all devs
-sudo make backup
-sudo make dev-mirror
+# Fresh host (or full migrate): setup.sh runs step `dev-slots` after nginx/gcal.
+# That calls scripts/setup/setup-dev-slots.sh → setup-dev-jbreslin.sh / setup-dev-lbreslin.sh
+# for every row in config/dev-slots.conf.
+./setup.sh
 
-# Your personal checkout + stack
-sudo make dev-init DEV=jbreslin          # or DEV=lbreslin
-cd /srv/footballhome-dev-jbreslin
-sudo make dev-up DEV=jbreslin
-sudo make dev-restore-mirror DEV=jbreslin
+# Or only rebuild the per-dev stacks:
+./setup.sh --only dev-slots
+# subset: DEV_SLOTS=jbreslin ./setup.sh --only dev-slots
+# make equivalents:
+#   make setup-dev-slots
+#   make setup-dev-jbreslin
+#   make setup-dev-lbreslin
+```
 
-# Optional pretty URL (needs DNS A record → this host)
-sudo make dev-nginx DEV=jbreslin
-# sudo certbot --nginx -d jbreslin.dev.footballhome.org
+Each slot script: worktree → `dev-up` → restore mirror (if dump exists) → nginx vhost.
+
+After prod is up and you have a fresh dump:
+
+```bash
+sudo make backup && sudo make dev-mirror
+./setup.sh --only dev-slots          # re-restores into every slot
+```
+
+**DNS + TLS** (once A records point here):
+
+```bash
+# jbreslin.dev.footballhome.org + lbreslin.dev.footballhome.org → this host
+sudo DEV_SLOTS_OBTAIN_CERT=1 LE_EMAIL=you@example.com ./setup.sh --only dev-slots
+```
+
+### Manual (one person)
+
+```bash
+sudo make backup && sudo make dev-mirror
+sudo make setup-dev-slot DEV=jbreslin   # or: ./scripts/setup/setup-dev-jbreslin.sh
+# low-level pieces still available: make dev-init|dev-up|dev-restore-mirror|dev-nginx DEV=…
 ```
 
 **Browse immediately (no DNS):** `http://<server-ip>:3010` (jbreslin) or `:3020` (lbreslin).
 
 Then Membership → **Sync now** (LeagueApps → your mirror DB → UI).
 
-`dev-init` creates a git worktree under `/srv/footballhome-dev-<slug>` and
+`dev-init` (inside the setup scripts) creates `/srv/footballhome-dev-<slug>` and
 symlinks `env` from prod so LeagueApps keys work.
 
 ---
@@ -133,7 +160,12 @@ their own `/srv/footballhome-dev-<slug>` when they want new `main`.
 ## E. Commands cheat sheet
 
 ```bash
-make dev-init DEV=<slug>
+./setup.sh --only dev-slots           # all slots (also part of full ./setup.sh)
+make setup-dev-slots                  # same
+make setup-dev-jbreslin               # one person
+make setup-dev-lbreslin
+make setup-dev-slot DEV=<slug>
+make dev-init DEV=<slug>              # low-level pieces
 make dev-up DEV=<slug>
 make dev-restore-mirror DEV=<slug>
 make dev-nginx DEV=<slug>
