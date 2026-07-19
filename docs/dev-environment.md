@@ -1,101 +1,102 @@
-# Permanent Dev Environment (Cursor Cloud)
+# Permanent Dev Environment
 
-Production lives on the host at `/srv/footballhome` (Podman). Cloud agents
-used to edit a **code-only** GitHub clone with no DB — so Members/Person
-changes could not be verified against LeagueApps data.
+Two workable modes:
 
-This repo now defines a **Cursor Cloud Environment** that boots the real
-stack (Docker + Postgres + backend + frontend) with decrypted secrets so
-agents can sync and click through Membership like production.
+1. **Dev DB mirror + LeagueApps sync** (permanent solution)  
+2. **Edit directly on production** (fast, dangerous)
+
+If you want agents / local to test Members like prod without risking
+footballhome.org, you need (1).
 
 ## Mental model
 
-| Place | What it is | When UI updates |
-|---|---|---|
-| Cursor Cloud Environment | Disposable VM per agent run, warm snapshot + compose stack | Immediately inside that VM (`localhost:3000`) |
-| GitHub `main` | Source of truth for code | Never by itself |
-| Production host `/srv/footballhome` | Live footballhome.org | After `git pull` (+ `make deploy` / `make migrate` when needed) |
+| Place | Role |
+|---|---|
+| Dev stack (Cursor Cloud or local Docker/Podman) | Own Postgres **volume** seeded from a prod dump; reads LeagueApps with decrypted `env` |
+| GitHub `main` | Code only |
+| Production `/srv/footballhome` | Live site — `git pull` + deploy/migrate |
 
-Agents edit → open PR → merge to `main` → **you still pull on the server**
-to ship production. Cloud is for **dev/test**, not auto-deploy.
+```text
+prod:  make backup  →  backups/dev-mirror.sql(.gz)
+         ↓ copy / DEV_MIRROR_URL
+dev:   compose up  →  restore-mirror  →  LA Sync (fresh membership)
+         ↓ PR → merge
+prod:  git pull  →  make deploy / migrate
+```
 
-## One-time human setup
+## Why a mirror (not empty DB)
 
-1. Merge this scaffolding to `main`.
-2. Open [Cloud Agents → Environments](https://cursor.com/dashboard/cloud-agents).
-3. Create / select an environment for `jbreslin33/footballhome`.
-4. **Secrets → Runtime Secret:** `AGE_PASSPHRASE` = the passphrase that
-   decrypts `env.age` (same as `./setup.sh` on the server).
-5. Optional: add any extra runtime secrets you do not want inside `env.age`.
-6. Run an agent (or **Update with Agent**) and confirm:
-   - `env` decrypts
-   - `docker compose` brings up `db`, `backend`, `frontend`
-   - `http://localhost:3000` loads; Members can Sync now
-7. **Save snapshot** so later agents boot warm.
-8. Ensure subsequent Cloud Agent runs use this environment (not a bare JIT VM).
+- Membership screens also need accounts, roster links, RSVP grants, billing
+  flags, etc. that an empty DB + one Sync does not fully recreate.
+- Permanent = **persistent volume + refreshable dump**, not “sync from
+  scratch every cold boot.”
+- LeagueApps stays source of truth for membership *freshness* after restore
+  (LA → mirror DB → render).
 
-Repo config (already committed):
+Never point compose at production Postgres.
 
-- `.cursor/environment.json` — install / start / terminals / ports
-- `.cursor/Dockerfile` — Ubuntu + Docker-in-Docker + age/cmake/node
-- `scripts/dev/cloud-*.sh` — decrypt, start dockerd, compose up
-- `AGENTS.md` — cloud-specific agent instructions
+## One-time / recurring: refresh the mirror from prod
 
-## Day-to-day agent loop
+On the production host:
 
-1. Start a Cloud Agent **on the footballhome-dev environment**.
-2. Stack comes up via `cloud-stack.sh` (tmux terminal `stack`).
-3. Agent changes code, hits Members/Person on `:3000`, verifies Sync.
-4. Agent opens a PR; you review/merge.
-5. On the production host:
+```bash
+cd /srv/footballhome
+sudo make backup
+cp "$(ls -t backups/backup-*.sql | head -1)" backups/dev-mirror.sql
+gzip -kf backups/dev-mirror.sql
+```
+
+Get `backups/dev-mirror.sql.gz` onto the machine that runs the dev stack
+(scp, private object storage, etc.). That path is **gitignored** — do not
+commit dumps.
+
+Optional Cursor Runtime Secret: `DEV_MIRROR_URL` = signed URL to that file.
+`scripts/dev/restore-mirror.sh` downloads it on boot.
+
+## Cursor Cloud Environment
+
+Repo scaffolding:
+
+- `.cursor/environment.json` + `.cursor/Dockerfile`
+- `scripts/dev/cloud-{install,start,stack}.sh`
+- `scripts/dev/restore-mirror.sh`
+- `AGENTS.md`
+
+Dashboard setup:
+
+1. Environment for this repo  
+2. Runtime Secrets: `AGE_PASSPHRASE` (required), `DEV_MIRROR_URL` (recommended)  
+3. First agent run: stack up → mirror restore → Members Sync  
+4. **Save snapshot** (warm tools + ideally filled Docker volume)  
+5. All future Cloud Agents use this environment  
+
+## Local (same idea)
+
+```bash
+./setup.sh                    # decrypt env.age
+# place backups/dev-mirror.sql.gz
+sudo make up                  # or docker compose --env-file env up -d
+./scripts/dev/restore-mirror.sh
+# open http://localhost:3000 → Members → Sync now
+```
+
+## Ship to production
 
 ```bash
 cd /srv/footballhome
 git pull origin main
-# frontend bind-mount usually picks up JS immediately
-sudo make deploy    # if backend C++ changed
-sudo make migrate   # if new migrations landed
+sudo make deploy    # backend C++ changes
+sudo make migrate   # new migrations
+# frontend bind-mount usually picks up JS without rebuild
 ```
 
-## Data
+## OAuth note
 
-- Cloud DB starts empty (or from whatever was snapshotted on disk).
-- With decrypted `env`, **LeagueApps sync is live** — open Members and
-  Sync now to pull real membership rows (same source of truth as prod).
-- Do **not** point cloud agents at the production Postgres. Keep a
-  separate compose volume.
-- Prefer LA sync over restoring prod dumps unless you need historical rows.
-
-## OAuth / login notes
-
-`env.age` usually has production Google OAuth redirect URIs. Browser login
-inside the cloud VM may fail until you either:
-
-- add a cloud redirect URI in Google Cloud Console and a cloud-specific
-  override secret, or
-- reuse an existing session token for API checks (`Authorization: Bearer …`).
-
-UI work that only needs club-admin APIs can often use a minted JWT from
-the backend once the stack is up.
-
-## Prod vs cloud engines
-
-- Production host: **Podman** + `podman-compose` (existing path).
-- Cursor Cloud: **Docker** + `docker compose` (Podman is not supported in
-  Cloud Agent VMs). The Makefile auto-detects `ENGINE` / `COMPOSE`.
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| Agent has no DB / fat Members still on footballhome.org | Wrong place — cloud is localhost; prod needs `git pull` |
-| `AGE_PASSPHRASE unset` | Add Runtime Secret on the Environment |
-| Docker never ready | Check `start` ran `cloud-start.sh`; see `/tmp/dockerd.log` |
-| Snapshot expired (90 days idle) | Re-run setup, save a new snapshot, update dashboard |
-| Backend build OOM | Enterprise: ask Cursor for larger VM; or build backend on host |
+Cloud/local Google login may need a separate redirect URI; API testing can
+use a bearer JWT. See `AGENTS.md`.
 
 ## Related
 
-- `AGENTS.md` — short instructions agents read every run
-- `README.md` — production host first-time setup
-- `CONVENTIONS.md` — LA→DB→render and other project rules
+- `AGENTS.md` — cloud agent runbook  
+- `README.md` — production host setup  
+- `CONVENTIONS.md` — LA → DB → render  

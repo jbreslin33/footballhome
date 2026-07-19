@@ -45,10 +45,23 @@ done
 log "applying migrations"
 make migrate || true
 
+# Permanent dev = real DB mirror. Restore when a dump (or DEV_MIRROR_URL)
+# is available. Skip quietly if none — agent can still LA-sync into an
+# empty DB, but that is not the intended long-term path.
+if [ -f backups/dev-mirror.sql ] || [ -f backups/dev-mirror.sql.gz ] \
+   || ls backups/backup-*.sql >/dev/null 2>&1 \
+   || [ -n "${DEV_MIRROR_URL:-}" ] || [ -n "${BACKUP:-}" ]; then
+  log "restoring DB mirror"
+  ./scripts/dev/restore-mirror.sh || log "WARNING: mirror restore failed (continuing)"
+else
+  log "WARNING: no DB mirror dump found — stack is up but DB may be empty."
+  log "  Permanent path: copy prod backups/dev-mirror.sql.gz here, or set DEV_MIRROR_URL."
+fi
+
 log "stack status"
 "${COMPOSE[@]}" ps
 
 log "frontend http://localhost:3000  backend http://localhost:3001"
-log "Members/Person can sync live LeagueApps data via decrypted env."
+log "After mirror restore, Members → Sync now refreshes LeagueApps rows."
 log "keeping terminal alive"
 exec sleep infinity
