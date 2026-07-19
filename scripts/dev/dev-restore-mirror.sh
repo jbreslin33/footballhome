@@ -64,7 +64,8 @@ SQL
   else
     $engine exec -i "$cname" psql -U footballhome_user -d footballhome -v ON_ERROR_STOP=1 < "$dump"
   fi
-  echo "[dev-restore] done — open http://127.0.0.1:$FH_DEV_FRONTEND_PORT → Membership → Sync now"
+  echo "[dev-restore] done — open http://127.0.0.1:$FH_DEV_FRONTEND_PORT"
+  echo "[dev-restore] (optional) make dev-membership-sync DEV=$FH_DEV_SLUG"
 }
 
 restore_into_slot "${BACKUP:-}"

@@ -44,7 +44,7 @@ AGE_PASSPHRASE="$AGE_PASSPHRASE" ./scripts/setup/setup-age.sh
 ### Test UI (Members / Person / Club Admin)
 
 1. Mirror restored
-2. Membership → Sync now (LeagueApps → mirror DB → render)
+2. Membership sync (setup runs it; or Members → Sync now / `make dev-membership-sync DEV=…`)
 3. Exercise the change on `:3000`
 4. Hard-refresh if needed
 

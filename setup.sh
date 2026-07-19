@@ -9,9 +9,12 @@
 # Override which steps run with --skip / --only:
 #   ./setup.sh --only base,podman,node
 #   ./setup.sh --skip nginx
+#   ./setup.sh --only dev-slots          # rebuild jbreslin+lbreslin stacks
+#   DEV_SLOTS=jbreslin ./setup.sh --only dev-slots
 #
 # Public-server cert bootstrap (one-shot, optional):
 #   LE_EMAIL=you@example.com ./setup.sh
+#   DEV_SLOTS_OBTAIN_CERT=1 LE_EMAIL=you@example.com ./setup.sh --only dev-slots
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
@@ -50,11 +53,13 @@ echo -e "${BLUE}Football Home - First-Time Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx -> gcal
+# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx -> gcal -> dev-slots
 # (age must precede vpn so scrape-vpn.conf.age is decrypted before vpn step reads it)
-# (gcal runs last — needs node deps + env decrypted + podman DB up so its unit files can be installed and fired once)
+# (gcal needs node + env + podman)
+# (dev-slots needs age/env + podman + nginx; rebuilds /srv/footballhome-dev-* for every
+#  row in config/dev-slots.conf — jbreslin, lbreslin, …)
 STEPS=(base age podman node chrome env scraper vendor sim)
-[ "$OS_TYPE" = "Linux" ] && STEPS+=(vpn nginx gcal)
+[ "$OS_TYPE" = "Linux" ] && STEPS+=(vpn nginx gcal dev-slots)
 
 step_enabled() {
   local s="$1"
@@ -95,6 +100,17 @@ for step in "${STEPS[@]}"; do
       # Pass through provider config hint from env (if set)
       WIREGUARD_CONFIG_FILE="${WIREGUARD_CONFIG_FILE:-}" \
         ./scripts/setup/setup-vpn.sh
+      ;;
+    dev-slots)
+      # Per-developer stacks on this host (config/dev-slots.conf).
+      # Skip with: ./setup.sh --skip dev-slots
+      # Subset:    DEV_SLOTS=jbreslin ./setup.sh --only dev-slots
+      # TLS:       DEV_SLOTS_OBTAIN_CERT=1 LE_EMAIL=... ./setup.sh --only dev-slots
+      DEV_SLOTS="${DEV_SLOTS:-}" \
+      DEV_SLOTS_OBTAIN_CERT="${DEV_SLOTS_OBTAIN_CERT:-0}" \
+      LE_EMAIL="${LE_EMAIL:-}" \
+      PROD_ROOT="${PROD_ROOT:-/srv/footballhome}" \
+        ./scripts/setup/setup-dev-slots.sh
       ;;
     *)
       ./scripts/setup/setup-${step}.sh
@@ -150,6 +166,17 @@ if [ "$OS_TYPE" = "Linux" ] && [ "$HAS_CERT" -eq 0 ]; then
     echo -e "     ${YELLOW}sudo LE_EMAIL=you@example.com ./scripts/setup/setup-nginx.sh --obtain-cert${NC}"
     echo "     (or set LE_EMAIL in ./env and re-run setup.sh)"
   fi
+  STEP=$((STEP+1))
+  echo ""
+fi
+
+if [ "$OS_TYPE" = "Linux" ]; then
+  echo "  ${STEP}. After prod is up, refresh developer stacks (jbreslin + lbreslin):"
+  echo -e "     ${YELLOW}sudo make backup && sudo make dev-mirror${NC}"
+  echo -e "     ${YELLOW}./setup.sh --only dev-slots${NC}"
+  echo "     (or: make setup-dev-slots / make setup-dev-jbreslin / make setup-dev-lbreslin)"
+  echo "     After DNS A records exist:"
+  echo -e "     ${YELLOW}sudo DEV_SLOTS_OBTAIN_CERT=1 LE_EMAIL=you@example.com ./setup.sh --only dev-slots${NC}"
   STEP=$((STEP+1))
   echo ""
 fi
