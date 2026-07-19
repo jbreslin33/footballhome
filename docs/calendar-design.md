@@ -784,16 +784,13 @@ mirror.
 
 ## 10. Frontend implications
 
-**Current state (2026-07-16):** FH has no unified calendar page. Related
+**Current state (2026-07-18):** FH has a unified calendar page. Related
 screens that exist today:
 
-- `admin-schedule.js` / `admin-schedule-item.js` — admin schedule editing
+- `calendar.js` — Google Calendar mirror agenda with RSVP state
 - `club-events.js` — club events + RSVP override (chat-driven)
 - `mens-events-reminders.js` — pickup RSVP nudges
 - `my.js` — per-user "My Schedule"
-
-None of these read from gcal. They're all going to migrate to reading
-from the mirror once Slice 3 lands.
 
 ### 10.1 New Calendar screen
 
