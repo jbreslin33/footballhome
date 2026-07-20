@@ -234,6 +234,7 @@ add_library(sim_persistence STATIC
     src/persistence/RegistryLoader.cpp
 )
 target_include_directories(sim_persistence PUBLIC src)
+target_compile_options(sim_persistence PRIVATE -Wno-error=deprecated-declarations)
 target_link_libraries(sim_persistence PUBLIC sim_flags sim_data Threads::Threads)
 target_link_libraries(sim_persistence PRIVATE PkgConfig::PQXX)
 add_dependencies(sim_persistence gen_m0_registry)
@@ -271,7 +272,7 @@ add_library(sim_gameplay STATIC
     src/mechanics/BallControl.cpp
 )
 target_include_directories(sim_gameplay PUBLIC src)
-target_link_libraries(sim_gameplay PUBLIC sim_data sim_flags)
+target_link_libraries(sim_gameplay PUBLIC sim_data sim_flags sim_persistence)
 add_dependencies(sim_gameplay gen_m0_registry)
 
 # -----------------------------------------------------------------------------

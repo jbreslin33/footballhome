@@ -654,6 +654,16 @@ FH_TEST(parse_assign_json_all_fields)
     FH_EXPECT_EQ(r->scenario_id, static_cast<std::int16_t>(2));
 }
 
+FH_TEST(parse_assign_json_defender_profile_person_id)
+{
+    const std::string body =
+        R"({"match_id": 42, "seed": 12345, "scenario_id": 7, "defender_profile_person_id": 321})";
+    auto r = parseAssignMatchJson(body);
+    FH_EXPECT(r.has_value());
+    FH_EXPECT(r->defender_profile_person_id.has_value());
+    FH_EXPECT_EQ(*r->defender_profile_person_id, std::uint64_t{321});
+}
+
 FH_TEST(parse_assign_json_key_order_agnostic)
 {
     const std::string body =

@@ -77,6 +77,37 @@
     }
     .game .chev { color: var(--muted); font-size: 1.6rem; }
 
+    .launcher-picker {
+      margin: 0 0 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--card);
+    }
+    .launcher-picker label {
+      display: block;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .launcher-picker select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--fg);
+      font-size: 0.95rem;
+    }
+    .launcher-picker .hint {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     /* Slice 18.1: launcher tiles (M1). Same shell as static .game links
        but activated via JS click handler so we can POST /api/sim/matches
        before redirecting. Extra hooks: pending state disables the tile
@@ -199,6 +230,14 @@
       4 = ball_on_pitch_with_defender    (ball + AI defender jogging toward it — Slice 24.3a)
       5 = ball_on_pitch_2v0              (two slots 15 m apart, pass drill — Slice 26.3)
   -->
+  <div class="launcher-picker">
+    <label for="defender-profile-picker">Defender profile (optional)</label>
+    <select id="defender-profile-picker">
+      <option value="">No profile selected</option>
+    </select>
+    <div class="hint">Pick a Lighthouse person to drive the AI defender in the 1v1 attack-vs-defend scenario. Other scenarios ignore this choice.</div>
+  </div>
+
   <div class="game game--launch" role="link" tabindex="0"
        data-scenario-id="1"
        data-scenario-label="Ball on Pitch">
@@ -254,6 +293,17 @@
     <div class="chev">›</div>
   </div>
 
+  <div class="game game--launch" role="link" tabindex="0"
+       data-scenario-id="7"
+       data-scenario-label="1v1 Attack vs Defend">
+    <div class="icon">🥅</div>
+    <div class="body">
+      <div class="title">1v1 Attack vs Defend <span class="badge">M3 · Defender profile</span></div>
+      <div class="desc">An attacker starts on the ball and a defender AI closes in. Pick a profile from the selector above to drive the AI defender with a real person’s behavior profile. Slice 34.2.</div>
+    </div>
+    <div class="chev">›</div>
+  </div>
+
   <a class="game" href="/trail-test.html">
     <div class="icon">🧠</div>
     <div class="body">
@@ -277,6 +327,43 @@
 
         function readLoginJwt() {
             try { return localStorage.getItem('token') || ''; } catch (_e) { return ''; }
+        }
+
+        async function loadPeople() {
+            const picker = document.getElementById('defender-profile-picker');
+            if (!picker) return;
+            try {
+                const headers = {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-store',
+                };
+                const jwt = readLoginJwt();
+                if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
+                const resp = await fetch('/api/admin/people?view=directory', {
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: headers,
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const body = await resp.json();
+                const people = Array.isArray(body?.data?.people) ? body.data.people : [];
+                const options = people
+                    .filter((p) => Number.isFinite(Number(p.person_id)) && Number(p.person_id) > 0)
+                    .sort((a, b) => {
+                        const an = `${a.last_name || ''} ${a.first_name || ''}`.trim().toLowerCase();
+                        const bn = `${b.last_name || ''} ${b.first_name || ''}`.trim().toLowerCase();
+                        return an.localeCompare(bn);
+                    })
+                    .map((p) => {
+                        const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+                        const label = name || ('Person #' + p.person_id);
+                        return `<option value="${p.person_id}">${label} (#${p.person_id})</option>`;
+                    });
+                picker.innerHTML = ['<option value="">No profile selected</option>', ...options].join('');
+            } catch (_err) {
+                picker.innerHTML = '<option value="">No profile selected</option>';
+            }
         }
 
         // Slice 24.3b: overlay control. We show the loader BEFORE the
@@ -313,13 +400,20 @@
             const jwt = readLoginJwt();
             if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
 
+            const picker = document.getElementById('defender-profile-picker');
+            const selectedProfileId = picker && picker.value ? Number(picker.value) : null;
+            const bodyPayload = { scenario_id: scenarioId };
+            if (selectedProfileId && Number.isFinite(selectedProfileId) && selectedProfileId > 0) {
+                bodyPayload.defender_profile_person_id = selectedProfileId;
+            }
+
             try {
                 const resp = await fetch('/api/sim/matches', {
                     method:      'POST',
                     cache:       'no-store',
                     credentials: 'same-origin',
                     headers:     headers,
-                    body:        JSON.stringify({ scenario_id: scenarioId }),
+                    body:        JSON.stringify(bodyPayload),
                 });
                 if (!resp.ok) {
                     let msg = 'HTTP ' + resp.status;
@@ -363,6 +457,7 @@
         }
 
         document.querySelectorAll('.game--launch').forEach(bind);
+        loadPeople().catch(() => {});
     })();
   </script>
 </body>

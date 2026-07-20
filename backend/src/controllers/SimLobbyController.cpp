@@ -324,6 +324,7 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
     int         scenario_id = 0;       // empty_pitch (sim_scenarios.id)
     long long   seed        = 42;
     int         tick_hz     = 20;
+    std::optional<long long> defender_profile_person_id;
     if (!request.getBody().empty()) {
         try {
             auto j = json::parse(request.getBody());
@@ -335,6 +336,10 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
             }
             if (j.contains("tick_hz") && j["tick_hz"].is_number_integer()) {
                 tick_hz = j["tick_hz"].get<int>();
+            }
+            if (j.contains("defender_profile_person_id")
+                && j["defender_profile_person_id"].is_number_integer()) {
+                defender_profile_person_id = j["defender_profile_person_id"].get<long long>();
             }
         } catch (const std::exception& e) {
             return jsonError(HttpStatus::BAD_REQUEST,
@@ -513,6 +518,9 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
         assign.match_id       = match_id;
         assign.seed           = seed;
         assign.scenario_id    = scenario_id;
+        if (defender_profile_person_id.has_value()) {
+            assign.defender_profile_person_id = *defender_profile_person_id;
+        }
         auto ar = orchestrator.postAssignMatch(assign);
         if (ar.ok) {
             container_id = pool_slot->container_id;
@@ -562,6 +570,9 @@ Response SimLobbyController::handleCreateMatch(const Request& request) {
         opts.match_id      = match_id;
         opts.seed          = seed;
         opts.scenario_code = scenario_code;
+        if (defender_profile_person_id.has_value()) {
+            opts.defender_profile_person_id = *defender_profile_person_id;
+        }
         fh::orchestration::LaunchResult launch =
             orchestrator.launchMatch(opts);
 

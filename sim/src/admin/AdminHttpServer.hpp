@@ -207,6 +207,7 @@ struct AssignMatchRequest {
     MatchId       match_id{0};
     std::uint64_t seed{0};
     std::int16_t  scenario_id{0};
+    std::optional<std::uint64_t> defender_profile_person_id;
 };
 
 enum class AssignMatchOutcome : std::uint8_t {

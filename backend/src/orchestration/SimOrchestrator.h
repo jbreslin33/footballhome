@@ -71,6 +71,7 @@ struct PingResult {
 struct LaunchOptions {
     long long match_id = 0;   // required, > 0
     long long seed     = 0;   // required (sim also accepts 0 → treats as fallback)
+    std::optional<long long> defender_profile_person_id;
     // Slice 18.x bugfix: which scenario the per-match sim daemon should
     // load. Maps to SIM_SCENARIO env var; sim/src/main.cpp resolves it to
     // a scenario_id and constructs the matching Scenario. Empty string
@@ -123,6 +124,7 @@ struct AssignOptions {
     long long   match_id = 0;   // required, > 0
     long long   seed     = 0;   // required (0 legal)
     int         scenario_id = 0; // 0..32767
+    std::optional<long long> defender_profile_person_id;
 };
 
 // §21.7 item 1 step 5B (2026-07-15) — outputs from postAssignMatch.

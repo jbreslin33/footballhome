@@ -27,6 +27,7 @@
 #include "match/Snapshot.hpp"
 #include "math/RngDet.hpp"
 #include "physics/IPhysicsWorld.hpp"
+#include "persistence/ProfileStore.hpp"
 #include "registry/PatternRegistry.hpp"
 #include "scenario/Scenario.hpp"
 
@@ -49,6 +50,7 @@ struct MatchConfig {
     std::unique_ptr<scenario::Scenario>        scenario;
     std::unique_ptr<MatchClock>                clock;
     const registry::PatternRegistry*           pattern_registry{nullptr};
+    persistence::ProfileStore*                 profile_store{nullptr};
 };
 
 class Match {
@@ -170,6 +172,7 @@ private:
     std::vector<Slot>                           slots_;
     std::vector<MechanicsParams>                params_by_slot_;   // 1:1 with slots_
     std::optional<EntityId>                     ball_{std::nullopt};
+    persistence::ProfileStore*                  profile_store_{nullptr};
 
     // Slice 16.3: which slot currently controls the ball, if any.
     // Set/cleared by BallControl each tick (see mechanics/BallControl.hpp).

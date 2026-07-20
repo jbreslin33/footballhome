@@ -96,6 +96,7 @@ struct MatchAssignment {
     std::uint64_t match_id{0};
     std::uint64_t seed{0};
     std::int16_t  scenario_id{0};
+    std::optional<std::uint64_t> defender_profile_person_id;
 };
 
 class AssignmentGate {
@@ -250,12 +251,13 @@ int main(int /*argc*/, char** /*argv*/)
     else if (scenario_name == "ball_on_pitch_with_defender"){ scenario_id = 4; }
     else if (scenario_name == "ball_on_pitch_2v0")          { scenario_id = 5; }
     else if (scenario_name == "goal_drill")                 { scenario_id = 6; }
+    else if (scenario_name == "one_v_one_attack_defend")    { scenario_id = 7; }
     else {
         std::fprintf(stderr,
                      "footballhome_sim: unknown SIM_SCENARIO=\"%s\" — "
                      "expected one of: empty_pitch, ball_on_pitch, "
                      "half_pitch_hard, soft_drill, ball_on_pitch_with_defender, "
-                     "ball_on_pitch_2v0, goal_drill\n",
+                     "ball_on_pitch_2v0, goal_drill, one_v_one_attack_defend\n",
                      scenario_name.c_str());
         return 2;
     }
@@ -407,6 +409,10 @@ int main(int /*argc*/, char** /*argv*/)
                 a.match_id    = static_cast<std::uint64_t>(req.match_id);
                 a.seed        = req.seed;
                 a.scenario_id = req.scenario_id;
+                if (req.defender_profile_person_id.has_value()) {
+                    a.defender_profile_person_id = 
+                        static_cast<std::uint64_t>(*req.defender_profile_person_id);
+                }
                 fh::sim::admin::AssignMatchResult r;
                 if (!g_assignment_gate.assign(a)) {
                     r.outcome = fh::sim::admin::AssignMatchOutcome::kConflict;
@@ -475,6 +481,8 @@ int main(int /*argc*/, char** /*argv*/)
         return 6;
     }
 
+    std::optional<MatchAssignment> assigned;
+
     // ------------------------------------------------------------------
     // §21.7 item 1 step 4A: warm-daemon assignment wait.
     //
@@ -523,7 +531,8 @@ int main(int /*argc*/, char** /*argv*/)
             if (admin_server) { admin_server->stop(); }
             return 0;
         }
-        const auto& a = *maybe_a;
+        assigned = *maybe_a;
+        const auto& a = *assigned;
         match_id    = a.match_id;
         seed        = a.seed;
         scenario_id = a.scenario_id;
@@ -656,6 +665,19 @@ int main(int /*argc*/, char** /*argv*/)
         return 3;
     }
 
+    std::optional<fh::sim::PersonId> defender_profile_source;
+    const char* defender_profile_person_id_c = std::getenv("SIM_DEFENDER_PROFILE_PERSON_ID");
+    if (defender_profile_person_id_c != nullptr && defender_profile_person_id_c[0] != '\0') {
+        const auto parsed = parseU64(defender_profile_person_id_c, 0);
+        if (parsed > 0) {
+            defender_profile_source = fh::sim::PersonId{parsed};
+        }
+    }
+    if (!defender_profile_source.has_value() && assigned.has_value()
+        && assigned->defender_profile_person_id.has_value()) {
+        defender_profile_source = fh::sim::PersonId{*assigned->defender_profile_person_id};
+    }
+
     // Match ------------------------------------------------------------
     fh::sim::match::MatchConfig mcfg;
     mcfg.id             = match_id;
@@ -663,6 +685,7 @@ int main(int /*argc*/, char** /*argv*/)
     mcfg.server_version = FH_SIM_GIT_DESCRIBE;
     mcfg.physics  = std::make_unique<fh::sim::physics::BasicPhysics>();
     mcfg.pattern_registry = &pattern_registry;
+    mcfg.profile_store = &profile_store;
     // Slice 15.5 + Slice 18.x + Slice 24.3a: pick the Scenario matching
     // the resolved scenario_id. Keep this switch in lock-step with
     // sim/src/tools/Replay.cpp::makeScenario and sim_scenarios.code_id
@@ -686,9 +709,11 @@ int main(int /*argc*/, char** /*argv*/)
         case 6:
             mcfg.scenario = std::make_unique<fh::sim::scenario::GoalDrillScenario>();
             break;
-        case 7:
-            mcfg.scenario = std::make_unique<fh::sim::scenario::OneVsOneAttackDefendScenario>();
+        case 7: {
+            mcfg.scenario = std::make_unique<fh::sim::scenario::OneVsOneAttackDefendScenario>(
+                defender_profile_source);
             break;
+        }
         case 0:
         default:
             mcfg.scenario = std::make_unique<fh::sim::scenario::EmptyPitchScenario>();

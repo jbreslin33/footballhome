@@ -20,7 +20,7 @@ class GameModelAdminScreen extends Screen {
         <button class="btn btn-secondary back-btn">← Back</button>
         <div>
           <h1 id="game-model-admin-title">Game Model Admin</h1>
-          <p class="subtitle" id="game-model-admin-subtitle">Build the club's 4-4-2 game model</p>
+          <p class="subtitle" id="game-model-admin-subtitle">Build the club's U17+ game model</p>
         </div>
       </div>
       <div style="padding: var(--space-4); display: grid; gap: var(--space-4);">
@@ -39,7 +39,7 @@ class GameModelAdminScreen extends Screen {
     this.clubName = params?.clubName || 'Club';
     this.selectedEntity = 'game-model';
     this.find('#game-model-admin-title').textContent = `${this.clubName} · Training`;
-    this.find('#game-model-admin-subtitle').textContent = `Build ${this.clubName}'s 4-4-2 game model`;
+    this.find('#game-model-admin-subtitle').textContent = `Build ${this.clubName}'s U17+ game model`;
     this.renderContent();
 
     this.element.addEventListener('click', (e) => {
@@ -152,8 +152,8 @@ class GameModelAdminScreen extends Screen {
             <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
               <div style="display:flex; justify-content:space-between; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
                 <div>
-                  <h3 style="margin: 0 0 var(--space-2) 0;">4-4-2 game model</h3>
-                  <p style="margin:0; opacity:0.8;">The club’s coaching identity is now stored in a normalized structure with phases and principles.</p>
+                  <h3 style="margin: 0 0 var(--space-2) 0;">U17+ game model</h3>
+                  <p style="margin:0; opacity:0.8;">The club’s coaching identity is now stored in a normalized structure aligned to the U.S. Soccer framework.</p>
                 </div>
                 <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
                   <button class="btn btn-secondary" data-inline-action="edit-phases">Edit phases</button>
@@ -161,7 +161,7 @@ class GameModelAdminScreen extends Screen {
                 </div>
               </div>
               <div style="margin-top: var(--space-2); padding: var(--space-2); border-left: 3px solid var(--accent); background: rgba(255,255,255,0.04); border-radius: var(--radius-sm);">
-                Offense, defense, offensive transition, and defensive transition each carry their own principles so the language stays consistent across training and matches.
+                Attack, defend, transition to attack, and transition to defense each carry their own principles so the language stays consistent across training and matches.
               </div>
             </div>
             <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary);">
@@ -184,8 +184,8 @@ class GameModelAdminScreen extends Screen {
             container.innerHTML = `
               <div style="display:grid;gap:var(--space-3);">
                 <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-                  <h3 style="margin: 0 0 var(--space-2) 0;">4-4-2 game model</h3>
-                  <p style="margin:0; opacity:0.8;">The club’s coaching identity is now stored in a normalized structure with phases and principles.</p>
+                  <h3 style="margin: 0 0 var(--space-2) 0;">U17+ game model</h3>
+                  <p style="margin:0; opacity:0.8;">The club’s coaching identity is now stored in a normalized structure aligned to the U.S. Soccer framework.</p>
                 </div>
                 <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary);">
                   ${html}
@@ -244,49 +244,31 @@ class GameModelAdminScreen extends Screen {
     return `
       <div style="display:grid;gap:var(--space-3);">
         <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin:0 0 var(--space-2) 0;">Base shape: 4-4-2</h4>
-          <p style="margin:0; opacity:0.9;">The team plays with a compact 4-4-2 in and out of possession. The full-back and wide midfielder create width; the two central midfielders connect the build and the attack; the front two split the defensive line and press together.</p>
+          <h4 style="margin:0 0 var(--space-2) 0;">U17+ game model</h4>
+          <p style="margin:0; opacity:0.9;">The club’s coaching identity is stored in a normalized framework aligned to the U.S. Soccer U17+ model. Attack, defend, transition to attack, and transition to defense each carry their own principles so the language stays consistent across training and matches.</p>
         </article>
 
         <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin:0 0 var(--space-2) 0;">Offense</h4>
+          <h4 style="margin:0 0 var(--space-2) 0;">Attack</h4>
           <div style="display:grid;gap:0.6rem;">
-            <div><strong>Principle 1:</strong> Build from the back with calm circulation and clean support angles.</div>
-            <div><strong>Sub-principle:</strong> The first pass should always create an extra body or an easy line.</div>
-            <div><strong>Sub-sub-principle:</strong> The receiver should receive on the half-turn or with a body shape that allows the next action immediately.</div>
-            <div><strong>Principle 2:</strong> Create overloads in the middle to free a player in the attacking third.</div>
-            <div><strong>Sub-principle:</strong> The central midfielders connect the build to the attack and help the wide players become dangerous.</div>
-            <div><strong>Sub-sub-principle:</strong> The third-man run is the main trigger for the breakthrough.</div>
-            <div><strong>Principle 3:</strong> Finish with purpose in the final third.</div>
-            <div><strong>Sub-principle:</strong> Every attack should try to create a chance, a cross, or a line-breaking run.</div>
-            <div><strong>Sub-sub-principle:</strong> The front two attack the space behind the back line and the wide midfielders stretch the block.</div>
+            <div><strong>Principle:</strong> Create the conditions to attack with rhythm, support, and purpose.</div>
+            <div><strong>Principle:</strong> Use the ball to manipulate the opposition’s structure and create a numerical or positional advantage.</div>
           </div>
         </article>
 
         <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin:0 0 var(--space-2) 0;">Defense</h4>
+          <h4 style="margin:0 0 var(--space-2) 0;">Defend</h4>
           <div style="display:grid;gap:0.6rem;">
-            <div><strong>Principle 1:</strong> Defend compact and aggressive as a unit.</div>
-            <div><strong>Sub-principle:</strong> The front two press together and the midfielders protect the central lane.</div>
-            <div><strong>Sub-sub-principle:</strong> The nearest player presses, the second player covers, and the third player balances the space.</div>
-            <div><strong>Principle 2:</strong> Force play to the outside and deny central penetration.</div>
-            <div><strong>Sub-principle:</strong> The full-backs and wide midfielders defend the touchline and protect the central channel.</div>
-            <div><strong>Sub-sub-principle:</strong> The back line stays compact so the opposition cannot play through the middle.</div>
-            <div><strong>Principle 3:</strong> Recover quickly after the first pressure action.</div>
-            <div><strong>Sub-principle:</strong> Counter-press immediately if the ball is won.</div>
-            <div><strong>Sub-sub-principle:</strong> If the ball is lost, the first recovery run should be to protect the central space and the second to support the counter-press.</div>
+            <div><strong>Principle:</strong> Defend with compactness, intention, and clear relationships between the lines.</div>
+            <div><strong>Principle:</strong> Force the opponent to play where we want, then press the ball with coordinated support.</div>
           </div>
         </article>
 
         <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
           <h4 style="margin:0 0 var(--space-2) 0;">Transitions</h4>
           <div style="display:grid;gap:0.6rem;">
-            <div><strong>Transition to offense:</strong> As soon as the ball is won, the team should play forward quickly and create a numerical advantage in the next zone.</div>
-            <div><strong>Sub-principle:</strong> The first pass should break the line or create a second action.</div>
-            <div><strong>Sub-sub-principle:</strong> The wide midfielder and full-back both support the attack in the first two passes.</div>
-            <div><strong>Transition to defense:</strong> If the ball is lost, the team should sprint back into the compact shape and protect the middle.</div>
-            <div><strong>Sub-principle:</strong> The first two players to recover must make the shape compact again.</div>
-            <div><strong>Sub-sub-principle:</strong> The pressure is immediate but the shape must stay organized.</div>
+            <div><strong>Transition to attack:</strong> As soon as the ball is won, the team should immediately create a new attacking action.</div>
+            <div><strong>Transition to defense:</strong> If the ball is lost, the team should recover shape and protect the central space.</div>
           </div>
         </article>
       </div>
@@ -460,7 +442,7 @@ class GameModelAdminScreen extends Screen {
       case 'days':
         return 'Create the weekly day containers that make up the reusable week: Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, Monday.';
       case 'phases':
-        return 'Edit the major phases of the game model such as offense, defense, offensive transition, and defensive transition.';
+        return 'Edit the major phases of the game model such as attack, defend, transition to attack, and transition to defense.';
       case 'principles':
         return 'Edit the principles inside each phase, including the main and sub-principles.';
       case 'sessions':

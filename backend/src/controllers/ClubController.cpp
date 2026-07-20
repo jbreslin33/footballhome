@@ -2,6 +2,26 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <vector>
+
+namespace {
+std::string quoteJson(const std::string& value) {
+    std::ostringstream escaped;
+    escaped << '"';
+    for (char ch : value) {
+        switch (ch) {
+            case '"': escaped << "\\\""; break;
+            case '\\': escaped << "\\\\"; break;
+            case '\n': escaped << "\\n"; break;
+            case '\r': escaped << "\\r"; break;
+            case '\t': escaped << "\\t"; break;
+            default: escaped << ch; break;
+        }
+    }
+    escaped << '"';
+    return escaped.str();
+}
+} // namespace
 
 ClubController::ClubController() {
     db_ = Database::getInstance();
@@ -418,57 +438,100 @@ Response ClubController::handleGetClubGameModelStructure(const Request& request)
 
         pqxx::result result = db_->query(query.str());
 
-        std::ostringstream json;
-        json << "{";
-        json << "\"game_model\":{";
-        json << "\"id\":" << club_id << ",";
-        json << "\"title\":\"Game Model\",";
-        json << "\"summary\":\"A normalized 4-4-2 coaching framework with phases and principles.\",";
-        json << "\"base_shape\":\"4-4-2\"";
-        json << "},\"phases\":[";
+        std::string game_model_title = "Game Model";
+        std::string game_model_summary = "A normalized coaching framework with phases and principles.";
+        std::string game_model_base_shape = "11v11";
+        long long game_model_id = club_id;
+        bool has_game_model_row = false;
 
-        bool first_phase = true;
+        std::vector<std::string> phase_jsons;
         int current_phase_id = -1;
-        bool first_principle = true;
+        std::string current_phase_slug;
+        std::string current_phase_label;
+        std::string current_phase_description;
+        int current_phase_sort_order = 0;
+        std::vector<std::string> principle_jsons;
+
         for (const auto& row : result) {
+            if (!has_game_model_row) {
+                has_game_model_row = true;
+                game_model_id = row["game_model_id"].as<long long>();
+                game_model_title = row["title"].is_null() ? "Game Model" : row["title"].c_str();
+                game_model_summary = row["summary"].is_null() ? "A normalized coaching framework with phases and principles." : row["summary"].c_str();
+                game_model_base_shape = row["base_shape"].is_null() ? "11v11" : row["base_shape"].c_str();
+            }
+
             int phase_id = row["phase_id"].as<int>();
             if (phase_id != current_phase_id) {
-                if (!first_phase) {
-                    json << "]}";
+                if (current_phase_id != -1) {
+                    std::ostringstream phase_json;
+                    phase_json << "{";
+                    phase_json << "\"id\":" << current_phase_id << ",";
+                    phase_json << "\"slug\":\"" << escapeJson(current_phase_slug) << "\",";
+                    phase_json << "\"label\":\"" << escapeJson(current_phase_label) << "\",";
+                    phase_json << "\"description\":\"" << escapeJson(current_phase_description) << "\",";
+                    phase_json << "\"sort_order\":" << current_phase_sort_order << ",";
+                    phase_json << "\"principles\":[";
+                    for (size_t i = 0; i < principle_jsons.size(); ++i) {
+                        if (i > 0) phase_json << ",";
+                        phase_json << principle_jsons[i];
+                    }
+                    phase_json << "]}";
+                    phase_jsons.push_back(phase_json.str());
                 }
-                first_phase = false;
+
                 current_phase_id = phase_id;
-                first_principle = true;
-                json << "{";
-                json << "\"id\":" << phase_id << ",";
-                json << "\"slug\":\"" << escapeJson(row["phase_slug"].c_str()) << "\",";
-                json << "\"label\":\"" << escapeJson(row["phase_label"].c_str()) << "\",";
-                json << "\"description\":\"" << escapeJson(row["phase_description"].c_str()) << "\",";
-                json << "\"sort_order\":" << row["phase_sort_order"].as<int>() << ",";
-                json << "\"principles\":[";
+                current_phase_slug = row["phase_slug"].is_null() ? "" : row["phase_slug"].c_str();
+                current_phase_label = row["phase_label"].is_null() ? "" : row["phase_label"].c_str();
+                current_phase_description = row["phase_description"].is_null() ? "" : row["phase_description"].c_str();
+                current_phase_sort_order = row["phase_sort_order"].as<int>();
+                principle_jsons.clear();
             }
 
             if (!row["principle_id"].is_null()) {
-                if (!first_principle) {
-                    json << ",";
-                }
-                first_principle = false;
-                json << "{";
-                json << "\"id\":" << row["principle_id"].as<long long>() << ",";
-                json << "\"slug\":\"" << escapeJson(row["principle_slug"].c_str()) << "\",";
-                json << "\"level\":\"" << escapeJson(row["level"].c_str()) << "\",";
-                json << "\"title\":\"" << escapeJson(row["principle_title"].c_str()) << "\",";
-                json << "\"description\":\"" << escapeJson(row["principle_description"].c_str()) << "\",";
-                json << "\"sort_order\":" << row["principle_sort_order"].as<int>();
-                json << "}";
+                std::ostringstream principle_json;
+                principle_json << "{";
+                principle_json << "\"id\":" << row["principle_id"].as<long long>() << ",";
+                principle_json << "\"slug\":\"" << escapeJson(row["principle_slug"].c_str()) << "\",";
+                principle_json << "\"level\":\"" << escapeJson(row["level"].c_str()) << "\",";
+                principle_json << "\"title\":\"" << escapeJson(row["principle_title"].c_str()) << "\",";
+                principle_json << "\"description\":\"" << escapeJson(row["principle_description"].c_str()) << "\",";
+                principle_json << "\"sort_order\":" << row["principle_sort_order"].as<int>();
+                principle_json << "}";
+                principle_jsons.push_back(principle_json.str());
             }
         }
 
-        if (!first_phase) {
-            json << "]}";
+        if (current_phase_id != -1) {
+            std::ostringstream phase_json;
+            phase_json << "{";
+            phase_json << "\"id\":" << current_phase_id << ",";
+            phase_json << "\"slug\":\"" << escapeJson(current_phase_slug) << "\",";
+            phase_json << "\"label\":\"" << escapeJson(current_phase_label) << "\",";
+            phase_json << "\"description\":\"" << escapeJson(current_phase_description) << "\",";
+            phase_json << "\"sort_order\":" << current_phase_sort_order << ",";
+            phase_json << "\"principles\":[";
+            for (size_t i = 0; i < principle_jsons.size(); ++i) {
+                if (i > 0) phase_json << ",";
+                phase_json << principle_jsons[i];
+            }
+            phase_json << "]}";
+            phase_jsons.push_back(phase_json.str());
+        }
+
+        std::ostringstream json;
+        json << "{";
+        json << "\"game_model\":{";
+        json << "\"id\":" << game_model_id << ",";
+        json << "\"title\":" << quoteJson(game_model_title) << ",";
+        json << "\"summary\":" << quoteJson(game_model_summary) << ",";
+        json << "\"base_shape\":" << quoteJson(game_model_base_shape) << "";
+        json << "},\"phases\":[";
+        for (size_t i = 0; i < phase_jsons.size(); ++i) {
+            if (i > 0) json << ",";
+            json << phase_jsons[i];
         }
         json << "]}";
-        json << "}";
 
         return Response(HttpStatus::OK, createJSONResponse(true, "Game model structure retrieved", json.str()));
     } catch (const std::exception& e) {
@@ -527,7 +590,7 @@ Response ClubController::handleGetClubGameModel(const Request& request) {
         };
 
         if (content_html.empty() || looksLikeLegacyPlanner(content_html)) {
-            content_html = R"(<article style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); display: grid; gap: var(--space-3);"><h4 style="margin: 0;">Spain/UEFA-style 4-4-2 game model</h4><p style="margin: 0; opacity: 0.9;">The identity is positional, patient, and compact. The team builds through the back line, creates the free player in the middle, and attacks with rhythm and purpose.</p><div style="display: grid; gap: 0.65rem;"><div><strong>Primary principle:</strong> Play with control, shape, and clear positional structure.</div><div><strong>Sub-principle:</strong> Build from the back and create easy support angles before the attack becomes vertical.</div><div><strong>Sub-sub-principle:</strong> The first pass should create a next pass, not just a simple carry.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Offense</strong></div><div><strong>Principle:</strong> Create overloads in the middle and free a player in the attacking third.</div><div><strong>Sub-principle:</strong> The midfielders connect the build to the attack and the full-backs support the width.</div><div><strong>Sub-sub-principle:</strong> The third-man run is the main trigger to break the line.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Defense</strong></div><div><strong>Principle:</strong> Defend compact and aggressive as a unit.</div><div><strong>Sub-principle:</strong> Press together, protect the central lane, and force the ball wide.</div><div><strong>Sub-sub-principle:</strong> The nearest player presses, the second covers, and the third balances the space.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Transitions</strong></div><div><strong>Transition to offense:</strong> As soon as the ball is won, attack immediately with a quick vertical action.</div><div><strong>Sub-principle:</strong> The first pass should break the line or create a second action.</div><div><strong>Transition to defense:</strong> If the ball is lost, recover into the compact shape and protect the middle.</div><div><strong>Sub-principle:</strong> The first recovery run must make the block compact again.</div></div></article>)";
+            content_html = R"(<article style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); display: grid; gap: var(--space-3);"><h4 style="margin: 0;">U17+ game model</h4><p style="margin: 0; opacity: 0.9;">The club’s coaching identity is stored in a normalized framework aligned to the U.S. Soccer U17+ model. Attack, defend, transition to attack, and transition to defense each carry their own principles so the language stays consistent across training and matches.</p><div style="display: grid; gap: 0.65rem;"><div><strong>Attack</strong></div><div><strong>Principle:</strong> Create the conditions to attack with rhythm, support, and purpose.</div><div><strong>Principle:</strong> Use the ball to manipulate the opposition’s structure and create a numerical or positional advantage.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Defend</strong></div><div><strong>Principle:</strong> Defend with compactness, intention, and clear relationships between the lines.</div><div><strong>Principle:</strong> Force the opponent to play where we want, then press the ball with coordinated support.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Transitions</strong></div><div><strong>Transition to attack:</strong> As soon as the ball is won, the team should immediately create a new attacking action.</div><div><strong>Transition to defense:</strong> If the ball is lost, the team should recover shape and protect the central space.</div></div></article>)";
         }
 
         std::ostringstream plan_json;
@@ -673,7 +736,7 @@ Response ClubController::handleGetClubGameModel(const Request& request) {
         plan_json << "}";
 
         if (content_html.empty()) {
-            content_html = R"(<article style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); display: grid; gap: var(--space-3);"><h4 style="margin: 0;">Spain/UEFA-style 4-4-2 game model</h4><p style="margin: 0; opacity: 0.9;">The identity is positional, patient, and compact. The team builds through the back line, creates the free player in the middle, and attacks with rhythm and purpose.</p><div style="display: grid; gap: 0.65rem;"><div><strong>Primary principle:</strong> Play with control, shape, and clear positional structure.</div><div><strong>Sub-principle:</strong> Build from the back and create easy support angles before the attack becomes vertical.</div><div><strong>Sub-sub-principle:</strong> The first pass should create a next pass, not just a simple carry.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Offense</strong></div><div><strong>Principle:</strong> Create overloads in the middle and free a player in the attacking third.</div><div><strong>Sub-principle:</strong> The midfielders connect the build to the attack and the full-backs support the width.</div><div><strong>Sub-sub-principle:</strong> The third-man run is the main trigger to break the line.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Defense</strong></div><div><strong>Principle:</strong> Defend compact and aggressive as a unit.</div><div><strong>Sub-principle:</strong> Press together, protect the central lane, and force the ball wide.</div><div><strong>Sub-sub-principle:</strong> The nearest player presses, the second covers, and the third balances the space.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Transitions</strong></div><div><strong>Transition to offense:</strong> As soon as the ball is won, attack immediately with a quick vertical action.</div><div><strong>Sub-principle:</strong> The first pass should break the line or create a second action.</div><div><strong>Transition to defense:</strong> If the ball is lost, recover into the compact shape and protect the middle.</div><div><strong>Sub-principle:</strong> The first recovery run must make the block compact again.</div></div></article>)";
+            content_html = R"(<article style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); display: grid; gap: var(--space-3);"><h4 style="margin: 0;">U17+ game model</h4><p style="margin: 0; opacity: 0.9;">The club’s coaching identity is stored in a normalized framework aligned to the U.S. Soccer U17+ model. Attack, defend, transition to attack, and transition to defense each carry their own principles so the language stays consistent across training and matches.</p><div style="display: grid; gap: 0.65rem;"><div><strong>Attack</strong></div><div><strong>Principle:</strong> Create the conditions to attack with rhythm, support, and purpose.</div><div><strong>Principle:</strong> Use the ball to manipulate the opposition’s structure and create a numerical or positional advantage.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Defend</strong></div><div><strong>Principle:</strong> Defend with compactness, intention, and clear relationships between the lines.</div><div><strong>Principle:</strong> Force the opponent to play where we want, then press the ball with coordinated support.</div></div><div style="display: grid; gap: 0.65rem;"><div><strong>Transitions</strong></div><div><strong>Transition to attack:</strong> As soon as the ball is won, the team should immediately create a new attacking action.</div><div><strong>Transition to defense:</strong> If the ball is lost, the team should recover shape and protect the central space.</div></div></article>)";
         }
 
         std::ostringstream data;

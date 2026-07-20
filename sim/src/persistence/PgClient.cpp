@@ -12,22 +12,15 @@
 
 #include <pqxx/pqxx>
 
-namespace pqxx {
-argument_error::argument_error(std::string const& msg, std::source_location loc)
-    : std::invalid_argument(msg), location(loc)
-{}
-
-conversion_error::conversion_error(std::string const& msg, std::source_location loc)
-    : std::domain_error(msg), location(loc)
-{}
-} // namespace pqxx
-
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <exception>
 #include <sstream>
 #include <string>
 #include <string_view>
+
+#include "pqxx/internal/ignore-deprecated-pre.hxx"
 
 namespace fh::sim::persistence {
 
@@ -117,6 +110,8 @@ std::vector<std::byte> readBytea(const pqxx::row::reference& field)
 }
 
 } // namespace
+
+#include "pqxx/internal/ignore-deprecated-post.hxx"
 
 // ---------------------------------------------------------------------------
 // Impl: hides libpqxx from callers of the header.
@@ -266,7 +261,7 @@ std::vector<RegistryRow> PgClient::loadAttributeRegistry()
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec_prepared(PS_LOAD_ATTR);
+        const auto res = tx.exec("SELECT id, key, category FROM sim_attribute_registry ORDER BY id ASC");
         std::vector<RegistryRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -287,7 +282,7 @@ std::vector<RegistryRow> PgClient::loadConceptRegistry()
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec_prepared(PS_LOAD_CONCEPT);
+        const auto res = tx.exec("SELECT id, key, category FROM sim_concept_registry ORDER BY id ASC");
         std::vector<RegistryRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -308,7 +303,7 @@ std::vector<RegistryRow> PgClient::loadPatternRegistry()
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec_prepared(PS_LOAD_PATTERN);
+        const auto res = tx.exec("SELECT id, key, category FROM sim_pattern_registry ORDER BY id ASC");
         std::vector<RegistryRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -333,7 +328,9 @@ std::optional<MatchRow> PgClient::getMatch(MatchId id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec_prepared(PS_GET_MATCH, id);
+        const auto res = tx.exec_params("SELECT id, scenario_id, seed, tick_hz, server_version, "
+            "       created_by, visibility "
+            "FROM sim_matches WHERE id = $1", id);
         tx.commit();
         if (res.empty()) {
             return std::nullopt;
@@ -360,11 +357,23 @@ void PgClient::upsertMatch(const MatchRow& row)
     try {
         pqxx::work tx(impl_->conn);
         if (row.created_by.has_value()) {
-            tx.exec_prepared(PS_UPSERT_MATCH,
+            tx.exec_params(
+            "INSERT INTO sim_matches "
+                "  (id, scenario_id, seed, tick_hz, server_version, "
+                "   created_by, visibility) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "  server_version = EXCLUDED.server_version",
                 row.id, row.scenario_id, row.seed, row.tick_hz,
                 row.server_version, *row.created_by, row.visibility);
         } else {
-            tx.exec_prepared(PS_UPSERT_MATCH,
+            tx.exec_params(
+            "INSERT INTO sim_matches "
+                "  (id, scenario_id, seed, tick_hz, server_version, "
+                "   created_by, visibility) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "  server_version = EXCLUDED.server_version",
                 row.id, row.scenario_id, row.seed, row.tick_hz,
                 row.server_version, nullptr, row.visibility);
         }
@@ -378,7 +387,10 @@ void PgClient::updateMatchFirstTick(MatchId id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec_prepared(PS_UPDATE_MATCH_FIRST_TICK, id);
+        tx.exec_params(
+            "UPDATE sim_matches SET first_tick_at = NOW() "
+            "WHERE id = $1 AND first_tick_at IS NULL",
+            id);
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("updateMatchFirstTick", e.what());
@@ -395,7 +407,10 @@ void PgClient::updateMatchEnded(MatchId id,
     }
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec_prepared(PS_UPDATE_MATCH_ENDED, id, viewOf(result_hash));
+        tx.exec_params(
+            "UPDATE sim_matches SET ended_at = NOW(), result = $2 "
+            "WHERE id = $1 AND ended_at IS NULL",
+            id, viewOf(result_hash));
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("updateMatchEnded", e.what());
@@ -414,7 +429,9 @@ std::optional<ProfileRows> PgClient::loadProfile(PersonId person_id)
         // Existence check first — nullopt vs "row present but all child
         // tables empty" are semantically different (the latter means
         // save() was called with empty sets, a valid but weird state).
-        const auto exists = tx.exec_prepared(PS_LOAD_PROFILE_EXISTS, person_id);
+        const auto exists = tx.exec_params(
+            "SELECT 1 FROM sim_player_profile WHERE person_id = $1",
+            person_id);
         if (exists.empty()) {
             tx.commit();
             return std::nullopt;
@@ -422,21 +439,30 @@ std::optional<ProfileRows> PgClient::loadProfile(PersonId person_id)
 
         ProfileRows out;
 
-        const auto attr_res = tx.exec_prepared(PS_LOAD_PROFILE_ATTR, person_id);
+        const auto attr_res = tx.exec_params(
+            "SELECT attr_id, value FROM sim_player_attribute "
+            "WHERE person_id = $1 ORDER BY attr_id ASC",
+            person_id);
         out.attributes.reserve(attr_res.size());
         for (const auto& r : attr_res) {
             out.attributes.emplace_back(r[0].as<std::uint16_t>(),
                                         r[1].as<float>());
         }
 
-        const auto concept_res = tx.exec_prepared(PS_LOAD_PROFILE_CONCEPT, person_id);
+        const auto concept_res = tx.exec_params(
+            "SELECT concept_id, mastery FROM sim_player_concept "
+            "WHERE person_id = $1 ORDER BY concept_id ASC",
+            person_id);
         out.concepts.reserve(concept_res.size());
         for (const auto& r : concept_res) {
             out.concepts.emplace_back(r[0].as<std::uint16_t>(),
                                       r[1].as<float>());
         }
 
-        const auto recog_res = tx.exec_prepared(PS_LOAD_PROFILE_RECOG, person_id);
+        const auto recog_res = tx.exec_params(
+            "SELECT pattern_id, skill FROM sim_player_recognition "
+            "WHERE person_id = $1 ORDER BY pattern_id ASC",
+            person_id);
         out.recognition.reserve(recog_res.size());
         for (const auto& r : recog_res) {
             out.recognition.emplace_back(r[0].as<std::uint16_t>(),
@@ -457,24 +483,42 @@ void PgClient::upsertProfile(PersonId person_id, const ProfileRows& rows)
 
         // 1) Parent envelope (see PS_UPSERT_PROFILE_PARENT for §22.14
         //    note about the DO UPDATE branch).
-        tx.exec_prepared(PS_UPSERT_PROFILE_PARENT, person_id);
+        tx.exec_params(
+            "INSERT INTO sim_player_profile (person_id) VALUES ($1) "
+            "ON CONFLICT (person_id) DO UPDATE SET updated_at = NOW()",
+            person_id);
 
         // 2) Replace-whole-set: wipe then re-insert. Atomic inside the tx.
         //    In M0 the DELETE removes 0 rows (first touch); post-M0 this
         //    still preserves the previous bytea-column semantics of
         //    "the payload IS the set".
-        tx.exec_prepared(PS_DELETE_PROFILE_ATTR, person_id);
-        tx.exec_prepared(PS_DELETE_PROFILE_CONCEPT, person_id);
-        tx.exec_prepared(PS_DELETE_PROFILE_RECOG, person_id);
+        tx.exec_params(
+            "DELETE FROM sim_player_attribute WHERE person_id = $1",
+            person_id);
+        tx.exec_params(
+            "DELETE FROM sim_player_concept WHERE person_id = $1",
+            person_id);
+        tx.exec_params(
+            "DELETE FROM sim_player_recognition WHERE person_id = $1",
+            person_id);
 
         for (const auto& [attr_id, value] : rows.attributes) {
-            tx.exec_prepared(PS_INSERT_PROFILE_ATTR, person_id, attr_id, value);
+            tx.exec_params(
+            "INSERT INTO sim_player_attribute (person_id, attr_id, value) "
+                "VALUES ($1, $2, $3)",
+                person_id, attr_id, value);
         }
         for (const auto& [concept_id, mastery] : rows.concepts) {
-            tx.exec_prepared(PS_INSERT_PROFILE_CONCEPT, person_id, concept_id, mastery);
+            tx.exec_params(
+            "INSERT INTO sim_player_concept (person_id, concept_id, mastery) "
+                "VALUES ($1, $2, $3)",
+                person_id, concept_id, mastery);
         }
         for (const auto& [pattern_id, skill] : rows.recognition) {
-            tx.exec_prepared(PS_INSERT_PROFILE_RECOG, person_id, pattern_id, skill);
+            tx.exec_params(
+            "INSERT INTO sim_player_recognition (person_id, pattern_id, skill) "
+                "VALUES ($1, $2, $3)",
+                person_id, pattern_id, skill);
         }
 
         tx.commit();
@@ -491,7 +535,12 @@ void PgClient::insertInput(const InputRow& row)
 {
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec_prepared(PS_INSERT_INPUT,
+        tx.exec_params(
+            "INSERT INTO sim_match_inputs "
+            "  (match_id, tick_num, slot_id, payload) "
+            "VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT (match_id, tick_num, slot_id) DO UPDATE SET "
+            "  payload = EXCLUDED.payload",
             row.match_id, row.tick_num, row.slot_id,
             viewOf(std::span<const std::byte>{row.payload}));
         tx.commit();
@@ -508,7 +557,12 @@ void PgClient::insertInputBatch(std::span<const InputRow> rows)
     try {
         pqxx::work tx(impl_->conn);
         for (const auto& row : rows) {
-            tx.exec_prepared(PS_INSERT_INPUT,
+            tx.exec_params(
+            "INSERT INTO sim_match_inputs "
+                "  (match_id, tick_num, slot_id, payload) "
+                "VALUES ($1, $2, $3, $4) "
+                "ON CONFLICT (match_id, tick_num, slot_id) DO UPDATE SET "
+                "  payload = EXCLUDED.payload",
                 row.match_id, row.tick_num, row.slot_id,
                 viewOf(std::span<const std::byte>{row.payload}));
         }
@@ -526,8 +580,17 @@ PgClient::loadInputsForMatch(MatchId id,
         pqxx::work tx(impl_->conn);
         const auto res =
             up_to_tick.has_value()
-                ? tx.exec_prepared(PS_LOAD_INPUTS_UPTO, id, *up_to_tick)
-                : tx.exec_prepared(PS_LOAD_INPUTS_ALL, id);
+                ? tx.exec_params(
+            "SELECT match_id, tick_num, slot_id, payload "
+                    "FROM sim_match_inputs "
+                    "WHERE match_id = $1 AND tick_num <= $2 "
+                    "ORDER BY tick_num ASC, slot_id ASC",
+                    id, *up_to_tick)
+                : tx.exec_params(
+            "SELECT match_id, tick_num, slot_id, payload "
+                    "FROM sim_match_inputs WHERE match_id = $1 "
+                    "ORDER BY tick_num ASC, slot_id ASC",
+                    id);
         std::vector<InputRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -555,11 +618,17 @@ void PgClient::insertEvent(const EventRow& row)
         pqxx::work tx(impl_->conn);
         const std::int16_t event_type = static_cast<std::int16_t>(row.event_type);
         if (row.payload.has_value()) {
-            tx.exec_prepared(PS_INSERT_EVENT,
+            tx.exec_params(
+            "INSERT INTO sim_match_events "
+                "  (match_id, tick_num, event_type, payload) "
+                "VALUES ($1, $2, $3, $4)",
                 row.match_id, row.tick_num, event_type,
                 viewOf(std::span<const std::byte>{*row.payload}));
         } else {
-            tx.exec_prepared(PS_INSERT_EVENT,
+            tx.exec_params(
+            "INSERT INTO sim_match_events "
+                "  (match_id, tick_num, event_type, payload) "
+                "VALUES ($1, $2, $3, $4)",
                 row.match_id, row.tick_num, event_type, nullptr);
         }
         tx.commit();
@@ -579,11 +648,17 @@ void PgClient::insertEventBatch(std::span<const EventRow> rows)
             const std::int16_t event_type =
                 static_cast<std::int16_t>(row.event_type);
             if (row.payload.has_value()) {
-                tx.exec_prepared(PS_INSERT_EVENT,
+                tx.exec_params(
+            "INSERT INTO sim_match_events "
+                    "  (match_id, tick_num, event_type, payload) "
+                    "VALUES ($1, $2, $3, $4)",
                     row.match_id, row.tick_num, event_type,
                     viewOf(std::span<const std::byte>{*row.payload}));
             } else {
-                tx.exec_prepared(PS_INSERT_EVENT,
+                tx.exec_params(
+            "INSERT INTO sim_match_events "
+                    "  (match_id, tick_num, event_type, payload) "
+                    "VALUES ($1, $2, $3, $4)",
                     row.match_id, row.tick_num, event_type, nullptr);
             }
         }
@@ -598,7 +673,11 @@ PgClient::loadMatchEnd(MatchId id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec_prepared(PS_LOAD_MATCH_END, id);
+        const auto res = tx.exec_params(
+            "SELECT tick_num, payload FROM sim_match_events "
+            "WHERE match_id = $1 AND event_type = 2 "
+            "ORDER BY id DESC LIMIT 1",
+            id);
         tx.commit();
         if (res.empty()) {
             return std::nullopt;

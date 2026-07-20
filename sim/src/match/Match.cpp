@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <utility>
 
 namespace fh::sim::match {
@@ -48,6 +49,7 @@ Match::Match(MatchConfig cfg)
         ? awareness::RecognitionSystem{*cfg.pattern_registry}
         : awareness::RecognitionSystem{})
     , rng_(cfg.seed)
+    , profile_store_(cfg.profile_store)
 {
     spawnInitialSlots();
 }
@@ -86,6 +88,20 @@ void Match::spawnInitialSlots()
         slot.mark_target = s.mark_target;
         slot.profile.physical = m0::defaultPhysical();
         slot.profile.concepts = m0::defaultConcepts();
+        if (s.ai_profile_source.has_value() && profile_store_ != nullptr) {
+            try {
+                const auto loaded = profile_store_->loadOrCreate(*s.ai_profile_source);
+                slot.profile = loaded;
+            } catch (const persistence::PgError& e) {
+                std::fprintf(stderr,
+                             "sim: profile load failed for slot=%u person=%llu (%s: %s); "
+                             "falling back to defaults\n",
+                             static_cast<unsigned>(s.slot),
+                             static_cast<unsigned long long>(*s.ai_profile_source),
+                             e.context().c_str(),
+                             e.what());
+            }
+        }
         // Slice 24.3b: scenario hook to override specific physical
         // attributes on top of defaults (e.g. weaker dribble for a
         // demo defender). No-op for scenarios that don't override.

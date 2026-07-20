@@ -165,6 +165,9 @@ std::vector<std::string> buildSimEnv(const LaunchOptions& opts) {
     // Per-match (values that vary):
     env.push_back("SIM_MATCH_ID=" + std::to_string(opts.match_id));
     env.push_back("SIM_MATCH_SEED=" + std::to_string(opts.seed));
+    if (opts.defender_profile_person_id.has_value()) {
+        env.push_back("SIM_DEFENDER_PROFILE_PERSON_ID=" + std::to_string(*opts.defender_profile_person_id));
+    }
     // Slice 18.x bugfix: without this, every per-match container fell back
     // to sim/src/main.cpp's default of empty_pitch — the "Ball on Pitch"
     // (and future) launcher tiles would spawn a match with no ball. The
@@ -644,6 +647,9 @@ AssignResult SimOrchestrator::postAssignMatch(const AssignOptions& opts) {
     body["match_id"]    = opts.match_id;
     body["seed"]        = opts.seed;
     body["scenario_id"] = opts.scenario_id;
+    if (opts.defender_profile_person_id.has_value()) {
+        body["defender_profile_person_id"] = *opts.defender_profile_person_id;
+    }
 
     const HttpClient::Headers headers = {
         { "Authorization", "Bearer " + bearer },

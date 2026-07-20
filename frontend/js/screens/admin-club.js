@@ -305,7 +305,7 @@ class AdminClubScreen extends Screen {
 
     // ── Training / Game Model ───────────────────────────────────────
     const gameModelTiles = [
-      { id: 'game-model', target: 'game-model-admin', params: { entity: 'game-model' }, icon: '🧠', label: 'Game Model', description: 'Open the overall training overview and weekly plan' },
+      { id: 'game-model', target: 'game-model', params: { entity: 'game-model' }, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
       { id: 'game-model-days', target: 'game-model-admin', params: { entity: 'days' }, icon: '🗓️', label: 'Days', description: 'Create and edit the weekly day structure' },
       { id: 'game-model-sessions', target: 'game-model-admin', params: { entity: 'sessions' }, icon: '⚽', label: 'Sessions', description: 'Build the training blocks inside each day' },
       { id: 'game-model-exercises', target: 'game-model-admin', params: { entity: 'exercises' }, icon: '🏋️', label: 'Exercises', description: 'Manage the drills and activities used in sessions' },
@@ -528,8 +528,16 @@ class AdminClubScreen extends Screen {
       return;
     }
     
-    if (section === 'game-model' || section === 'game-model-admin' || section === 'game-model-days' || section === 'game-model-sessions' || section === 'game-model-exercises') {
-      const entity = section === 'game-model' ? 'game-model'
+    if (section === 'game-model') {
+      this.navigation.goTo('game-model', {
+        clubId: this.clubId,
+        clubName: this.clubName,
+      });
+      return;
+    }
+
+    if (section === 'game-model-admin' || section === 'game-model-days' || section === 'game-model-sessions' || section === 'game-model-exercises') {
+      const entity = section === 'game-model-admin' ? 'game-model'
         : section === 'game-model-days' ? 'days'
         : section === 'game-model-sessions' ? 'sessions'
         : section === 'game-model-exercises' ? 'exercises'

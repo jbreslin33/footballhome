@@ -496,6 +496,10 @@ parseAssignMatchJson(std::string_view body, std::string* reject_reason)
             if (*v > 32767ull) { return reject("scenario_id out of range"); }
             out.scenario_id = static_cast<std::int16_t>(*v);
             seen_scenario_id = true;
+        } else if (*key == "defender_profile_person_id") {
+            auto v = jparseU64(s);
+            if (!v) { return reject("defender_profile_person_id must be a non-negative integer"); }
+            out.defender_profile_person_id = *v;
         } else {
             return reject(std::string{"unknown field: "} + *key);
         }
