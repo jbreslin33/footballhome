@@ -12,6 +12,16 @@
 
 #include <pqxx/pqxx>
 
+namespace pqxx {
+argument_error::argument_error(std::string const& msg, std::source_location loc)
+    : std::invalid_argument(msg), location(loc)
+{}
+
+conversion_error::conversion_error(std::string const& msg, std::source_location loc)
+    : std::domain_error(msg), location(loc)
+{}
+} // namespace pqxx
+
 #include <cstddef>
 #include <cstring>
 #include <exception>
@@ -47,6 +57,10 @@ constexpr const char* PS_LOAD_INPUTS_ALL        = "load_inputs_all";
 constexpr const char* PS_LOAD_INPUTS_UPTO       = "load_inputs_upto";
 constexpr const char* PS_INSERT_EVENT           = "insert_event";
 constexpr const char* PS_LOAD_MATCH_END         = "load_match_end";
+
+// libpqxx 7.x uses exec_prepared with prepared statement names registered
+// on the connection. The older pqxx::prepped{...} helper is not available
+// in this environment, so we execute the SQL by name instead.
 
 // libpqxx 7.x accepts std::basic_string_view<std::byte> as a bytea
 // parameter and returns std::basic_string<std::byte> when a column is
@@ -252,7 +266,7 @@ std::vector<RegistryRow> PgClient::loadAttributeRegistry()
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec(pqxx::prepped{PS_LOAD_ATTR});
+        const auto res = tx.exec_prepared(PS_LOAD_ATTR);
         std::vector<RegistryRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -273,7 +287,7 @@ std::vector<RegistryRow> PgClient::loadConceptRegistry()
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec(pqxx::prepped{PS_LOAD_CONCEPT});
+        const auto res = tx.exec_prepared(PS_LOAD_CONCEPT);
         std::vector<RegistryRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -294,7 +308,7 @@ std::vector<RegistryRow> PgClient::loadPatternRegistry()
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec(pqxx::prepped{PS_LOAD_PATTERN});
+        const auto res = tx.exec_prepared(PS_LOAD_PATTERN);
         std::vector<RegistryRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -319,8 +333,7 @@ std::optional<MatchRow> PgClient::getMatch(MatchId id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec(pqxx::prepped{PS_GET_MATCH},
-                                 pqxx::params{id});
+        const auto res = tx.exec_prepared(PS_GET_MATCH, id);
         tx.commit();
         if (res.empty()) {
             return std::nullopt;
@@ -347,14 +360,13 @@ void PgClient::upsertMatch(const MatchRow& row)
     try {
         pqxx::work tx(impl_->conn);
         if (row.created_by.has_value()) {
-            tx.exec(pqxx::prepped{PS_UPSERT_MATCH},
-                pqxx::params{row.id, row.scenario_id, row.seed, row.tick_hz,
-                             row.server_version, *row.created_by,
-                             row.visibility});
+            tx.exec_prepared(PS_UPSERT_MATCH,
+                row.id, row.scenario_id, row.seed, row.tick_hz,
+                row.server_version, *row.created_by, row.visibility);
         } else {
-            tx.exec(pqxx::prepped{PS_UPSERT_MATCH},
-                pqxx::params{row.id, row.scenario_id, row.seed, row.tick_hz,
-                             row.server_version, nullptr, row.visibility});
+            tx.exec_prepared(PS_UPSERT_MATCH,
+                row.id, row.scenario_id, row.seed, row.tick_hz,
+                row.server_version, nullptr, row.visibility);
         }
         tx.commit();
     } catch (const std::exception& e) {
@@ -366,8 +378,7 @@ void PgClient::updateMatchFirstTick(MatchId id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec(pqxx::prepped{PS_UPDATE_MATCH_FIRST_TICK},
-                pqxx::params{id});
+        tx.exec_prepared(PS_UPDATE_MATCH_FIRST_TICK, id);
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("updateMatchFirstTick", e.what());
@@ -384,8 +395,7 @@ void PgClient::updateMatchEnded(MatchId id,
     }
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec(pqxx::prepped{PS_UPDATE_MATCH_ENDED},
-                pqxx::params{id, viewOf(result_hash)});
+        tx.exec_prepared(PS_UPDATE_MATCH_ENDED, id, viewOf(result_hash));
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("updateMatchEnded", e.what());
@@ -404,8 +414,7 @@ std::optional<ProfileRows> PgClient::loadProfile(PersonId person_id)
         // Existence check first — nullopt vs "row present but all child
         // tables empty" are semantically different (the latter means
         // save() was called with empty sets, a valid but weird state).
-        const auto exists = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_EXISTS},
-                                    pqxx::params{person_id});
+        const auto exists = tx.exec_prepared(PS_LOAD_PROFILE_EXISTS, person_id);
         if (exists.empty()) {
             tx.commit();
             return std::nullopt;
@@ -413,24 +422,21 @@ std::optional<ProfileRows> PgClient::loadProfile(PersonId person_id)
 
         ProfileRows out;
 
-        const auto attr_res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_ATTR},
-                                      pqxx::params{person_id});
+        const auto attr_res = tx.exec_prepared(PS_LOAD_PROFILE_ATTR, person_id);
         out.attributes.reserve(attr_res.size());
         for (const auto& r : attr_res) {
             out.attributes.emplace_back(r[0].as<std::uint16_t>(),
                                         r[1].as<float>());
         }
 
-        const auto concept_res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_CONCEPT},
-                                         pqxx::params{person_id});
+        const auto concept_res = tx.exec_prepared(PS_LOAD_PROFILE_CONCEPT, person_id);
         out.concepts.reserve(concept_res.size());
         for (const auto& r : concept_res) {
             out.concepts.emplace_back(r[0].as<std::uint16_t>(),
                                       r[1].as<float>());
         }
 
-        const auto recog_res = tx.exec(pqxx::prepped{PS_LOAD_PROFILE_RECOG},
-                                       pqxx::params{person_id});
+        const auto recog_res = tx.exec_prepared(PS_LOAD_PROFILE_RECOG, person_id);
         out.recognition.reserve(recog_res.size());
         for (const auto& r : recog_res) {
             out.recognition.emplace_back(r[0].as<std::uint16_t>(),
@@ -451,31 +457,24 @@ void PgClient::upsertProfile(PersonId person_id, const ProfileRows& rows)
 
         // 1) Parent envelope (see PS_UPSERT_PROFILE_PARENT for §22.14
         //    note about the DO UPDATE branch).
-        tx.exec(pqxx::prepped{PS_UPSERT_PROFILE_PARENT},
-                pqxx::params{person_id});
+        tx.exec_prepared(PS_UPSERT_PROFILE_PARENT, person_id);
 
         // 2) Replace-whole-set: wipe then re-insert. Atomic inside the tx.
         //    In M0 the DELETE removes 0 rows (first touch); post-M0 this
         //    still preserves the previous bytea-column semantics of
         //    "the payload IS the set".
-        tx.exec(pqxx::prepped{PS_DELETE_PROFILE_ATTR},
-                pqxx::params{person_id});
-        tx.exec(pqxx::prepped{PS_DELETE_PROFILE_CONCEPT},
-                pqxx::params{person_id});
-        tx.exec(pqxx::prepped{PS_DELETE_PROFILE_RECOG},
-                pqxx::params{person_id});
+        tx.exec_prepared(PS_DELETE_PROFILE_ATTR, person_id);
+        tx.exec_prepared(PS_DELETE_PROFILE_CONCEPT, person_id);
+        tx.exec_prepared(PS_DELETE_PROFILE_RECOG, person_id);
 
         for (const auto& [attr_id, value] : rows.attributes) {
-            tx.exec(pqxx::prepped{PS_INSERT_PROFILE_ATTR},
-                    pqxx::params{person_id, attr_id, value});
+            tx.exec_prepared(PS_INSERT_PROFILE_ATTR, person_id, attr_id, value);
         }
         for (const auto& [concept_id, mastery] : rows.concepts) {
-            tx.exec(pqxx::prepped{PS_INSERT_PROFILE_CONCEPT},
-                    pqxx::params{person_id, concept_id, mastery});
+            tx.exec_prepared(PS_INSERT_PROFILE_CONCEPT, person_id, concept_id, mastery);
         }
         for (const auto& [pattern_id, skill] : rows.recognition) {
-            tx.exec(pqxx::prepped{PS_INSERT_PROFILE_RECOG},
-                    pqxx::params{person_id, pattern_id, skill});
+            tx.exec_prepared(PS_INSERT_PROFILE_RECOG, person_id, pattern_id, skill);
         }
 
         tx.commit();
@@ -492,9 +491,9 @@ void PgClient::insertInput(const InputRow& row)
 {
     try {
         pqxx::work tx(impl_->conn);
-        tx.exec(pqxx::prepped{PS_INSERT_INPUT},
-            pqxx::params{row.match_id, row.tick_num, row.slot_id,
-                         viewOf(std::span<const std::byte>{row.payload})});
+        tx.exec_prepared(PS_INSERT_INPUT,
+            row.match_id, row.tick_num, row.slot_id,
+            viewOf(std::span<const std::byte>{row.payload}));
         tx.commit();
     } catch (const std::exception& e) {
         throw PgError("insertInput", e.what());
@@ -509,9 +508,9 @@ void PgClient::insertInputBatch(std::span<const InputRow> rows)
     try {
         pqxx::work tx(impl_->conn);
         for (const auto& row : rows) {
-            tx.exec(pqxx::prepped{PS_INSERT_INPUT},
-                pqxx::params{row.match_id, row.tick_num, row.slot_id,
-                             viewOf(std::span<const std::byte>{row.payload})});
+            tx.exec_prepared(PS_INSERT_INPUT,
+                row.match_id, row.tick_num, row.slot_id,
+                viewOf(std::span<const std::byte>{row.payload}));
         }
         tx.commit();
     } catch (const std::exception& e) {
@@ -527,10 +526,8 @@ PgClient::loadInputsForMatch(MatchId id,
         pqxx::work tx(impl_->conn);
         const auto res =
             up_to_tick.has_value()
-                ? tx.exec(pqxx::prepped{PS_LOAD_INPUTS_UPTO},
-                          pqxx::params{id, *up_to_tick})
-                : tx.exec(pqxx::prepped{PS_LOAD_INPUTS_ALL},
-                          pqxx::params{id});
+                ? tx.exec_prepared(PS_LOAD_INPUTS_UPTO, id, *up_to_tick)
+                : tx.exec_prepared(PS_LOAD_INPUTS_ALL, id);
         std::vector<InputRow> out;
         out.reserve(res.size());
         for (const auto& r : res) {
@@ -558,12 +555,12 @@ void PgClient::insertEvent(const EventRow& row)
         pqxx::work tx(impl_->conn);
         const std::int16_t event_type = static_cast<std::int16_t>(row.event_type);
         if (row.payload.has_value()) {
-            tx.exec(pqxx::prepped{PS_INSERT_EVENT},
-                pqxx::params{row.match_id, row.tick_num, event_type,
-                             viewOf(std::span<const std::byte>{*row.payload})});
+            tx.exec_prepared(PS_INSERT_EVENT,
+                row.match_id, row.tick_num, event_type,
+                viewOf(std::span<const std::byte>{*row.payload}));
         } else {
-            tx.exec(pqxx::prepped{PS_INSERT_EVENT},
-                pqxx::params{row.match_id, row.tick_num, event_type, nullptr});
+            tx.exec_prepared(PS_INSERT_EVENT,
+                row.match_id, row.tick_num, event_type, nullptr);
         }
         tx.commit();
     } catch (const std::exception& e) {
@@ -582,12 +579,12 @@ void PgClient::insertEventBatch(std::span<const EventRow> rows)
             const std::int16_t event_type =
                 static_cast<std::int16_t>(row.event_type);
             if (row.payload.has_value()) {
-                tx.exec(pqxx::prepped{PS_INSERT_EVENT},
-                    pqxx::params{row.match_id, row.tick_num, event_type,
-                                 viewOf(std::span<const std::byte>{*row.payload})});
+                tx.exec_prepared(PS_INSERT_EVENT,
+                    row.match_id, row.tick_num, event_type,
+                    viewOf(std::span<const std::byte>{*row.payload}));
             } else {
-                tx.exec(pqxx::prepped{PS_INSERT_EVENT},
-                    pqxx::params{row.match_id, row.tick_num, event_type, nullptr});
+                tx.exec_prepared(PS_INSERT_EVENT,
+                    row.match_id, row.tick_num, event_type, nullptr);
             }
         }
         tx.commit();
@@ -601,8 +598,7 @@ PgClient::loadMatchEnd(MatchId id)
 {
     try {
         pqxx::work tx(impl_->conn);
-        const auto res = tx.exec(pqxx::prepped{PS_LOAD_MATCH_END},
-                                 pqxx::params{id});
+        const auto res = tx.exec_prepared(PS_LOAD_MATCH_END, id);
         tx.commit();
         if (res.empty()) {
             return std::nullopt;

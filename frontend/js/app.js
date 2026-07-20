@@ -46,6 +46,7 @@ class App {
       adminEntityList: new AdminEntityListScreen(this.navigation, this.auth),
       adminSystem: new AdminSystemScreen(this.navigation, this.auth),
       adminClub: new AdminClubScreen(this.navigation, this.auth),
+      gameModelAdmin: new GameModelAdminScreen(this.navigation, this.auth),
       adminClubTeams: new AdminClubTeamsScreen(this.navigation, this.auth),
       clubEvents: new ClubEventsScreen(this.navigation, this.auth),
       adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
@@ -119,6 +120,7 @@ class App {
     this.screenManager.register('admin-entity-list', this.screens.adminEntityList);
     this.screenManager.register('admin-system', this.screens.adminSystem);
     this.screenManager.register('admin-club', this.screens.adminClub);
+    this.screenManager.register('game-model-admin', this.screens.gameModelAdmin);
     this.screenManager.register('admin-club-teams', this.screens.adminClubTeams);
     this.screenManager.register('club-events', this.screens.clubEvents);    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
     this.screenManager.register('admin-team', this.screens.adminTeam);

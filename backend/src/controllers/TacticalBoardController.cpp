@@ -652,7 +652,7 @@ Response TacticalBoardController::handleGetBoard(const Request& request) {
         return Response::notFound(R"({"error":"Board not found"})");
     }
     
-    auto& board = boardResult[0];
+    auto board = boardResult[0];
     
     std::ostringstream json;
     json << "{"

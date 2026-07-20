@@ -10,32 +10,42 @@ PersonMergeController::PersonMergeController()
     : model_(std::make_unique<PersonMerge>()) {}
 
 void PersonMergeController::registerRoutes(Router& router, const std::string& prefix) {
+    auto syncAllPrograms = [](const Request&) {
+        return Controller::allLaProgramIds();
+    };
+
     // POST /api/persons/merge
-    router.post(prefix + "/merge", [this](const Request& request) {
-        return this->handleMerge(request);
-    });
+    laPost(router, prefix + "/merge", syncAllPrograms,
+           [this](const Request& request, const LaSyncMap& sync) {
+               return this->handleMerge(request, sync);
+           });
     // POST /api/persons/unmerge/:mergeId
-    router.post(prefix + "/unmerge/:mergeId", [this](const Request& request) {
-        return this->handleUnmerge(request);
-    });
+    laPost(router, prefix + "/unmerge/:mergeId", syncAllPrograms,
+           [this](const Request& request, const LaSyncMap& sync) {
+               return this->handleUnmerge(request, sync);
+           });
     // POST /api/persons/link-scraped — admin-confirmed scraped → Lighthouse link
-    router.post(prefix + "/link-scraped", [this](const Request& request) {
-        return this->handleLinkScraped(request);
-    });
+    laPost(router, prefix + "/link-scraped", syncAllPrograms,
+           [this](const Request& request, const LaSyncMap& sync) {
+               return this->handleLinkScraped(request, sync);
+           });
     // GET  /api/persons/:personId/scraped-match-candidates
-    router.get(prefix + "/:personId/scraped-match-candidates", [this](const Request& request) {
-        return this->handleScrapedMatchCandidates(request);
-    });
+    laGet(router, prefix + "/:personId/scraped-match-candidates", syncAllPrograms,
+          [this](const Request& request, const LaSyncMap& sync) {
+              return this->handleScrapedMatchCandidates(request, sync);
+          });
     // GET  /api/persons/:personId/merges
-    router.get(prefix + "/:personId/merges", [this](const Request& request) {
-        return this->handleListMerges(request);
-    });
+    laGet(router, prefix + "/:personId/merges", syncAllPrograms,
+          [this](const Request& request, const LaSyncMap& sync) {
+              return this->handleListMerges(request, sync);
+          });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // POST /api/persons/merge — { laPersonId, gmPersonId }
 // ────────────────────────────────────────────────────────────────────────────
-Response PersonMergeController::handleMerge(const Request& request) {
+Response PersonMergeController::handleMerge(const Request& request, const LaSyncMap& sync) {
+    (void)sync;
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -72,7 +82,8 @@ Response PersonMergeController::handleMerge(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 // POST /api/persons/unmerge/:mergeId
 // ────────────────────────────────────────────────────────────────────────────
-Response PersonMergeController::handleUnmerge(const Request& request) {
+Response PersonMergeController::handleUnmerge(const Request& request, const LaSyncMap& sync) {
+    (void)sync;
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -107,7 +118,8 @@ Response PersonMergeController::handleUnmerge(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 // GET /api/persons/:personId/merges
 // ────────────────────────────────────────────────────────────────────────────
-Response PersonMergeController::handleListMerges(const Request& request) {
+Response PersonMergeController::handleListMerges(const Request& request, const LaSyncMap& sync) {
+    (void)sync;
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -143,7 +155,8 @@ Response PersonMergeController::handleListMerges(const Request& request) {
 // row + current roster, and NO open person_la_memberships.  Never
 // auto-links — Club Admin confirms via POST /link-scraped.
 // ────────────────────────────────────────────────────────────────────────────
-Response PersonMergeController::handleScrapedMatchCandidates(const Request& request) {
+Response PersonMergeController::handleScrapedMatchCandidates(const Request& request, const LaSyncMap& sync) {
+    (void)sync;
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
@@ -231,7 +244,8 @@ Response PersonMergeController::handleScrapedMatchCandidates(const Request& requ
 // (keep, drop=scraped) so scraped roster/player rows reparent onto the
 // Lighthouse person.  Reversible via unmerge.
 // ────────────────────────────────────────────────────────────────────────────
-Response PersonMergeController::handleLinkScraped(const Request& request) {
+Response PersonMergeController::handleLinkScraped(const Request& request, const LaSyncMap& sync) {
+    (void)sync;
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }

@@ -684,12 +684,21 @@ private:
     }
 };
 
-int main() {
+int main(int argc, char** argv) {
     // Initialize libcurl globally before any threads are created
     curl_global_init(CURL_GLOBAL_ALL);
 
     try {
-        HttpServer server(3001);
+        int port = 3001;
+        if (argc > 1) {
+            try {
+                port = std::stoi(argv[1]);
+            } catch (const std::exception&) {
+                std::cerr << "⚠️ Invalid port argument: " << argv[1] << std::endl;
+            }
+        }
+
+        HttpServer server(port);
         
         if (!server.initialize()) {
             std::cerr << "❌ Server initialization failed" << std::endl;

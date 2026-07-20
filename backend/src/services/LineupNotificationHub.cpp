@@ -181,8 +181,9 @@ void LineupNotificationHub::run() {
                 }
             }
 
-            // Clean shutdown.
-            try { conn.disconnect(); } catch (...) {}
+            // Clean shutdown. The pqxx version in the container image uses a
+            // protected close() path, so we simply let the connection fall out
+            // of scope and close during destruction.
             return;
 
         } catch (const std::exception& e) {

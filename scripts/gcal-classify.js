@@ -63,6 +63,12 @@ const PATTERNS = [
     note:     'Saturday Mens Pickup — the §6.5 windowed-RSVP flagship case',
   },
   {
+    regex:    '^Soccer[[:space:]]+.*[[:space:]]+vs[[:space:]]+',
+    kind:     'match',
+    category: 'mens',
+    note:     'Mens match or friendly with an opponent',
+  },
+  {
     regex:    '^Soccer[[:space:]]+All[[:space:]]+Staff[[:space:]]+Meeting',
     kind:     'meeting',
     category: 'staff',

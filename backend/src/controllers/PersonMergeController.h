@@ -29,11 +29,11 @@ public:
 private:
     std::unique_ptr<PersonMerge> model_;
 
-    Response handleMerge   (const Request& request);
-    Response handleUnmerge (const Request& request);
-    Response handleListMerges(const Request& request);
-    Response handleScrapedMatchCandidates(const Request& request);
-    Response handleLinkScraped(const Request& request);
+    Response handleMerge   (const Request& request, const LaSyncMap& sync);
+    Response handleUnmerge (const Request& request, const LaSyncMap& sync);
+    Response handleListMerges(const Request& request, const LaSyncMap& sync);
+    Response handleScrapedMatchCandidates(const Request& request, const LaSyncMap& sync);
+    Response handleLinkScraped(const Request& request, const LaSyncMap& sync);
 
     // Path parsers — return false if the path doesn't match.
     bool extractMergeId (const std::string& path, int& mergeId) const;

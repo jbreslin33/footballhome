@@ -571,25 +571,36 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
             "  FROM fh_events fe "
             "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
             " WHERE fe.category = 'mens' "
-            "   AND fe.kind     = 'pickup' "
+            "   AND fe.kind IN ('practice', 'pickup', 'match') "
             "   AND ge.deleted_at IS NULL "
-            "   AND ge.starts_at >= (((NOW() AT TIME ZONE 'America/New_York')::date)::timestamp) "
+            "   AND ge.starts_at >= (((NOW() AT TIME ZONE 'America/New_York')::date "
+            "                         - CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
+            "                                 THEN 6 ELSE ((EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int + 6) % 7) END "
+            "                         + CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
+            "                                 THEN 7 ELSE 0 END)::timestamp) "
             "                        AT TIME ZONE 'America/New_York' "
-            "   AND ge.starts_at <  ((((NOW() AT TIME ZONE 'America/New_York')::date "
-            "                          + ($1 || ' days')::interval)::timestamp)) "
+            "   AND ge.starts_at < ((((NOW() AT TIME ZONE 'America/New_York')::date "
+            "                         - CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
+            "                                 THEN 6 ELSE ((EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int + 6) % 7) END "
+            "                         + CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
+            "                                 THEN 7 ELSE 0 END) "
+            "                         + INTERVAL '7 days')::timestamp) "
             "                        AT TIME ZONE 'America/New_York' "
             " ORDER BY ge.starts_at ASC",
-            {std::to_string(days)});
+            {});
 
         // Week window strings — return the actual range we queried so
         // the front-end can label the header.
         std::string weekStart, weekEnd;
         {
             auto wk = db->query(
-                "SELECT ((NOW() AT TIME ZONE 'America/New_York')::date)::text AS ws, "
-                "       ((NOW() AT TIME ZONE 'America/New_York')::date "
-                "        + ($1 || ' days')::interval - INTERVAL '1 day')::date::text AS we",
-                {std::to_string(days)});
+                "SELECT ((NOW() AT TIME ZONE 'America/New_York')::date "
+                "         - CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
+                "                 THEN 0 ELSE EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int - 1 END)::text AS ws, "
+                "       (((NOW() AT TIME ZONE 'America/New_York')::date "
+                "         - CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
+                "                 THEN 0 ELSE EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int - 1 END) "
+                "        + INTERVAL '6 days')::date::text AS we");
             if (!wk.empty()) {
                 weekStart = wk[0]["ws"].as<std::string>();
                 weekEnd   = wk[0]["we"].as<std::string>();

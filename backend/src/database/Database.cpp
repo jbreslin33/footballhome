@@ -28,11 +28,32 @@ Database::Database(const std::string& connection_string)
 }
 
 Database* Database::getInstance() {
-    // Default for the dockerised dev/prod environment. Caller can
-    // override with the explicit overload below.
-    return getInstance(
-        "host=db port=5432 dbname=footballhome "
-        "user=footballhome_user password=footballhome_pass");
+    // Prefer environment-based settings when they are present so the same
+    // binary can run in containerized deployments and local/dev shells.
+    // Falls back to the dockerized default when no PG* vars are set.
+    const char* host = std::getenv("PGHOST");
+    const char* port = std::getenv("PGPORT");
+    const char* dbname = std::getenv("PGDATABASE");
+    const char* user = std::getenv("PGUSER");
+    const char* password = std::getenv("PGPASSWORD");
+
+    std::ostringstream conn;
+    if (host && *host) conn << "host=" << host << " ";
+    else conn << "host=db ";
+
+    if (port && *port) conn << "port=" << port << " ";
+    else conn << "port=5432 ";
+
+    if (dbname && *dbname) conn << "dbname=" << dbname << " ";
+    else conn << "dbname=footballhome ";
+
+    if (user && *user) conn << "user=" << user << " ";
+    else conn << "user=footballhome_user ";
+
+    if (password && *password) conn << "password=" << password;
+    else conn << "password=footballhome_pass";
+
+    return getInstance(conn.str());
 }
 
 Database* Database::getInstance(const std::string& connection_string) {

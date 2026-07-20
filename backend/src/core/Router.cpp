@@ -1,6 +1,8 @@
 #include "Router.h"
 #include <iostream>
 #include <algorithm>
+#include <sstream>
+#include <vector>
 
 Route::Route(HttpMethod m, const std::string& p, RouteHandler h) 
     : method(m), pattern(p), handler(h) {
@@ -26,12 +28,58 @@ Route::Route(HttpMethod m, const std::string& p, RouteHandler h)
     }
 }
 
+namespace {
+std::vector<std::string> splitPathSegments(const std::string& path) {
+    std::vector<std::string> segments;
+    if (path.empty()) {
+        return segments;
+    }
+
+    std::string normalized = path;
+    if (!normalized.empty() && normalized[0] == '/') {
+        normalized.erase(0, 1);
+    }
+    if (!normalized.empty() && normalized.back() == '/') {
+        normalized.pop_back();
+    }
+
+    std::stringstream stream(normalized);
+    std::string segment;
+    while (std::getline(stream, segment, '/')) {
+        if (!segment.empty()) {
+            segments.push_back(segment);
+        }
+    }
+    return segments;
+}
+}  // namespace
+
 bool Route::matches(HttpMethod method_to_match, const std::string& path) const {
     if (method != method_to_match) {
         return false;
     }
-    
-    return std::regex_match(path, regex_pattern);
+
+    const auto pattern_segments = splitPathSegments(pattern);
+    const auto path_segments = splitPathSegments(path);
+    if (pattern_segments.size() != path_segments.size()) {
+        return false;
+    }
+
+    for (size_t i = 0; i < pattern_segments.size(); ++i) {
+        const std::string& pattern_segment = pattern_segments[i];
+        const std::string& path_segment = path_segments[i];
+        if (pattern_segment.empty()) {
+            continue;
+        }
+        if (pattern_segment[0] == ':') {
+            continue;
+        }
+        if (pattern_segment != path_segment) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Router::get(const std::string& pattern, RouteHandler handler) {

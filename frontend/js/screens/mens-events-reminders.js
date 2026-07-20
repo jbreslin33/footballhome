@@ -41,7 +41,7 @@ class MensEventsRemindersScreen extends Screen {
 
       <div style="padding:0 var(--space-3) var(--space-2);max-width:1400px;margin:0 auto;">
         <p style="opacity:0.75;font-size:0.9rem;margin:0 0 var(--space-2);line-height:1.4;">
-          Every mens event in the next 7 days, left-to-right in time order.  Each
+          Every mens practice, pickup, and match in the current training week, left-to-right in time order.  Each
           column shows every eligible player bucketed by their current RSVP.
           Tap a player's 📧 / 💬 buttons to open your Mail / Messages app with
           a reminder pre-filled — magic-link (🔗) variants one-tap-sign-in the
@@ -55,7 +55,7 @@ class MensEventsRemindersScreen extends Screen {
 
       <div id="mer-empty" style="display:none;text-align:center;padding:var(--space-4);color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:8px;">📭</div>
-        <div>No mens events scheduled in the next 7 days.</div>
+        <div>No mens events scheduled in the current week.</div>
       </div>
 
       <div id="mer-board-scroll" style="display:none;overflow-x:auto;padding:0 var(--space-3) var(--space-4);-webkit-overflow-scrolling:touch;">
