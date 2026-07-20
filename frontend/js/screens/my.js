@@ -39,6 +39,7 @@ class MyScreen extends Screen {
     this.eventSaving    = new Set();     // "fh_event_id:response" tokens in-flight
     this.standingSaving = new Set();     // "kind::category::response" tokens in-flight
     this.dataError      = null;
+    this.expandedEventId = null;         // toggled by the compact View button
 
     // Chat state (compressed: latest message on top, expandable).
     this.chatMessages   = [];            // full history, stored oldest-first
@@ -56,13 +57,13 @@ class MyScreen extends Screen {
     const el = document.createElement('div');
     el.className = 'screen screen-my';
     el.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>My Schedule</h1>
-        <p class="subtitle" id="my-subtitle">Loading…</p>
+      <div class="screen-header" style="padding: 4px 8px 3px; gap: 4px; align-items:center;">
+        <button class="btn btn-secondary back-btn" style="padding: 3px 6px; line-height:1;">←</button>
+        <h1 style="font-size: 0.95rem; margin: 0; line-height:1; white-space:nowrap;">My Schedule</h1>
+        <p class="subtitle" id="my-subtitle" style="margin: 0; font-size: 0.68rem; line-height:1; white-space:nowrap;">Loading…</p>
       </div>
-      <div style="padding: 0 var(--space-4);">
-        <section id="my-chat" style="margin-bottom: var(--space-4);"></section>
+      <div style="padding: 0 8px;">
+        <section id="my-chat" style="margin-bottom: 6px;"></section>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
@@ -154,13 +155,17 @@ class MyScreen extends Screen {
 
   _wire() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
+      const target = e.target instanceof Element ? e.target : (e.target && e.target.parentElement);
+      if (!target) return;
+
+      if (target.closest('.back-btn')) {
         this.navigation.goBack();
         return;
       }
       // Per-event RSVP button (Going / Not Going).
-      const evBtn = e.target.closest('[data-ev-btn]');
+      const evBtn = target.closest('[data-ev-btn]');
       if (evBtn) {
+        e.stopPropagation();
         const response  = evBtn.getAttribute('data-ev-btn');           // 'yes' | 'no'
         const fhEventId = parseInt(evBtn.getAttribute('data-fh-event-id'), 10);
         if (fhEventId && (response === 'yes' || response === 'no')) {
@@ -168,23 +173,24 @@ class MyScreen extends Screen {
         }
         return;
       }
-      // Recurring / standing button (Recurring Going / Recurring Not Going).
-      const recBtn = e.target.closest('[data-rec-btn]');
-      if (recBtn) {
-        const response = recBtn.getAttribute('data-rec-btn');            // 'yes' | 'no'
-        const kind     = recBtn.getAttribute('data-rec-kind');
-        const category = recBtn.getAttribute('data-rec-category') || '';
-        if (kind && (response === 'yes' || response === 'no')) {
-          this._setStanding(kind, category, response);
-        }
+      // Compact card detail toggle.
+      const viewBtn = target.closest('[data-view-event-id]');
+      if (viewBtn) {
+        e.stopPropagation();
+        const fhEventId = parseInt(viewBtn.getAttribute('data-view-event-id'), 10);
+        this.expandedEventId = this.expandedEventId === fhEventId ? null : fhEventId;
+        this._renderEvents();
         return;
       }
-      if (e.target.closest('#chat-send-btn')) {
-        this._sendChatMessage();
+      if (target.closest('#chat-view-btn')) {
+        e.stopPropagation();
+        this.chatExpanded = !this.chatExpanded;
+        this._renderChatMessages();
         return;
       }
       // Compressed → expanded chat toggle.
-      if (e.target.closest('#chat-expand-toggle')) {
+      if (target.closest('#chat-expand-toggle')) {
+        e.stopPropagation();
         this.chatExpanded = !this.chatExpanded;
         this._renderChatMessages();
         return;
@@ -252,21 +258,32 @@ class MyScreen extends Screen {
     return shownSun;
   }
 
+  _isPlayerScheduleEvent(ev) {
+    const kind = (ev.kind || '').toLowerCase();
+    const category = (ev.category || '').toLowerCase();
+    const summary = `${ev.summary || ''} ${ev.title || ''}`.toLowerCase();
+
+    if (category === 'staff' || summary.includes('all staff meeting')) return false;
+    if (kind === 'meeting') return false;
+
+    return ['pickup', 'practice', 'match'].includes(kind);
+  }
+
   _renderEvents() {
     const box = this.find('#my-events');
     if (!box) return;
 
-    // Keep the current-week window trim, but do not drop events purely
-    // because the backend has not marked them as eligible for this caller.
-    // That lets the player-facing schedule show the upcoming pickup/practice
-    // options immediately, while the RSVP write path still enforces the
-    // roster eligibility rule server-side.
+    // Keep the player-facing schedule focused on the current week and on
+    // the days the team actually uses for RSVPs: Tue through Sun.
     const weekEnd = this._weekWindowEnd();
-    const list = (this.events || []).filter(e => {
-      if (!e.starts_at) return true;                  // undated → keep
-      const t = new Date(e.starts_at);
-      return !isNaN(t) && t <= weekEnd;
-    });
+    const allowedDays = new Set([2, 3, 4, 5, 6, 0]);
+    const list = (this.events || [])
+      .filter(e => this._isPlayerScheduleEvent(e))
+      .filter(e => {
+        if (!e.starts_at) return false;
+        const t = new Date(e.starts_at);
+        return !isNaN(t) && t <= weekEnd && allowedDays.has(t.getDay());
+      });
 
     const sub = this.find('#my-subtitle');
     if (sub) {
@@ -288,7 +305,7 @@ class MyScreen extends Screen {
     }
 
     box.innerHTML = `
-      <h2 style="margin: 0 0 var(--space-3); font-size:1.1rem;">This Week</h2>
+      <h2 style="margin: 0 0 4px; font-size:0.8rem;">This Week</h2>
       ${list.map(e => this._renderEventCard(e)).join('')}
     `;
   }
@@ -297,7 +314,7 @@ class MyScreen extends Screen {
     const kind = ev.kind || '';
     const category = ev.category || '';
 
-    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Match',
+    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Game',
                          meeting: 'Meeting', camp: 'Camp' };
     const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls', staff: 'Staff' };
     const kindLabel  = kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
@@ -348,26 +365,16 @@ class MyScreen extends Screen {
   _renderEventCard(ev) {
     const kind      = ev.kind || '';
     const category  = ev.category || '';
-    const standing  = this._findStanding(kind, category);
-    // A standing pref only "counts" toward the effective state when
-    // active=true.  active=false rows are historical (user turned it off).
-    const standingResp = (standing && standing.active) ? standing.response : null;
+    const per       = ev.my_rsvp;              // 'yes' | 'no' | 'maybe' | null
+    const windowOpen= ev.rsvps_open_now !== false;
+    const openMsg   = !windowOpen ? 'RSVP window not open yet' : '';
 
-    const per         = ev.my_rsvp;              // 'yes' | 'no' | 'maybe' | null
-    const windowOpen  = ev.rsvps_open_now !== false;
-    const openMsg     = !windowOpen ? 'RSVP window not open yet' : '';
+    const evYesKey  = `${ev.fh_event_id}:yes`;
+    const evNoKey   = `${ev.fh_event_id}:no`;
+    const evYesSaving = this.eventSaving.has(evYesKey);
+    const evNoSaving  = this.eventSaving.has(evNoKey);
 
-    const evYesKey    = `${ev.fh_event_id}:yes`;
-    const evNoKey     = `${ev.fh_event_id}:no`;
-    const recYesKey   = `${kind}::${category}::yes`;
-    const recNoKey    = `${kind}::${category}::no`;
-
-    const evYesSaving  = this.eventSaving.has(evYesKey);
-    const evNoSaving   = this.eventSaving.has(evNoKey);
-    const recYesSaving = this.standingSaving.has(recYesKey);
-    const recNoSaving  = this.standingSaving.has(recNoKey);
-
-    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Match',
+    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Game',
                          meeting: 'Meeting', camp: 'Camp' };
     const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls' };
     const kindLabel  = kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : 'Event');
@@ -377,41 +384,33 @@ class MyScreen extends Screen {
     const timeStr = this._eventTimeStr(ev.starts_at);
     const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
-    const rsvpHtml = this._eventRsvpHtml(ev);
+    const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const goingCount = rsvps.filter(r => r && r.response === 'yes').length;
+    const notGoingCount = rsvps.filter(r => r && r.response === 'no').length;
+    const isExpanded = this.expandedEventId === ev.fh_event_id;
 
-    // Show a subtle hint on recurring buttons when it would only apply
-    // to future events (per-event override is set, so this event is
-    // locked by the manual click).
-    const recSuffix = per ? ' — future events only' : '';
+    const compactTitle = `${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)} · ${this.escapeHtml((catLabel + ' ' + kindLabel).trim())}`;
+    const compactMeta = `${goingCount} going · ${notGoingCount} not going`;
 
     return `
       <div style="background: rgba(255,255,255,0.04);
                   border: 1px solid rgba(255,255,255,0.08);
-                  border-radius: 10px;
-                  padding: var(--space-3);
-                  margin-bottom: var(--space-3);">
-        <div style="display:flex; justify-content: space-between; align-items: baseline; margin-bottom:6px;">
-          <div style="font-weight: 600; font-size: 1rem;">
-            ${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}
-          </div>
-          <div style="font-size:0.8rem; opacity:0.75;">
-            ${this.escapeHtml((catLabel + ' ' + kindLabel).trim())}
-          </div>
+                  border-radius: 5px;
+                  padding: 4px 5px;
+                  margin-bottom: 3px;
+                  display:flex; align-items:center; justify-content:space-between; gap:4px;">
+        <div style="min-width:0; flex:1;">
+          <div style="font-weight:700; font-size:0.7rem; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${compactTitle}</div>
+          <div style="font-size:0.6rem; opacity:0.74; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(title)} · ${compactMeta}</div>
         </div>
-        <div style="font-weight:500; margin-bottom:2px;">${this.escapeHtml(title)}</div>
-        ${venue ? `<div style="opacity:0.7; font-size:0.85rem; margin-bottom: var(--space-3);">${this.escapeHtml(venue)}</div>` : `<div style="margin-bottom: var(--space-3);"></div>`}
-        ${rsvpHtml}
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          ${this._btn('Going',      'yes', per === 'yes', 'solid',   evYesSaving,
+        <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+          ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                      `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
-          ${this._btn('Not Going',  'no',  per === 'no',  'solid',   evNoSaving,
-                     `data-ev-btn="no"  data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
-          ${this._btn('Recurring Going',     'yes', !per && standingResp === 'yes', 'outline', recYesSaving,
-                     `data-rec-btn="yes" data-rec-kind="${this.escapeHtml(kind)}" data-rec-category="${this.escapeHtml(category)}"`,
-                     '', recSuffix)}
-          ${this._btn('Recurring Not Going', 'no',  !per && standingResp === 'no',  'outline', recNoSaving,
-                     `data-rec-btn="no"  data-rec-kind="${this.escapeHtml(kind)}" data-rec-category="${this.escapeHtml(category)}"`,
-                     '', recSuffix)}
+          ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
+                     `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
+          <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:1px 5px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.56rem; font-weight:600; line-height:1;">
+            ${isExpanded ? '▾' : '▸'}
+          </button>
         </div>
       </div>
     `;
@@ -446,10 +445,10 @@ class MyScreen extends Screen {
       <button ${attrs}
               ${disabled ? 'disabled' : ''}
               title="${this.escapeHtml(tip)}"
-              style="padding: 6px 14px; border-radius: 9999px;
+              style="padding: 2px 6px; border-radius: 9999px;
                      background:${bg}; color:${fg};
                      border: 1px solid ${bd};
-                     font-size: 0.85rem; font-weight: 600;
+                     font-size: 0.6rem; font-weight: 600;
                      cursor:${cursor}; opacity:${opacity};">
         ${this.escapeHtml(label)}${saving ? ' …' : ''}
       </button>
@@ -548,27 +547,19 @@ class MyScreen extends Screen {
     const box = this.find('#my-chat');
     if (!box) return;
     box.innerHTML = `
-      <div style="background: rgba(15,23,42,0.55); border-radius:10px;
+      <div style="background: rgba(15,23,42,0.55); border-radius:7px;
                   border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
-        <div style="display:flex; gap:8px; align-items:flex-end;
-                    padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.08);
+        <div style="display:flex; align-items:center; justify-content:space-between;
+                    padding:5px 7px; border-bottom:1px solid rgba(255,255,255,0.08);
                     background: rgba(15,23,42,0.75);">
-          <textarea id="chat-input" rows="1" maxlength="2000"
-                    placeholder="Message the men's chat…"
-                    style="flex:1; resize:none; min-height:38px; max-height:140px;
-                           background:#0f172a; color:#e5e7eb;
-                           border:1px solid #334155; border-radius:18px;
-                           padding:9px 14px; font-family:inherit; font-size:0.95rem;
-                           line-height:1.35; overflow-y:auto;"></textarea>
-          <button id="chat-send-btn" type="button" aria-label="Send" disabled
-                  style="flex:0 0 auto; width:42px; height:42px; border-radius:50%;
-                         background:#2563eb; color:#fff; border:none; cursor:pointer;
-                         display:inline-flex; align-items:center; justify-content:center;
-                         font-size:1.1rem; box-shadow:0 2px 6px rgba(0,0,0,0.35);">
-            ➤
+          <div style="font-size:0.72rem; font-weight:700; opacity:0.9;">Chat</div>
+          <button id="chat-view-btn" type="button" aria-label="View chat"
+                  style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16);
+                         background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
+            View chat
           </button>
         </div>
-        <div id="chat-list" style="padding: 8px 10px 10px;">
+        <div id="chat-list" style="padding: 5px 7px 6px;">
           <div class="loading-state"><div class="spinner"></div><p>Loading chat…</p></div>
         </div>
       </div>
@@ -585,9 +576,8 @@ class MyScreen extends Screen {
     }
     if (!this.chatMessages || !this.chatMessages.length) {
       box.innerHTML = `
-        <div style="opacity:0.6; padding: var(--space-3); text-align:center;">
-          <div style="font-size:1.2rem; margin-bottom:4px;">💬</div>
-          <div style="font-size:0.9rem;">No messages yet — be the first to say hi.</div>
+        <div style="opacity:0.7; font-size:0.68rem; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          No messages yet — be the first to say hi.
         </div>`;
       return;
     }
@@ -603,15 +593,15 @@ class MyScreen extends Screen {
       const more   = total > 1 ? total - 1 : 0;
       const toggle = more > 0
         ? `<button id="chat-expand-toggle" type="button"
-                   style="display:block; width:100%; margin-top:8px;
+                   style="display:block; width:100%; margin-top:4px;
                           background:transparent; color:#93c5fd;
                           border:1px solid rgba(147,197,253,0.3);
-                          border-radius:6px; padding:6px 10px;
-                          font-size:0.85rem; font-weight:600; cursor:pointer;">
+                          border-radius:5px; padding:3px 6px;
+                          font-size:0.62rem; font-weight:600; cursor:pointer;">
              ▼ Show ${more} older message${more !== 1 ? 's' : ''}
            </button>`
         : '';
-      box.innerHTML = this._renderChatRow(latest) + toggle;
+      box.innerHTML = `<div style="font-size:0.68rem; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(latest.message || '')}</div>` + toggle;
       return;
     }
 
@@ -645,13 +635,13 @@ class MyScreen extends Screen {
     const mine = m.user_id === this.chatViewerId;
     const nameColor = mine ? '#93c5fd' : '#fbbf24';
     return `
-      <div style="padding: 10px 4px; border-bottom:1px solid rgba(255,255,255,0.06);">
-        <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:4px;">
-          <div style="font-size:0.85rem; color:${nameColor}; font-weight:600;">${author}</div>
-          <div style="font-size:0.75rem; opacity:0.55;">${this.escapeHtml(when)}</div>
+      <div style="padding: 4px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;">
+          <div style="font-size:0.7rem; color:${nameColor}; font-weight:600;">${author}</div>
+          <div style="font-size:0.62rem; opacity:0.55;">${this.escapeHtml(when)}</div>
         </div>
-        <div style="white-space:pre-wrap; word-wrap:break-word; overflow-wrap:anywhere;
-                    font-size:0.95rem; line-height:1.4;">${linkified}</div>
+        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                    font-size:0.68rem; line-height:1.2;">${linkified}</div>
       </div>`;
   }
 
