@@ -8,7 +8,7 @@ class GameModelAdminScreen extends Screen {
     this.selectedEntity = 'game-model';
     this.currentEditId = null;
     this.currentContext = null;
-    this.parentOptions = { days: [], practices: [] };
+    this.parentOptions = { days: [], practices: [], phases: [], principles: [] };
     this.builderData = { days: [], practices: [], sessions: [] };
   }
 
@@ -135,7 +135,7 @@ class GameModelAdminScreen extends Screen {
     const container = this.find('#game-model-admin-content');
     if (!container || !this.clubId) return;
 
-    this.auth.fetch(`/api/clubs/${this.clubId}/game-model/structure`)
+    this.auth.fetch(`/api/clubs/${this.clubId}/game-model/structure?_t=${Date.now()}`)
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -203,34 +203,77 @@ class GameModelAdminScreen extends Screen {
   renderStructuredGameModel(structure) {
     if (!structure?.phases?.length) return this.getDefaultGameModelHtml();
 
-    const phasesMarkup = structure.phases.map((phase) => {
-      const principlesMarkup = (phase.principles || []).map((principle) => `
-        <div style="padding: var(--space-2); border-left: 2px solid var(--accent); background: rgba(255,255,255,0.03); border-radius: var(--radius-sm);">
-          <div><strong>${this.escapeHtml(principle.title || principle.slug)}</strong></div>
-          <div style="margin-top: 0.2rem; opacity: 0.8;">${this.escapeHtml(principle.description || '')}</div>
-          <div style="margin-top: 0.2rem; opacity: 0.7; font-size: 0.9rem; text-transform: capitalize;">${this.escapeHtml(principle.level || 'main')}</div>
-        </div>
-      `).join('');
+    const renderPrinciples = (principles) => {
+      const byId = new Map();
+      const roots = [];
 
-      return `
-        <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml(phase.label || phase.slug)}</h4>
-          <p style="margin: 0 0 var(--space-2) 0; opacity: 0.8;">${this.escapeHtml(phase.description || '')}</p>
-          <div style="display:grid; gap: 0.6rem;">${principlesMarkup}</div>
-        </article>
-      `;
-    }).join('');
+      principles.forEach((principle) => {
+        byId.set(principle.id, { ...principle, children: [] });
+      });
+
+      principles.forEach((principle) => {
+        const node = byId.get(principle.id);
+        if (!node) return;
+
+        if (principle.parent_principle_id && byId.has(principle.parent_principle_id)) {
+          byId.get(principle.parent_principle_id).children.push(node);
+        } else {
+          roots.push(node);
+        }
+      });
+
+      return roots
+        .slice()
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map((principle) => this.renderStructuredPrincipleNode(principle))
+        .join('');
+    };
+
+    const phasesMarkup = structure.phases.map((phase) => `
+      <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+        <h4 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml(phase.label || phase.slug)}</h4>
+        <p style="margin: 0 0 var(--space-2) 0; opacity: 0.8;">${this.escapeHtml(phase.description || '')}</p>
+        <div style="display:grid; gap: 0.6rem; margin-top: var(--space-2);">${renderPrinciples(phase.principles || [])}</div>
+      </article>
+    `).join('');
 
     return `
       <div style="display:grid; gap: var(--space-3);">
         <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
           <h4 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml(structure.game_model?.title || 'Game Model')}</h4>
-          <p style="margin: 0; opacity: 0.9;">${this.escapeHtml(structure.game_model?.summary || 'A normalized 4-4-2 coaching framework with phases and principles.')}</p>
-          <div style="margin-top: var(--space-2); opacity: 0.75;">Base shape: ${this.escapeHtml(structure.game_model?.base_shape || '4-4-2')}</div>
+          <p style="margin: 0; opacity: 0.9;">${this.escapeHtml(structure.game_model?.summary || 'A normalized coaching framework with phases and principles.')}</p>
+          <div style="margin-top: var(--space-2); opacity: 0.75;">Base shape: ${this.escapeHtml(structure.game_model?.base_shape || '11v11')}</div>
         </article>
         ${phasesMarkup}
       </div>
     `;
+  }
+
+  renderStructuredPrincipleNode(principle) {
+    const label = this.getPrincipleLevelLabel(principle.level);
+    const childMarkup = (principle.children || [])
+      .slice()
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((child) => this.renderStructuredPrincipleNode(child))
+      .join('');
+
+    return `
+      <div style="padding: var(--space-2); border-left: 2px solid var(--accent); background: rgba(255,255,255,0.03); border-radius: var(--radius-sm);">
+        <div><strong>${this.escapeHtml(label)}:</strong> ${this.escapeHtml(principle.title || principle.slug || 'Principle')}</div>
+        ${principle.description ? `<div style="margin-top: 0.2rem; opacity: 0.8;">${this.escapeHtml(principle.description)}</div>` : ''}
+        ${childMarkup ? `<div style="display:grid; gap: 0.6rem; margin-top: 0.6rem;">${childMarkup}</div>` : ''}
+      </div>
+    `;
+  }
+
+  getPrincipleLevelLabel(level) {
+    switch (level) {
+      case 'sub_sub': return 'Sub-sub Principle';
+      case 'sub_sub_sub': return 'Sub-sub-sub Principle';
+      case 'sub': return 'Sub Principle';
+      case 'main':
+      default: return 'Main Principle';
+    }
   }
 
   getRenderableGameModelHtml(rawContent) {
@@ -245,31 +288,7 @@ class GameModelAdminScreen extends Screen {
       <div style="display:grid;gap:var(--space-3);">
         <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
           <h4 style="margin:0 0 var(--space-2) 0;">U17+ game model</h4>
-          <p style="margin:0; opacity:0.9;">The club’s coaching identity is stored in a normalized framework aligned to the U.S. Soccer U17+ model. Attack, defend, transition to attack, and transition to defense each carry their own principles so the language stays consistent across training and matches.</p>
-        </article>
-
-        <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin:0 0 var(--space-2) 0;">Attack</h4>
-          <div style="display:grid;gap:0.6rem;">
-            <div><strong>Principle:</strong> Create the conditions to attack with rhythm, support, and purpose.</div>
-            <div><strong>Principle:</strong> Use the ball to manipulate the opposition’s structure and create a numerical or positional advantage.</div>
-          </div>
-        </article>
-
-        <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin:0 0 var(--space-2) 0;">Defend</h4>
-          <div style="display:grid;gap:0.6rem;">
-            <div><strong>Principle:</strong> Defend with compactness, intention, and clear relationships between the lines.</div>
-            <div><strong>Principle:</strong> Force the opponent to play where we want, then press the ball with coordinated support.</div>
-          </div>
-        </article>
-
-        <article style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-          <h4 style="margin:0 0 var(--space-2) 0;">Transitions</h4>
-          <div style="display:grid;gap:0.6rem;">
-            <div><strong>Transition to attack:</strong> As soon as the ball is won, the team should immediately create a new attacking action.</div>
-            <div><strong>Transition to defense:</strong> If the ball is lost, the team should recover shape and protect the central space.</div>
-          </div>
+          <p style="margin:0; opacity:0.9;">The club’s coaching identity is stored in a normalized framework aligned to the U.S. Soccer U17+ model.</p>
         </article>
       </div>
     `;
@@ -303,6 +322,10 @@ class GameModelAdminScreen extends Screen {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }));
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/principles`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
     } else if (this.selectedEntity === 'practices') {
       requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`).then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -331,8 +354,9 @@ class GameModelAdminScreen extends Screen {
           this.parentOptions.days = this.getPayloadItems(results[1]);
         } else if (this.selectedEntity === 'sessions' && results[1]) {
           this.parentOptions.practices = this.getPayloadItems(results[1]);
-        } else if (this.selectedEntity === 'principles' && results[1]) {
+        } else if (this.selectedEntity === 'principles') {
           this.parentOptions.phases = this.getPayloadItems(results[1]);
+          this.parentOptions.principles = this.getPayloadItems(results[2]);
         }
 
         container.innerHTML = this.renderList(items);
@@ -472,9 +496,17 @@ class GameModelAdminScreen extends Screen {
     } else if (this.selectedEntity === 'sessions' && item.practice_id != null) {
       const practice = this.parentOptions.practices.find((entry) => entry.id === item.practice_id);
       parentLabel = practice ? `Practice: ${practice.title || practice.label || practice.name || item.practice_id}` : `Practice ID: ${item.practice_id}`;
-    } else if (this.selectedEntity === 'principles' && item.phase_id != null) {
-      const phase = this.parentOptions.phases.find((entry) => entry.id === item.phase_id);
-      parentLabel = phase ? `Phase: ${phase.label || phase.slug || phase.title || item.phase_id}` : `Phase ID: ${item.phase_id}`;
+    } else if (this.selectedEntity === 'principles') {
+      if (item.phase_id != null) {
+        const phase = this.parentOptions.phases.find((entry) => entry.id === item.phase_id);
+        parentLabel = phase ? `Phase: ${phase.label || phase.slug || phase.title || item.phase_id}` : `Phase ID: ${item.phase_id}`;
+      }
+      if (item.parent_principle_id != null) {
+        const parentPrinciple = this.parentOptions.principles.find((entry) => entry.id === item.parent_principle_id);
+        if (parentPrinciple) {
+          parentLabel = `${parentLabel ? `${parentLabel} · ` : ''}Parent: ${parentPrinciple.title || parentPrinciple.slug || parentPrinciple.label || item.parent_principle_id}`;
+        }
+      }
     }
 
     return `
@@ -534,15 +566,21 @@ class GameModelAdminScreen extends Screen {
           { key: 'description', label: 'Description', value: base.description || '', type: 'textarea' },
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
-      case 'principles':
+      case 'principles': {
+        const parentPrincipleOptions = this.parentOptions.principles
+          .filter((entry) => String(entry.phase_id) === String(base.phase_id || ''))
+          .filter((entry) => String(entry.id) !== String(base.id || ''))
+          .map((entry) => ({ value: entry.id, label: entry.title || entry.slug || entry.label || `Principle ${entry.id}` }));
         return [
           { key: 'phase_id', label: 'Phase', value: base.phase_id != null ? base.phase_id : '', type: 'select', options: this.parentOptions.phases.map((entry) => ({ value: entry.id, label: entry.label || entry.slug || entry.title || `Phase ${entry.id}` })) },
+          { key: 'parent_principle_id', label: 'Parent Principle', value: base.parent_principle_id != null ? base.parent_principle_id : '', type: 'select', options: parentPrincipleOptions },
           { key: 'slug', label: 'Slug', value: base.slug || '', type: 'text' },
           { key: 'level', label: 'Level', value: base.level || 'main', type: 'text' },
           { key: 'title', label: 'Title', value: base.title || '', type: 'text' },
           { key: 'description', label: 'Description', value: base.description || '', type: 'textarea' },
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
+      }
       case 'sessions': {
         const defaultPracticeId = context?.dayId != null
           ? (this.parentOptions.practices.find((entry) => entry.day_id === context.dayId) || {}).id || base.practice_id || ''

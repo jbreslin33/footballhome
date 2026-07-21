@@ -435,16 +435,37 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 ), '[]'::jsonb) AS rsvps_json,
                 CASE
                     WHEN $1::int = 0 OR fe.id IS NULL THEN NULL
-                    ELSE EXISTS (
-                        SELECT 1
-                        FROM   fh_event_teams fet
-                        JOIN   player_rsvp_eligibility ple
-                            ON ple.team_id = fet.team_id
-                        JOIN   external_person_aliases epa
-                            ON epa.provider = 'leagueapps'
-                           AND epa.external_user_id = ple.leagueapps_user_id::text
-                        WHERE  fet.fh_event_id = fe.id
-                          AND  epa.person_id   = $1::int
+                    ELSE (
+                        EXISTS (
+                            SELECT 1
+                            FROM admins a
+                            JOIN users u ON u.id = a.user_id
+                            WHERE u.person_id = $1::int
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM fh_event_teams fet
+                            WHERE fet.fh_event_id = fe.id
+                              AND (
+                                  EXISTS (
+                                      SELECT 1
+                                      FROM player_rsvp_eligibility ple
+                                      JOIN external_person_aliases epa
+                                        ON epa.provider = 'leagueapps'
+                                       AND epa.external_user_id = ple.leagueapps_user_id::text
+                                      WHERE ple.team_id = fet.team_id
+                                        AND epa.person_id = $1::int
+                                  )
+                                  OR EXISTS (
+                                      SELECT 1
+                                      FROM team_coaches tc
+                                      JOIN coaches co ON co.id = tc.coach_id
+                                      WHERE tc.team_id = fet.team_id
+                                        AND tc.ended_at IS NULL
+                                        AND co.person_id = $1::int
+                                  )
+                              )
+                        )
                     )
                 END AS my_rsvp_eligible
                         FROM gcal_events ge
@@ -642,18 +663,18 @@ Response CalendarController::handlePostRsvp(const Request& request) {
 
         // Eligibility gate — §6.1.5.  The caller must have a
         // player_rsvp_eligibility grant for AT LEAST ONE team attached
-        // to this event via the junction (fh_event_teams).  The join
-        // chain mirrors MyController::callerRosteredForMatch — team →
-        // player_rsvp_eligibility → external_person_aliases → person.
+        // to this event via the junction (fh_event_teams), unless the
+        // caller is a trusted admin who should be able to manually RSVP
+        // even before the roster team model is fully wired up.
+        // The join chain mirrors MyController::callerRosteredForMatch —
+        // team → player_rsvp_eligibility → external_person_aliases → person.
         //
         // Failure modes this gate catches:
         //   * Signed-in mens roster member trying to RSVP a womens
         //     event (no ple.team_id row for them on any womens team).
-        //   * DSL-unclassified event (empty fh_event_teams) — no
-        //     junction rows means no team means EXISTS = false, so
-        //     403 with "event has no roster attached".  The DB never
-        //     accepts an RSVP to an event whose team model isn't set
-        //     up yet, which is the correct fail-closed behaviour.
+        //   * Non-admin callers on an event with no team rows — 403
+        //     with "event has no roster attached".  Trusted admins can
+        //     override this and still reply manually.
         //
         // We fetch team_count separately so the 403 body can
         // distinguish "wrong roster" from "event has no teams yet",
@@ -663,16 +684,37 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             "SELECT "
             "  (SELECT COUNT(*)::int FROM fh_event_teams "
             "     WHERE fh_event_id = $1::bigint) AS team_count, "
-            "  EXISTS ( "
-            "    SELECT 1 "
+            "  ("
+            "    EXISTS ( "
+            "      SELECT 1 "
+            "      FROM admins a "
+            "      JOIN users u ON u.id = a.user_id "
+            "      WHERE u.person_id = $2::int "
+            "    ) "
+            "    OR EXISTS ( "
+            "      SELECT 1 "
             "      FROM fh_event_teams fet "
-            "      JOIN player_rsvp_eligibility ple "
-            "        ON ple.team_id = fet.team_id "
-            "      JOIN external_person_aliases epa "
-            "        ON epa.provider = 'leagueapps' "
-            "       AND epa.external_user_id = ple.leagueapps_user_id::text "
-            "     WHERE fet.fh_event_id = $1::bigint "
-            "       AND epa.person_id   = $2::int "
+            "      WHERE fet.fh_event_id = $1::bigint "
+            "        AND ( "
+            "          EXISTS ( "
+            "            SELECT 1 "
+            "            FROM player_rsvp_eligibility ple "
+            "            JOIN external_person_aliases epa "
+            "              ON epa.provider = 'leagueapps' "
+            "             AND epa.external_user_id = ple.leagueapps_user_id::text "
+            "            WHERE ple.team_id = fet.team_id "
+            "              AND epa.person_id = $2::int "
+            "          ) "
+            "          OR EXISTS ( "
+            "            SELECT 1 "
+            "            FROM team_coaches tc "
+            "            JOIN coaches co ON co.id = tc.coach_id "
+            "            WHERE tc.team_id = fet.team_id "
+            "              AND tc.ended_at IS NULL "
+            "              AND co.person_id = $2::int "
+            "          ) "
+            "        ) "
+            "    )"
             "  ) AS eligible",
             {std::to_string(fhEventId), std::to_string(personId)});
         if (eligRows.empty()) {

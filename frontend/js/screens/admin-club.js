@@ -387,7 +387,7 @@ class AdminClubScreen extends Screen {
     const contentsEl = this.find('#game-model-contents');
     if (!contentsEl || !this.clubId) return;
 
-    this.auth.fetch(`/api/clubs/${this.clubId}/game-model/structure`)
+    this.auth.fetch(`/api/clubs/${this.clubId}/game-model/structure?_t=${Date.now()}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
