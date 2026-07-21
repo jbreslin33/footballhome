@@ -123,6 +123,18 @@ std::string toLower(std::string s) {
     return s;
 }
 
+// Replace every occurrence of `token` in `text` with `value`. Used to
+// expand the {first}/{event_phrase} placeholders in the DB-backed
+// reminder template.
+std::string replaceAll(std::string text, const std::string& token, const std::string& value) {
+    std::size_t pos = 0;
+    while ((pos = text.find(token, pos)) != std::string::npos) {
+        text.replace(pos, token.size(), value);
+        pos += value.size();
+    }
+    return text;
+}
+
 // Human "type" label for a fh_events.kind value.  Cosmetic only.
 std::string kindLabel(const std::string& kind) {
     if (kind == "practice") return "Practice";
@@ -227,6 +239,7 @@ Response EventReminderController::handleSendReminders(const Request& request,
             "       COALESCE(NULLIF(ge.summary,''), 'Event') AS title, "
             "       (ge.starts_at AT TIME ZONE 'America/New_York')::date AS event_date, "
             "       ((now() AT TIME ZONE 'America/New_York')::date)::text AS today_date, "
+            "       (((now() AT TIME ZONE 'America/New_York')::date) + 1)::text AS tomorrow_date, "
             "       TO_CHAR(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy, Mon FMDD') AS date_str, "
             "       TO_CHAR(ge.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_str, "
             "       ge.starts_at AS starts_at, "
@@ -254,6 +267,9 @@ Response EventReminderController::handleSendReminders(const Request& request,
         const std::string todayDate  = ev[0]["today_date"].is_null()
                                      ? std::string{}
                                      : ev[0]["today_date"].as<std::string>();
+        const std::string tomorrowDate = ev[0]["tomorrow_date"].is_null()
+                                     ? std::string{}
+                                     : ev[0]["tomorrow_date"].as<std::string>();
         const std::string dateStr    = ev[0]["date_str"].is_null()
                                      ? std::string{}
                                      : ev[0]["date_str"].as<std::string>();
@@ -261,7 +277,31 @@ Response EventReminderController::handleSendReminders(const Request& request,
                                      ? std::string{}
                                      : ev[0]["time_str"].as<std::string>();
         const bool sameDay = !eventDate.empty() && !todayDate.empty() && eventDate == todayDate;
+        const bool isTomorrow = !sameDay && !eventDate.empty() && !tomorrowDate.empty()
+                             && eventDate == tomorrowDate;
         const std::string kindName = kindLabel(eventKind);
+        const std::string kindLower = toLower(kindName);
+
+        // "today's practice" / "tomorrow's practice" / "practice on Wed, Jul 22"
+        // — relative to the moment the reminder is actually sent, not to
+        // whenever the event was created.
+        std::string eventPhrase;
+        if (sameDay)          eventPhrase = "today's " + kindLower;
+        else if (isTomorrow)  eventPhrase = "tomorrow's " + kindLower;
+        else                  eventPhrase = kindLower + " on " + dateStr;
+
+        // 1b) DB-backed copy — never hardcode the reminder wording here.
+        //     A missing/inactive template is a config error, not something
+        //     to silently paper over with a hardcoded fallback string.
+        auto tmpl = db->query(
+            "SELECT body FROM message_templates "
+            " WHERE kind = 'auto_reminder' AND is_active = true "
+            " ORDER BY sort_order, id LIMIT 1");
+        if (tmpl.empty() || tmpl[0]["body"].is_null()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                             "reminder template not configured (message_templates kind='auto_reminder')");
+        }
+        const std::string templateBody = tmpl[0]["body"].as<std::string>();
 
         // 2) Non-responders on the event's roster with the requested
         //    channel available.  Roster comes from fh_event_teams →
@@ -378,24 +418,9 @@ Response EventReminderController::handleSendReminders(const Request& request,
                                         + "/api/reminders/verify?token="
                                         + fh::crypto::urlEncode(raw);
 
-            const std::string teamRulesUrl = publicBaseUrl() + "/#player-team-rules";
-            const std::string eventLabel = (kindName == "Practice")
-                ? (sameDay ? "today's practice" : std::string("practice on ") + dateStr)
-                : (sameDay ? std::string("this ") + kindName : kindName + " on " + dateStr);
-
-            std::ostringstream smsBody;
-            smsBody << "Hi " << firstName << ", this is a gentle reminder that setting availability for "
-                    << eventLabel << " is a team rule. If you are not sure, set Not Going. Please set your availability on My: https://footballhome.org/#my whether you are going or not, and change it if going. Team Rule: "
-                    << teamRulesUrl;
-
-            std::ostringstream emailBody;
-            emailBody << "Hi " << firstName << ",\n\n"
-                      << "This is a gentle reminder that setting availability for "
-                      << eventLabel << " is a team rule. If you are not sure, set Not Going. Please set your availability on My: https://footballhome.org/#my whether you are going or not, and change it if going. Team Rule: "
-                      << teamRulesUrl << "\n\n"
-                      << "https://footballhome.org/#my\n\n"
-                      << "This link signs you in automatically and expires in 48 hours.\n\n"
-                      << "\u2014 Lighthouse Soccer";
+            const std::string messageText =
+                replaceAll(replaceAll(templateBody, "{first}", firstName),
+                           "{event_phrase}", eventPhrase);
 
             const std::string subject =
                 std::string("Football Home \u2014 RSVP")
@@ -409,11 +434,11 @@ Response EventReminderController::handleSendReminders(const Request& request,
             };
             if (channel == "sms") {
                 rec["sms_href"] = "sms:" + fh::crypto::urlEncode(contact)
-                                + "?body=" + fh::crypto::urlEncode(smsBody.str());
+                                + "?body=" + fh::crypto::urlEncode(messageText);
             } else {
                 rec["mailto_href"] = "mailto:" + fh::crypto::urlEncode(contact)
                                    + "?subject=" + fh::crypto::urlEncode(subject)
-                                   + "&body="    + fh::crypto::urlEncode(emailBody.str());
+                                   + "&body="    + fh::crypto::urlEncode(messageText);
             }
             recipients.push_back(rec);
             ++sent;
