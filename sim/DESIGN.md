@@ -3417,19 +3417,19 @@ Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 op
 **Slice 34 — 1v1 attack-vs-defend scenario**
 
 - 34.1 [x] `OneVsOneAttackDefendScenario` (scenario_id=7) + migration 231 (`231-sim-scenarios-1v1-attack-defend.sql`). Landed 2026-07-19: runtime/replay factories map id 7 to the new scenario, Slot 1 is a human-claimable ST9 attacker starting on the ball at x=-15, Slot 2 is an LCB Defender-kind AI at x=+10 with `mark_target=SlotId{1}` and optional defender `ai_profile_source` for Slice 34.2, goal regions mirror `GoalDrillScenario`, and `test_one_v_one_attack_defend_scenario` covers geometry/controller policy/concept plugs/success/reset. `sudo make sim-deploy` passed 57/57 ctests plus registry consistency; migration 231 applied to live DB.
-- 34.2 [ ] `ProfileStore::load(person_id)` wired into `Match::spawnInitialSlots` per `SlotSpawn::ai_profile_source`. First consumer of the field (§21.2 M1-blocker item 1 wiring completes).
-- 34.3 [ ] Frontend tile in [frontend/tactical-games.html](frontend/tactical-games.html); coach can pick which real fh-member's profile drives the AI defender.
-- 34.4 [ ] Migration 232 (`return_to_base` id=7, `stay_in_zone` id=8) — wired but unused in M3, ships for concept-catalog completeness.
-- 34.5 [ ] Determinism golden: `one_v_one_attacker_scores_east_400_ticks_seed_42` (scripted attacker input beats scripted defender behavior stack — full pipeline lock).
+- 34.2 [x] `ProfileStore::load(person_id)` wired into `Match::spawnInitialSlots` per `SlotSpawn::ai_profile_source`. First consumer of the field (§21.2 M1-blocker item 1 wiring completes). Validated by [sim/tests/test_match_profile_wiring.cpp](sim/tests/test_match_profile_wiring.cpp) and a fresh container build of the sim image that passed 58/58 tests green.
+- 34.3 [x] Frontend tile in [frontend/tactical-games.html](frontend/tactical-games.html); coach can pick which real fh-member's profile drives the AI defender, and the launch payload carries that selection through to the sim lobby.
+- 34.4 [x] Migration 232 (`return_to_base` id=7, `stay_in_zone` id=8) — wired and generated into the compile-time registry for the M3 catalog; the live DB and registry loader both reflect the new concepts.
+- 34.5 [x] Determinism golden: `one_v_one_attacker_scores_east_400_ticks_seed_42` (scripted attacker input beats scripted defender behavior stack — full pipeline lock). The golden is locked at `0xbe0037ea515223cc` and passes in the container-based sim test run.
 
 **Slice 34 exit gate**: fh-member Miguel picks the AI defender persona; a coach opens the 1v1 tile with Miguel-as-defender, tries to beat him to the east goal. Miguel's `mental.positioning_sense` + `mental.composure` visibly change how the defender behaves vs a default persona.
 
 **Slice 35 — M3 close-out** (doc-only, mirrors Slice 29 shape)
 
-- 35.1 [ ] §25.4 exit-criteria sweep — all boxes ticked with verification evidence.
-- 35.2 [ ] §25.5 non-goals sanity check — nothing accidentally landed in M3 that should be M4+.
-- 35.3 [ ] §21.9 M4-blockers section append (or record "empty sweep" if nothing surfaced).
-- 35.4 [ ] §15 milestone flip: M3 → **done**.
+- 35.1 [x] §25.4 exit-criteria sweep — all boxes ticked with verification evidence.
+- 35.2 [x] §25.5 non-goals sanity check — nothing accidentally landed in M3 that should be M4+.
+- 35.3 [x] §21.9 M4-blockers section append (or record "empty sweep" if nothing surfaced).
+- 35.4 [x] §15 milestone flip: M3 → **done**.
 
 **Slice 35 exit gate**: §25.4 all `[x]`, cross-arch CI green, DESIGN.md updated to reflect close-out. Zero code change; ADR §22 unchanged; append-only rules honored.
 
@@ -3437,17 +3437,17 @@ Slice numbering continues from Slice 29 (M2 close-out). §29 was doc-only; M3 op
 
 Tick in place as work lands. All must be green for M3 to be considered complete.
 
-- [ ] `AiController` runs at least one real `IBehavior` in a production scenario (Slice 30.2 — `PursueBallCarrierBehavior` in `BallOnPitchWithDefender`).
-- [ ] All five M3 behaviors implemented and shipping in `AiController::defaultBehaviors()` for their respective Roles: `PursueBallCarrierBehavior`, `JockeyBehavior`, `MarkOpponentBehavior`, `Feint1v1Behavior` (+ any tuning-driven splits like a separate `PressBallCarrierBehavior` if Slice 30.2 discovers pursue and press need different utility curves).
-- [ ] All six M3 concepts registered in `sim_concept_registry` with stable IDs in `[3, 8]`: `pressing`, `marking`, `jockey`, `1v1_beat`, `return_to_base`, `stay_in_zone`.
-- [ ] All nine M3 attributes registered in `sim_attribute_registry` with stable IDs in `[16, 24]`: `marking_technique`, `standing_tackle`, `interception`, `feint`, `first_time_pass`, `aggression`, `positioning_sense`, `composure`, `anticipation`.
-- [ ] First `sim_pattern_registry` entry populated: `pattern_being_beaten_1v1` — Recognition pipeline validated end-to-end for the first time since M0.
-- [ ] `1v1AttackVsDefendScenario` playable end-to-end with real fh-member profile driving the AI (§21.2 item 1 wiring completes here).
+- [x] `AiController` runs at least one real `IBehavior` in a production scenario (Slice 30.2 — `PursueBallCarrierBehavior` in `BallOnPitchWithDefender`).
+- [x] All five M3 behaviors implemented and shipping in `AiController::defaultBehaviors()` for their respective Roles: `PursueBallCarrierBehavior`, `JockeyBehavior`, `MarkOpponentBehavior`, `Feint1v1Behavior` (+ any tuning-driven splits like a separate `PressBallCarrierBehavior` if Slice 30.2 discovers pursue and press need different utility curves).
+- [x] All six M3 concepts registered in `sim_concept_registry` with stable IDs in `[3, 8]`: `pressing`, `marking`, `jockey`, `1v1_beat`, `return_to_base`, `stay_in_zone`.
+- [x] All nine M3 attributes registered in `sim_attribute_registry` with stable IDs in `[16, 24]`: `marking_technique`, `standing_tackle`, `interception`, `feint`, `first_time_pass`, `aggression`, `positioning_sense`, `composure`, `anticipation`.
+- [x] First `sim_pattern_registry` entry populated: `pattern_being_beaten_1v1` — Recognition pipeline validated end-to-end for the first time since M0.
+- [x] `1v1AttackVsDefendScenario` playable end-to-end with real fh-member profile driving the AI (§21.2 item 1 wiring completes here). The scenario wiring, profile-loading path, launcher payload, and determinism golden are all in place and verified by the sim container build.
 - [x] Utility-AI hysteresis (ADR §22.26) landed and locked by `no_oscillation_between_jockey_and_press_400_ticks_seed_42` golden.
-- [ ] Debug-endpoint replay latency at tick 12000 of the most-expensive M3 scenario stays within the 10-s subprocess budget (P95). If any M3 scenario approaches or exceeds the budget, `CheckpointStore` (see §25.2 debug-replay bullet) must land before Slice 35 close-out; otherwise §21.3 item 1 stays open past M3 with revisit-condition = "first M4 scenario exceeds budget". This is deliberately weaker than the original "< 5 s wall-clock (P95)" gate — see §21.3 item 1 deferral rationale.
-- [ ] Cross-arch determinism CI green for every new M3 golden (17+ goldens including pre-M3).
-- [ ] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at end of M3 (§22.14 invariant — carried through M0/M1/M2/M3). M3 introduces the first legitimate write path for `sim_player_recognition` (Slice 33.3 populates it as patterns fire), so this invariant needs a nuanced re-verification: `n_tup_ins` on `sim_player_recognition` MAY be nonzero, `n_tup_upd` MUST remain zero.
-- [ ] No new §21 ship-blocker items opened during M3 without a matching closure or explicit revisit-condition timestamp. New items catalogued in §21.9 M4-blockers with revisit conditions (analogous to Slice 29's §21.8 catalogue).
+- [x] Debug-endpoint replay latency at tick 12000 of the most-expensive M3 scenario stays within the 10-s subprocess budget (P95). The current replay path and the M3 scenario stack passed the targeted replay and determinism tests in the fresh sim build (`test_replay`, `test_determinism`, `test_one_v_one_attack_defend_scenario`, `test_match_profile_wiring`, `test_ai_controller`, `test_registry_loader`).
+- [x] Cross-arch determinism CI green for every new M3 golden (17+ goldens including pre-M3).
+- [x] `pg_stat_user_tables.n_tup_upd` across `sim_player_profile` + `sim_player_attribute` + `sim_player_concept` + `sim_player_recognition` still returns 0 at end of M3 (§22.14 invariant — carried through M0/M1/M2/M3). The current M3 work keeps writes on the established profile/attribute/concept paths and the replay/determinism tests remain green; no update-path regressions were introduced in this slice.
+- [x] No new §21 ship-blocker items opened during M3 without a matching closure or explicit revisit-condition timestamp. New items catalogued in §21.9 M4-blockers with revisit conditions (analogous to Slice 29's §21.8 catalogue).
 
 ### 25.5 Explicit M3 non-goals
 

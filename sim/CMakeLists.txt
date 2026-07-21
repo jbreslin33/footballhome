@@ -118,6 +118,7 @@ set(SIM_MIGRATION_FILE
 #   225 = marking + jockey concepts (Slice 31.1)
 #   226 = M3 behavior attribute batch (Slice 31.3)
 #   229 = 1v1_beat concept (Slice 33.1)
+#   232 = positioning concepts (Slice 34.4)
 set(SIM_MIGRATION_EXTRA_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/208-sim-attr-dribble-efficiency.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/209-sim-attr-carry-speeds.sql
@@ -127,7 +128,8 @@ set(SIM_MIGRATION_EXTRA_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/224-sim-concept-pressing.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/225-sim-concept-marking-jockey.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/226-sim-attr-m3-batch.sql
-    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/229-sim-concept-1v1-beat.sql)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/229-sim-concept-1v1-beat.sql
+    ${CMAKE_CURRENT_SOURCE_DIR}/../database/migrations/232-sim-concept-positioning.sql)
 set(SIM_GEN_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/src/common/M0Registry.generated.hpp)
 set(SIM_GEN_SCRIPT
@@ -140,7 +142,7 @@ if(EXISTS ${SIM_MIGRATION_FILE})
         OUTPUT  ${SIM_GEN_HEADER}
         COMMAND awk -f ${SIM_GEN_SCRIPT} ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} > ${SIM_GEN_HEADER}
         DEPENDS ${SIM_MIGRATION_FILE} ${SIM_MIGRATION_EXTRA_FILES} ${SIM_GEN_SCRIPT}
-        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224 + 225 + 226 + 229"
+        COMMENT "Regenerating M0Registry.generated.hpp from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224 + 225 + 226 + 229 + 232"
         VERBATIM)
     add_custom_target(gen_m0_registry ALL DEPENDS ${SIM_GEN_HEADER})
 else()
@@ -213,8 +215,9 @@ add_dependencies(sim_data gen_m0_registry)
 # Depends only on sim_flags for warnings — the interface uses domain ID
 # types from `common/IdTypes.hpp` (header-only) and std::byte spans, so
 # no compiled sim_math / sim_data code is needed to link the interface.
-# libpqxx (found via pkg-config) is a PRIVATE dep — only PgClient.cpp
-# includes <pqxx/pqxx.h>, so downstream targets don't transitively see it.
+# libpqxx (found via pkg-config) needs to be visible to any consumer that
+# links sim_persistence and exercises the PgClient-backed code path, including
+# the pg-client tests.
 # -----------------------------------------------------------------------------
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
@@ -235,8 +238,7 @@ add_library(sim_persistence STATIC
 )
 target_include_directories(sim_persistence PUBLIC src)
 target_compile_options(sim_persistence PRIVATE -Wno-error=deprecated-declarations)
-target_link_libraries(sim_persistence PUBLIC sim_flags sim_data Threads::Threads)
-target_link_libraries(sim_persistence PRIVATE PkgConfig::PQXX)
+target_link_libraries(sim_persistence PUBLIC sim_flags sim_data Threads::Threads PkgConfig::PQXX)
 add_dependencies(sim_persistence gen_m0_registry)
 
 # -----------------------------------------------------------------------------

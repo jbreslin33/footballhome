@@ -79,6 +79,9 @@ std::vector<RegistryRow> canonicalM0Concepts()
         // Slice 33.1: 1v1_beat (migration 229) — gates the first
         // attacker feint behavior.
         {6, "1v1_beat",     "on_ball"},
+        // Slice 34.4: positioning concepts for future defender shape work.
+        {7, "return_to_base", "positioning"},
+        {8, "stay_in_zone",   "positioning"},
     };
 }
 
@@ -182,7 +185,7 @@ FH_TEST(load_concept_registry_populates)
     ConceptRegistry reg;
     fh::sim::persistence::loadConceptRegistryFromDb(reg, db);
 
-    FH_EXPECT_EQ(reg.size(), std::size_t{5});
+    FH_EXPECT_EQ(reg.size(), std::size_t{7});
     const auto* e = reg.find(static_cast<fh::sim::ConceptId>(1));
     FH_EXPECT(e != nullptr);
     FH_EXPECT(e->key == "run_to_point");
@@ -204,6 +207,14 @@ FH_TEST(load_concept_registry_populates)
     FH_EXPECT(beat != nullptr);
     FH_EXPECT(beat->key == "1v1_beat");
     FH_EXPECT_EQ(fh::sim::m0::k1v1Beat, fh::sim::ConceptId{6});
+    const auto* return_to_base = reg.find(static_cast<fh::sim::ConceptId>(7));
+    FH_EXPECT(return_to_base != nullptr);
+    FH_EXPECT(return_to_base->key == "return_to_base");
+    const auto* stay_in_zone = reg.find(static_cast<fh::sim::ConceptId>(8));
+    FH_EXPECT(stay_in_zone != nullptr);
+    FH_EXPECT(stay_in_zone->key == "stay_in_zone");
+    FH_EXPECT_EQ(fh::sim::m0::kReturnToBase, fh::sim::ConceptId{7});
+    FH_EXPECT_EQ(fh::sim::m0::kStayInZone, fh::sim::ConceptId{8});
 }
 
 FH_TEST(load_concept_registry_throws_when_db_empty)

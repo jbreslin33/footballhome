@@ -14,6 +14,8 @@ function(fh_add_test name)
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
+# Persistence-backed tests need the libpqxx link line even though the
+# implementation is hidden behind the static sim_persistence library.
 # Tests that additionally need the data layer (registries, Sets, awareness).
 function(fh_add_data_test name)
     add_executable(${name} ${name}.cpp)

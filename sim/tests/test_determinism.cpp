@@ -36,6 +36,7 @@
 #include "scenario/EmptyPitchScenario.hpp"
 #include "scenario/GoalDrillScenario.hpp"
 #include "scenario/HalfPitchScenario.hpp"
+#include "scenario/OneVsOneAttackDefendScenario.hpp"
 #include "scenario/SoftDrillScenario.hpp"
 #include "scenario/Scenario.hpp"
 #include "controller/Intent.hpp"
@@ -523,6 +524,17 @@ constexpr std::uint64_t kExpectedHashNoOscillationJockeyPress400 =
 // BallControl owned-ball glue after AI execution.
 constexpr std::uint64_t kExpectedHashAttackerFeintsPastDefender400 =
     0xcee6855c275f58f4ULL;
+
+// Slice 34.5: cross-arch determinism proof for the 1v1 attack-vs-defend
+// scenario. The attacker starts on the ball at x=-15 and the defender starts
+// at x=+10 with a defender AI controller plus marking/jockey/pressing plugs.
+// The human attacker briefly claims the ball then releases back to an AI slot
+// while the defender tries to close and the match eventually reaches the east
+// goal region after a scripted run. The resulting canonical snapshot locks the
+// full 1v1 pipeline (spawn geometry, AI controller selection, behavior bag,
+// ball control glue, and goal success transition) byte-for-byte.
+constexpr std::uint64_t kExpectedHashOneVsOneAttackDefend400 =
+    0xbe0037ea515223ccULL;
 
 // Slice 26.6: cross-arch golden for a short pass east. Locks the M2
 // kick primitive introduced in Slice 26.3 (BallControl release-on-kick,
@@ -1623,6 +1635,49 @@ FH_TEST(attacker_feints_past_defender_400_ticks_seed_42) {
                 kExpectedHashAttackerFeintsPastDefender400));
     }
     FH_EXPECT_EQ(h, kExpectedHashAttackerFeintsPastDefender400);
+}
+
+// Slice 34.5: first end-to-end golden for the 1v1 attack-vs-defend scenario.
+// The attacker claims the ball briefly then releases so the defender AI can
+// close and the match can reach the east goal. This locks the full scenario
+// spawn layout, defender AI behavior selection, and goal-success transition.
+FH_TEST(one_v_one_attack_defend_400_ticks_seed_42) {
+    MatchConfig cfg;
+    cfg.id       = 1;
+    cfg.seed     = 42;
+    cfg.physics  = std::make_unique<StubPhysics>();
+    cfg.scenario = std::make_unique<fh::sim::scenario::OneVsOneAttackDefendScenario>();
+    cfg.clock    = std::make_unique<RealtimeClock>(20);
+    auto m = std::make_unique<Match>(std::move(cfg));
+
+    fh::sim::profile::PlayerProfile attacker_profile;
+    attacker_profile.physical = fh::sim::m0::defaultPhysical();
+    attacker_profile.concepts = fh::sim::m0::defaultConcepts();
+    m->claimSlot(SlotId{1}, ClientId{11}, PersonId{11}, std::move(attacker_profile));
+
+    Intent take_touch;
+    take_touch.desired_direction = Vec3{Fixed64::one(), Fixed64::zero(), Fixed64::zero()};
+    take_touch.wants_dribble = true;
+    m->applyInput(ClientId{11}, take_touch);
+    m->tick();
+
+    m->releaseSlot(SlotId{1});
+    for (int i = 0; i < 399; ++i) m->tick();
+
+    const std::string canonical = canonicalDump(m->snapshot());
+    std::fputs("=== one_v_one_attack_defend_400_ticks_seed_42 ===\n", stdout);
+    std::fputs(canonical.c_str(), stdout);
+
+    const std::uint64_t h = fnv1a64(canonical);
+    if (h != kExpectedHashOneVsOneAttackDefend400) {
+        std::fprintf(stderr,
+            "  determinism drift: got hash 0x%016lx, expected 0x%016lx\n"
+            "  (if this change is intentional, update "
+            "kExpectedHashOneVsOneAttackDefend400)\n",
+            static_cast<unsigned long>(h),
+            static_cast<unsigned long>(kExpectedHashOneVsOneAttackDefend400));
+    }
+    FH_EXPECT_EQ(h, kExpectedHashOneVsOneAttackDefend400);
 }
 
 FH_TEST_MAIN()
