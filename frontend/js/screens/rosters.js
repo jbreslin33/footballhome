@@ -41,21 +41,7 @@ class RostersScreen extends Screen {
     super(navigation, auth);
     this.navigation = navigation;
     this.auth = auth;
-    // variant = which LA sub-program set is being shown.
-    //   'active' → Club Members roster (5039300 mens / 5039252 boys /
-    //              5039357 girls / womens active).  Full workbench UX.
-    //   'pickup' → Pickup Members roster (5070075 / 5064618 / 5064662
-    //              / 5064686).  Card-list UX (no workbench — pickup
-    //              is drop-in / drop-out, no team assignments).
-    //
-    // Two LA sub-programs per category are populated INDEPENDENTLY on
-    // the LA console.  A person can be in one, the other, both, or
-    // neither.  This screen never derives one from the other — each
-    // variant hits its own LA program via LaProgramSync then reads
-    // from person_la_memberships (see .github/copilot-instructions.md
-    // Membership Data Flow section).
-    this.variant = 'active';
-    this.chip = 'all';                // active category
+    this.chip = 'all';
     this._filterBar = null;
     // Track every child instance currently mounted (single-chip views
     // hold one; the 'all' composite holds two — boys + mens).
@@ -155,41 +141,6 @@ class RostersScreen extends Screen {
           padding: 0 !important;
         }
 
-        /* Variant toggle (2026-07-15) — CLUB MEMBERS / PICKUP MEMBERS
-           split.  Big prominent buttons so admin instantly sees which
-           LA roster they're editing.  Two independent LA sub-programs
-           per category → two independent rosters. */
-        .rs-variant-toggle {
-          display: flex;
-          gap: var(--space-2);
-          margin-bottom: var(--space-3);
-          padding: var(--space-2);
-          background: var(--bg-secondary, #111827);
-          border-radius: 8px;
-          border: 1px solid var(--border-color, #374151);
-        }
-        .rs-variant-btn {
-          flex: 1 1 0;
-          padding: 12px 16px;
-          font-size: 1rem;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-          border: 2px solid transparent;
-          border-radius: 6px;
-          cursor: pointer;
-          background: transparent;
-          color: var(--text-secondary, #9ca3af);
-          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-        }
-        .rs-variant-btn:hover:not(.rs-variant-btn-active) {
-          background: rgba(148, 163, 184, 0.10);
-          color: var(--text-primary, #e5e7eb);
-        }
-        .rs-variant-btn-active {
-          background: var(--color-primary, #2563eb);
-          color: #ffffff;
-          border-color: var(--color-primary, #2563eb);
-        }
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
@@ -197,16 +148,6 @@ class RostersScreen extends Screen {
         <p class="subtitle" id="rs-subtitle">Assign members to teams — pick a club, or view all side-by-side</p>
       </div>
       <div style="padding: var(--space-3) var(--space-2);">
-        <div class="rs-variant-toggle" role="tablist" aria-label="Roster variant">
-          <button class="rs-variant-btn rs-variant-btn-active"
-                  data-variant="active"
-                  role="tab"
-                  aria-selected="true">👥 CLUB MEMBERS</button>
-          <button class="rs-variant-btn"
-                  data-variant="pickup"
-                  role="tab"
-                  aria-selected="false">⚡ PICKUP MEMBERS</button>
-        </div>
         <div id="rosters-filters" style="margin-bottom: var(--space-3);"></div>
         <div id="rosters-host" style="min-height: 200px;">
           <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
@@ -222,34 +163,17 @@ class RostersScreen extends Screen {
         this.navigation.goBack();
         return;
       }
-      const vbtn = e.target.closest('.rs-variant-btn');
-      if (vbtn && div.contains(vbtn)) {
-        e.preventDefault();
-        const v = vbtn.getAttribute('data-variant');
-        if (v && v !== this.variant) this._setVariant(v);
-      }
     });
 
     return div;
   }
 
   onEnter(params) {
-    // Accept deep-link variant + chip from params.
-    const allowedVariants = new Set(['active', 'pickup']);
-    if (params && typeof params.variant === 'string' && allowedVariants.has(params.variant)) {
-      this.variant = params.variant;
-    }
     const allowed = new Set(['all', 'mens', 'womens', 'boys', 'girls']);
     if (params && typeof params.chip === 'string' && allowed.has(params.chip)) {
       this.chip = params.chip;
     }
-    // 'all' composite exists only for the active workbench — pickup
-    // has no composite view, so fall back to 'mens' when switching to
-    // pickup with chip=='all' still selected from a prior visit.
-    if (this.variant === 'pickup' && this.chip === 'all') {
-      this.chip = 'mens';
-    }
-    this._syncVariantButtonState();
+    this._syncHeaderState();
     this._buildFilterBar();
     this._mountForChip();
   }
@@ -263,32 +187,10 @@ class RostersScreen extends Screen {
     this._filterBar = null;
   }
 
-  // ── Variant toggle ────────────────────────────────────────────────
-  _setVariant(v) {
-    if (v !== 'active' && v !== 'pickup') return;
-    this.variant = v;
-    // Pickup has no composite — bounce 'all' to 'mens'.
-    if (this.variant === 'pickup' && this.chip === 'all') {
-      this.chip = 'mens';
-    }
-    this._syncVariantButtonState();
-    this._buildFilterBar();
-    this._mountForChip();
-  }
-
-  _syncVariantButtonState() {
-    if (!this.element) return;
-    const btns = this.element.querySelectorAll('.rs-variant-btn');
-    btns.forEach((b) => {
-      const active = b.getAttribute('data-variant') === this.variant;
-      b.classList.toggle('rs-variant-btn-active', active);
-      b.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    const subtitle = this.element.querySelector('#rs-subtitle');
+  _syncHeaderState() {
+    const subtitle = this.element?.querySelector('#rs-subtitle');
     if (subtitle) {
-      subtitle.textContent = (this.variant === 'pickup')
-        ? 'Pickup Members — live from LeagueApps pickup sub-programs'
-        : 'Assign members to teams — pick a club, or view all side-by-side';
+      subtitle.textContent = 'Assign members to teams — pick a club, or view all side-by-side';
     }
   }
 
@@ -299,22 +201,13 @@ class RostersScreen extends Screen {
     if (!this._filterBar) {
       this._filterBar = new FilterBar({ host });
     }
-    // Active variant has an 'All' composite; pickup does not (pickup
-    // members are just a flat card list per category — no workbench).
-    const activeChips = [
+    const chips = [
       { id: 'all',    label: '🗂️ All'    },
       { id: 'mens',   label: '👨 Mens'   },
       { id: 'womens', label: '👩 Womens' },
       { id: 'boys',   label: '👦 Boys'   },
       { id: 'girls',  label: '👧 Girls'  },
     ];
-    const pickupChips = [
-      { id: 'mens',   label: '👨 Mens'   },
-      { id: 'womens', label: '👩 Womens' },
-      { id: 'boys',   label: '👦 Boys'   },
-      { id: 'girls',  label: '👧 Girls'  },
-    ];
-    const chips = (this.variant === 'pickup') ? pickupChips : activeChips;
     this._filterBar.setRows([
       {
         name:     'category',
@@ -370,18 +263,6 @@ class RostersScreen extends Screen {
     this._unmountAll();
     host.innerHTML = '';
 
-    // ── Pickup variant ─────────────────────────────────────────────
-    // Simple card-list per category, sourced from the compliant
-    // `/api/admin/membership/sync` + `/api/admin/members` pair.
-    // No workbench, no team columns — pickup is drop-in / drop-out.
-    if (this.variant === 'pickup') {
-      const validCats = new Set(['mens', 'womens', 'boys', 'girls']);
-      const cat = validCats.has(this.chip) ? this.chip : 'mens';
-      this._mountPickupForCategory(host, cat);
-      return;
-    }
-
-    // ── Active variant (existing behaviour, unchanged) ─────────────
     if (this.chip === 'womens') {
       host.innerHTML = `
         <div style="padding: var(--space-4); border: 1px dashed var(--border-color, #374151);
@@ -702,4 +583,46 @@ class RostersScreen extends Screen {
   }
 }
 
+class PlayerRosterScreen extends RostersScreen {
+  constructor(navigation, auth) {
+    super(navigation, auth);
+  }
+
+  onEnter(params) {
+    this.chip = 'mens';
+    this._syncHeaderState();
+    this._buildFilterBar();
+    this._mountForChip();
+  }
+
+  _syncHeaderState() {
+    const subtitle = this.element?.querySelector('#rs-subtitle');
+    if (subtitle) {
+      subtitle.textContent = 'Mens roster — APSL and Liga 1 only';
+    }
+  }
+
+  _buildFilterBar() {
+    const host = this.find('#rosters-filters');
+    if (!host) return;
+    if (!this._filterBar) {
+      this._filterBar = new FilterBar({ host });
+    }
+    this._filterBar.setRows([
+      {
+        name: 'category',
+        chips: [{ id: 'mens', label: '👨 Mens' }],
+        selected: this.chip,
+        onSelect: (id) => {
+          if (id == null || id === this.chip) return;
+          this.chip = id;
+          this._buildFilterBar();
+          this._mountForChip();
+        },
+      },
+    ]);
+  }
+}
+
 window.RostersScreen = RostersScreen;
+window.PlayerRosterScreen = PlayerRosterScreen;

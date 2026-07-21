@@ -96,6 +96,7 @@ set(SOURCES
     src/controllers/MatchSeriesController.cpp
     src/controllers/MyController.cpp
     src/controllers/EventReminderController.cpp
+    src/controllers/MessageTemplateController.cpp
     src/controllers/CalendarController.cpp
     src/controllers/SimLobbyController.cpp
     src/controllers/SimDebugController.cpp

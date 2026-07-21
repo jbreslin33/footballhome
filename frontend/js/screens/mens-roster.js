@@ -211,23 +211,57 @@ class MensRosterScreen extends Screen {
     }
   }
 
+  _isPlayerView() {
+    const role = (this.navigation?.context?.role || this.auth?.user?.role || '').toString().toLowerCase();
+    return role === 'player';
+  }
+
   renderRoster(data) {
     const container = this.find('#mr-list');
 
-    // Columns are data-driven from `data.columns` (roster_columns with
-    // domain='mens', not archived).  All non-Unassigned columns share
-    // mutex_group='mens-selection' at the DB layer, so admin clicks
-    // one move button and the row atomically leaves the others.
-    //
-    // The old "Dues Owed" column (team 910) was retired 2026-07-07 via
-    // migration 100 — the OVERDUE chip on each card + the Payments
-    // screen's Overdue filter already surface who owes dues, and
-    // parking warm bodies in a sin-bin cost playable spots.  The
-    // `daysOverdue` + `delinquencyState='dues_owed'` fields are still
-    // emitted per-player so the chip + banner keep working.
+    if (this._isPlayerView()) {
+      const columns = (data.columns || []).filter((c) => {
+        const teamId = Number(c.teamId);
+        return teamId === 35 || teamId === 120 || teamId === 122;
+      }).sort((a, b) => {
+        const order = { 35: 0, 120: 1, 122: 2 };
+        return (order[Number(a.teamId)] ?? 99) - (order[Number(b.teamId)] ?? 99);
+      });
+      const sections = columns.map((col) => {
+        const players = (data.buckets && data.buckets[String(col.teamId)]) || [];
+        const rows = players.map((p) => {
+          const fullName = this.escape(`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.fullName || 'Player');
+          const dob = this._formatPlayerDob(p.birthDate);
+          return `
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+              <div style="font-size:0.82rem; font-weight:600;">${fullName}</div>
+              <div style="font-size:0.78rem; opacity:0.72; white-space:nowrap;">${this.escape(dob)}</div>
+            </div>`;
+        }).join('');
+        return `
+          <section style="background:var(--bg-secondary); border:1px solid var(--color-border); border-radius:var(--radius-md); overflow:hidden; min-width:0;">
+            <div style="padding:8px 10px; border-bottom:1px solid var(--color-border); background:rgba(255,255,255,0.04); font-weight:700; font-size:0.82rem;">
+              ${this.escape(col.label || `Team ${col.teamId}`)}
+            </div>
+            <div style="padding:8px 10px; display:flex; flex-direction:column; gap:2px;">
+              ${rows || '<div style="opacity:0.55; font-size:0.8rem;">No players</div>'}
+            </div>
+          </section>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div style="padding:0 var(--space-2) var(--space-2); display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px; align-items:start;">
+          ${sections}
+        </div>`;
+      this.setBanner({ icon: '✓', text: 'Read-only roster · APSL, Liga 1, and Lighthouse League', showRefresh: false });
+      return;
+    }
+
+    // Admin view below remains unchanged.
+    const visibleColumns = (data.columns || []).filter((c) => true);
     const cols = [
       { teamId: 0, label: '📦 Unassigned', color: '#475569', count: (data.unassigned || []).length, isUnassigned: true },
-      ...data.columns,
+      ...visibleColumns,
     ];
 
     container.innerHTML = `
@@ -249,6 +283,13 @@ class MensRosterScreen extends Screen {
         </div>
       </div>
     `;
+  }
+
+  _formatPlayerDob(value) {
+    if (!value) return 'DOB —';
+    const d = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   }
 
   // Cards get thinner when there are few columns (lots of room per col) and

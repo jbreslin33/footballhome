@@ -57,10 +57,30 @@ class MyScreen extends Screen {
     const el = document.createElement('div');
     el.className = 'screen screen-my';
     el.innerHTML = `
-      <div class="screen-header" style="padding: 4px 8px 3px; gap: 4px; align-items:center;">
+      <div class="screen-header" style="padding: 4px 8px 3px; gap: 4px; align-items:center; flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn" style="padding: 3px 6px; line-height:1;">←</button>
-        <h1 style="font-size: 0.95rem; margin: 0; line-height:1; white-space:nowrap;">My Schedule</h1>
-        <p class="subtitle" id="my-subtitle" style="margin: 0; font-size: 0.68rem; line-height:1; white-space:nowrap;">Loading…</p>
+        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0;">
+          <h1 style="font-size: 0.95rem; margin: 0; line-height:1; white-space:nowrap;">My Schedule</h1>
+          <p class="subtitle" id="my-subtitle" style="margin: 0; font-size: 0.68rem; line-height:1; white-space:nowrap;">Loading…</p>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:4px; flex-wrap:wrap;">
+          <a href="#player-team-rules" data-player-nav-target="player-team-rules" title="View only"
+             style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
+            Team Rules
+          </a>
+          <a href="#my" data-player-nav-target="my" title="View only"
+             style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
+            Home
+          </a>
+          <a href="#player-roster" data-player-nav-target="player-roster" title="View only"
+             style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
+            Rosters
+          </a>
+          <a href="#player-calendar" data-player-nav-target="player-calendar" title="View only"
+             style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
+            Calendar
+          </a>
+        </div>
       </div>
       <div style="padding: 0 8px;">
         <section id="my-chat" style="margin-bottom: 6px;"></section>
@@ -162,6 +182,13 @@ class MyScreen extends Screen {
         this.navigation.goBack();
         return;
       }
+      const playerNavBtn = target.closest('[data-player-nav-target]');
+      if (playerNavBtn) {
+        e.stopPropagation();
+        const targetScreen = playerNavBtn.getAttribute('data-player-nav-target');
+        if (targetScreen) this.navigation.goTo(targetScreen);
+        return;
+      }
       // Per-event RSVP button (Going / Not Going).
       const evBtn = target.closest('[data-ev-btn]');
       if (evBtn) {
@@ -180,6 +207,11 @@ class MyScreen extends Screen {
         const fhEventId = parseInt(viewBtn.getAttribute('data-view-event-id'), 10);
         this.expandedEventId = this.expandedEventId === fhEventId ? null : fhEventId;
         this._renderEvents();
+        return;
+      }
+      if (target.closest('#chat-send-btn')) {
+        e.stopPropagation();
+        this._sendChatMessage();
         return;
       }
       if (target.closest('#chat-view-btn')) {
@@ -211,8 +243,7 @@ class MyScreen extends Screen {
       if (!ta) return;
       ta.style.height = 'auto';
       ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
-      const btn = this.find('#chat-send-btn');
-      if (btn) btn.disabled = this.chatSending || !ta.value.trim();
+      this._syncChatComposerState();
     });
   }
 
@@ -337,28 +368,25 @@ class MyScreen extends Screen {
   _eventRsvpHtml(ev) {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const going = rsvps.filter(r => r && r.response === 'yes');
-    const notResponded = rsvps.filter(r => r && !r.response);
-
-    let summary = 'No RSVPs yet.';
-    if (going.length) {
-      summary = `${going.length} going`;
-      if (notResponded.length) {
-        summary += ` • ${notResponded.length} waiting`;
-      }
-    } else if (notResponded.length) {
-      summary = `${notResponded.length} waiting`;
-    }
+    const summary = going.length ? `${going.length} going` : 'No one is going yet.';
+    const rows = going
+      .map(r => {
+        const name = (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
+        return `<div style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}</div>`;
+      })
+      .join('');
 
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
                   border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
         <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
                     color:rgba(226,232,240,0.75); margin-bottom:4px;">
-          RSVPs
+          Going
         </div>
         <div style="font-size:0.9rem; font-weight:700; color:rgba(226,232,240,0.92);">
           ${this.escapeHtml(summary)}
         </div>
+        ${rows ? `<div style="display:grid; gap:3px; margin-top:6px;">${rows}</div>` : ''}
       </div>`;
   }
 
@@ -388,30 +416,40 @@ class MyScreen extends Screen {
     const goingCount = rsvps.filter(r => r && r.response === 'yes').length;
     const notGoingCount = rsvps.filter(r => r && r.response === 'no').length;
     const isExpanded = this.expandedEventId === ev.fh_event_id;
+    const viewLabel = isExpanded ? 'Hide' : 'View';
 
     const compactTitle = `${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)} · ${this.escapeHtml((catLabel + ' ' + kindLabel).trim())}`;
     const compactMeta = `${goingCount} going · ${notGoingCount} not going`;
+    const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · '), venue].filter(Boolean);
 
     return `
       <div style="background: rgba(255,255,255,0.04);
                   border: 1px solid rgba(255,255,255,0.08);
-                  border-radius: 5px;
-                  padding: 4px 5px;
-                  margin-bottom: 3px;
-                  display:flex; align-items:center; justify-content:space-between; gap:4px;">
-        <div style="min-width:0; flex:1;">
-          <div style="font-weight:700; font-size:0.7rem; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${compactTitle}</div>
-          <div style="font-size:0.6rem; opacity:0.74; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(title)} · ${compactMeta}</div>
+                  border-radius: 6px;
+                  padding: 5px 6px;
+                  margin-bottom: 4px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+          <div style="min-width:0; flex:1;">
+            <div style="font-weight:700; font-size:0.7rem; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${compactTitle}</div>
+            <div style="font-size:0.6rem; opacity:0.74; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(title)} · ${compactMeta}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+            ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
+                       `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
+            ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
+                       `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
+            <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
+              ${this.escapeHtml(viewLabel)}
+            </button>
+          </div>
         </div>
-        <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
-          ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
-                     `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
-          ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
-                     `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
-          <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:1px 5px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.56rem; font-weight:600; line-height:1;">
-            ${isExpanded ? '▾' : '▸'}
-          </button>
-        </div>
+        ${isExpanded ? `
+          <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
+            <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
+            ${venue ? `<div style="font-size:0.64rem; line-height:1.3; opacity:0.72;">${this.escapeHtml(venue)}</div>` : ''}
+            ${this._eventRsvpHtml(ev)}
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -562,8 +600,28 @@ class MyScreen extends Screen {
         <div id="chat-list" style="padding: 5px 7px 6px;">
           <div class="loading-state"><div class="spinner"></div><p>Loading chat…</p></div>
         </div>
+        <div style="display:flex; align-items:flex-end; gap:6px; padding:6px 7px 7px;
+                    border-top:1px solid rgba(255,255,255,0.08); background:rgba(2,6,23,0.35);">
+          <textarea id="chat-input" rows="1" placeholder="Write a message…"
+                    style="flex:1; resize:none; min-height:32px; max-height:110px; border-radius:6px;
+                           border:1px solid rgba(255,255,255,0.12); background:rgba(15,23,42,0.78);
+                           color:#f8fafc; padding:7px 8px; font-size:0.72rem; line-height:1.3;"></textarea>
+          <button id="chat-send-btn" type="button" disabled
+                  style="padding:7px 10px; border-radius:6px; border:1px solid rgba(96,165,250,0.35);
+                         background:rgba(59,130,246,0.2); color:#dbeafe; font-size:0.72rem; font-weight:700;">
+            Send
+          </button>
+        </div>
       </div>
     `;
+    this._syncChatComposerState();
+  }
+
+  _syncChatComposerState() {
+    const input = this.find('#chat-input');
+    const btn = this.find('#chat-send-btn');
+    if (!input || !btn) return;
+    btn.disabled = this.chatSending || !input.value.trim();
   }
 
   _renderChatMessages() {
@@ -751,8 +809,7 @@ class MyScreen extends Screen {
       alert(`Send failed: ${err.message}`);
     } finally {
       this.chatSending = false;
-      const btn2 = this.find('#chat-send-btn');
-      if (btn2) btn2.disabled = !this.find('#chat-input')?.value.trim();
+      this._syncChatComposerState();
     }
   }
 }

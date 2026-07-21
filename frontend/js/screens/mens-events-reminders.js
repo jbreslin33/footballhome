@@ -301,14 +301,16 @@ class MensEventsRemindersScreen extends Screen {
     // and the /#my week-schedule page).
     const eventWhen = [ev.date_str, ev.time_str].filter(Boolean).join(' ');
     const eventTitle = ev.title || ev.type_label || 'the next event';
+    const isPractice = String(ev.kind || '').toLowerCase() === 'practice';
+    const eventLabel = isPractice
+      ? (eventWhen ? `today's practice` : 'practice')
+      : `${eventTitle}${eventWhen ? ' on ' + eventWhen : ''}`;
     const bodyLines = [
-      `Hi ${p.first_name || 'there'} — heads up, we don't have your RSVP yet for ${eventTitle}${eventWhen ? ' on ' + eventWhen : ''}${ev.venue_name ? ' at ' + ev.venue_name : ''}.`,
+      `Hi ${p.first_name || 'there'} — this is a gentle reminder that setting availability for ${eventLabel} is a team rule.`,
       '',
-      `RSVPing to every event on your schedule is required — it's how we plan rosters, subs, and cancellations.`,
+      `If you are not sure, set Not Going. Please set your availability on My whether you are going or not, and change it if going. Team Rule: https://footballhome.org/#player-team-rules`,
       '',
-      `Not sure? Tap Not Going — you can always change it later if plans free up.`,
-      '',
-      `Tap here to RSVP: ${rsvpUrl}`,
+      `${rsvpUrl}`,
       '',
       'Thanks — Lighthouse 1893',
     ];

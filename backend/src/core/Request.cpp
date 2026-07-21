@@ -2,6 +2,37 @@
 #include <iostream>
 #include <algorithm>
 #include <cctype>
+#include <iomanip>
+#include <sstream>
+
+namespace {
+
+std::string urlDecode(const std::string& value) {
+    std::ostringstream decoded;
+    for (size_t i = 0; i < value.size(); ++i) {
+        if (value[i] == '+') {
+            decoded << ' ';
+        } else if (value[i] == '%' && i + 2 < value.size()) {
+            const char hi = value[i + 1];
+            const char lo = value[i + 2];
+            const bool validHex = std::isxdigit(static_cast<unsigned char>(hi)) && std::isxdigit(static_cast<unsigned char>(lo));
+            if (validHex) {
+                std::istringstream hexStream(std::string{"0x"} + hi + lo);
+                int code = 0;
+                hexStream >> std::hex >> code;
+                decoded << static_cast<char>(code);
+                i += 2;
+            } else {
+                decoded << value[i];
+            }
+        } else {
+            decoded << value[i];
+        }
+    }
+    return decoded.str();
+}
+
+}  // namespace
 
 Request::Request(const std::string& raw_request) {
     std::istringstream stream(raw_request);
@@ -65,9 +96,9 @@ void Request::parseQueryString() {
         if (eq_pos != std::string::npos) {
             std::string key = pair.substr(0, eq_pos);
             std::string value = pair.substr(eq_pos + 1);
-            query_params_[key] = value;
+            query_params_[urlDecode(key)] = urlDecode(value);
         } else {
-            query_params_[pair] = "";
+            query_params_[urlDecode(pair)] = "";
         }
     }
 }

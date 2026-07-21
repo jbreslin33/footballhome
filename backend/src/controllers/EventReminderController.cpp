@@ -226,6 +226,7 @@ Response EventReminderController::handleSendReminders(const Request& request,
             "SELECT fe.id, fe.kind, "
             "       COALESCE(NULLIF(ge.summary,''), 'Event') AS title, "
             "       (ge.starts_at AT TIME ZONE 'America/New_York')::date AS event_date, "
+            "       ((now() AT TIME ZONE 'America/New_York')::date)::text AS today_date, "
             "       TO_CHAR(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy, Mon FMDD') AS date_str, "
             "       TO_CHAR(ge.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_str, "
             "       ge.starts_at AS starts_at, "
@@ -241,15 +242,26 @@ Response EventReminderController::handleSendReminders(const Request& request,
             return jsonError(HttpStatus::BAD_REQUEST, "event is cancelled");
         }
 
+        const std::string eventKind  = ev[0]["kind"].is_null()
+                                     ? std::string{}
+                                     : ev[0]["kind"].as<std::string>();
         const std::string eventTitle = ev[0]["title"].is_null()
                                      ? std::string{}
                                      : ev[0]["title"].as<std::string>();
+        const std::string eventDate  = ev[0]["event_date"].is_null()
+                                     ? std::string{}
+                                     : ev[0]["event_date"].as<std::string>();
+        const std::string todayDate  = ev[0]["today_date"].is_null()
+                                     ? std::string{}
+                                     : ev[0]["today_date"].as<std::string>();
         const std::string dateStr    = ev[0]["date_str"].is_null()
                                      ? std::string{}
                                      : ev[0]["date_str"].as<std::string>();
         const std::string timeStr    = ev[0]["time_str"].is_null()
                                      ? std::string{}
                                      : ev[0]["time_str"].as<std::string>();
+        const bool sameDay = !eventDate.empty() && !todayDate.empty() && eventDate == todayDate;
+        const std::string kindName = kindLabel(eventKind);
 
         // 2) Non-responders on the event's roster with the requested
         //    channel available.  Roster comes from fh_event_teams →
@@ -366,30 +378,23 @@ Response EventReminderController::handleSendReminders(const Request& request,
                                         + "/api/reminders/verify?token="
                                         + fh::crypto::urlEncode(raw);
 
+            const std::string teamRulesUrl = publicBaseUrl() + "/#player-team-rules";
+            const std::string eventLabel = (kindName == "Practice")
+                ? (sameDay ? "today's practice" : std::string("practice on ") + dateStr)
+                : (sameDay ? std::string("this ") + kindName : kindName + " on " + dateStr);
+
             std::ostringstream smsBody;
-            smsBody << "Hi " << firstName << ", RSVP for ";
-            if (!eventTitle.empty()) smsBody << eventTitle << " ";
-            if (!dateStr.empty())    smsBody << dateStr;
-            if (!timeStr.empty())    smsBody << " " << timeStr;
-            smsBody << ": " << verifyUrl
-                    << " (RSVP required for every event so we can plan)";
+            smsBody << "Hi " << firstName << ", this is a gentle reminder that setting availability for "
+                    << eventLabel << " is a team rule. If you are not sure, set Not Going. Please set your availability on My: https://footballhome.org/#my whether you are going or not, and change it if going. Team Rule: "
+                    << teamRulesUrl;
 
             std::ostringstream emailBody;
             emailBody << "Hi " << firstName << ",\n\n"
-                      << "Please RSVP for ";
-            if (!eventTitle.empty()) emailBody << eventTitle;
-            if (!dateStr.empty() || !timeStr.empty()) {
-                emailBody << " (";
-                if (!dateStr.empty()) emailBody << dateStr;
-                if (!timeStr.empty()) emailBody << (dateStr.empty() ? "" : " ") << timeStr;
-                emailBody << ")";
-            }
-            emailBody << ":\n" << verifyUrl << "\n\n"
-                      << "RSVPing to every event on your schedule is required "
-                      << "\u2014 it\u2019s how we plan rosters, subs, and cancellations. "
-                      << "Not sure? Tap Not Going \u2014 you can always change it later "
-                      << "if plans free up. This link signs you in automatically and "
-                      << "expires in 48 hours.\n\n"
+                      << "This is a gentle reminder that setting availability for "
+                      << eventLabel << " is a team rule. If you are not sure, set Not Going. Please set your availability on My: https://footballhome.org/#my whether you are going or not, and change it if going. Team Rule: "
+                      << teamRulesUrl << "\n\n"
+                      << "https://footballhome.org/#my\n\n"
+                      << "This link signs you in automatically and expires in 48 hours.\n\n"
                       << "\u2014 Lighthouse Soccer";
 
             const std::string subject =

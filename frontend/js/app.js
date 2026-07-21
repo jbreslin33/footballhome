@@ -86,7 +86,10 @@ class App {
       publicSchedule: new PublicScheduleScreen(this.navigation, this.auth),
       my: new MyScreen(this.navigation, this.auth),
       adminSeriesEditor: new AdminSeriesEditorScreen(this.navigation, this.auth),
-      calendar: new CalendarScreen(this.navigation, this.auth)
+      calendar: new CalendarScreen(this.navigation, this.auth),
+      playerCalendar: new PlayerCalendarScreen(this.navigation, this.auth),
+      playerRoster: new PlayerRosterScreen(this.navigation, this.auth),
+      playerTeamRules: new PlayerTeamRulesScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     window.adminSystemScreen = this.screens.adminSystem;
@@ -178,6 +181,9 @@ class App {
     // agenda list backed by GET /api/calendar/upcoming (Slice 4).
     // Reached from the Schedule section of admin-club (§10.1).
     this.screenManager.register('calendar', this.screens.calendar);
+    this.screenManager.register('player-calendar', this.screens.playerCalendar);
+    this.screenManager.register('player-roster', this.screens.playerRoster);
+    this.screenManager.register('player-team-rules', this.screens.playerTeamRules);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

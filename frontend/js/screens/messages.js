@@ -32,6 +32,9 @@ class MessagesScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
 
+    this._templates = [];
+    this._templateError = null;
+
     // Share LeadsScreen's per-funnel copy methods by binding them to a
     // bare prototype shell — gives us funnelContext/messageTemplate/
     // messageSnippets/formLabel/fillTemplate without instantiating a
@@ -127,7 +130,7 @@ class MessagesScreen extends Screen {
     return div;
   }
 
-  onEnter(params) {
+  async onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
 
@@ -166,6 +169,7 @@ class MessagesScreen extends Screen {
     });
 
     this.renderTeamList();
+    await this._loadTemplates();
     this.renderBody();
   }
 
@@ -211,6 +215,21 @@ class MessagesScreen extends Screen {
         </button>
       `;
     }).join('');
+  }
+
+  async _loadTemplates() {
+    try {
+      const res = await this.auth.fetch('/api/messages/templates');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = await res.json();
+      const data = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      this._templates = data.filter((t) => t && t.is_active !== false);
+      this._templateError = null;
+    } catch (err) {
+      console.error('Failed to load message templates:', err);
+      this._templates = [];
+      this._templateError = err.message || 'Unable to load templates';
+    }
   }
 
   // Replace {first}/{coach} so the coach can paste raw — no leftover
@@ -303,6 +322,14 @@ class MessagesScreen extends Screen {
     const email   = this._personalize(template.email);
     const sms     = this._personalize(template.sms);
 
+    const dbTemplates = this._templates.filter((t) => {
+      const left = String(t.category || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const right = String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      return left === right;
+    });
+    const dbInitial = dbTemplates.filter((t) => t.kind === 'initial');
+    const dbSnippets = dbTemplates.filter((t) => t.kind !== 'initial');
+
     body.innerHTML = `
       <div style="padding: var(--space-3); border-radius: 8px; background: ${color}; color: #ffffff; margin-bottom: var(--space-4);">
         <div style="font-size: 1.4rem; font-weight: 700; color: #ffffff;">${this.escapeHtml(label)}</div>
@@ -310,9 +337,10 @@ class MessagesScreen extends Screen {
       </div>
 
       ${this._renderQuickLinks(ctx)}
-      ${this._renderInitialMessage('Initial email', 'email', subject, email)}
-      ${this._renderInitialMessage('Initial SMS / WhatsApp', 'sms', null, sms)}
+      ${this._renderTemplateSection('Initial email', dbInitial, subject, email)}
+      ${this._renderTemplateSection('Initial SMS / WhatsApp', dbInitial.filter((t) => t.tier === 'sms'), null, sms)}
       ${this._renderSnippets(snippets)}
+      ${this._renderDbSnippets(dbSnippets)}
     `;
   }
 
@@ -346,9 +374,40 @@ class MessagesScreen extends Screen {
     `;
   }
 
-  _renderInitialMessage(title, key, subject, bodyText) {
-    const subjectId = `msg-${key}-subject`;
-    const bodyId    = `msg-${key}-body`;
+  _renderTemplateSection(title, templates, subject, bodyText) {
+    if (templates && templates.length) {
+      return templates.map((template) => {
+        const subjectId = `msg-${template.id || template.label || title}-subject`;
+        const bodyId = `msg-${template.id || template.label || title}-body`;
+        const bodyTextValue = this._personalize(template.body || bodyText || '');
+        const subjectText = template.subject ? this._personalize(template.subject) : subject;
+        const htmlBody = template.html_body ? this._personalize(template.html_body) : null;
+        const bodyBlock = htmlBody
+          ? `<div id="${bodyId}" data-copy-html="1" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; line-height: 1.55;">${htmlBody}</div>`
+          : `<pre id="${bodyId}" style="flex:1; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; word-wrap: break-word; margin: 0; font-family: inherit; line-height: 1.5;">${this.escapeHtml(bodyTextValue)}</pre>`;
+        return `
+          <section style="margin-bottom: var(--space-4); padding: var(--space-3); border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-surface); color: var(--text-primary);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: var(--space-2); gap: var(--space-2);">
+              <div style="font-weight: 600; color: var(--text-primary);">✉️ ${this.escapeHtml(title)}</div>
+            </div>
+            ${subjectText ? `
+              <div style="display:flex; align-items:center; gap: var(--space-2); margin-bottom: var(--space-2);">
+                <div style="opacity: 0.75; font-size: 0.85rem; min-width: 56px; color: var(--text-primary);">Subject:</div>
+                <div id="${subjectId}" style="flex:1; padding: 8px 12px; background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;">${this.escapeHtml(subjectText)}</div>
+                <button class="btn btn-secondary" data-copy-target="#${subjectId}" style="font-size: 0.85rem; padding: 4px 10px;">📋 Copy</button>
+              </div>
+            ` : ''}
+            <div style="display:flex; gap: var(--space-2); align-items:flex-start;">
+              ${bodyBlock}
+              <button class="btn btn-secondary" data-copy-target="#${bodyId}" style="font-size: 0.85rem; padding: 4px 10px; flex-shrink: 0;">📋 Copy</button>
+            </div>
+          </section>
+        `;
+      }).join('');
+    }
+
+    const subjectId = `msg-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-subject`;
+    const bodyId    = `msg-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-body`;
     // Message bodies use email-app styling on purpose: white paper,
     // black ink.  The app's dark navy theme is great for nav but
     // terrible for reading a paragraph of email copy you're about to
@@ -373,6 +432,55 @@ class MessagesScreen extends Screen {
         </div>
       </section>
     `;
+  }
+
+  _renderDbSnippets(snippets) {
+    if (!snippets || !snippets.length) return '';
+
+    const groups = {};
+    for (const s of snippets) {
+      const t = s.tier || 'info';
+      (groups[t] ||= []).push(s);
+    }
+
+    const TIER_ORDER = ['program', 'alumni', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
+    const TIER_TITLES = {
+      program: '📋 LeagueApps Program Description',
+      alumni: '🎯 Alumni return (SMS + "in" reply follow-up)',
+      followup: '📨 Follow-up (touch 2 — after they say yes)',
+      broadcast: '📣 Broadcasts (LA Messages — entire roster)',
+      close: '🎯 Close (the ask)',
+      soft: '🌱 Soft fallback',
+      info: 'ℹ️ Info replies',
+      qualify: '🤔 Qualifying questions',
+    };
+
+    return TIER_ORDER.filter((t) => groups[t]?.length).map((t) => {
+      const items = groups[t].map((s, idx) => {
+        const bodyText = this._personalize(s.body);
+        const bodyHtml = s.html_body ? this._personalize(s.html_body) : null;
+        const id = `db-snip-${t}-${idx}`;
+        const bodyBlock = bodyHtml
+          ? `<div id="${id}" data-copy-html="1" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; line-height: 1.55;">${bodyHtml}</div>`
+          : `<pre id="${id}" style="margin: 0; padding: var(--space-3); background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.88rem; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.5;">${this.escapeHtml(bodyText)}</pre>`;
+        return `
+          <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: var(--space-3); background: var(--bg-surface); color: var(--text-primary); margin-bottom: var(--space-2);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); margin-bottom: var(--space-2);">
+              <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">${this.escapeHtml(s.label)}</div>
+              <button class="btn btn-secondary" data-copy-target="#${id}" style="font-size: 0.8rem; padding: 4px 10px;">📋 Copy</button>
+            </div>
+            ${bodyBlock}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <section style="margin-bottom: var(--space-4);">
+          <h3 style="margin: 0 0 var(--space-2) 0; font-size: 1rem; color: var(--text-primary);">${TIER_TITLES[t] || t}</h3>
+          ${items}
+        </section>
+      `;
+    }).join('');
   }
 
   _renderSnippets(snippets) {
