@@ -25,7 +25,7 @@ class GameModelAdminScreen extends Screen {
       </div>
       <div style="padding: var(--space-4); display: grid; gap: var(--space-4);">
         <div style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary); color: var(--text-primary);">
-          <strong>Game model structure:</strong> Principles, sub-principles, sub-sub-principles, and linked exercises are all managed as first-class items with their own IDs.
+          <strong>Game model structure:</strong> Main principles and their sub-principles are managed as first-class items with their own IDs.
         </div>
         <div id="game-model-admin-content"></div>
       </div>
@@ -65,6 +65,12 @@ class GameModelAdminScreen extends Screen {
         }
         if (action === 'edit-principles') {
           this.selectedEntity = 'principles';
+          this.currentContext = null;
+          this.renderContent();
+          return;
+        }
+        if (action === 'edit-sub-principles') {
+          this.selectedEntity = 'sub_principles';
           this.currentContext = null;
           this.renderContent();
           return;
@@ -158,6 +164,7 @@ class GameModelAdminScreen extends Screen {
                 <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
                   <button class="btn btn-secondary" data-inline-action="edit-phases">Edit phases</button>
                   <button class="btn btn-secondary" data-inline-action="edit-principles">Edit principles</button>
+                  <button class="btn btn-secondary" data-inline-action="edit-sub-principles">Edit sub-principles</button>
                 </div>
               </div>
               <div style="margin-top: var(--space-2); padding: var(--space-2); border-left: 3px solid var(--accent); background: rgba(255,255,255,0.04); border-radius: var(--radius-sm);">
@@ -204,25 +211,7 @@ class GameModelAdminScreen extends Screen {
     if (!structure?.phases?.length) return this.getDefaultGameModelHtml();
 
     const renderPrinciples = (principles) => {
-      const byId = new Map();
-      const roots = [];
-
-      principles.forEach((principle) => {
-        byId.set(principle.id, { ...principle, children: [] });
-      });
-
-      principles.forEach((principle) => {
-        const node = byId.get(principle.id);
-        if (!node) return;
-
-        if (principle.parent_principle_id && byId.has(principle.parent_principle_id)) {
-          byId.get(principle.parent_principle_id).children.push(node);
-        } else {
-          roots.push(node);
-        }
-      });
-
-      return roots
+      return (principles || [])
         .slice()
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((principle) => this.renderStructuredPrincipleNode(principle))
@@ -250,30 +239,24 @@ class GameModelAdminScreen extends Screen {
   }
 
   renderStructuredPrincipleNode(principle) {
-    const label = this.getPrincipleLevelLabel(principle.level);
-    const childMarkup = (principle.children || [])
+    const subMarkup = (principle.sub_principles || [])
       .slice()
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-      .map((child) => this.renderStructuredPrincipleNode(child))
+      .map((sub) => `
+        <div style="padding: var(--space-2); border-left: 2px solid #60a5fa; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm);">
+          <div><strong>Sub Principle:</strong> ${this.escapeHtml(sub.title || sub.slug || 'Sub Principle')}</div>
+          ${sub.definition ? `<div style="margin-top: 0.2rem; opacity: 0.8; white-space: pre-line;">${this.escapeHtml(sub.definition)}</div>` : ''}
+        </div>
+      `)
       .join('');
 
     return `
       <div style="padding: var(--space-2); border-left: 2px solid var(--accent); background: rgba(255,255,255,0.03); border-radius: var(--radius-sm);">
-        <div><strong>${this.escapeHtml(label)}:</strong> ${this.escapeHtml(principle.title || principle.slug || 'Principle')}</div>
+        <div><strong>Main Principle:</strong> ${this.escapeHtml(principle.title || principle.slug || 'Principle')}</div>
         ${principle.description ? `<div style="margin-top: 0.2rem; opacity: 0.8;">${this.escapeHtml(principle.description)}</div>` : ''}
-        ${childMarkup ? `<div style="display:grid; gap: 0.6rem; margin-top: 0.6rem;">${childMarkup}</div>` : ''}
+        ${subMarkup ? `<div style="display:grid; gap: 0.6rem; margin-top: 0.6rem;">${subMarkup}</div>` : ''}
       </div>
     `;
-  }
-
-  getPrincipleLevelLabel(level) {
-    switch (level) {
-      case 'sub_sub': return 'Sub-sub Principle';
-      case 'sub_sub_sub': return 'Sub-sub-sub Principle';
-      case 'sub': return 'Sub Principle';
-      case 'main':
-      default: return 'Main Principle';
-    }
   }
 
   getRenderableGameModelHtml(rawContent) {
@@ -322,6 +305,7 @@ class GameModelAdminScreen extends Screen {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }));
+    } else if (this.selectedEntity === 'sub_principles') {
       requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/principles`).then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -356,7 +340,8 @@ class GameModelAdminScreen extends Screen {
           this.parentOptions.practices = this.getPayloadItems(results[1]);
         } else if (this.selectedEntity === 'principles') {
           this.parentOptions.phases = this.getPayloadItems(results[1]);
-          this.parentOptions.principles = this.getPayloadItems(results[2]);
+        } else if (this.selectedEntity === 'sub_principles') {
+          this.parentOptions.principles = this.getPayloadItems(results[1]);
         }
 
         container.innerHTML = this.renderList(items);
@@ -373,12 +358,17 @@ class GameModelAdminScreen extends Screen {
     return [];
   }
 
+  getEntityTitle() {
+    if (this.selectedEntity === 'sub_principles') return 'Sub-Principle';
+    return this.selectedEntity.charAt(0).toUpperCase() + this.selectedEntity.slice(1);
+  }
+
   renderList(items) {
     if (this.selectedEntity === 'days') {
       return this.renderWeekBuilder();
     }
 
-    const title = this.selectedEntity.charAt(0).toUpperCase() + this.selectedEntity.slice(1);
+    const title = this.getEntityTitle();
     return `
       <div style="display:grid;gap:var(--space-3);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
@@ -468,7 +458,9 @@ class GameModelAdminScreen extends Screen {
       case 'phases':
         return 'Edit the major phases of the game model such as attack, defend, transition to attack, and transition to defense.';
       case 'principles':
-        return 'Edit the principles inside each phase, including the main and sub-principles.';
+        return 'Edit the main principles inside each phase.';
+      case 'sub_principles':
+        return 'Edit the sub-principles that belong to each main principle, including their definition text.';
       case 'sessions':
         return 'Add the training blocks inside each day so the week can be reused next week.';
       case 'exercises':
@@ -481,7 +473,7 @@ class GameModelAdminScreen extends Screen {
   renderItem(item) {
     const id = item.id;
     const label = item.title || item.label || item.name || item.slug || 'Untitled';
-    const subtitle = item.summary || item.description || item.notes || '';
+    const subtitle = item.summary || item.description || item.definition || item.notes || '';
     const meta = [];
     if (item.slug) meta.push(`slug: ${item.slug}`);
     if (item.player_count != null) meta.push(`players: ${item.player_count}`);
@@ -501,11 +493,10 @@ class GameModelAdminScreen extends Screen {
         const phase = this.parentOptions.phases.find((entry) => entry.id === item.phase_id);
         parentLabel = phase ? `Phase: ${phase.label || phase.slug || phase.title || item.phase_id}` : `Phase ID: ${item.phase_id}`;
       }
-      if (item.parent_principle_id != null) {
-        const parentPrinciple = this.parentOptions.principles.find((entry) => entry.id === item.parent_principle_id);
-        if (parentPrinciple) {
-          parentLabel = `${parentLabel ? `${parentLabel} · ` : ''}Parent: ${parentPrinciple.title || parentPrinciple.slug || parentPrinciple.label || item.parent_principle_id}`;
-        }
+    } else if (this.selectedEntity === 'sub_principles') {
+      if (item.principle_id != null) {
+        const principle = this.parentOptions.principles.find((entry) => entry.id === item.principle_id);
+        parentLabel = principle ? `Principle: ${principle.title || principle.slug || item.principle_id}` : `Principle ID: ${item.principle_id}`;
       }
     }
 
@@ -533,7 +524,7 @@ class GameModelAdminScreen extends Screen {
     this.currentEditId = id;
     this.currentContext = context || this.currentContext || null;
     const item = this.entities.find((entry) => entry.id === id) || null;
-    const title = this.selectedEntity.charAt(0).toUpperCase() + this.selectedEntity.slice(1);
+    const title = this.getEntityTitle();
     const fields = this.getFields(item, this.currentContext);
     container.innerHTML = `
       <div style="border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:var(--space-4); background:var(--bg-primary); display:grid; gap:var(--space-3);">
@@ -567,17 +558,20 @@ class GameModelAdminScreen extends Screen {
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
       case 'principles': {
-        const parentPrincipleOptions = this.parentOptions.principles
-          .filter((entry) => String(entry.phase_id) === String(base.phase_id || ''))
-          .filter((entry) => String(entry.id) !== String(base.id || ''))
-          .map((entry) => ({ value: entry.id, label: entry.title || entry.slug || entry.label || `Principle ${entry.id}` }));
         return [
           { key: 'phase_id', label: 'Phase', value: base.phase_id != null ? base.phase_id : '', type: 'select', options: this.parentOptions.phases.map((entry) => ({ value: entry.id, label: entry.label || entry.slug || entry.title || `Phase ${entry.id}` })) },
-          { key: 'parent_principle_id', label: 'Parent Principle', value: base.parent_principle_id != null ? base.parent_principle_id : '', type: 'select', options: parentPrincipleOptions },
           { key: 'slug', label: 'Slug', value: base.slug || '', type: 'text' },
-          { key: 'level', label: 'Level', value: base.level || 'main', type: 'text' },
           { key: 'title', label: 'Title', value: base.title || '', type: 'text' },
           { key: 'description', label: 'Description', value: base.description || '', type: 'textarea' },
+          { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
+        ];
+      }
+      case 'sub_principles': {
+        return [
+          { key: 'principle_id', label: 'Principle', value: base.principle_id != null ? base.principle_id : '', type: 'select', options: this.parentOptions.principles.map((entry) => ({ value: entry.id, label: entry.title || entry.slug || `Principle ${entry.id}` })) },
+          { key: 'slug', label: 'Slug', value: base.slug || '', type: 'text' },
+          { key: 'title', label: 'Title', value: base.title || '', type: 'text' },
+          { key: 'definition', label: 'Definition', value: base.definition || '', type: 'textarea' },
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
       }
