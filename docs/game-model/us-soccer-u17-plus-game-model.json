@@ -1,0 +1,240 @@
+{
+  "title": "U17+ Game Model",
+  "summary": "A U.S. Soccer-aligned U17+ coaching framework built around the four moments of play: Attacking, Defending, Attacking to Defending Transition, and Defending to Attacking Transition.",
+  "base_shape": "11v11",
+  "phases": [
+    {
+      "slug": "attacking",
+      "label": "Attacking",
+      "description": "When in possession, advance the ball quickly in the attacking half with high energy and high tempo.",
+      "definitions": [
+        {
+          "slug": "attacking-game-idea",
+          "title": "Game Idea",
+          "definition": "When in possession, we want to dominate by advancing the ball quickly in the attacking half with high energy and high tempo."
+        }
+      ],
+      "principles": [
+        {
+          "slug": "create-attacking-shape",
+          "level": "main",
+          "title": "Create attacking shape",
+          "description": "Create appropriate height, width, depth.",
+          "parent_slug": null
+        },
+        {
+          "slug": "provide-options-to-play-forward",
+          "level": "main",
+          "title": "Provide options to play forward",
+          "description": "Provide vertical or diagonal passing options and create overloads in the middle.",
+          "parent_slug": null
+        },
+        {
+          "slug": "break-lines-to-advance-attack",
+          "level": "main",
+          "title": "Break lines to advance attack",
+          "description": "Move or lose opponent when marked and make runs behind the defensive line.",
+          "parent_slug": null
+        },
+        {
+          "slug": "finish-the-attack-as-fast-as-possible",
+          "level": "main",
+          "title": "Finish the attack as fast as possible",
+          "description": "Take countermeasures, anticipate the opponent's counter, and finish the attack with purpose.",
+          "parent_slug": null
+        }
+      ],
+      "player_actions": [
+        {
+          "slug": "drive-with-the-ball-to-exploit-space",
+          "title": "Drive with the ball to exploit space",
+          "description": "Drive with the ball to exploit space."
+        },
+        {
+          "slug": "engage-opponent-create-1v1-or-2v1",
+          "title": "Engage the opponent to create a 1v1 or 2v1",
+          "description": "Engage the opponent and create a favorable attacking situation."
+        },
+        {
+          "slug": "find-a-free-player-between-or-behind-the-lines",
+          "title": "Find a free player between or behind the lines",
+          "description": "Find a free player between or behind the lines to create the next action."
+        },
+        {
+          "slug": "cross-into-space-or-player",
+          "title": "Cross into space or to a player",
+          "description": "Cross into space or to a player to create a finish."
+        }
+      ]
+    },
+    {
+      "slug": "defending",
+      "label": "Defending",
+      "description": "Defend compactly, force play wide, and recover as a unit.",
+      "definitions": [
+        {
+          "slug": "defending-game-idea",
+          "title": "Game Idea",
+          "definition": "When out of possession, the team protects the goal and delays the opponent's progress by creating a compact and organized defensive shape."
+        }
+      ],
+      "principles": [
+        {
+          "slug": "create-defending-shape",
+          "level": "main",
+          "title": "Create defending shape",
+          "description": "Create a compact defensive line and keep the team connected.",
+          "parent_slug": null
+        },
+        {
+          "slug": "build-pressure-on-the-ball",
+          "level": "main",
+          "title": "Build pressure on the ball",
+          "description": "Press with intent, protect the middle, and recover quickly when the pressure is broken.",
+          "parent_slug": null
+        },
+        {
+          "slug": "recover-when-pressure-is-broken",
+          "level": "main",
+          "title": "Recover when pressure is broken",
+          "description": "Recover with speed and restore the defensive structure.",
+          "parent_slug": null
+        },
+        {
+          "slug": "take-countermeasures-anticipate-to-counter",
+          "level": "main",
+          "title": "Take countermeasures: anticipate to counter",
+          "description": "Protect against the opponent's counterattack and regain balance.",
+          "parent_slug": null
+        }
+      ],
+      "player_actions": [
+        {
+          "slug": "press-the-ball-carrier",
+          "title": "Press the ball carrier",
+          "description": "Press the ball carrier immediately and make the play predictable."
+        },
+        {
+          "slug": "cover-the-nearest-supporting-player",
+          "title": "Cover the nearest supporting player",
+          "description": "Cover the nearest supporting player to maintain balance."
+        },
+        {
+          "slug": "balance-and-protect-the-middle",
+          "title": "Balance and protect the middle",
+          "description": "Balance and protect the middle to deny through balls."
+        }
+      ]
+    },
+    {
+      "slug": "attacking-to-defending-transition",
+      "label": "Attacking to Defending Transition",
+      "description": "As soon as possession is lost, recover balance and apply pressure quickly.",
+      "definitions": [
+        {
+          "slug": "attacking-to-defending-transition-game-idea",
+          "title": "Game Idea",
+          "definition": "After losing possession, the team must immediately recover shape, protect the central space, and delay the opponent's counterattack."
+        }
+      ],
+      "principles": [
+        {
+          "slug": "apply-immediate-pressure-on-the-ball",
+          "level": "main",
+          "title": "Apply immediate pressure on the ball",
+          "description": "Press immediately and make the opponent play under pressure.",
+          "parent_slug": null
+        },
+        {
+          "slug": "delay-the-counterattack",
+          "level": "main",
+          "title": "Delay the counterattack",
+          "description": "Delay the opponent's counterattack by slowing the first pass and protecting the central lane.",
+          "parent_slug": null
+        },
+        {
+          "slug": "recover-with-speed",
+          "level": "main",
+          "title": "Recover with speed",
+          "description": "Recover shape with speed and get the team organized quickly.",
+          "parent_slug": null
+        },
+        {
+          "slug": "deny-finish-from-counterattack",
+          "level": "main",
+          "title": "Deny finish from counterattack",
+          "description": "Deny the finish from the counterattack with compactness and coordination.",
+          "parent_slug": null
+        }
+      ],
+      "player_actions": [
+        {
+          "slug": "press-closest-opponent-immediately",
+          "title": "Press the closest opponent immediately",
+          "description": "Press the closest opponent immediately to delay the transition."
+        },
+        {
+          "slug": "recover-into-defensive-shape",
+          "title": "Recover into defensive shape",
+          "description": "Recover into defensive shape and protect the middle."
+        },
+        {
+          "slug": "protect-the-width-of-the-goal",
+          "title": "Protect the width of the goal",
+          "description": "Protect the width of the goal and deny central penetration."
+        }
+      ]
+    },
+    {
+      "slug": "defending-to-attacking-transition",
+      "label": "Defending to Attacking Transition",
+      "description": "As soon as possession is won, attack quickly and create the next action.",
+      "definitions": [
+        {
+          "slug": "defending-to-attacking-transition-game-idea",
+          "title": "Game Idea",
+          "definition": "When the team regains possession, it should attack quickly with numbers and create the next action before the opponent can recover."
+        }
+      ],
+      "principles": [
+        {
+          "slug": "take-countermeasures-anticipate-the-counter",
+          "level": "main",
+          "title": "Take countermeasures: anticipate the counter",
+          "description": "Anticipate the opponent's counter and protect the break.",
+          "parent_slug": null
+        },
+        {
+          "slug": "finish-the-counterattack-as-fast-as-possible",
+          "level": "main",
+          "title": "Finish the counterattack as fast as possible",
+          "description": "Attack with speed and create the next action before the structure is reset.",
+          "parent_slug": null
+        },
+        {
+          "slug": "position-to-protect-against-counterattack",
+          "level": "main",
+          "title": "Position to protect against counterattack",
+          "description": "Position the team to protect against counterattack while still attacking."
+        }
+      ],
+      "player_actions": [
+        {
+          "slug": "play-the-first-pass-forward",
+          "title": "Play the first pass forward",
+          "description": "Play the first pass forward and attack the space behind the defensive line."
+        },
+        {
+          "slug": "support-the-break-with-speed",
+          "title": "Support the break with speed",
+          "description": "Support the break with speed and create a numerical advantage."
+        },
+        {
+          "slug": "finish-the-counterattack-with-purpose",
+          "title": "Finish the counterattack with purpose",
+          "description": "Finish the counterattack with purpose and create a chance."
+        }
+      ]
+    }
+  ]
+}

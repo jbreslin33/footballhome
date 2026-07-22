@@ -21,6 +21,16 @@ std::string quoteJson(const std::string& value) {
     escaped << '"';
     return escaped.str();
 }
+
+struct GameModelPhaseData {
+    int id = 0;
+    std::string slug;
+    std::string label;
+    std::string description;
+    int sort_order = 0;
+    std::vector<std::string> principles;
+    std::vector<std::string> player_actions;
+};
 } // namespace
 
 ClubController::ClubController() {
@@ -437,62 +447,47 @@ Response ClubController::handleGetClubGameModelStructure(const Request& request)
         if (club_id_str.empty()) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
         int club_id = std::stoi(club_id_str);
 
-        std::ostringstream query;
-        query << "SELECT gm.id AS game_model_id, gm.title, gm.summary, gm.base_shape, p.id AS phase_id, p.slug AS phase_slug, p.label AS phase_label, p.description AS phase_description, p.sort_order AS phase_sort_order, pr.id AS principle_id, pr.slug AS principle_slug, pr.level, pr.title AS principle_title, pr.description AS principle_description, pr.sort_order AS principle_sort_order, pr.parent_principle_id FROM club_game_model gm JOIN club_game_model_phases p ON p.club_id = gm.club_id LEFT JOIN club_game_model_principles pr ON pr.phase_id = p.id AND pr.is_active = true WHERE gm.club_id = " << club_id << " AND gm.is_active = true AND p.is_active = true ORDER BY p.sort_order, p.id, pr.sort_order, pr.id";
+        std::ostringstream metadata_query;
+        metadata_query << "SELECT gm.id AS game_model_id, gm.title, gm.summary, gm.base_shape, p.id AS phase_id, p.slug AS phase_slug, p.label AS phase_label, p.description AS phase_description, p.sort_order AS phase_sort_order FROM club_game_model gm JOIN club_game_model_phases p ON p.club_id = gm.club_id WHERE gm.club_id = " << club_id << " AND gm.is_active = true AND p.is_active = true ORDER BY p.sort_order, p.id";
+        pqxx::result metadata_result = db_->query(metadata_query.str());
 
-        pqxx::result result = db_->query(query.str());
+        std::ostringstream principles_query;
+        principles_query << "SELECT pr.phase_id, pr.id AS principle_id, pr.slug AS principle_slug, pr.level, pr.title AS principle_title, pr.description AS principle_description, pr.sort_order AS principle_sort_order, pr.parent_principle_id, COALESCE((SELECT json_agg(json_build_object('id', pd.id, 'slug', pd.slug, 'title', pd.title, 'definition', pd.definition, 'sort_order', pd.sort_order) ORDER BY pd.sort_order, pd.id)::text FROM club_game_model_principle_definitions pd WHERE pd.principle_id = pr.id AND pd.is_active = true), '[]') AS principle_definitions FROM club_game_model_principles pr JOIN club_game_model_phases p ON p.id = pr.phase_id WHERE p.club_id = " << club_id << " AND p.is_active = true AND pr.is_active = true ORDER BY p.sort_order, p.id, pr.sort_order, pr.id";
+        pqxx::result principles_result = db_->query(principles_query.str());
+
+        std::ostringstream player_actions_query;
+        player_actions_query << "SELECT pa.phase_id, pa.id AS player_action_id, pa.slug AS player_action_slug, pa.title AS player_action_title, pa.description AS player_action_description, pa.sort_order AS player_action_sort_order, pa.principle_id AS player_action_principle_id FROM club_game_model_player_actions pa JOIN club_game_model_phases p ON p.id = pa.phase_id WHERE p.club_id = " << club_id << " AND p.is_active = true AND pa.is_active = true ORDER BY p.sort_order, p.id, pa.sort_order, pa.id";
+        pqxx::result player_actions_result = db_->query(player_actions_query.str());
 
         std::string game_model_title = "Game Model";
-        std::string game_model_summary = "A normalized coaching framework with phases and principles.";
+        std::string game_model_summary = "A normalized coaching framework with phases, principles, definitions, and player actions.";
         std::string game_model_base_shape = "11v11";
         long long game_model_id = club_id;
         bool has_game_model_row = false;
 
-        std::vector<std::string> phase_jsons;
-        int current_phase_id = -1;
-        std::string current_phase_slug;
-        std::string current_phase_label;
-        std::string current_phase_description;
-        int current_phase_sort_order = 0;
-        std::vector<std::string> principle_jsons;
-
-        for (const auto& row : result) {
+        std::vector<GameModelPhaseData> phases;
+        for (const auto& row : metadata_result) {
             if (!has_game_model_row) {
                 has_game_model_row = true;
                 game_model_id = row["game_model_id"].as<long long>();
                 game_model_title = row["title"].is_null() ? "Game Model" : row["title"].c_str();
-                game_model_summary = row["summary"].is_null() ? "A normalized coaching framework with phases and principles." : row["summary"].c_str();
+                game_model_summary = row["summary"].is_null() ? "A normalized coaching framework with phases, principles, definitions, and player actions." : row["summary"].c_str();
                 game_model_base_shape = row["base_shape"].is_null() ? "11v11" : row["base_shape"].c_str();
             }
 
+            GameModelPhaseData phase;
+            phase.id = row["phase_id"].as<int>();
+            phase.slug = row["phase_slug"].is_null() ? "" : row["phase_slug"].c_str();
+            phase.label = row["phase_label"].is_null() ? "" : row["phase_label"].c_str();
+            phase.description = row["phase_description"].is_null() ? "" : row["phase_description"].c_str();
+            phase.sort_order = row["phase_sort_order"].as<int>();
+            phases.push_back(phase);
+        }
+
+        for (const auto& row : principles_result) {
             int phase_id = row["phase_id"].as<int>();
-            if (phase_id != current_phase_id) {
-                if (current_phase_id != -1) {
-                    std::ostringstream phase_json;
-                    phase_json << "{";
-                    phase_json << "\"id\":" << current_phase_id << ",";
-                    phase_json << "\"slug\":\"" << escapeJson(current_phase_slug) << "\",";
-                    phase_json << "\"label\":\"" << escapeJson(current_phase_label) << "\",";
-                    phase_json << "\"description\":\"" << escapeJson(current_phase_description) << "\",";
-                    phase_json << "\"sort_order\":" << current_phase_sort_order << ",";
-                    phase_json << "\"principles\":[";
-                    for (size_t i = 0; i < principle_jsons.size(); ++i) {
-                        if (i > 0) phase_json << ",";
-                        phase_json << principle_jsons[i];
-                    }
-                    phase_json << "]}";
-                    phase_jsons.push_back(phase_json.str());
-                }
-
-                current_phase_id = phase_id;
-                current_phase_slug = row["phase_slug"].is_null() ? "" : row["phase_slug"].c_str();
-                current_phase_label = row["phase_label"].is_null() ? "" : row["phase_label"].c_str();
-                current_phase_description = row["phase_description"].is_null() ? "" : row["phase_description"].c_str();
-                current_phase_sort_order = row["phase_sort_order"].as<int>();
-                principle_jsons.clear();
-            }
-
-            if (!row["principle_id"].is_null()) {
+            for (auto& phase : phases) {
+                if (phase.id != phase_id) continue;
                 std::ostringstream principle_json;
                 principle_json << "{";
                 principle_json << "\"id\":" << row["principle_id"].as<long long>() << ",";
@@ -502,26 +497,29 @@ Response ClubController::handleGetClubGameModelStructure(const Request& request)
                 principle_json << "\"description\":\"" << escapeJson(row["principle_description"].c_str()) << "\",";
                 principle_json << "\"sort_order\":" << row["principle_sort_order"].as<int>();
                 principle_json << ",\"parent_principle_id\":" << (row["parent_principle_id"].is_null() ? "null" : std::to_string(row["parent_principle_id"].as<long long>()));
+                principle_json << ",\"definitions\":" << row["principle_definitions"].c_str();
                 principle_json << "}";
-                principle_jsons.push_back(principle_json.str());
+                phase.principles.push_back(principle_json.str());
+                break;
             }
         }
 
-        if (current_phase_id != -1) {
-            std::ostringstream phase_json;
-            phase_json << "{";
-            phase_json << "\"id\":" << current_phase_id << ",";
-            phase_json << "\"slug\":\"" << escapeJson(current_phase_slug) << "\",";
-            phase_json << "\"label\":\"" << escapeJson(current_phase_label) << "\",";
-            phase_json << "\"description\":\"" << escapeJson(current_phase_description) << "\",";
-            phase_json << "\"sort_order\":" << current_phase_sort_order << ",";
-            phase_json << "\"principles\":[";
-            for (size_t i = 0; i < principle_jsons.size(); ++i) {
-                if (i > 0) phase_json << ",";
-                phase_json << principle_jsons[i];
+        for (const auto& row : player_actions_result) {
+            int phase_id = row["phase_id"].as<int>();
+            for (auto& phase : phases) {
+                if (phase.id != phase_id) continue;
+                std::ostringstream player_action_json;
+                player_action_json << "{";
+                player_action_json << "\"id\":" << row["player_action_id"].as<long long>() << ",";
+                player_action_json << "\"slug\":\"" << escapeJson(row["player_action_slug"].c_str()) << "\",";
+                player_action_json << "\"title\":\"" << escapeJson(row["player_action_title"].c_str()) << "\",";
+                player_action_json << "\"description\":\"" << escapeJson(row["player_action_description"].c_str()) << "\",";
+                player_action_json << "\"sort_order\":" << row["player_action_sort_order"].as<int>() << ",";
+                player_action_json << "\"principle_id\":" << (row["player_action_principle_id"].is_null() ? "null" : std::to_string(row["player_action_principle_id"].as<long long>()));
+                player_action_json << "}";
+                phase.player_actions.push_back(player_action_json.str());
+                break;
             }
-            phase_json << "]}";
-            phase_jsons.push_back(phase_json.str());
         }
 
         std::ostringstream json;
@@ -532,9 +530,25 @@ Response ClubController::handleGetClubGameModelStructure(const Request& request)
         json << "\"summary\":" << quoteJson(game_model_summary) << ",";
         json << "\"base_shape\":" << quoteJson(game_model_base_shape) << "";
         json << "},\"phases\":[";
-        for (size_t i = 0; i < phase_jsons.size(); ++i) {
+        for (size_t i = 0; i < phases.size(); ++i) {
             if (i > 0) json << ",";
-            json << phase_jsons[i];
+            json << "{";
+            json << "\"id\":" << phases[i].id << ",";
+            json << "\"slug\":\"" << escapeJson(phases[i].slug) << "\",";
+            json << "\"label\":\"" << escapeJson(phases[i].label) << "\",";
+            json << "\"description\":\"" << escapeJson(phases[i].description) << "\",";
+            json << "\"sort_order\":" << phases[i].sort_order << ",";
+            json << "\"principles\":[";
+            for (size_t j = 0; j < phases[i].principles.size(); ++j) {
+                if (j > 0) json << ",";
+                json << phases[i].principles[j];
+            }
+            json << "],\"player_actions\":[";
+            for (size_t j = 0; j < phases[i].player_actions.size(); ++j) {
+                if (j > 0) json << ",";
+                json << phases[i].player_actions[j];
+            }
+            json << "]}";
         }
         json << "]}";
 

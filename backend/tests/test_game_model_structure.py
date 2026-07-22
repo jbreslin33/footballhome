@@ -36,7 +36,23 @@ with urllib.request.urlopen(req) as response:
 with urllib.request.urlopen(f'{BASE_URL}/api/clubs/{CLUB_ID}/game-model/structure') as response:
     body = response.read().decode('utf-8')
 
+payload = json.loads(body)
+structure = payload.get('data', payload)
+phases = structure.get('phases', [])
+if not phases:
+    raise SystemExit(f'Expected phases in structure payload, but none were returned.\n{body}')
+
+first_phase = phases[0]
+if 'player_actions' not in first_phase or not isinstance(first_phase['player_actions'], list):
+    raise SystemExit(f'Expected player_actions array for phase {first_phase.get("slug")}, but it was missing.\n{body}')
+for action in first_phase.get('player_actions', []):
+    if 'principle_id' not in action:
+        raise SystemExit(f'Expected principle_id key on player action {action.get("slug")}, but it was missing.\n{body}')
+for principle in first_phase.get('principles', []):
+    if 'definitions' not in principle or not isinstance(principle['definitions'], list):
+        raise SystemExit(f'Expected definitions array on principle {principle.get("slug")}, but it was missing.\n{body}')
+
 if slug not in body:
     raise SystemExit(f'Expected slug {slug} to appear in structure payload, but it did not.\n{body}')
 
-print(f'PASS: {slug} appeared in the structure payload')
+print(f'PASS: {slug} appeared in the structure payload with principle definitions and player actions')
