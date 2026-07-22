@@ -588,7 +588,9 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
 
     try {
         // 1) Event metadata for the window — mens fh_events, non-deleted
-        //    gcal row, starts_at inside [today 00:00 ET, today+days 00:00 ET).
+        //    gcal row, starts_at inside the current training week and still
+        //    in the future.  This keeps yesterday's events off the reminder
+        //    board while still surfacing today's and later events.
         auto events = db->query(
             "SELECT fe.id AS fh_event_id, "
             "       fe.kind, "
@@ -603,6 +605,7 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
             " WHERE fe.category = 'mens' "
             "   AND fe.kind IN ('practice', 'pickup', 'match') "
             "   AND ge.deleted_at IS NULL "
+            "   AND ge.starts_at >= (NOW() AT TIME ZONE 'America/New_York') "
             "   AND ge.starts_at >= (((NOW() AT TIME ZONE 'America/New_York')::date "
             "                         - CASE WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int = 0 "
             "                                 THEN 6 ELSE ((EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/New_York'))::int + 6) % 7) END "

@@ -94,9 +94,11 @@ class MensEventsRemindersScreen extends Screen {
       this.find('#mer-loading').style.display = 'none';
 
       const events = (this.data && this.data.events) || [];
-      if (events.length === 0) {
+      const upcomingEvents = events.filter((ev) => this._isUpcomingEvent(ev));
+      if (upcomingEvents.length === 0) {
         this.find('#mer-empty').style.display = 'block';
         this.find('#mer-range').textContent = '';
+        this.find('#mer-board-scroll').style.display = 'none';
         return;
       }
 
@@ -105,8 +107,9 @@ class MensEventsRemindersScreen extends Screen {
           `${this._fmtDate(this.data.week_start)} – ${this._fmtDate(this.data.week_end)}`;
       }
 
+      this.find('#mer-empty').style.display = 'none';
       this.find('#mer-board-scroll').style.display = 'block';
-      this.renderBoard();
+      this.renderBoard(upcomingEvents);
     } catch (err) {
       console.error('mens week-availability load failed:', err);
       this.find('#mer-loading').innerHTML =
@@ -114,9 +117,38 @@ class MensEventsRemindersScreen extends Screen {
     }
   }
 
-  renderBoard() {
+  _isUpcomingEvent(ev) {
+    const fallbackDate = ev && (ev.match_date || ev.date_str || ev.starts_at || '');
+    if (!fallbackDate) return true;
+
+    const datePart = String(ev.match_date || '').trim();
+    const timePart = String(ev.match_time || '').trim();
+    if (!datePart) return true;
+
+    const normalizedDate = datePart.split('T')[0];
+    const hasTime = Boolean(timePart);
+    const now = new Date();
+    const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const eventDate = new Date(`${normalizedDate}T00:00:00`);
+    if (Number.isNaN(eventDate.getTime())) return true;
+
+    if (eventDate < nowLocal) return false;
+    if (eventDate > nowLocal) return true;
+
+    if (!hasTime) return true;
+
+    const [h, m] = timePart.split(':').map((part) => parseInt(part, 10));
+    if (Number.isNaN(h) || Number.isNaN(m)) return true;
+
+    const eventTime = new Date();
+    eventTime.setHours(h, m, 0, 0);
+    return eventTime >= now;
+  }
+
+  renderBoard(events = this.data.events) {
     const board = this.find('#mer-board');
-    board.innerHTML = this.data.events.map((ev) => this.renderColumn(ev)).join('');
+    board.innerHTML = (events || []).map((ev) => this.renderColumn(ev)).join('');
   }
 
   renderColumn(ev) {
@@ -306,13 +338,11 @@ class MensEventsRemindersScreen extends Screen {
       ? (eventWhen ? `today's practice` : 'practice')
       : `${eventTitle}${eventWhen ? ' on ' + eventWhen : ''}`;
     const bodyLines = [
-      `Hi ${p.first_name || 'there'} — this is a gentle reminder that setting availability for ${eventLabel} is a team rule.`,
+      `Hi ${p.first_name || 'there'} — Heads up you have not set availability.`,
       '',
-      `If you are not sure, set Not Going. Please set your availability on My whether you are going or not, and change it if going. Team Rule: https://footballhome.org/#player-team-rules`,
+      `Do so here: https://footballhome.org/#my for practice today & the rest of week and game.`,
       '',
-      `${rsvpUrl}`,
-      '',
-      'Thanks — Lighthouse 1893',
+      `Setting availability accurately for the week is a club rule: https://footballhome.org/#player-team-rules`,
     ];
     const plainBody = bodyLines.join('\n');
     const plainSmsBody = bodyLines.join('\n');

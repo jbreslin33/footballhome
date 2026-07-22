@@ -160,4 +160,25 @@ FH_TEST(resets_at_twenty_seconds)
         fh::sim::math::Vec3{}, Fixed64::fromInt(20))));
 }
 
+FH_TEST(resets_when_defender_has_ball_for_three_seconds)
+{
+    OneVsOneAttackDefendScenario s;
+    WorldView defender_owned;
+    defender_owned.tick = 1;
+    defender_owned.time_seconds = Fixed64::fromInt(2);
+    defender_owned.ball_owner = SlotId{2};
+    defender_owned.ball = EntityId{99};
+
+    EntityState ball;
+    ball.id = EntityId{99};
+    ball.position = fh::sim::math::Vec3{};
+    ball.motion = MotionState::Idle;
+    defender_owned.entities.push_back(ball);
+
+    FH_EXPECT(!s.checkReset(defender_owned));
+
+    defender_owned.time_seconds = Fixed64::fromInt(3);
+    FH_EXPECT(s.checkReset(defender_owned));
+}
+
 FH_TEST_MAIN()

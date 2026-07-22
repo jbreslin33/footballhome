@@ -92,7 +92,21 @@ bool OneVsOneAttackDefendScenario::checkSuccess(
 bool OneVsOneAttackDefendScenario::checkReset(
     const awareness::WorldView& w) const
 {
-    return w.time_seconds >= math::Fixed64::fromInt(20);
+    if (w.time_seconds >= math::Fixed64::fromInt(20)) {
+        return true;
+    }
+
+    if (!w.ball_owner.has_value()) {
+        return false;
+    }
+
+    const auto defender_slot = SlotId{2};
+    if (*w.ball_owner != defender_slot) {
+        return false;
+    }
+
+    const auto defender_possession_seconds = math::Fixed64::fromFraction(3, 1);
+    return w.time_seconds >= defender_possession_seconds;
 }
 
 std::vector<std::string> OneVsOneAttackDefendScenario::hints() const

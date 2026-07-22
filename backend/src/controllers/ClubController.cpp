@@ -146,11 +146,62 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
         if (club_id_str.empty()) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
         int club_id = std::stoi(club_id_str);
 
+        if (entity == "practice_events") {
+            std::string select =
+                "SELECT fe.id, ge.summary, ge.starts_at, ge.ends_at "
+                "FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+                "WHERE fe.kind = 'practice' AND ge.deleted_at IS NULL "
+                "ORDER BY ge.starts_at DESC LIMIT 200";
+            pqxx::result result = db_->query(select);
+            std::ostringstream json;
+            json << "[";
+            bool first = true;
+            for (const auto& row : result) {
+                if (!first) json << ",";
+                first = false;
+                json << "{";
+                json << "\"id\":" << row["id"].as<long long>();
+                json << ",\"summary\":" << (row["summary"].is_null() ? "null" : "\"" + escapeJson(row["summary"].c_str()) + "\"");
+                json << ",\"starts_at\":\"" << escapeJson(row["starts_at"].c_str()) << "\"";
+                json << ",\"ends_at\":\"" << escapeJson(row["ends_at"].c_str()) << "\"";
+                json << "}";
+            }
+            json << "]";
+            return Response(HttpStatus::OK, createJSONResponse(true, "OK", json.str()));
+        }
+
+        if (entity == "action_items_flat") {
+            std::string select =
+                "SELECT it.id, it.description, cat.title AS category_title, ac.title AS catalog_title "
+                "FROM club_game_model_action_items it "
+                "JOIN club_game_model_action_categories cat ON cat.id = it.category_id "
+                "JOIN club_game_model_action_catalogs ac ON ac.id = cat.catalog_id "
+                "WHERE ac.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) AND it.is_active = true "
+                "ORDER BY ac.sort_order, cat.sort_order, it.sort_order, it.id";
+            std::vector<std::string> params = {std::to_string(club_id)};
+            pqxx::result result = db_->query(select, params);
+            std::ostringstream json;
+            json << "[";
+            bool first = true;
+            for (const auto& row : result) {
+                if (!first) json << ",";
+                first = false;
+                json << "{";
+                json << "\"id\":" << row["id"].as<long long>();
+                json << ",\"description\":\"" << escapeJson(row["description"].c_str()) << "\"";
+                json << ",\"category_title\":\"" << escapeJson(row["category_title"].c_str()) << "\"";
+                json << ",\"catalog_title\":\"" << escapeJson(row["catalog_title"].c_str()) << "\"";
+                json << "}";
+            }
+            json << "]";
+            return Response(HttpStatus::OK, createJSONResponse(true, "OK", json.str()));
+        }
+
         std::string table;
         std::string select;
         if (entity == "days") {
             table = "club_game_model_days";
-            select = "SELECT id, club_id, slug, label, description, sort_order, is_active FROM club_game_model_days WHERE club_id = $1::int ORDER BY sort_order, id";
+            select = "SELECT id, slug, label, day_of_week, description, sort_order, is_active FROM club_game_model_days WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
         } else if (entity == "phases") {
             table = "club_game_model_phases";
             select = "SELECT p.id, p.slug, p.label, p.description, p.sort_order, p.is_active FROM club_game_model_phases p JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = $1::int ORDER BY p.sort_order, p.id";
@@ -160,18 +211,53 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
         } else if (entity == "sub_principles") {
             table = "club_game_model_sub_principles";
             select = "SELECT sp.id, sp.principle_id, sp.slug, sp.title, sp.definition, sp.sort_order, sp.is_active FROM club_game_model_sub_principles sp JOIN club_game_model_principles pr ON pr.id = sp.principle_id JOIN club_game_model_phases p ON p.id = pr.phase_id JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = $1::int ORDER BY sp.sort_order, sp.id";
-        } else if (entity == "practices") {
-            table = "club_game_model_practices";
-            select = "SELECT id, day_id, title, summary, start_time, end_time, sort_order, is_active FROM club_game_model_practices WHERE day_id IN (SELECT id FROM club_game_model_days WHERE club_id = $1::int) ORDER BY sort_order, id";
-        } else if (entity == "sessions") {
-            table = "club_game_model_sessions";
-            select = "SELECT id, practice_id, title, summary, start_time, end_time, sort_order, is_active FROM club_game_model_sessions WHERE practice_id IN (SELECT id FROM club_game_model_practices WHERE day_id IN (SELECT id FROM club_game_model_days WHERE club_id = $1::int)) ORDER BY sort_order, id";
         } else if (entity == "exercises") {
             table = "club_game_model_exercises";
-            select = "SELECT id, slug, title, summary, setup, coaching_points, simulator_slug, sort_order, is_active FROM club_game_model_exercises WHERE club_id = $1::int OR club_id IS NULL ORDER BY sort_order, id";
-        } else if (entity == "patterns") {
-            table = "club_game_model_number_patterns";
-            select = "SELECT id, slug, name, description, min_players, max_players, sort_order, is_active FROM club_game_model_number_patterns WHERE club_id = $1::int ORDER BY sort_order, id";
+            select = "SELECT id, slug, title, summary, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
+        } else if (entity == "practices") {
+            table = "club_game_model_practices";
+            select = "SELECT pr.id, pr.fh_event_id, pr.day_id, pr.notes, ge.summary AS event_summary, ge.starts_at AS event_starts_at, ge.ends_at AS event_ends_at "
+                     "FROM club_game_model_practices pr "
+                     "JOIN fh_events fe ON fe.id = pr.fh_event_id "
+                     "JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+                     "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY ge.starts_at DESC, pr.id";
+        } else if (entity == "sessions") {
+            table = "club_game_model_sessions";
+            select = "SELECT s.id, s.practice_id, s.title, s.notes, s.start_time, s.end_time, s.sort_order "
+                     "FROM club_game_model_sessions s "
+                     "JOIN club_game_model_practices pr ON pr.id = s.practice_id "
+                     "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY s.practice_id, s.sort_order, s.id";
+        } else if (entity == "session_exercises") {
+            table = "club_game_model_session_exercises";
+            select = "SELECT se.id, se.session_id, se.exercise_id, se.sequence_order, se.player_count, se.notes "
+                     "FROM club_game_model_session_exercises se "
+                     "JOIN club_game_model_sessions s ON s.id = se.session_id "
+                     "JOIN club_game_model_practices pr ON pr.id = s.practice_id "
+                     "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY se.session_id, se.sequence_order, se.id";
+        } else if (entity == "exercise_principles") {
+            table = "club_game_model_exercise_principles";
+            select = "SELECT ep.id, ep.exercise_id, ep.principle_id "
+                     "FROM club_game_model_exercise_principles ep "
+                     "JOIN club_game_model_exercises ex ON ex.id = ep.exercise_id "
+                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY ep.exercise_id, ep.id";
+        } else if (entity == "exercise_sub_principles") {
+            table = "club_game_model_exercise_sub_principles";
+            select = "SELECT esp.id, esp.exercise_id, esp.sub_principle_id "
+                     "FROM club_game_model_exercise_sub_principles esp "
+                     "JOIN club_game_model_exercises ex ON ex.id = esp.exercise_id "
+                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY esp.exercise_id, esp.id";
+        } else if (entity == "exercise_action_items") {
+            table = "club_game_model_exercise_action_items";
+            select = "SELECT eai.id, eai.exercise_id, eai.action_item_id "
+                     "FROM club_game_model_exercise_action_items eai "
+                     "JOIN club_game_model_exercises ex ON ex.id = eai.exercise_id "
+                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY eai.exercise_id, eai.id";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }
@@ -188,9 +274,9 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             json << "{";
             json << "\"id\":" << row["id"].as<long long>();
             if (entity == "days") {
-                json << ",\"club_id\":" << row["club_id"].as<int>();
                 json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
                 json << ",\"label\":" << "\"" << escapeJson(row["label"].c_str()) << "\"";
+                json << ",\"day_of_week\":" << row["day_of_week"].as<int>();
                 json << ",\"description\":" << (row["description"].is_null() ? "null" : "\"" + escapeJson(row["description"].c_str()) + "\"") ;
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
                 json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
@@ -214,39 +300,47 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
                 json << ",\"definition\":" << (row["definition"].is_null() ? "null" : "\"" + escapeJson(row["definition"].c_str()) + "\"");
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
                 json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
-            } else if (entity == "practices") {
-                json << ",\"day_id\":" << row["day_id"].as<long long>();
-                json << ",\"title\":" << "\"" << escapeJson(row["title"].c_str()) << "\"";
-                json << ",\"summary\":" << (row["summary"].is_null() ? "null" : "\"" + escapeJson(row["summary"].c_str()) + "\"");
-                json << ",\"start_time\":" << (row["start_time"].is_null() ? "null" : "\"" + escapeJson(row["start_time"].c_str()) + "\"");
-                json << ",\"end_time\":" << (row["end_time"].is_null() ? "null" : "\"" + escapeJson(row["end_time"].c_str()) + "\"");
-                json << ",\"sort_order\":" << row["sort_order"].as<int>();
-                json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
-            } else if (entity == "sessions") {
-                json << ",\"practice_id\":" << row["practice_id"].as<long long>();
-                json << ",\"title\":" << "\"" << escapeJson(row["title"].c_str()) << "\"";
-                json << ",\"summary\":" << (row["summary"].is_null() ? "null" : "\"" + escapeJson(row["summary"].c_str()) + "\"");
-                json << ",\"start_time\":" << (row["start_time"].is_null() ? "null" : "\"" + escapeJson(row["start_time"].c_str()) + "\"");
-                json << ",\"end_time\":" << (row["end_time"].is_null() ? "null" : "\"" + escapeJson(row["end_time"].c_str()) + "\"");
-                json << ",\"sort_order\":" << row["sort_order"].as<int>();
-                json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
             } else if (entity == "exercises") {
                 json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
                 json << ",\"title\":" << "\"" << escapeJson(row["title"].c_str()) << "\"";
                 json << ",\"summary\":" << (row["summary"].is_null() ? "null" : "\"" + escapeJson(row["summary"].c_str()) + "\"");
                 json << ",\"setup\":" << (row["setup"].is_null() ? "null" : "\"" + escapeJson(row["setup"].c_str()) + "\"");
                 json << ",\"coaching_points\":" << (row["coaching_points"].is_null() ? "null" : "\"" + escapeJson(row["coaching_points"].c_str()) + "\"");
+                json << ",\"min_players\":" << (row["min_players"].is_null() ? "null" : std::to_string(row["min_players"].as<int>()));
+                json << ",\"max_players\":" << (row["max_players"].is_null() ? "null" : std::to_string(row["max_players"].as<int>()));
+                json << ",\"default_duration_minutes\":" << (row["default_duration_minutes"].is_null() ? "null" : std::to_string(row["default_duration_minutes"].as<int>()));
                 json << ",\"simulator_slug\":" << (row["simulator_slug"].is_null() ? "null" : "\"" + escapeJson(row["simulator_slug"].c_str()) + "\"");
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
                 json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
-            } else if (entity == "patterns") {
-                json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
-                json << ",\"name\":" << "\"" << escapeJson(row["name"].c_str()) << "\"";
-                json << ",\"description\":" << (row["description"].is_null() ? "null" : "\"" + escapeJson(row["description"].c_str()) + "\"");
-                json << ",\"min_players\":" << row["min_players"].as<int>();
-                json << ",\"max_players\":" << row["max_players"].as<int>();
+            } else if (entity == "practices") {
+                json << ",\"fh_event_id\":" << row["fh_event_id"].as<long long>();
+                json << ",\"day_id\":" << (row["day_id"].is_null() ? "null" : std::to_string(row["day_id"].as<long long>()));
+                json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
+                json << ",\"event_summary\":" << (row["event_summary"].is_null() ? "null" : "\"" + escapeJson(row["event_summary"].c_str()) + "\"");
+                json << ",\"event_starts_at\":\"" << escapeJson(row["event_starts_at"].c_str()) << "\"";
+                json << ",\"event_ends_at\":\"" << escapeJson(row["event_ends_at"].c_str()) << "\"";
+            } else if (entity == "sessions") {
+                json << ",\"practice_id\":" << row["practice_id"].as<long long>();
+                json << ",\"title\":" << (row["title"].is_null() ? "null" : "\"" + escapeJson(row["title"].c_str()) + "\"");
+                json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
+                json << ",\"start_time\":" << (row["start_time"].is_null() ? "null" : "\"" + escapeJson(row["start_time"].c_str()) + "\"");
+                json << ",\"end_time\":" << (row["end_time"].is_null() ? "null" : "\"" + escapeJson(row["end_time"].c_str()) + "\"");
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
-                json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
+            } else if (entity == "session_exercises") {
+                json << ",\"session_id\":" << row["session_id"].as<long long>();
+                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
+                json << ",\"sequence_order\":" << row["sequence_order"].as<int>();
+                json << ",\"player_count\":" << (row["player_count"].is_null() ? "null" : std::to_string(row["player_count"].as<int>()));
+                json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
+            } else if (entity == "exercise_principles") {
+                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
+                json << ",\"principle_id\":" << row["principle_id"].as<long long>();
+            } else if (entity == "exercise_sub_principles") {
+                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
+                json << ",\"sub_principle_id\":" << row["sub_principle_id"].as<long long>();
+            } else if (entity == "exercise_action_items") {
+                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
+                json << ",\"action_item_id\":" << row["action_item_id"].as<long long>();
             }
             json << "}";
         }
@@ -288,14 +382,24 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
         std::string end_time = "";
         std::string name = "";
         std::string definition = "";
+        std::string notes = "";
         int id = 0;
         int day_id = 0;
         int practice_id = 0;
         int phase_id = 0;
         int principle_id = 0;
+        int sub_principle_id = 0;
+        int action_item_id = 0;
+        int session_id = 0;
+        int exercise_id = 0;
         int sort_order = 0;
         int min_players = 0;
         int max_players = 0;
+        int default_duration_minutes = 0;
+        int day_of_week = 0;
+        int sequence_order = 0;
+        int player_count = 0;
+        long long fh_event_id = 0;
 
         auto parse_value = [&](const std::string& key) -> std::string {
             size_t pos = body.find("\"" + key + "\"");
@@ -323,6 +427,10 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
             try { return std::stoi(raw); } catch (...) { return 0; }
         };
 
+        auto has_key = [&](const std::string& key) -> bool {
+            return body.find("\"" + key + "\"") != std::string::npos;
+        };
+
         id = parse_int("id");
         slug = parse_value("slug");
         title = parse_value("title");
@@ -335,21 +443,37 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
         start_time = parse_value("start_time");
         end_time = parse_value("end_time");
         name = parse_value("name");
+        notes = parse_value("notes");
         day_id = parse_int("day_id");
         practice_id = parse_int("practice_id");
         phase_id = parse_int("phase_id");
         principle_id = parse_int("principle_id");
+        sub_principle_id = parse_int("sub_principle_id");
+        action_item_id = parse_int("action_item_id");
+        session_id = parse_int("session_id");
+        exercise_id = parse_int("exercise_id");
         definition = parse_value("definition");
         sort_order = parse_int("sort_order");
         min_players = parse_int("min_players");
         max_players = parse_int("max_players");
+        default_duration_minutes = parse_int("default_duration_minutes");
+        day_of_week = parse_int("day_of_week");
+        sequence_order = parse_int("sequence_order");
+        player_count = parse_int("player_count");
+        { std::string raw = parse_value("fh_event_id"); if (!raw.empty()) { try { fh_event_id = std::stoll(raw); } catch (...) {} } }
+
+        bool has_day_id = has_key("day_id");
+        bool has_min_players = has_key("min_players");
+        bool has_max_players = has_key("max_players");
+        bool has_default_duration_minutes = has_key("default_duration_minutes");
+        bool has_player_count = has_key("player_count");
 
         std::ostringstream query;
         if (entity == "days") {
             if (id > 0) {
-                query << "UPDATE club_game_model_days SET slug = '" << escapeJson(slug) << "', label = '" << escapeJson(label) << "', description = '" << escapeJson(description) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_id = " << club_id;
+                query << "UPDATE club_game_model_days SET slug = '" << escapeJson(slug) << "', label = '" << escapeJson(label) << "', day_of_week = " << day_of_week << ", description = '" << escapeJson(description) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
             } else {
-                query << "INSERT INTO club_game_model_days (club_id, slug, label, description, sort_order, is_active, created_at, updated_at) VALUES (" << club_id << ", '" << escapeJson(slug) << "', '" << escapeJson(label) << "', '" << escapeJson(description) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_id, slug) DO UPDATE SET label = EXCLUDED.label, description = EXCLUDED.description, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_days (club_game_model_id, slug, label, day_of_week, description, sort_order, is_active, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), '" << escapeJson(slug) << "', '" << escapeJson(label) << "', " << day_of_week << ", '" << escapeJson(description) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_game_model_id, slug) DO UPDATE SET label = EXCLUDED.label, day_of_week = EXCLUDED.day_of_week, description = EXCLUDED.description, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
             }
         } else if (entity == "phases") {
             if (id > 0) {
@@ -370,35 +494,66 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
                 query << "INSERT INTO club_game_model_sub_principles (principle_id, slug, title, definition, sort_order, is_active, created_at, updated_at) VALUES (" << principle_id << ", '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(definition) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (principle_id, slug) DO UPDATE SET title = EXCLUDED.title, definition = EXCLUDED.definition, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
             }
         } else if (entity == "practices") {
+            std::string day_id_sql = (has_day_id && day_id > 0) ? std::to_string(day_id) : "NULL";
+            if (fh_event_id <= 0) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "fh_event_id required"));
+            }
             if (id > 0) {
-                query << "UPDATE club_game_model_practices SET day_id = " << day_id << ", title = '" << escapeJson(title) << "', summary = '" << escapeJson(summary) << "', start_time = '" << escapeJson(start_time) << "', end_time = '" << escapeJson(end_time) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND day_id IN (SELECT id FROM club_game_model_days WHERE club_id = " << club_id << ")";
+                query << "UPDATE club_game_model_practices SET fh_event_id = " << fh_event_id << ", day_id = " << day_id_sql << ", notes = '" << escapeJson(notes) << "', updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
             } else {
-                query << "INSERT INTO club_game_model_practices (day_id, title, summary, start_time, end_time, sort_order, is_active, created_at, updated_at) VALUES (" << day_id << ", '" << escapeJson(title) << "', '" << escapeJson(summary) << "', '" << escapeJson(start_time) << "', '" << escapeJson(end_time) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (day_id, title) DO UPDATE SET summary = EXCLUDED.summary, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_practices (club_game_model_id, fh_event_id, day_id, notes, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), " << fh_event_id << ", " << day_id_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) ON CONFLICT (fh_event_id) DO UPDATE SET day_id = EXCLUDED.day_id, notes = EXCLUDED.notes, updated_at = NOW() RETURNING id";
             }
         } else if (entity == "sessions") {
+            if (practice_id <= 0) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "practice_id required"));
+            }
+            std::string title_sql = title.empty() ? "NULL" : "'" + escapeJson(title) + "'";
             if (id > 0) {
-                query << "UPDATE club_game_model_sessions SET practice_id = " << practice_id << ", title = '" << escapeJson(title) << "', summary = '" << escapeJson(summary) << "', start_time = '" << escapeJson(start_time) << "', end_time = '" << escapeJson(end_time) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND practice_id IN (SELECT id FROM club_game_model_practices WHERE day_id IN (SELECT id FROM club_game_model_days WHERE club_id = " << club_id << "))";
+                query << "UPDATE club_game_model_sessions SET practice_id = " << practice_id << ", title = " << title_sql << ", notes = '" << escapeJson(notes) << "', start_time = '" << escapeJson(start_time) << "', end_time = '" << escapeJson(end_time) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND practice_id IN (SELECT id FROM club_game_model_practices WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << "))";
             } else {
-                query << "INSERT INTO club_game_model_sessions (practice_id, title, summary, start_time, end_time, sort_order, is_active, created_at, updated_at) VALUES (" << practice_id << ", '" << escapeJson(title) << "', '" << escapeJson(summary) << "', '" << escapeJson(start_time) << "', '" << escapeJson(end_time) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (practice_id, title) DO UPDATE SET summary = EXCLUDED.summary, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_sessions (practice_id, title, notes, start_time, end_time, sort_order, created_at, updated_at) VALUES (" << practice_id << ", " << title_sql << ", '" << escapeJson(notes) << "', '" << escapeJson(start_time) << "', '" << escapeJson(end_time) << "', " << sort_order << ", NOW(), NOW()) RETURNING id";
             }
         } else if (entity == "exercises") {
+            std::string min_players_sql = has_min_players ? std::to_string(min_players) : "NULL";
+            std::string max_players_sql = has_max_players ? std::to_string(max_players) : "NULL";
+            std::string default_duration_sql = has_default_duration_minutes ? std::to_string(default_duration_minutes) : "NULL";
             if (id > 0) {
-                query << "UPDATE club_game_model_exercises SET slug = '" << escapeJson(slug) << "', title = '" << escapeJson(title) << "', summary = '" << escapeJson(summary) << "', setup = '" << escapeJson(setup) << "', coaching_points = '" << escapeJson(coaching_points) << "', simulator_slug = '" << escapeJson(simulator_slug) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND (club_id = " << club_id << " OR club_id IS NULL)";
+                query << "UPDATE club_game_model_exercises SET slug = '" << escapeJson(slug) << "', title = '" << escapeJson(title) << "', summary = '" << escapeJson(summary) << "', setup = '" << escapeJson(setup) << "', coaching_points = '" << escapeJson(coaching_points) << "', min_players = " << min_players_sql << ", max_players = " << max_players_sql << ", default_duration_minutes = " << default_duration_sql << ", simulator_slug = '" << escapeJson(simulator_slug) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
             } else {
-                query << "INSERT INTO club_game_model_exercises (club_id, slug, title, summary, setup, coaching_points, simulator_slug, sort_order, is_active, created_at, updated_at) VALUES (" << club_id << ", '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(summary) << "', '" << escapeJson(setup) << "', '" << escapeJson(coaching_points) << "', '" << escapeJson(simulator_slug) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_id, slug) DO UPDATE SET title = EXCLUDED.title, summary = EXCLUDED.summary, setup = EXCLUDED.setup, coaching_points = EXCLUDED.coaching_points, simulator_slug = EXCLUDED.simulator_slug, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_exercises (club_game_model_id, slug, title, summary, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(summary) << "', '" << escapeJson(setup) << "', '" << escapeJson(coaching_points) << "', " << min_players_sql << ", " << max_players_sql << ", " << default_duration_sql << ", '" << escapeJson(simulator_slug) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_game_model_id, slug) DO UPDATE SET title = EXCLUDED.title, summary = EXCLUDED.summary, setup = EXCLUDED.setup, coaching_points = EXCLUDED.coaching_points, min_players = EXCLUDED.min_players, max_players = EXCLUDED.max_players, default_duration_minutes = EXCLUDED.default_duration_minutes, simulator_slug = EXCLUDED.simulator_slug, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
             }
-        } else if (entity == "patterns") {
+        } else if (entity == "session_exercises") {
+            if (session_id <= 0 || exercise_id <= 0) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "session_id and exercise_id required"));
+            }
+            std::string player_count_sql = has_player_count ? std::to_string(player_count) : "NULL";
             if (id > 0) {
-                query << "UPDATE club_game_model_number_patterns SET slug = '" << escapeJson(slug) << "', name = '" << escapeJson(name) << "', description = '" << escapeJson(description) << "', min_players = " << min_players << ", max_players = " << max_players << ", sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_id = " << club_id;
+                query << "UPDATE club_game_model_session_exercises SET session_id = " << session_id << ", exercise_id = " << exercise_id << ", sequence_order = " << sequence_order << ", player_count = " << player_count_sql << ", notes = '" << escapeJson(notes) << "', updated_at = NOW() WHERE id = " << id << " AND session_id IN (SELECT s.id FROM club_game_model_sessions s JOIN club_game_model_practices pr ON pr.id = s.practice_id WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << "))";
             } else {
-                query << "INSERT INTO club_game_model_number_patterns (club_id, slug, name, description, min_players, max_players, sort_order, is_active, created_at, updated_at) VALUES (" << club_id << ", '" << escapeJson(slug) << "', '" << escapeJson(name) << "', '" << escapeJson(description) << "', " << min_players << ", " << max_players << ", " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_id, slug) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, min_players = EXCLUDED.min_players, max_players = EXCLUDED.max_players, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_session_exercises (session_id, exercise_id, sequence_order, player_count, notes, created_at, updated_at) VALUES (" << session_id << ", " << exercise_id << ", " << sequence_order << ", " << player_count_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) ON CONFLICT (session_id, exercise_id) DO UPDATE SET sequence_order = EXCLUDED.sequence_order, player_count = EXCLUDED.player_count, notes = EXCLUDED.notes, updated_at = NOW() RETURNING id";
             }
+        } else if (entity == "exercise_principles") {
+            if (exercise_id <= 0 || principle_id <= 0) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "exercise_id and principle_id required"));
+            }
+            query << "INSERT INTO club_game_model_exercise_principles (exercise_id, principle_id, created_at) VALUES (" << exercise_id << ", " << principle_id << ", NOW()) ON CONFLICT (exercise_id, principle_id) DO UPDATE SET exercise_id = EXCLUDED.exercise_id RETURNING id";
+        } else if (entity == "exercise_sub_principles") {
+            if (exercise_id <= 0 || sub_principle_id <= 0) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "exercise_id and sub_principle_id required"));
+            }
+            query << "INSERT INTO club_game_model_exercise_sub_principles (exercise_id, sub_principle_id, created_at) VALUES (" << exercise_id << ", " << sub_principle_id << ", NOW()) ON CONFLICT (exercise_id, sub_principle_id) DO UPDATE SET exercise_id = EXCLUDED.exercise_id RETURNING id";
+        } else if (entity == "exercise_action_items") {
+            if (exercise_id <= 0 || action_item_id <= 0) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "exercise_id and action_item_id required"));
+            }
+            query << "INSERT INTO club_game_model_exercise_action_items (exercise_id, action_item_id, created_at) VALUES (" << exercise_id << ", " << action_item_id << ", NOW()) ON CONFLICT (exercise_id, action_item_id) DO UPDATE SET exercise_id = EXCLUDED.exercise_id RETURNING id";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }
 
         pqxx::result result = db_->query(query.str());
-        if (id > 0) {
+        bool always_returns_id = (entity == "exercise_principles" || entity == "exercise_sub_principles" || entity == "exercise_action_items");
+        if (id > 0 && !always_returns_id) {
             return Response(HttpStatus::OK, createJSONResponse(true, "Updated"));
         }
         return Response(HttpStatus::OK, createJSONResponse(true, "Created", "{\"id\":" + std::to_string(result[0]["id"].as<int>()) + "}"));
@@ -422,21 +577,27 @@ Response ClubController::handleDeleteGameModelAdminEntity(const Request& request
 
         std::string query;
         if (entity == "days") {
-            query = "UPDATE club_game_model_days SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_id = " + std::to_string(club_id);
+            query = "UPDATE club_game_model_days SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
         } else if (entity == "phases") {
             query = "UPDATE club_game_model_phases SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
         } else if (entity == "principles") {
             query = "UPDATE club_game_model_principles SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND phase_id IN (SELECT p.id FROM club_game_model_phases p JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = " + std::to_string(club_id) + ")";
         } else if (entity == "sub_principles") {
             query = "UPDATE club_game_model_sub_principles SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND principle_id IN (SELECT pr.id FROM club_game_model_principles pr JOIN club_game_model_phases p ON p.id = pr.phase_id JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = " + std::to_string(club_id) + ")";
-        } else if (entity == "practices") {
-            query = "UPDATE club_game_model_practices SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND day_id IN (SELECT id FROM club_game_model_days WHERE club_id = " + std::to_string(club_id) + ")";
-        } else if (entity == "sessions") {
-            query = "UPDATE club_game_model_sessions SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND practice_id IN (SELECT id FROM club_game_model_practices WHERE day_id IN (SELECT id FROM club_game_model_days WHERE club_id = " + std::to_string(club_id) + "))";
         } else if (entity == "exercises") {
-            query = "UPDATE club_game_model_exercises SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND (club_id = " + std::to_string(club_id) + " OR club_id IS NULL)";
-        } else if (entity == "patterns") {
-            query = "UPDATE club_game_model_number_patterns SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_id = " + std::to_string(club_id);
+            query = "UPDATE club_game_model_exercises SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
+        } else if (entity == "practices") {
+            query = "DELETE FROM club_game_model_practices WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
+        } else if (entity == "sessions") {
+            query = "DELETE FROM club_game_model_sessions WHERE id = " + std::to_string(id) + " AND practice_id IN (SELECT id FROM club_game_model_practices WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
+        } else if (entity == "session_exercises") {
+            query = "DELETE FROM club_game_model_session_exercises WHERE id = " + std::to_string(id) + " AND session_id IN (SELECT s.id FROM club_game_model_sessions s JOIN club_game_model_practices pr ON pr.id = s.practice_id WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
+        } else if (entity == "exercise_principles") {
+            query = "DELETE FROM club_game_model_exercise_principles WHERE id = " + std::to_string(id) + " AND exercise_id IN (SELECT id FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
+        } else if (entity == "exercise_sub_principles") {
+            query = "DELETE FROM club_game_model_exercise_sub_principles WHERE id = " + std::to_string(id) + " AND exercise_id IN (SELECT id FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
+        } else if (entity == "exercise_action_items") {
+            query = "DELETE FROM club_game_model_exercise_action_items WHERE id = " + std::to_string(id) + " AND exercise_id IN (SELECT id FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }

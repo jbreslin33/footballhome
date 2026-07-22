@@ -37,6 +37,36 @@ math::Fixed64 distanceSquared(const math::Vec3& a, const math::Vec3& b)
     return dx * dx + dy * dy;
 }
 
+bool isClosestDefenderToCarrier(const awareness::AwarenessView& view,
+                                SlotId self,
+                                const EntityState& carrier)
+{
+    const EntityState* me = nullptr;
+    for (const auto& e : view.entities) {
+        if (e.slot_id == self) {
+            me = &e;
+            break;
+        }
+    }
+    if (me == nullptr) {
+        return false;
+    }
+
+    const math::Fixed64 my_distance = distanceSquared(me->position, carrier.position);
+    for (const auto& e : view.entities) {
+        if (e.slot_id == self || e.slot_id == carrier.slot_id) {
+            continue;
+        }
+        if (e.slot_id == SlotId{0}) {
+            continue;
+        }
+        if (distanceSquared(e.position, carrier.position) < my_distance) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 std::vector<ConceptId> JockeyBehavior::requiredConcepts() const
@@ -80,7 +110,19 @@ math::Fixed64 JockeyBehavior::utility(
         m0::kPositioningSense, math::Fixed64::fromFraction(1, 2));
     const math::Fixed64 composure = mental.get(
         m0::kComposure, math::Fixed64::fromFraction(3, 5));
-    return (positioning + composure) / 2;
+    math::Fixed64 score = (positioning + composure) / 2;
+
+    constexpr math::Fixed64 kClosestDefenderBonus = math::Fixed64::fromFraction(1, 10);
+    if (isClosestDefenderToCarrier(view, self, *carrier)) {
+        score += kClosestDefenderBonus;
+    }
+
+    constexpr math::Fixed64 kPatternBonus = math::Fixed64::fromFraction(1, 20);
+    if (!view.recognized_patterns.empty()) {
+        score += kPatternBonus;
+    }
+
+    return score;
 }
 
 controller::Intent JockeyBehavior::execute(
@@ -115,6 +157,12 @@ controller::Intent JockeyBehavior::execute(
             carrier_pos->x - carrier_path.x * cushion,
             carrier_pos->y - carrier_path.y * cushion,
             math::Fixed64::zero()};
+        if (!view.recognized_patterns.empty()) {
+            target = math::Vec3{
+                target.x - carrier_path.y * cushion,
+                target.y + carrier_path.x * cushion,
+                math::Fixed64::zero()};
+        }
     } else {
         const math::Vec3 carrier_to_defender{
             my_pos->x - carrier_pos->x,
@@ -130,6 +178,12 @@ controller::Intent JockeyBehavior::execute(
             carrier_pos->x + goal_side.x * cushion,
             carrier_pos->y + goal_side.y * cushion,
             math::Fixed64::zero()};
+        if (!view.recognized_patterns.empty()) {
+            target = math::Vec3{
+                target.x + goal_side.y * cushion,
+                target.y - goal_side.x * cushion,
+                math::Fixed64::zero()};
+        }
     }
 
     const math::Vec3 diff{

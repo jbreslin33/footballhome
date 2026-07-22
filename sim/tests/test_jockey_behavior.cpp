@@ -17,6 +17,7 @@
 using fh::sim::EntityId;
 using fh::sim::EntityState;
 using fh::sim::MotionState;
+using fh::sim::PatternId;
 using fh::sim::SlotId;
 using fh::sim::TickNum;
 using fh::sim::awareness::AwarenessView;
@@ -140,7 +141,7 @@ FH_TEST(utility_uses_positioning_sense_and_composure)
     const Fixed64 expected =
         (Fixed64::fromFraction(4, 5) + Fixed64::fromFraction(3, 5)) / 2;
     FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt),
-                 expected);
+                 expected + Fixed64::fromFraction(1, 10));
 }
 
 FH_TEST(utility_uses_neutral_defaults_when_attrs_absent)
@@ -151,7 +152,46 @@ FH_TEST(utility_uses_neutral_defaults_when_attrs_absent)
     const auto mental = emptyAttrs();
     const auto v = makeView(Vec3{}, Vec3{Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()});
     FH_EXPECT_EQ(b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt),
-                 Fixed64::fromFraction(11, 20));
+                 Fixed64::fromFraction(11, 20) + Fixed64::fromFraction(1, 10));
+}
+
+FH_TEST(utility_boosts_when_self_is_the_closest_defender_to_carrier)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto technical = emptyAttrs();
+    AttributeSet mental;
+    mental.set(fh::sim::m0::kPositioningSense, Fixed64::fromFraction(1, 2));
+    mental.set(fh::sim::m0::kComposure, Fixed64::fromFraction(1, 2));
+
+    auto v = makeView(Vec3{Fixed64::fromInt(1), Fixed64::zero(), Fixed64::zero()},
+                      Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()});
+    EntityState other_defender{};
+    other_defender.id = EntityId{4};
+    other_defender.slot_id = SlotId{4};
+    other_defender.position = Vec3{Fixed64::fromInt(10), Fixed64::zero(), Fixed64::zero()};
+    other_defender.motion = MotionState::Jog;
+    v.entities.push_back(other_defender);
+
+    const Fixed64 utility = b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt);
+    FH_EXPECT(utility > Fixed64::fromFraction(1, 2));
+}
+
+FH_TEST(utility_boosts_when_recognized_pattern_marks_being_beaten)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    const auto technical = emptyAttrs();
+    AttributeSet mental;
+    mental.set(fh::sim::m0::kPositioningSense, Fixed64::fromFraction(1, 2));
+    mental.set(fh::sim::m0::kComposure, Fixed64::fromFraction(1, 2));
+
+    auto v = makeView(Vec3{Fixed64::fromInt(1), Fixed64::zero(), Fixed64::zero()},
+                      Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()});
+    v.recognized_patterns.push_back(PatternId{1});
+
+    const Fixed64 utility = b.utility(v, SlotId{2}, concepts, technical, mental, std::nullopt);
+    FH_EXPECT(utility > Fixed64::fromFraction(1, 2));
 }
 
 FH_TEST(moves_to_goal_side_cushion_without_pressing_or_dribbling)
@@ -168,6 +208,19 @@ FH_TEST(moves_to_goal_side_cushion_without_pressing_or_dribbling)
     FH_EXPECT(!intent.wants_to_press);
     FH_EXPECT(!intent.wants_sprint);
     FH_EXPECT(!intent.wants_walk);
+}
+
+FH_TEST(recognized_pattern_pushes_jockey_toward_goal_side_offset)
+{
+    JockeyBehavior b;
+    const auto concepts = jockeyConcepts();
+    auto v = makeView(Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()},
+                      Vec3{Fixed64::fromInt(4), Fixed64::zero(), Fixed64::zero()});
+    v.recognized_patterns.push_back(PatternId{1});
+
+    const Intent intent = b.execute(v, SlotId{2}, concepts);
+    FH_EXPECT(intent.desired_direction.x > Fixed64::zero());
+    FH_EXPECT(intent.desired_direction.y != Fixed64::zero());
 }
 
 FH_TEST(moves_to_carrier_path_cushion_when_carrier_is_moving)

@@ -15,6 +15,7 @@
 #include "behavior/JockeyBehavior.hpp"
 #include "behavior/MarkOpponentBehavior.hpp"
 #include "behavior/PursueBallCarrierBehavior.hpp"
+#include "behavior/SupportOffBallBehavior.hpp"
 #include "math/Fixed64.hpp"
 
 namespace fh::sim::controller {
@@ -96,6 +97,10 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
             score -= switchPenalty(ticks_since_switch);
         }
 
+        if (role_ == Role::LCB && b->id() == std::string_view{"jockey"}) {
+            score += math::Fixed64::fromFraction(1, 20);
+        }
+
         // Zero-utility behaviors abstain (per IBehavior::utility contract).
         // First survivor becomes champion; subsequent survivors must
         // strictly exceed the current champion's score.
@@ -148,6 +153,7 @@ AiController::defaultBehaviors(Role role)
         case Role::ST9:
         case Role::ST10:
             bag.push_back(std::make_unique<behavior::Feint1v1Behavior>());
+            bag.push_back(std::make_unique<behavior::SupportOffBallBehavior>());
             return bag;
     }
     return bag;

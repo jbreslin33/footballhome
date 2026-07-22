@@ -60,7 +60,10 @@ for migration in "$SCRIPT_DIR"/[0-9]*.sql; do
     fi
 
     echo "   ▶ Applying: $filename"
-    $DB_EXEC psql -U footballhome_user -d footballhome < "$migration"
+    if ! $DB_EXEC psql -U footballhome_user -d footballhome -v ON_ERROR_STOP=1 < "$migration"; then
+        echo "   ✗ FAILED: $filename (not recorded as applied — fix the migration and re-run)"
+        exit 1
+    fi
 
     # Record migration
     $DB_EXEC psql -U footballhome_user -d footballhome -c \

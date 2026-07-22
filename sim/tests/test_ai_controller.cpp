@@ -469,6 +469,35 @@ FH_TEST(switch_penalty_delays_near_equal_challenger_after_min_ticks)
     FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(2.0f));
 }
 
+FH_TEST(role_specific_boost_prefers_lcb_jockey)
+{
+    auto first = makeMock(
+        "pursue_ball_carrier",
+        /*required=*/{ConceptId{1}},
+        /*min_mastery=*/Fixed64::fromFloat(0.1f),
+        /*fixed_utility=*/Fixed64::fromFloat(0.5f),
+        /*execute_intent=*/makeIntent(Fixed64::fromFloat(1.0f)));
+    auto second = makeMock(
+        "jockey",
+        /*required=*/{ConceptId{1}},
+        /*min_mastery=*/Fixed64::fromFloat(0.1f),
+        /*fixed_utility=*/Fixed64::fromFloat(0.5f),
+        /*execute_intent=*/makeIntent(Fixed64::fromFloat(2.0f)));
+
+    ConceptSet concepts;
+    concepts.plug(ConceptId{1}, Fixed64::fromFloat(0.8f));
+
+    std::vector<std::unique_ptr<IBehavior>> bag;
+    bag.emplace_back(std::move(first.owned));
+    bag.emplace_back(std::move(second.owned));
+
+    AiController c(Role::LCB, std::move(concepts), std::move(bag));
+    const auto v = makeSelfOnlyView(SlotId{1});
+    const Intent out = c.decide(v, SlotId{1});
+
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(2.0f));
+}
+
 FH_TEST(default_behaviors_slice_33_4_roles_get_correct_bags)
 {
     // Slice 33.4: defensive roles get 3 behaviors (pursue, jockey, mark),

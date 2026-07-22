@@ -61,13 +61,17 @@ class NavigationStateMachine {
     // Update current state
     this.currentState = state;
     
-    // Push state to browser history
+    // Push state to browser history. When a screen has a sub-view concept
+    // (e.g. game-model-admin's `entity`), fold it into the hash so the
+    // visible URL actually reflects what's on screen instead of always
+    // reading the same bare `#state` for every sub-view.
+    const hash = params.entity ? `#${state}/${params.entity}` : `#${state}`;
     const historyState = {
       screen: state,
       context: { ...this.context },
       params: params
     };
-    window.history.pushState(historyState, '', `#${state}`);
+    window.history.pushState(historyState, '', hash);
     
     // Tell screen manager to show the screen
     this.screenManager.show(state, params);

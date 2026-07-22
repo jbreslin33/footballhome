@@ -305,7 +305,7 @@ class AdminClubScreen extends Screen {
 
     // ── Training / Game Model ───────────────────────────────────────
     const gameModelTiles = [
-      { id: 'game-model', target: 'game-model', params: { entity: 'game-model' }, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
+      { id: 'game-model', target: 'game-model', params: {}, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
       { id: 'game-model-days', target: 'game-model-admin', params: { entity: 'days' }, icon: '🗓️', label: 'Days', description: 'Create and edit the weekly day structure' },
       { id: 'game-model-sessions', target: 'game-model-admin', params: { entity: 'sessions' }, icon: '⚽', label: 'Sessions', description: 'Build the training blocks inside each day' },
       { id: 'game-model-exercises', target: 'game-model-admin', params: { entity: 'exercises' }, icon: '🏋️', label: 'Exercises', description: 'Manage the drills and activities used in sessions' },

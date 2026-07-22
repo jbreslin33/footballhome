@@ -8,8 +8,10 @@ class GameModelAdminScreen extends Screen {
     this.selectedEntity = 'game-model';
     this.currentEditId = null;
     this.currentContext = null;
-    this.parentOptions = { days: [], practices: [], phases: [], principles: [] };
-    this.builderData = { days: [], practices: [], sessions: [] };
+    this.parentOptions = {
+      days: [], practices: [], phases: [], principles: [], sub_principles: [],
+      exercises: [], sessions: [], practice_events: [], action_items: []
+    };
   }
 
   render() {
@@ -37,11 +39,16 @@ class GameModelAdminScreen extends Screen {
   onEnter(params) {
     this.clubId = params?.clubId;
     this.clubName = params?.clubName || 'Club';
-    this.selectedEntity = 'game-model';
+    const validEntities = [
+      'days', 'phases', 'principles', 'sub_principles', 'exercises',
+      'practices', 'sessions', 'session_exercises',
+      'exercise_principles', 'exercise_sub_principles', 'exercise_action_items'
+    ];
+    this.selectedEntity = validEntities.includes(params?.entity) ? params.entity : 'game-model';
+    this.currentContext = null;
     this.find('#game-model-admin-title').textContent = `${this.clubName} · Training`;
     this.find('#game-model-admin-subtitle').textContent = `Build ${this.clubName}'s U17+ game model`;
     this.renderContent();
-
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
@@ -50,49 +57,22 @@ class GameModelAdminScreen extends Screen {
       const inlineAction = e.target.closest('[data-inline-action]');
       if (inlineAction) {
         const action = inlineAction.getAttribute('data-inline-action');
-        const id = parseInt(inlineAction.getAttribute('data-id'), 10);
-        if (action === 'edit-day') {
-          this.selectedEntity = 'days';
-          this.currentContext = null;
-          this.openEditor(id);
-          return;
-        }
-        if (action === 'edit-phases') {
-          this.selectedEntity = 'phases';
-          this.currentContext = null;
-          this.renderContent();
-          return;
-        }
-        if (action === 'edit-principles') {
-          this.selectedEntity = 'principles';
-          this.currentContext = null;
-          this.renderContent();
-          return;
-        }
-        if (action === 'edit-sub-principles') {
-          this.selectedEntity = 'sub_principles';
-          this.currentContext = null;
-          this.renderContent();
-          return;
-        }
-        if (action === 'back-to-overview') {
-          this.selectedEntity = 'game-model';
-          this.currentContext = null;
-          this.renderContent();
-          return;
-        }
-        if (action === 'add-session') {
-          this.quickAddSession(id);
-          return;
-        }
-        if (action === 'edit-session') {
-          this.selectedEntity = 'sessions';
-          this.currentContext = null;
-          this.openEditor(id);
-          return;
-        }
-        if (action === 'add-exercise') {
-          this.quickAddExercise(id);
+        const actionEntityMap = {
+          'edit-phases': 'phases',
+          'edit-principles': 'principles',
+          'edit-sub-principles': 'sub_principles',
+          'edit-days': 'days',
+          'edit-exercises': 'exercises',
+          'edit-practices': 'practices',
+          'edit-sessions': 'sessions',
+          'edit-session-exercises': 'session_exercises',
+          'edit-exercise-principles': 'exercise_principles',
+          'edit-exercise-sub-principles': 'exercise_sub_principles',
+          'edit-exercise-action-items': 'exercise_action_items',
+          'back-to-overview': 'game-model'
+        };
+        if (Object.prototype.hasOwnProperty.call(actionEntityMap, action)) {
+          this.switchEntity(actionEntityMap[action]);
           return;
         }
       }
@@ -117,6 +97,18 @@ class GameModelAdminScreen extends Screen {
         this.renderContent();
       }
     });
+  }
+
+  // Switches the visible entity without pushing a new browser-history
+  // entry (Back should still leave the whole Game Model Admin screen in
+  // one step), but still keeps the visible URL honest about which
+  // sub-view is on screen.
+  switchEntity(entity) {
+    this.selectedEntity = entity;
+    this.currentContext = null;
+    const hash = entity === 'game-model' ? '#game-model-admin' : `#game-model-admin/${entity}`;
+    window.history.replaceState(window.history.state, '', hash);
+    this.renderContent();
   }
 
   renderContent() {
@@ -169,6 +161,20 @@ class GameModelAdminScreen extends Screen {
               </div>
               <div style="margin-top: var(--space-2); padding: var(--space-2); border-left: 3px solid var(--accent); background: rgba(255,255,255,0.04); border-radius: var(--radius-sm);">
                 Attack, defend, transition to attack, and transition to defense each carry their own principles so the language stays consistent across training and matches.
+              </div>
+            </div>
+            <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
+              <h3 style="margin: 0 0 var(--space-2) 0;">Practice plan</h3>
+              <p style="margin:0 0 var(--space-2) 0; opacity:0.8;">Days are reusable weekly buckets. Practices link to real calendar events. Sessions are time blocks inside a practice, and exercises are the drill library sessions draw from.</p>
+              <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
+                <button class="btn btn-secondary" data-inline-action="edit-days">Edit days</button>
+                <button class="btn btn-secondary" data-inline-action="edit-exercises">Edit exercises</button>
+                <button class="btn btn-secondary" data-inline-action="edit-practices">Edit practices</button>
+                <button class="btn btn-secondary" data-inline-action="edit-sessions">Edit sessions</button>
+                <button class="btn btn-secondary" data-inline-action="edit-session-exercises">Edit session exercises</button>
+                <button class="btn btn-secondary" data-inline-action="edit-exercise-principles">Tag exercises: principles</button>
+                <button class="btn btn-secondary" data-inline-action="edit-exercise-sub-principles">Tag exercises: sub-principles</button>
+                <button class="btn btn-secondary" data-inline-action="edit-exercise-action-items">Tag exercises: action items</button>
               </div>
             </div>
             <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary);">
@@ -286,16 +292,7 @@ class GameModelAdminScreen extends Screen {
       return response.json();
     })];
 
-    if (this.selectedEntity === 'days') {
-      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`).then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      }));
-      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/sessions`).then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      }));
-    } else if (this.selectedEntity === 'sessions') {
+    if (this.selectedEntity === 'sessions') {
       requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`).then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -311,12 +308,47 @@ class GameModelAdminScreen extends Screen {
         return response.json();
       }));
     } else if (this.selectedEntity === 'practices') {
-      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`).then((response) => {
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practice_events`).then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }));
-    } else if (this.selectedEntity === 'practices') {
       requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/days`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+    } else if (this.selectedEntity === 'session_exercises') {
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/sessions`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+    } else if (this.selectedEntity === 'exercise_principles') {
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/principles`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+    } else if (this.selectedEntity === 'exercise_sub_principles') {
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/sub_principles`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+    } else if (this.selectedEntity === 'exercise_action_items') {
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/action_items_flat`).then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }));
@@ -329,19 +361,27 @@ class GameModelAdminScreen extends Screen {
         const items = this.getPayloadItems(payload);
         this.entities = items;
 
-        if (this.selectedEntity === 'days') {
-          this.builderData.days = items;
-          this.builderData.practices = this.getPayloadItems(results[1]);
-          this.builderData.sessions = this.getPayloadItems(results[2]);
-          this.parentOptions.days = items;
-        } else if (this.selectedEntity === 'practices' && results[1]) {
-          this.parentOptions.days = this.getPayloadItems(results[1]);
-        } else if (this.selectedEntity === 'sessions' && results[1]) {
+        if (this.selectedEntity === 'sessions' && results[1]) {
           this.parentOptions.practices = this.getPayloadItems(results[1]);
         } else if (this.selectedEntity === 'principles') {
           this.parentOptions.phases = this.getPayloadItems(results[1]);
         } else if (this.selectedEntity === 'sub_principles') {
           this.parentOptions.principles = this.getPayloadItems(results[1]);
+        } else if (this.selectedEntity === 'practices') {
+          this.parentOptions.practice_events = this.getPayloadItems(results[1]);
+          this.parentOptions.days = this.getPayloadItems(results[2]);
+        } else if (this.selectedEntity === 'session_exercises') {
+          this.parentOptions.sessions = this.getPayloadItems(results[1]);
+          this.parentOptions.exercises = this.getPayloadItems(results[2]);
+        } else if (this.selectedEntity === 'exercise_principles') {
+          this.parentOptions.exercises = this.getPayloadItems(results[1]);
+          this.parentOptions.principles = this.getPayloadItems(results[2]);
+        } else if (this.selectedEntity === 'exercise_sub_principles') {
+          this.parentOptions.exercises = this.getPayloadItems(results[1]);
+          this.parentOptions.sub_principles = this.getPayloadItems(results[2]);
+        } else if (this.selectedEntity === 'exercise_action_items') {
+          this.parentOptions.exercises = this.getPayloadItems(results[1]);
+          this.parentOptions.action_items = this.getPayloadItems(results[2]);
         }
 
         container.innerHTML = this.renderList(items);
@@ -359,15 +399,17 @@ class GameModelAdminScreen extends Screen {
   }
 
   getEntityTitle() {
-    if (this.selectedEntity === 'sub_principles') return 'Sub-Principle';
-    return this.selectedEntity.charAt(0).toUpperCase() + this.selectedEntity.slice(1);
+    switch (this.selectedEntity) {
+      case 'sub_principles': return 'Sub-Principle';
+      case 'session_exercises': return 'Session Exercise';
+      case 'exercise_principles': return 'Exercise ↔ Principle';
+      case 'exercise_sub_principles': return 'Exercise ↔ Sub-Principle';
+      case 'exercise_action_items': return 'Exercise ↔ Action Item';
+      default: return this.selectedEntity.charAt(0).toUpperCase() + this.selectedEntity.slice(1);
+    }
   }
 
   renderList(items) {
-    if (this.selectedEntity === 'days') {
-      return this.renderWeekBuilder();
-    }
-
     const title = this.getEntityTitle();
     return `
       <div style="display:grid;gap:var(--space-3);">
@@ -388,83 +430,30 @@ class GameModelAdminScreen extends Screen {
     `;
   }
 
-  renderWeekBuilder() {
-    const days = this.builderData.days || [];
-    return `
-      <div style="display:grid;gap:var(--space-3);">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
-          <div>
-            <h3 style="margin:0;">Weekly builder</h3>
-            <p style="margin:0.2rem 0 0; opacity:0.8; font-size:0.9rem;">Use the week as a reusable template. Add or edit days, then place sessions under each day.</p>
-          </div>
-          <button class="btn btn-primary add-item-btn">Add Day</button>
-        </div>
-        <div style="display:grid;gap:var(--space-2);">
-          ${days.length ? days.map((day) => this.renderWeekBuilderDay(day)).join('') : '<div style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary);">No days yet.</div>'}
-        </div>
-      </div>
-    `;
-  }
-
-  renderWeekBuilderDay(day) {
-    const practices = (this.builderData.practices || []).filter((practice) => practice.day_id === day.id);
-    return `
-      <div style="border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:var(--space-3); background:var(--bg-primary); display:grid; gap:var(--space-2);">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:700; color: var(--text-primary);">${this.escapeHtml(day.label || day.slug || 'Untitled day')}</div>
-            ${day.description ? `<div style="opacity:0.8; font-size:0.9rem; margin-top:0.2rem;">${this.escapeHtml(day.description)}</div>` : ''}
-          </div>
-          <div style="display:flex;gap:var(--space-2);">
-            <button class="btn btn-secondary" data-inline-action="edit-day" data-id="${day.id}">Edit day</button>
-            <button class="btn btn-primary" data-inline-action="add-session" data-id="${day.id}">Add session</button>
-          </div>
-        </div>
-        <div style="display:grid;gap:var(--space-2);">
-          ${practices.length ? practices.map((practice) => this.renderWeekBuilderPractice(practice)).join('') : '<div style="padding: var(--space-2); border: 1px dashed var(--border-color); border-radius: var(--radius-md); opacity:0.7;">No sessions yet for this day.</div>'}
-        </div>
-      </div>
-    `;
-  }
-
-  renderWeekBuilderPractice(practice) {
-    const sessions = (this.builderData.sessions || []).filter((session) => session.practice_id === practice.id);
-    return `
-      <div style="padding: var(--space-2); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); display:grid; gap:var(--space-2);">
-        <div style="font-weight:600; color: var(--text-primary);">${this.escapeHtml(practice.title || 'Untitled practice')}</div>
-        <div style="display:grid;gap:var(--space-2);">
-          ${sessions.length ? sessions.map((session) => `
-            <div style="padding: var(--space-2); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); background: rgba(255,255,255,0.03); display:grid; gap:0.35rem;">
-              <div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); flex-wrap:wrap;">
-                <div style="font-weight:600;">${this.escapeHtml(session.title || 'Untitled session')}</div>
-                <div style="display:flex; gap:var(--space-2);">
-                  <button class="btn btn-secondary" data-inline-action="edit-session" data-id="${session.id}">Edit</button>
-                  <button class="btn btn-primary" data-inline-action="add-exercise" data-id="${session.id}">Add exercise</button>
-                </div>
-              </div>
-              ${session.summary ? `<div style="opacity:0.8; font-size:0.9rem;">${this.escapeHtml(session.summary)}</div>` : ''}
-              ${session.start_time || session.end_time ? `<div style="opacity:0.7; font-size:0.85rem;">${this.escapeHtml([session.start_time, session.end_time].filter(Boolean).join(' - '))}</div>` : ''}
-            </div>
-          `).join('') : '<div style="opacity:0.7;">No sessions in this block yet.</div>'}
-        </div>
-      </div>
-    `;
-  }
-
   getEntityHelperText() {
     switch (this.selectedEntity) {
       case 'days':
-        return 'Create the weekly day containers that make up the reusable week: Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, Monday.';
+        return 'Reusable weekly day buckets (Monday, Tuesday, …) that a practice can be tagged with.';
       case 'phases':
         return 'Edit the major phases of the game model such as attack, defend, transition to attack, and transition to defense.';
       case 'principles':
         return 'Edit the main principles inside each phase.';
       case 'sub_principles':
         return 'Edit the sub-principles that belong to each main principle, including their definition text.';
-      case 'sessions':
-        return 'Add the training blocks inside each day so the week can be reused next week.';
       case 'exercises':
         return 'Build the drill library that sessions can reuse across weeks.';
+      case 'practices':
+        return 'Link a real calendar practice event (Google Calendar owns the date/time) to an optional weekly day bucket, with notes.';
+      case 'sessions':
+        return 'Time blocks inside a practice (e.g. Warmup, Rondo block, Scrimmage), each with its own start/end time.';
+      case 'session_exercises':
+        return 'Place an exercise inside a session. Same sequence_order = concurrent stations; increasing = sequential blocks.';
+      case 'exercise_principles':
+        return 'Tag an exercise with the main principle(s) it reinforces, for coverage reporting.';
+      case 'exercise_sub_principles':
+        return 'Tag an exercise with the sub-principle(s) it reinforces, for coverage reporting.';
+      case 'exercise_action_items':
+        return 'Tag an exercise with the player action item(s) it reinforces, for coverage reporting.';
       default:
         return 'Build the weekly plan once, then reuse and adjust it over time.';
     }
@@ -472,22 +461,50 @@ class GameModelAdminScreen extends Screen {
 
   renderItem(item) {
     const id = item.id;
-    const label = item.title || item.label || item.name || item.slug || 'Untitled';
-    const subtitle = item.summary || item.description || item.definition || item.notes || '';
+    let label = item.title || item.label || item.name || item.slug || 'Untitled';
+    let subtitle = item.summary || item.description || item.definition || item.notes || '';
     const meta = [];
     if (item.slug) meta.push(`slug: ${item.slug}`);
+    if (item.day_of_week != null) meta.push(`day: ${this.getDayOfWeekLabel(item.day_of_week)}`);
+    if (item.min_players != null) meta.push(`min players: ${item.min_players}`);
+    if (item.max_players != null) meta.push(`max players: ${item.max_players}`);
+    if (item.default_duration_minutes != null) meta.push(`duration: ${item.default_duration_minutes}m`);
     if (item.player_count != null) meta.push(`players: ${item.player_count}`);
-    if (item.duration_minutes != null) meta.push(`duration: ${item.duration_minutes}m`);
+    if (item.sequence_order != null) meta.push(`sequence: ${item.sequence_order}`);
     if (item.start_time) meta.push(`start: ${item.start_time}`);
     if (item.end_time) meta.push(`end: ${item.end_time}`);
 
     let parentLabel = '';
-    if (this.selectedEntity === 'practices' && item.day_id != null) {
-      const day = this.parentOptions.days.find((entry) => entry.id === item.day_id);
-      parentLabel = day ? `Day: ${day.label || day.slug || day.title || item.day_id}` : `Day ID: ${item.day_id}`;
+    if (this.selectedEntity === 'practices') {
+      label = item.event_summary || `Practice #${id}`;
+      subtitle = item.event_starts_at ? new Date(item.event_starts_at).toLocaleString() : '';
+      if (item.day_id != null) {
+        const day = this.parentOptions.days.find((entry) => entry.id === item.day_id);
+        parentLabel = day ? `Day: ${day.label || day.slug || item.day_id}` : `Day ID: ${item.day_id}`;
+      }
     } else if (this.selectedEntity === 'sessions' && item.practice_id != null) {
       const practice = this.parentOptions.practices.find((entry) => entry.id === item.practice_id);
-      parentLabel = practice ? `Practice: ${practice.title || practice.label || practice.name || item.practice_id}` : `Practice ID: ${item.practice_id}`;
+      parentLabel = practice ? `Practice: ${practice.event_summary || practice.id}` : `Practice ID: ${item.practice_id}`;
+    } else if (this.selectedEntity === 'session_exercises') {
+      const session = this.parentOptions.sessions.find((entry) => entry.id === item.session_id);
+      const exercise = this.parentOptions.exercises.find((entry) => entry.id === item.exercise_id);
+      label = exercise ? exercise.title : `Exercise ID: ${item.exercise_id}`;
+      parentLabel = session ? `Session: ${session.title || session.id}` : `Session ID: ${item.session_id}`;
+    } else if (this.selectedEntity === 'exercise_principles') {
+      const exercise = this.parentOptions.exercises.find((entry) => entry.id === item.exercise_id);
+      const principle = this.parentOptions.principles.find((entry) => entry.id === item.principle_id);
+      label = `${exercise ? exercise.title : `Exercise ${item.exercise_id}`} → ${principle ? principle.title : `Principle ${item.principle_id}`}`;
+      subtitle = '';
+    } else if (this.selectedEntity === 'exercise_sub_principles') {
+      const exercise = this.parentOptions.exercises.find((entry) => entry.id === item.exercise_id);
+      const subPrinciple = this.parentOptions.sub_principles.find((entry) => entry.id === item.sub_principle_id);
+      label = `${exercise ? exercise.title : `Exercise ${item.exercise_id}`} → ${subPrinciple ? subPrinciple.title : `Sub-Principle ${item.sub_principle_id}`}`;
+      subtitle = '';
+    } else if (this.selectedEntity === 'exercise_action_items') {
+      const exercise = this.parentOptions.exercises.find((entry) => entry.id === item.exercise_id);
+      const actionItem = this.parentOptions.action_items.find((entry) => entry.id === item.action_item_id);
+      label = `${exercise ? exercise.title : `Exercise ${item.exercise_id}`} → ${actionItem ? actionItem.description : `Action Item ${item.action_item_id}`}`;
+      subtitle = '';
     } else if (this.selectedEntity === 'principles') {
       if (item.phase_id != null) {
         const phase = this.parentOptions.phases.find((entry) => entry.id === item.phase_id);
@@ -518,6 +535,12 @@ class GameModelAdminScreen extends Screen {
     `;
   }
 
+  getDayOfWeekLabel(dayOfWeek) {
+    const labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return labels[dayOfWeek] != null ? labels[dayOfWeek] : String(dayOfWeek);
+  }
+
+
   openEditor(id, context = null) {
     const container = this.find('#game-model-admin-content');
     if (!container) return;
@@ -547,6 +570,7 @@ class GameModelAdminScreen extends Screen {
         return [
           { key: 'slug', label: 'Slug', value: base.slug || '', type: 'text' },
           { key: 'label', label: 'Label', value: base.label || '', type: 'text' },
+          { key: 'day_of_week', label: 'Day of Week', value: base.day_of_week != null ? base.day_of_week : '', type: 'select', options: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((name, index) => ({ value: index, label: name })) },
           { key: 'description', label: 'Description', value: base.description || '', type: 'textarea' },
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
@@ -575,17 +599,48 @@ class GameModelAdminScreen extends Screen {
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
       }
-      case 'sessions': {
-        const defaultPracticeId = context?.dayId != null
-          ? (this.parentOptions.practices.find((entry) => entry.day_id === context.dayId) || {}).id || base.practice_id || ''
-          : base.practice_id != null ? base.practice_id : '';
+      case 'practices': {
         return [
-          { key: 'practice_id', label: 'Practice', value: defaultPracticeId, type: 'select', options: this.parentOptions.practices.map((entry) => ({ value: entry.id, label: entry.title || entry.label || entry.name || `Practice ${entry.id}` })) },
+          { key: 'fh_event_id', label: 'Calendar Practice Event', value: base.fh_event_id != null ? base.fh_event_id : '', type: 'select', options: this.parentOptions.practice_events.map((entry) => ({ value: entry.id, label: `${entry.summary || 'Untitled event'} — ${entry.starts_at ? new Date(entry.starts_at).toLocaleString() : ''}` })) },
+          { key: 'day_id', label: 'Weekly Day (optional)', value: base.day_id != null ? base.day_id : '', type: 'select', options: this.parentOptions.days.map((entry) => ({ value: entry.id, label: entry.label || entry.slug || `Day ${entry.id}` })) },
+          { key: 'notes', label: 'Notes', value: base.notes || '', type: 'textarea' }
+        ];
+      }
+      case 'sessions': {
+        return [
+          { key: 'practice_id', label: 'Practice', value: base.practice_id != null ? base.practice_id : '', type: 'select', options: this.parentOptions.practices.map((entry) => ({ value: entry.id, label: entry.event_summary || `Practice ${entry.id}` })) },
           { key: 'title', label: 'Title', value: base.title || '', type: 'text' },
-          { key: 'summary', label: 'Summary', value: base.summary || '', type: 'textarea' },
+          { key: 'notes', label: 'Notes', value: base.notes || '', type: 'textarea' },
           { key: 'start_time', label: 'Start Time', value: base.start_time || '', type: 'text' },
           { key: 'end_time', label: 'End Time', value: base.end_time || '', type: 'text' },
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
+        ];
+      }
+      case 'session_exercises': {
+        return [
+          { key: 'session_id', label: 'Session', value: base.session_id != null ? base.session_id : '', type: 'select', options: this.parentOptions.sessions.map((entry) => ({ value: entry.id, label: entry.title || `Session ${entry.id}` })) },
+          { key: 'exercise_id', label: 'Exercise', value: base.exercise_id != null ? base.exercise_id : '', type: 'select', options: this.parentOptions.exercises.map((entry) => ({ value: entry.id, label: entry.title || `Exercise ${entry.id}` })) },
+          { key: 'sequence_order', label: 'Sequence Order', value: base.sequence_order != null ? base.sequence_order : '', type: 'number' },
+          { key: 'player_count', label: 'Player Count', value: base.player_count != null ? base.player_count : '', type: 'number' },
+          { key: 'notes', label: 'Notes', value: base.notes || '', type: 'textarea' }
+        ];
+      }
+      case 'exercise_principles': {
+        return [
+          { key: 'exercise_id', label: 'Exercise', value: base.exercise_id != null ? base.exercise_id : '', type: 'select', options: this.parentOptions.exercises.map((entry) => ({ value: entry.id, label: entry.title || `Exercise ${entry.id}` })) },
+          { key: 'principle_id', label: 'Principle', value: base.principle_id != null ? base.principle_id : '', type: 'select', options: this.parentOptions.principles.map((entry) => ({ value: entry.id, label: entry.title || entry.slug || `Principle ${entry.id}` })) }
+        ];
+      }
+      case 'exercise_sub_principles': {
+        return [
+          { key: 'exercise_id', label: 'Exercise', value: base.exercise_id != null ? base.exercise_id : '', type: 'select', options: this.parentOptions.exercises.map((entry) => ({ value: entry.id, label: entry.title || `Exercise ${entry.id}` })) },
+          { key: 'sub_principle_id', label: 'Sub-Principle', value: base.sub_principle_id != null ? base.sub_principle_id : '', type: 'select', options: this.parentOptions.sub_principles.map((entry) => ({ value: entry.id, label: entry.title || entry.slug || `Sub-Principle ${entry.id}` })) }
+        ];
+      }
+      case 'exercise_action_items': {
+        return [
+          { key: 'exercise_id', label: 'Exercise', value: base.exercise_id != null ? base.exercise_id : '', type: 'select', options: this.parentOptions.exercises.map((entry) => ({ value: entry.id, label: entry.title || `Exercise ${entry.id}` })) },
+          { key: 'action_item_id', label: 'Action Item', value: base.action_item_id != null ? base.action_item_id : '', type: 'select', options: this.parentOptions.action_items.map((entry) => ({ value: entry.id, label: `${entry.catalog_title || ''} · ${entry.category_title || ''} · ${entry.description || ''}` })) }
         ];
       }
       case 'exercises':
@@ -595,6 +650,9 @@ class GameModelAdminScreen extends Screen {
           { key: 'summary', label: 'Summary', value: base.summary || '', type: 'textarea' },
           { key: 'setup', label: 'Setup', value: base.setup || '', type: 'textarea' },
           { key: 'coaching_points', label: 'Coaching Points', value: base.coaching_points || '', type: 'textarea' },
+          { key: 'min_players', label: 'Min Players', value: base.min_players != null ? base.min_players : '', type: 'number' },
+          { key: 'max_players', label: 'Max Players', value: base.max_players != null ? base.max_players : '', type: 'number' },
+          { key: 'default_duration_minutes', label: 'Default Duration (minutes)', value: base.default_duration_minutes != null ? base.default_duration_minutes : '', type: 'number' },
           { key: 'simulator_slug', label: 'Simulator Slug', value: base.simulator_slug || '', type: 'text' },
           { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
@@ -609,7 +667,7 @@ class GameModelAdminScreen extends Screen {
       return `
         <label style="display:grid;gap:0.25rem;font-weight:600;">
           <span>${this.escapeHtml(field.label)}</span>
-          <textarea id="${inputId}" style="min-height: 90px; padding: 0.7rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary);">${this.escapeHtml(field.value || '')}</textarea>
+          <textarea id="${inputId}" style="min-height: 90px; padding: 0.7rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">${this.escapeHtml(field.value || '')}</textarea>
         </label>
       `;
     }
@@ -621,7 +679,7 @@ class GameModelAdminScreen extends Screen {
       return `
         <label style="display:grid;gap:0.25rem;font-weight:600;">
           <span>${this.escapeHtml(field.label)}</span>
-          <select id="${inputId}" style="padding:0.7rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); background: var(--bg-primary);">
+          <select id="${inputId}" style="padding:0.7rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
             <option value="">Select…</option>
             ${options}
           </select>
@@ -631,36 +689,9 @@ class GameModelAdminScreen extends Screen {
     return `
       <label style="display:grid;gap:0.25rem;font-weight:600;">
         <span>${this.escapeHtml(field.label)}</span>
-        <input id="${inputId}" type="${field.type}" value="${this.escapeHtml(field.value || '')}" style="padding:0.7rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); background: var(--bg-primary);">
+        <input id="${inputId}" type="${field.type}" value="${this.escapeHtml(field.value || '')}" style="padding:0.7rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
       </label>
     `;
-  }
-
-  quickAddSession(dayId) {
-    this.selectedEntity = 'sessions';
-    this.currentEditId = null;
-    this.currentContext = { dayId };
-    this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`)
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((payload) => {
-        if (!this.isMounted) return;
-        this.parentOptions.practices = this.getPayloadItems(payload);
-        this.openEditor(null, this.currentContext);
-      })
-      .catch((error) => {
-        console.error(error);
-        this.renderContent();
-      });
-  }
-
-  quickAddExercise(sessionId) {
-    this.selectedEntity = 'exercises';
-    this.currentEditId = null;
-    this.currentContext = { sessionId };
-    this.openEditor(null, this.currentContext);
   }
 
   saveItem() {
