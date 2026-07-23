@@ -34,6 +34,8 @@ class App {
       practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
       practiceForm: new PracticeFormScreen(this.navigation, this.auth),
       practiceList: new PracticeListScreen(this.navigation, this.auth),
+      practiceDetail: new PracticeDetailScreen(this.navigation, this.auth),
+      practicePlan: new PracticePlanScreen(this.navigation, this.auth),
       practiceAttendance: new PracticeAttendanceScreen(this.navigation, this.auth),
       matchOptions: new MatchOptionsScreen(this.navigation, this.auth),
       matchManagement: new MatchManagementScreen(this.navigation, this.auth),
@@ -48,6 +50,7 @@ class App {
       adminClub: new AdminClubScreen(this.navigation, this.auth),
       gameModelAdmin: new GameModelAdminScreen(this.navigation, this.auth),
       gameModel: new GameModelScreen(this.navigation, this.auth),
+      playerActions: new PlayerActionsScreen(this.navigation, this.auth),
       adminClubTeams: new AdminClubTeamsScreen(this.navigation, this.auth),
       clubEvents: new ClubEventsScreen(this.navigation, this.auth),
       adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
@@ -112,6 +115,8 @@ class App {
     this.screenManager.register('practice-management', this.screens.practiceManagement);
     this.screenManager.register('practice-form', this.screens.practiceForm);
     this.screenManager.register('practice-list', this.screens.practiceList);
+    this.screenManager.register('practice-detail', this.screens.practiceDetail);
+    this.screenManager.register('practice-plan', this.screens.practicePlan);
     this.screenManager.register('practice-attendance', this.screens.practiceAttendance);
     this.screenManager.register('match-options', this.screens.matchOptions);
     this.screenManager.register('match-management', this.screens.matchManagement);
@@ -126,6 +131,7 @@ class App {
     this.screenManager.register('admin-club', this.screens.adminClub);
     this.screenManager.register('game-model-admin', this.screens.gameModelAdmin);
     this.screenManager.register('game-model', this.screens.gameModel);
+    this.screenManager.register('player-actions', this.screens.playerActions);
     this.screenManager.register('admin-club-teams', this.screens.adminClubTeams);
     this.screenManager.register('club-events', this.screens.clubEvents);    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
     this.screenManager.register('admin-team', this.screens.adminTeam);
