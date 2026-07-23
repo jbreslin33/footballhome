@@ -71,6 +71,7 @@ ConceptSet supportConcepts()
 {
     ConceptSet c;
     c.plug(fh::sim::m0::kReturnToBase, Fixed64::one());
+    c.plug(fh::sim::m0::kStayInZone, Fixed64::one());
     return c;
 }
 
@@ -81,12 +82,13 @@ AttributeSet emptyAttrs()
 
 } // namespace
 
-FH_TEST(required_concepts_is_return_to_base)
+FH_TEST(required_concepts_include_positioning_concepts)
 {
     SupportOffBallBehavior b;
     const auto reqs = b.requiredConcepts();
-    FH_EXPECT_EQ(reqs.size(), std::size_t{1});
+    FH_EXPECT_EQ(reqs.size(), std::size_t{2});
     FH_EXPECT_EQ(reqs[0], fh::sim::m0::kReturnToBase);
+    FH_EXPECT_EQ(reqs[1], fh::sim::m0::kStayInZone);
 }
 
 FH_TEST(utility_abstains_without_ball_owner)

@@ -501,16 +501,16 @@ FH_TEST(role_specific_boost_prefers_lcb_jockey)
 FH_TEST(default_behaviors_slice_33_4_roles_get_correct_bags)
 {
     // Slice 33.4: defensive roles get 3 behaviors (pursue, jockey, mark),
-    // attacker roles (ST9, ST10) get 1 behavior (feint_1v1),
-    // and Role::Any, GK remain empty. (No Role::Forward enum yet —
+    // attacker roles (ST9, ST10) get 8 behaviors (feint_1v1, support_off_ball,
+    // cover_shadow, compact_shape, overload_support, switch_side_support, receiving_under_pressure, third_man_run), and Role::Any, GK remain empty. (No Role::Forward enum yet —
     // 1v1 attacker slots use ST9; see OneVsOneAttackDefendScenario.)
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::Any).size(),  0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::GK).size(),   0u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::LCB).size(),  3u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::RCB).size(),  3u);
     FH_EXPECT_EQ(AiController::defaultBehaviors(Role::CDM).size(),  3u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  1u);
-    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 1u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST9).size(),  8u);
+    FH_EXPECT_EQ(AiController::defaultBehaviors(Role::ST10).size(), 8u);
 
     // Lock the defensive bag's identity by id string.
     const auto lcb_bag = AiController::defaultBehaviors(Role::LCB);
@@ -521,9 +521,23 @@ FH_TEST(default_behaviors_slice_33_4_roles_get_correct_bags)
     // Lock the attacking bag's identity by id string.
     const auto st9_bag = AiController::defaultBehaviors(Role::ST9);
     FH_EXPECT_EQ(std::string(st9_bag[0]->id()), std::string("feint_1v1"));
+    FH_EXPECT_EQ(std::string(st9_bag[1]->id()), std::string("support_off_ball"));
+    FH_EXPECT_EQ(std::string(st9_bag[2]->id()), std::string("cover_shadow"));
+    FH_EXPECT_EQ(std::string(st9_bag[3]->id()), std::string("compact_shape"));
+    FH_EXPECT_EQ(std::string(st9_bag[4]->id()), std::string("overload_support"));
+    FH_EXPECT_EQ(std::string(st9_bag[5]->id()), std::string("switch_side_support"));
+    FH_EXPECT_EQ(std::string(st9_bag[6]->id()), std::string("receiving_under_pressure"));
+    FH_EXPECT_EQ(std::string(st9_bag[7]->id()), std::string("third_man_run"));
 
     const auto st10_bag = AiController::defaultBehaviors(Role::ST10);
     FH_EXPECT_EQ(std::string(st10_bag[0]->id()), std::string("feint_1v1"));
+    FH_EXPECT_EQ(std::string(st10_bag[1]->id()), std::string("support_off_ball"));
+    FH_EXPECT_EQ(std::string(st10_bag[2]->id()), std::string("cover_shadow"));
+    FH_EXPECT_EQ(std::string(st10_bag[3]->id()), std::string("compact_shape"));
+    FH_EXPECT_EQ(std::string(st10_bag[4]->id()), std::string("overload_support"));
+    FH_EXPECT_EQ(std::string(st10_bag[5]->id()), std::string("switch_side_support"));
+    FH_EXPECT_EQ(std::string(st10_bag[6]->id()), std::string("receiving_under_pressure"));
+    FH_EXPECT_EQ(std::string(st10_bag[7]->id()), std::string("third_man_run"));
 }
 
 int main()

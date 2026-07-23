@@ -269,6 +269,12 @@ add_library(sim_gameplay STATIC
     src/behavior/MarkOpponentBehavior.cpp
     src/behavior/PursueBallCarrierBehavior.cpp
     src/behavior/SupportOffBallBehavior.cpp
+    src/behavior/CoverShadowBehavior.cpp
+    src/behavior/CompactShapeBehavior.cpp
+    src/behavior/OverloadSupportBehavior.cpp
+    src/behavior/SwitchSideSupportBehavior.cpp
+    src/behavior/ReceivingUnderPressureBehavior.cpp
+    src/behavior/ThirdManRunBehavior.cpp
     src/scenario/EmptyPitchScenario.cpp
     src/scenario/BallOnPitchScenario.cpp
     src/scenario/BallOnPitch2v0Scenario.cpp

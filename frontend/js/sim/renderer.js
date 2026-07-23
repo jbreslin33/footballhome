@@ -525,6 +525,37 @@ class FhSimRenderer {
         ctx.stroke();
     }
 
+    drawEmptyStateOverlay(snap) {
+        const hasEntities = !!(snap && Array.isArray(snap.entities) && snap.entities.length > 0);
+        const hasBall     = !!(snap && snap.ball);
+        if (hasEntities || hasBall) return;
+
+        const ctx = this.ctx;
+        const cx = this.cssW / 2;
+        const cy = this.cssH / 2;
+        const boxW = Math.max(260, this.cssW * 0.72);
+        const boxH = Math.max(92, this.cssH * 0.20);
+        const boxX = (this.cssW - boxW) / 2;
+        const boxY = (this.cssH - boxH) / 2;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 22px system-ui, sans-serif';
+        ctx.fillText('Waiting for players and ball', cx, cy - 8);
+
+        ctx.font = '14px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(244, 246, 251, 0.9)';
+        ctx.fillText('This can happen on the opening frame of a 1v1 drill or another empty-state match.', cx, cy + 16);
+        ctx.restore();
+    }
+
     drawHud(status) {
         const ctx = this.ctx;
         ctx.font = '12px monospace';
@@ -557,6 +588,7 @@ class FhSimRenderer {
         this.drawPlayableArea();
         this.drawEntities(snap);
         this.drawBall(snap);
+        this.drawEmptyStateOverlay(snap);
         this._drawGoalFlash();
         this.drawHud(status || {});
     }

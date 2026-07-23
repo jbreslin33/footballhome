@@ -10,11 +10,17 @@
 
 #include "controller/AiController.hpp"
 
+#include "behavior/CompactShapeBehavior.hpp"
+#include "behavior/CoverShadowBehavior.hpp"
 #include "behavior/Feint1v1Behavior.hpp"
 #include "behavior/IBehavior.hpp"
 #include "behavior/JockeyBehavior.hpp"
 #include "behavior/MarkOpponentBehavior.hpp"
+#include "behavior/OverloadSupportBehavior.hpp"
 #include "behavior/PursueBallCarrierBehavior.hpp"
+#include "behavior/ReceivingUnderPressureBehavior.hpp"
+#include "behavior/SwitchSideSupportBehavior.hpp"
+#include "behavior/ThirdManRunBehavior.hpp"
 #include "behavior/SupportOffBallBehavior.hpp"
 #include "math/Fixed64.hpp"
 
@@ -154,6 +160,12 @@ AiController::defaultBehaviors(Role role)
         case Role::ST10:
             bag.push_back(std::make_unique<behavior::Feint1v1Behavior>());
             bag.push_back(std::make_unique<behavior::SupportOffBallBehavior>());
+            bag.push_back(std::make_unique<behavior::CoverShadowBehavior>());
+            bag.push_back(std::make_unique<behavior::CompactShapeBehavior>());
+            bag.push_back(std::make_unique<behavior::OverloadSupportBehavior>());
+            bag.push_back(std::make_unique<behavior::SwitchSideSupportBehavior>());
+            bag.push_back(std::make_unique<behavior::ReceivingUnderPressureBehavior>());
+            bag.push_back(std::make_unique<behavior::ThirdManRunBehavior>());
             return bag;
     }
     return bag;
