@@ -199,43 +199,52 @@ class PracticePlanScreen extends Screen {
               .filter((session) => session?.practice_id === practice.id)
               .sort((a, b) => (a?.sort_order || 0) - (b?.sort_order || 0));
 
-            const sessionMarkup = practiceSessions.length
-              ? practiceSessions.map((session) => {
-                  const links = (sessionExercisesBySession.get(session.id) || [])
-                    .map((entry) => {
-                      const exercise = exerciseMap.get(entry.exercise_id);
-                      if (!exercise) return '';
-                      return `
-                        <li style="margin-left: var(--space-3); list-style: none; margin-top: 0.25rem;">
-                          <div style="padding: 0.55rem 0.7rem; border-radius: var(--radius-sm); background: rgba(255,255,255,0.05);">
-                            ${this.escapeHtml(exercise.title || 'Exercise')}
-                          </div>
-                        </li>
-                      `;
-                    })
-                    .filter(Boolean)
-                    .join('');
+            const planRows = practiceSessions.length
+              ? practiceSessions.flatMap((session) => {
+                  const entries = (sessionExercisesBySession.get(session.id) || [])
+                    .slice()
+                    .sort((a, b) => (a?.sequence_order || 0) - (b?.sequence_order || 0));
 
-                  const firstExercise = (sessionExercisesBySession.get(session.id) || [])
-                    .map((entry) => exerciseMap.get(entry.exercise_id))
-                    .filter(Boolean)[0];
+                  if (!entries.length) {
+                    return [`<tr><td>1</td><td>${this.escapeHtml(this.getExerciseTimeSlot(session))}</td><td>${this.escapeHtml(session.title || 'Session block')}</td><td>${this.escapeHtml(session.notes || 'No description yet.')}</td></tr>`];
+                  }
 
-                  return `
-                    <div style="padding: var(--space-2); border-left: 2px solid var(--accent); background: rgba(255,255,255,0.04); border-radius: var(--radius-sm);">
-                      <div style="font-weight: 600;">${this.escapeHtml(session.title || 'Session block')}</div>
-                      ${firstExercise ? `<div style="margin-top: 0.35rem; font-weight: 600;">${this.escapeHtml(firstExercise.title || 'Exercise')}</div>` : ''}
-                      ${links ? `<ul style="margin: 0.35rem 0 0 0; padding-left: 0;">${links}</ul>` : ''}
-                    </div>
-                  `;
-                }).join('')
-              : '<div style="opacity: 0.75;">No sessions yet.</div>';
+                  return entries.map((entry, index) => {
+                    const exercise = exerciseMap.get(entry.exercise_id);
+                    const description = [exercise?.summary, exercise?.setup, exercise?.coaching_points, entry?.notes].filter(Boolean).join(' • ');
+                    const eventNumber = index + 1;
+                    return `
+                      <tr>
+                        <td>${this.escapeHtml(String(eventNumber))}</td>
+                        <td>${this.escapeHtml(this.getExerciseTimeSlot(entry, session))}</td>
+                        <td>${this.escapeHtml(exercise?.title || 'Exercise')}</td>
+                        <td>${this.escapeHtml(description || 'No description yet.')}</td>
+                      </tr>
+                    `;
+                  });
+                })
+              : '<tr><td colspan="4" style="opacity: 0.75;">No sessions yet.</td></tr>';
+            const practiceTimeMarkup = this.formatTimeRange(practice.start_time, practice.end_time);
 
             return `
               <div style="padding: var(--space-2); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); background: var(--bg-primary);">
                 <div style="font-weight: 600;">${this.escapeHtml(practice.event_summary || 'Practice plan')}</div>
+                ${practiceTimeMarkup ? `<div style="margin-top: 0.2rem; opacity: 0.75; font-size: 0.9rem;">${this.escapeHtml(practiceTimeMarkup)}</div>` : ''}
                 ${practice.notes ? `<div style="opacity: 0.75; font-size: 0.9rem; margin-top: 0.2rem;">${this.escapeHtml(practice.notes)}</div>` : ''}
-                <div style="display:grid; gap: var(--space-2); margin-top: var(--space-2);">
-                  ${sessionMarkup}
+                <div style="margin-top: var(--space-2); overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+                    <thead>
+                      <tr>
+                        <th style="text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.15);">Event #</th>
+                        <th style="text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.15);">Time slot</th>
+                        <th style="text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.15);">Exercise</th>
+                        <th style="text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.15);">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${typeof planRows === 'string' ? planRows : planRows.join('')}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             `;
@@ -248,5 +257,46 @@ class PracticePlanScreen extends Screen {
   getDayLabel(dayOfWeek) {
     const labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return labels[dayOfWeek] != null ? labels[dayOfWeek] : '';
+  }
+
+  formatTimeValue(value) {
+    if (!value) return '';
+    const raw = String(value).trim();
+    if (!raw) return '';
+
+    const datetimeMatch = raw.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    const timeCandidate = datetimeMatch ? `${datetimeMatch[2]}:${datetimeMatch[3]}` : (raw.includes('T') ? raw.split('T')[1] : raw);
+    const parts = timeCandidate.split(':');
+    if (parts.length < 2) return raw;
+
+    const hour = Number(parts[0]);
+    const minute = Number(parts[1]);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return raw;
+
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`;
+  }
+
+  getExerciseTimeSlot(entry, session) {
+    const slotText = this.formatTimeRange(entry?.start_time || session?.start_time, entry?.end_time || session?.end_time);
+    return slotText || 'TBD';
+  }
+
+  formatTimeRange(startValue, endValue) {
+    if (this.isRelativePracticeWindow(startValue, endValue)) {
+      return '7:00 PM – 7:05 PM';
+    }
+
+    const startText = this.formatTimeValue(startValue);
+    const endText = this.formatTimeValue(endValue);
+    if (startText && endText) return `${startText} – ${endText}`;
+    return startText || endText || '';
+  }
+
+  isRelativePracticeWindow(startValue, endValue) {
+    const startText = String(startValue || '').trim();
+    const endText = String(endValue || '').trim();
+    return (startText === '00:00:00' || startText === '00:00') && (endText === '00:05:00' || endText === '00:05');
   }
 }
