@@ -47,6 +47,7 @@ class MensRosterScreen extends Screen {
            obvious.  See onDragStart / onDragOver in mens-roster.js. */
         .mr-card[draggable="true"]        { cursor: grab; }
         .mr-card[draggable="true"]:active { cursor: grabbing; }
+        .mr-card                          { padding: 3px 5px; }
         .mr-card.mr-dragging              { opacity: 0.35; }
         .mr-card.mr-drop-before           { box-shadow: 0 -3px 0 0 #10b981 inset; }
         .mr-card.mr-drop-after            { box-shadow: 0  3px 0 0 #10b981 inset; }
@@ -341,13 +342,13 @@ class MensRosterScreen extends Screen {
     // it's actionable for roster picks.
 
     return `
-      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:0;">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:6px;">
-          <strong style="font-size:0.85rem;">${col.label}</strong>
+      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:6px; border-top:3px solid ${col.color}; min-width:0;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; gap:6px;">
+          <strong style="font-size:0.8rem;">${col.label}</strong>
           ${countHtml}
         </div>
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
-             style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:0;">
+             style="display:flex; flex-direction:column; gap:6px; min-height:8px; min-width:0;">
           ${body}
         </div>
       </div>
@@ -362,23 +363,31 @@ class MensRosterScreen extends Screen {
     // tiny legacy pills entirely.  Contact + dues actions are still
     // present but sized so they're readable, not decorative.
 
+    // For the men’s roster we contact the PLAYER directly.  The card still
+    // shows the player name, but every contact action now routes to the
+    // player’s own phone/email when available.
+    const contactName  = p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'player';
+    const contactFirst = p.firstName || '';
+    const contactPhone = p.phone || p.parentPhone || null;
+    const contactEmail = p.email || p.parentEmail || null;
+
     const greeting = p.firstName ? `Hi ${p.firstName},` : 'Hi,';
     const subject  = `Lighthouse 1893 Men's`;
     const emailBody = `${greeting}\n\nThis is your Lighthouse 1893 coach.\n\n`;
     const smsBody   = `Hi${p.firstName ? ' ' + p.firstName : ''}, this is Lighthouse 1893 coach.`;
 
-    const emailHref = p.email
+    const emailHref = contactEmail
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
           authuser: 'soccer@lighthouse1893.org',
-          to:       p.email,
+          to:       contactEmail,
           su:       subject,
           body:     emailBody,
         }).toString()}`
       : null;
-    const smsHref = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(smsBody)}` : null;
-    const telHref = p.phone ? `tel:${p.phone}` : null;
+    const smsHref = contactPhone ? `sms:${contactPhone}?&body=${encodeURIComponent(smsBody)}` : null;
+    const telHref = contactPhone ? `tel:${contactPhone}` : null;
 
     // Full DOB (e.g. "3/10/2008").
     let dobShort = '';
@@ -441,7 +450,7 @@ class MensRosterScreen extends Screen {
     // plus a tight line-height give ~11-12 px total height while the
     // sides keep a proper 5 px cushion.  All actions (move, delinq,
     // contact, payments pill) share this base so they align.
-    const btnBase = 'padding:0 5px; font-size:0.66rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.35; white-space:nowrap;';
+    const btnBase = 'padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap;';
 
     // ── Move-to-roster: <details> popover ─────────────────────────
     // Same popover pattern as CONTACT below.  Summary shows the
@@ -515,21 +524,8 @@ class MensRosterScreen extends Screen {
       ? window.PersonActions.buttonsHtml(p, {
           returnTo: 'mens-roster',
           btnBaseStyle: '',
+          showEdit: false,
         })
-      : '';
-    // RSVP-eligibility popup trigger (2026-07-07).  Small button next
-    // to LA — opens a modal with 6 checkboxes (APSL / Liga 1 / Liga 2 /
-    // Adult / Practice / Pickup).  Reads from GET /rsvp-eligibility
-    // on open, writes via PUT on save.  Server-side is the source of
-    // truth; the button carries no state itself.
-    const rsvpEligBtn = p.leagueAppsUserId
-      ? `<button class="mr-rsvp-elig" type="button"
-                 data-user-id="${p.leagueAppsUserId}"
-                 data-name="${this.escape(p.fullName || '')}"
-                 title="Configure which teams ${this.escape(p.firstName || 'this player')} can RSVP for"
-                 style="${btnBase} border:none; cursor:pointer; background:#0ea5e9; color:#fff;">
-           RSVP
-         </button>`
       : '';
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle
@@ -690,6 +686,29 @@ class MensRosterScreen extends Screen {
           body:     inviteEmailBody,
         }).toString()}`
       : null;
+    const welcomeEmailSubject = 'Welcome to the club — set your availability on FootballHome';
+    const welcomeEmailBody = [
+      `Hi ${contactFirst || 'there'},`,
+      '',
+      'Welcome to the club! This is where practices, pickups, and games are listed on FootballHome.',
+      '',
+      'Please log in at https://footballhome.org and set your availability for the week.',
+      'You do not need to attend every event, but you are expected to set your availability for every event so the club knows where you can help.',
+      '',
+      'Thanks,',
+      'James Breslin',
+      'Soccer Director at Lighthouse',
+    ].join('\n');
+    const welcomeEmailHref = contactEmail
+      ? `https://mail.google.com/mail/?${new URLSearchParams({
+          view:     'cm',
+          fs:       '1',
+          authuser: 'soccer@lighthouse1893.org',
+          to:       contactEmail,
+          su:       welcomeEmailSubject,
+          body:     welcomeEmailBody,
+        }).toString()}`
+      : null;
 
     // ---- Contact popover -----------------------------------------------
     // One CONTACT button collapses EMAIL / SMS / CALL / SAVE and the
@@ -701,69 +720,39 @@ class MensRosterScreen extends Screen {
     // 👤 SAVE (2026-07-05) — data-URL vCard so tapping opens the native
     // "Add Contact" sheet on iOS/Android (or downloads a .vcf on
     // desktop).  Only rendered if we have at least a phone or email.
-    const vcardHref = (p.phone || p.email)
+    const vcardHref = (contactPhone || contactEmail)
       ? this.buildVcardHref({
-          fullName: p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-          firstName: p.firstName,
+          fullName: contactName,
+          firstName: contactFirst,
           lastName: p.lastName,
-          phone: p.phone,
-          email: p.email,
+          phone: contactPhone,
+          email: contactEmail,
           org: `Lighthouse 1893 Men's`,
         })
       : null;
-    const vcardFilename = ((p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
+    const vcardFilename = ((contactName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
     const contactItems = [
-      emailHref       ? `<a href="${emailHref}"       target="_blank" rel="noopener noreferrer" title="${this.escape(p.email)}"                                            style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref         ? `<a href="${smsHref}"                                                   title="Text ${this.escape(this.formatPhone(p.phone))}"                    style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
-      telHref         ? `<a href="${telHref}"                                                   title="Call ${this.escape(this.formatPhone(p.phone))}"                    style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
-      vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(p.firstName || 'player')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
-      inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(p.phone))} an invite to footballhome.org" style="${contactBase} background:#0d9488; color:#fff;">💬 INVITE (SMS)</a>` : '',
-      inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(p.email)} an invite to footballhome.org"      style="${contactBase} background:#14b8a6; color:#fff;">✉ INVITE (email)</a>` : '',
+      emailHref       ? `<a href="${emailHref}"       target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}"                                            style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref         ? `<a href="${smsHref}"                                                   title="Text ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
+      telHref         ? `<a href="${telHref}"                                                   title="Call ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
+      vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactName)} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+      inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(contactPhone))} an invite to footballhome.org" style="${contactBase} background:#0d9488; color:#fff;">💬 INVITE (SMS)</a>` : '',
+      inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} an invite to footballhome.org"      style="${contactBase} background:#14b8a6; color:#fff;">✉ INVITE (email)</a>` : '',
+      welcomeEmailHref ? `<a href="${welcomeEmailHref}" target="_blank" rel="noopener noreferrer" title="Welcome ${this.escape(contactName)} to the club" style="${contactBase} background:#8b5cf6; color:#fff;">👋 WELCOME</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="mr-contact" style="position:relative; display:inline-block;">
         <summary style="${btnBase} background:#334155; color:#fff; border:none; cursor:pointer; list-style:none; user-select:none;"
-                 title="Contact ${this.escape(p.firstName || 'player')}">📇 CONTACT</summary>
+                 title="Contact ${this.escape(contactName)}">📇 CONTACT</summary>
         <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155;">
           ${contactItems.join('')}
         </div>
       </details>` : '';
 
-    // ── Football Home outer JOIN cluster (2026-07-06) ──────────────
-    //
-    // FH pill = "last footballhome.org activity" (see billing-badge
-    // renderFhLastActivity).  Always visible.
-    //
-    // JOIN buttons here mirror the INVITE items in the CONTACT
-    // popover but are promoted to the top-of-card level so the
-    // roster loudly flags who still needs to onboard.  Gated on
-    // fhLastActivityAt == null; once they've signed in once, the
-    // CONTACT popover is enough for manual re-nudges.
-    const fhPill = window.BillingBadge && window.BillingBadge.renderFhLastActivity
-      ? window.BillingBadge.renderFhLastActivity(p)
-      : '';
-    let joinCluster = fhPill;
-    if (!p.fhLastActivityAt) {
-      const joinBase = btnBase + ' border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
-      const joinSmsBtn = inviteSmsHref
-        ? `<a href="${inviteSmsHref}"
-              title="Text ${this.escape(this.formatPhone(p.phone))} an invite to footballhome.org"
-              style="${joinBase} background:#0d9488; color:#fff;">
-             💬 JOIN
-           </a>`
-        : '';
-      const joinEmailBtn = inviteEmailHref
-        ? `<a href="${inviteEmailHref}"
-              target="_blank" rel="noopener noreferrer"
-              title="Email ${this.escape(p.email)} an invite to footballhome.org"
-              style="${joinBase} background:#0ea5e9; color:#fff;">
-             ✉ JOIN
-           </a>`
-        : '';
-      joinCluster = `${fhPill}${joinSmsBtn}${joinEmailBtn}`;
-    }
-
-    const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
+    const duesColor = (p.paymentStatus && p.paymentStatus.toUpperCase() === 'PAID') || (!p.outstandingBalance || p.outstandingBalance <= 0)
+      ? '#22c55e'
+      : '#ef4444';
+    const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
 
     const cardId = `mr-card-${p.leagueAppsUserId}`;
 
@@ -808,19 +797,14 @@ class MensRosterScreen extends Screen {
     // 👤 PROFILE button).  Keeping the default cursor makes it visually
     // obvious that the card body is inert / drag-safe.
     return `
-      <div id="${cardId}" class="mr-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow} min-width:0;">
-        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px; row-gap:3px;">
+      <div id="${cardId}" class="mr-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:3px 5px; border:${cardBorder}; ${cardShadow} min-width:0;">
+        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
           ${posChip}
-          <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>
-          ${dobShort ? `<span style="font-size:0.85rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
+          <strong style="font-size:0.72rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${this.escape(p.fullName) || '(no name)'}</strong>
+          ${dobShort ? `<span style="font-size:0.68rem; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>` : ''}
+          ${duesLabel}
           ${moveSelect}
-          ${laBtn}
           ${profileBtn}
-          ${rsvpEligBtn}
-          ${delinqBtns}
-          ${contactBtns}
-          ${joinCluster}
-          ${billingBadge}
         </div>
       </div>
     `;

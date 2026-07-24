@@ -208,7 +208,7 @@ class YouthRosterScreen extends Screen {
   }
 
   renderPlayer(p) {
-    const btn = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;';
+    const btn = 'padding:0 5px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
 
     const subject = `Lighthouse 1893 — about ${p.firstName || 'your player'}`;
     const greeting = p.parentFirstName ? `Hi ${p.parentFirstName},` : 'Hi,';
@@ -246,19 +246,15 @@ class YouthRosterScreen extends Screen {
         : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
     }
 
-    const paymentBadge = p.paymentStatus
-      ? `<span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:${p.paymentStatus === 'PAID' ? '#1e3a2e' : '#3a2e1e'}; color:${p.paymentStatus === 'PAID' ? '#34d399' : '#fbbf24'};">${p.paymentStatus}${p.outstandingBalance && p.outstandingBalance > 0 ? ` ($${p.outstandingBalance} due)` : ''}</span>`
-      : '';
-
     const emailBtn = emailHref ? `
       <a href="${emailHref}" target="_blank" rel="noopener noreferrer"
-         style="${btn} background:#3b82f6; color:#fff;">✉ Email</a>` : '';
+         style="${btn} background:#3b82f6; color:#fff;">✉</a>` : '';
     const smsBtn = smsHref ? `
       <a href="${smsHref}"
-         style="${btn} background:#10b981; color:#fff;">💬 Text</a>` : '';
+         style="${btn} background:#10b981; color:#fff;">💬</a>` : '';
     const telBtn = telHref ? `
       <a href="${telHref}"
-         style="${btn} background:#6366f1; color:#fff;">📞 Call</a>` : '';
+         style="${btn} background:#6366f1; color:#fff;">📞</a>` : '';
 
     // 👤 Save (2026-07-05) — data-URL vCard so tapping opens the
     // native "Add Contact" sheet on iOS/Android (or downloads a .vcf
@@ -317,23 +313,19 @@ class YouthRosterScreen extends Screen {
          style="${btn} background:#059669; color:#fff;">💸 Pay</a>`;
     }
 
-    const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
+    const duesColor = (p.paymentStatus && p.paymentStatus.toUpperCase() === 'PAID') || (!p.outstandingBalance || p.outstandingBalance <= 0)
+      ? '#22c55e'
+      : '#ef4444';
+    const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
 
     return `
-      <div style="background:var(--bg-tertiary, #1f2937); border-radius:var(--radius-md); padding:var(--space-2);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-2);">
-          <div style="min-width:0;">
-            <div style="font-weight:600; font-size:0.95rem;">${this.escape(p.fullName) || '(no name)'}</div>
-            <div style="font-size:0.75rem; opacity:0.7;">${genderIcon} ${ageGroup} · ${this.escape(p.club)}</div>
-            ${dobPretty ? `<div style="font-size:0.75rem; opacity:0.7;">🎂 ${this.escape(dobPretty)}</div>` : ''}
-          </div>
-          ${paymentBadge}
+      <div style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px;">
+        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+          <div style="font-weight:600; font-size:0.76rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${this.escape(p.fullName) || '(no name)'}</div>
+          ${dobPretty ? `<span style="font-size:0.68rem; opacity:0.75; white-space:nowrap;">${this.escape(dobPretty)}</span>` : ''}
+          ${duesLabel}
+          ${window.PersonActions ? window.PersonActions.buttonsHtml(p, { returnTo: 'youth-roster', showEdit: false }) : ''}
         </div>
-        ${p.parentName ? `<div style="font-size:0.8rem; opacity:0.85; margin-top:4px;">👪 ${this.escape(p.parentName)}</div>` : ''}
-        ${p.parentEmail ? `<div style="font-size:0.8rem; opacity:0.85;">${this.escape(p.parentEmail)}</div>` : ''}
-        ${formattedPhone ? `<div style="font-size:0.85rem; font-weight:500; opacity:0.95;">${formattedPhone}</div>` : ''}
-        ${billingBadge ? `<div style="margin-top:6px;">${billingBadge}</div>` : ''}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${smsBtn}${telBtn}${payBtn}${vcardBtn}${window.PersonActions ? window.PersonActions.buttonsHtml(p, { returnTo: 'youth-roster' }) : ''}</div>
       </div>
     `;
   }
