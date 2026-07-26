@@ -644,7 +644,7 @@ class BoysRosterScreen extends RosterScreenBase {
     const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
     const genderCode = this.getGenderCode(p);
     const genderChip = genderCode
-      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:#334155; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
+      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:${genderCode === 'M' ? '#2563eb' : genderCode === 'F' ? '#ec4899' : '#334155'}; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
       : '';
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 

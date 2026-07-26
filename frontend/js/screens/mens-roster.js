@@ -749,7 +749,7 @@ class MensRosterScreen extends RosterScreenBase {
 
     const genderCode = this.getGenderCode(p);
     const genderChip = genderCode
-      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:#334155; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
+      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:${genderCode === 'M' ? '#2563eb' : genderCode === 'F' ? '#ec4899' : '#334155'}; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
       : '';
     const balanceValue = Number(p.outstandingBalance || 0);
     const duesColor = balanceValue === 0 ? '#22c55e' : '#ef4444';
