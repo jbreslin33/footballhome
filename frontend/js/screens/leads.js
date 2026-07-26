@@ -2467,11 +2467,34 @@ class LeadsScreen extends Screen {
         const moreInfoDescText = nextPracticeLine
           ? laDescText.replace(/SCHEDULE:\n/, `SCHEDULE:\n${nextPracticeLine}`)
           : laDescText;
-        return {
-          id: 'more-info',
-          label: 'ℹ️ More info',
-          tier: 'followup',
-          body:
+        const moreInfoBody = c.isYouth
+          ? (
+            `Hi {first},\n` +
+            `\n` +
+            `That's great that you want to learn more about Lighthouse's youth soccer programs!\n` +
+            `\n` +
+            `To register, head here: ${c.link}\n` +
+            `\n` +
+            `Here's the full program description:\n` +
+            `\n` +
+            `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community.\n\n` +
+            `Our history speaks to that quality. Lighthouse teams have won 5 U-19 national championships and sent 7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics — and, more importantly, through its Boys Club, Girls Club, Men's Club, and Women's Club, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. It's a club for life in the neighborhood. Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.\n\n` +
+            `MEMBERSHIP:\n` +
+            `For 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. Your player's membership runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and their uniform. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
+            `TEAMS:\n` +
+            `We offer both in-house Lighthouse League play and select travel squads as the season grows. Lighthouse League is our in-house program at the Lighthouse fields — for players and families who want a local, low-to-no-travel soccer experience. Travel squads are available for players who want to travel to games as part of their season.\n\n` +
+            `SCHEDULE:\n` +
+            `  • Next practice: ${this._nextPractice([1, 3], 19).label}\n` +
+            `  • Practice: Mondays & Wednesdays — 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm\n` +
+            `  • Games: Sunday mornings to early afternoon\n` +
+            `  • Field: Lighthouse Sports Complex, 199 E Erie Avenue, Philadelphia PA 19140\n\n` +
+            `BILLING:\n` +
+            `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
+            `From then on, the normal $35/month membership is invoiced on the first Friday of each month.\n\n` +
+            `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
+            `Reply with any other questions to soccer@lighthouse1893.org`
+          )
+          : (
             `Hi {first},\n` +
             `\n` +
             `That's great that you want to play soccer for Lighthouse Men's Soccer Club 1893!\n` +
@@ -2506,7 +2529,13 @@ class LeadsScreen extends Screen {
             `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
             `From then on, the normal $35/month membership is invoiced on the first Friday of each month.\n\n` +
             `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
-            `Reply with any other questions to soccer@lighthouse1893.org`,
+            `Reply with any other questions to soccer@lighthouse1893.org`
+          );
+        return {
+          id: 'more-info',
+          label: 'ℹ️ More info',
+          tier: 'followup',
+          body: moreInfoBody,
           // SMS variant — compressed to a couple of segments.  Ditches
           // the full description; keeps field address, cost, card-on-
           // file requirement, and register link (the four questions
