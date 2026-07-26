@@ -395,7 +395,12 @@ class MyScreen extends Screen {
     const category  = ev.category || '';
     const per       = ev.my_rsvp;              // 'yes' | 'no' | 'maybe' | null
     const windowOpen= ev.rsvps_open_now !== false;
+    const eligibilityOk = ev.my_rsvp_eligible !== false;
     const openMsg   = !windowOpen ? 'RSVP window not open yet' : '';
+    const eligibilityMsg = eligibilityOk ? '' : (
+      ev.my_rsvp_eligibility_reason || 'Not eligible to RSVP for this event'
+    );
+    const disabledMsg = eligibilityMsg || openMsg;
 
     const evYesKey  = `${ev.fh_event_id}:yes`;
     const evNoKey   = `${ev.fh_event_id}:no`;
@@ -435,9 +440,9 @@ class MyScreen extends Screen {
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
-                       `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
+                       `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
             ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
-                       `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, openMsg)}
+                       `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
             <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
               ${this.escapeHtml(viewLabel)}
             </button>

@@ -99,6 +99,7 @@ std::string serializeLead(const Lead& l) {
       << ",\"needs_followup\":"    << jsonBool(l.needsFollowup)
       << ",\"dead_at\":"           << jsonOrNull(l.deadAtIso)
       << ",\"status_override\":"   << jsonOrNull(l.statusOverride)
+      << ",\"member_status\":"     << jsonOrNull(l.memberStatus)
       << ",\"status\":"            << jsonStr(l.status)
       << "}";
     return o.str();

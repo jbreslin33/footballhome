@@ -358,6 +358,43 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                  OR fe.rsvps_open_at <= now()) AS rsvps_open_now,
                 mr.response    AS my_rsvp,
                 mr.created_via AS my_rsvp_created_via,
+                (
+                    SELECT COUNT(*)::int
+                    FROM fh_event_teams fet2
+                    WHERE fet2.fh_event_id = fe.id
+                ) AS team_count,
+                (
+                    EXISTS (
+                        SELECT 1
+                        FROM admins a
+                        JOIN users u ON u.id = a.user_id
+                        WHERE u.person_id = $1::int
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM fh_event_teams fet
+                        WHERE fet.fh_event_id = fe.id
+                          AND (
+                              EXISTS (
+                                  SELECT 1
+                                  FROM player_rsvp_eligibility ple
+                                  JOIN external_person_aliases epa
+                                    ON epa.provider = 'leagueapps'
+                                   AND epa.external_user_id = ple.leagueapps_user_id::text
+                                  WHERE ple.team_id = fet.team_id
+                                    AND epa.person_id = $1::int
+                              )
+                              OR EXISTS (
+                                  SELECT 1
+                                  FROM team_coaches tc
+                                  JOIN coaches co ON co.id = tc.coach_id
+                                  WHERE tc.team_id = fet.team_id
+                                    AND tc.ended_at IS NULL
+                                    AND co.person_id = $1::int
+                              )
+                          )
+                    )
+                ) AS eligible,
                 COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
@@ -529,6 +566,21 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
             ev["my_rsvp_created_via"]= textOrNull(row, "my_rsvp_created_via");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            {
+                const bool eligible = row["eligible"].as<bool>();
+                const int teamCount = row["team_count"].as<int>();
+                if (row["my_rsvp_eligible"].is_null()) {
+                    ev["my_rsvp_eligibility_reason"] = nullptr;
+                } else if (!eligible) {
+                    if (teamCount == 0) {
+                        ev["my_rsvp_eligibility_reason"] = "This event has no roster attached yet — ops needs to add Team:/Club: tags to the Google Calendar description.";
+                    } else {
+                        ev["my_rsvp_eligibility_reason"] = "You are not on the roster for this event.";
+                    }
+                } else {
+                    ev["my_rsvp_eligibility_reason"] = nullptr;
+                }
+            }
             // teams comes from the DB as a JSONB aggregate string
             // (jsonb_agg → text via row["…"].c_str()).  Parse it back
             // into a json array — cheap because the payload is tiny
@@ -661,25 +713,16 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             return r;
         }
 
-        // Eligibility gate — §6.1.5.  The caller must have a
-        // player_rsvp_eligibility grant for AT LEAST ONE team attached
-        // to this event via the junction (fh_event_teams), unless the
-        // caller is a trusted admin who should be able to manually RSVP
-        // even before the roster team model is fully wired up.
-        // The join chain mirrors MyController::callerRosteredForMatch —
-        // team → player_rsvp_eligibility → external_person_aliases → person.
+        // For this rollout, the My page is the source of truth for
+        // whether the caller should be able to RSVP.  If the event is
+        // present in the upcoming payload for that caller, the write
+        // path accepts the manual RSVP instead of rejecting it on a
+        // separate stale roster gate.
         //
-        // Failure modes this gate catches:
-        //   * Signed-in mens roster member trying to RSVP a womens
-        //     event (no ple.team_id row for them on any womens team).
-        //   * Non-admin callers on an event with no team rows — 403
-        //     with "event has no roster attached".  Trusted admins can
-        //     override this and still reply manually.
-        //
-        // We fetch team_count separately so the 403 body can
-        // distinguish "wrong roster" from "event has no teams yet",
-        // which is a much clearer error message for the frontend +
-        // for operator debugging.
+        // We still keep the check lightweight: admins can always save,
+        // and non-admins must have a matching eligibility row for the
+        // event's attached teams.  If that check fails, we return a
+        // clear 403 so the UI can surface a helpful error.
         auto eligRows = db->query(
             "SELECT "
             "  (SELECT COUNT(*)::int FROM fh_event_teams "

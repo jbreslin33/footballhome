@@ -586,13 +586,66 @@ class RostersScreen extends Screen {
 class PlayerRosterScreen extends RostersScreen {
   constructor(navigation, auth) {
     super(navigation, auth);
+    this._welcomeDismissed = false;
   }
 
   onEnter(params) {
     this.chip = 'mens';
     this._syncHeaderState();
     this._buildFilterBar();
+    this._renderWelcomeCard();
     this._mountForChip();
+  }
+
+  _renderWelcomeCard() {
+    const host = this.find('#rosters-filters');
+    if (!host) return;
+
+    if (this._welcomeDismissed) {
+      const existing = this.element?.querySelector('#player-roster-welcome');
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (this.element?.querySelector('#player-roster-welcome')) return;
+
+    const card = document.createElement('div');
+    card.id = 'player-roster-welcome';
+    card.style.cssText = 'margin-bottom: var(--space-3); padding: var(--space-3); border: 1px solid rgba(255,255,255,0.14); border-radius: var(--radius-md); background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(16,185,129,0.12)); display:grid; gap: var(--space-2);';
+    card.innerHTML = `
+      <div style="font-size: 0.95rem; font-weight: 700;">Welcome to the club!</div>
+      <div style="font-size: 0.9rem; line-height: 1.5; opacity: 0.95;">
+        Please head to footballhome to set your availability for the week. You do not need to attend every event, but you are expected to set your availability for every event so the club knows where you can help.
+        We’re glad to have you with us.
+      </div>
+      <div style="display:flex; gap: var(--space-2); flex-wrap:wrap;">
+        <button type="button" class="btn btn-primary" id="player-roster-welcome-btn" style="padding: 0.45rem 0.8rem;">Welcome</button>
+      </div>
+    `;
+    host.parentNode?.insertBefore(card, host);
+
+    card.querySelector('#player-roster-welcome-btn')?.addEventListener('click', () => {
+      const subject = 'Welcome to the club — set your availability on FootballHome';
+      const body = [
+        'Hi there,',
+        '',
+        'Welcome to the club! This is where practices, pickups, and games are listed on FootballHome.',
+        '',
+        'Please log in at https://footballhome.org and set your availability for the week.',
+        'You do not need to attend every event, but you are expected to set your availability for every event so the club knows where you can help.',
+        '',
+        'Thanks,',
+        'James Breslin',
+        'Soccer Director at Lighthouse',
+      ].join('\n');
+      const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&tf=1' +
+        '&to=' + encodeURIComponent('soccer@lighthouse1893.org') +
+        '&su=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      this._welcomeDismissed = true;
+      card.remove();
+    });
   }
 
   _syncHeaderState() {

@@ -300,37 +300,36 @@ class BoysRosterScreen extends Screen {
     // dues actions are still present but sized so they're readable,
     // not decorative.
 
-    // For youth, we contact the PARENT, not the player.  LA's parent
-    // fields are the truth; player phone/email are a fallback for the
-    // handful of rare records that omit them.  This applies to CONTACT,
-    // PAY, and SAVE (vCard) buttons — everything the admin can trigger
-    // from a card should route to the parent by default.
-    const parentFirst = p.parentFirstName || '';
-    const parentName  = p.parentName
-      || `${parentFirst} ${p.parentLastName || ''}`.trim()
+    // For boys/girls, we contact the PARENT, not the player.  The card
+    // still shows the player name, but every contact action routes to the
+    // parent by default.  Parent fields are the truth; player phone/email
+    // are a fallback only for the rare records that omit them.
+    const contactFirst = p.parentFirstName || '';
+    const contactName  = p.parentName
+      || `${contactFirst} ${p.parentLastName || ''}`.trim()
       || 'there';
-    const parentPhone = p.parentPhone || p.phone || null;
-    const parentEmail = p.parentEmail || p.email || null;
+    const contactPhone = p.parentPhone || p.phone || null;
+    const contactEmail = p.parentEmail || p.email || null;
 
     // Polite parent-facing bodies for the generic CONTACT popover.
     // The PAY button below builds its own tier-scaled body.
     const kidRef       = p.firstName ? ` regarding ${p.firstName}` : '';
     const emailSubject = `Lighthouse 1893${p.firstName ? ` — ${p.firstName}` : ''}`;
-    const emailBody    = `Hi ${parentFirst || 'there'},\n\nThis is Lighthouse 1893${kidRef}.\n\n`;
-    const smsBody      = `Hi${parentFirst ? ' ' + parentFirst : ''}, this is Lighthouse 1893${kidRef}.`;
+    const emailBody    = `Hi ${contactFirst || 'there'},\n\nThis is Lighthouse 1893${kidRef}.\n\n`;
+    const smsBody      = `Hi${contactFirst ? ' ' + contactFirst : ''}, this is Lighthouse 1893${kidRef}.`;
 
-    const emailHref = parentEmail
+    const emailHref = contactEmail
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
           authuser: 'soccer@lighthouse1893.org',
-          to:       parentEmail,
+          to:       contactEmail,
           su:       emailSubject,
           body:     emailBody,
         }).toString()}`
       : null;
-    const smsHref = parentPhone ? `sms:${parentPhone}?&body=${encodeURIComponent(smsBody)}` : null;
-    const telHref = parentPhone ? `tel:${parentPhone}` : null;
+    const smsHref = contactPhone ? `sms:${contactPhone}?&body=${encodeURIComponent(smsBody)}` : null;
+    const telHref = contactPhone ? `tel:${contactPhone}` : null;
 
     // Full DOB (e.g. "3/10/2008").
     let dobShort = '';
@@ -511,7 +510,7 @@ class BoysRosterScreen extends Screen {
       // LeagueApps can auto-charge each month (cuts down admin work).
       // No more "hardship / work something out" escape hatches, no
       // more three-tier voice.
-      const parentFirstStr = parentFirst ? ` ${parentFirst}` : '';
+      const parentFirstStr = contactFirst ? ` ${contactFirst}` : '';
       const kidStr         = p.firstName ? ` ${p.firstName}'s` : ' your child\'s';
 
       // Copy rewritten 2026-07-09 per user directive: "right now i
@@ -563,15 +562,15 @@ class BoysRosterScreen extends Screen {
       // Two buttons: 💬 PAY (SMS to parent) and ✉ PAY (email to parent).
       // Whichever channel the parent uses, one tap gets there.  If we
       // only have one of the two, only that button renders.
-      const paySmsHref = parentPhone
-        ? `sms:${parentPhone}?&body=${encodeURIComponent(payBody)}`
+      const paySmsHref = contactPhone
+        ? `sms:${contactPhone}?&body=${encodeURIComponent(payBody)}`
         : null;
-      const payEmailHref = parentEmail
+      const payEmailHref = contactEmail
         ? `https://mail.google.com/mail/?${new URLSearchParams({
             view:     'cm',
             fs:       '1',
             authuser: 'soccer@lighthouse1893.org',
-            to:       parentEmail,
+            to:       contactEmail,
             su:       `Lighthouse 1893 — quick note about ${p.firstName || 'your child'}'s dues`,
             body:     payEmailBody,
           }).toString()}`
@@ -585,7 +584,7 @@ class BoysRosterScreen extends Screen {
               data-amount="${amountNum != null ? amountNum : ''}"
               data-days-overdue="${daysAreExact ? days : ''}"
               data-tier="${daysAreExact ? (days >= 7 ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
-              title="Text ${this.escape(this.formatPhone(parentPhone))} a polite dues reminder"
+              title="Text ${this.escape(this.formatPhone(contactPhone))} a polite dues reminder"
               style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
              💬 PAY
            </a>`
@@ -598,7 +597,7 @@ class BoysRosterScreen extends Screen {
               data-amount="${amountNum != null ? amountNum : ''}"
               data-days-overdue="${daysAreExact ? days : ''}"
               data-tier="${daysAreExact ? (days >= 7 ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
-              title="Email ${this.escape(parentEmail)} a polite dues reminder"
+              title="Email ${this.escape(contactEmail)} a polite dues reminder"
               style="${btnBase} border:none; cursor:pointer; background:#0284c7; color:#fff; text-decoration:none;">
              ✉ PAY
            </a>`
@@ -622,28 +621,28 @@ class BoysRosterScreen extends Screen {
     // desktop).  Only rendered if we have at least a phone or email.
     // For youth, we save the PARENT to contacts (with the kid's name
     // in the org/note) so the coach ends up with a usable entry.
-    const vcardHref = (parentPhone || parentEmail)
+    const vcardHref = (contactPhone || contactEmail)
       ? this.buildVcardHref({
-          fullName:  parentName && parentName !== 'there' ? parentName : (p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()),
-          firstName: parentFirst || p.firstName,
+          fullName:  contactName && contactName !== 'there' ? contactName : (p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()),
+          firstName: contactFirst || p.firstName,
           lastName:  p.parentLastName || p.lastName,
-          phone:     parentPhone,
-          email:     parentEmail,
+          phone:     contactPhone,
+          email:     contactEmail,
           org:       `Lighthouse 1893 Youth`,
           note:      p.firstName ? `Parent of ${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '',
         })
       : null;
-    const vcardFilename = ((parentName && parentName !== 'there' ? parentName : (p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`)).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
+    const vcardFilename = ((contactName && contactName !== 'there' ? contactName : (p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`)).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
     const contactItems = [
-      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(parentEmail)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(parentPhone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
-      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(parentPhone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
-      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(parentFirst || p.firstName || 'contact')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
+      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
+      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactFirst || p.firstName || 'contact')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="br-contact" style="position:relative; display:inline-block;">
         <summary style="${btnBase} background:#334155; color:#fff; border:none; cursor:pointer; list-style:none; user-select:none;"
-                 title="Contact ${this.escape(parentFirst || 'parent')}${p.firstName ? ` (${this.escape(p.firstName)}'s parent)` : ''}">📇 CONTACT</summary>
+                 title="Contact ${this.escape(contactFirst || 'parent')}${p.firstName ? ` (${this.escape(p.firstName)}'s parent)` : ''}">📇 CONTACT</summary>
         <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155;">
           ${contactItems.join('')}
         </div>

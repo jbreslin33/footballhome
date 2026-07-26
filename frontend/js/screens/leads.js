@@ -1,3 +1,93 @@
+class LeadsBoardModel {
+  constructor({ leads, formLabel, activeStatus = 'all', hiddenFunnels = null, alwaysShow = [] } = {}) {
+    this.leads = Array.isArray(leads) ? leads : [];
+    this.formLabel = formLabel || (() => null);
+    this.activeStatus = activeStatus;
+    this.hiddenFunnels = hiddenFunnels instanceof Set ? hiddenFunnels : new Set();
+    this.alwaysShow = alwaysShow;
+    this.build();
+  }
+
+  build() {
+    const filteredLeads = this.leads;
+    this.filteredLeads = filteredLeads;
+
+    const FUNNEL_ORDER = [
+      'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
+      'U23 Women', 'Tri County Women', "Women's Club",
+      'APSL / Liga 1',
+      'Youth (Grades 1–6)',
+      'Boys Club (Grades 1–6)', 'Boys Club (K-12)', 'Boys Club (U11/U12)',
+      'Girls Club (Grades 1–6)', 'Girls Club (K-12)', 'Girls Club (U11/U12)',
+    ];
+    const funnelRank = (label) => {
+      const i = FUNNEL_ORDER.indexOf(label);
+      return i === -1 ? 999 : i;
+    };
+
+    const grouped = {};
+    const statusCounts = { open: 0, followup: 0, converted: 0, all: filteredLeads.length };
+
+    for (const lead of filteredLeads) {
+      const label = this.formLabel(lead.form_id) || 'Other';
+      if (!grouped[label]) grouped[label] = [];
+      grouped[label].push(lead);
+
+      const baseStatus = lead.converted_at ? 'converted' : (lead.needs_followup ? 'followup' : 'open');
+      if (baseStatus === 'open') statusCounts.open += 1;
+      else if (baseStatus === 'followup') statusCounts.followup += 1;
+      else if (baseStatus === 'converted') statusCounts.converted += 1;
+    }
+
+    for (const label of Object.keys(grouped)) {
+      grouped[label].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    for (const label of this.alwaysShow) {
+      if (!grouped[label]) grouped[label] = [];
+    }
+
+    const columns = Object.keys(grouped).sort((a, b) => {
+      const dr = funnelRank(a) - funnelRank(b);
+      if (dr !== 0) return dr;
+      return a.localeCompare(b);
+    });
+
+    const hidden = new Set(this.hiddenFunnels);
+    for (const col of [...hidden]) if (!columns.includes(col)) hidden.delete(col);
+
+    const visible = columns.filter(col => !hidden.has(col));
+
+    const STATUS_TABS = [
+      { id: 'open',      label: 'Open',          match: l => !l.converted_at && !l.needs_followup },
+      { id: 'followup',  label: 'Follow-up due', match: l => !l.converted_at &&  l.needs_followup },
+      { id: 'converted', label: 'Converted',     match: l => !!l.converted_at                     },
+      { id: 'all',       label: 'All',           match: () => true                                 },
+    ];
+
+    let activeStatus = this.activeStatus || 'all';
+    if (!STATUS_TABS.some(t => t.id === activeStatus)) activeStatus = 'all';
+    const statusMatch = (STATUS_TABS.find(t => t.id === activeStatus) || STATUS_TABS[0]).match;
+
+    const groupedFiltered = {};
+    for (const col of columns) {
+      groupedFiltered[col] = grouped[col].filter(statusMatch);
+    }
+
+    const visibleLeadCount = visible.reduce((n, col) => n + groupedFiltered[col].length, 0);
+
+    this.columns = columns;
+    this.visible = visible;
+    this.grouped = grouped;
+    this.groupedFiltered = groupedFiltered;
+    this.statusCounts = statusCounts;
+    this.visibleLeadCount = visibleLeadCount;
+    this.activeStatus = activeStatus;
+    this.hidden = hidden;
+    this.statusTabs = STATUS_TABS;
+  }
+}
+
 // LeadsScreen — View Meta lead gen form submissions under Club Admin
 class LeadsScreen extends Screen {
   render() {
@@ -22,7 +112,6 @@ class LeadsScreen extends Screen {
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="leads-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No leads yet.</div>
-        <div id="leads-unjoined" style="display:none;"></div>
         <div id="leads-list"    style="display:none;"></div>
       </div>
     `;
@@ -197,48 +286,50 @@ class LeadsScreen extends Screen {
 
     const syncStartMs = Date.now();
     let syncReport = null;
-    try {
-      const syncRes = await this.auth.fetch(
-        `/api/leads/sync${force ? '?force=1' : ''}`,
-        { method: 'POST' }
-      );
-      if (!syncRes.ok) throw new Error(`sync HTTP ${syncRes.status}`);
-      syncReport = await syncRes.json();
-      const syncMs = Date.now() - syncStartMs;
-      if (syncReport.skippedByTtl) {
-        this._appendLog(`Sync skipped: cached <30s ago (use Sync now to force). (${syncMs}ms)`, 'info');
-      } else {
-        const synced  = syncReport.syncedRows ?? 0;
-        const formsT  = syncReport.formsTotal ?? '?';
-        const formsS  = syncReport.formsSynced ?? '?';
-        const failed  = (syncReport.failedForms || []).length;
-        this._appendLog(`Sync OK: ${synced} row(s) from ${formsS}/${formsT} form(s) in ${syncMs}ms.`, 'ok');
-        if (failed) {
-          this._appendLog(`${failed} form(s) failed during sync:`, 'warn');
-          for (const f of syncReport.failedForms) {
-            this._appendLog(`  • form ${f.form_id || f.formId || '?'}: ${f.error || 'unknown'}`, 'warn');
-          }
-        }
-        if (Array.isArray(syncReport.perForm)) {
-          for (const f of syncReport.perForm) {
-            const label = f.label || f.form_id || '?';
-            this._appendLog(`  • ${label}: +${f.synced ?? 0} new`, 'info');
-          }
-        }
-      }
-    } catch (err) {
-      this._appendLog(`Sync FAILED: ${err.message}`, 'error');
-      // Sync failed — still try to render the DB cache so the screen
-      // isn't useless, but warn loudly so the user knows the data may
-      // be stale.
-      this._setSyncBanner({
-        icon: '⚠️',
-        text: `Meta sync failed (${err.message}) — showing cached leads. Click Sync now to retry.`,
-        showRefresh: true,
-      });
-    }
 
-    try {
+    const syncPromise = (async () => {
+      try {
+        const syncRes = await this.auth.fetch(
+          `/api/leads/sync${force ? '?force=1' : ''}`,
+          { method: 'POST' }
+        );
+        if (!syncRes.ok) throw new Error(`sync HTTP ${syncRes.status}`);
+        const report = await syncRes.json();
+        const syncMs = Date.now() - syncStartMs;
+        if (report.skippedByTtl) {
+          this._appendLog(`Sync skipped: cached <30s ago (use Sync now to force). (${syncMs}ms)`, 'info');
+        } else {
+          const synced  = report.syncedRows ?? 0;
+          const formsT  = report.formsTotal ?? '?';
+          const formsS  = report.formsSynced ?? '?';
+          const failed  = (report.failedForms || []).length;
+          this._appendLog(`Sync OK: ${synced} row(s) from ${formsS}/${formsT} form(s) in ${syncMs}ms.`, 'ok');
+          if (failed) {
+            this._appendLog(`${failed} form(s) failed during sync:`, 'warn');
+            for (const f of report.failedForms) {
+              this._appendLog(`  • form ${f.form_id || f.formId || '?'}: ${f.error || 'unknown'}`, 'warn');
+            }
+          }
+          if (Array.isArray(report.perForm)) {
+            for (const f of report.perForm) {
+              const label = f.label || f.form_id || '?';
+              this._appendLog(`  • ${label}: +${f.synced ?? 0} new`, 'info');
+            }
+          }
+        }
+        return { report, syncMs };
+      } catch (err) {
+        this._appendLog(`Sync FAILED: ${err.message}`, 'error');
+        this._setSyncBanner({
+          icon: '⚠️',
+          text: `Meta sync failed (${err.message}) — showing cached leads. Click Sync now to retry.`,
+          showRefresh: true,
+        });
+        return { report: null, syncMs: Date.now() - syncStartMs };
+      }
+    })();
+
+    const leadsPromise = (async () => {
       this._appendLog('GET /api/leads — reading from database…', 'step');
       const dbStart = Date.now();
       const leadsRes = await this.auth.fetch('/api/leads');
@@ -246,7 +337,6 @@ class LeadsScreen extends Screen {
       const leads = await leadsRes.json();
       this._appendLog(`DB returned ${leads.length} lead(s) in ${Date.now() - dbStart}ms.`, 'ok');
 
-      // Log per-funnel summary so the coach can see distribution at a glance.
       try {
         const buckets = {};
         for (const l of leads) {
@@ -262,18 +352,19 @@ class LeadsScreen extends Screen {
         this._appendLog(`Contact history: ${emailed}/${leads.length} have been emailed at least once.`, 'info');
       } catch { /* non-fatal */ }
 
+      return leads;
+    })();
+
+    try {
+      const [{ report }, leads] = await Promise.all([syncPromise, leadsPromise]);
+      syncReport = report;
+
       this.find('#leads-loading').style.display = 'none';
       this.find('#leads-list').style.display = 'block';
       this._leads = leads;
 
-      // Only overwrite the banner if the sync itself didn't already
-      // post a failure message above.
       if (syncReport) {
         const elapsedSec = ((Date.now() - syncStartMs) / 1000).toFixed(1);
-        // Persistent last-sync timestamp for the color-coded pill —
-        // updated on every completed sync (skipped-by-TTL counts as a
-        // completion too, so the pill reads "just now" instead of a
-        // stale time drifting further from now).
         this._lastSyncAt = new Date();
         this._updateSyncPill();
         let icon = '✅';
@@ -294,15 +385,6 @@ class LeadsScreen extends Screen {
       const renderStart = Date.now();
       this.renderLeads(leads);
       this._appendLog(`Render complete in ${Date.now() - renderStart}ms. Done.`, 'ok');
-
-      // Fire-and-forget: fetch unjoined members (members on Men/Women/
-      // Boys/Girls rosters whose email never showed up in leads) and
-      // render them at the top in blue.  Runs on every load (including
-      // refresh) per the explicit user requirement.  Failures are
-      // logged but never block the leads render.
-      this.loadUnjoinedMembers().catch(err => {
-        this._appendLog(`Unjoined-members check failed: ${err.message}`, 'warn');
-      });
     } catch (err) {
       this._appendLog(`Failed to load leads: ${err.message}`, 'error');
       this.find('#leads-loading').style.display = 'none';
@@ -316,136 +398,12 @@ class LeadsScreen extends Screen {
     }
   }
 
-  // ── Members section ───────────────────────────────────────────────
-  // GET /api/leads/unjoined-members returns ALL rostered Lighthouse
-  // members (Men / Women / Boys / Girls).  We use the list for two
-  // things on this screen:
-  //   1. Render the collapsible blue "Members" card up top.
-  //   2. Build _memberEmailSet so renderLeads() can hide any lead
-  //      whose email matches an existing member (already in the club
-  //      — they aren't a prospect).
-  // Runs on every loadLeads() call.  Endpoint name is legacy.
-  async loadUnjoinedMembers() {
-    const box = this.find('#leads-unjoined');
-    if (!box) return;
-
-    this._appendLog('GET /api/leads/unjoined-members — loading roster…', 'step');
-    const t0 = Date.now();
-    let rows = [];
-    try {
-      const res = await this.auth.fetch('/api/leads/unjoined-members');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      rows = await res.json();
-      this._appendLog(`Members: ${rows.length} loaded in ${Date.now() - t0}ms.`, 'ok');
-    } catch (err) {
-      box.style.display = 'none';
-      box.innerHTML = '';
-      throw err;
-    }
-
-    // Build the email → member set so renderLeads() can hide matches.
-    // Each row's `emails` is a comma-joined string (may be empty).
-    const set = new Set();
-    for (const r of rows) {
-      const s = (r && r.emails) ? String(r.emails) : '';
-      for (const part of s.split(',')) {
-        const e = part.trim().toLowerCase();
-        if (e) set.add(e);
-      }
-    }
-    this._memberEmailSet = set;
-
-    this.renderUnjoinedMembers(rows);
-
-    // Re-render leads now that we know which ones to suppress.
-    if (Array.isArray(this._leads)) this.renderLeads(this._leads);
-  }
-
-  renderUnjoinedMembers(rows) {
-    const box = this.find('#leads-unjoined');
-    if (!box) return;
-
-    if (!Array.isArray(rows) || rows.length === 0) {
-      box.style.display = 'none';
-      box.innerHTML = '';
-      return;
-    }
-
-    const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
-      c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-
-    // Group by category (Men / Women / Boys / Girls), preserve a stable order.
-    const order = ['Men', 'Women', 'Boys', 'Girls'];
-    const groups = {};
-    for (const r of rows) {
-      const k = r.category || 'Other';
-      (groups[k] ||= []).push(r);
-    }
-
-    const cardsHtml = order
-      .filter(cat => groups[cat] && groups[cat].length)
-      .map(cat => {
-        const items = groups[cat].map(r => {
-          const name  = `${r.first_name || ''} ${r.last_name || ''}`.trim() || '(no name)';
-          const team  = r.team_name ? ` <span style="opacity:0.75;">— ${esc(r.team_name)}</span>` : '';
-          const email = r.emails ? `<div style="font-size:0.78rem; opacity:0.85;">${esc(r.emails)}</div>` : '<div style="font-size:0.78rem; opacity:0.6; font-style:italic;">no email on file</div>';
-          const phone = r.phone  ? `<div style="font-size:0.78rem; opacity:0.85;">📱 ${esc(r.phone)}</div>` : '';
-          return `
-            <li style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
-              <div style="font-weight:600;">${esc(name)}${team}</div>
-              ${email}${phone}
-            </li>`;
-        }).join('');
-        return `
-          <div style="flex:1; min-width:240px;">
-            <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.9;">
-              ${esc(cat)} <span style="opacity:0.7;">(${groups[cat].length})</span>
-            </div>
-            <ul style="list-style:none; padding:0; margin:0;">${items}</ul>
-          </div>`;
-      }).join('');
-
-    box.style.display = 'block';
-    box.innerHTML = `
-      <details style="margin-bottom: var(--space-3); border-radius:8px;
-                      background:#1e3a8a; color:#dbeafe; border:1px solid #3b82f6;">
-        <summary style="padding: var(--space-3); cursor:pointer; list-style:revert;
-                        display:flex; align-items:baseline; gap:10px;">
-          <span style="font-size:1.05rem;">🔵</span>
-          <strong style="font-size:0.95rem;">Members</strong>
-          <span style="opacity:0.8; font-size:0.8rem;">
-            (${rows.length} rostered ${rows.length === 1 ? 'person' : 'people'}
-             — click to expand. Anyone here is hidden from the leads list below.)
-          </span>
-        </summary>
-        <div style="padding: 0 var(--space-3) var(--space-3); display:flex; flex-wrap:wrap; gap: var(--space-4);">
-          ${cardsHtml}
-        </div>
-      </details>
-    `;
-  }
-
   renderLeads(leads) {
     const container = this.find('#leads-list');
 
-    // Hide leads whose email matches a current Lighthouse member.
-    // Members are loaded async by loadUnjoinedMembers() and stashed
-    // in _memberEmailSet; on first paint that set may be empty (race
-    // — members fetch hasn't returned yet), in which case we render
-    // everything and a follow-up renderLeads() fires after members
-    // load.  When the set is present we also expose a small counter
-    // so the coach can see how many got merged into the Members card.
-    let suppressedAsMembers = 0;
-    if (this._memberEmailSet && this._memberEmailSet.size > 0) {
-      const before = leads.length;
-      leads = leads.filter(l => {
-        const e = (l && l.email) ? String(l.email).trim().toLowerCase() : '';
-        return !(e && this._memberEmailSet.has(e));
-      });
-      suppressedAsMembers = before - leads.length;
-    }
-    this._suppressedAsMembers = suppressedAsMembers;
-
+    // The leads screen is a prospect board.  We still surface member
+    // state per lead so operators can see which prospects already belong
+    // to the club, but we do not load or render the full roster section.
     // SMS bot-risk banner removed 2026-06-16: leads page is email-only
     // now (initial-touch via Gmail compose).  SMS will return as part
     // of a separate RSVP-reminder workflow with its own throttling UI.
@@ -475,111 +433,40 @@ class LeadsScreen extends Screen {
     };
     const DEFAULT_COLOR = '#475569';
 
-    const FUNNEL_ORDER = [
-      'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
-      'U23 Women', 'Tri County Women', "Women's Club",
-      'APSL / Liga 1',
-      'Youth (Grades 1–6)',
-      'Boys Club (Grades 1–6)', 'Boys Club (K-12)', 'Boys Club (U11/U12)',
-      'Girls Club (Grades 1–6)', 'Girls Club (K-12)', 'Girls Club (U11/U12)',
-    ];
-    const funnelRank = (label) => {
-      const i = FUNNEL_ORDER.indexOf(label);
-      return i === -1 ? 999 : i;
-    };
-
-    // Bucket leads by funnel label.  Leads with no form_id (or an
-    // unmapped form_id) fall into "Other" so they're not silently
-    // hidden — the coach should always see every lead.
-    const grouped = {};
-    for (const l of leads) {
-      const label = this.formLabel(l.form_id) || 'Other';
-      if (!grouped[label]) grouped[label] = [];
-      grouped[label].push(l);
-    }
-    for (const label of Object.keys(grouped)) {
-      grouped[label].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    }
-
-    // Always-show funnels — currently-live ads that should appear as
-    // empty columns until their first lead lands.  Without this the
-    // coach has no signal on the Leads page that a freshly-launched
-    // ad is actually running.  Update this list when ads are
-    // launched / paused — keep it short (just the ones with $ behind
-    // them today).
-    const ALWAYS_SHOW = [
-      // Currently-live ads (as of 2026-06-20).  Update when ads are
-      // launched / paused via scripts/ads/create-ad.js.
-      'U23 Men',
-      'Youth (Grades 1\u20136)',
-      'Boys Club (Grades 1\u20136)',
-      'Girls Club (Grades 1\u20136)',
-      'Boys Club (U11/U12)',
-      'Girls Club (U11/U12)',
-    ];
-    for (const label of ALWAYS_SHOW) {
-      if (!grouped[label]) grouped[label] = [];
-    }
-
-    const COLUMNS = Object.keys(grouped).sort((a, b) => {
-      const dr = funnelRank(a) - funnelRank(b);
-      if (dr !== 0) return dr;
-      return a.localeCompare(b);
-    });
-
-    // Load hidden-column preferences (persisted in localStorage, keyed
-    // by funnel label now — not ad_id).  Stale labels (funnels with
-    // zero leads this load) are dropped on read so the toggle list
-    // stays clean.  Use a fresh storage key so we don't read the old
-    // ad_id-keyed values from a prior page version.
     const HIDDEN_KEY = 'leads.hiddenFunnels';
+    const STATUS_KEY  = 'leads.activeStatus.v2';
+
     let hidden;
     try {
       hidden = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
     } catch { hidden = new Set(); }
-    for (const c of [...hidden]) if (!COLUMNS.includes(c)) hidden.delete(c);
-    const visible = COLUMNS.filter(c => !hidden.has(c));
 
-    // ── Status filter (Open / Follow-up due / Converted / All) ────────
-    // Orthogonal to the funnel-column toggles above.  Filters leads
-    // inside each visible column.  Persisted via localStorage.  Default
-    // 'open' so a fresh page load shows the actionable funnel state
-    // without surfacing every converted lead from history.
-    const STATUS_KEY  = 'leads.activeStatus.v2';
-    const STATUS_TABS = [
-      { id: 'open',      label: 'Open',          match: l => !l.converted_at && !l.needs_followup },
-      { id: 'followup',  label: 'Follow-up due', match: l => !l.converted_at &&  l.needs_followup },
-      { id: 'converted', label: 'Converted',     match: l => !!l.converted_at                     },
-      { id: 'all',       label: 'All',           match: () => true                                 },
-    ];
     let activeStatus;
     try {
       activeStatus = localStorage.getItem(STATUS_KEY) || 'all';
     } catch { activeStatus = 'all'; }
-    if (!STATUS_TABS.some(t => t.id === activeStatus)) activeStatus = 'all';
-    const statusMatch = (STATUS_TABS.find(t => t.id === activeStatus) || STATUS_TABS[0]).match;
 
-    // Status counts are computed across ALL leads (every funnel),
-    // independent of the funnel-column visibility, so the tab badges
-    // are stable as the coach toggles columns.
-    const statusCounts = Object.fromEntries(
-      STATUS_TABS.map(t => [t.id, leads.filter(t.match).length])
-    );
+    const board = new LeadsBoardModel({
+      leads,
+      formLabel: this.formLabel.bind(this),
+      activeStatus,
+      hiddenFunnels: hidden,
+      alwaysShow: [
+        'U23 Men',
+        'Youth (Grades 1–6)',
+        'Boys Club (Grades 1–6)',
+        'Girls Club (Grades 1–6)',
+        'Boys Club (U11/U12)',
+        'Girls Club (U11/U12)',
+      ],
+    });
 
-    // Filter each grouped[label] array to only leads that match the
-    // active status tab.  The funnel column still renders even if
-    // empty after filtering (so the layout doesn't jump).
-    const groupedFiltered = {};
-    for (const c of COLUMNS) {
-      groupedFiltered[c] = grouped[c].filter(statusMatch);
-    }
-
-    // Visible lead count = filtered count across visible columns only.
-    const visibleLeadCount = visible.reduce((n, c) => n + groupedFiltered[c].length, 0);
+    const { columns, visible, grouped, groupedFiltered, statusCounts, visibleLeadCount, statusTabs, hidden: resolvedHidden } = board;
+    hidden = resolvedHidden;
 
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);">
-        ${STATUS_TABS.map(t => {
+        ${statusTabs.map(t => {
           const active = t.id === activeStatus;
           const bg     = active ? '#1e3a5f' : 'var(--bg-secondary)';
           const fg     = active ? '#dbeafe' : 'inherit';
@@ -595,8 +482,8 @@ class LeadsScreen extends Screen {
       </div>
       <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Show:</span>
-        ${COLUMNS.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No leads yet.</span>` : ''}
-        ${COLUMNS.map(label => {
+        ${columns.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No leads yet.</span>` : ''}
+        ${columns.map(label => {
           const color = FUNNEL_COLORS[label] || DEFAULT_COLOR;
           return `
           <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${color};">
@@ -607,9 +494,9 @@ class LeadsScreen extends Screen {
       </div>
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">
         ${visibleLeadCount} of ${leads.length} lead${leads.length !== 1 ? 's' : ''} shown
-        ${activeStatus !== 'all' ? `<span style="opacity:0.7;">— filtered by <strong>${(STATUS_TABS.find(t => t.id === activeStatus) || {}).label}</strong></span>` : ''}
+        ${activeStatus !== 'all' ? `<span style="opacity:0.7;">— filtered by <strong>${(statusTabs.find(t => t.id === activeStatus) || {}).label}</strong></span>` : ''}
       </p>
-      ${COLUMNS.length === 0 ? `
+      ${columns.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.6;">No leads yet.</div>
       ` : visible.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All columns hidden — check a box above to show leads.</div>
@@ -1136,6 +1023,11 @@ class LeadsScreen extends Screen {
       ? `tel:${(lead.phone || '').replace(/[^\d+]/g, '')}`
       : null;
     const formattedPhone = this.formatPhoneNumber(lead.phone || '');
+    const memberBadge = lead.member_status === 'active'
+      ? `<div style="margin-top:6px; font-size:0.73rem; font-weight:700; color:#0f766e; background:rgba(20,184,166,0.12); border:1px solid rgba(20,184,166,0.25); border-radius:999px; padding:3px 8px; display:inline-flex; align-items:center; gap:5px;">● Already a member</div>`
+      : (lead.member_status === 'inactive'
+        ? `<div style="margin-top:6px; font-size:0.73rem; font-weight:700; color:#92400e; background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.24); border-radius:999px; padding:3px 8px; display:inline-flex; align-items:center; gap:5px;">● Former member</div>`
+        : '');
 
     // Visual status (5 buckets) — combines lifecycle (4-state, migration
     // 074) + manual override (migration 075, COALESCEd server-side) +
@@ -1372,6 +1264,7 @@ class LeadsScreen extends Screen {
         <div style="font-size:0.95rem; font-weight:600;">${lead.name || '(no name)'}</div>
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
+        ${memberBadge}
         ${lastContactBadge}
         ${touchesLine}
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${editBtn}</div>
@@ -2581,15 +2474,39 @@ class LeadsScreen extends Screen {
           body:
             `Hi {first},\n` +
             `\n` +
-            `That's great that ${c.openerLine}!\n` +
+            `That's great that you want to play soccer for Lighthouse Men's Soccer Club 1893!\n` +
+            `\n` +
+            `To register, head here: https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership\n` +
             `\n` +
             `Here's the full program description:\n` +
             `\n` +
-            `${moreInfoDescText}\n` +
-            `\n` +
-            closeLink(`To register, head here:`) + `\n` +
-            `\n` +
-            `Reply with any other questions — or if it's easier, let me know a good time to call.`,
+            `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community.\n\n` +
+            `Our history speaks to that quality. Lighthouse teams have won 5 U-19 national championships and sent 7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics — and, more importantly, through its Boys Club, Girls Club, Men's Club, and Women's Club, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. It's a club for life in the neighborhood. Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.\n\n` +
+            `MEMBERSHIP:\n` +
+            `For 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. Your membership runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and your uniform. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
+            `TEAMS:\n` +
+            `Trials have begun for the U.S. Open Cup, APSL 1st Team, and U.S. National Amateur Cup. Join the Men's Club to be considered.\n` +
+            `  • U.S. Open Cup — the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination — MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.\n` +
+            `  • U.S. National Amateur Cup — U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.\n` +
+            `  • APSL (American Premier Soccer League) — a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.\n\n` +
+            `Our competitive squads (Fall 2026):\n` +
+            `  • APSL\n` +
+            `  • Liga 1\n` +
+            `  • Liga 2\n\n` +
+            `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n` +
+            `SCHEDULE:\n` +
+            `  • Next practice: Thu, Jul 23\n` +
+            `  • Practice: Wednesday & Friday, 7:00–8:30pm\n` +
+            `  • Pickup: Tuesday & Thursday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n` +
+            `  • Purpose of 5 weekly sessions: Five sessions a week fit real work schedules — aim for any 2 of the 5 and you're a regular — and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments — not around a cone that can't defend. Together they cover the four pillars of player development: technical, tactical, physical, and psychological.\n` +
+            `  • Games: Sundays\n` +
+            `  • Home Outdoor Facility: Lighthouse Sports Complex, 199 E Erie Avenue, Philadelphia PA 19140\n` +
+            `  • Home Indoor Facility: Lighthouse Community Center, 141 W Somerset Street, Philadelphia PA 19133\n\n` +
+            `BILLING:\n` +
+            `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
+            `From then on, the normal $35/month membership is invoiced on the first Friday of each month.\n\n` +
+            `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
+            `Reply with any other questions to soccer@lighthouse1893.org`,
           // SMS variant — compressed to a couple of segments.  Ditches
           // the full description; keeps field address, cost, card-on-
           // file requirement, and register link (the four questions

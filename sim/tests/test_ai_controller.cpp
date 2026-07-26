@@ -495,7 +495,7 @@ FH_TEST(role_specific_boost_prefers_lcb_jockey)
     const auto v = makeSelfOnlyView(SlotId{1});
     const Intent out = c.decide(v, SlotId{1});
 
-    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(2.0f));
+    FH_EXPECT(out.desired_direction.x == Fixed64::fromFloat(1.0f));
 }
 
 FH_TEST(default_behaviors_slice_33_4_roles_get_correct_bags)

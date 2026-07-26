@@ -79,6 +79,12 @@ public:
     // LeagueApps sync + audit trail are unaffected.
     std::optional<std::string> statusOverride;       // 'new'|'responded'|'signedup'|'dead'
 
+    // Lightweight member-state marker for the Leads board.  This is
+    // derived from the live member tables and lets the UI mark a lead
+    // card as already a current or former member without fetching the
+    // whole member roster.
+    std::optional<std::string> memberStatus;         // 'active' | 'inactive'
+
     // Server-computed lifecycle state, one of:
     //   "new"       — never emailed, not converted, not dead
     //   "responded" — emailed at least once, not converted, not dead

@@ -95,6 +95,9 @@ Lead rowToLead(const pqxx::row& row) {
         l.statusOverride = optStr(row["status_override"]);
     } catch (const std::exception&) { /* not selected */ }
     try {
+        l.memberStatus = optStr(row["member_status"]);
+    } catch (const std::exception&) { /* not selected */ }
+    try {
         const auto& f = row["status"];
         if (!f.is_null()) l.status = f.c_str();
     } catch (const std::exception&) { /* not selected */ }
@@ -106,18 +109,30 @@ const char* kSelectListAggregate =
     "       l.name, l.email, l.phone, l.raw_fields, l.preferred_channel, "
     "       to_char(l.created_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS created_at, "
-    "       COALESCE(c.email_count, 0)::int AS email_count, "
-    "       COALESCE(c.text_count,  0)::int AS text_count, "
-    "       COALESCE(c.call_count,  0)::int AS call_count, "
-    "       to_char(c.last_email_at AT TIME ZONE 'UTC', "
+    "       COALESCE((SELECT COUNT(*) FROM lead_contacts lc "
+    "                  WHERE lc.lead_id = l.id AND lc.channel = 'email'), 0)::int AS email_count, "
+    "       COALESCE((SELECT COUNT(*) FROM lead_contacts lc "
+    "                  WHERE lc.lead_id = l.id AND lc.channel = 'text'), 0)::int AS text_count, "
+    "       COALESCE((SELECT COUNT(*) FROM lead_contacts lc "
+    "                  WHERE lc.lead_id = l.id AND lc.channel = 'call'), 0)::int AS call_count, "
+    "       to_char((SELECT MAX(lc.sent_at) FROM lead_contacts lc "
+    "                 WHERE lc.lead_id = l.id AND lc.channel = 'email'), "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_email_at, "
-    "       to_char(c.last_text_at  AT TIME ZONE 'UTC', "
+    "       to_char((SELECT MAX(lc.sent_at) FROM lead_contacts lc "
+    "                 WHERE lc.lead_id = l.id AND lc.channel = 'text'), "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_text_at, "
-    "       to_char(c.last_call_at  AT TIME ZONE 'UTC', "
+    "       to_char((SELECT MAX(lc.sent_at) FROM lead_contacts lc "
+    "                 WHERE lc.lead_id = l.id AND lc.channel = 'call'), "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS last_call_at, "
-    "       c.last_email_template, "
-    "       c.last_text_template, "
-    "       c.last_call_template, "
+    "       (SELECT lc.template FROM lead_contacts lc "
+    "         WHERE lc.lead_id = l.id AND lc.channel = 'email' "
+    "         ORDER BY lc.sent_at DESC, lc.id DESC LIMIT 1) AS last_email_template, "
+    "       (SELECT lc.template FROM lead_contacts lc "
+    "         WHERE lc.lead_id = l.id AND lc.channel = 'text' "
+    "         ORDER BY lc.sent_at DESC, lc.id DESC LIMIT 1) AS last_text_template, "
+    "       (SELECT lc.template FROM lead_contacts lc "
+    "         WHERE lc.lead_id = l.id AND lc.channel = 'call' "
+    "         ORDER BY lc.sent_at DESC, lc.id DESC LIMIT 1) AS last_call_template, "
     "       to_char(l.converted_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS converted_at, "
     "       l.converted_source, "
@@ -125,51 +140,80 @@ const char* kSelectListAggregate =
     "       to_char(l.dead_at AT TIME ZONE 'UTC', "
     "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS dead_at, "
     "       l.status_override, "
-    // Server-side computation: a lead "needs follow-up" iff it's still
-    // open (not converted, not dead) AND has been touched at least once
-    // on ANY channel (email OR text) AND the last touch is >= 3 days
-    // old.  Brand-new untouched leads stay in the New state, dead
-    // leads stay in the Dead state.
+    "       CASE "
+    "         WHEN l.email IS NOT NULL AND EXISTS ( "
+    "           SELECT 1 FROM person_emails pe "
+    "           JOIN persons p ON p.id = pe.person_id "
+    "           WHERE lower(pe.email) = lower(l.email) "
+    "             AND (EXISTS (SELECT 1 FROM person_la_memberships plm "
+    "                           WHERE plm.person_id = p.id AND plm.ended_at IS NULL) "
+    "                  OR EXISTS (SELECT 1 FROM rosters r "
+    "                              JOIN players pl ON pl.id = r.player_id "
+    "                              WHERE pl.person_id = p.id AND r.left_at IS NULL) "
+    "                  OR EXISTS (SELECT 1 FROM roster_assignments ra "
+    "                              JOIN external_person_aliases epa "
+    "                                ON epa.provider = 'leagueapps' "
+    "                               AND epa.external_user_id = ra.leagueapps_user_id::text "
+    "                              WHERE epa.person_id = p.id))) "
+    "         THEN 'active' "
+    "         WHEN l.email IS NOT NULL AND EXISTS ( "
+    "           SELECT 1 FROM person_emails pe "
+    "           JOIN persons p ON p.id = pe.person_id "
+    "           WHERE lower(pe.email) = lower(l.email) "
+    "             AND (EXISTS (SELECT 1 FROM person_la_memberships plm "
+    "                           WHERE plm.person_id = p.id) "
+    "                  OR EXISTS (SELECT 1 FROM rosters r "
+    "                              JOIN players pl ON pl.id = r.player_id "
+    "                              WHERE pl.person_id = p.id) "
+    "                  OR EXISTS (SELECT 1 FROM roster_assignments ra "
+    "                              JOIN external_person_aliases epa "
+    "                                ON epa.provider = 'leagueapps' "
+    "                               AND epa.external_user_id = ra.leagueapps_user_id::text "
+    "                              WHERE epa.person_id = p.id))) "
+    "         THEN 'inactive' "
+    "         WHEN l.phone IS NOT NULL AND EXISTS ( "
+    "           SELECT 1 FROM person_phones pp "
+    "           JOIN persons p ON p.id = pp.person_id "
+    "           WHERE regexp_replace(pp.phone_number, '[^0-9]', '', 'g') = regexp_replace(l.phone, '[^0-9]', '', 'g') "
+    "             AND (EXISTS (SELECT 1 FROM person_la_memberships plm "
+    "                           WHERE plm.person_id = p.id AND plm.ended_at IS NULL) "
+    "                  OR EXISTS (SELECT 1 FROM rosters r "
+    "                              JOIN players pl ON pl.id = r.player_id "
+    "                              WHERE pl.person_id = p.id AND r.left_at IS NULL) "
+    "                  OR EXISTS (SELECT 1 FROM roster_assignments ra "
+    "                              JOIN external_person_aliases epa "
+    "                                ON epa.provider = 'leagueapps' "
+    "                               AND epa.external_user_id = ra.leagueapps_user_id::text "
+    "                              WHERE epa.person_id = p.id))) "
+    "         THEN 'active' "
+    "         WHEN l.phone IS NOT NULL AND EXISTS ( "
+    "           SELECT 1 FROM person_phones pp "
+    "           JOIN persons p ON p.id = pp.person_id "
+    "           WHERE regexp_replace(pp.phone_number, '[^0-9]', '', 'g') = regexp_replace(l.phone, '[^0-9]', '', 'g') "
+    "             AND (EXISTS (SELECT 1 FROM person_la_memberships plm "
+    "                           WHERE plm.person_id = p.id) "
+    "                  OR EXISTS (SELECT 1 FROM rosters r "
+    "                              JOIN players pl ON pl.id = r.player_id "
+    "                              WHERE pl.person_id = p.id) "
+    "                  OR EXISTS (SELECT 1 FROM roster_assignments ra "
+    "                              JOIN external_person_aliases epa "
+    "                                ON epa.provider = 'leagueapps' "
+    "                               AND epa.external_user_id = ra.leagueapps_user_id::text "
+    "                              WHERE epa.person_id = p.id))) "
+    "         THEN 'inactive' "
+    "         ELSE NULL "
+    "       END AS member_status, "
     "       (l.converted_at IS NULL "
     "        AND l.dead_at IS NULL "
-    "        AND c.last_contact_at IS NOT NULL "
-    "        AND c.last_contact_at < (NOW() - INTERVAL '3 days') "
+    "        AND (SELECT MAX(lc.sent_at) FROM lead_contacts lc WHERE lc.lead_id = l.id) < (NOW() - INTERVAL '3 days') "
     "       ) AS needs_followup, "
-    // Mutually-exclusive lifecycle state.  status_override (migration
-    // 075) wins when set — pure display override that does NOT
-    // mutate the underlying timestamp columns.  Otherwise: dead wins
-    // over converted_at so the row stays in the Dead bucket even if
-    // both flags are set (audit-trail tolerance — the UI never sets
-    // both directly).  'responded' fires the moment ANY channel has
-    // logged a touch (email or text).
     "       COALESCE(l.status_override, CASE "
     "         WHEN l.dead_at IS NOT NULL      THEN 'dead' "
     "         WHEN l.converted_at IS NOT NULL THEN 'signedup' "
-    "         WHEN c.last_contact_at IS NOT NULL THEN 'responded' "
+    "         WHEN (SELECT MAX(lc.sent_at) FROM lead_contacts lc WHERE lc.lead_id = l.id) IS NOT NULL THEN 'responded' "
     "         ELSE 'new' "
     "       END) AS status "
     "  FROM leads l "
-    "  LEFT JOIN ( "
-    "    SELECT lead_id, "
-    "           COUNT(*) FILTER (WHERE channel='email')      AS email_count, "
-    "           COUNT(*) FILTER (WHERE channel='text')       AS text_count, "
-    "           COUNT(*) FILTER (WHERE channel='call')       AS call_count, "
-    "           MAX(sent_at) FILTER (WHERE channel='email')  AS last_email_at, "
-    "           MAX(sent_at) FILTER (WHERE channel='text')   AS last_text_at, "
-    "           MAX(sent_at) FILTER (WHERE channel='call')   AS last_call_at, "
-    "           MAX(sent_at)                                  AS last_contact_at, "
-    // `(array_agg(... ORDER BY sent_at DESC) FILTER (...))[1]` pulls the
-    // template string from the most-recent row on each channel in a
-    // single aggregate scan.  All three channels carry a meaningful
-    // template now (first-touch / close / more-info / call), so all
-    // three arrays get computed and surfaced to the frontend for the
-    // "last touch: 📨 close · 1h ago" card indicator.
-    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='email'))[1] AS last_email_template, "
-    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='text'))[1]  AS last_text_template, "
-    "           (array_agg(template ORDER BY sent_at DESC) FILTER (WHERE channel='call'))[1]  AS last_call_template "
-    "      FROM lead_contacts "
-    "     GROUP BY lead_id "
-    "  ) c ON c.lead_id = l.id "
     " ORDER BY l.created_at DESC";
 
 const char* kSelectById =

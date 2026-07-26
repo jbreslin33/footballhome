@@ -29,6 +29,21 @@ class PracticeListScreen extends Screen {
       }
       
       // Tactics button
+      const detailsBtn = e.target.closest('[data-action="details"]');
+      if (detailsBtn) {
+        const practiceId = detailsBtn.getAttribute('data-id');
+        const practiceTitle = detailsBtn.getAttribute('data-title');
+        const practice = this.practices?.find(p => String(p.id) === String(practiceId)) || null;
+        const team = this.navigation.context.team;
+        this.navigation.goTo('practice-detail', {
+          practiceId: practiceId,
+          practiceTitle: practiceTitle,
+          practice: practice,
+          clubId: team?.clubId ?? team?.club_id ?? null
+        });
+        return;
+      }
+
       const tacticsBtn = e.target.closest('[data-action="tactics"]');
       if (tacticsBtn) {
         const practiceId = tacticsBtn.getAttribute('data-id');
@@ -73,6 +88,8 @@ class PracticeListScreen extends Screen {
   }
   
   async loadPracticesWithRSVP(practices) {
+    this.practices = practices;
+
     const userId = this.auth.getUser()?.id;
     const roleType = this.navigation.context.role; // 'coach', 'player', or 'parent'
     
@@ -224,7 +241,15 @@ class PracticeListScreen extends Screen {
               </button>
             </div>
             
-            <div class="practice-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2);">
+            <div class="practice-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: grid; gap: var(--space-2);">
+              <button 
+                data-action="details" 
+                data-id="${p.id}" 
+                data-title="${p.title}"
+                class="btn btn-secondary"
+                style="width: 100%;">
+                🧭 Practice Flow
+              </button>
               <button 
                 data-action="tactics" 
                 data-id="${p.id}" 

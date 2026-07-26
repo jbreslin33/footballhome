@@ -411,6 +411,10 @@ class GameModelAdminScreen extends Screen {
 
   renderList(items) {
     const title = this.getEntityTitle();
+    const content = this.selectedEntity === 'exercises'
+      ? this.renderExercisesTable(items)
+      : (items.length ? items.map((item) => this.renderItem(item)).join('') : '<div style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary);">No items yet.</div>');
+
     return `
       <div style="display:grid;gap:var(--space-3);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
@@ -424,8 +428,60 @@ class GameModelAdminScreen extends Screen {
           </div>
         </div>
         <div style="display:grid;gap:var(--space-2);">
-          ${items.length ? items.map((item) => this.renderItem(item)).join('') : '<div style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary);">No items yet.</div>'}
+          ${content}
         </div>
+      </div>
+    `;
+  }
+
+  renderExercisesTable(items) {
+    if (!items.length) {
+      return '<div style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary);">No exercises yet.</div>';
+    }
+
+    const rows = items
+      .slice()
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.id || 0) - (b.id || 0))
+      .map((item) => {
+        const players = [item.min_players, item.max_players]
+          .filter((value) => value != null && value !== '')
+          .join('–') || '—';
+        const duration = item.default_duration_minutes != null && item.default_duration_minutes !== ''
+          ? `${item.default_duration_minutes}m`
+          : '—';
+        return `
+          <tr>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.title || item.slug || 'Untitled')}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.slug || '—')}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(players)}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(duration)}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.summary || '—')}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
+              <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button class="btn btn-secondary edit-item-btn" data-id="${item.id}">Edit</button>
+                <button class="btn btn-danger delete-item-btn" data-id="${item.id}">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    return `
+      <div style="overflow-x:auto; border:1px solid var(--border-color); border-radius:var(--radius-lg); background:var(--bg-primary);">
+        <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Exercise</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Slug</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Players</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Duration</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Summary</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Actions</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
       </div>
     `;
   }

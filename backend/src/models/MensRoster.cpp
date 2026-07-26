@@ -500,6 +500,40 @@ MensRoster::Result MensRoster::run(bool includeAll,
         return it == personIdByRegId.end() ? 0 : it->second;
     };
 
+    // ── Canonical FH names for linked persons (2026-07-23) ───────────
+    //
+    // The LeagueApps alias can carry a different display name (e.g. Aleisha
+    // Zanini) than the canonical Football Home persons row (e.g. Chase
+    // Sempervive).  When a roster record is linked to a local person, prefer
+    // the canonical FH first/last name so the roster card shows the identity
+    // we actually manage inside FH rather than the LA alias.
+    std::unordered_map<long long, std::pair<std::string, std::string>> canonicalNamesByPersonId;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT id, first_name, last_name FROM persons"
+        );
+        for (const auto& r : rows) {
+            if (r["id"].is_null()) continue;
+            const long long pid = r["id"].as<long long>();
+            const std::string first = r["first_name"].is_null() ? std::string{} : r["first_name"].c_str();
+            const std::string last  = r["last_name"].is_null()  ? std::string{} : r["last_name"].c_str();
+            canonicalNamesByPersonId[pid] = {trim(first), trim(last)};
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] canonical person names load failed: " << e.what() << std::endl;
+    }
+    auto applyCanonicalName = [&](json& p) {
+        const long long pid = personIdFor(p.at("registrationId"));
+        if (pid <= 0) return;
+        auto it = canonicalNamesByPersonId.find(pid);
+        if (it == canonicalNamesByPersonId.end()) return;
+        const auto& [first, last] = it->second;
+        if (!first.empty()) p["firstName"] = first;
+        if (!last.empty())  p["lastName"]  = last;
+        p["fullName"] = trim(first + " " + last);
+    };
+
     // ── FH last activity per person (sessions.last_used_at, 2026-07-06) ─
     //
     // SessionService bumps `sessions.last_used_at` on every
@@ -578,7 +612,9 @@ MensRoster::Result MensRoster::run(bool includeAll,
     all.reserve(recs.size());
     for (const auto& r : recs) {
         if (!isActive(r, includeAll)) continue;
-        all.push_back(shapeMensPlayer(r));
+        json p = shapeMensPlayer(r);
+        applyCanonicalName(p);
+        all.push_back(std::move(p));
     }
 
     // ── Synthesis blocks REMOVED (2026-07-15) ────────────────────────

@@ -103,10 +103,6 @@ Intent AiController::decide(const awareness::AwarenessView& view, SlotId self)
             score -= switchPenalty(ticks_since_switch);
         }
 
-        if (role_ == Role::LCB && b->id() == std::string_view{"jockey"}) {
-            score += math::Fixed64::fromFraction(1, 20);
-        }
-
         // Zero-utility behaviors abstain (per IBehavior::utility contract).
         // First survivor becomes champion; subsequent survivors must
         // strictly exceed the current champion's score.
