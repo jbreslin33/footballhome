@@ -13,7 +13,7 @@
 // delinquency PAY button, LA deep-link) is intentionally identical to
 // mens.  The backend routes just point at BoysRosterController which
 // shares MensTeamColumns/MensTeamAssignments parametrised by domain.
-class BoysRosterScreen extends Screen {
+class BoysRosterScreen extends RosterScreenBase {
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
@@ -353,16 +353,13 @@ class BoysRosterScreen extends Screen {
     const days             = rawDays >= 1 ? rawDays : (hasUnpaidBalance ? 1 : 0);
     const daysAreExact     = rawDays >= 1;
 
-    // ── Age-group + gender chips (youth-only) ─────────────────────
-    // Two extra pills unique to the youth board so the coach can spot
-    // "U10 girl playing on U10 Boys" at a glance.  ageGroup comes
-    // from BoysRoster.cpp (Aug-1 school-year cutover from DOB); gender
-    // is the LA value, defaulted to club-of-record when missing.
-    const isBoy      = (p.gender || '').toLowerCase().startsWith('m');
-    const ageChip    = p.ageGroup
+    // ── Youth card context (kept minimal) ─────────────────────────
+    // The front-of-card layout now prioritizes the essentials: gender,
+    // DOB, dues, and team switching.  The old age-group pill is left
+    // out for the compact view because the user asked to streamline it.
+    const ageChip = p.ageGroup
       ? `<span style="font-size:0.85rem; font-weight:800; letter-spacing:0.02em; padding:2px 8px; border-radius:10px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(p.ageGroup)}</span>`
       : '';
-    const genderChip = `<span style="font-size:0.65rem; font-weight:800; letter-spacing:0.02em; padding:1px 6px; border-radius:10px; background:${isBoy ? '#1e40af' : '#831843'}; color:${isBoy ? '#dbeafe' : '#fce7f3'}; white-space:nowrap;">${isBoy ? '♂ BOY' : '♀ GIRL'}</span>`;
 
     // ---- Move-to-roster buttons ----------------------------------------
     //
@@ -455,19 +452,13 @@ class BoysRosterScreen extends Screen {
            LA
          </button>`
       : '';
-    // 👤 PROFILE button (2026-07-14) — dedicated drill-down into the
-    // universal PersonScreen.  Replaces the old "click anywhere on the
-    // card" wiring which hijacked drag-and-drop moves.  Kept small and
-    // right next to LA so the two "look up this person" buttons live
-    // together.  As of 2026-07-14 the actions are produced by the
-    // shared PersonActions component so every screen renders the same
-    // 👤 PROFILE / ✎ EDIT pair with consistent behaviour.
-    const profileBtn = (window.PersonActions && p.leagueAppsUserId)
-      ? window.PersonActions.buttonsHtml(p, {
-          returnTo: 'boys-roster',
-          btnBaseStyle: '',
-        })
-      : '';
+    // 👤 VIEW button (2026-07-26) — dedicated drill-down into the
+    // universal PersonScreen.  The boys roster is kept intentionally
+    // slim, so only the View action is rendered here.
+    const profileBtn = this.renderPersonActions(p, {
+      returnTo: 'boys-roster',
+      showEdit: false,
+    });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
     // player is a mid-cycle signup who hasn't paid the full $35 yet,
@@ -648,6 +639,13 @@ class BoysRosterScreen extends Screen {
         </div>
       </details>` : '';
 
+    const balanceValue = Number(p.outstandingBalance || 0);
+    const duesColor = balanceValue === 0 ? '#22c55e' : '#ef4444';
+    const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
+    const genderCode = this.getGenderCode(p);
+    const genderChip = genderCode
+      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:#334155; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
+      : '';
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
     const cardId = `br-card-${p.leagueAppsUserId}`;
@@ -669,46 +667,23 @@ class BoysRosterScreen extends Screen {
       ? `<span style="font-size:0.72rem; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
       : '';
 
-    // ONE big flex-wrap row.  Order: [dues chip] [name] [DOB] [move
-    // buttons] [delinq buttons] [contact buttons] [RECENT PAY pill].
-    // Name has a bounded min-width so short names don't hog the row —
-    // buttons pack immediately to the right and wrap only when the
-    // card runs out of horizontal space.
-    //
-    // Drag reorder: real columns only (col.teamId truthy — Unassigned
-    // has no team_id row so it can't store a coach rank).  The card
-    // carries data-user-id + data-team-id so the drop handler can
-    // rebuild the ordered list and POST /api/boys-roster/reorder.
-    const dragAttrs = col && col.teamId
-      ? `draggable="true" data-user-id="${p.leagueAppsUserId}" data-team-id="${col.teamId}"`
-      : '';
-    // Separate from `data-user-id` (drag-only, real columns) — always
-    // present so the delegated card-click drill-down works even for
-    // Unassigned cards where drag is disabled.
-    const laUidAttr = p.leagueAppsUserId
-      ? `data-la-user-id="${p.leagueAppsUserId}"`
-      : '';
-    // Whole-card cursor:pointer was removed 2026-07-14 — clicking the
-    // card no longer navigates (that job now belongs to the dedicated
-    // 👤 PROFILE button).  Keeping the default cursor makes it visually
-    // obvious that the card body is inert / drag-safe.
-    return `
-      <div id="${cardId}" class="br-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px; border:${cardBorder}; ${cardShadow} min-width:0;">
-        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px; row-gap:3px;">
-          ${posChip}
-          <strong style="font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">${this.escape(p.fullName) || '(no name)'}</strong>
-          ${ageChip}
-          ${genderChip}
-          ${dobShort ? `<span style="font-size:0.85rem; color:#fff; white-space:nowrap;">🎂 ${this.escape(dobShort)}</span>` : ''}
-          ${moveSelect}
-          ${laBtn}
-          ${profileBtn}
-          ${delinqBtns}
-          ${contactBtns}
-          ${billingBadge}
-        </div>
-      </div>
-    `;
+    // ONE big flex-wrap row.  Order: [gender chip] [DOB] [dues] [move]
+    // [view].  The card stays compact while still giving the coach the
+    // essentials to identify the player and change teams quickly.
+    const metaHtml = `${genderChip}${dobShort ? `<span style="font-size:0.68rem; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>` : ''}${duesLabel}${moveSelect}${profileBtn}`;
+
+    return this.renderCompactCard({
+      player: p,
+      col,
+      position,
+      cardClass: 'br-card',
+      cardId,
+      actionHtml: '',
+      metaHtml,
+      duesLabel: '',
+      dobShort: '',
+      borderColor: cardBorder,
+    });
   }
 
   // ── vCard builder (2026-07-05) ───────────────────────────────────

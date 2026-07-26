@@ -25,7 +25,7 @@
 //   • Backend used to block /assign for delinquent players (HTTP 409);
 //     that gate was REMOVED 2026-07-04 pm per user directive.  Admin
 //     now decides roster + Dues Owed column placement manually.
-class MensRosterScreen extends Screen {
+class MensRosterScreen extends RosterScreenBase {
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
@@ -520,13 +520,10 @@ class MensRosterScreen extends Screen {
     // together.  As of 2026-07-14 the actions are produced by the
     // shared PersonActions component so every screen renders the same
     // 👤 PROFILE / ✎ EDIT pair with consistent behaviour.
-    const profileBtn = (window.PersonActions && p.leagueAppsUserId)
-      ? window.PersonActions.buttonsHtml(p, {
-          returnTo: 'mens-roster',
-          btnBaseStyle: '',
-          showEdit: false,
-        })
-      : '';
+    const profileBtn = this.renderPersonActions(p, {
+      returnTo: 'mens-roster',
+      showEdit: false,
+    });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle
     // signup who hasn't yet paid the full $35 for the partial cycle,
@@ -749,10 +746,15 @@ class MensRosterScreen extends Screen {
         </div>
       </details>` : '';
 
-    const duesColor = (p.paymentStatus && p.paymentStatus.toUpperCase() === 'PAID') || (!p.outstandingBalance || p.outstandingBalance <= 0)
-      ? '#22c55e'
-      : '#ef4444';
+
+    const genderCode = this.getGenderCode(p);
+    const genderChip = genderCode
+      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:#334155; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
+      : '';
+    const balanceValue = Number(p.outstandingBalance || 0);
+    const duesColor = balanceValue === 0 ? '#22c55e' : '#ef4444';
     const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
+    const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
     const cardId = `mr-card-${p.leagueAppsUserId}`;
 
@@ -796,18 +798,20 @@ class MensRosterScreen extends Screen {
     // card no longer navigates (that job now belongs to the dedicated
     // 👤 PROFILE button).  Keeping the default cursor makes it visually
     // obvious that the card body is inert / drag-safe.
-    return `
-      <div id="${cardId}" class="mr-card" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:3px 5px; border:${cardBorder}; ${cardShadow} min-width:0;">
-        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-          ${posChip}
-          <strong style="font-size:0.72rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${this.escape(p.fullName) || '(no name)'}</strong>
-          ${dobShort ? `<span style="font-size:0.68rem; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>` : ''}
-          ${duesLabel}
-          ${moveSelect}
-          ${profileBtn}
-        </div>
-      </div>
-    `;
+    const metaHtml = `${genderChip}${dobShort ? `<span style="font-size:0.68rem; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>` : ''}${duesLabel}${moveSelect}${profileBtn}`;
+
+    return this.renderCompactCard({
+      player: p,
+      col,
+      position,
+      cardClass: 'mr-card',
+      cardId,
+      actionHtml: '',
+      metaHtml,
+      duesLabel: '',
+      dobShort: '',
+      borderColor: cardBorder,
+    });
   }
 
   // ── vCard builder (2026-07-05) ───────────────────────────────────
