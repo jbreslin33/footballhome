@@ -10,18 +10,11 @@
 
 #include "controller/AiController.hpp"
 
-#include "behavior/CompactShapeBehavior.hpp"
-#include "behavior/CoverShadowBehavior.hpp"
 #include "behavior/Feint1v1Behavior.hpp"
 #include "behavior/IBehavior.hpp"
 #include "behavior/JockeyBehavior.hpp"
 #include "behavior/MarkOpponentBehavior.hpp"
-#include "behavior/OverloadSupportBehavior.hpp"
 #include "behavior/PursueBallCarrierBehavior.hpp"
-#include "behavior/ReceivingUnderPressureBehavior.hpp"
-#include "behavior/SwitchSideSupportBehavior.hpp"
-#include "behavior/ThirdManRunBehavior.hpp"
-#include "behavior/SupportOffBallBehavior.hpp"
 #include "math/Fixed64.hpp"
 
 namespace fh::sim::controller {
@@ -154,14 +147,16 @@ AiController::defaultBehaviors(Role role)
             return bag;
         case Role::ST9:
         case Role::ST10:
+            // Off-ball/formation behaviors (SupportOffBallBehavior,
+            // CoverShadowBehavior, CompactShapeBehavior, OverloadSupportBehavior,
+            // SwitchSideSupportBehavior, ReceivingUnderPressureBehavior,
+            // ThirdManRunBehavior) are implemented under sim/src/behavior/ but are
+            // explicitly M4/M5 scope per §5.5 and §25.5 non-goals — CoverShadowBehavior
+            // is reserved for M5 by name. They were wired in here ahead of schedule
+            // (2026-07-23) and reverted (see §22.27) to keep Slice 33.4 matching its
+            // spec; they stay implemented+tested but unwired until an M4 slice plans
+            // their gating concepts and formation-shape context properly.
             bag.push_back(std::make_unique<behavior::Feint1v1Behavior>());
-            bag.push_back(std::make_unique<behavior::SupportOffBallBehavior>());
-            bag.push_back(std::make_unique<behavior::CoverShadowBehavior>());
-            bag.push_back(std::make_unique<behavior::CompactShapeBehavior>());
-            bag.push_back(std::make_unique<behavior::OverloadSupportBehavior>());
-            bag.push_back(std::make_unique<behavior::SwitchSideSupportBehavior>());
-            bag.push_back(std::make_unique<behavior::ReceivingUnderPressureBehavior>());
-            bag.push_back(std::make_unique<behavior::ThirdManRunBehavior>());
             return bag;
     }
     return bag;
