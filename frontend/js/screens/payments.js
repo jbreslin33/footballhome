@@ -797,6 +797,64 @@ class PaymentsScreen extends Screen {
     m.innerHTML = statusOrder.map(groupHtml).join('') + otherHtml;
   }
 
+  _buildPaymentReminderLink(m) {
+    const uid = m && m.laUserId ? String(m.laUserId) : '';
+    if (!uid) {
+      return `https://manager.leagueapps.com/console/sites/${this.laSiteId}/memberDetails`;
+    }
+    return `https://manager.leagueapps.com/console/sites/${this.laSiteId}/memberDetails?memberId=${uid}`;
+  }
+
+  _buildPaymentReminderEmailBody(firstName, link, variant = 'reminder') {
+    const first = (firstName || '').trim() || 'there';
+    if (variant === 'firm') {
+      return [
+        `Hi ${first},`,
+        '',
+        `Your membership payment is still outstanding. Please make your payment by the end of today using this link: ${link}`,
+        '',
+        'If payment is not received soon, your membership may be paused and your spot may be released.',
+        '',
+        'Thanks,',
+        'James Breslin',
+        'Soccer Director at Lighthouse',
+      ].join('\n');
+    }
+    if (variant === 'final') {
+      return [
+        `Hi ${first},`,
+        '',
+        `This is a final reminder that your membership payment is overdue. Please make your payment immediately using this link: ${link}`,
+        '',
+        'If we do not receive payment, your membership will be paused and your spot may be released.',
+        '',
+        'Thanks,',
+        'James Breslin',
+        'Soccer Director at Lighthouse',
+      ].join('\n');
+    }
+    return [
+      `Hi ${first},`,
+      '',
+      `Please make your payment as soon as possible. You can pay here: ${link}`,
+      '',
+      'Thanks,',
+      'James Breslin',
+      'Soccer Director at Lighthouse',
+    ].join('\n');
+  }
+
+  _buildPaymentReminderText(firstName, link, variant = 'reminder') {
+    const first = (firstName || '').trim() || 'there';
+    if (variant === 'firm') {
+      return `Hi ${first}, your membership payment is still outstanding. Please make your payment by the end of today here: ${link}`;
+    }
+    if (variant === 'final') {
+      return `Hi ${first}, this is a final reminder that your membership payment is overdue. Please pay immediately here: ${link}`;
+    }
+    return `Hi ${first}, please make your payment as soon as possible. You can pay here: ${link}`;
+  }
+
   renderMemberCard(m) {
     const badge = this.renderStatusBadge(m.status, m.daysOverdue);
     const name  = `${this.escape(m.firstName || '')} ${this.escape(m.lastName || '')}`.trim() || '—';
@@ -844,34 +902,44 @@ class PaymentsScreen extends Screen {
     // Email opens Gmail's compose URL (not mailto:) so the operator's
     // Gmail tab handles it — matches the Members screen pattern.
     const contactBtns = [];
+    const paymentLink = this._buildPaymentReminderLink(m);
     if (m.email) {
-      const first   = (m.firstName || '').trim() || 'there';
-      const subject = `Football Home — checking in`;
-      const body    =
-        `Hey ${first},\n\n` +
-        `Just checking in — please reply and let me know you got this so ` +
-        `I know I have the right email for you.\n\n` +
-        `--James Breslin\nSoccer Director at Lighthouse`;
-      const gmailUrl =
-        `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
-        `&to=${encodeURIComponent(m.email)}` +
-        `&su=${encodeURIComponent(subject)}` +
-        `&body=${encodeURIComponent(body)}`;
-      contactBtns.push(
-        `<a href="${gmailUrl}" target="_blank" rel="noopener"
-             style="padding:6px 10px; border-radius:4px; text-decoration:none;
-                    background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
-                    font-size:0.75rem; font-weight:700;">✉️ Email</a>`
-      );
+      const emailVariants = [
+        { variant: 'reminder', label: '✉️ Reminder', subject: 'Football Home — payment reminder' },
+        { variant: 'firm', label: '✉️ Firm', subject: 'Football Home — overdue payment' },
+        { variant: 'final', label: '✉️ Final', subject: 'Football Home — final payment reminder' },
+      ];
+      for (const item of emailVariants) {
+        const body = this._buildPaymentReminderEmailBody(m.firstName, paymentLink, item.variant);
+        const gmailUrl =
+          `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
+          `&to=${encodeURIComponent(m.email)}` +
+          `&su=${encodeURIComponent(item.subject)}` +
+          `&body=${encodeURIComponent(body)}`;
+        contactBtns.push(
+          `<a href="${gmailUrl}" target="_blank" rel="noopener"
+               style="padding:6px 10px; border-radius:4px; text-decoration:none;
+                      background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
+                      font-size:0.75rem; font-weight:700;">${item.label}</a>`
+        );
+      }
     }
     const phoneDigits = m.phone ? this.digits(m.phone) : '';
     if (phoneDigits && m.phoneSms !== false) {
-      contactBtns.push(
-        `<a href="sms:${phoneDigits}"
-             style="padding:6px 10px; border-radius:4px; text-decoration:none;
-                    background:#3a2e05; color:#fde68a; border:1px solid #d97706;
-                    font-size:0.75rem; font-weight:700;">💬 Text</a>`
-      );
+      const textVariants = [
+        { variant: 'reminder', label: '💬 Reminder' },
+        { variant: 'firm', label: '💬 Firm' },
+        { variant: 'final', label: '💬 Final' },
+      ];
+      for (const item of textVariants) {
+        const textBody = this._buildPaymentReminderText(m.firstName, paymentLink, item.variant);
+        contactBtns.push(
+          `<a href="sms:${phoneDigits}?body=${encodeURIComponent(textBody)}"
+               style="padding:6px 10px; border-radius:4px; text-decoration:none;
+                      background:#3a2e05; color:#fde68a; border:1px solid #d97706;
+                      font-size:0.75rem; font-weight:700;">${item.label}</a>`
+        );
+      }
     }
     if (phoneDigits && m.phoneCall !== false) {
       contactBtns.push(
