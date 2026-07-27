@@ -528,11 +528,31 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "    LEFT JOIN person_own_email poe ON poe.person_id = p.id"
         "    LEFT JOIN parent_email     pare ON pare.person_id = p.id"
         "),"
-        "primary_phone AS ("
+        "person_own_phone AS ("
         "  SELECT DISTINCT ON (pp2.person_id)"
         "         pp2.person_id, pp2.phone_number, pp2.can_receive_sms, pp2.can_receive_calls"
         "    FROM person_phones pp2"
         "   ORDER BY pp2.person_id, pp2.is_primary DESC NULLS LAST, pp2.created_at DESC NULLS LAST, pp2.id DESC"
+        "),"
+        "parent_phone AS ("
+        // Youth players — parent's best phone, same tiebreak as person_own_phone.
+        "  SELECT DISTINCT ON (p.id)"
+        "         p.id AS person_id, pp2.phone_number, pp2.can_receive_sms, pp2.can_receive_calls"
+        "    FROM persons p"
+        "    JOIN person_phones pp2 ON pp2.person_id = p.parent_person_id"
+        "   WHERE p.parent_person_id IS NOT NULL"
+        "   ORDER BY p.id, pp2.is_primary DESC NULLS LAST, pp2.created_at DESC NULLS LAST, pp2.id DESC"
+        "),"
+        "primary_phone AS ("
+        // Person's own phone wins when present; youth with no phone of
+        // their own fall back to the parent's best phone.
+        "  SELECT p.id AS person_id,"
+        "         COALESCE(NULLIF(pop.phone_number, ''), parp.phone_number) AS phone_number,"
+        "         COALESCE(pop.can_receive_sms,   parp.can_receive_sms)   AS can_receive_sms,"
+        "         COALESCE(pop.can_receive_calls, parp.can_receive_calls) AS can_receive_calls"
+        "    FROM persons p"
+        "    LEFT JOIN person_own_phone pop ON pop.person_id = p.id"
+        "    LEFT JOIN parent_phone     parp ON parp.person_id = p.id"
         "),"
         // All payment CTEs key on `la_registration_id` and DO NOT filter
         // by `pp.la_program_id`.  Rationale: LA sometimes tags a
