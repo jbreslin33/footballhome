@@ -3,6 +3,34 @@
 // hang off persons.  Scraped league/opponent-only people stay in
 // System Admin until linked into a Lighthouse membership.
 class AdminClubScreen extends Screen {
+  buildGameModelReadmeButtonHtml() {
+    return `
+      <button class="btn btn-secondary game-model-readme-btn" type="button" style="display: inline-flex; align-items: center; gap: var(--space-2);">
+        <span>📘</span>
+        <span>Open Practice Design README</span>
+      </button>
+    `;
+  }
+
+  buildGameModelReadmeViewHtml() {
+    return `
+      <article style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary); box-shadow: var(--shadow-sm);">
+        <h4 style="margin: 0 0 var(--space-2) 0;">📘 Practice Design README</h4>
+        <div style="margin: 0; opacity: 0.85; line-height: 1.5;">
+          <p style="margin: 0 0 var(--space-2) 0;"><strong>Practice structure</strong></p>
+          <p style="margin: 0 0 var(--space-2) 0;">
+            Each practice should follow a simple rhythm: 3 sections, with 2 possessions and 1 game.
+            Each 30-minute block of practice will always strive, with low numbers, to have at minimum a rondo for 20 minutes followed by 10 minutes of technical work.
+          </p>
+          <p style="margin: 0 0 var(--space-2) 0;"><strong>Group management</strong></p>
+          <p style="margin: 0;">
+            At the high end, we would add as many technical stations and duplicate the rondo as needed to keep the groups at the proper size of 3–6 players each.
+          </p>
+        </div>
+      </article>
+    `;
+  }
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen screen-admin-club';
@@ -83,6 +111,8 @@ class AdminClubScreen extends Screen {
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           The club’s game model, principles, and weekly session plan with player-count variations for each day.
         </p>
+        <div style="margin-bottom: var(--space-3);">${this.buildGameModelReadmeButtonHtml()}</div>
+        <div id="game-model-readme-view" style="display: none; margin-top: var(--space-3);">${this.buildGameModelReadmeViewHtml()}</div>
         <div id="section-game-model" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Teams &amp; Structure</h3>
@@ -135,6 +165,15 @@ class AdminClubScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
+        return;
+      }
+
+      const readmeBtn = e.target.closest('.game-model-readme-btn');
+      if (readmeBtn) {
+        const readmeView = this.find('#game-model-readme-view');
+        if (readmeView) {
+          readmeView.style.display = readmeView.style.display === 'block' ? 'none' : 'block';
+        }
         return;
       }
       

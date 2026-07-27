@@ -74,6 +74,7 @@ class App {
       mensRoster: new MensRosterScreen(this.navigation, this.auth),
       boysRoster: new BoysRosterScreen(this.navigation, this.auth),
       girlsRoster: new GirlsRosterScreen(this.navigation, this.auth),
+      womensRoster: new WomensRosterScreen(this.navigation, this.auth),
       rosters: new RostersScreen(this.navigation, this.auth),
       person: new PersonScreen(this.navigation, this.auth),
       mensEventsReminders: new MensEventsRemindersScreen(this.navigation, this.auth),
@@ -155,6 +156,7 @@ class App {
     this.screenManager.register('mens-roster', this.screens.mensRoster);
     this.screenManager.register('boys-roster', this.screens.boysRoster);
     this.screenManager.register('girls-roster', this.screens.girlsRoster);
+    this.screenManager.register('womens-roster', this.screens.womensRoster);
     this.screenManager.register('rosters', this.screens.rosters);
     // Universal person profile — reachable from any card that shows a
     // person (Members, Payments, Rosters, …).  See screens/person.js.

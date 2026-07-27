@@ -52,6 +52,7 @@ class RostersScreen extends Screen {
       mens:  null,
       boys:  null,
       girls: null,
+      womens: null,
     };
     // In-flight fetch generation for the pickup variant so a stale
     // response from a previous category doesn't overwrite the DOM
@@ -251,6 +252,12 @@ class RostersScreen extends Screen {
       }
       return this._instances.girls;
     }
+    if (chip === 'womens') {
+      if (!this._instances.womens) {
+        this._instances.womens = new WomensRosterScreen(this.navigation, this.auth);
+      }
+      return this._instances.womens;
+    }
     return null;
   }
 
@@ -263,18 +270,6 @@ class RostersScreen extends Screen {
     this._unmountAll();
     host.innerHTML = '';
 
-    if (this.chip === 'womens') {
-      host.innerHTML = `
-        <div style="padding: var(--space-4); border: 1px dashed var(--border-color, #374151);
-                    border-radius: 6px; opacity: 0.8; font-size: 0.9rem;">
-          👩 <b>Women's Roster</b> — no dedicated roster board yet.
-          Womens players are managed via
-          <a href="#members" style="color: var(--color-primary, #60a5fa);">Members</a>
-          and the Womens Dashboard.
-        </div>
-      `;
-      return;
-    }
 
     if (this.chip === 'all') {
       this._mountComposite(host);

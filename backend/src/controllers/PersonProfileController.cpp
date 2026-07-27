@@ -174,7 +174,7 @@ Response PersonProfileController::buildProfile(int personId, long long laUserId)
         // former.  Merge both into the same `teams` array for the UI.
         pqxx::result teamsRes = db_->query(
             "SELECT * FROM ( "
-            "SELECT r.id AS roster_id, r.team_id, r.jersey_number, "
+            "SELECT r.id AS roster_id, r.team_id, r.jersey_number::text AS jersey_number, "
             "       r.joined_at::timestamptz AS joined_at, "
             "       r.left_at::timestamptz AS left_at, "
             "       t.name AS team_name, t.slug AS team_slug, "
@@ -189,7 +189,7 @@ Response PersonProfileController::buildProfile(int personId, long long laUserId)
             "LEFT JOIN divisions d ON d.id = t.division_id "
             "WHERE pl.person_id = $1 "
             "UNION ALL "
-            "SELECT ra.id AS roster_id, ra.team_id, NULL::int AS jersey_number, "
+            "SELECT ra.id AS roster_id, ra.team_id, NULL::text AS jersey_number, "
             "       ra.assigned_at AS joined_at, ra.removed_at AS left_at, "
             "       t.name AS team_name, t.slug AS team_slug, "
             "       t.gender_category, t.club_id, "

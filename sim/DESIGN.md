@@ -40,6 +40,8 @@
 
 A **companion piece to fh's RSVP + roster systems** that lets club members *learn and practice tactical concepts by playing them.*
 
+Each practice should follow a simple rhythm: 3 sections, with 2 possessions and 1 game.
+
 Long term, the same engine that teaches a 4v2 press should also be able to simulate a full 11v11 match. We build toward that by teaching the AI **discrete tactical concepts** and physical/technical **attributes** over time. As the concept and attribute catalog grows, both the teaching product and the full-match simulation product mature simultaneously.
 
 **One codebase. Concept-based intelligence. Attribute-based execution. Realtime multiplayer. Zero game logic on the client.**
