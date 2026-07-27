@@ -18,6 +18,25 @@ class Screen {
     return div.innerHTML;
   }
 
+  // Gmail compose URL for "email" contact buttons. Always pins `authuser`
+  // to the club mailbox so compose opens against that account instead of
+  // whichever Google account the browser considers active/default — a bug
+  // that keeps recurring because screens hand-roll this URL individually.
+  // Every screen extends Screen, so building it here makes the fix apply
+  // by default to new buttons instead of relying on copy/paste.
+  buildGmailComposeHref({ to, subject = '', body = '', authuser = 'soccer@lighthouse1893.org' } = {}) {
+    if (!to) return null;
+    return `https://mail.google.com/mail/?${new URLSearchParams({
+      view: 'cm',
+      fs: '1',
+      tf: '1',
+      authuser,
+      to,
+      su: subject,
+      body,
+    }).toString()}`;
+  }
+
   resolveAssetUrl(url) {
     if (!url) return '';
 

@@ -911,11 +911,7 @@ class PaymentsScreen extends Screen {
       ];
       for (const item of emailVariants) {
         const body = this._buildPaymentReminderEmailBody(m.firstName, paymentLink, item.variant);
-        const gmailUrl =
-          `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
-          `&to=${encodeURIComponent(m.email)}` +
-          `&su=${encodeURIComponent(item.subject)}` +
-          `&body=${encodeURIComponent(body)}`;
+        const gmailUrl = this.buildGmailComposeHref({ to: m.email, subject: item.subject, body });
         contactBtns.push(
           `<a href="${gmailUrl}" target="_blank" rel="noopener"
                style="padding:6px 10px; border-radius:4px; text-decoration:none;

@@ -1269,17 +1269,10 @@ class MembersScreen extends Screen {
                 `--James Breslin Soccer Director at Lighthouse`;
     }
 
-    const encSubject = encodeURIComponent(subject);
-    const encBody    = encodeURIComponent(body);
+    const encBody = encodeURIComponent(body);
     // Gmail compose — not mailto: — so the operator's Gmail tab
-    // handles it instead of Apple Mail.  `to=` puts the recipient in
-    // the To field; the &su/&body params are the same names Gmail's
-    // compose URL uses.
-    const gmailUrl =
-      `https://mail.google.com/mail/?view=cm&fs=1&tf=1` +
-      `&to=${encodeURIComponent(email)}` +
-      `&su=${encSubject}` +
-      `&body=${encBody}`;
+    // handles it instead of Apple Mail.
+    const gmailUrl = this.buildGmailComposeHref({ to: email, subject, body });
 
     const buttons = [];
     if (canEmail) {
