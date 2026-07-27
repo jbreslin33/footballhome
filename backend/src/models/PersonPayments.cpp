@@ -504,16 +504,29 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "   WHERE provider = 'leagueapps' AND external_user_id IS NOT NULL"
         "   GROUP BY person_id"
         "),"
-        "primary_email AS ("
+        "person_own_email AS ("
         // Prefer is_primary=true, then most-recently-created. One row per person.
-        // For youth (those with parent), fall back to parent email if child has no email.
-        "  SELECT DISTINCT ON (COALESCE(pe.person_id, p.id))"
-        "         COALESCE(pe.person_id, p.id) AS person_id,"
-        "         COALESCE(NULLIF(pe.email, ''), parent_pe.email) AS email"
+        "  SELECT DISTINCT ON (pe.person_id) pe.person_id, pe.email"
+        "    FROM person_emails pe"
+        "   ORDER BY pe.person_id, pe.is_primary DESC NULLS LAST, pe.created_at DESC NULLS LAST, pe.id DESC"
+        "),"
+        "parent_email AS ("
+        // Youth players (parent_person_id set) — parent's best email, same
+        // is_primary-preferred / most-recent tiebreak as person_own_email.
+        "  SELECT DISTINCT ON (p.id) p.id AS person_id, pe.email"
         "    FROM persons p"
-        "    LEFT JOIN person_emails pe ON pe.person_id = p.id"
-        "    LEFT JOIN person_emails parent_pe ON parent_pe.person_id = p.parent_person_id AND parent_pe.is_primary"
-        "   ORDER BY COALESCE(pe.person_id, p.id), pe.is_primary DESC NULLS LAST, pe.created_at DESC NULLS LAST, pe.id DESC"
+        "    JOIN person_emails pe ON pe.person_id = p.parent_person_id"
+        "   WHERE p.parent_person_id IS NOT NULL"
+        "   ORDER BY p.id, pe.is_primary DESC NULLS LAST, pe.created_at DESC NULLS LAST, pe.id DESC"
+        "),"
+        "primary_email AS ("
+        // Person's own email wins when present; youth with no email of
+        // their own fall back to the parent's best email.
+        "  SELECT p.id AS person_id,"
+        "         COALESCE(NULLIF(poe.email, ''), pare.email) AS email"
+        "    FROM persons p"
+        "    LEFT JOIN person_own_email poe ON poe.person_id = p.id"
+        "    LEFT JOIN parent_email     pare ON pare.person_id = p.id"
         "),"
         "primary_phone AS ("
         "  SELECT DISTINCT ON (pp2.person_id)"
