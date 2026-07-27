@@ -504,10 +504,20 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "   WHERE provider = 'leagueapps' AND external_user_id IS NOT NULL"
         "   GROUP BY person_id"
         "),"
+        "parent_emails AS ("
+        // Get parent's primary email (used for youth programs)
+        "  SELECT DISTINCT ON (p.id) p.id AS person_id, pe.email"
+        "    FROM persons p"
+        "    LEFT JOIN person_emails pe ON pe.person_id = p.parent_person_id"
+        "   WHERE p.parent_person_id IS NOT NULL"
+        "   ORDER BY p.id, pe.is_primary DESC NULLS LAST, pe.created_at DESC NULLS LAST, pe.id DESC"
+        "),"
         "primary_email AS ("
-        // Prefer is_primary=true, then most-recently-created. One row per person.
-        "  SELECT DISTINCT ON (pe.person_id) pe.person_id, pe.email"
+        // Prefer person's own email, fall back to parent email if person has no email
+        "  SELECT DISTINCT ON (pe.person_id) pe.person_id,"
+        "         COALESCE(NULLIF(pe.email, ''), parent_pe.email) AS email"
         "    FROM person_emails pe"
+        "    LEFT JOIN parent_emails parent_pe ON parent_pe.person_id = pe.person_id"
         "   ORDER BY pe.person_id, pe.is_primary DESC NULLS LAST, pe.created_at DESC NULLS LAST, pe.id DESC"
         "),"
         "primary_phone AS ("
