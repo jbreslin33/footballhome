@@ -603,6 +603,40 @@ class GameModelAdminScreen extends Screen {
         </div>
       </div>
     `;
+    if (this.selectedEntity === 'exercises' && id == null) {
+      this.bindExerciseAutoSlug();
+    }
+  }
+
+  // New exercises only: mirror Title into Slug/Simulator Slug as the user
+  // types, so they don't have to hand-type a slug for every drill. Stops
+  // touching a field the moment the user edits it directly — never
+  // overwrites a value they typed themselves.
+  bindExerciseAutoSlug() {
+    const titleInput = this.find('#gm-admin-field-title');
+    const slugInput = this.find('#gm-admin-field-slug');
+    const simSlugInput = this.find('#gm-admin-field-simulator_slug');
+    if (!titleInput || !slugInput) return;
+
+    let slugTouched = slugInput.value.trim() !== '';
+    let simSlugTouched = simSlugInput ? simSlugInput.value.trim() !== '' : true;
+
+    slugInput.addEventListener('input', () => { slugTouched = true; });
+    if (simSlugInput) simSlugInput.addEventListener('input', () => { simSlugTouched = true; });
+
+    titleInput.addEventListener('input', () => {
+      const slug = this.slugify(titleInput.value);
+      if (!slugTouched) slugInput.value = slug;
+      if (simSlugInput && !simSlugTouched) simSlugInput.value = slug;
+    });
+  }
+
+  slugify(text) {
+    return String(text || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
 
   getFields(item, context = null) {
