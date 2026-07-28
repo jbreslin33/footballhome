@@ -2471,7 +2471,7 @@ class LeadsScreen extends Screen {
           ? (
             `Hi {first},\n` +
             `\n` +
-            `That's great that you want to learn more about Lighthouse's youth soccer programs!\n` +
+            `Let me know any questions!\n` +
             `\n` +
             `To register, head here: ${c.link}\n` +
             `\n` +
