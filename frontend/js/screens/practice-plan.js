@@ -140,6 +140,15 @@ class PracticePlanScreen extends Screen {
       });
     });
 
+    this.element.querySelectorAll('[data-resplit-sessions]').forEach((button) => {
+      button.addEventListener('click', async (e) => {
+        const practiceId = parseInt(button.getAttribute('data-practice-id'));
+        const startsAt = button.getAttribute('data-starts-at');
+        const endsAt = button.getAttribute('data-ends-at');
+        await this.resplitSessionsFromPracticeTime(practiceId, startsAt, endsAt);
+      });
+    });
+
     this.element.querySelectorAll('[data-time-input]').forEach((input) => {
       input.addEventListener('change', async (e) => {
         const sessionId = parseInt(input.getAttribute('data-session-id'));
@@ -311,6 +320,11 @@ class PracticePlanScreen extends Screen {
               .sort((a, b) => (a?.sort_order || 0) - (b?.sort_order || 0));
 
             const practiceTimeMarkup = this.formatTimeRange(practice.event_starts_at, practice.event_ends_at);
+            // Real calendar-linked window (via fh_event_id) — only then is
+            // there an actual time range to split sessions from. Blank
+            // template practices (no linked gcal event) have nothing to
+            // derive times from, so they don't get this button.
+            const hasCalendarWindow = Boolean(practice.event_starts_at && practice.event_ends_at);
 
             return `
               <div style="padding: var(--space-3); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); background: var(--bg-primary);">
@@ -324,8 +338,17 @@ class PracticePlanScreen extends Screen {
 
                     return this.renderSessionEditCard(session, sessionExercises, exerciseMap, practice);
                   }).join('')}
-                  <div style="padding-top: var(--space-2);">
-                    <button class="btn btn-secondary" type="button" data-add-session data-practice-id="${practice.id}" style="width: 100%;">+ Add Session</button>
+                  <div style="padding-top: var(--space-2); display:flex; gap: var(--space-2);">
+                    <button class="btn btn-secondary" type="button" data-add-session data-practice-id="${practice.id}" style="flex:1;">+ Add Session</button>
+                    ${hasCalendarWindow ? `
+                      <button class="btn btn-secondary" type="button" data-resplit-sessions
+                              data-practice-id="${practice.id}"
+                              data-starts-at="${this.escapeHtml(practice.event_starts_at)}"
+                              data-ends-at="${this.escapeHtml(practice.event_ends_at)}"
+                              style="flex:1;" title="Retime this practice's sessions to 3 even blocks of its real calendar time (titles/exercises kept)">
+                        ↻ Split evenly from practice time
+                      </button>
+                    ` : ''}
                   </div>
                 </div>
               </div>
@@ -454,6 +477,115 @@ class PracticePlanScreen extends Screen {
     const startText = String(startValue || '').trim();
     const endText = String(endValue || '').trim();
     return (startText === '00:00:00' || startText === '00:00') && (endText === '00:05:00' || endText === '00:05');
+  }
+
+  // "HH:MM" clock time out of a gcal-style timestamp — same extraction
+  // formatTimeValue() uses for display, so the split lines up with what
+  // the practice-time header already shows (no timezone conversion here;
+  // this app treats these timestamps as literal wall-clock).
+  extractClockTime(value) {
+    if (!value) return null;
+    const raw = String(value).trim();
+    const match = raw.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!match) return null;
+    return `${match[2].padStart(2, '0')}:${match[3]}`;
+  }
+
+  minutesToClock(totalMinutes) {
+    const wrapped = ((totalMinutes % 1440) + 1440) % 1440;
+    const hh = String(Math.floor(wrapped / 60)).padStart(2, '0');
+    const mm = String(wrapped % 60).padStart(2, '0');
+    return `${hh}:${mm}:00`;
+  }
+
+  // Split a practice's real calendar window into `count` equal
+  // {start_time, end_time} blocks. Returns null when there's no usable
+  // window (blank template practice, or end <= start) — callers must
+  // not offer this action in that case.
+  splitEvenSessions(startsAt, endsAt, count) {
+    const startClock = this.extractClockTime(startsAt);
+    const endClock = this.extractClockTime(endsAt);
+    if (!startClock || !endClock) return null;
+
+    const toMinutes = (clock) => {
+      const [h, m] = clock.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const startMin = toMinutes(startClock);
+    const endMin = toMinutes(endClock);
+    if (!(endMin > startMin)) return null;
+
+    const totalMin = endMin - startMin;
+    const blocks = [];
+    for (let i = 0; i < count; i++) {
+      const blockStartMin = startMin + Math.round((totalMin * i) / count);
+      const blockEndMin = startMin + Math.round((totalMin * (i + 1)) / count);
+      blocks.push({
+        start_time: this.minutesToClock(blockStartMin),
+        end_time: this.minutesToClock(blockEndMin),
+      });
+    }
+    return blocks;
+  }
+
+  // Replace every session on this practice with 3 even blocks of its
+  // real (calendar-linked) time — e.g. a 7:00-8:30pm practice becomes
+  // 7:00-7:30, 7:30-8:00, 8:00-8:30, instead of hand-typed guesses.
+  //
+  // Retimes existing sessions IN PLACE (matched by sort_order) rather
+  // than delete-and-recreate — session ids are what session_exercises
+  // hangs off of, so an in-place update keeps a coach's exercises
+  // attached instead of cascade-deleting them. Only start/end time
+  // changes; title is left alone. A 3rd session is created if the
+  // practice currently has fewer than 3; extras beyond 3 are untouched.
+  async resplitSessionsFromPracticeTime(practiceId, startsAt, endsAt) {
+    const blocks = this.splitEvenSessions(startsAt, endsAt, 3);
+    if (!blocks) return;
+
+    if (!confirm("Set this practice's sessions to 3 even blocks of its real practice time? Titles and any exercises already attached are kept — only start/end times change.")) {
+      return;
+    }
+
+    try {
+      const existing = (this.sessions || [])
+        .filter((s) => s.practice_id === practiceId)
+        .sort((a, b) => (a?.sort_order || 0) - (b?.sort_order || 0));
+
+      for (let i = 0; i < blocks.length; i++) {
+        const session = existing[i];
+        if (session) {
+          await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: session.id,
+              practice_id: practiceId,
+              title: session.title,
+              start_time: blocks[i].start_time,
+              end_time: blocks[i].end_time,
+              sort_order: i,
+              notes: session.notes || ''
+            })
+          });
+        } else {
+          await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              practice_id: practiceId,
+              title: `Session ${i + 1}`,
+              start_time: blocks[i].start_time,
+              end_time: blocks[i].end_time,
+              sort_order: i
+            })
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error re-splitting sessions:', e);
+    }
+
+    this.loadPlan();
   }
 
   async createSession(practiceId) {
