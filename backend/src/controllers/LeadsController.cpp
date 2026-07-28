@@ -279,8 +279,16 @@ std::string isoFromMs(long long ms) {
 // ────────────────────────────────────────────────────────────────────────────
 
 void LeadsController::registerRoutes(Router& router, const std::string& prefix) {
-    // Bare list (no trailing slash, no suffix).
-    router.get (prefix,                       [this](const Request& r){ return handleList            (r); });
+    // Bare list (no trailing slash, no suffix). member_status per row
+    // reads person_la_memberships directly, so route through
+    // laGet(dynamic) the same way /unjoined-members does — this ensures
+    // LaProgramSync::run() refreshes every LA program BEFORE the handler
+    // computes member_status, instead of reading a possibly-stale cache.
+    laGet(router, prefix,
+        [](const Request&) { return Controller::allLaProgramIds(); },
+        [this](const Request& r, const LaSyncMap& sync) {
+            return handleList(r, sync);
+        });
     router.post(prefix + "/sync",             [this](const Request& r){ return handleSync            (r); });
     router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
@@ -379,7 +387,8 @@ Response LeadsController::handleSync(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 // GET /api/leads
 // ────────────────────────────────────────────────────────────────────────────
-Response LeadsController::handleList(const Request& request) {
+Response LeadsController::handleList(const Request& request, const LaSyncMap& sync) {
+    (void)sync;   // LA fetch was executed by laGet(); this handler reads DB only.
     if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {

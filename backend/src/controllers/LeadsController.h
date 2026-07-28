@@ -51,7 +51,14 @@ public:
 
 private:
     Response handleSync             (const Request& request);
-    Response handleList             (const Request& request);
+    // GET /api/leads' member_status column (per row) checks
+    // person_la_memberships directly (§ enforce-la-sync.sh STRICT rule)
+    // to flag leads who already joined. Routed through laGet(dynamic,
+    // allLaProgramIds) — same pattern as /unjoined-members — so that
+    // check runs against freshly-synced membership state instead of
+    // whatever was last cached. The handler reads exclusively from
+    // Postgres; the LaSyncMap param is unused, marked (void).
+    Response handleList             (const Request& request, const LaSyncMap& sync);
     Response handleLogContact       (const Request& request);
     Response handleListContacts     (const Request& request);
     Response handleDeleteContact    (const Request& request);

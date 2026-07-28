@@ -65,11 +65,25 @@
 #                         (laGet(dynamic, {mens, boys, girls}))
 #                     So every caller pre-syncs.  Allowlisted for the
 #                     same reason as Team/PersonPayments.
+#   Lead            — Lead::listAll()'s member_status column reads
+#                     person_la_memberships to flag leads who already
+#                     joined.  Its only caller, LeadsController::handleList,
+#                     is registered via laGet(dynamic, allLaProgramIds)
+#                     (2026-07-28) so every LA program is freshly synced
+#                     before the query runs.  Lead::findById() selects
+#                     through the same member_status subquery (shared SQL
+#                     text), but its only caller, handleVcard, never reads
+#                     .memberStatus off the result — vCard generation only
+#                     needs name/createdAt/phone/email — so staleness
+#                     there is immaterial.  If either function gains a new
+#                     caller that DOES consume memberStatus without going
+#                     through la*(), this allowlist entry becomes a lie —
+#                     migrate that caller instead of trusting this comment.
 #
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster)|backend/src/core/Controller)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|Lead)|backend/src/core/Controller)'
 
 set -euo pipefail
 
