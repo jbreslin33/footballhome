@@ -121,11 +121,7 @@ class PracticePlanScreen extends Screen {
     this.element.querySelectorAll('[data-day-key]').forEach((button) => {
       button.addEventListener('click', () => {
         this.selectedDayKey = button.getAttribute('data-day-key');
-        const container = this.find('#practice-plan-content');
-        if (container) {
-          container.innerHTML = this.renderContent();
-          this.bindInteractions();
-        }
+        this.selectDay();
       });
     });
 
@@ -190,6 +186,61 @@ class PracticePlanScreen extends Screen {
     });
   }
 
+  // Selecting a day with no practice yet transparently sets up a blank
+  // template (3 empty sessions) instead of showing "nothing here" — Days
+  // already establishes which weekdays get a plan; Practice Plans just
+  // needs to be ready to fill in as soon as you land on one.
+  selectDay() {
+    const day = this.getSelectedDay();
+    const hasPractice = day && (this.practices || []).some((practice) => practice?.day_id === day.id);
+    if (day && !hasPractice) {
+      this.ensureDayPlan(day);
+      return;
+    }
+    const container = this.find('#practice-plan-content');
+    if (container) {
+      container.innerHTML = this.renderContent();
+      this.bindInteractions();
+    }
+  }
+
+  async ensureDayPlan(day) {
+    const container = this.find('#practice-plan-content');
+    if (container) {
+      container.innerHTML = this.renderContent();
+    }
+
+    try {
+      const practiceResponse = await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day_id: day.id, notes: '' })
+      });
+      const practicePayload = await practiceResponse.json();
+      const practiceId = practicePayload?.data?.id ?? practicePayload?.id;
+
+      if (practiceResponse.ok && practiceId) {
+        for (let i = 0; i < 3; i++) {
+          await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              practice_id: practiceId,
+              title: `Session ${i + 1}`,
+              start_time: '00:00:00',
+              end_time: '00:30:00',
+              sort_order: i
+            })
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error setting up day plan:', e);
+    }
+
+    this.loadPlan();
+  }
+
   renderContent() {
     const dayButtons = this.getDayButtons();
     const selectedDay = this.getSelectedDay();
@@ -245,7 +296,7 @@ class PracticePlanScreen extends Screen {
       return `
         <article style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
           <h3 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml(day?.label || 'Day')}</h3>
-          <p style="margin: 0; opacity: 0.8;">No practice blocks are linked to this day yet.</p>
+          <p style="margin: 0; opacity: 0.8;">Setting up this day's plan…</p>
         </article>
       `;
     }

@@ -1,4 +1,4 @@
-// GameModelAdminScreen - manage club game-model overview, days, sessions, and exercises
+// GameModelAdminScreen - manage club game-model overview, days, practices, and exercises
 class GameModelAdminScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -41,7 +41,7 @@ class GameModelAdminScreen extends Screen {
     this.clubName = params?.clubName || 'Club';
     const validEntities = [
       'days', 'phases', 'principles', 'sub_principles', 'exercises',
-      'practices', 'sessions', 'session_exercises',
+      'practices', 'session_exercises',
       'exercise_principles', 'exercise_sub_principles', 'exercise_action_items'
     ];
     this.selectedEntity = validEntities.includes(params?.entity) ? params.entity : 'game-model';
@@ -64,7 +64,6 @@ class GameModelAdminScreen extends Screen {
           'edit-days': 'days',
           'edit-exercises': 'exercises',
           'edit-practices': 'practices',
-          'edit-sessions': 'sessions',
           'edit-session-exercises': 'session_exercises',
           'edit-exercise-principles': 'exercise_principles',
           'edit-exercise-sub-principles': 'exercise_sub_principles',
@@ -165,12 +164,11 @@ class GameModelAdminScreen extends Screen {
             </div>
             <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
               <h3 style="margin: 0 0 var(--space-2) 0;">Practice plan</h3>
-              <p style="margin:0 0 var(--space-2) 0; opacity:0.8;">Days are reusable weekly buckets. Practices link to real calendar events. Sessions are time blocks inside a practice, and exercises are the drill library sessions draw from.</p>
+              <p style="margin:0 0 var(--space-2) 0; opacity:0.8;">Days are reusable weekly buckets. Practices link to real calendar events. Exercises are the drill library. Sessions themselves are built inline on the Practice Plans screen.</p>
               <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
                 <button class="btn btn-secondary" data-inline-action="edit-days">Edit days</button>
                 <button class="btn btn-secondary" data-inline-action="edit-exercises">Edit exercises</button>
                 <button class="btn btn-secondary" data-inline-action="edit-practices">Edit practices</button>
-                <button class="btn btn-secondary" data-inline-action="edit-sessions">Edit sessions</button>
                 <button class="btn btn-secondary" data-inline-action="edit-session-exercises">Edit session exercises</button>
                 <button class="btn btn-secondary" data-inline-action="edit-exercise-principles">Tag exercises: principles</button>
                 <button class="btn btn-secondary" data-inline-action="edit-exercise-sub-principles">Tag exercises: sub-principles</button>
@@ -292,12 +290,7 @@ class GameModelAdminScreen extends Screen {
       return response.json();
     })];
 
-    if (this.selectedEntity === 'sessions') {
-      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/practices`).then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      }));
-    } else if (this.selectedEntity === 'principles') {
+    if (this.selectedEntity === 'principles') {
       requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/phases`).then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -361,9 +354,7 @@ class GameModelAdminScreen extends Screen {
         const items = this.getPayloadItems(payload);
         this.entities = items;
 
-        if (this.selectedEntity === 'sessions' && results[1]) {
-          this.parentOptions.practices = this.getPayloadItems(results[1]);
-        } else if (this.selectedEntity === 'principles') {
+        if (this.selectedEntity === 'principles') {
           this.parentOptions.phases = this.getPayloadItems(results[1]);
         } else if (this.selectedEntity === 'sub_principles') {
           this.parentOptions.principles = this.getPayloadItems(results[1]);
@@ -500,8 +491,6 @@ class GameModelAdminScreen extends Screen {
         return 'Build the drill library that sessions can reuse across weeks.';
       case 'practices':
         return 'Link a real calendar practice event (Google Calendar owns the date/time) to an optional weekly day bucket, with notes.';
-      case 'sessions':
-        return 'Time blocks inside a practice (e.g. Warmup, Rondo block, Scrimmage), each with its own start/end time.';
       case 'session_exercises':
         return 'Place an exercise inside a session. Same sequence_order = concurrent stations; increasing = sequential blocks.';
       case 'exercise_principles':
@@ -538,9 +527,6 @@ class GameModelAdminScreen extends Screen {
         const day = this.parentOptions.days.find((entry) => entry.id === item.day_id);
         parentLabel = day ? `Day: ${day.label || day.slug || item.day_id}` : `Day ID: ${item.day_id}`;
       }
-    } else if (this.selectedEntity === 'sessions' && item.practice_id != null) {
-      const practice = this.parentOptions.practices.find((entry) => entry.id === item.practice_id);
-      parentLabel = practice ? `Practice: ${practice.event_summary || practice.id}` : `Practice ID: ${item.practice_id}`;
     } else if (this.selectedEntity === 'session_exercises') {
       const session = this.parentOptions.sessions.find((entry) => entry.id === item.session_id);
       const exercise = this.parentOptions.exercises.find((entry) => entry.id === item.exercise_id);
@@ -660,16 +646,6 @@ class GameModelAdminScreen extends Screen {
           { key: 'fh_event_id', label: 'Calendar Practice Event', value: base.fh_event_id != null ? base.fh_event_id : '', type: 'select', options: this.parentOptions.practice_events.map((entry) => ({ value: entry.id, label: `${entry.summary || 'Untitled event'} — ${entry.starts_at ? new Date(entry.starts_at).toLocaleString() : ''}` })) },
           { key: 'day_id', label: 'Weekly Day (optional)', value: base.day_id != null ? base.day_id : '', type: 'select', options: this.parentOptions.days.map((entry) => ({ value: entry.id, label: entry.label || entry.slug || `Day ${entry.id}` })) },
           { key: 'notes', label: 'Notes', value: base.notes || '', type: 'textarea' }
-        ];
-      }
-      case 'sessions': {
-        return [
-          { key: 'practice_id', label: 'Practice', value: base.practice_id != null ? base.practice_id : '', type: 'select', options: this.parentOptions.practices.map((entry) => ({ value: entry.id, label: entry.event_summary || `Practice ${entry.id}` })) },
-          { key: 'title', label: 'Title', value: base.title || '', type: 'text' },
-          { key: 'notes', label: 'Notes', value: base.notes || '', type: 'textarea' },
-          { key: 'start_time', label: 'Start Time', value: base.start_time || '', type: 'text' },
-          { key: 'end_time', label: 'End Time', value: base.end_time || '', type: 'text' },
-          { key: 'sort_order', label: 'Sort Order', value: base.sort_order != null ? base.sort_order : '', type: 'number' }
         ];
       }
       case 'session_exercises': {

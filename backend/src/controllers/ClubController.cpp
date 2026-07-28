@@ -218,10 +218,10 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             table = "club_game_model_practices";
             select = "SELECT pr.id, pr.fh_event_id, pr.day_id, pr.notes, ge.summary AS event_summary, ge.starts_at AS event_starts_at, ge.ends_at AS event_ends_at "
                      "FROM club_game_model_practices pr "
-                     "JOIN fh_events fe ON fe.id = pr.fh_event_id "
-                     "JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+                     "LEFT JOIN fh_events fe ON fe.id = pr.fh_event_id "
+                     "LEFT JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
                      "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY ge.starts_at DESC, pr.id";
+                     "ORDER BY ge.starts_at DESC NULLS LAST, pr.id";
         } else if (entity == "sessions") {
             table = "club_game_model_sessions";
             select = "SELECT s.id, s.practice_id, s.title, s.notes, s.start_time, s.end_time, s.sort_order "
@@ -313,12 +313,12 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
                 json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
             } else if (entity == "practices") {
-                json << ",\"fh_event_id\":" << row["fh_event_id"].as<long long>();
+                json << ",\"fh_event_id\":" << (row["fh_event_id"].is_null() ? "null" : std::to_string(row["fh_event_id"].as<long long>()));
                 json << ",\"day_id\":" << (row["day_id"].is_null() ? "null" : std::to_string(row["day_id"].as<long long>()));
                 json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
                 json << ",\"event_summary\":" << (row["event_summary"].is_null() ? "null" : "\"" + escapeJson(row["event_summary"].c_str()) + "\"");
-                json << ",\"event_starts_at\":\"" << escapeJson(row["event_starts_at"].c_str()) << "\"";
-                json << ",\"event_ends_at\":\"" << escapeJson(row["event_ends_at"].c_str()) << "\"";
+                json << ",\"event_starts_at\":" << (row["event_starts_at"].is_null() ? "null" : "\"" + escapeJson(row["event_starts_at"].c_str()) + "\"");
+                json << ",\"event_ends_at\":" << (row["event_ends_at"].is_null() ? "null" : "\"" + escapeJson(row["event_ends_at"].c_str()) + "\"");
             } else if (entity == "sessions") {
                 json << ",\"practice_id\":" << row["practice_id"].as<long long>();
                 json << ",\"title\":" << (row["title"].is_null() ? "null" : "\"" + escapeJson(row["title"].c_str()) + "\"");
@@ -495,13 +495,13 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
             }
         } else if (entity == "practices") {
             std::string day_id_sql = (has_day_id && day_id > 0) ? std::to_string(day_id) : "NULL";
-            if (fh_event_id <= 0) {
-                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "fh_event_id required"));
-            }
+            std::string fh_event_id_sql = (fh_event_id > 0) ? std::to_string(fh_event_id) : "NULL";
             if (id > 0) {
-                query << "UPDATE club_game_model_practices SET fh_event_id = " << fh_event_id << ", day_id = " << day_id_sql << ", notes = '" << escapeJson(notes) << "', updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
+                query << "UPDATE club_game_model_practices SET fh_event_id = " << fh_event_id_sql << ", day_id = " << day_id_sql << ", notes = '" << escapeJson(notes) << "', updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
+            } else if (fh_event_id > 0) {
+                query << "INSERT INTO club_game_model_practices (club_game_model_id, fh_event_id, day_id, notes, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), " << fh_event_id_sql << ", " << day_id_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) ON CONFLICT (fh_event_id) DO UPDATE SET day_id = EXCLUDED.day_id, notes = EXCLUDED.notes, updated_at = NOW() RETURNING id";
             } else {
-                query << "INSERT INTO club_game_model_practices (club_game_model_id, fh_event_id, day_id, notes, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), " << fh_event_id << ", " << day_id_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) ON CONFLICT (fh_event_id) DO UPDATE SET day_id = EXCLUDED.day_id, notes = EXCLUDED.notes, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_practices (club_game_model_id, fh_event_id, day_id, notes, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), NULL, " << day_id_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) RETURNING id";
             }
         } else if (entity == "sessions") {
             if (practice_id <= 0) {
