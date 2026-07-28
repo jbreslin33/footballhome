@@ -129,11 +129,17 @@ class RostersScreen extends Screen {
           gap: var(--space-2) !important;
           align-items: flex-start;
         }
-        .rs-section [style*="grid-template-columns"] > * {
-          min-width: 440px !important;
-          max-width: 440px !important;
-          flex: 0 0 440px !important;
-        }
+        /* Fixed 440px-per-column forcing removed 2026-07-28 — that was
+           sized for the pre-refactor wide roster card. Cards are now a
+           compact 2-row layout (see RosterScreenBase.renderCompactCard),
+           and each column's own grid already sizes itself to
+           max-content (see boys-roster.js/mens-roster.js). Forcing 440px
+           here just re-stretched the already-narrow cards back out,
+           which is exactly the "All" pill still looking wide even
+           though it mounts the same BoysRosterScreen/MensRosterScreen
+           instances as the standalone pills. Flex's default
+           flex-basis:auto lets each column size to its own content
+           instead. */
         .rs-section [style*="overflow-x"] {
           overflow-x: visible !important;
           padding-bottom: 0 !important;

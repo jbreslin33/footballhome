@@ -21,13 +21,13 @@ class BoysRosterScreen extends RosterScreenBase {
       <style>
         /* Hide the default triangle marker on the CONTACT / ROSTER
            <summary> popovers so they render as clean buttons.  Scoped
-           to this screen via .br-move-details / .br-contact. */
-        .br-move-details > summary,
-        .br-contact      > summary { list-style: none; }
-        .br-move-details > summary::-webkit-details-marker,
-        .br-contact      > summary::-webkit-details-marker { display: none; }
-        .br-move-details > summary::marker,
-        .br-contact      > summary::marker { display: none; content: ''; }
+           to this screen via .roster-move-details / .br-contact. */
+        .roster-move-details > summary,
+        .br-contact          > summary { list-style: none; }
+        .roster-move-details > summary::-webkit-details-marker,
+        .br-contact          > summary::-webkit-details-marker { display: none; }
+        .roster-move-details > summary::marker,
+        .br-contact          > summary::marker { display: none; content: ''; }
 
         /* Drag-and-drop cursor + insertion indicator (2026-07-04 pm).
            Cards on real columns are grabbable; while dragging, a bright
@@ -65,7 +65,7 @@ class BoysRosterScreen extends RosterScreenBase {
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#br-refresh')) return this.load({ refreshLa: true });
-      const moveOpt = e.target.closest('.br-move-option');
+      const moveOpt = e.target.closest('.roster-move-option');
       if (moveOpt) return this.onMoveOptionClick(moveOpt);
       const toggle = e.target.closest('.br-roster-toggle');
       if (toggle) return this.onRosterToggleClick(toggle);
@@ -222,8 +222,8 @@ class BoysRosterScreen extends RosterScreenBase {
         }).join('')}
       </div>
 
-      <div style="overflow-x:hidden; padding: 0 var(--space-2) var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(${cols.length}, minmax(0, 1fr)); gap:var(--space-2); align-items:start;">
+      <div style="overflow-x:auto; padding: 0 var(--space-2) var(--space-2);">
+        <div style="display:grid; grid-template-columns: repeat(${cols.length}, max-content); gap:var(--space-2); align-items:start;">
           ${cols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>
@@ -332,13 +332,7 @@ class BoysRosterScreen extends RosterScreenBase {
     const telHref = contactPhone ? `tel:${contactPhone}` : null;
 
     // Full DOB (e.g. "3/10/2008").
-    let dobShort = '';
-    if (p.birthDate) {
-      const d = new Date(`${p.birthDate}T00:00:00Z`);
-      dobShort = isNaN(d.getTime())
-        ? p.birthDate
-        : d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-    }
+    const dobShort = this.formatDobShort(p.birthDate);
 
     // Dues status — consolidated into BillingBadge.renderBalance().
     // User directive 2026-07-05 pm: "use only 1 section of card for
@@ -354,67 +348,21 @@ class BoysRosterScreen extends RosterScreenBase {
     const daysAreExact     = rawDays >= 1;
 
 
-    // ---- Move-to-roster buttons ----------------------------------------
+    // ---- Move-to-roster dropdown -----------------------------------
     //
     // Targets are data-driven from data.columns (domain='boys' in
     // roster_columns).  All boys columns share mutex_group
     // 'boys-selection', so adding a player to one atomically removes
     // them from any other — same guarantee as mens.  "Unassigned"
     // (id 0) means remove from whichever real column they're on.
-    const assignedSet = new Set(p.teamIds || []);
-    // Restrict "current" detection to configured boys columns — a
-    // stray LA team assignment shouldn't confuse the selector.
-    const configuredIds = new Set((columns || []).map(c => c.teamId));
-    let currentTeamId = 0;
-    for (const tid of assignedSet) {
-      if (configuredIds.has(tid)) { currentTeamId = tid; break; }
-    }
-
-    const targets = [
-      { id: 0, label: 'Unassigned', color: '#475569' },
-      ...(columns || []).map(c => ({
-        id:    c.teamId,
-        label: c.shortLabel || c.label || `Team ${c.teamId}`,
-        color: c.color || '#334155',
-      })),
-    ];
+    // Rendering itself is identical to mens (and girls/women's, which
+    // inherit this screen), so it lives once in RosterScreenBase.
+    const moveSelect = this.renderMoveDropdown(p, columns);
     // Shared button style — as thin as legible.  Zero vertical padding
     // plus a tight line-height give ~11-12 px total height while the
     // sides keep a proper 5 px cushion.  All actions (move, delinq,
     // contact, payments pill) share this base so they align.
     const btnBase = 'padding:0 5px; font-size:0.66rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.35; white-space:nowrap;';
-
-    // ── Move-to-roster: <details> popover ─────────────────────────
-    // Same popover pattern as CONTACT below.  Summary shows the
-    // player's current team (color-coded); opening it reveals the
-    // four options as click-to-move buttons.  Mutex enforcement is
-    // still server-side (mens-selection group at the DB layer).
-    const activeTarget = targets.find(t => t.id === currentTeamId) || targets[0];
-    const optBtns = targets.map(t => {
-      const active = t.id === currentTeamId;
-      const style = active
-        ? `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:default; opacity:0.85;`
-        : `background:transparent; color:${t.color}; border:1px dashed ${t.color}88; cursor:pointer;`;
-      return `<button class="br-move-option" type="button"
-                      data-user-id="${p.leagueAppsUserId}"
-                      data-target-team-id="${t.id}"
-                      data-current-team-id="${currentTeamId}"
-                      ${active ? 'disabled' : ''}
-                      title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"
-                      style="${btnBase} font-size:0.82rem; padding:2px 7px; ${style} text-align:left;">
-                ${active ? '✓ ' : ''}${t.label.toUpperCase()}
-              </button>`;
-    }).join('');
-    const moveSelect = `
-      <details class="br-move-details" style="position:relative; display:inline-block;">
-        <summary style="${btnBase} font-size:0.85rem; padding:2px 8px; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
-                 title="Move ${this.escape(p.firstName || 'player')} to another column">
-          ${this.escape(activeTarget.label.toUpperCase())} ▾
-        </summary>
-        <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155; min-width:100%;">
-          ${optBtns}
-        </div>
-      </details>`;
 
     // Reserve/On-Roster toggle removed 2026-07-04 (pm) per user directive:
     // column membership is the whole game.  Match-day roster selection
@@ -451,6 +399,13 @@ class BoysRosterScreen extends RosterScreenBase {
     const profileBtn = this.renderPersonActions(p, {
       returnTo: 'boys-roster',
       showEdit: false,
+      // Match the roster-move dropdown's thinner dimensions so row 2
+      // doesn't stretch taller than row 1 just to fit this button.
+      // appearance:none + min-height:0 strip the native OS button-chrome
+      // minimum height that browsers apply to real <button> elements
+      // (the dropdown trigger is a <summary>, which has no such native
+      // chrome, so it didn't need this — this button did).
+      btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0;',
     });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
@@ -632,13 +587,7 @@ class BoysRosterScreen extends RosterScreenBase {
         </div>
       </details>` : '';
 
-    const balanceValue = Number(p.outstandingBalance || 0);
-    const duesColor = balanceValue === 0 ? '#22c55e' : '#ef4444';
-    const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
-    const genderCode = this.getGenderCode(p);
-    const genderChip = genderCode
-      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:${genderCode === 'M' ? '#2563eb' : genderCode === 'F' ? '#ec4899' : '#334155'}; color:#fff; font-size:0.68rem; font-weight:800; line-height:1;">${this.escape(genderCode)}</span>`
-      : '';
+    const duesLabel = this.renderDuesLabel(p);
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
     const cardId = `br-card-${p.leagueAppsUserId}`;
@@ -660,21 +609,18 @@ class BoysRosterScreen extends RosterScreenBase {
       ? `<span style="font-size:0.72rem; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
       : '';
 
-    // ONE big flex-wrap row.  Order: [gender chip] [DOB] [dues] [move]
-    // [view].  The card stays compact while still giving the coach the
-    // essentials to identify the player and change teams quickly.
-    const metaHtml = `${genderChip}${dobShort ? `<span style="font-size:0.68rem; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>` : ''}${duesLabel}${moveSelect}${profileBtn}`;
-
+    // Row 1: rank + name + roster-move dropdown (far right). Row 2: DOB +
+    // age group + dues + view button (far right).
     return this.renderCompactCard({
       player: p,
       col,
       position,
       cardClass: 'br-card',
       cardId,
-      actionHtml: '',
-      metaHtml,
-      duesLabel: '',
-      dobShort: '',
+      dobShort,
+      duesLabel,
+      rosterSelectHtml: moveSelect,
+      viewButtonHtml: profileBtn,
       borderColor: cardBorder,
     });
   }
