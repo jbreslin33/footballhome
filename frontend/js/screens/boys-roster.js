@@ -353,13 +353,6 @@ class BoysRosterScreen extends RosterScreenBase {
     const days             = rawDays >= 1 ? rawDays : (hasUnpaidBalance ? 1 : 0);
     const daysAreExact     = rawDays >= 1;
 
-    // ── Youth card context (kept minimal) ─────────────────────────
-    // The front-of-card layout now prioritizes the essentials: gender,
-    // DOB, dues, and team switching.  The old age-group pill is left
-    // out for the compact view because the user asked to streamline it.
-    const ageChip = p.ageGroup
-      ? `<span style="font-size:0.85rem; font-weight:800; letter-spacing:0.02em; padding:2px 8px; border-radius:10px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(p.ageGroup)}</span>`
-      : '';
 
     // ---- Move-to-roster buttons ----------------------------------------
     //

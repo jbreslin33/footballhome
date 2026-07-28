@@ -16,6 +16,7 @@
 #include "MensTeamColumns.h"
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
+#include "YouthAgeGroups.h"
 #include "../database/Database.h"
 
 using nlohmann::json;
@@ -107,21 +108,6 @@ bool isActive(const json& rec, bool includeAll) {
     return s == "SPOT_RESERVED" || s == "SPOT_PENDING";
 }
 
-// School-year age group from DOB.  Aug 1 cutover: month >= 8 → cohort = yy+1,
-// else cohort = yy.  ageGroup = "U" + (seasonEndYear - cohort).
-// Returns json(nullptr) when the DOB can't be parsed.
-json ageGroupFromDob(const std::string& bdIso, int seasonEndYear) {
-    if (bdIso.size() < 10) return nullptr;
-    try {
-        const int yy = std::stoi(bdIso.substr(0, 4));
-        const int mm = std::stoi(bdIso.substr(5, 2));
-        const int cohort = (mm >= 8) ? yy + 1 : yy;
-        return std::string("U") + std::to_string(seasonEndYear - cohort);
-    } catch (const std::exception&) {
-        return nullptr;
-    }
-}
-
 } // namespace
 
 BoysRoster::BoysRoster()
@@ -188,7 +174,10 @@ json BoysRoster::shapePlayer(const json& rec, const std::string& club, int seaso
     // Real school-year age group (U8/U10/U12/...) — the user-visible chip
     // that lets admin see the kid's actual age category regardless of
     // which selection column they're dropped into.
-    out["ageGroup"] = ageGroupFromDob(bd, seasonEndYear);
+    {
+        const std::string ag = YouthAgeGroups::ageGroupFromDob(bd, seasonEndYear);
+        out["ageGroup"] = ag.empty() ? json(nullptr) : json(ag);
+    }
 
     auto strOrNull = [&](const char* k) -> json {
         const std::string v = optStr(rec, k);

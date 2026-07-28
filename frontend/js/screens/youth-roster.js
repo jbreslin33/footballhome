@@ -318,9 +318,14 @@ class YouthRosterScreen extends Screen {
       : '#ef4444';
     const duesLabel = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; padding:1px 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
 
+    const ageChip = (ageGroup && ageGroup !== '?')
+      ? `<span style="font-size:0.68rem; font-weight:800; letter-spacing:0.02em; padding:1px 6px; border-radius:8px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(ageGroup)}</span>`
+      : '';
+
     return `
       <div style="background:var(--bg-tertiary, #1f2937); border-radius:6px; padding:4px 6px;">
         <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+          ${ageChip}
           <div style="font-weight:600; font-size:0.76rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${this.escape(p.fullName) || '(no name)'}</div>
           ${dobPretty ? `<span style="font-size:0.68rem; opacity:0.75; white-space:nowrap;">${this.escape(dobPretty)}</span>` : ''}
           ${duesLabel}

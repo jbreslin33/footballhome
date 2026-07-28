@@ -19,6 +19,7 @@
 #include "PersonBilling.h"
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
+#include "YouthAgeGroups.h"
 #include "../database/Database.h"
 
 using nlohmann::json;
@@ -219,6 +220,15 @@ json MensRoster::shapeMensPlayer(const json& rec) {
         catch (const std::exception&) { out["birthYear"] = nullptr; }
     } else {
         out["birthYear"] = nullptr;
+    }
+
+    // US-Soccer age group (U23/U30/...) — same Aug-1 cohort math as the
+    // youth rosters. Adults don't have real U-bracket play today, but
+    // surfacing it now gets the data on the card ahead of any future
+    // U19/U23/Over-30 division work.
+    {
+        const std::string ag = YouthAgeGroups::ageGroupFromDob(bd, YouthAgeGroups::defaultSeasonEndYear());
+        out["ageGroup"] = ag.empty() ? json(nullptr) : json(ag);
     }
 
     const std::string g = optStr(rec, "gender");

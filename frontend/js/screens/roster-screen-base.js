@@ -47,6 +47,12 @@ class RosterScreenBase extends Screen {
     const posChip = position
       ? `<span style="font-size:0.72rem; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
       : '';
+    // US-Soccer age group (U10, U23, ...) — front-of-card so it's the
+    // first thing a coach sees, for every roster (youth AND adult, ahead
+    // of future U19/U23/Over-30 division work on the mens/womens side).
+    const ageChip = player.ageGroup
+      ? `<span style="font-size:0.72rem; font-weight:800; letter-spacing:0.02em; padding:1px 6px; border-radius:8px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
+      : '';
     const dragAttrs = col && col.teamId
       ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}"`
       : '';
@@ -61,6 +67,7 @@ class RosterScreenBase extends Screen {
     return `
       <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:3px 5px; border:${borderColor}; min-width:0;">
         <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:3px;">
+          ${ageChip}
           ${posChip}
           <strong style="font-size:0.72rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
           ${dobMarkup}

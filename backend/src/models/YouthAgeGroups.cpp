@@ -58,3 +58,15 @@ int YouthAgeGroups::defaultSeasonEndYear() {
     // tm_mon is 0-based → tm_mon >= 5 means Jun-Dec.
     return (tm_local.tm_mon >= 5) ? y + 1 : y;
 }
+
+std::string YouthAgeGroups::ageGroupFromDob(const std::string& birthDateIso, int seasonEndYear) {
+    if (birthDateIso.size() < 10) return {};
+    try {
+        const int yy = std::stoi(birthDateIso.substr(0, 4));
+        const int mm = std::stoi(birthDateIso.substr(5, 2));
+        const int cohort = (mm >= 8) ? yy + 1 : yy;
+        return std::string("U") + std::to_string(seasonEndYear - cohort);
+    } catch (const std::exception&) {
+        return {};
+    }
+}

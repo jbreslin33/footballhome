@@ -46,6 +46,14 @@ public:
     // Uses local time (matches Node's `new Date()`).
     static int defaultSeasonEndYear();
 
+    // US-Soccer school-year age group from a "YYYY-MM-DD" DOB. Aug 1
+    // cutover: month >= 8 → cohort = yy+1, else cohort = yy. Result is
+    // "U" + (seasonEndYear - cohort) — e.g. "U10" for youth, "U23"/"U30"
+    // for adults (the formula is birth-year-generic, so mens/womens
+    // rosters can surface it too, ahead of any actual U19/U23/Over-30
+    // bracketing). Returns "" when birthDateIso can't be parsed.
+    static std::string ageGroupFromDob(const std::string& birthDateIso, int seasonEndYear);
+
 private:
     Database* db_;
 };
