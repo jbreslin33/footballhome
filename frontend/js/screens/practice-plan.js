@@ -443,8 +443,19 @@ class PracticePlanScreen extends Screen {
     const raw = String(value).trim();
     if (!raw) return '';
 
-    const datetimeMatch = raw.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
-    const timeCandidate = datetimeMatch ? `${datetimeMatch[2]}:${datetimeMatch[3]}` : (raw.includes('T') ? raw.split('T')[1] : raw);
+    // A full date+time value is a real calendar instant (practice.event_starts_at /
+    // event_ends_at, sent by the backend as UTC ISO8601) — convert to the viewer's
+    // local wall-clock time rather than reading the UTC digits literally.
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}/.test(raw)) {
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      }
+    }
+
+    // Otherwise this is a bare "HH:MM[:SS]" wall-clock value (session start_time/
+    // end_time, a tz-less TIME column) — no timezone conversion applies.
+    const timeCandidate = raw.includes('T') ? raw.split('T')[1] : raw;
     const parts = timeCandidate.split(':');
     if (parts.length < 2) return raw;
 
@@ -479,16 +490,14 @@ class PracticePlanScreen extends Screen {
     return (startText === '00:00:00' || startText === '00:00') && (endText === '00:05:00' || endText === '00:05');
   }
 
-  // "HH:MM" clock time out of a gcal-style timestamp — same extraction
-  // formatTimeValue() uses for display, so the split lines up with what
-  // the practice-time header already shows (no timezone conversion here;
-  // this app treats these timestamps as literal wall-clock).
+  // "HH:MM" local wall-clock time out of a real calendar instant (UTC ISO8601),
+  // converted the same way formatTimeValue() converts it for display, so the
+  // split lines up with what the practice-time header already shows.
   extractClockTime(value) {
     if (!value) return null;
-    const raw = String(value).trim();
-    const match = raw.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
-    if (!match) return null;
-    return `${match[2].padStart(2, '0')}:${match[3]}`;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
   }
 
   minutesToClock(totalMinutes) {

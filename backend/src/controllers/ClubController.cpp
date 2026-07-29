@@ -216,7 +216,9 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             select = "SELECT id, slug, title, summary, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
         } else if (entity == "practices") {
             table = "club_game_model_practices";
-            select = "SELECT pr.id, pr.fh_event_id, pr.day_id, pr.notes, ge.summary AS event_summary, ge.starts_at AS event_starts_at, ge.ends_at AS event_ends_at "
+            select = "SELECT pr.id, pr.fh_event_id, pr.day_id, pr.notes, ge.summary AS event_summary, "
+                     "to_char(ge.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS event_starts_at, "
+                     "to_char(ge.ends_at   AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS event_ends_at "
                      "FROM club_game_model_practices pr "
                      "LEFT JOIN fh_events fe ON fe.id = pr.fh_event_id "
                      "LEFT JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
