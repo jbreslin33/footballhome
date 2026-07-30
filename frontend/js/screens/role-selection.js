@@ -187,7 +187,11 @@ class RoleSelectionScreen extends Screen {
         const emoji = catEmoji[g.category] || '•';
         const label = `${emoji} ${g.label || g.category} — ${g.program_name || ''}`.trim();
         parts.push(`<optgroup label="${this.escapeHtml(label)}">`);
-        const members = g.members || [];
+        const members = (g.members || []).slice().sort((a, b) => {
+          const an = (a.first_name || '').trim();
+          const bn = (b.first_name || '').trim();
+          return an.localeCompare(bn, undefined, { sensitivity: 'base' });
+        });
         for (const m of members) {
           const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || `Person #${m.person_id}`;
           parts.push(
