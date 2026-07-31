@@ -478,6 +478,8 @@ class PersonScreen extends Screen {
       { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa', category: 'men' },
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
+      { id: 924, short: 'RES',    label: 'APSL Reserves',  color: '#60a5fa', category: 'men' },
+      { id: 925, short: 'TRI',    label: 'APSL Trialists', color: '#f97316', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
       { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
       { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },

@@ -823,6 +823,7 @@ namespace {
 // and were dropped from the catalog with migration 250.)
 const int kEligibilityTeams[] = {
     35, 120, 121, 122, 908, 909,   // mens
+    924, 925,                      // mens internal — APSL Reserves/Trialists
     901,                           // women — Tri County
     911, 916, 917                  // boys — Youth League U16/U8/U12
 };
