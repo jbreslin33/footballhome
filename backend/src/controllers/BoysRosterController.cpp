@@ -95,6 +95,34 @@ void BoysRosterController::registerRoutes(Router& router, const std::string& pre
     router.post(prefix + "/reorder", [this](const Request& req) {
         return this->handleReorder(req);
     });
+    router.get(prefix + "/columns", [this](const Request& req) {
+        return this->handleColumns(req);
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/boys-roster/columns
+// ────────────────────────────────────────────────────────────────────────────
+Response BoysRosterController::handleColumns(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    try {
+        json out = json::array();
+        for (const auto& col : columns_->loadAll()) {
+            json c = json::object();
+            c["teamId"]     = col.teamId;
+            c["label"]      = col.label;
+            c["shortLabel"] = col.shortLabel;
+            c["color"]      = col.color;
+            c["mutexGroup"] = col.mutexGroup;
+            out.push_back(std::move(c));
+        }
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "BoysRosterController::handleColumns error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to load columns: ") + e.what());
+    }
 }
 
 Response BoysRosterController::handleGet(const Request& request, const LaSyncMap& sync) {

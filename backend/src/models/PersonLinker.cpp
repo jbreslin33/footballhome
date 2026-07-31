@@ -424,33 +424,56 @@ void PersonLinker::closeStaleMemberships(long long programId,
                                          const std::set<std::string>& activeLaUserIds) {
     if (programId <= 0) return;
     try {
-        // Pull every OPEN row for this program alongside its canonical
-        // LA userId (via external_person_aliases).  Anyone with an alias
-        // whose external_user_id is NOT in the active set (or who has no
-        // alias at all — orphaned/manual insert) gets ended_at set.
+        // Pull every OPEN row for this program alongside ALL of its
+        // person's leagueapps aliases (via external_person_aliases) and
+        // aggregate with bool_or: keep the row if ANY alias is in the
+        // active set, close it only if NONE are (or there's no alias at
+        // all — orphaned/manual insert).
+        //
+        // A person can carry more than one 'leagueapps' alias — e.g. a
+        // corrected re-registration under a new LA userId after the old
+        // one was deleted (2026-07-29, Sheldon Rhoden: old fraudulent-DOB
+        // account alias kept alongside the real one after merge).  A
+        // flat LEFT JOIN + per-row check here previously fanned out into
+        // one row per alias and closed the membership the instant ANY
+        // single alias — even a long-dead, unrelated one — wasn't in
+        // this sync's active set, regardless of whether another alias
+        // for the same person matched fine.  That reopened-then-closed
+        // the row on every single sync pass.  Aggregating per plm.id
+        // fixes it: the row only closes when NO alias is current.
         //
         // We fetch first + UPDATE by id list rather than a subquery so
         // the DB call count is bounded (2 round-trips) even for a large
         // program, and so the same set of ids can be logged.
+        std::string activeArrLit = "{";
+        {
+            bool first = true;
+            for (const auto& uid : activeLaUserIds) {
+                if (!first) activeArrLit += ",";
+                first = false;
+                activeArrLit += uid;
+            }
+        }
+        activeArrLit += "}";
+
         auto rows = db_->query(
             "SELECT plm.id, "
-            "       COALESCE(epa.external_user_id, '') AS la_user_id "
+            "       bool_or(epa.external_user_id IS NOT NULL "
+            "               AND epa.external_user_id = ANY($2::text[])) AS keep "
             "  FROM person_la_memberships plm "
             "  LEFT JOIN external_person_aliases epa "
             "         ON epa.person_id = plm.person_id "
             "        AND epa.provider  = 'leagueapps' "
             " WHERE plm.la_program_id = $1::bigint "
-            "   AND plm.ended_at IS NULL",
-            {std::to_string(programId)});
+            "   AND plm.ended_at IS NULL "
+            " GROUP BY plm.id",
+            {std::to_string(programId), activeArrLit});
 
         std::vector<std::string> toCloseIds;
         toCloseIds.reserve(rows.size());
         for (const auto& row : rows) {
-            const std::string laUid = row["la_user_id"].c_str();
-            // Keep only rows whose LA userId is in the "still a member"
-            // set.  Rows with no alias (empty laUid) or aliases outside
-            // the set are closed.
-            if (laUid.empty() || activeLaUserIds.find(laUid) == activeLaUserIds.end()) {
+            const bool keep = !row["keep"].is_null() && row["keep"].as<bool>();
+            if (!keep) {
                 toCloseIds.push_back(std::to_string(row["id"].as<long long>()));
             }
         }
