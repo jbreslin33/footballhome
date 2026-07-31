@@ -281,30 +281,29 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
             std::vector<std::string> pickupUids(pickupSync.activeUserIds.begin(),
                                                 pickupSync.activeUserIds.end());
             if (!pickupUids.empty()) {
+                // Group model (migration 250): first LA pickup
+                // membership → direct team_persons row on the Pickup
+                // group.  RSVP-ability derives from membership, so no
+                // separate eligibility grant exists anymore.
                 const std::string sql =
-                    "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id) "
-                    "SELECT 'mens', ua.uid::bigint, t.id "
+                    "INSERT INTO team_persons (team_id, person_id, on_roster) "
+                    "SELECT t.id, epa.person_id, false "
                     "  FROM UNNEST($1::text[]) AS ua(uid) "
+                    "  JOIN external_person_aliases epa "
+                    "    ON epa.provider = 'leagueapps' "
+                    "   AND epa.external_user_id = ua.uid "
                     "  CROSS JOIN teams t "
                     "  JOIN team_eligible_genders teg "
                     "    ON teg.team_id = t.id AND teg.gender = 'mens' "
                     " WHERE t.club_id = $2 "
                     "   AND t.is_pool = true "
                     "   AND t.name = 'Pickup' "
-                    "ON CONFLICT (domain, leagueapps_user_id, team_id) WHERE removed_at IS NULL DO NOTHING";
+                    "ON CONFLICT (team_id, person_id) WHERE removed_at IS NULL DO NOTHING";
                 const std::vector<std::string> params = {
                     textArrayLiteral(pickupUids),
                     std::to_string(clubId),
                 };
                 db_->query(sql, params);
-                // Grant them Pickup-only RSVP eligibility (migration 107).
-                // ON CONFLICT DO NOTHING keeps admin overrides intact.
-                const std::string elig =
-                    "INSERT INTO player_rsvp_eligibility (leagueapps_user_id, team_id) "
-                    "SELECT ua.uid::bigint, 909 "
-                    "  FROM UNNEST($1::text[]) AS ua(uid) "
-                    "ON CONFLICT DO NOTHING";
-                db_->query(elig, { textArrayLiteral(pickupUids) });
             }
         } catch (const std::exception& e) {
             std::cerr << "la-pool pickup-tier sync failed (programId="
@@ -330,10 +329,13 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         for (const auto& kv : personIdByLaIdCopy) laIds.push_back(kv.first);
 
         const std::string sql =
-            "SELECT mta.leagueapps_user_id::text AS lauid, mta.team_id "
-            "  FROM roster_assignments mta "
-            " WHERE mta.domain = 'mens' "
-            "   AND mta.leagueapps_user_id::text = ANY($1::text[])";
+            "SELECT epa.external_user_id AS lauid, tp.team_id "
+            "  FROM team_persons tp "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = tp.person_id "
+            "   AND epa.provider = 'leagueapps' "
+            " WHERE tp.removed_at IS NULL "
+            "   AND epa.external_user_id = ANY($1::text[])";
         const std::vector<std::string> params = { textArrayLiteral(laIds) };
         const auto rows = db_->query(sql, params);
         for (const auto& row : rows) {

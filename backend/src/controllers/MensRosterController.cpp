@@ -168,6 +168,34 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     router.put(prefix + "/rsvp-eligibility", [this](const Request& req) {
         return this->handlePutRsvpEligibility(req);
     });
+    router.get(prefix + "/columns", [this](const Request& req) {
+        return this->handleColumns(req);
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/mens-roster/columns
+// ────────────────────────────────────────────────────────────────────────────
+Response MensRosterController::handleColumns(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    try {
+        json out = json::array();
+        for (const auto& col : columns_->loadAll()) {
+            json c = json::object();
+            c["teamId"]     = col.teamId;
+            c["label"]      = col.label;
+            c["shortLabel"] = col.shortLabel;
+            c["color"]      = col.color;
+            c["mutexGroup"] = col.mutexGroup;
+            out.push_back(std::move(c));
+        }
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleColumns error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to load columns: ") + e.what());
+    }
 }
 
 Response MensRosterController::handleGet(const Request& request, const LaSyncMap& sync) {
@@ -773,16 +801,15 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
 
 
 // ────────────────────────────────────────────────────────────────────────────
-// RSVP eligibility (migration 107, 2026-07-07)
+// RSVP-able teams (group model, migration 250)
 //
-// Reads/writes `player_rsvp_eligibility` for one player.  Keyed by
-// leagueapps_user_id because the table stores it directly; the frontend
-// player card already carries `leagueAppsUserId` so no ID resolution is
-// needed on either side.
-//
-// Team catalog is the mens selection + pool teams, plus real Women and
-// Boys teams that already have gcal aliases / roster boards.  Grants
-// for other teams are ignored on write and hidden on read.
+// RSVP-ability IS active team_persons membership — there is no separate
+// eligibility table anymore.  This modal reads/writes membership:
+// checking a team adds an on_roster=false membership (squad pool);
+// unchecking closes ONLY on_roster=false rows — official-roster
+// memberships (on_roster=true) belong to the roster board and are
+// protected here.  API stays keyed by leagueapps_user_id (the frontend
+// player card carries it); the alias resolves to person_id server-side.
 // Changes here MUST be mirrored in:
 //   frontend/js/screens/rsvp-eligibility.js  (_teams)
 //   frontend/js/screens/person.js            (_rsvpTeams)
@@ -791,12 +818,13 @@ Response MensRosterController::handleUpdateGame(const Request& request) {
 
 namespace {
 
-// Display / grant catalog.  Order: mens home → mens pool → women → boys.
+// Display / membership catalog.  Order: mens home → mens pool → women → boys.
+// (Phantom pool ids 918-923 from migration 232 never existed in prod
+// and were dropped from the catalog with migration 250.)
 const int kEligibilityTeams[] = {
     35, 120, 121, 122, 908, 909,   // mens
-    901, 918, 919,                 // women — Tri County + Practice/Pickup
-    911, 916, 917, 920, 921,       // boys — Youth League + Practice/Pickup
-    922, 923                       // girls — Practice/Pickup
+    901,                           // women — Tri County
+    911, 916, 917                  // boys — Youth League U16/U8/U12
 };
 
 bool isEligibilityTeamId(int teamId) {
@@ -822,10 +850,14 @@ Response MensRosterController::handleGetRsvpEligibility(const Request& request) 
     try {
         auto db = Database::getInstance();
         auto rows = db->query(
-            "SELECT team_id "
-            "  FROM player_rsvp_eligibility "
-            " WHERE leagueapps_user_id = $1 "
-            " ORDER BY team_id",
+            "SELECT tp.team_id "
+            "  FROM team_persons tp "
+            "  JOIN external_person_aliases epa "
+            "    ON epa.person_id = tp.person_id "
+            "   AND epa.provider = 'leagueapps' "
+            " WHERE epa.external_user_id = $1 "
+            "   AND tp.removed_at IS NULL "
+            " ORDER BY tp.team_id",
             {std::to_string(userId)}
         );
         std::vector<int> teamIds;
@@ -887,13 +919,29 @@ Response MensRosterController::handlePutRsvpEligibility(const Request& request) 
     try {
         auto db = Database::getInstance();
 
-        // Load current grants for this user (filtered to the catalog).
+        // Resolve the LA alias to a person once; everything below is
+        // person-keyed membership.
+        long long personId = 0;
+        {
+            auto rows = db->query(
+                "SELECT person_id FROM external_person_aliases "
+                " WHERE provider = 'leagueapps' AND external_user_id = $1 "
+                " LIMIT 1",
+                {std::to_string(userId)}
+            );
+            if (rows.empty() || rows[0]["person_id"].is_null()) {
+                return badRequest("No person linked to that LeagueApps user id");
+            }
+            personId = rows[0]["person_id"].as<long long>();
+        }
+
+        // Load current active memberships (filtered to the catalog).
         std::unordered_set<int> current;
         {
             auto rows = db->query(
-                "SELECT team_id FROM player_rsvp_eligibility "
-                " WHERE leagueapps_user_id = $1",
-                {std::to_string(userId)}
+                "SELECT team_id FROM team_persons "
+                " WHERE person_id = $1::int AND removed_at IS NULL",
+                {std::to_string(personId)}
             );
             for (const auto& r : rows) {
                 if (r["team_id"].is_null()) continue;
@@ -910,16 +958,23 @@ Response MensRosterController::handlePutRsvpEligibility(const Request& request) 
         auto tx = db->beginTransaction();
         for (int t : toInsert) {
             tx->exec_params(
-                "INSERT INTO player_rsvp_eligibility (leagueapps_user_id, team_id) "
-                "VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                userId, t
+                "INSERT INTO team_persons (team_id, person_id, on_roster) "
+                "VALUES ($1, $2, false) "
+                "ON CONFLICT (team_id, person_id) WHERE removed_at IS NULL DO NOTHING",
+                t, personId
             );
         }
         for (int t : toDelete) {
+            // Close (not delete) — and ONLY squad-pool rows.  Official
+            // roster memberships (on_roster=true) are managed on the
+            // roster board, not this modal.
             tx->exec_params(
-                "DELETE FROM player_rsvp_eligibility "
-                " WHERE leagueapps_user_id = $1 AND team_id = $2",
-                userId, t
+                "UPDATE team_persons "
+                "   SET removed_at = now(), "
+                "       removed_reason = 'eligibility_ui_revoke' "
+                " WHERE person_id = $1::int AND team_id = $2 "
+                "   AND removed_at IS NULL AND on_roster = false",
+                personId, t
             );
         }
         db->commit(tx);

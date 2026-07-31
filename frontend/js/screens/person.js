@@ -83,6 +83,10 @@ class PersonScreen extends Screen {
               Team assignments <span id="ps-teams-count" class="ps-count"></span>
             </h2>
             <div id="ps-teams-list"></div>
+            <h3 class="ps-subheading" style="margin-top: var(--space-4);">
+              Add to roster
+            </h3>
+            <div id="ps-roster-add" style="font-size:0.75rem; opacity:0.65;"></div>
           </section>
 
           <!-- RSVP eligibility + the next few matches this player can
@@ -295,6 +299,15 @@ class PersonScreen extends Screen {
         this._toggleRsvp(teamId, want, chip);
         return;
       }
+      const rosterChip = e.target.closest('[data-roster-team-id]');
+      if (rosterChip) {
+        e.preventDefault();
+        const teamId = Number(rosterChip.getAttribute('data-roster-team-id'));
+        const endpoint = rosterChip.getAttribute('data-roster-endpoint');
+        const on = rosterChip.getAttribute('data-elig-on') === '1';
+        this._toggleRoster(teamId, endpoint, !on, rosterChip);
+        return;
+      }
       const unmergeBtn = e.target.closest('[data-unmerge-id]');
       if (unmergeBtn) {
         e.preventDefault();
@@ -389,6 +402,22 @@ class PersonScreen extends Screen {
         this.personId = String(data.personId);
         this._personId = data.personId;
       }
+
+      // Roster-assignment column catalog — both domains, unscoped by
+      // this person's own category, so the profile can add someone to
+      // ANY roster (e.g. a Boys Club player onto a Men's team). Cheap:
+      // no LA sync, no player data, just the configured columns. Only
+      // worth fetching when we actually have an LA user id to assign.
+      this._rosterColumns = { boys: [], mens: [] };
+      if (this.leagueAppsUserId) {
+        const [boysRes, mensRes] = await Promise.all([
+          this.auth.fetch('/api/boys-roster/columns').catch(() => null),
+          this.auth.fetch('/api/mens-roster/columns').catch(() => null),
+        ]);
+        if (boysRes && boysRes.ok) this._rosterColumns.boys = await boysRes.json();
+        if (mensRes && mensRes.ok) this._rosterColumns.mens = await mensRes.json();
+      }
+
       this._render(data);
       loading.style.display = 'none';
       body.style.display = 'block';
@@ -450,15 +479,11 @@ class PersonScreen extends Screen {
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
-      { id: 918, short: 'Pract.', label: 'Women Practice', color: '#f59e0b', category: 'women' },
-      { id: 919, short: 'Pickup', label: 'Women Pickup',   color: '#10b981', category: 'women' },
       { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
       { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
       { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
-      { id: 920, short: 'Pract.', label: 'Boys Practice', color: '#f59e0b', category: 'boys' },
-      { id: 921, short: 'Pickup', label: 'Boys Pickup',   color: '#10b981', category: 'boys' },
-      { id: 922, short: 'Pract.', label: 'Girls Practice', color: '#f59e0b', category: 'girls' },
-      { id: 923, short: 'Pickup', label: 'Girls Pickup',   color: '#10b981', category: 'girls' },
+      // Phantom pool ids 918-923 dropped with the group model
+      // (migration 250) — see rsvp-eligibility.js note.
     ];
   }
 
@@ -689,11 +714,7 @@ class PersonScreen extends Screen {
                                   : ''}`
       : (teams.length ? `${teams.length} past` : '');
 
-    if (!teams.length) {
-      list.innerHTML = `<div class="ps-empty">Not on any team roster</div>`;
-      return;
-    }
-    list.innerHTML = teams.map(t => {
+    list.innerHTML = teams.length ? teams.map(t => {
       const past = !!t.leftAt;
       const bits = [];
       if (t.clubName)     bits.push(this._escape(t.clubName));
@@ -716,7 +737,106 @@ class PersonScreen extends Screen {
           </span>
           <span class="ps-line-meta">${dateBit}</span>
         </div>`;
-    }).join('');
+    }).join('') : `<div class="ps-empty">Not on any team roster</div>`;
+
+    this._renderRosterAddPanel(teams);
+  }
+
+  // "Add to roster" — assign this person to any Boys or Men's roster
+  // column, regardless of their own category (e.g. a Boys Club player
+  // moving onto a Men's team once they age up). Deliberately lives here
+  // rather than as a cross-category control on the Boys/Mens roster
+  // board cards themselves — those stay scoped to their own category so
+  // the board grid doesn't get cluttered with edge cases; this profile
+  // screen is the one place any assignment can be made for any person.
+  _renderRosterAddPanel(teams) {
+    const el = this.element.querySelector('#ps-roster-add');
+    if (!el) return;
+
+    if (!this.leagueAppsUserId) {
+      el.innerHTML = `<div class="ps-empty">No LA user id — roster assignment cannot be set</div>`;
+      return;
+    }
+    const cols = this._rosterColumns || { boys: [], mens: [] };
+    if (!cols.boys.length && !cols.mens.length) {
+      el.innerHTML = `<div class="ps-empty">No roster columns configured</div>`;
+      return;
+    }
+
+    const currentTeamIds = new Set(
+      teams.filter(t => !t.leftAt).map(t => Number(t.teamId))
+    );
+
+    const groups = [
+      { label: 'Boys', endpoint: '/api/boys-roster/assign', cols: cols.boys },
+      { label: 'Men',  endpoint: '/api/mens-roster/assign', cols: cols.mens },
+    ];
+
+    el.innerHTML = groups.map(g => {
+      if (!g.cols.length) return '';
+      return `
+        <div style="margin-bottom: var(--space-2);">
+          <div style="font-size:0.7rem; font-weight:700; opacity:0.65;
+                      letter-spacing:0.04em; text-transform:uppercase; margin-bottom:4px;">
+            ${g.label}
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            ${g.cols.map(c => {
+              const on = currentTeamIds.has(Number(c.teamId));
+              return `<button type="button"
+                        data-roster-team-id="${c.teamId}"
+                        data-roster-endpoint="${g.endpoint}"
+                        data-elig-on="${on ? '1' : '0'}"
+                        title="${this._escape(c.label)} — ${on ? 'click to remove' : 'click to assign'}"
+                        style="padding:4px 10px; border-radius:999px; font-size:0.75rem;
+                               font-weight:700; cursor:pointer;
+                               border:1px solid ${c.color || '#64748b'};
+                               background:${on ? (c.color || '#64748b') : 'transparent'};
+                               color:${on ? '#fff' : (c.color || '#64748b')};">
+                        ${this._escape(c.shortLabel || c.label)}
+                      </button>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }).join('') + `
+      <div style="font-size:0.75rem; opacity:0.65;">
+        Tap a team to add or remove this person from that roster column.
+        A person can hold assignments on both Boys and Men's rosters at once.
+      </div>`;
+  }
+
+  async _toggleRoster(teamId, endpoint, want, chipEl) {
+    if (!this.leagueAppsUserId || !teamId || !endpoint) return;
+    const had = chipEl.getAttribute('data-elig-on') === '1';
+    this._paintRosterChip(chipEl, want);
+
+    try {
+      const r = await this.auth.fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leagueAppsUserId: Number(this.leagueAppsUserId),
+          teamId,
+          action: want ? 'add' : 'remove',
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      // Refresh so the read-only history list above picks up the
+      // new/removed row too (it's a separate query from the columns
+      // catalog, so we don't try to hand-patch it locally).
+      this._load();
+    } catch (err) {
+      this._paintRosterChip(chipEl, had);
+      alert(`Failed to update roster assignment: ${err.message || err}`);
+    }
+  }
+
+  _paintRosterChip(chipEl, on) {
+    if (!chipEl) return;
+    const color = chipEl.style.borderColor || '#64748b';
+    chipEl.setAttribute('data-elig-on', on ? '1' : '0');
+    chipEl.style.background = on ? color : 'transparent';
+    chipEl.style.color      = on ? '#fff' : color;
   }
 
   // ── RSVP eligibility + upcoming matches ───────────────────────────

@@ -931,35 +931,36 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
             }
         };
 
-        // 2. Men — mens_team_assignments (any presence = member; bench,
-        //    pool, on-roster all counted).  Email + phone come from
-        //    person_emails / person_phones which PersonLinker.linkLa
-        //    keeps in sync every request (see laGet wrapper on this
-        //    route).  The old code fetched LA registrations inline to
-        //    overlay email/phone because person_emails was sparse for
-        //    men; that predates the 2026-07-01 contact-backfill and
-        //    the 2026-07-17 laGet wiring — both now guarantee this
-        //    read is fresh.
+        // 2. Men — team_persons on mens-category teams (any presence =
+        //    member; bench, pool, on-roster all counted).  Email +
+        //    phone come from person_emails / person_phones which
+        //    PersonLinker.linkLa keeps in sync every request (see
+        //    laGet wrapper on this route).
         {
             auto rs = db->query(
                 "SELECT t.name AS team_name, p.id AS person_id, "
-                "       p.first_name, p.last_name, m.leagueapps_user_id, "
+                "       p.first_name, p.last_name, "
+                "       epa.external_user_id::bigint AS leagueapps_user_id, "
                 "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
                 "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails, "
                 "       COALESCE((SELECT pp.phone_number FROM person_phones pp "
                 "                  WHERE pp.person_id = p.id "
                 "                  ORDER BY pp.is_primary DESC, pp.id LIMIT 1), '') AS phone "
-                "  FROM roster_assignments m "
+                "  FROM team_persons m "
                 "  JOIN teams t ON t.id = m.team_id "
-                "  JOIN external_person_aliases epa "
-                "    ON epa.provider = 'leagueapps' "
-                "   AND epa.external_user_id = m.leagueapps_user_id::text "
-                "  JOIN persons p ON p.id = epa.person_id "
+                "   AND t.gender_category = 'mens' "
+                "  JOIN persons p ON p.id = m.person_id "
+                "  LEFT JOIN external_person_aliases epa "
+                "    ON epa.person_id = p.id "
+                "   AND epa.provider = 'leagueapps' "
+                "   AND epa.external_user_id ~ '^[0-9]+$' "
                 " ORDER BY t.name, p.last_name, p.first_name");
             for (const auto& row : rs) {
                 emit("Men",
                      row["person_id"].as<int>(),
-                     row["leagueapps_user_id"].as<long long>(),
+                     row["leagueapps_user_id"].is_null()
+                         ? std::optional<long long>{}
+                         : std::optional<long long>{row["leagueapps_user_id"].as<long long>()},
                      row["first_name"].is_null() ? std::string{} : row["first_name"].c_str(),
                      row["last_name"].is_null()  ? std::string{} : row["last_name"].c_str(),
                      row["team_name"].is_null()  ? std::string{} : row["team_name"].c_str(),
@@ -975,11 +976,10 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
                 "       p.first_name, p.last_name, "
                 "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
                 "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails "
-                "  FROM rosters r "
+                "  FROM team_persons r "
                 "  JOIN teams t ON t.id = r.team_id "
-                "  JOIN players pl ON pl.id = r.player_id "
-                "  JOIN persons p ON p.id = pl.person_id "
-                " WHERE r.left_at IS NULL "
+                "  JOIN persons p ON p.id = r.person_id "
+                " WHERE r.removed_at IS NULL "
                 "   AND t.gender_category = 'womens' "
                 " ORDER BY t.name, p.last_name, p.first_name");
             for (const auto& row : rs) {

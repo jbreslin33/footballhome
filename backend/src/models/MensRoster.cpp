@@ -260,7 +260,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
 
     if (cols.empty()) {
         out.noColumns = true;
-        out.error = "No roster_columns configured for domain='mens'.  Seed the table to enable bucketing.";
+        out.error = "No board columns configured for mens teams (teams.board_sort_order).  Seed them to enable bucketing.";
         return out;
     }
 
@@ -780,17 +780,16 @@ MensRoster::Result MensRoster::run(bool includeAll,
     // MensTeamAssignments::bulk{SoftDeleteForDelinquent,RestoreForDelinquent}
     // behind a feature flag.
 
-    // ── Practice / Pickup membership (2026-07-07, migration 107) ───────
+    // ── Practice / Pickup membership (group model, migration 250) ─────
     //
-    // Practice (908) and Pickup (909) are UNION teams: their membership
-    // is derived from APSL + Liga 1 + Liga 2 + Adult League via
-    // team_roster_sources + the v_team_members view.  No backfill runs
-    // here anymore.  MensTeamAssignments::loadAll() already reads from
-    // v_team_members, so 908/909 cells surface on every user with a
-    // home-team assignment without any stored duplicate rows.
-    //
-    // Pickup-only members (LA program 5070075) still live as direct
-    // roster_assignments rows on team 909; the view aggregates both.
+    // Practice (908) and Pickup (909) are plain internal groups now —
+    // the team_roster_sources/v_team_members union machinery is
+    // retired.  Migration 250 snapshotted the union's effective
+    // membership as direct team_persons rows, so existing members keep
+    // their 908/909 cells.  Going forward, practice/pickup eligibility
+    // comes from tagging the REAL teams on the gcal event (Team: APSL,
+    // Liga 1, …), not from pool membership — see the ADR.  Pickup-only
+    // members (LA program 5070075) get direct rows on 909 via LaPool.
 
     // Bucket per column (keyed by teamId-as-string).
     std::unordered_map<std::string, std::vector<json>> buckets;

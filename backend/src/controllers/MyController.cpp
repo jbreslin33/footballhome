@@ -167,13 +167,11 @@ bool isMensChatMember(long long personId) {
     try {
         auto* db = Database::getInstance();
         auto r = db->query(
-            "SELECT 1 FROM roster_assignments ra "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.provider = 'leagueapps' "
-            "   AND epa.external_user_id = ra.leagueapps_user_id::text "
-            " WHERE ra.domain = 'mens' "
-            "   AND ra.removed_at IS NULL "
-            "   AND epa.person_id = $1::int "
+            "SELECT 1 FROM team_persons tp "
+            "  JOIN teams t ON t.id = tp.team_id "
+            " WHERE t.gender_category = 'mens' "
+            "   AND tp.removed_at IS NULL "
+            "   AND tp.person_id = $1::int "
             " UNION ALL "
             "SELECT 1 FROM admins a "
             "  JOIN users u ON u.id = a.user_id "

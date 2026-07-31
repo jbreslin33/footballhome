@@ -316,11 +316,11 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         // to reshape it in C++.  Empty array when no teams attached
         // (legacy-classified events without DSL tags).
         //
-        // my_rsvp_eligible walks the same junction to
-        // player_rsvp_eligibility (via the leagueapps external alias
-        // chain — identical shape to MyController::callerRosteredForMatch)
-        // and reports whether the caller has an eligibility grant on
-        // ANY team attached to the event.  NULL when anonymous.
+        // my_rsvp_eligible walks the same junction to team_persons:
+        // the caller is eligible when they hold an active membership
+        // on ANY team attached to the event (group model — see
+        // docs/adr/2026-07-30-roster-membership-rsvp-normalization.md),
+        // minus any active rsvp_suspensions row.  NULL when anonymous.
         //
         // hangout_link is the Meet URL extracted from the raw gcal
         // event payload — Google puts it on `hangoutLink` for events
@@ -377,12 +377,17 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                           AND (
                               EXISTS (
                                   SELECT 1
-                                  FROM player_rsvp_eligibility ple
-                                  JOIN external_person_aliases epa
-                                    ON epa.provider = 'leagueapps'
-                                   AND epa.external_user_id = ple.leagueapps_user_id::text
-                                  WHERE ple.team_id = fet.team_id
-                                    AND epa.person_id = $1::int
+                                  FROM team_persons tp
+                                  WHERE tp.team_id = fet.team_id
+                                    AND tp.person_id = $1::int
+                                    AND tp.removed_at IS NULL
+                                    AND NOT EXISTS (
+                                        SELECT 1 FROM rsvp_suspensions s
+                                        WHERE s.person_id = tp.person_id
+                                          AND (s.team_id IS NULL OR s.team_id = tp.team_id)
+                                          AND s.starts_at <= now()
+                                          AND (s.ends_at IS NULL OR s.ends_at > now())
+                                    )
                               )
                               OR EXISTS (
                                   SELECT 1
@@ -446,21 +451,18 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              CASE
                                                                      WHEN fe.category = 'mens' THEN NOT EXISTS (
                                                                              SELECT 1
-                                                                                 FROM roster_assignments ra_sel
-                                                                                WHERE ra_sel.domain             = 'mens'
-                                                                                    AND ra_sel.removed_at         IS NULL
-                                                                                    AND ra_sel.leagueapps_user_id = ple.leagueapps_user_id
-                                                                                    AND ra_sel.team_id            IN (35, 120, 121, 122)
+                                                                                 FROM team_persons tp_sel
+                                                                                WHERE tp_sel.person_id  = p.id
+                                                                                    AND tp_sel.removed_at IS NULL
+                                                                                    AND tp_sel.team_id    IN (35, 120, 121, 122)
                                                                      )
                                                                      ELSE false
                                                              END AS is_pickup_only
                                                     FROM fh_event_teams fet
-                                                    JOIN player_rsvp_eligibility ple
-                                                        ON ple.team_id = fet.team_id
-                                                    JOIN external_person_aliases epa
-                                                        ON epa.provider = 'leagueapps'
-                                                     AND epa.external_user_id = ple.leagueapps_user_id::text
-                                                    JOIN persons p ON p.id = epa.person_id
+                                                    JOIN team_persons tp
+                                                        ON tp.team_id = fet.team_id
+                                                       AND tp.removed_at IS NULL
+                                                    JOIN persons p ON p.id = tp.person_id
                                                     LEFT JOIN fh_event_rsvps er
                                                         ON er.fh_event_id = fe.id
                                                      AND er.person_id   = p.id
@@ -486,12 +488,17 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                               AND (
                                   EXISTS (
                                       SELECT 1
-                                      FROM player_rsvp_eligibility ple
-                                      JOIN external_person_aliases epa
-                                        ON epa.provider = 'leagueapps'
-                                       AND epa.external_user_id = ple.leagueapps_user_id::text
-                                      WHERE ple.team_id = fet.team_id
-                                        AND epa.person_id = $1::int
+                                      FROM team_persons tp
+                                      WHERE tp.team_id = fet.team_id
+                                        AND tp.person_id = $1::int
+                                        AND tp.removed_at IS NULL
+                                        AND NOT EXISTS (
+                                            SELECT 1 FROM rsvp_suspensions s
+                                            WHERE s.person_id = tp.person_id
+                                              AND (s.team_id IS NULL OR s.team_id = tp.team_id)
+                                              AND s.starts_at <= now()
+                                              AND (s.ends_at IS NULL OR s.ends_at > now())
+                                        )
                                   )
                                   OR EXISTS (
                                       SELECT 1
@@ -720,9 +727,10 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         // separate stale roster gate.
         //
         // We still keep the check lightweight: admins can always save,
-        // and non-admins must have a matching eligibility row for the
-        // event's attached teams.  If that check fails, we return a
-        // clear 403 so the UI can surface a helpful error.
+        // and non-admins must hold an active team_persons membership
+        // (not suspended) on one of the event's attached teams.  If
+        // that check fails, we return a clear 403 so the UI can
+        // surface a helpful error.
         auto eligRows = db->query(
             "SELECT "
             "  (SELECT COUNT(*)::int FROM fh_event_teams "
@@ -741,12 +749,17 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             "        AND ( "
             "          EXISTS ( "
             "            SELECT 1 "
-            "            FROM player_rsvp_eligibility ple "
-            "            JOIN external_person_aliases epa "
-            "              ON epa.provider = 'leagueapps' "
-            "             AND epa.external_user_id = ple.leagueapps_user_id::text "
-            "            WHERE ple.team_id = fet.team_id "
-            "              AND epa.person_id = $2::int "
+            "            FROM team_persons tp "
+            "            WHERE tp.team_id = fet.team_id "
+            "              AND tp.person_id = $2::int "
+            "              AND tp.removed_at IS NULL "
+            "              AND NOT EXISTS ( "
+            "                  SELECT 1 FROM rsvp_suspensions s "
+            "                  WHERE s.person_id = tp.person_id "
+            "                    AND (s.team_id IS NULL OR s.team_id = tp.team_id) "
+            "                    AND s.starts_at <= now() "
+            "                    AND (s.ends_at IS NULL OR s.ends_at > now()) "
+            "              ) "
             "          ) "
             "          OR EXISTS ( "
             "            SELECT 1 "

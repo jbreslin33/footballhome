@@ -519,24 +519,21 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
 
-        // Two roster tables are read here:
+        // Two roster sources are read here:
         //   (a) `team_division_players` — the canonical youth/adult
         //       squad view (id, team_id, player_id, is_active, …).
         //       Legacy queries used `team_players`; that table was
         //       removed in migration 08x — the view is its shape-
         //       preserving replacement.
-        //   (b) `mens_team_assignments` — the mens-side roster for
-        //       APSL / pool teams (Practice=908, Pickup=909).  It is
-        //       keyed on `leagueapps_user_id`; we bridge to a
-        //       persons row via `external_person_aliases` (same
-        //       pattern used across the roster/RSVP surfaces).
+        //   (b) `team_persons` — the group-model membership table
+        //       (migration 250): every active membership, official or
+        //       squad-pool, keyed directly on person_id.
         //
         // Both branches emit `{id, name, club_id, division_name?}`
         // rows and are UNION-ed so a single caller with entries in
         // either side gets every team they can RSVP for.  Wrapping
         // `SELECT DISTINCT ON (id)` collapses cases where the caller
-        // is in both roster tables (typical for pool teams that also
-        // have a team_division_players view row).
+        // is in both sources.
         const std::string sql =
             "WITH caller AS ( "
             "  SELECT person_id FROM users WHERE id = $1::int "
@@ -557,14 +554,10 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             "         NULL::varchar AS division_name, "
             "         2 AS priority "
             "    FROM caller "
-            "    JOIN external_person_aliases epa "
-            "      ON epa.person_id = caller.person_id "
-            "     AND epa.provider = 'leagueapps' "
-            "    JOIN roster_assignments mta "
-            "      ON mta.leagueapps_user_id::text = epa.external_user_id "
-            "     AND mta.domain = 'mens' "
-            "     AND mta.removed_at IS NULL "
-            "    JOIN teams t ON t.id = mta.team_id "
+            "    JOIN team_persons tp "
+            "      ON tp.person_id = caller.person_id "
+            "     AND tp.removed_at IS NULL "
+            "    JOIN teams t ON t.id = tp.team_id "
             ") "
             "SELECT DISTINCT ON (id) id, name, club_id, division_name "
             "  FROM roster "

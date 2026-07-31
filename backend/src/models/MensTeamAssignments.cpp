@@ -6,6 +6,36 @@
 #include <utility>
 #include "../database/Database.h"
 
+// Group model (migration 250): this model reads/writes `team_persons`
+// directly — the roster_assignments table, the v_team_members union
+// view and the fn_grant_default_rsvp_eligibility trigger are all
+// retired.  The public API stays keyed by leagueapps_user_id (the
+// frontend board cards carry it); each query resolves the alias to a
+// person via external_person_aliases at the SQL edge.
+//
+// Board mutex behavior: addAssignment still honors the caller-supplied
+// mutexGroup (one-of within a column group).  Whether official teams
+// participate in a mutex is now DATA (teams.mutex_group) — league
+// rules allow multi-team players, so official team columns get a NULL
+// mutex_group while staging/admin buckets keep theirs.
+//
+// Removal semantics: rows are CLOSED (removed_at + removed_reason),
+// never hard-deleted — membership history is roster history.
+
+namespace {
+
+// Scalar subquery fragment: resolve a leagueapps user id (param $N)
+// to a person id.  external_user_id is unique per alias row, so this
+// is at most one person.
+std::string personFromLa(const char* param) {
+    return std::string(
+        "(SELECT person_id FROM external_person_aliases "
+        "  WHERE provider = 'leagueapps' AND external_user_id = ") +
+        param + "::text)";
+}
+
+}  // namespace
+
 MensTeamAssignments::MensTeamAssignments()
     : db_(Database::getInstance()),
       domain_("mens") {}
@@ -16,25 +46,22 @@ MensTeamAssignments::MensTeamAssignments(std::string domain)
 
 MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     ByUser out;
-    // Reads from `v_team_members` (migration 107) so union teams
-    // (Practice 908 + Pickup 909, membership = APSL ∪ Liga1 ∪ Liga2 ∪
-    // Adult) surface without any stored duplicate rows.  Filtered to
-    // the current domain by `teams.gender_category`.
-    //
-    // coach_sort_order is only meaningful on direct assignments, so it
-    // is LEFT JOIN'd from roster_assignments and null for derived
-    // (union) memberships.
+    // One row per (person, team) active membership on this domain's
+    // teams.  DISTINCT ON collapses multi-alias persons (post-merge
+    // accounts) onto their most recent LA alias so each membership
+    // renders exactly one board card.
     const auto rows = db_->query(
-        "SELECT vtm.leagueapps_user_id, vtm.team_id, vtm.on_roster, "
-        "       ra.coach_sort_order "
-        "  FROM v_team_members vtm "
-        "  JOIN teams t ON t.id = vtm.team_id "
-        "  LEFT JOIN roster_assignments ra "
-        "    ON ra.leagueapps_user_id = vtm.leagueapps_user_id "
-        "   AND ra.team_id            = vtm.team_id "
-        "   AND ra.domain             = $1 "
-        "   AND ra.removed_at IS NULL "
-        " WHERE t.gender_category = $1",
+        "SELECT DISTINCT ON (tp.person_id, tp.team_id) "
+        "       epa.external_user_id AS leagueapps_user_id, "
+        "       tp.team_id, tp.on_roster, tp.coach_sort_order "
+        "  FROM team_persons tp "
+        "  JOIN teams t ON t.id = tp.team_id "
+        "   AND t.gender_category = $1 "
+        "  JOIN external_person_aliases epa "
+        "    ON epa.person_id = tp.person_id "
+        "   AND epa.provider = 'leagueapps' "
+        " WHERE tp.removed_at IS NULL "
+        " ORDER BY tp.person_id, tp.team_id, epa.id DESC",
         {domain_}
     );
     for (const auto& row : rows) {
@@ -53,15 +80,13 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
 
 std::vector<int> MensTeamAssignments::teamIdsForUser(long long userId) {
     std::vector<int> out;
-    // ORDER BY id mirrors Node's unordered SELECT — Postgres heap order is
-    // insertion order, equivalent to the serial PK ascending.  Required
-    // for byte-equivalent JSON output (teamIds array order).
     const auto rows = db_->query(
-        "SELECT team_id FROM roster_assignments "
-        " WHERE domain = $1 "
-        "   AND leagueapps_user_id = $2 "
-        "   AND removed_at IS NULL "
-        " ORDER BY id",
+        "SELECT tp.team_id FROM team_persons tp "
+        "  JOIN teams t ON t.id = tp.team_id "
+        "   AND t.gender_category = $1 "
+        " WHERE tp.person_id = " + personFromLa("$2") +
+        "   AND tp.removed_at IS NULL "
+        " ORDER BY tp.id",
         {domain_, std::to_string(userId)}
     );
     out.reserve(rows.size());
@@ -74,84 +99,78 @@ std::vector<int> MensTeamAssignments::teamIdsForUser(long long userId) {
 std::vector<int> MensTeamAssignments::addAssignment(long long userId,
                                                      int teamId,
                                                      const std::string& mutexGroup) {
-    // Single transaction so the mutex-sibling DELETE, delinquent restore
-    // and the upsert land atomically — mirrors the Node BEGIN/COMMIT
-    // semantics.
+    // Single transaction so the mutex-sibling closure, delinquent
+    // restore and the upsert land atomically.
     auto tx = db_->beginTransaction();
 
     if (!mutexGroup.empty()) {
+        // Close (not delete) active memberships on mutex-sibling teams
+        // — one-of within the column group (teams.mutex_group since
+        // migration 250 folded roster_columns into teams).
         tx->exec_params(
-            "DELETE FROM roster_assignments a "
-            "  USING roster_columns c "
-            "  WHERE a.domain = $4 "
-            "    AND c.domain = $4 "
-            "    AND a.team_id = c.team_id "
-            "    AND a.leagueapps_user_id = $1 "
-            "    AND c.mutex_group = $2 "
-            "    AND a.team_id <> $3 "
-            "    AND a.removed_at IS NULL",
+            "UPDATE team_persons tp "
+            "   SET removed_at = now(), "
+            "       removed_reason = 'board_move' "
+            "  FROM teams c "
+            " WHERE c.id = tp.team_id "
+            "   AND c.gender_category = $4 "
+            "   AND tp.person_id = " + personFromLa("$1") +
+            "   AND c.mutex_group = $2 "
+            "   AND tp.team_id <> $3 "
+            "   AND tp.removed_at IS NULL",
             userId, mutexGroup, teamId, domain_
         );
     }
 
-    // If the SAME (user, team) row exists but was soft-deleted for
-    // delinquency, restore it in place so audit history + assigned_at
+    // If the SAME (person, team) row exists but was soft-deleted for
+    // delinquency, restore it in place so audit history + joined_at
     // are preserved.  Only touches 'delinquent' removals; other reasons
     // (manual removal etc.) are left alone.
     pqxx::result restored = tx->exec_params(
-        "UPDATE roster_assignments "
+        "UPDATE team_persons "
         "   SET removed_at = NULL, "
         "       removed_reason = NULL, "
         "       removed_details = NULL "
-        " WHERE domain = $3 "
-        "   AND leagueapps_user_id = $1 "
+        " WHERE person_id = " + personFromLa("$1") +
         "   AND team_id = $2 "
         "   AND removed_at IS NOT NULL "
         "   AND removed_reason = 'delinquent' "
+        "   AND NOT EXISTS (SELECT 1 FROM team_persons a "
+        "        WHERE a.person_id = team_persons.person_id "
+        "          AND a.team_id = team_persons.team_id "
+        "          AND a.removed_at IS NULL) "
         " RETURNING id",
-        userId, teamId, domain_
+        userId, teamId
     );
 
     if (restored.empty()) {
         tx->exec_params(
-            "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id, assigned_by_user_id) "
-            "VALUES ($3, $1, $2, NULL) "
-            "ON CONFLICT (domain, leagueapps_user_id, team_id) "
+            "INSERT INTO team_persons (team_id, person_id) "
+            "SELECT $2, epa.person_id "
+            "  FROM external_person_aliases epa "
+            " WHERE epa.provider = 'leagueapps' "
+            "   AND epa.external_user_id = $1::text "
+            "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING",
-            userId, teamId, domain_
+            userId, teamId
         );
     }
 
-    pqxx::result after = tx->exec_params(
-        "SELECT team_id FROM roster_assignments "
-        " WHERE domain = $2 "
-        "   AND leagueapps_user_id = $1 "
-        "   AND removed_at IS NULL "
-        " ORDER BY id",
-        userId, domain_
-    );
-
-    std::vector<int> out;
-    out.reserve(after.size());
-    for (const auto& row : after) {
-        if (!row["team_id"].is_null()) out.push_back(row["team_id"].as<int>());
-    }
-
     db_->commit(tx);
-    return out;
+    return teamIdsForUser(userId);
 }
 
 std::vector<int> MensTeamAssignments::removeAssignment(long long userId, int teamId) {
-    // Admin-initiated remove is still a hard DELETE — respects the
-    // admin's intent to purge the assignment entirely.  The auto
-    // dues-owed sweep (disabled 2026-07-04) uses
-    // bulkSoftDeleteForDelinquent() which preserves the row.
+    // Close, don't delete — membership history is roster history.
     db_->query(
-        "DELETE FROM roster_assignments "
-        " WHERE domain = $1 "
-        "   AND leagueapps_user_id = $2 AND team_id = $3 "
+        "UPDATE team_persons "
+        "   SET removed_at = now(), "
+        "       removed_reason = 'admin_remove' "
+        " WHERE person_id = (SELECT person_id FROM external_person_aliases "
+        "                     WHERE provider = 'leagueapps' AND external_user_id = $1::text) "
+        "   AND team_id = $2 "
         "   AND removed_at IS NULL",
-        {domain_, std::to_string(userId), std::to_string(teamId)}
+        {std::to_string(userId), std::to_string(teamId)}
     );
     return teamIdsForUser(userId);
 }
@@ -160,13 +179,14 @@ std::optional<bool> MensTeamAssignments::setRosterStatus(long long userId,
                                                           int teamId,
                                                           bool onRoster) {
     const auto rows = db_->query(
-        "UPDATE roster_assignments "
-        "   SET on_roster = $4 "
-        " WHERE domain = $1 "
-        "   AND leagueapps_user_id = $2 AND team_id = $3 "
+        "UPDATE team_persons "
+        "   SET on_roster = $3 "
+        " WHERE person_id = (SELECT person_id FROM external_person_aliases "
+        "                     WHERE provider = 'leagueapps' AND external_user_id = $1::text) "
+        "   AND team_id = $2 "
         "   AND removed_at IS NULL "
         " RETURNING on_roster",
-        {domain_, std::to_string(userId), std::to_string(teamId), onRoster ? "true" : "false"}
+        {std::to_string(userId), std::to_string(teamId), onRoster ? "true" : "false"}
     );
     if (rows.empty()) return std::nullopt;
     return rows[0]["on_roster"].is_null() ? false : rows[0]["on_roster"].as<bool>();
@@ -198,14 +218,16 @@ long long MensTeamAssignments::bulkSoftDeleteForDelinquent(
         j << "}";
 
         pqxx::result r = tx->exec_params(
-            "UPDATE roster_assignments "
+            "UPDATE team_persons tp "
             "   SET removed_at      = NOW(), "
             "       removed_reason  = 'delinquent', "
             "       removed_details = $2::jsonb "
-            " WHERE domain = $3 "
-            "   AND leagueapps_user_id = $1 "
-            "   AND removed_at IS NULL "
-            " RETURNING id",
+            "  FROM teams t "
+            " WHERE t.id = tp.team_id "
+            "   AND t.gender_category = $3 "
+            "   AND tp.person_id = " + personFromLa("$1") +
+            "   AND tp.removed_at IS NULL "
+            " RETURNING tp.id",
             uid, j.str(), domain_
         );
         touched += static_cast<long long>(r.size());
@@ -222,16 +244,17 @@ long long MensTeamAssignments::bulkRestoreForDelinquent(const std::vector<long l
 
     for (long long uid : userIds) {
         // Restore rows one-by-one so a partial-index collision (an active
-        // row already exists on the same (user, team) pair — e.g. admin
+        // row already exists on the same (person, team) pair — e.g. admin
         // re-added them while they were dues-owed) simply skips instead
         // of aborting the whole transaction.
         pqxx::result candidates = tx->exec_params(
-            "SELECT id, team_id FROM roster_assignments "
-            " WHERE domain = $2 "
-            "   AND leagueapps_user_id = $1 "
-            "   AND removed_at IS NOT NULL "
-            "   AND removed_reason = 'delinquent' "
-            " ORDER BY id",
+            "SELECT tp.id, tp.team_id FROM team_persons tp "
+            "  JOIN teams t ON t.id = tp.team_id "
+            "   AND t.gender_category = $2 "
+            " WHERE tp.person_id = " + personFromLa("$1") +
+            "   AND tp.removed_at IS NOT NULL "
+            "   AND tp.removed_reason = 'delinquent' "
+            " ORDER BY tp.id",
             uid, domain_
         );
 
@@ -242,18 +265,17 @@ long long MensTeamAssignments::bulkRestoreForDelinquent(const std::vector<long l
 
             // Check no active row would collide.
             pqxx::result active = tx->exec_params(
-                "SELECT 1 FROM roster_assignments "
-                " WHERE domain = $3 "
-                "   AND leagueapps_user_id = $1 "
+                "SELECT 1 FROM team_persons "
+                " WHERE person_id = " + personFromLa("$1") +
                 "   AND team_id = $2 "
                 "   AND removed_at IS NULL "
                 " LIMIT 1",
-                uid, teamId, domain_
+                uid, teamId
             );
             if (!active.empty()) continue;
 
             pqxx::result upd = tx->exec_params(
-                "UPDATE roster_assignments "
+                "UPDATE team_persons "
                 "   SET removed_at      = NULL, "
                 "       removed_reason  = NULL, "
                 "       removed_details = NULL "
@@ -280,22 +302,22 @@ long long MensTeamAssignments::bulkEnsureActive(const std::vector<long long>& us
     auto tx = db_->beginTransaction();
 
     for (long long uid : userIds) {
-        // INSERT ON CONFLICT DO NOTHING is a no-op when an active row
-        // already exists (partial unique index catches it).  It creates
-        // a new active row when none exists — even if a soft-deleted
-        // row is present for a non-delinquency reason (paused, manual)
-        // — because the partial unique index only counts active rows.
-        //
-        // For delinquency-removed rows on the same (uid, team), the
-        // caller is expected to have already run bulkRestoreForDelinquent
-        // so the row is active and the ON CONFLICT fires cleanly.
+        // INSERT ... SELECT resolves the alias; inserts nothing when
+        // the LA user has no linked person yet.  ON CONFLICT DO
+        // NOTHING is a no-op when an active row already exists (the
+        // partial unique index catches it).  For delinquency-removed
+        // rows the caller is expected to have already run
+        // bulkRestoreForDelinquent so the row is active again.
         pqxx::result r = tx->exec_params(
-            "INSERT INTO roster_assignments (domain, leagueapps_user_id, team_id, assigned_by_user_id) "
-            "VALUES ($3, $1, $2, NULL) "
-            "ON CONFLICT (domain, leagueapps_user_id, team_id) "
+            "INSERT INTO team_persons (team_id, person_id) "
+            "SELECT $2, epa.person_id "
+            "  FROM external_person_aliases epa "
+            " WHERE epa.provider = 'leagueapps' "
+            "   AND epa.external_user_id = $1::text "
+            "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING "
             "RETURNING id",
-            uid, teamId, domain_
+            uid, teamId
         );
         inserted += static_cast<long long>(r.size());
     }
@@ -316,20 +338,19 @@ long long MensTeamAssignments::reorderTeam(int teamId,
     auto tx = db_->beginTransaction();
 
     // Simple loop: one UPDATE per user, coach_sort_order = 1..N in the
-    // supplied order.  N is bounded by column max_roster (~25) so the
+    // supplied order.  N is bounded by teams.max_roster (~25) so the
     // extra round-trips vs a single UNNEST/VALUES statement don't
     // matter — and the per-row form keeps the code readable.
     int rank = 1;
     for (long long uid : userIdsInOrder) {
         pqxx::result r = tx->exec_params(
-            "UPDATE roster_assignments "
+            "UPDATE team_persons "
             "   SET coach_sort_order = $3 "
-            " WHERE domain = $4 "
-            "   AND leagueapps_user_id = $1 "
+            " WHERE person_id = " + personFromLa("$1") +
             "   AND team_id = $2 "
             "   AND removed_at IS NULL "
             " RETURNING id",
-            uid, teamId, rank, domain_
+            uid, teamId, rank
         );
         touched += static_cast<long long>(r.size());
         ++rank;

@@ -3329,7 +3329,7 @@ Response SystemAdminController::handleGetPlayers(const Request& request) {
                 pos.name as position_name
             FROM players p
             JOIN persons per ON per.id = p.person_id
-            JOIN rosters r ON r.player_id = p.id AND r.left_at IS NULL
+            JOIN team_persons r ON r.person_id = per.id AND r.removed_at IS NULL
             JOIN teams t ON t.id = r.team_id
             JOIN divisions d ON d.id = t.division_id
             JOIN seasons s ON s.id = d.season_id

@@ -167,61 +167,47 @@ Response PersonProfileController::buildProfile(int personId, long long laUserId)
             "FROM users WHERE person_id = $1 LIMIT 1",
             { personIdStr });
 
-        // ── Roster / team assignments ────────────────────────────────
-        // Legacy soccer roster rows (player_id keyed) PLUS current LA-era
-        // roster_assignments (leagueapps_user_id).  Lighthouse mens/youth
-        // boards write the latter; scraped opponents often only have the
-        // former.  Merge both into the same `teams` array for the UI.
+        // ── Roster / team memberships ────────────────────────────────
+        // Group model (migration 250): team_persons unified the legacy
+        // rosters + roster_assignments pair; one person-keyed query
+        // covers official-roster and squad-pool memberships alike.
         pqxx::result teamsRes = db_->query(
-            "SELECT * FROM ( "
-            "SELECT r.id AS roster_id, r.team_id, r.jersey_number::text AS jersey_number, "
-            "       r.joined_at::timestamptz AS joined_at, "
-            "       r.left_at::timestamptz AS left_at, "
+            "SELECT tp.id AS roster_id, tp.team_id, "
+            "       tp.jersey_number::text AS jersey_number, "
+            "       tp.joined_at, tp.removed_at AS left_at, "
             "       t.name AS team_name, t.slug AS team_slug, "
             "       t.gender_category, t.club_id, "
             "       c.name AS club_name, "
             "       d.name AS division_name, "
-            "       'legacy'::text AS source "
-            "FROM rosters r "
-            "JOIN players pl ON pl.id = r.player_id "
-            "JOIN teams t   ON t.id = r.team_id "
+            "       CASE WHEN tp.on_roster THEN 'roster' "
+            "            ELSE 'squad_pool' END AS source "
+            "FROM team_persons tp "
+            "JOIN teams t ON t.id = tp.team_id "
             "LEFT JOIN clubs c     ON c.id = t.club_id "
             "LEFT JOIN divisions d ON d.id = t.division_id "
-            "WHERE pl.person_id = $1 "
-            "UNION ALL "
-            "SELECT ra.id AS roster_id, ra.team_id, NULL::text AS jersey_number, "
-            "       ra.assigned_at AS joined_at, ra.removed_at AS left_at, "
-            "       t.name AS team_name, t.slug AS team_slug, "
-            "       t.gender_category, t.club_id, "
-            "       c.name AS club_name, "
-            "       d.name AS division_name, "
-            "       'assignment'::text AS source "
-            "FROM roster_assignments ra "
-            "JOIN teams t ON t.id = ra.team_id "
-            "LEFT JOIN clubs c     ON c.id = t.club_id "
-            "LEFT JOIN divisions d ON d.id = t.division_id "
-            "WHERE ra.leagueapps_user_id = $2::bigint "
-            ") AS team_rows "
-            "ORDER BY (left_at IS NULL) DESC, joined_at DESC NULLS LAST "
+            "WHERE tp.person_id = $1 "
+            "ORDER BY (tp.removed_at IS NULL) DESC, tp.joined_at DESC NULLS LAST "
             "LIMIT 100",
-            { personIdStr, std::to_string(laUserId) });
+            { personIdStr });
 
-        // ── RSVP eligibility (per-team grants keyed by LA user id) ───
-        // These are the teams a player is *allowed* to RSVP to; the
-        // upcomingMatches list below is derived from this set.
+        // ── RSVP-able teams (group model: derived from active
+        // team_persons membership — being in the group IS the
+        // eligibility).  The upcomingMatches list below is derived
+        // from this set.
         pqxx::result eligRes = db_->query(
-            "SELECT pre.team_id, pre.granted_at, "
+            "SELECT tp.team_id, tp.joined_at AS granted_at, "
             "       t.name AS team_name, t.slug AS team_slug, "
             "       t.gender_category, "
             "       c.name AS club_name, "
             "       d.name AS division_name "
-            "FROM player_rsvp_eligibility pre "
-            "JOIN teams t     ON t.id = pre.team_id "
+            "FROM team_persons tp "
+            "JOIN teams t     ON t.id = tp.team_id "
             "LEFT JOIN clubs c     ON c.id = t.club_id "
             "LEFT JOIN divisions d ON d.id = t.division_id "
-            "WHERE pre.leagueapps_user_id = $1 "
-            "ORDER BY pre.granted_at DESC",
-            { std::to_string(laUserId) });
+            "WHERE tp.person_id = $1::int "
+            "  AND tp.removed_at IS NULL "
+            "ORDER BY tp.joined_at DESC",
+            { personIdStr });
 
         // ── Upcoming matches this player can RSVP to.  Any future,
         // non-cancelled match where at least one side is a team the
@@ -241,14 +227,14 @@ Response PersonProfileController::buildProfile(int personId, long long laUserId)
             "WHERE m.cancelled_at IS NULL "
             "  AND m.match_date >= CURRENT_DATE "
             "  AND (m.home_team_id IN "
-            "         (SELECT team_id FROM player_rsvp_eligibility "
-            "          WHERE leagueapps_user_id = $1) "
+            "         (SELECT team_id FROM team_persons "
+            "          WHERE person_id = $1::int AND removed_at IS NULL) "
             "    OR m.away_team_id IN "
-            "         (SELECT team_id FROM player_rsvp_eligibility "
-            "          WHERE leagueapps_user_id = $1)) "
+            "         (SELECT team_id FROM team_persons "
+            "          WHERE person_id = $1::int AND removed_at IS NULL)) "
             "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST "
             "LIMIT 20",
-            { std::to_string(laUserId) });
+            { personIdStr });
 
         // ── Person's own recent RSVP responses (audit view: "what has
         // this person actually said yes/no to?").  Sourced from

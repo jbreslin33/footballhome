@@ -216,7 +216,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     auto assignmentMap = assignments_->loadAll();
     if (cols.empty()) {
         out.noColumns = true;
-        out.error = "No roster_columns configured for domain='boys'.  Seed the table to enable bucketing.";
+        out.error = "No board columns configured for boys teams (teams.board_sort_order).  Seed them to enable bucketing.";
         return out;
     }
 

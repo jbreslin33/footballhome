@@ -305,7 +305,8 @@ Response EventReminderController::handleSendReminders(const Request& request,
 
         // 2) Non-responders on the event's roster with the requested
         //    channel available.  Roster comes from fh_event_teams →
-        //    player_rsvp_eligibility → external_person_aliases → persons.
+        //    team_persons (group model — active membership on any
+        //    attached team).
         //    A "non-responder" has no row in fh_event_rsvps for this
         //    event (unique index on (fh_event_id, person_id) guarantees
         //    at most one row per person, so we can just LEFT JOIN and
@@ -335,12 +336,10 @@ Response EventReminderController::handleSendReminders(const Request& request,
             "       p.first_name, p.last_name, "
             + contactSql +
             "  FROM fh_event_teams fet "
-            "  JOIN player_rsvp_eligibility ple "
-            "    ON ple.team_id = fet.team_id "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.provider = 'leagueapps' "
-            "   AND epa.external_user_id = ple.leagueapps_user_id::text "
-            "  JOIN persons p ON p.id = epa.person_id "
+            "  JOIN team_persons tp "
+            "    ON tp.team_id = fet.team_id "
+            "   AND tp.removed_at IS NULL "
+            "  JOIN persons p ON p.id = tp.person_id "
             "  LEFT JOIN fh_event_rsvps r "
             "    ON r.fh_event_id = fet.fh_event_id "
             "   AND r.person_id   = p.id "
@@ -646,9 +645,9 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
             const std::string kind    = e["kind"].is_null() ? "" : e["kind"].as<std::string>();
 
             // 2) Roster-eligible players + latest RSVP for this event.
-            //    Roster comes from fh_event_teams → player_rsvp_eligibility
-            //    (908/909 pool teams for practice/pickup, real team_id for
-            //    match).  fh_event_rsvps is one-row-per-person by unique
+            //    Roster comes from fh_event_teams → team_persons (group
+            //    model: active membership on any attached team).
+            //    fh_event_rsvps is one-row-per-person by unique
             //    index so a LEFT JOIN is enough.
             //
             //    home_team_short chips ("APSL 5 · L1 3 · L2 6 · Adult 2")
@@ -671,11 +670,10 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
                 "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone_sms, "
                 "       r.response AS rsvp_status, "
                 "       NOT EXISTS ( "
-                "         SELECT 1 FROM roster_assignments ra_sel "
-                "          WHERE ra_sel.domain              = 'mens' "
-                "            AND ra_sel.removed_at          IS NULL "
-                "            AND ra_sel.leagueapps_user_id  = ple.leagueapps_user_id "
-                "            AND ra_sel.team_id             IN (35, 120, 121, 122) "
+                "         SELECT 1 FROM team_persons tp_sel "
+                "          WHERE tp_sel.person_id   = p.id "
+                "            AND tp_sel.removed_at  IS NULL "
+                "            AND tp_sel.team_id     IN (35, 120, 121, 122) "
                 "       ) AS is_pickup_only, "
                 "       ht.team_id AS home_team_id, "
                 "       CASE ht.team_id "
@@ -685,20 +683,19 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
                 "         WHEN 122 THEN 'Adult' "
                 "         ELSE NULL END AS home_team_short "
                 "  FROM fh_event_teams fet "
-                "  JOIN player_rsvp_eligibility ple "
-                "    ON ple.team_id = fet.team_id "
-                "  JOIN external_person_aliases epa "
-                "    ON epa.provider = 'leagueapps' "
-                "   AND epa.external_user_id = ple.leagueapps_user_id::text "
-                "  JOIN persons p ON p.id = epa.person_id "
+                "  JOIN team_persons tp "
+                "    ON tp.team_id = fet.team_id "
+                "   AND tp.removed_at IS NULL "
+                "  JOIN persons p ON p.id = tp.person_id "
                 "  LEFT JOIN LATERAL ( "
-                "     SELECT ra.team_id "
-                "       FROM roster_assignments ra "
-                "      WHERE ra.leagueapps_user_id = ple.leagueapps_user_id "
-                "        AND ra.domain = 'mens' "
-                "        AND ra.removed_at IS NULL "
-                "        AND ra.team_id IN (35, 120, 121, 122) "
-                "      ORDER BY ra.team_id LIMIT 1 "
+                // multi-team players are legal: prefer the official-
+                // roster membership (on_roster) for the home-team chip
+                "     SELECT tph.team_id "
+                "       FROM team_persons tph "
+                "      WHERE tph.person_id = p.id "
+                "        AND tph.removed_at IS NULL "
+                "        AND tph.team_id IN (35, 120, 121, 122) "
+                "      ORDER BY tph.on_roster DESC, tph.team_id LIMIT 1 "
                 "  ) ht ON true "
                 "  LEFT JOIN fh_event_rsvps r "
                 "    ON r.fh_event_id = $1::bigint "

@@ -2272,13 +2272,13 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 false::boolean as in_chat_casa,
                 false::boolean as in_chat_u23,
                 -- Individual roster memberships (using team names for lookup)
-                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse 1893 SC') AND r2.left_at IS NULL) as on_roster_lighthouse,
-                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Boys Club') AND r2.left_at IS NULL) as on_roster_casa,
-                EXISTS(SELECT 1 FROM rosters r2 WHERE r2.player_id = p.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.left_at IS NULL) as on_roster_u23
+                EXISTS(SELECT 1 FROM team_persons r2 WHERE r2.person_id = pe.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse 1893 SC') AND r2.removed_at IS NULL) as on_roster_lighthouse,
+                EXISTS(SELECT 1 FROM team_persons r2 WHERE r2.person_id = pe.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Boys Club') AND r2.removed_at IS NULL) as on_roster_casa,
+                EXISTS(SELECT 1 FROM team_persons r2 WHERE r2.person_id = pe.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.removed_at IS NULL) as on_roster_u23
             FROM matches m
-            JOIN rosters r ON r.team_id = CASE WHEN $2 <> '' THEN $2::int ELSE m.home_team_id END AND r.left_at IS NULL
-            JOIN players p ON r.player_id = p.id
-            JOIN persons pe ON pe.id = p.person_id
+            JOIN team_persons r ON r.team_id = CASE WHEN $2 <> '' THEN $2::int ELSE m.home_team_id END AND r.removed_at IS NULL
+            JOIN persons pe ON pe.id = r.person_id
+            JOIN players p ON p.person_id = pe.id
             LEFT JOIN match_lineups ml ON ml.match_id = m.id AND ml.player_id = p.id
             WHERE m.id = $1
             ORDER BY pe.last_name, pe.first_name

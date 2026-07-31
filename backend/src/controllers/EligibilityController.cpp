@@ -171,12 +171,11 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         
         std::string playerQuery = R"(
             WITH roster_pool AS (
-                -- Player pool from team roster
-                SELECT DISTINCT p.person_id
-                FROM rosters r
-                JOIN players p ON p.id = r.player_id
-                WHERE r.team_id = $1::int
-                  AND r.left_at IS NULL
+                -- Player pool from team membership (group model)
+                SELECT DISTINCT tp.person_id
+                FROM team_persons tp
+                WHERE tp.team_id = $1::int
+                  AND tp.removed_at IS NULL
             ),
             combined_pool AS (
                 SELECT person_id FROM roster_pool
@@ -240,22 +239,22 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                        pe.leagueapps_payment_status,
                        -- On official roster = any sibling team in same league
                        EXISTS(
-                           SELECT 1 FROM rosters r2
+                           SELECT 1 FROM team_persons r2
                            JOIN teams t2 ON t2.id = r2.team_id
                            JOIN teams req ON req.id = $1::int
-                           WHERE r2.player_id = p.id
+                           WHERE r2.person_id = pe.id
                              AND t2.club_id = req.club_id
                              AND t2.source_system_id = req.source_system_id
-                             AND r2.left_at IS NULL
+                             AND r2.removed_at IS NULL
                       ) OR COALESCE(p.on_official_roster_override, false) as on_official_roster
                 FROM combined_pool cp
                 JOIN persons pe ON pe.id = cp.person_id
                 JOIN players p ON p.person_id = pe.id
-                LEFT JOIN rosters r ON r.player_id = p.id
-                    AND r.team_id = $1 AND r.left_at IS NULL
+                LEFT JOIN team_persons r ON r.person_id = pe.id
+                    AND r.team_id = $1 AND r.removed_at IS NULL
                 LEFT JOIN coach_assessments ca ON ca.team_id = $1::int AND ca.player_id = p.id
                 ORDER BY cp.person_id,
-                         CASE WHEN r.player_id IS NOT NULL THEN 0 ELSE 1 END,
+                         CASE WHEN r.person_id IS NOT NULL THEN 0 ELSE 1 END,
                          p.id DESC
             ),
             -- Classify each session in the window as past or future
@@ -1636,17 +1635,17 @@ Response EligibilityController::handleUpdatePlayerFlags(const Request& request) 
         // Update jersey number on ALL roster entries for this player if provided
         if (!jersey.empty()) {
             std::string jerseyQuery = R"(
-                UPDATE rosters
+                UPDATE team_persons
                    SET jersey_number = $2
-                 WHERE player_id = $1::int
+                 WHERE person_id = (SELECT person_id FROM players WHERE id = $1::int)
             )";
             db_->query(jerseyQuery, {playerId, jersey});
         } else {
             // Null out jersey if empty string sent
             std::string jerseyQuery = R"(
-                UPDATE rosters
+                UPDATE team_persons
                    SET jersey_number = NULL
-                 WHERE player_id = $1::int
+                 WHERE person_id = (SELECT person_id FROM players WHERE id = $1::int)
             )";
             db_->query(jerseyQuery, {playerId});
         }

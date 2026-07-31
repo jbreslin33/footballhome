@@ -108,15 +108,13 @@ class RsvpEligibilityScreen extends Screen {
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
-      { id: 918, short: 'Pract.', label: 'Women Practice', color: '#f59e0b', category: 'women' },
-      { id: 919, short: 'Pickup', label: 'Women Pickup',   color: '#10b981', category: 'women' },
       { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
       { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
       { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
-      { id: 920, short: 'Pract.', label: 'Boys Practice', color: '#f59e0b', category: 'boys' },
-      { id: 921, short: 'Pickup', label: 'Boys Pickup',   color: '#10b981', category: 'boys' },
-      { id: 922, short: 'Pract.', label: 'Girls Practice', color: '#f59e0b', category: 'girls' },
-      { id: 923, short: 'Pickup', label: 'Girls Pickup',   color: '#10b981', category: 'girls' },
+      // Phantom pool ids 918-923 (migration 232) never existed in prod;
+      // dropped with the group model (migration 250).  Category-level
+      // practice/pickup access now comes from tagging real teams on
+      // the gcal event.
     ];
   }
 
@@ -575,6 +573,8 @@ class RsvpEligibilityScreen extends Screen {
     // click flips it, PUT saves the new set.  Filled = granted,
     // outline = not granted, disabled = no LA user id (can't set).
     // Full grant set stays in `_elig` so other-category grants survive.
+    // Cross-category grants (e.g. a boy needing APSL) are set from the
+    // person's profile screen, not here — keeps this grid scannable.
     const eligChips = teams.length === 0
       ? `<div style="font-size:0.75rem; opacity:0.6;">No eligibility teams for this category yet.</div>`
       : teams.map(t => {

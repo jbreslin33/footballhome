@@ -7,9 +7,11 @@ TeamRoster::TeamRoster() : db_(Database::getInstance()) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// add — ensure a players row exists, then open a roster row if none is
-// currently open.  Single CTE so the upsert and the conditional insert are
-// committed together (no app-level transaction needed).
+// add — ensure a players row exists (other surfaces key off players.id),
+// then open a team_persons membership if none is active.  Group model:
+// membership IS RSVP eligibility, so this single write replaces the old
+// roster row + eligibility-trigger pair.  Single CTE so both land
+// together (no app-level transaction needed).
 // ────────────────────────────────────────────────────────────────────────────
 TeamRoster::Result TeamRoster::add(int teamId, int personId) {
     static const std::string kSql = R"SQL(
@@ -20,14 +22,14 @@ TeamRoster::Result TeamRoster::add(int teamId, int personId) {
             RETURNING id
         ),
         inserted AS (
-            INSERT INTO rosters (team_id, player_id, joined_at)
-            SELECT $1::int, p.id, NOW()
-              FROM player p
+            INSERT INTO team_persons (team_id, person_id, on_roster)
+            SELECT $1::int, $2::int, true
+              FROM player
              WHERE NOT EXISTS (
-                 SELECT 1 FROM rosters
+                 SELECT 1 FROM team_persons
                   WHERE team_id   = $1::int
-                    AND player_id = p.id
-                    AND left_at IS NULL
+                    AND person_id = $2::int
+                    AND removed_at IS NULL
              )
             RETURNING id
         )
@@ -61,13 +63,13 @@ TeamRoster::Result TeamRoster::remove(int teamId, int personId) {
             RETURNING id
         ),
         ended AS (
-            UPDATE rosters
-               SET left_at = NOW()
-              FROM player p
-             WHERE rosters.team_id   = $1::int
-               AND rosters.player_id = p.id
-               AND rosters.left_at IS NULL
-            RETURNING rosters.id
+            UPDATE team_persons
+               SET removed_at = NOW(),
+                   removed_reason = 'admin_remove'
+             WHERE team_persons.team_id   = $1::int
+               AND team_persons.person_id = $2::int
+               AND team_persons.removed_at IS NULL
+            RETURNING team_persons.id
         )
         SELECT (SELECT id FROM player)::int               AS player_id,
                (SELECT count(*) FROM ended)::int          AS rows_affected

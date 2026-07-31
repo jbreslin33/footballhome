@@ -122,15 +122,15 @@ std::string Team::getTeamRoster(const std::string& team_id) {
     
     try {
         // Get all active players for the team
-        // rosters → players → persons for names
+        // team_persons → persons for names (players joined for id/photo)
         // LEFT JOIN roster_positions → positions for position
-        // LEFT JOIN users (via person_id) for email/avatar
+        // (roster_positions.roster_id = team_persons.id since 251)
         // NOT EXISTS filter: hide anyone currently on a paused-variant
-        // LA sub-program.  Paused members remain in `rosters` (we do
-        // NOT delete history) but are excluded from every roster
-        // read.  They surface only in the Paused Membership admin
-        // screen (via person_la_memberships).
-        std::string sql = 
+        // LA sub-program.  Paused members keep their membership row
+        // (we do NOT delete history) but are excluded from every
+        // roster read.  They surface only in the Paused Membership
+        // admin screen (via person_la_memberships).
+        std::string sql =
             "SELECT "
             "  pl.id as player_id, "
             "  pe.first_name, "
@@ -139,15 +139,15 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  pl.photo_url as avatar_url, "
             "  r.jersey_number, "
             "  pos.name as position, "
-            "  (r.left_at IS NULL) as is_active, "
+            "  (r.removed_at IS NULL) as is_active, "
             "  DATE(r.joined_at) as joined_date "
-            "FROM rosters r "
-            "JOIN players pl ON r.player_id = pl.id "
-            "JOIN persons pe ON pl.person_id = pe.id "
+            "FROM team_persons r "
+            "JOIN persons pe ON pe.id = r.person_id "
+            "JOIN players pl ON pl.person_id = pe.id "
             "LEFT JOIN roster_positions rp ON rp.roster_id = r.id AND rp.is_primary = true "
             "LEFT JOIN positions pos ON rp.position_id = pos.id "
             "LEFT JOIN person_emails pem ON pem.person_id = pe.id AND pem.is_primary = true "
-            "WHERE r.team_id = $1 AND r.left_at IS NULL "
+            "WHERE r.team_id = $1 AND r.removed_at IS NULL "
             "  AND NOT EXISTS ( "
             "        SELECT 1 FROM person_la_memberships plm "
             "        JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "

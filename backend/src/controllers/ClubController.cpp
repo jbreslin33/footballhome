@@ -94,11 +94,11 @@ Response ClubController::handleGetAllClubs(const Request& request) {
                 c.logo_url,
                 o.name as organization_name,
                 COUNT(DISTINCT t.id) as team_count,
-                COUNT(DISTINCT r.player_id) FILTER (WHERE r.left_at IS NULL) as player_count
+                COUNT(DISTINCT r.person_id) FILTER (WHERE r.removed_at IS NULL) as player_count
             FROM clubs c
             JOIN organizations o ON c.organization_id = o.id
             LEFT JOIN teams t ON t.club_id = c.id
-            LEFT JOIN rosters r ON r.team_id = t.id
+            LEFT JOIN team_persons r ON r.team_id = t.id
             WHERE c.is_active = true
             GROUP BY c.id, c.name, c.logo_url, o.name
             ORDER BY c.name
@@ -1030,14 +1030,14 @@ Response ClubController::handleGetClubDetail(const Request& request) {
                 d.name as division_name,
                 s.name as season_name,
                 l.name as league_name,
-                COUNT(DISTINCT r.player_id) FILTER (WHERE r.left_at IS NULL) as player_count,
+                COUNT(DISTINCT r.person_id) FILTER (WHERE r.removed_at IS NULL) as player_count,
                 COUNT(DISTINCT m.id) as match_count
             FROM teams t
             JOIN divisions d ON t.division_id = d.id
             JOIN conferences conf ON d.conference_id = conf.id
             JOIN seasons s ON conf.season_id = s.id
             JOIN leagues l ON s.league_id = l.id
-            LEFT JOIN rosters r ON r.team_id = t.id
+            LEFT JOIN team_persons r ON r.team_id = t.id
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
             WHERE t.club_id = )" + std::to_string(club_id) + genderFilter + R"(
             GROUP BY t.id, t.name, t.is_pool, d.name, s.name, l.name
@@ -1063,11 +1063,10 @@ Response ClubController::handleGetClubDetail(const Request& request) {
                     per.first_name,
                     per.last_name,
                     r.jersey_number
-                FROM rosters r
-                JOIN players pl ON r.player_id = pl.id
-                JOIN persons per ON pl.person_id = per.id
+                FROM team_persons r
+                JOIN persons per ON per.id = r.person_id
                 WHERE r.team_id = )" + std::to_string(teamId) + R"(
-                  AND r.left_at IS NULL
+                  AND r.removed_at IS NULL
                 ORDER BY per.last_name, per.first_name
             )";
             

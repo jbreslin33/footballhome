@@ -67,5 +67,10 @@ private:
     // one-off APSL game, etc.
     Response handleGetRsvpEligibility(const Request& request);
     Response handlePutRsvpEligibility(const Request& request);
+    // GET /api/mens-roster/columns — lightweight column catalog (id,
+    // label, color, mutexGroup), no LA sync and no player data. Powers
+    // PersonScreen's cross-domain "add to roster" panel, which needs the
+    // assignable-team list without paying for a full board fetch.
+    Response handleColumns(const Request& request);
 
 };

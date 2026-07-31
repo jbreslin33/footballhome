@@ -28,18 +28,20 @@ MensTeamColumns::MensTeamColumns(std::string domain)
 
 std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
     std::vector<Column> out;
-    // roster_columns (renamed from mens_team_columns in migration 092) is
-    // shared across roster domains via the `domain` column; this model
-    // filters by domain_ (default 'mens') so each caller sees only its
-    // own scoped view.
+    // Board columns live directly on teams since migration 250 folded
+    // roster_columns in (label/short_label/color/board_sort_order/
+    // mutex_group/max_roster/board_archived_at).  The old `domain`
+    // filter is now teams.gender_category — one less thing to forget
+    // in a migration.
     const auto rows = db_->query(
-        "SELECT c.id, c.team_id, COALESCE(c.label, t.name) AS label, c.short_label, "
-        "       c.sort_order, c.color, c.mutex_group, c.max_roster "
-        "  FROM roster_columns c "
-        "  JOIN teams t ON t.id = c.team_id "
-        " WHERE c.domain = $1 "
-        "   AND c.archived_at IS NULL "
-        " ORDER BY c.sort_order",
+        "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
+        "       t.short_label, t.board_sort_order AS sort_order, "
+        "       t.color, t.mutex_group, t.max_roster "
+        "  FROM teams t "
+        " WHERE t.gender_category = $1 "
+        "   AND t.board_sort_order IS NOT NULL "
+        "   AND t.board_archived_at IS NULL "
+        " ORDER BY t.board_sort_order",
         {domain_}
     );
     out.reserve(rows.size());
@@ -49,13 +51,14 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
 
 std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId) {
     const auto rows = db_->query(
-        "SELECT c.id, c.team_id, COALESCE(c.label, t.name) AS label, c.short_label, "
-        "       c.sort_order, c.color, c.mutex_group, c.max_roster "
-        "  FROM roster_columns c "
-        "  JOIN teams t ON t.id = c.team_id "
-        " WHERE c.domain = $1 "
-        "   AND c.team_id = $2 "
-        "   AND c.archived_at IS NULL",
+        "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
+        "       t.short_label, t.board_sort_order AS sort_order, "
+        "       t.color, t.mutex_group, t.max_roster "
+        "  FROM teams t "
+        " WHERE t.gender_category = $1 "
+        "   AND t.id = $2 "
+        "   AND t.board_sort_order IS NOT NULL "
+        "   AND t.board_archived_at IS NULL",
         {domain_, std::to_string(teamId)}
     );
     if (rows.empty()) return std::nullopt;

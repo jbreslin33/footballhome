@@ -187,12 +187,12 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
             "       (SELECT email        FROM person_emails WHERE person_id = per.id ORDER BY is_primary DESC, id LIMIT 1) AS email, "
             "       (SELECT phone_number FROM person_phones WHERE person_id = per.id ORDER BY is_primary DESC, id LIMIT 1) AS phone "
             "FROM teams t "
-            "JOIN rosters r ON r.team_id = t.id "
-            "JOIN players p ON p.id = r.player_id "
-            "JOIN persons per ON per.id = p.person_id "
+            "JOIN team_persons r ON r.team_id = t.id "
+            "JOIN persons per ON per.id = r.person_id "
+            "JOIN players p ON p.person_id = per.id "
             "WHERE t.division_id = $1::int ";
         if (!includeHistorical) {
-            query += "  AND r.left_at IS NULL ";
+            query += "  AND r.removed_at IS NULL ";
         }
         // ORDER BY needs to lead with the DISTINCT ON expression (p.id),
         // then anything else.  Sort the resulting one-row-per-player set
@@ -314,7 +314,7 @@ Response DivisionController::handleUpdateDivisionPlayer(const Request& request) 
         pqxx::result chk = db_->query(
             "SELECT DISTINCT p.person_id "
             "FROM players p "
-            "JOIN rosters r ON r.player_id = p.id "
+            "JOIN team_persons r ON r.person_id = p.person_id "
             "JOIN teams   t ON t.id        = r.team_id "
             "WHERE p.id = $1::int AND t.division_id = $2::int",
             {playerId, divisionId});
