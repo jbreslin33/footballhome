@@ -260,12 +260,14 @@ phase leaves the app working.
   `trg_check_roster_membership` (re-express membership-requirement check
   app-side or against `team_persons`).
 - Tables: `player_rsvp_eligibility`, `roster_assignments`, `rosters`,
-  `roster_columns`, `team_roster_sources`, `working_rosters`,
-  `chat_events` + `event_rsvps` + `chat_event_rsvps` (with FK dependents
-  handled).  **Caution found during Phase 2:** `EligibilityController`'s
-  session-window logic and `EventController`'s practice-RSVP map still
-  READ `chat_events`/`chat_event_rsvps` — convert those surfaces to
-  `fh_events`/`fh_event_rsvps` before dropping the chat-events family.
+  `roster_columns`, `team_roster_sources`, `working_rosters`.
+- **Chat-events family DESCOPED from Phase 3** (2026-07-31): scoping
+  showed `chat_events`/`chat_event_rsvps` are not two stray reads but
+  ~20 sites across `EventController`'s match-day/GroupMe/lineup
+  surfaces plus `EligibilityController`'s session windows.  Dropping
+  them is its own modernization project (move those surfaces to
+  `fh_events`/`fh_event_rsvps`), to be scoped separately — not a
+  side-effect of this ADR.
 - Columns: `teams.is_pool`, `teams.roster_source`.
 - Views: redefine `v_team_members` on `team_persons` or drop.
 - Rows: pool teams 908/909 (after nothing references them).
