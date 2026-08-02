@@ -301,10 +301,16 @@ class PracticePlanScreen extends Screen {
       sessionExercisesBySession.set(entry.session_id, existing);
     });
 
+    const theme = this.getDayTheme(day);
+    const themeMarkup = theme
+      ? `<div style="margin: 0 0 var(--space-2) 0; font-weight: 600; opacity: 0.85;">${this.escapeHtml(theme)}</div>`
+      : '';
+
     if (!dayPractices.length) {
       return `
         <article style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
           <h3 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml(day?.label || 'Day')}</h3>
+          ${themeMarkup}
           <p style="margin: 0; opacity: 0.8;">Setting up this day's plan…</p>
         </article>
       `;
@@ -313,6 +319,7 @@ class PracticePlanScreen extends Screen {
     return `
       <article style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
         <h3 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml(day?.label || 'Day')}</h3>
+        ${themeMarkup}
         <div style="display:grid; gap: var(--space-2); margin-top: var(--space-2);">
           ${dayPractices.map((practice) => {
             const practiceSessions = (this.sessions || [])
@@ -436,6 +443,14 @@ class PracticePlanScreen extends Screen {
   getDayLabel(dayOfWeek) {
     const labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return labels[dayOfWeek] != null ? labels[dayOfWeek] : '';
+  }
+
+  getDayTheme(day) {
+    const themes = {
+      Tuesday: 'Recovery Day',
+    };
+    const dayName = this.getDayLabel(day?.day_of_week) || String(day?.label || '').trim();
+    return themes[dayName] || '';
   }
 
   formatTimeValue(value) {
