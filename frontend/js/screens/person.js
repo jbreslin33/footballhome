@@ -480,10 +480,14 @@ class PersonScreen extends Screen {
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 924, short: 'RES',    label: 'APSL Reserves',  color: '#60a5fa', category: 'men' },
       { id: 925, short: 'TRI',    label: 'APSL Trialists', color: '#f97316', category: 'men' },
+      { id: 926, short: 'L1 TRI', label: 'Liga 1 Trialists', color: '#f97316', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
       { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
       { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
       { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
+      { id: 927, short: 'U8 TRI',  label: 'U8 Boys Trialists',  color: '#f97316', category: 'boys' },
+      { id: 928, short: 'U10 TRI', label: 'U10 Boys Trialists', color: '#f97316', category: 'boys' },
+      { id: 929, short: 'U12 TRI', label: 'U12 Boys Trialists', color: '#f97316', category: 'boys' },
       // Phantom pool ids 918-923 dropped with the group model
       // (migration 250) — see rsvp-eligibility.js note.
     ];

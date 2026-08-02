@@ -823,9 +823,10 @@ namespace {
 // and were dropped from the catalog with migration 250.)
 const int kEligibilityTeams[] = {
     35, 120, 121, 122, 908, 909,   // mens
-    924, 925,                      // mens internal — APSL Reserves/Trialists
+    924, 925, 926,                  // mens internal — APSL Reserves/Trialists, Liga 1 Trialists
     901,                           // women — Tri County
-    911, 916, 917                  // boys — Youth League U16/U8/U12
+    911, 916, 917,                 // boys — Youth League U16/U8/U12
+    927, 928, 929                  // boys internal — U8/U10/U12 Trialists
 };
 
 bool isEligibilityTeamId(int teamId) {
