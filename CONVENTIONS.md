@@ -202,6 +202,27 @@ Do not:
 Run `make check-la-sync` before deploying backend changes that touch membership
 paths. `make deploy` runs the same check.
 
+**Narrow, documented exception (2026-08-02, mens board only):** `MensRoster::run`
+synthesizes a card for a person with an active `team_persons` row on a real
+squad column (35/120/121/122/924/925) even when they have no active LA Men's
+Club registration — for cases where an admin puts someone on a column from the
+person screen before/without an LA registration existing (e.g. Sheldon Rhoden).
+These cards are marked `noActiveLaRegistration: true` (plus `laHomeCategory`,
+their real active LA program if any — 'boys'/'girls'/'women') and MUST always
+render a visibly distinct badge in place of the dues pill — never the normal
+green/red treatment, which would misrepresent them as a confirmed, paid LA
+member. Scope is deliberately restricted to squad/selection columns, not
+Practice/Pickup pools, so this does not reopen the pool-membership pollution
+bug the 2026-07-15 removal fixed.
+
+Rows also carry an `under16` flag (by DOB) — league rules allow 16+ in mens
+play, so this is a coach-facing warning chip, not a hard block; it applies to
+every mens-board row, not just FH-only cards, though LA's own 18+ gate on
+Mens registration means only FH-only cards can realistically trigger it.
+
+See the "FH-only squad cards" block in `MensRoster.cpp` for the full
+rationale.
+
 ## Simulation (`sim/`)
 
 - Treat `sim/README.md` as the local entrypoint map.

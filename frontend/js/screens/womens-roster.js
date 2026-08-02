@@ -6,9 +6,9 @@ class WomensRosterScreen extends BoysRosterScreen {
   render() {
     const el = super.render();
     const h1 = el.querySelector('.screen-header h1');
-    if (h1) h1.textContent = '🎽 Women\'s Roster Board';
+    if (h1) h1.textContent = '🎽 Women\'s Team Players Board';
     const sub = el.querySelector('.screen-header .subtitle');
-    if (sub) sub.textContent = 'Live from LeagueApps — Women\'s roster board';
+    if (sub) sub.textContent = 'Live from LeagueApps — Women\'s team players board';
     return el;
   }
 }

@@ -10,7 +10,7 @@ class GameModelAdminScreen extends Screen {
     this.currentContext = null;
     this.parentOptions = {
       days: [], practices: [], phases: [], principles: [], sub_principles: [],
-      exercises: [], sessions: [], practice_events: [], action_items: []
+      exercises: [], sessions: [], practice_events: [], action_items: [], exercise_images: []
     };
   }
 
@@ -94,6 +94,17 @@ class GameModelAdminScreen extends Screen {
       const cancelBtn = e.target.closest('.cancel-item-btn');
       if (cancelBtn) {
         this.renderContent();
+      }
+      const deleteImageBtn = e.target.closest('.delete-exercise-image-btn');
+      if (deleteImageBtn) {
+        this.deleteExerciseImage(parseInt(deleteImageBtn.getAttribute('data-image-id'), 10));
+      }
+    });
+    this.element.addEventListener('change', (e) => {
+      const fileInput = e.target.closest('[data-exercise-photo-input]');
+      if (fileInput && fileInput.files && fileInput.files.length) {
+        this.handleExercisePhotoSelect(fileInput.files);
+        fileInput.value = '';
       }
     });
   }
@@ -345,6 +356,11 @@ class GameModelAdminScreen extends Screen {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }));
+    } else if (this.selectedEntity === 'exercises') {
+      requests.push(this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercise_images`).then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }));
     }
 
     Promise.all(requests)
@@ -373,6 +389,8 @@ class GameModelAdminScreen extends Screen {
         } else if (this.selectedEntity === 'exercise_action_items') {
           this.parentOptions.exercises = this.getPayloadItems(results[1]);
           this.parentOptions.action_items = this.getPayloadItems(results[2]);
+        } else if (this.selectedEntity === 'exercises') {
+          this.parentOptions.exercise_images = this.getPayloadItems(results[1]);
         }
 
         container.innerHTML = this.renderList(items);
@@ -440,6 +458,10 @@ class GameModelAdminScreen extends Screen {
         const duration = item.default_duration_minutes != null && item.default_duration_minutes !== ''
           ? `${item.default_duration_minutes}m`
           : '—';
+        const images = (this.parentOptions.exercise_images || []).filter((img) => img.exercise_id === item.id);
+        const photosCell = images.length
+          ? `<img src="${this.escapeHtml(images[0].image_url)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px;vertical-align:middle;border:1px solid var(--border-color);">${images.length > 1 ? ` +${images.length - 1}` : ''}`
+          : '—';
         return `
           <tr>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.title || item.slug || 'Untitled')}</td>
@@ -447,6 +469,7 @@ class GameModelAdminScreen extends Screen {
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(players)}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(duration)}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.summary || '—')}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${photosCell}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
               <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
                 <button class="btn btn-secondary edit-item-btn" data-id="${item.id}">Edit</button>
@@ -468,6 +491,7 @@ class GameModelAdminScreen extends Screen {
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Players</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Duration</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Summary</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Photos</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Actions</th>
             </tr>
           </thead>
@@ -597,6 +621,7 @@ class GameModelAdminScreen extends Screen {
         <div style="display:grid;gap:var(--space-2);">
           ${fields.map((field) => this.renderField(field)).join('')}
         </div>
+        ${this.selectedEntity === 'exercises' ? this.renderExercisePhotosSection(id) : ''}
         <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
           <button class="btn btn-primary save-item-btn">Save</button>
           <button class="btn btn-secondary cancel-item-btn">Cancel</button>
@@ -606,6 +631,130 @@ class GameModelAdminScreen extends Screen {
     if (this.selectedEntity === 'exercises' && id == null) {
       this.bindExerciseAutoSlug();
     }
+  }
+
+  // Photos live on a child table (club_game_model_exercise_images) keyed
+  // by exercise_id, so a brand-new exercise has nowhere to attach a photo
+  // to until it's been saved once and has a real id.
+  renderExercisePhotosSection(exerciseId) {
+    if (exerciseId == null) {
+      return `
+        <div style="padding: var(--space-2); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); opacity: 0.8; font-size: 0.9rem;">
+          Save this exercise first, then reopen it to add photos.
+        </div>
+      `;
+    }
+
+    const images = (this.parentOptions.exercise_images || [])
+      .filter((img) => img.exercise_id === exerciseId)
+      .slice()
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+    const thumbs = images.map((img) => `
+      <div style="position:relative; width:110px;">
+        <img src="${this.escapeHtml(img.image_url)}" alt="Exercise photo" style="width:110px; height:110px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:block;">
+        <button type="button" class="btn btn-danger btn-sm delete-exercise-image-btn" data-image-id="${img.id}" title="Remove photo" style="position:absolute; top:4px; right:4px; padding:0.2rem 0.5rem; line-height:1;">✕</button>
+      </div>
+    `).join('');
+
+    return `
+      <div style="display:grid; gap:var(--space-2);">
+        <span style="font-weight:600;">Photos</span>
+        ${thumbs ? `<div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">${thumbs}</div>` : '<div style="opacity:0.7; font-size:0.9rem;">No photos yet.</div>'}
+        <label class="btn btn-secondary" style="width:fit-content; cursor:pointer;">
+          + Add photo
+          <input type="file" accept="image/*" multiple data-exercise-photo-input style="display:none;">
+        </label>
+        <div data-exercise-photo-status style="font-size:0.85rem; opacity:0.8;"></div>
+      </div>
+    `;
+  }
+
+  // Downscales/re-encodes to JPEG client-side before upload — phone
+  // photos routinely exceed the backend's 8MB decoded-bytes cap once
+  // base64-inflated, and there's no reason to ship full resolution for
+  // a coaching reference photo.
+  resizeImageForUpload(file, maxDim = 1600, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Failed to decode image'));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const scale = maxDim / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async handleExercisePhotoSelect(fileList) {
+    const statusEl = this.find('[data-exercise-photo-status]');
+    const files = Array.from(fileList);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (statusEl) statusEl.textContent = `Uploading ${i + 1} of ${files.length}…`;
+      try {
+        const dataUrl = await this.resizeImageForUpload(file);
+        await this.uploadExercisePhoto(dataUrl);
+      } catch (e) {
+        console.error('Error uploading exercise photo:', e);
+        if (statusEl) statusEl.textContent = `Failed to upload ${file.name}.`;
+        return;
+      }
+    }
+    if (statusEl) statusEl.textContent = '';
+    await this.reloadExerciseImages();
+    this.openEditor(this.currentEditId, this.currentContext);
+  }
+
+  async uploadExercisePhoto(dataUrl) {
+    const response = await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises/${this.currentEditId}/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl })
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async deleteExerciseImage(imageId) {
+    if (!window.confirm('Remove this photo?')) return;
+    try {
+      const response = await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises/${this.currentEditId}/images/${imageId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        await this.reloadExerciseImages();
+        this.openEditor(this.currentEditId, this.currentContext);
+      }
+    } catch (e) {
+      console.error('Error deleting exercise image:', e);
+    }
+  }
+
+  reloadExerciseImages() {
+    return this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercise_images`)
+      .then((response) => response.json())
+      .then((payload) => {
+        this.parentOptions.exercise_images = this.getPayloadItems(payload);
+      })
+      .catch(() => {});
   }
 
   // New exercises only: mirror Title into Slug/Simulator Slug as the user

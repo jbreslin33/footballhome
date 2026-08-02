@@ -24,7 +24,9 @@ private:
     Response handleListGameModelAdminEntities(const Request& request, const std::string& entity);
     Response handleCreateGameModelAdminEntity(const Request& request, const std::string& entity);
     Response handleDeleteGameModelAdminEntity(const Request& request, const std::string& entity, int id);
-    
+    Response handleUploadExerciseImage(const Request& request);
+    Response handleDeleteExerciseImage(const Request& request);
+
     // Helper methods
 };
 

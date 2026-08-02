@@ -19,7 +19,28 @@ class RosterScreenBase extends Screen {
   // Dues status pill — green when no outstanding balance, red otherwise.
   // Shared by boys/girls/women's and men's cards so the styling only
   // needs to change in one place.
+  //
+  // FH-only squad cards (2026-08-02, mens board): a player added to a
+  // real column via team_persons but with no active LA registration
+  // has no billing data — showing the green/red pill would misrepresent
+  // them as a confirmed, paid LA member.  Render a distinct neutral
+  // badge instead so admin can see at a glance the LA side still needs
+  // fixing (see MensRoster.cpp's FH-only squad cards block).
   renderDuesLabel(player) {
+    if (player.noActiveLaRegistration) {
+      // laHomeCategory: their actual active LA registration category
+      // ('boys'/'girls'/'women'), when they have one — e.g. Sheldon
+      // Rhoden is an active Boys Club member LA won't let us also
+      // register as Mens (16-17 age gap in how LA's programs are set
+      // up). Falls back to a generic label if they have no active LA
+      // membership anywhere.
+      const categoryLabel = { boys: 'Boy', girls: 'Girl', women: 'Women' }[player.laHomeCategory] || null;
+      const text = categoryLabel ? `${categoryLabel} LA reg` : 'No LA reg';
+      const title = categoryLabel
+        ? `Active LeagueApps registration is ${categoryLabel} Club, not Mens — dues status unknown here`
+        : `No active LeagueApps registration in any program — dues status unknown`;
+      return `<span title="${title}" style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:#94a3b8; font-weight:700; border:1px solid #94a3b8;">${text}</span>`;
+    }
     const balanceValue = Number(player.outstandingBalance || 0);
     const duesColor = balanceValue === 0 ? '#22c55e' : '#ef4444';
     return `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;

@@ -92,6 +92,7 @@ services:
       - ./database/data:/app/database/data
       # Shared image storage (backend writes, frontend serves via nginx)
       - ./frontend/images/posts:/app/images/posts
+      - ./frontend/images/exercises:/app/images/exercises
       # LeagueApps API private key for JWT-bearer OAuth (RS256).  Used by
       # LeagueAppsService when fetching program registrations during team
       # reconciliation.  Read-only — same key file the Python sync scripts
@@ -122,6 +123,7 @@ services:
       # Serve all frontend files directly from host — no rebuild needed on changes
       - ./frontend:/usr/share/nginx/html
       - ./frontend/images/posts:/usr/share/nginx/html/images/posts
+      - ./frontend/images/exercises:/usr/share/nginx/html/images/exercises
     networks:
       - footballhome_network
     depends_on:

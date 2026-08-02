@@ -151,7 +151,7 @@ class RostersScreen extends Screen {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Rosters</h1>
+        <h1>🎽 Team Players</h1>
         <p class="subtitle" id="rs-subtitle">Assign members to teams — pick a club, or view all side-by-side</p>
       </div>
       <div style="padding: var(--space-3) var(--space-2);">
@@ -652,7 +652,7 @@ class PlayerRosterScreen extends RostersScreen {
   _syncHeaderState() {
     const subtitle = this.element?.querySelector('#rs-subtitle');
     if (subtitle) {
-      subtitle.textContent = 'Mens roster — APSL and Liga 1 only';
+      subtitle.textContent = 'Mens team players — APSL and Liga 1 only';
     }
   }
 

@@ -3,6 +3,11 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <fstream>
+#include <chrono>
+#include <regex>
+#include <cstdio>
+#include <sys/stat.h>
 
 namespace {
 std::string quoteJson(const std::string& value) {
@@ -20,6 +25,30 @@ std::string quoteJson(const std::string& value) {
     }
     escaped << '"';
     return escaped.str();
+}
+
+// Same table-driven decoder SocialController uses for post media —
+// base64's alphabet never includes a quote or backslash, so the caller
+// can safely lift the value straight out of the raw JSON body without a
+// full parser.
+std::string base64Decode(const std::string& encoded) {
+    static const std::string chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::vector<int> T(256, -1);
+    for (int i = 0; i < 64; i++) T[static_cast<unsigned char>(chars[i])] = i;
+
+    std::string decoded;
+    int val = 0, valb = -8;
+    for (unsigned char c : encoded) {
+        if (T[c] == -1) break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            decoded.push_back(static_cast<char>((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return decoded;
 }
 
 struct GameModelPhaseData {
@@ -80,6 +109,20 @@ void ClubController::registerRoutes(Router& router, const std::string& prefix) {
         std::string id_str = request.getPath().substr(request.getPath().rfind('/') + 1);
         int id = std::stoi(id_str);
         return this->handleDeleteGameModelAdminEntity(request, entity, id);
+    });
+
+    // Exercise photo upload — a dedicated pair of routes (not the generic
+    // :entity CRUD above) because this one decodes base64 image bytes and
+    // writes a file, same shape as SocialController's post-media upload.
+    // Longer path (8 / 7 segments) never collides with the 6-segment
+    // generic :entity routes — Router::matches requires equal segment
+    // counts — so registration order here doesn't matter.
+    router.post(prefix + "/:id/game-model/admin/exercises/:exerciseId/images", [this](const Request& request) {
+        return this->handleUploadExerciseImage(request);
+    });
+
+    router.del(prefix + "/:id/game-model/admin/exercises/:exerciseId/images/:imageId", [this](const Request& request) {
+        return this->handleDeleteExerciseImage(request);
     });
 }
 
@@ -260,6 +303,13 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
                      "JOIN club_game_model_exercises ex ON ex.id = eai.exercise_id "
                      "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
                      "ORDER BY eai.exercise_id, eai.id";
+        } else if (entity == "exercise_images") {
+            table = "club_game_model_exercise_images";
+            select = "SELECT ei.id, ei.exercise_id, ei.image_url, ei.sort_order "
+                     "FROM club_game_model_exercise_images ei "
+                     "JOIN club_game_model_exercises ex ON ex.id = ei.exercise_id "
+                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
+                     "ORDER BY ei.exercise_id, ei.sort_order, ei.id";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }
@@ -343,6 +393,10 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             } else if (entity == "exercise_action_items") {
                 json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
                 json << ",\"action_item_id\":" << row["action_item_id"].as<long long>();
+            } else if (entity == "exercise_images") {
+                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
+                json << ",\"image_url\":\"" << escapeJson(row["image_url"].c_str()) << "\"";
+                json << ",\"sort_order\":" << row["sort_order"].as<int>();
             }
             json << "}";
         }
@@ -608,6 +662,176 @@ Response ClubController::handleDeleteGameModelAdminEntity(const Request& request
         return Response(HttpStatus::OK, createJSONResponse(true, "Deleted"));
     } catch (const std::exception& e) {
         std::cerr << "Error deleting game model admin entity: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
+    }
+}
+
+// POST /api/clubs/:id/game-model/admin/exercises/:exerciseId/images
+// Body: { "image": "data:image/<png|jpeg|webp|gif>;base64,<...>" }
+//
+// Decodes the photo, writes it under /app/images/exercises (served by
+// nginx at /images/exercises/<file>, same bind-mount pattern as
+// SocialController's post media), and records a row in
+// club_game_model_exercise_images. Uses parameterized queries (unlike
+// the generic entity CRUD above) since this body can't safely go
+// through that handler's naive string-concatenation SQL building.
+Response ClubController::handleUploadExerciseImage(const Request& request) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/clubs/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        std::string rest = path.substr(pos + prefix.length());
+        // rest == "<club_id>/game-model/admin/exercises/<exercise_id>/images"
+        std::vector<std::string> segs;
+        {
+            std::stringstream ss(rest);
+            std::string seg;
+            while (std::getline(ss, seg, '/')) if (!seg.empty()) segs.push_back(seg);
+        }
+        if (segs.size() < 5) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        int club_id = 0, exercise_id = 0;
+        try {
+            club_id = std::stoi(segs[0]);
+            exercise_id = std::stoi(segs[4]);
+        } catch (...) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        }
+
+        auto owner = db_->query(
+            "SELECT 1 FROM club_game_model_exercises "
+            " WHERE id = $1::int AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $2::int)",
+            { std::to_string(exercise_id), std::to_string(club_id) });
+        if (owner.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Exercise not found for this club"));
+        }
+
+        if (!request.isJson() || request.getBody().empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "JSON body required"));
+        }
+        const std::string& body = request.getBody();
+
+        size_t keyPos = body.find("\"image\"");
+        if (keyPos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "image field required"));
+        }
+        size_t colonPos = body.find(':', keyPos + 7);
+        size_t quoteStart = (colonPos == std::string::npos) ? std::string::npos : body.find('"', colonPos + 1);
+        size_t quoteEnd = (quoteStart == std::string::npos) ? std::string::npos : body.find('"', quoteStart + 1);
+        if (colonPos == std::string::npos || quoteStart == std::string::npos || quoteEnd == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid image data"));
+        }
+        std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+
+        static const std::regex mimeRe("^data:image/(png|jpe?g|webp|gif);base64,");
+        std::smatch mimeMatch;
+        if (!std::regex_search(dataValue, mimeMatch, mimeRe)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Only PNG/JPEG/WebP/GIF images are supported"));
+        }
+        std::string ext = mimeMatch[1].str();
+        if (ext == "jpeg") ext = "jpg";
+
+        std::string b64Data = dataValue.substr(mimeMatch[0].length());
+        std::string imageBytes = base64Decode(b64Data);
+        if (imageBytes.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Failed to decode image data"));
+        }
+        static constexpr size_t kMaxImageBytes = 8 * 1024 * 1024;
+        if (imageBytes.size() > kMaxImageBytes) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Image too large (max 8MB)"));
+        }
+
+        const std::string mediaDir = "/app/images/exercises";
+        mkdir(mediaDir.c_str(), 0755);
+
+        auto nextSort = db_->query(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM club_game_model_exercise_images WHERE exercise_id = $1::int",
+            { std::to_string(exercise_id) });
+        int sortOrder = nextSort.empty() ? 0 : nextSort[0]["next_sort"].as<int>();
+
+        long long stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        std::string filename = "exercise_" + std::to_string(exercise_id) + "_" + std::to_string(stamp) + "." + ext;
+        std::string filepath = mediaDir + "/" + filename;
+
+        std::ofstream outFile(filepath, std::ios::binary);
+        if (!outFile.is_open()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write image file"));
+        }
+        outFile.write(imageBytes.data(), static_cast<std::streamsize>(imageBytes.size()));
+        outFile.close();
+
+        std::string publicUrl = "/images/exercises/" + filename;
+
+        auto inserted = db_->query(
+            "INSERT INTO club_game_model_exercise_images (exercise_id, image_path, image_url, sort_order, created_at) "
+            "VALUES ($1::int, $2, $3, $4::int, NOW()) RETURNING id",
+            { std::to_string(exercise_id), filename, publicUrl, std::to_string(sortOrder) });
+
+        std::ostringstream data;
+        data << "{\"id\":" << inserted[0]["id"].as<long long>()
+             << ",\"exercise_id\":" << exercise_id
+             << ",\"image_url\":\"" << escapeJson(publicUrl) << "\""
+             << ",\"sort_order\":" << sortOrder << "}";
+
+        return Response(HttpStatus::OK, createJSONResponse(true, "Uploaded", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "Error uploading exercise image: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
+    }
+}
+
+// DELETE /api/clubs/:id/game-model/admin/exercises/:exerciseId/images/:imageId
+Response ClubController::handleDeleteExerciseImage(const Request& request) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/clubs/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        std::string rest = path.substr(pos + prefix.length());
+        // rest == "<club_id>/game-model/admin/exercises/<exercise_id>/images/<image_id>"
+        std::vector<std::string> segs;
+        {
+            std::stringstream ss(rest);
+            std::string seg;
+            while (std::getline(ss, seg, '/')) if (!seg.empty()) segs.push_back(seg);
+        }
+        if (segs.size() < 7) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        int club_id = 0, exercise_id = 0, image_id = 0;
+        try {
+            club_id = std::stoi(segs[0]);
+            exercise_id = std::stoi(segs[4]);
+            image_id = std::stoi(segs[6]);
+        } catch (...) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        }
+
+        auto row = db_->query(
+            "SELECT ei.image_path FROM club_game_model_exercise_images ei "
+            "JOIN club_game_model_exercises ex ON ex.id = ei.exercise_id "
+            " WHERE ei.id = $1::int AND ei.exercise_id = $2::int "
+            "   AND ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $3::int)",
+            { std::to_string(image_id), std::to_string(exercise_id), std::to_string(club_id) });
+        if (row.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Image not found"));
+        }
+        std::string filename = row[0]["image_path"].as<std::string>();
+
+        db_->query("DELETE FROM club_game_model_exercise_images WHERE id = $1::int", { std::to_string(image_id) });
+
+        // Best-effort file cleanup — a stray file on disk isn't worth failing the request.
+        std::string filepath = "/app/images/exercises/" + filename;
+        std::remove(filepath.c_str());
+
+        return Response(HttpStatus::OK, createJSONResponse(true, "Deleted"));
+    } catch (const std::exception& e) {
+        std::cerr << "Error deleting exercise image: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }

@@ -83,7 +83,7 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗳️ RSVP Eligibility</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗳️ Event Access</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Step 4 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
         </p>
@@ -281,7 +281,7 @@ class AdminClubScreen extends Screen {
     // glance who's eligible for which mens-selection team (APSL,
     // Liga 1, Liga 2, Adult, Practice, Pickup) and toggle grants.
     const rsvpTiles = [
-      { id: 'rsvp-eligibility', icon: '🗳️', label: 'RSVP Eligibility', description: 'Men / Women / Boys / Girls — home teams plus Practice & Pickup pools' },
+      { id: 'rsvp-eligibility', icon: '🗳️', label: 'Event Access', description: 'Men / Women / Boys / Girls — home teams plus Practice & Pickup pools' },
     ];
     renderInto('#section-rsvp', rsvpTiles);
 
@@ -347,7 +347,7 @@ class AdminClubScreen extends Screen {
     // (All / Mens / Womens / Boys / Girls) which mounts the appropriate
     // sub-screen underneath.  Same UX pattern as Members + Payments.
     const rosterTiles = [
-      { id: 'rosters', target: 'rosters', params: {}, icon: '🎽', label: 'Rosters', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side)' },
+      { id: 'rosters', target: 'rosters', params: {}, icon: '🎽', label: 'Team Players', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side)' },
     ];
     renderInto('#section-rosters', rosterTiles);
     this._dashTiles = (this._dashTiles || []).concat(

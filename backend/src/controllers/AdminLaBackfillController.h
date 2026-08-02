@@ -46,6 +46,7 @@ private:
     Response handleProbe(const Request& request);
     Response handleMembers(const Request& request, const LaSyncMap& sync);
     Response handlePeople(const Request& request);
+    Response handleStaff(const Request& request);
     Response handleSyncMemberships(const Request& request);
 
 };

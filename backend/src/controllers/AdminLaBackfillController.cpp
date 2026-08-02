@@ -189,6 +189,14 @@ void AdminLaBackfillController::registerRoutes(Router& router,
     router.get(prefix + "/people", [this](const Request& req) {
         return this->handlePeople(req);
     });
+
+    // GET /api/admin/staff
+    // Everyone holding an admins row — feeds the view-as picker's
+    // "Staff / Admins" optgroup so admin-only people with no LA
+    // membership are still selectable.
+    router.get(prefix + "/staff", [this](const Request& req) {
+        return this->handleStaff(req);
+    });
 }
 
 // TEMPORARY probe endpoint: GET /api/admin/la-probe?path=<la-path>
@@ -786,6 +794,55 @@ Response AdminLaBackfillController::handleMembers(const Request& request, const 
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     return respondMembers(resolveVariant(request, "active"), resolveCategory(request));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/admin/staff
+//
+// One row per person holding an admins row (any admin level).  The view-as
+// picker's member groups come from open LA memberships, which admin-only
+// people (club staff) often don't have — this endpoint makes them
+// selectable anyway.  The impersonation gate itself (MyController::
+// applyImpersonation) already allows any admin to view as any person;
+// this is purely a listing.
+//
+// Response:
+//   { success, data: { staff: [ { person_id, first_name, last_name,
+//                                  admin_level } ], total } }
+// ────────────────────────────────────────────────────────────────────────────
+Response AdminLaBackfillController::handleStaff(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    try {
+        auto rows = Database::getInstance()->query(
+            "SELECT p.id AS person_id, p.first_name, p.last_name, "
+            "       COALESCE(al.name, 'user') AS admin_level "
+            "  FROM admins a "
+            "  JOIN users u ON u.id = a.user_id "
+            "  JOIN persons p ON p.id = u.person_id "
+            "  LEFT JOIN admin_levels al ON al.id = a.admin_level_id "
+            " ORDER BY p.first_name, p.last_name, p.id", {});
+
+        std::ostringstream out;
+        out << "{\"success\":true,\"data\":{\"staff\":[";
+        bool first = true;
+        for (const auto& r : rows) {
+            if (!first) out << ",";
+            first = false;
+            out << "{\"person_id\":" << r["person_id"].as<long long>()
+                << ",\"first_name\":" << jsonEscape(r["first_name"].is_null() ? "" : r["first_name"].as<std::string>())
+                << ",\"last_name\":"  << jsonEscape(r["last_name"].is_null()  ? "" : r["last_name"].as<std::string>())
+                << ",\"admin_level\":" << jsonEscape(r["admin_level"].as<std::string>())
+                << "}";
+        }
+        out << "],\"total\":" << rows.size() << "}}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "AdminLaBackfillController::handleStaff error: "
+                  << e.what() << std::endl;
+        return internalErr(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

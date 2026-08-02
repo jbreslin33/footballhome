@@ -162,7 +162,12 @@ class RoleSelectionScreen extends Screen {
     });
 
     try {
-      const res = await this.auth.fetch('/api/admin/members?variant=active');
+      const [res, staffRes] = await Promise.all([
+        this.auth.fetch('/api/admin/members?variant=active'),
+        // Staff / Admins group is optional — a failure here must not
+        // take down the member groups.
+        this.auth.fetch('/api/admin/staff').catch(() => null),
+      ]);
       if (!res.ok) {
         select.innerHTML = '<option value="">— failed to load members —</option>';
         return;
@@ -202,6 +207,38 @@ class RoleSelectionScreen extends Screen {
         }
         parts.push('</optgroup>');
       }
+
+      // ── Staff / Admins group ──────────────────────────────────────
+      // People with an admins row but often no open LA membership
+      // (e.g. club staff like Charles).  The member groups above come
+      // from LA memberships only, so without this group they'd be
+      // impossible to pick even though the backend allows viewing-as
+      // any existing person.
+      if (staffRes && staffRes.ok) {
+        try {
+          const staffBody = await staffRes.json();
+          const staff = (staffBody?.data?.staff || []).slice().sort((a, b) => {
+            const an = (a.first_name || '').trim();
+            const bn = (b.first_name || '').trim();
+            return an.localeCompare(bn, undefined, { sensitivity: 'base' });
+          });
+          if (staff.length) {
+            parts.push('<optgroup label="🛠 Staff / Admins">');
+            for (const m of staff) {
+              const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || `Person #${m.person_id}`;
+              parts.push(
+                `<option value="${m.person_id}" data-name="${this.escapeHtml(name)}">`
+                + this.escapeHtml(name)
+                + '</option>'
+              );
+            }
+            parts.push('</optgroup>');
+          }
+        } catch (_e) {
+          // Ignore — member groups still render without the staff group.
+        }
+      }
+
       select.innerHTML = parts.join('');
     } catch (e) {
       console.error('[view-as] failed to load members:', e);

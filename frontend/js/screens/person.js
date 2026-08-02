@@ -84,7 +84,7 @@ class PersonScreen extends Screen {
             </h2>
             <div id="ps-teams-list"></div>
             <h3 class="ps-subheading" style="margin-top: var(--space-4);">
-              Add to roster
+              Add to team
             </h3>
             <div id="ps-roster-add" style="font-size:0.75rem; opacity:0.65;"></div>
           </section>
@@ -94,7 +94,7 @@ class PersonScreen extends Screen {
                RSVP-eligibility admin screen filtered to this person. -->
           <section class="ps-card" id="ps-rsvp-card">
             <h2 class="ps-card-title">
-              RSVP eligibility <span id="ps-rsvp-count" class="ps-count"></span>
+              Event access <span id="ps-rsvp-count" class="ps-count"></span>
             </h2>
             <div id="ps-rsvp-teams"></div>
             <h3 class="ps-subheading" style="margin-top: var(--space-4);">
@@ -104,7 +104,7 @@ class PersonScreen extends Screen {
             <div style="margin-top: var(--space-3); text-align: right;">
               <button type="button" class="btn btn-secondary btn-sm"
                       id="ps-open-rsvp-admin">
-                Manage RSVP eligibility →
+                Manage event access →
               </button>
             </div>
           </section>
@@ -892,7 +892,7 @@ class PersonScreen extends Screen {
           </div>`;
       }).join('')}
       <div style="font-size:0.75rem; opacity:0.65; margin-bottom: var(--space-2);">
-        Tap a team to grant or revoke RSVP eligibility for this person.
+        Tap a team to add or remove this person — team players see and can RSVP to that team's events.
       </div>
     `;
 

@@ -15,7 +15,7 @@ class GirlsRosterScreen extends BoysRosterScreen {
   render() {
     const el = super.render();
     const h1 = el.querySelector('.screen-header h1');
-    if (h1) h1.textContent = '🎽 Girls Roster Board';
+    if (h1) h1.textContent = '🎽 Girls Team Players Board';
     const sub = el.querySelector('.screen-header .subtitle');
     if (sub) sub.textContent = 'Live from LeagueApps — Girls + Boys Club (both surfaced; girls play on boys teams for now)';
     return el;

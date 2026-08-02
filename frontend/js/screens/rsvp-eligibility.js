@@ -36,8 +36,8 @@ class RsvpEligibilityScreen extends Screen {
     div.innerHTML = `
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🗳️ RSVP Eligibility</h1>
-        <p class="subtitle" id="rsvp-elig-subtitle">Who can RSVP for which team</p>
+        <h1>🗳️ Event Access</h1>
+        <p class="subtitle" id="rsvp-elig-subtitle">Which team's events each player sees and can RSVP to</p>
       </div>
 
       <div style="padding: var(--space-4);">

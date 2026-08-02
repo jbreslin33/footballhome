@@ -35,6 +35,10 @@ lighthouse_*.txt
 # Post media (images/videos are disposable after posting to Instagram)
 frontend/images/posts/
 
+# Exercise photos (coach uploads via game-model admin — not source-controlled)
+frontend/images/exercises/*
+!frontend/images/exercises/.gitkeep
+
 # Exhibit print export artifacts (PDFs + hi-res/preview PNGs; reproducible via `make print-export`)
 frontend/exhibit/print/
 

@@ -50,6 +50,28 @@ int daysBetweenTodayAnd(const std::string& iso) {
     return static_cast<int>(diffSec / 86400);
 }
 
+// Whole-years-old < 16, from a YYYY-MM-DD birth date.  Mens-board flag
+// (2026-08-02, user directive): league rules allow 16+ in mens play —
+// this doesn't block a card, it just warns so a coach can double-check
+// eligibility.  Unknown/unparseable DOB is never flagged (nothing to
+// warn about).
+bool isUnder16(const std::string& iso) {
+    if (iso.size() < 10) return false;
+    int by = 0, bm = 0, bd = 0;
+    if (sscanf(iso.c_str(), "%4d-%2d-%2d", &by, &bm, &bd) != 3) return false;
+
+    const std::time_t nowT = std::time(nullptr);
+    std::tm tm_now{};
+    if (gmtime_r(&nowT, &tm_now) == nullptr) return false;
+    const int ny = tm_now.tm_year + 1900;
+    const int nm = tm_now.tm_mon + 1;
+    const int nd = tm_now.tm_mday;
+
+    int age = ny - by;
+    if (nm < bm || (nm == bm && nd < bd)) --age;
+    return age < 16;
+}
+
 int envIntFn(const char* name, int fallback) {
     const char* raw = std::getenv(name);
     if (!raw || !*raw) return fallback;
@@ -624,6 +646,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
         if (!isActive(r, includeAll)) continue;
         json p = shapeMensPlayer(r);
         applyCanonicalName(p);
+        p["under16"] = isUnder16(p["birthDate"].is_string() ? p["birthDate"].get<std::string>() : std::string{});
         all.push_back(std::move(p));
     }
 
@@ -646,7 +669,119 @@ MensRoster::Result MensRoster::run(bool includeAll,
     // `recs` (from LaProgramSync::run(mensProgramId_)) is the sole
     // truth.  Adult League / pickup-only members belong on the Pickup
     // Members roster (their own sub-program), not this one.
-    std::unordered_map<std::string, long long> personIdByUid;  // fallback for personIdFor (empty by design)
+    std::unordered_map<std::string, long long> personIdByUid;  // fallback for personIdFor
+
+    // ── FH-only squad cards (2026-08-02, user directive) ───────────────
+    //
+    // Deliberate, narrow re-opening of the door closed above.  A coach
+    // can put a person on a real squad column from the person screen
+    // (team_persons row) before/without that person's LA Men's Club
+    // registration being active — e.g. Sheldon Rhoden, added to APSL
+    // 2026-08-02 while his LA Men's registration has sat ended/unpaid
+    // since 2026-07-28 and can't be renewed on the LA side right now.
+    // Without this block such a player has NO card anywhere: `recs`
+    // never contains them, so the assembly loop below never sees them,
+    // no matter what team_persons says.
+    //
+    // Scope is deliberately narrow so this does NOT resurrect the bug
+    // the 2026-07-15 removal fixed:
+    //   * ONLY real squad/selection columns qualify (kFhOnlySquadTeamIds
+    //     below) — NOT Practice/Pickup pools.  Someone who is only in a
+    //     pool still gets no card, exactly as before.
+    //   * Every synthesized card carries `noActiveLaRegistration: true`
+    //     plus `laHomeCategory` (their actual active LA program category —
+    //     'boys'/'girls'/'women', or null if they have no active LA
+    //     membership anywhere) so the frontend renders a distinct badge
+    //     ("Boy LA reg" etc.) instead of the normal green/red dues pill —
+    //     nothing here should look like a confirmed, paid Mens member.
+    //   * `under16` flags (not blocks) anyone under 16 by DOB — league
+    //     rules allow 16+ in mens play, so this is a visible warning for
+    //     the coach to verify, not a hard gate (2026-08-02 user directive).
+    //   * personId flows through personIdByUid (the exact fallback slot
+    //     the pre-2026-07-15 synthesis blocks used — see applyCanonicalName
+    //     / personIdFor below) so profile links and message actions still
+    //     work on these cards.
+    {
+        static const std::vector<int> kFhOnlySquadTeamIds = {35, 120, 121, 122, 924, 925};
+        std::string idList;
+        for (size_t i = 0; i < kFhOnlySquadTeamIds.size(); ++i) {
+            if (i) idList += ",";
+            idList += std::to_string(kFhOnlySquadTeamIds[i]);
+        }
+
+        std::unordered_set<std::string> knownUids;
+        for (const auto& p : all) knownUids.insert(userIdString(p.at("leagueAppsUserId")));
+
+        try {
+            auto* db = Database::getInstance();
+            pqxx::result rows = db->query(
+                "SELECT DISTINCT ON (tp.person_id) "
+                "       tp.person_id, p.first_name, p.last_name, "
+                "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date, "
+                "       epa.external_user_id AS la_user_id, "
+                "       lp.category AS la_home_category "
+                "  FROM team_persons tp "
+                "  JOIN persons p ON p.id = tp.person_id "
+                "  JOIN external_person_aliases epa "
+                "    ON epa.person_id = tp.person_id AND epa.provider = 'leagueapps' "
+                "  LEFT JOIN person_la_memberships plm "
+                "    ON plm.person_id = tp.person_id AND plm.ended_at IS NULL "
+                "  LEFT JOIN leagueapps_programs lp "
+                "    ON lp.program_id = plm.la_program_id AND lp.variant = 'active' "
+                " WHERE tp.removed_at IS NULL "
+                "   AND tp.team_id IN (" + idList + ") "
+                " ORDER BY tp.person_id, epa.id DESC, lp.category IS NULL"
+            );
+            for (const auto& row : rows) {
+                if (row["la_user_id"].is_null() || row["person_id"].is_null()) continue;
+                const std::string uid = row["la_user_id"].c_str();
+                if (knownUids.count(uid)) continue;  // already an active LA registrant
+
+                const std::string first = row["first_name"].is_null() ? std::string{} : trim(row["first_name"].c_str());
+                const std::string last  = row["last_name"].is_null()  ? std::string{} : trim(row["last_name"].c_str());
+                const std::string bd    = row["birth_date"].is_null() ? std::string{} : std::string(row["birth_date"].c_str());
+                const std::string homeCategory = row["la_home_category"].is_null()
+                    ? std::string{} : std::string(row["la_home_category"].c_str());
+
+                json p = json::object();
+                p["registrationId"]   = nullptr;
+                p["leagueAppsUserId"] = uid;
+                p["firstName"]        = first;
+                p["lastName"]         = last;
+                p["fullName"]         = trim(first + " " + last);
+                p["birthDate"]        = bd.empty() ? json(nullptr) : json(bd);
+                if (!bd.empty()) {
+                    try { p["birthYear"] = std::stoi(bd.substr(0, 4)); }
+                    catch (const std::exception&) { p["birthYear"] = nullptr; }
+                } else {
+                    p["birthYear"] = nullptr;
+                }
+                {
+                    const std::string ag = YouthAgeGroups::ageGroupFromDob(bd, YouthAgeGroups::defaultSeasonEndYear());
+                    p["ageGroup"] = ag.empty() ? json(nullptr) : json(ag);
+                }
+                p["gender"]                 = std::string("Male");
+                p["email"]                  = nullptr;
+                p["phone"]                  = nullptr;
+                p["paymentStatus"]          = nullptr;
+                p["outstandingBalance"]     = nullptr;
+                p["registrationStatus"]     = nullptr;
+                p["role"]                   = nullptr;
+                p["season"]                 = nullptr;
+                p["jerseyNumber"]           = nullptr;
+                p["jerseySize"]             = nullptr;
+                p["noActiveLaRegistration"] = true;
+                p["laHomeCategory"]         = homeCategory.empty() ? json(nullptr) : json(homeCategory);
+                p["under16"]                = isUnder16(bd);
+
+                personIdByUid[uid] = row["person_id"].as<long long>();
+                knownUids.insert(uid);
+                all.push_back(std::move(p));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[MensRoster] FH-only squad card load failed: " << e.what() << std::endl;
+        }
+    }
 
     // ── Delinquency computation (2026-07-04) ─────────────────────────
     // Reads DUES_OWED_HOLD_DAYS (default 7).  For each active player:

@@ -54,8 +54,8 @@ class MensRosterScreen extends RosterScreenBase {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Roster Board</h1>
-        <p class="subtitle">Live from LeagueApps — dues-aware roster selection with per-team overdue counts</p>
+        <h1>🎽 Team Players Board</h1>
+        <p class="subtitle">Live from LeagueApps — dues-aware team selection with per-team overdue counts</p>
       </div>
 
       <div style="padding: var(--space-2) 0;">
@@ -201,7 +201,7 @@ class MensRosterScreen extends RosterScreenBase {
       if (loading) loading.style.display = 'none';
       if (errEl) {
         errEl.style.display = '';
-        errEl.textContent = `Failed to load roster: ${err.message}`;
+        errEl.textContent = `Failed to load team players: ${err.message}`;
       }
       this.setBanner({
         icon: '✗',
@@ -253,7 +253,7 @@ class MensRosterScreen extends RosterScreenBase {
         <div style="padding:0 var(--space-2) var(--space-2); display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px; align-items:start;">
           ${sections}
         </div>`;
-      this.setBanner({ icon: '✓', text: 'Read-only roster · APSL, Liga 1, and Lighthouse League', showRefresh: false });
+      this.setBanner({ icon: '✓', text: 'Read-only team players · APSL, Liga 1, and Lighthouse League', showRefresh: false });
       return;
     }
 
@@ -698,7 +698,14 @@ class MensRosterScreen extends RosterScreenBase {
       </details>` : '';
 
 
-    const duesLabel = this.renderDuesLabel(p);
+    // Under-16 warning (2026-08-02, user directive): league rules allow
+    // 16+ in mens play — this is a visible flag for the coach to verify
+    // eligibility, not a block. Only ever set on FH-only squad cards in
+    // practice, since LA itself won't register anyone under 18 as Mens.
+    const under16Flag = p.under16
+      ? `<span title="Under 16 — mens play requires 16+, verify eligibility before fielding" style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:#fbbf24; font-weight:700; border:1px solid #fbbf24;">⚠ Under 16</span>`
+      : '';
+    const duesLabel = this.renderDuesLabel(p) + under16Flag;
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
 
     const cardId = `mr-card-${p.leagueAppsUserId}`;
@@ -1142,7 +1149,7 @@ class MensRosterScreen extends RosterScreenBase {
                   border:1px solid #334155;
                   box-shadow:0 20px 60px rgba(0,0,0,0.6);">
         <div style="font-size:1.05rem; font-weight:800; color:#fff; margin-bottom:2px;">
-          RSVP Eligibility
+          Event Access
         </div>
         <div style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px;">
           ${this.escape(name)} — choose which teams they can RSVP for.
