@@ -468,14 +468,13 @@ class MensRosterScreen extends RosterScreenBase {
     const profileBtn = this.renderPersonActions(p, {
       returnTo: 'mens-roster',
       showEdit: false,
-      // Sits next to the roster-move dropdown in a full-height strip
-      // (renderCompactCard) — display:flex centering keeps the label
-      // centered now that the button stretches taller than its text.
+      // Match the roster-move dropdown's thinner dimensions so row 2
+      // doesn't stretch taller than row 1 just to fit this button.
       // appearance:none + min-height:0 strip the native OS button-chrome
       // minimum height that browsers apply to real <button> elements
       // (the dropdown trigger is a <summary>, which has no such native
       // chrome, so it didn't need this — this button did).
-      btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
+      btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0;',
     });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle

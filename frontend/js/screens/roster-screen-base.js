@@ -163,14 +163,9 @@ class RosterScreenBase extends Screen {
                 ${active ? '✓ ' : ''}${t.label.toUpperCase()}
               </button>`;
     }).join('');
-    // Trigger stretches to the full height of the card (a flex item
-    // alongside the VIEW button in renderCompactCard's right-hand
-    // strip) — height:100% + flex centering on the summary itself,
-    // since <details> defaults to block/inline layout that won't pass
-    // stretch through to its child on its own.
     return `
-      <details class="roster-move-details" style="position:relative; display:flex; height:100%;">
-        <summary style="${btnBase} height:100%; display:flex; align-items:center; justify-content:center; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
+      <details class="roster-move-details" style="position:relative; display:inline-block;">
+        <summary style="${btnBase} background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
                  title="Move ${this.escape(player.firstName || 'player')} to another column">
           ${this.escape(activeTarget.label.toUpperCase())} ▾
         </summary>
@@ -180,11 +175,12 @@ class RosterScreenBase extends Screen {
       </details>`;
   }
 
-  // Two thin content rows (rank+name, then DOB/age/dues) on the left;
-  // the roster-move dropdown and VIEW button sit side by side in a
-  // strip on the right that spans the card's full height (2026-08-02,
-  // user directive — previously the dropdown was pinned to row 1 and
-  // VIEW to row 2, each only as tall as its own row).
+  // Exactly two thin rows. Row 1: [rank] [name] [official-roster
+  // toggle] [roster-move dropdown] pinned to the far right. Row 2:
+  // [DOB] [age group] [dues] ... [view button] pinned to the far
+  // right. (2026-08-02: tried a full-height side-by-side strip for
+  // the dropdown+view button — reverted, back to original per-row
+  // sizing, toggle just slots in before the dropdown.)
   renderCompactCard({
     player,
     col,
@@ -227,21 +223,19 @@ class RosterScreenBase extends Screen {
       : '';
 
     return `
-      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
-        <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:0;">
-          <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-            ${posChip}
-            <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
-          </div>
-          <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px;">
+      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:column; gap:0;">
+        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+          ${posChip}
+          <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
+          ${rosterToggleHtml}
+          ${rosterSelectHtml}
+        </div>
+        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+          <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px; flex:1;">
             ${dobMarkup}
             ${ageChip}
             ${duesLabel}
-            ${rosterToggleHtml}
           </div>
-        </div>
-        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px;">
-          ${rosterSelectHtml}
           ${viewButtonHtml}
         </div>
       </div>
