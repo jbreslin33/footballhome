@@ -142,8 +142,13 @@ class RosterScreenBase extends Screen {
     // US-Soccer age group (U10, U23, ...) — every roster (youth AND adult,
     // ahead of future U19/U23/Over-30 division work on the mens/womens
     // side).
+    // Age chip is colour-coded by gender (blue = boy, yellow = girl) so
+    // a mixed roster (girls play on boys teams) reads at a glance
+    // without a separate chip.  Rendered here in the one shared card
+    // component used by every pill (Boys/Girls/Womens/Mens).
+    const isFemale = player.gender === 'Female';
     const ageChip = player.ageGroup
-      ? `<span style="font-size:0.68rem; line-height:1.2; font-weight:800; letter-spacing:0.02em; padding:0 6px; border-radius:8px; background:#1e3a8a; color:#dbeafe; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
+      ? `<span style="font-size:0.68rem; line-height:1.2; font-weight:800; letter-spacing:0.02em; padding:0 6px; border-radius:8px; background:${isFemale ? '#eab308' : '#1e3a8a'}; color:${isFemale ? '#422006' : '#dbeafe'}; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
       : '';
     const dragAttrs = col && col.teamId
       ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}"`
