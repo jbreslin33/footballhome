@@ -26,6 +26,7 @@ private:
     Response handleDeleteGameModelAdminEntity(const Request& request, const std::string& entity, int id);
     Response handleUploadExerciseImage(const Request& request);
     Response handleDeleteExerciseImage(const Request& request);
+    Response handleExerciseDescriptionOcr(const Request& request);
 
     // Helper methods
 };

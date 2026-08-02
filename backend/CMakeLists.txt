@@ -58,6 +58,7 @@ set(SOURCES
     src/services/SessionService.cpp
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp
+    src/services/VisionOcrService.cpp
     src/services/LineupNotificationHub.cpp
     src/controllers/AuthController.cpp
     src/controllers/MagicLinkAuthController.cpp

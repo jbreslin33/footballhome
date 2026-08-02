@@ -1,4 +1,5 @@
 #include "ClubController.h"
+#include "../services/VisionOcrService.h"
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -123,6 +124,14 @@ void ClubController::registerRoutes(Router& router, const std::string& prefix) {
 
     router.del(prefix + "/:id/game-model/admin/exercises/:exerciseId/images/:imageId", [this](const Request& request) {
         return this->handleDeleteExerciseImage(request);
+    });
+
+    // Photo-of-text upload: OCRs the image via VisionOcrService and hands
+    // the transcribed text back to the frontend to drop into a description
+    // field. Doesn't touch the DB itself — same segment-count reasoning as
+    // the images routes above keeps registration order irrelevant.
+    router.post(prefix + "/:id/game-model/admin/exercises/:exerciseId/description-ocr", [this](const Request& request) {
+        return this->handleExerciseDescriptionOcr(request);
     });
 }
 
@@ -833,6 +842,98 @@ Response ClubController::handleDeleteExerciseImage(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error deleting exercise image: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
+    }
+}
+
+// POST /api/clubs/:id/game-model/admin/exercises/:exerciseId/description-ocr
+// Body: { "image": "data:image/...;base64,..." } — same shape as the photo
+// upload above, but the bytes are never written to disk; they're forwarded
+// to VisionOcrService and the transcribed text is returned for the
+// frontend to drop into whichever textarea the coach picked.
+Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/clubs/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        std::string rest = path.substr(pos + prefix.length());
+        // rest == "<club_id>/game-model/admin/exercises/<exercise_id>/description-ocr"
+        std::vector<std::string> segs;
+        {
+            std::stringstream ss(rest);
+            std::string seg;
+            while (std::getline(ss, seg, '/')) if (!seg.empty()) segs.push_back(seg);
+        }
+        if (segs.size() < 5) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        int club_id = 0, exercise_id = 0;
+        try {
+            club_id = std::stoi(segs[0]);
+            exercise_id = std::stoi(segs[4]);
+        } catch (...) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
+        }
+
+        auto owner = db_->query(
+            "SELECT 1 FROM club_game_model_exercises "
+            " WHERE id = $1::int AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $2::int)",
+            { std::to_string(exercise_id), std::to_string(club_id) });
+        if (owner.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Exercise not found for this club"));
+        }
+
+        if (!request.isJson() || request.getBody().empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "JSON body required"));
+        }
+        const std::string& body = request.getBody();
+
+        size_t keyPos = body.find("\"image\"");
+        if (keyPos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "image field required"));
+        }
+        size_t colonPos = body.find(':', keyPos + 7);
+        size_t quoteStart = (colonPos == std::string::npos) ? std::string::npos : body.find('"', colonPos + 1);
+        size_t quoteEnd = (quoteStart == std::string::npos) ? std::string::npos : body.find('"', quoteStart + 1);
+        if (colonPos == std::string::npos || quoteStart == std::string::npos || quoteEnd == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid image data"));
+        }
+        std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+
+        static const std::regex mimeRe("^data:image/(png|jpe?g|webp|gif);base64,");
+        std::smatch mimeMatch;
+        if (!std::regex_search(dataValue, mimeMatch, mimeRe)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Only PNG/JPEG/WebP/GIF images are supported"));
+        }
+        std::string subtype = mimeMatch[1].str();
+        if (subtype == "jpg") subtype = "jpeg";
+        std::string mediaType = "image/" + subtype;
+
+        std::string b64Data = dataValue.substr(mimeMatch[0].length());
+        std::string imageBytes = base64Decode(b64Data);
+        if (imageBytes.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Failed to decode image data"));
+        }
+        static constexpr size_t kMaxImageBytes = 8 * 1024 * 1024;
+        if (imageBytes.size() > kMaxImageBytes) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Image too large (max 8MB)"));
+        }
+
+        std::string text;
+        try {
+            text = VisionOcrService::getInstance().extractText(b64Data, mediaType);
+        } catch (const VisionOcrError& e) {
+            std::cerr << "Vision OCR error: " << e.what() << std::endl;
+            return Response(HttpStatus::BAD_GATEWAY, createJSONResponse(false, e.what()));
+        }
+
+        std::ostringstream data;
+        data << "{\"text\":\"" << escapeJson(text) << "\"}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "OK", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "Error running exercise description OCR: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Server error"));
     }
 }
 

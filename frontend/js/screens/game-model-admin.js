@@ -105,6 +105,12 @@ class GameModelAdminScreen extends Screen {
       if (fileInput && fileInput.files && fileInput.files.length) {
         this.handleExercisePhotoSelect(fileInput.files);
         fileInput.value = '';
+        return;
+      }
+      const ocrInput = e.target.closest('[data-exercise-description-ocr-input]');
+      if (ocrInput && ocrInput.files && ocrInput.files.length) {
+        this.handleExerciseDescriptionOcrSelect(ocrInput.files[0]);
+        ocrInput.value = '';
       }
     });
   }
@@ -622,6 +628,7 @@ class GameModelAdminScreen extends Screen {
           ${fields.map((field) => this.renderField(field)).join('')}
         </div>
         ${this.selectedEntity === 'exercises' ? this.renderExercisePhotosSection(id) : ''}
+        ${this.selectedEntity === 'exercises' ? this.renderExerciseDescriptionOcrSection(id) : ''}
         <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
           <button class="btn btn-primary save-item-btn">Save</button>
           <button class="btn btn-secondary cancel-item-btn">Cancel</button>
@@ -668,6 +675,81 @@ class GameModelAdminScreen extends Screen {
         <div data-exercise-photo-status style="font-size:0.85rem; opacity:0.8;"></div>
       </div>
     `;
+  }
+
+  // Photo-of-text -> OCR -> drops the transcribed text into whichever
+  // description-ish textarea the coach picks (summary/setup/coaching
+  // points). Doesn't touch the DB itself and never disables the target
+  // textarea, so the coach can freely edit the result afterward — same
+  // "save this exercise first" gate as photos, since the backend route
+  // checks exercise ownership.
+  renderExerciseDescriptionOcrSection(exerciseId) {
+    if (exerciseId == null) {
+      return `
+        <div style="padding: var(--space-2); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); opacity: 0.8; font-size: 0.9rem;">
+          Save this exercise first, then reopen it to read a description from a photo.
+        </div>
+      `;
+    }
+
+    return `
+      <div style="display:grid; gap:var(--space-2);">
+        <span style="font-weight:600;">Read description from photo</span>
+        <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
+          <select data-ocr-target-field style="padding:0.5rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+            <option value="summary">Summary</option>
+            <option value="setup">Setup</option>
+            <option value="coaching_points">Coaching Points</option>
+          </select>
+          <label class="btn btn-secondary" style="width:fit-content; cursor:pointer;">
+            + Upload photo of text
+            <input type="file" accept="image/*" data-exercise-description-ocr-input style="display:none;">
+          </label>
+        </div>
+        <div data-exercise-description-ocr-status style="font-size:0.85rem; opacity:0.8;"></div>
+      </div>
+    `;
+  }
+
+  async handleExerciseDescriptionOcrSelect(file) {
+    const statusEl = this.find('[data-exercise-description-ocr-status]');
+    const targetSelect = this.find('[data-ocr-target-field]');
+    const targetKey = targetSelect ? targetSelect.value : 'summary';
+    try {
+      if (statusEl) statusEl.textContent = 'Reading photo…';
+      const dataUrl = await this.resizeImageForUpload(file, 2000, 0.92);
+      const text = await this.uploadExerciseDescriptionOcr(dataUrl);
+      const targetEl = this.find(`#gm-admin-field-${targetKey}`);
+      if (!targetEl) {
+        if (statusEl) statusEl.textContent = 'Could not find that field.';
+        return;
+      }
+      if (targetEl.value.trim() !== '') {
+        const fieldLabel = targetSelect.options[targetSelect.selectedIndex].text;
+        if (!window.confirm(`Replace the existing ${fieldLabel} text with the text read from the photo?`)) {
+          if (statusEl) statusEl.textContent = '';
+          return;
+        }
+      }
+      targetEl.value = text.trim();
+      if (statusEl) statusEl.textContent = 'Done — review and edit the text, then Save.';
+    } catch (e) {
+      console.error('Error reading description photo:', e);
+      if (statusEl) statusEl.textContent = 'Failed to read photo. Please try again.';
+    }
+  }
+
+  async uploadExerciseDescriptionOcr(dataUrl) {
+    const response = await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises/${this.currentEditId}/description-ocr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl })
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json();
+    return (payload && payload.data && payload.data.text) || '';
   }
 
   // Downscales/re-encodes to JPEG client-side before upload — phone
