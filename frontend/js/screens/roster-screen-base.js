@@ -145,9 +145,10 @@ class RosterScreenBase extends Screen {
       </details>`;
   }
 
-  // Exactly two thin rows. Row 1: [rank] [name] ... [roster-move dropdown]
-  // pinned to the far right. Row 2: [DOB] [age group] [dues] ... [view
-  // button] pinned to the far right.
+  // Exactly two thin rows. Row 1: [rank] [name] ... [roster-move
+  // dropdown] [VIEW] side by side, pinned to the far right, both at
+  // their natural compact height (not stretched). Row 2: [DOB] [age
+  // group] [dues], nothing pinned right.
   renderCompactCard({
     player,
     col,
@@ -191,14 +192,12 @@ class RosterScreenBase extends Screen {
           ${posChip}
           <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
           ${rosterSelectHtml}
-        </div>
-        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-          <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px; flex:1;">
-            ${dobMarkup}
-            ${ageChip}
-            ${duesLabel}
-          </div>
           ${viewButtonHtml}
+        </div>
+        <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px;">
+          ${dobMarkup}
+          ${ageChip}
+          ${duesLabel}
         </div>
       </div>
     `;
