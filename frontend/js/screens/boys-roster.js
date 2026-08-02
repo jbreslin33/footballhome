@@ -62,6 +62,7 @@ class BoysRosterScreen extends RosterScreenBase {
   }
 
   onEnter() {
+    RosterScreenBase.installMoveDropdownOutsideClose();
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#br-refresh')) return this.load({ refreshLa: true });
@@ -399,13 +400,14 @@ class BoysRosterScreen extends RosterScreenBase {
     const profileBtn = this.renderPersonActions(p, {
       returnTo: 'boys-roster',
       showEdit: false,
-      // Match the roster-move dropdown's thinner dimensions so row 2
-      // doesn't stretch taller than row 1 just to fit this button.
+      // Sits next to the roster-move dropdown in a full-height strip
+      // (renderCompactCard) — display:flex centering keeps the label
+      // centered now that the button stretches taller than its text.
       // appearance:none + min-height:0 strip the native OS button-chrome
       // minimum height that browsers apply to real <button> elements
       // (the dropdown trigger is a <summary>, which has no such native
       // chrome, so it didn't need this — this button did).
-      btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0;',
+      btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
@@ -838,11 +840,13 @@ class BoysRosterScreen extends RosterScreenBase {
     const targetTeamId  = parseInt(btn.dataset.targetTeamId, 10);
     const currentTeamId = parseInt(btn.dataset.currentTeamId || '0', 10);
     if (!userId || Number.isNaN(targetTeamId)) return;
-    if (targetTeamId === currentTeamId) return;
 
-    // Close the popover immediately for snappier UX.
+    // Close the popover immediately for snappier UX — also doubles as
+    // "roll it back up" when the option clicked is the current team,
+    // which is a no-op below.
     const details = btn.closest('details');
     if (details) details.open = false;
+    if (targetTeamId === currentTeamId) return;
 
     btn.disabled = true;
     btn.style.opacity = '0.4';

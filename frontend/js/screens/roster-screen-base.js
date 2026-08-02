@@ -1,4 +1,20 @@
 class RosterScreenBase extends Screen {
+  // Closes any open roster-move-details popover when a click lands
+  // outside every such popover (2026-08-02, user directive — clicking
+  // away used to leave it hanging open with no way to close it besides
+  // picking a new team). One document-level listener shared by every
+  // roster screen instance/re-render; each screen's onEnter calls this
+  // idempotently, so it's only ever installed once per page load.
+  static installMoveDropdownOutsideClose() {
+    if (window._rosterMoveDropdownOutsideCloseInstalled) return;
+    window._rosterMoveDropdownOutsideCloseInstalled = true;
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.roster-move-details[open]').forEach((d) => {
+        if (!d.contains(e.target)) d.open = false;
+      });
+    });
+  }
+
   formatDobShort(value) {
     if (!value) return '';
     const d = new Date(`${value}T00:00:00Z`);
@@ -92,26 +108,39 @@ class RosterScreenBase extends Screen {
     // buttons); harmless no-op on the <summary> trigger, which has no
     // such native chrome to begin with.
     const btnBase = 'font-size:0.68rem; padding:0 6px; line-height:1.2; font-weight:800; letter-spacing:0.02em; border-radius:3px; white-space:nowrap; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0;';
+    // Option rows (revealed on click) get a touch more breathing room
+    // than the collapsed trigger — line-height/padding bumped so each
+    // target reads as its own row instead of a cramped list.
+    const optBtnBase = 'font-size:0.68rem; padding:3px 6px; line-height:1.5; font-weight:800; letter-spacing:0.02em; border-radius:3px; white-space:nowrap; appearance:none; -webkit-appearance:none; box-sizing:border-box; margin:0;';
 
     const activeTarget = targets.find(t => t.id === currentTeamId) || targets[0];
     const optBtns = targets.map(t => {
       const active = t.id === currentTeamId;
       const style = active
-        ? `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:default; opacity:0.85;`
+        ? `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:pointer; opacity:0.85;`
         : `background:transparent; color:${t.color}; border:1px dashed ${t.color}88; cursor:pointer;`;
+      // The active/current option is NOT disabled — clicking it is a
+      // same-team no-op in onMoveOptionClick, which now closes the
+      // popover before checking that, so clicking your current
+      // selection is how you roll the dropdown back up (2026-08-02,
+      // user directive) rather than a dead end.
       return `<button class="roster-move-option" type="button"
                       data-user-id="${player.leagueAppsUserId}"
                       data-target-team-id="${t.id}"
                       data-current-team-id="${currentTeamId}"
-                      ${active ? 'disabled' : ''}
                       title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"
-                      style="${btnBase} ${style} text-align:left;">
+                      style="${optBtnBase} ${style} text-align:left;">
                 ${active ? '✓ ' : ''}${t.label.toUpperCase()}
               </button>`;
     }).join('');
+    // Trigger stretches to the full height of the card (a flex item
+    // alongside the VIEW button in renderCompactCard's right-hand
+    // strip) — height:100% + flex centering on the summary itself,
+    // since <details> defaults to block/inline layout that won't pass
+    // stretch through to its child on its own.
     return `
-      <details class="roster-move-details" style="position:relative; display:inline-block;">
-        <summary style="${btnBase} background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
+      <details class="roster-move-details" style="position:relative; display:flex; height:100%;">
+        <summary style="${btnBase} height:100%; display:flex; align-items:center; justify-content:center; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
                  title="Move ${this.escape(player.firstName || 'player')} to another column">
           ${this.escape(activeTarget.label.toUpperCase())} ▾
         </summary>
@@ -121,9 +150,11 @@ class RosterScreenBase extends Screen {
       </details>`;
   }
 
-  // Exactly two thin rows. Row 1: [rank] [name] ... [roster-move dropdown]
-  // pinned to the far right. Row 2: [DOB] [age group] [dues] ... [view
-  // button] pinned to the far right.
+  // Two thin content rows (rank+name, then DOB/age/dues) on the left;
+  // the roster-move dropdown and VIEW button sit side by side in a
+  // strip on the right that spans the card's full height (2026-08-02,
+  // user directive — previously the dropdown was pinned to row 1 and
+  // VIEW to row 2, each only as tall as its own row).
   renderCompactCard({
     player,
     col,
@@ -162,18 +193,20 @@ class RosterScreenBase extends Screen {
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
 
     return `
-      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:column; gap:0;">
-        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-          ${posChip}
-          <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
-          ${rosterSelectHtml}
-        </div>
-        <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-          <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px; flex:1;">
+      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
+        <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+            ${posChip}
+            <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px;">
             ${dobMarkup}
             ${ageChip}
             ${duesLabel}
           </div>
+        </div>
+        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px;">
+          ${rosterSelectHtml}
           ${viewButtonHtml}
         </div>
       </div>
