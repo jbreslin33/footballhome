@@ -624,6 +624,7 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
+      rosterToggleClass: 'br-roster-toggle',
     });
   }
 

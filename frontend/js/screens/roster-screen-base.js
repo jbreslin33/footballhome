@@ -62,6 +62,34 @@ class RosterScreenBase extends Screen {
     return `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
   }
 
+  // Official-roster toggle ("⚖️ eligible for sanctioned matches") —
+  // same team_persons.on_roster flag the Lineups screen's per-player
+  // modal already writes via POST /api/{boys,mens}-roster/roster-status
+  // (2026-08-02: extended onto the board itself + to boys, which
+  // previously only had the toggle's dead click-handler with no
+  // button ever rendered). A season-scoped confirmation, not tied to
+  // column placement — a card can be a real column member with
+  // onRoster still false until a coach explicitly confirms it.
+  // `toggleClass` is the screen-scoped class (`br-roster-toggle` /
+  // `mr-roster-toggle`) each screen's own delegated click handler
+  // already listens for. Renders nothing for Unassigned (no team to
+  // be "official" on).
+  renderRosterToggle(player, col, toggleClass) {
+    if (!col || !col.teamId) return '';
+    const onRoster = !!player.onRoster;
+    const style = onRoster
+      ? 'background:#166534; color:#bbf7d0; border:1px solid #22c55e;'
+      : 'background:transparent; color:#94a3b8; border:1px dashed #94a3b8;';
+    return `<button class="${toggleClass}" type="button"
+                    data-user-id="${player.leagueAppsUserId}"
+                    data-team-id="${col.teamId}"
+                    data-on-roster="${onRoster ? '1' : '0'}"
+                    title="${onRoster ? 'Officially rostered — eligible for sanctioned matches. Click to unset.' : 'Not yet on the official roster. Click to confirm eligible for sanctioned matches.'}"
+                    style="font-size:0.62rem; padding:0 5px; line-height:1.3; font-weight:800; letter-spacing:0.02em; border-radius:999px; white-space:nowrap; cursor:pointer; ${style}">
+              ⚖️ ${onRoster ? 'OFFICIAL' : 'unofficial'}
+            </button>`;
+  }
+
   getCompactCardBorder(days, fallback = '#facc15') {
     if (days >= 4) {
       return `2px solid ${this.daysOverdueColor(days)}`;
@@ -166,6 +194,7 @@ class RosterScreenBase extends Screen {
     duesLabel = '',
     dobShort = '',
     borderColor = '2px solid #facc15',
+    rosterToggleClass = '',
   }) {
     const posChip = position
       ? `<span style="font-size:0.72rem; line-height:1.2; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
@@ -191,6 +220,9 @@ class RosterScreenBase extends Screen {
       ? `<span style="font-size:0.66rem; line-height:1.2; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>`
       : '';
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
+    const rosterToggleHtml = rosterToggleClass
+      ? this.renderRosterToggle(player, col, rosterToggleClass)
+      : '';
 
     return `
       <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
@@ -203,6 +235,7 @@ class RosterScreenBase extends Screen {
             ${dobMarkup}
             ${ageChip}
             ${duesLabel}
+            ${rosterToggleHtml}
           </div>
         </div>
         <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px;">

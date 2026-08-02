@@ -760,6 +760,7 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
+      rosterToggleClass: 'mr-roster-toggle',
     });
   }
 
