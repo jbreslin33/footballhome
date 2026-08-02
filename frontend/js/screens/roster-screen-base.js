@@ -77,17 +77,19 @@ class RosterScreenBase extends Screen {
   renderRosterToggle(player, col, toggleClass) {
     if (!col || !col.teamId) return '';
     const onRoster = !!player.onRoster;
+    // Icon-only — no text label, so it costs no more row space than
+    // the age chip next to it (2026-08-02: text version was too wide
+    // and pushed the row into wrapping). State reads from fill alone;
+    // full explanation lives in the title tooltip.
     const style = onRoster
       ? 'background:#166534; color:#bbf7d0; border:1px solid #22c55e;'
-      : 'background:transparent; color:#94a3b8; border:1px dashed #94a3b8;';
+      : 'background:transparent; color:#64748b; border:1px dashed #64748b;';
     return `<button class="${toggleClass}" type="button"
                     data-user-id="${player.leagueAppsUserId}"
                     data-team-id="${col.teamId}"
                     data-on-roster="${onRoster ? '1' : '0'}"
-                    title="${onRoster ? 'Officially rostered — eligible for sanctioned matches. Click to unset.' : 'Not yet on the official roster. Click to confirm eligible for sanctioned matches.'}"
-                    style="font-size:0.62rem; padding:0 5px; line-height:1.3; font-weight:800; letter-spacing:0.02em; border-radius:999px; white-space:nowrap; cursor:pointer; ${style}">
-              ⚖️ ${onRoster ? 'OFFICIAL' : 'unofficial'}
-            </button>`;
+                    title="${onRoster ? 'Officially rostered — eligible for sanctioned matches. Click to unset.' : 'Not on the official roster yet. Click to confirm eligible for sanctioned matches.'}"
+                    style="font-size:0.6rem; line-height:1; width:14px; height:14px; padding:0; flex:0 0 auto; border-radius:50%; cursor:pointer; ${style}">⚖</button>`;
   }
 
   getCompactCardBorder(days, fallback = '#facc15') {
