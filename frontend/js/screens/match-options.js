@@ -24,8 +24,15 @@ class MatchOptionsScreen extends Screen {
               Create, edit, and delete matches
             </small>
           </button>
+
+          <button data-action="attendance" class="btn btn-lg btn-primary">
+            📋 Manage Match Attendance
+            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+              Track who showed up to each match
+            </small>
+          </button>
         ` : ''}
-        
+
         <button data-action="rsvp" class="btn btn-lg btn-primary">
           ✓ My RSVP
           <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
@@ -55,6 +62,8 @@ class MatchOptionsScreen extends Screen {
         
         if (action === 'manage') {
           this.navigation.goTo('match-management');
+        } else if (action === 'attendance') {
+          this.navigation.goTo('practice-attendance');
         } else if (action === 'rsvp') {
           this.navigation.goTo('match-list');
         } else if (action === 'tactical-board') {

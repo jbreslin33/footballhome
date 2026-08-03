@@ -225,6 +225,54 @@ std::string toLower(std::string s) {
     return s;
 }
 
+// Pulls the numeric fh_event_id out of
+// ".../calendar/events/<id>/attendance" — Router matches :params by
+// segment but doesn't expose them on Request, so we parse the path
+// ourselves, same approach as EventRsvpController's trailingSegment.
+long long extractEventIdFromAttendancePath(const std::string& path) {
+    const std::string marker = "/calendar/events/";
+    auto pos = path.find(marker);
+    if (pos == std::string::npos) return 0;
+    auto start = pos + marker.size();
+    auto end = path.find('/', start);
+    if (end == std::string::npos) return 0;
+    try { return std::stoll(path.substr(start, end - start)); }
+    catch (...) { return 0; }
+}
+
+// Resolves users.id for a person, for the marked_by_user_id audit FK.
+// NULL when the person has no users row. Mirrors
+// EventRsvpController::resolveChangedByUserId.
+std::string resolveUserId(Database* db, long long personId) {
+    auto row = db->query(
+        "SELECT id FROM users WHERE person_id = $1::int LIMIT 1",
+        {std::to_string(personId)});
+    if (row.empty() || row[0]["id"].is_null()) return {};
+    return std::to_string(row[0]["id"].as<long long>());
+}
+
+// True when personId may mark attendance for fhEventId — a club admin,
+// or a coach of one of the teams attached to the event. Same shape as
+// the eligibility EXISTS block in handlePostRsvp; factored out here
+// because both attendance handlers need the identical check.
+bool isEventCoachOrAdmin(Database* db, long long personId, long long fhEventId) {
+    auto rows = db->query(
+        "SELECT ("
+        "  EXISTS ("
+        "    SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+        "    WHERE u.person_id = $2::int"
+        "  )"
+        "  OR EXISTS ("
+        "    SELECT 1 FROM fh_event_teams fet "
+        "    JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
+        "    JOIN coaches co ON co.id = tc.coach_id "
+        "    WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int"
+        "  )"
+        ") AS can_mark",
+        {std::to_string(fhEventId), std::to_string(personId)});
+    return !rows.empty() && rows[0]["can_mark"].as<bool>();
+}
+
 }  // namespace
 
 CalendarController::CalendarController() = default;
@@ -243,6 +291,12 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     });
     router.post(prefix + "/calendar/my-standing", [this](const Request& req) {
         return this->handlePostMyStanding(req);
+    });
+    router.get(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
+        return this->handleGetEventAttendance(req);
+    });
+    router.post(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
+        return this->handlePostEventAttendance(req);
     });
 }
 
@@ -1032,6 +1086,172 @@ Response CalendarController::handlePostMyStanding(const Request& request) {
         return jsonOk({{"pref", pref}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostMyStanding: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handleGetEventAttendance(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+
+    auto* db = Database::getInstance();
+    try {
+        auto evRows = db->query(
+            "SELECT 1 FROM fh_events WHERE id = $1::bigint",
+            {std::to_string(fhEventId)});
+        if (evRows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        }
+
+        const bool canMark = isEventCoachOrAdmin(db, personId, fhEventId);
+
+        // Roster for every team attached to this event, left-joined to
+        // the current attendance mark. DISTINCT ON (p.id) collapses a
+        // person who's on more than one team attached to the same
+        // event (co-ed/multi-team events); nested so we can still sort
+        // alphabetically outside the DISTINCT ON's forced p.id order —
+        // same shape as the rsvps_json subquery in handleGetUpcoming.
+        auto rows = db->query(
+            "SELECT person_id, first_name, last_name, status, marked_at "
+            "  FROM ( "
+            "    SELECT DISTINCT ON (p.id) "
+            "           p.id AS person_id, p.first_name, p.last_name, "
+            "           fea.status, "
+            "           to_char(fea.marked_at AT TIME ZONE 'UTC', "
+            "                   'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS marked_at "
+            "      FROM fh_event_teams fet "
+            "      JOIN team_persons tp ON tp.team_id = fet.team_id "
+            "                          AND tp.removed_at IS NULL "
+            "      JOIN persons p ON p.id = tp.person_id "
+            "      LEFT JOIN fh_event_attendance fea "
+            "             ON fea.fh_event_id = $1::bigint "
+            "            AND fea.person_id   = p.id "
+            "     WHERE fet.fh_event_id = $1::bigint "
+            "     ORDER BY p.id "
+            "  ) roster "
+            " ORDER BY roster.last_name, roster.first_name, roster.person_id",
+            {std::to_string(fhEventId)});
+
+        json roster = json::array();
+        for (const auto& row : rows) {
+            roster.push_back({
+                {"person_id",  row["person_id"].as<long long>()},
+                {"first_name", textOrNull(row, "first_name")},
+                {"last_name",  textOrNull(row, "last_name")},
+                {"status",     textOrNull(row, "status")},
+                {"marked_at",  textOrNull(row, "marked_at")},
+            });
+        }
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_mark", canMark}, {"roster", roster}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleGetEventAttendance: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handlePostEventAttendance(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+
+    json body;
+    try {
+        body = request.getBody().empty()
+            ? json::object()
+            : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         std::string("Invalid JSON: ") + e.what());
+    }
+
+    auto targetPersonIdOpt = jsonInt(body, "person_id");
+    if (!targetPersonIdOpt || *targetPersonIdOpt <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "person_id (positive int) required");
+    }
+    const long long targetPersonId = *targetPersonIdOpt;
+
+    const std::string status = toLower(jsonStr(body, "status"));
+    if (status != "present" && status != "absent" &&
+        status != "late"    && status != "excused") {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "status must be 'present', 'absent', 'late', or 'excused'");
+    }
+
+    auto* db = Database::getInstance();
+    try {
+        auto evRows = db->query(
+            "SELECT 1 FROM fh_events WHERE id = $1::bigint",
+            {std::to_string(fhEventId)});
+        if (evRows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        }
+
+        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "Only a coach of this event's team(s) or a club admin "
+                             "can mark attendance.");
+        }
+
+        // The target must be on the roster for one of the event's
+        // teams — otherwise a coach could mark attendance for an
+        // arbitrary person_id outside their own roster.
+        auto rosterCheck = db->query(
+            "SELECT EXISTS ( "
+            "  SELECT 1 FROM fh_event_teams fet "
+            "  JOIN team_persons tp ON tp.team_id = fet.team_id "
+            "                      AND tp.removed_at IS NULL "
+            "  WHERE fet.fh_event_id = $1::bigint AND tp.person_id = $2::int "
+            ") AS on_roster",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+        if (rosterCheck.empty() || !rosterCheck[0]["on_roster"].as<bool>()) {
+            return jsonError(HttpStatus::BAD_REQUEST,
+                             "person is not on the roster for this event");
+        }
+
+        const std::string markedByUserId = resolveUserId(db, personId);
+
+        auto row = db->query(
+            "INSERT INTO fh_event_attendance "
+            "    (fh_event_id, person_id, status, marked_by_user_id, marked_at) "
+            "VALUES ($1::bigint, $2::int, $3, NULLIF($4, '')::int, now()) "
+            "ON CONFLICT (fh_event_id, person_id) DO UPDATE "
+            "   SET status            = EXCLUDED.status, "
+            "       marked_by_user_id = EXCLUDED.marked_by_user_id, "
+            "       marked_at         = EXCLUDED.marked_at "
+            "RETURNING id, fh_event_id, person_id, status, "
+            "          to_char(marked_at AT TIME ZONE 'UTC', "
+            "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS marked_at",
+            {std::to_string(fhEventId), std::to_string(targetPersonId),
+             status, markedByUserId});
+
+        if (row.empty()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                             "attendance write returned no row");
+        }
+        const auto& r0 = row[0];
+        json attendance = {
+            {"id",           r0["id"].as<long long>()},
+            {"fh_event_id",  r0["fh_event_id"].as<long long>()},
+            {"person_id",    r0["person_id"].as<long long>()},
+            {"status",       r0["status"].as<std::string>()},
+            {"marked_at",    r0["marked_at"].as<std::string>()},
+        };
+        return jsonOk({{"attendance", attendance}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handlePostEventAttendance: "
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
