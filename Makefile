@@ -4,10 +4,16 @@
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
 export PATH := $(PYTHON_USER_BIN):$(PATH)
 
-# Auto-detect compose tool: prefer podman-compose, fall back to docker-compose
-COMPOSE := $(shell PATH="$(PYTHON_USER_BIN):$$PATH" command -v podman-compose 2>/dev/null || command -v docker-compose 2>/dev/null)
-# Auto-detect container engine: prefer podman, fall back to docker
-ENGINE := $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+# This host runs ROOTFUL Podman for the real stack (see
+# database/migrations/run-migrations.sh, which hardcodes the same thing).
+# A separate rootless Podman install also exists on this box; plain
+# `podman`/`podman-compose` land there instead of the live containers —
+# silently, since compose still reports success. That divergence is what
+# let a `make deploy` build+recreate run against a dead rootless
+# namespace while the real backend kept serving old code. Hardcode sudo
+# so every target in this file always hits the one true (rootful) stack.
+COMPOSE := sudo $(shell PATH="$(PYTHON_USER_BIN):$$PATH" command -v podman-compose 2>/dev/null || command -v docker-compose 2>/dev/null)
+ENGINE := sudo $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 # DB exec command: use compose exec for docker, direct exec for podman
 ifeq ($(findstring podman,$(ENGINE)),podman)
   DB_EXEC = $(ENGINE) exec -i footballhome_db

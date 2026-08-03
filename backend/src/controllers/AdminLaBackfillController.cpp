@@ -573,10 +573,10 @@ static Response respondMembers(const std::string& variant,
             "       COALESCE(NULLIF(TRIM(CONCAT_WS(' ', parent.first_name, parent.last_name)), ''), '') AS parent_name, "
             "       pl.id AS player_id, "
             "       plm.joined_at, "
-            // LA user_id lives on external_person_aliases (provider='leagueapps').
-            // Needed by the RSVP-eligibility diagnostic screen to key into
+            // LA user_id lives on persons.la_user_id.  Needed by the
+            // RSVP-eligibility diagnostic screen to key into
             // player_rsvp_eligibility.  See memory footballhome.md 2026-07-11.
-            "       epa.external_user_id AS leagueapps_user_id, "
+            "       pe.la_user_id AS leagueapps_user_id, "
             // Account + activity signals — powers the ⏰ dormancy chip
             // and inactivity sort on the Members screen.  A person has
             // AT MOST one row in `users` (users.person_id NOT NULL, 1:1),
@@ -609,11 +609,6 @@ static Response respondMembers(const std::string& variant,
             "  LEFT JOIN primary_phone pph     ON pph.person_id = pe.id "
             "  LEFT JOIN primary_email parent_pem ON parent_pem.person_id = pe.parent_person_id "
             "  LEFT JOIN primary_phone parent_pph ON parent_pph.person_id = pe.parent_person_id "
-            "  LEFT JOIN external_person_aliases epa "
-            "         ON epa.person_id = pe.id "
-            "        AND epa.provider  = 'leagueapps' "
-            "        AND epa.external_user_id IS NOT NULL "
-            "        AND epa.external_user_id <> '' "
             "  LEFT JOIN users u               ON u.person_id   = pe.id "
             "  LEFT JOIN pickup_membership pkm ON pkm.person_id = pe.id AND pkm.category = lp.category "
             "  LEFT JOIN active_membership acm ON acm.person_id = pe.id AND acm.category = lp.category "
@@ -884,7 +879,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
         auto* db = Database::getInstance();
 
         // One flat query: Lighthouse persons + derived graph columns.
-        // Roster / RSVP hang off leagueapps_user_id via external_person_aliases.
+        // Roster / RSVP hang off persons.la_user_id.
         // Staff roles hang off users → admins / coaches.person_id.
         auto rows = db->query(
             "WITH lighthouse AS ( "
@@ -980,7 +975,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
             "       TO_CHAR(pe.birth_date, 'YYYY-MM-DD') AS dob, "
             "       COALESCE(pem.email, '') AS email, "
             "       COALESCE(pph.phone_number, '') AS phone, "
-            "       epa.external_user_id AS leagueapps_user_id, "
+            "       pe.la_user_id AS leagueapps_user_id, "
             "       u.id AS user_id, "
             "       (u.id IS NOT NULL) AS has_fh_account, "
             "       COALESCE(u.is_active, FALSE) AS account_active, "
@@ -1007,11 +1002,6 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
             "  JOIN persons pe ON pe.id = lh.person_id "
             "  LEFT JOIN primary_email pem ON pem.person_id = pe.id "
             "  LEFT JOIN primary_phone pph ON pph.person_id = pe.id "
-            "  LEFT JOIN external_person_aliases epa "
-            "         ON epa.person_id = pe.id "
-            "        AND epa.provider = 'leagueapps' "
-            "        AND epa.external_user_id IS NOT NULL "
-            "        AND epa.external_user_id <> '' "
             "  LEFT JOIN users u ON u.person_id = pe.id "
             "  LEFT JOIN players pl ON pl.person_id = pe.id "
             "  LEFT JOIN membership_summary ms ON ms.person_id = pe.id "
@@ -1166,7 +1156,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
 // The "click a Membership tile" refresh hook.  For every LA program in
 // `leagueapps_programs` matching the (variant, category) filter, run
 // LaProgramSync — which fetches the current LA registrations, upserts
-// persons + external_person_aliases + emails + phones + person_la_memberships,
+// persons (incl. la_user_id) + emails + phones + person_la_memberships,
 // and sets ended_at on rows LA has dropped.  Per-program failures are
 // captured, not fatal; the response reports them so the client can
 // show an amber "some programs failed" strip.

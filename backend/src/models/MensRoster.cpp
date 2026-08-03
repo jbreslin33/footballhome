@@ -424,15 +424,13 @@ MensRoster::Result MensRoster::run(bool includeAll,
     try {
         auto* db = Database::getInstance();
         pqxx::result rows = db->query(
-            "SELECT epa.external_user_id AS la_user_id, "
+            "SELECT p.la_user_id AS la_user_id, "
             "       TO_CHAR(MIN(plm.la_registered_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
             "  FROM person_la_memberships plm "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = plm.person_id "
-            "   AND epa.provider  = 'leagueapps' "
+            "  JOIN persons p ON p.id = plm.person_id "
             " WHERE plm.la_registered_at IS NOT NULL "
-            "   AND epa.external_user_id IS NOT NULL "
-            " GROUP BY epa.external_user_id "
+            "   AND p.la_user_id IS NOT NULL "
+            " GROUP BY p.la_user_id "
         );
         for (const auto& r : rows) {
             if (r["la_user_id"].is_null() || r["reg_iso"].is_null()) continue;
@@ -718,19 +716,17 @@ MensRoster::Result MensRoster::run(bool includeAll,
                 "SELECT DISTINCT ON (tp.person_id) "
                 "       tp.person_id, p.first_name, p.last_name, "
                 "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date, "
-                "       epa.external_user_id AS la_user_id, "
+                "       p.la_user_id AS la_user_id, "
                 "       lp.category AS la_home_category "
                 "  FROM team_persons tp "
                 "  JOIN persons p ON p.id = tp.person_id "
-                "  JOIN external_person_aliases epa "
-                "    ON epa.person_id = tp.person_id AND epa.provider = 'leagueapps' "
                 "  LEFT JOIN person_la_memberships plm "
                 "    ON plm.person_id = tp.person_id AND plm.ended_at IS NULL "
                 "  LEFT JOIN leagueapps_programs lp "
                 "    ON lp.program_id = plm.la_program_id AND lp.variant = 'active' "
                 " WHERE tp.removed_at IS NULL "
                 "   AND tp.team_id IN (" + idList + ") "
-                " ORDER BY tp.person_id, epa.id DESC, lp.category IS NULL"
+                " ORDER BY tp.person_id, lp.category IS NULL"
             );
             for (const auto& row : rows) {
                 if (row["la_user_id"].is_null() || row["person_id"].is_null()) continue;

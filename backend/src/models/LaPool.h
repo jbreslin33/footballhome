@@ -15,7 +15,7 @@ class LaProgramSync;
 //   2. Drive LaProgramSync for the matching LA program (mens or womens)
 //      so the local persons+aliases tables warm up before we project.
 //   3. Resolve every active LA registration → local personId via
-//      external_person_aliases.
+//      persons.la_user_id.
 //   4. Pull each matched person's current rosters within the club.
 //   5. Shape one row per active LA registrant with name, dob, raw LA
 //      fields and the list of team_ids they're already rostered on.

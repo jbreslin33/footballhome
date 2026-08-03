@@ -2265,7 +2265,7 @@ class LineupsScreen extends Screen {
 
     // Source of truth = td.players (C++ /api/matches/:id/roster-players),
     // which filters to FH members only: LA-mens registrants
-    // (external_person_aliases JOIN mens_team_assignments) OR self-
+    // (persons.la_user_id JOIN mens_team_assignments) OR self-
     // registered FH members (persons.fh_member_at IS NOT NULL).
     for (const p of td.players) {
       const e = {

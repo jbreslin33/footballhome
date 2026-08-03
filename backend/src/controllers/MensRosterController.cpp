@@ -854,10 +854,8 @@ Response MensRosterController::handleGetRsvpEligibility(const Request& request) 
         auto rows = db->query(
             "SELECT tp.team_id "
             "  FROM team_persons tp "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = tp.person_id "
-            "   AND epa.provider = 'leagueapps' "
-            " WHERE epa.external_user_id = $1 "
+            "  JOIN persons p ON p.id = tp.person_id "
+            " WHERE p.la_user_id = $1 "
             "   AND tp.removed_at IS NULL "
             " ORDER BY tp.team_id",
             {std::to_string(userId)}
@@ -921,20 +919,18 @@ Response MensRosterController::handlePutRsvpEligibility(const Request& request) 
     try {
         auto db = Database::getInstance();
 
-        // Resolve the LA alias to a person once; everything below is
+        // Resolve the LA userId to a person once; everything below is
         // person-keyed membership.
         long long personId = 0;
         {
             auto rows = db->query(
-                "SELECT person_id FROM external_person_aliases "
-                " WHERE provider = 'leagueapps' AND external_user_id = $1 "
-                " LIMIT 1",
+                "SELECT id FROM persons WHERE la_user_id = $1 LIMIT 1",
                 {std::to_string(userId)}
             );
-            if (rows.empty() || rows[0]["person_id"].is_null()) {
+            if (rows.empty() || rows[0]["id"].is_null()) {
                 return badRequest("No person linked to that LeagueApps user id");
             }
-            personId = rows[0]["person_id"].as<long long>();
+            personId = rows[0]["id"].as<long long>();
         }
 
         // Load current active memberships (filtered to the catalog).

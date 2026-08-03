@@ -879,8 +879,8 @@ Response LeadsController::handleNextPickup(const Request& request) {
 //     everything from Postgres and NEVER calls LA directly (which
 //     was the previous BANNED pattern that filled section 5 with
 //     an inline `la.fetchProgramRegistrations()` loop).
-//   • Men   — mens_team_assignments → external_person_aliases('leagueapps')
-//             → persons → person_emails (freshly synced this request).
+//   • Men   — mens_team_assignments → persons.la_user_id
+//             → person_emails (freshly synced this request).
 //   • Women — rosters (left_at IS NULL) → players → persons, restricted to
 //             teams.gender_category='womens'.
 //   • Boys / Girls / paused / pickup — the catch-all section 5 below
@@ -940,7 +940,8 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
             auto rs = db->query(
                 "SELECT t.name AS team_name, p.id AS person_id, "
                 "       p.first_name, p.last_name, "
-                "       epa.external_user_id::bigint AS leagueapps_user_id, "
+                "       CASE WHEN p.la_user_id ~ '^[0-9]+$' "
+                "            THEN p.la_user_id::bigint END AS leagueapps_user_id, "
                 "       COALESCE((SELECT string_agg(pe.email, ', ' ORDER BY pe.is_primary DESC, pe.email) "
                 "                  FROM person_emails pe WHERE pe.person_id = p.id), '') AS emails, "
                 "       COALESCE((SELECT pp.phone_number FROM person_phones pp "
@@ -950,10 +951,6 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
                 "  JOIN teams t ON t.id = m.team_id "
                 "   AND t.gender_category = 'mens' "
                 "  JOIN persons p ON p.id = m.person_id "
-                "  LEFT JOIN external_person_aliases epa "
-                "    ON epa.person_id = p.id "
-                "   AND epa.provider = 'leagueapps' "
-                "   AND epa.external_user_id ~ '^[0-9]+$' "
                 " ORDER BY t.name, p.last_name, p.first_name");
             for (const auto& row : rs) {
                 emit("Men",
@@ -1100,7 +1097,7 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
                 "       p.id                              AS person_id, "
                 "       p.first_name, "
                 "       p.last_name, "
-                "       epa.external_user_id              AS la_user_id, "
+                "       p.la_user_id                      AS la_user_id, "
                 "       COALESCE(p.parent_person_id, p.id) AS contact_person_id, "
                 "       COALESCE((SELECT string_agg(pe.email, ', ' "
                 "                                   ORDER BY pe.is_primary DESC, pe.email) "
@@ -1112,8 +1109,6 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
                 "  FROM person_la_memberships plm "
                 "  JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
                 "  JOIN persons p              ON p.id           = plm.person_id "
-                "  LEFT JOIN external_person_aliases epa "
-                "    ON epa.person_id = p.id AND epa.provider = 'leagueapps' "
                 " WHERE plm.ended_at IS NULL "
                 " ORDER BY lp.category, lp.variant, p.last_name, p.first_name, plm.la_program_id");
 
@@ -1121,7 +1116,7 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
                 std::optional<long long> laUid;
                 if (!row["la_user_id"].is_null()) {
                     try { laUid = std::stoll(row["la_user_id"].c_str()); }
-                    catch (...) { /* orphaned membership without alias — leave null */ }
+                    catch (...) { /* orphaned membership, no la_user_id on person — leave null */ }
                 }
                 // Skip anyone already emitted by sections 2/3/4 for the
                 // SAME base category (Men from mens roster, Boys/Girls

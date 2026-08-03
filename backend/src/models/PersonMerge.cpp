@@ -1,4 +1,5 @@
 #include "PersonMerge.h"
+#include <iostream>
 #include <pqxx/pqxx>
 #include <sstream>
 #include <stdexcept>
@@ -33,7 +34,6 @@ const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
         { "coaches",                 Conflict::UniquePerson,         {},                 {"id"} },
         { "chat_event_rsvps",        Conflict::UniquePersonPlusCols, {"chat_event_id"},  {"id"} },
         { "event_rsvps",             Conflict::UniquePersonPlusCols, {"chat_event_id"},  {"id"} },
-        { "external_person_aliases", Conflict::NoPersonUnique,       {},                 {"id"} },
         { "person_field_overrides",  Conflict::UniquePersonPlusCols, {"field_name"},     {"id"} },
         // Auth state: many rows per person, no per-person uniqueness.  We
         // reparent (rather than delete) so the kept identity inherits the
@@ -66,11 +66,16 @@ PersonMerge::MergeResult PersonMerge::merge(int laPersonId, int gmPersonId,
     try {
         // 1. Sanity-lock both persons.
         auto lockRs = tx->exec_params(
-            "SELECT id FROM persons WHERE id = $1 OR id = $2 FOR UPDATE",
+            "SELECT id, la_user_id FROM persons WHERE id = $1 OR id = $2 FOR UPDATE",
             laPersonId, gmPersonId);
         if (lockRs.size() != 2) {
             throw std::invalid_argument(
                 "merge: one or both persons not found");
+        }
+        std::optional<std::string> keptLaUserId, droppedLaUserId;
+        for (const auto& row : lockRs) {
+            auto& slot = (row["id"].as<int>() == laPersonId) ? keptLaUserId : droppedLaUserId;
+            if (!row["la_user_id"].is_null()) slot = row["la_user_id"].as<std::string>();
         }
 
         // 2. INSERT the audit row first, building the JSONB snapshot
@@ -186,8 +191,28 @@ PersonMerge::MergeResult PersonMerge::merge(int laPersonId, int gmPersonId,
             if (deleted) deletedConflicts.emplace_back(ct.table, deleted);
         }
 
-        // 4. Drop the persons row.
+        // 4. Drop the persons row, then resolve la_user_id onto the kept
+        //    row.  Deleting first frees the dropped person's la_user_id
+        //    from the unique index before we try to claim it, in case the
+        //    kept person didn't already have one.  If BOTH persons had a
+        //    (different) la_user_id, the kept person's own value wins —
+        //    the dropped value is not lost, it's still in
+        //    person_merges.dropped_snapshot for this merge row.
         tx->exec_params("DELETE FROM persons WHERE id = $1", gmPersonId);
+
+        if (!keptLaUserId.has_value() && droppedLaUserId.has_value()) {
+            tx->exec_params(
+                "UPDATE persons SET la_user_id = $1 WHERE id = $2",
+                *droppedLaUserId, laPersonId);
+        } else if (keptLaUserId.has_value() && droppedLaUserId.has_value()
+                   && *keptLaUserId != *droppedLaUserId) {
+            std::cerr << "[PersonMerge::merge] kept person " << laPersonId
+                      << " la_user_id=" << *keptLaUserId
+                      << " and dropped person " << gmPersonId
+                      << " la_user_id=" << *droppedLaUserId
+                      << " conflict — kept value wins, dropped value preserved"
+                         " in person_merges.dropped_snapshot" << std::endl;
+        }
 
         db_->commit(tx);
 
@@ -240,10 +265,21 @@ PersonMerge::UnmergeResult PersonMerge::unmerge(int mergeId,
         const int dropId = a["dropped_person_id"].as<int>();
         const std::string snapshotJson = a["dropped_snapshot"].as<std::string>();
 
-        // 2. Re-INSERT the persons row.  jsonb_populate_record materialises
+        // 2a. If the merge adopted the dropped person's la_user_id onto the
+        //     kept person (because the kept person had none of their own —
+        //     see merge() step 4), the kept row is still holding that value
+        //     now.  Free it before restoring the dropped row below, or the
+        //     unique index on persons.la_user_id would reject the INSERT.
+        tx->exec_params(
+            "UPDATE persons SET la_user_id = NULL "
+            " WHERE id = $1 AND la_user_id = ($2::jsonb->'persons'->>'la_user_id')",
+            keepId, snapshotJson);
+
+        // 2b. Re-INSERT the persons row.  jsonb_populate_record materialises
         //    the JSONB object into a tuple that matches the persons row type,
         //    so we don't need to know the column list in C++ — handy because
-        //    `persons` columns evolve over time.
+        //    `persons` columns evolve over time.  This also restores the
+        //    dropped person's own la_user_id exactly as it was pre-merge.
         tx->exec_params(
             "INSERT INTO persons SELECT (jsonb_populate_record(NULL::persons, "
             "$1::jsonb->'persons')).*",

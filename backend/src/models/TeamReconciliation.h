@@ -16,8 +16,8 @@ class PersonLinker;
 // Steps:
 //   1. If the team is "mens" (club_id == MENS_CLUB_ID AND name not matching
 //      women/pickup/training/pool), live-fetch the LA mens program AND run
-//      PersonLinker over every active registration to self-heal persons +
-//      external_person_aliases.
+//      PersonLinker over every active registration to self-heal persons
+//      (incl. la_user_id).
 //   2. Bucket every person attached to the team into players | coaches |
 //      laOnly.
 // ────────────────────────────────────────────────────────────────────────────

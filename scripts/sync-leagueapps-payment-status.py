@@ -241,11 +241,19 @@ def load_person_name_index():
     return index
 
 
-def load_alias_index(provider="leagueapps"):
+def load_la_linked_person_index():
+    """Name -> person_id for persons already linked to an LA userId.
+
+    Used the way the old external_person_aliases name index was used:
+    prefer a known-LA-linked person over an ambiguous canonical-name
+    match.  Keyed off the person's CURRENT name (persons.first_name/
+    last_name) rather than a separately-recorded LA-side name -- this
+    codebase no longer keeps a name string per LA identity, see
+    migration 256.
+    """
     sql = (
-        "SELECT LOWER(TRIM(alias_first_name)), LOWER(TRIM(alias_last_name)), person_id "
-        "FROM external_person_aliases "
-        f"WHERE provider = {sql_quote(provider)}"
+        "SELECT LOWER(TRIM(first_name)), LOWER(TRIM(last_name)), id "
+        "FROM persons WHERE la_user_id IS NOT NULL"
     )
     raw = run_psql(sql)
     index = {}
@@ -295,9 +303,11 @@ def main():
     parser = argparse.ArgumentParser(description="Sync LeagueApps payment statuses into DB")
     parser.add_argument("--dry-run", action="store_true", help="Do not write DB updates")
     parser.add_argument(
-        "--print-unmatched-alias-sql",
+        "--print-unmatched-fix-hints",
+        "--print-unmatched-alias-sql",  # old flag name kept as an alias
+        dest="print_unmatched_fix_hints",
         action="store_true",
-        help="Print SQL INSERT templates for unmatched LeagueApps names",
+        help="Print fix hints for unmatched LeagueApps names",
     )
     args = parser.parse_args()
 
@@ -310,7 +320,7 @@ def main():
     records = fetch_program_registrations(site_id, program_id, token)
 
     person_index = load_person_name_index()
-    alias_index = load_alias_index(provider="leagueapps")
+    alias_index = load_la_linked_person_index()
 
     latest_by_name = {}
     for rec in records:
@@ -384,14 +394,14 @@ def main():
         for first, last, status in unmatched[:10]:
             print(f"  {first} {last} -> {status}")
 
-    if args.print_unmatched_alias_sql and unmatched:
-        print("\nSQL templates to map unmatched names:")
+    if args.print_unmatched_fix_hints and unmatched:
+        print("\nFix hints for unmatched names (no persons row matched by name):")
         for first, last, _status in unmatched:
             print(
-                "INSERT INTO external_person_aliases (provider, alias_first_name, alias_last_name, person_id) "
-                f"VALUES ('leagueapps', {sql_quote(first)}, {sql_quote(last)}, <person_id>) "
-                "ON CONFLICT (provider, alias_first_name, alias_last_name) DO UPDATE "
-                "SET person_id = EXCLUDED.person_id, updated_at = NOW();"
+                f"  {first} {last}: either fix persons.first_name/last_name to "
+                "match LA's spelling for the existing person, or if this is a "
+                "new person, let the next roster/lineup page load create one "
+                "via PersonLinker."
             )
 
 

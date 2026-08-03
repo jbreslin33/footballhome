@@ -54,17 +54,15 @@ Response PersonProfileController::handleGetByLaUserId(const Request& request,
 
     try {
         // ── Bridge: LA user id → persons.id ─────────────────────────
-        pqxx::result aliasRes = db_->query(
-            "SELECT person_id FROM external_person_aliases "
-            "WHERE provider = 'leagueapps' AND external_user_id = $1 "
-            "LIMIT 1",
+        pqxx::result personRes = db_->query(
+            "SELECT id FROM persons WHERE la_user_id = $1 LIMIT 1",
             { std::to_string(laUserId) });
 
-        if (aliasRes.empty()) {
+        if (personRes.empty()) {
             return errorResponse(HttpStatus::NOT_FOUND,
-                "No person alias found for that LeagueApps user id");
+                "No person found for that LeagueApps user id");
         }
-        const int personId = aliasRes[0]["person_id"].as<int>();
+        const int personId = personRes[0]["id"].as<int>();
         return buildProfile(personId, laUserId);
     } catch (const std::exception& e) {
         std::cerr << "PersonProfileController::handleGetByLaUserId error: "
@@ -553,21 +551,16 @@ Response PersonProfileController::handleGetByPersonId(const Request& request,
 
     try {
         pqxx::result exists = db_->query(
-            "SELECT id FROM persons WHERE id = $1 LIMIT 1",
+            "SELECT la_user_id FROM persons WHERE id = $1 LIMIT 1",
             { std::to_string(personId) });
         if (exists.empty()) {
             return errorResponse(HttpStatus::NOT_FOUND, "Person not found");
         }
 
         long long laUserId = 0;
-        pqxx::result aliasRes = db_->query(
-            "SELECT external_user_id FROM external_person_aliases "
-            "WHERE provider = 'leagueapps' AND person_id = $1 "
-            "LIMIT 1",
-            { std::to_string(personId) });
-        if (!aliasRes.empty() && !aliasRes[0]["external_user_id"].is_null()) {
+        if (!exists[0]["la_user_id"].is_null()) {
             try {
-                laUserId = std::stoll(aliasRes[0]["external_user_id"].c_str());
+                laUserId = std::stoll(exists[0]["la_user_id"].c_str());
             } catch (const std::exception&) {
                 laUserId = 0;
             }

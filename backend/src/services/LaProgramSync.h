@@ -11,7 +11,7 @@
 //
 // Every endpoint that drives the lineups / pool screens must call this
 // before its bucket SQL so freshly-paid LA registrants self-heal into
-// the local DB (persons + external_person_aliases) and stop showing as
+// the local DB (persons, incl. la_user_id) and stop showing as
 // phantom unlinked entries.
 //
 // Singleton-style stateless service: instantiate once per request, call

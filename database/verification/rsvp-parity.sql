@@ -32,11 +32,10 @@ WITH events AS (
        AND ge.starts_at <  now() + interval '30 days'
 ),
 involved AS (                    -- anyone either model could deem eligible
-    SELECT DISTINCT epa.person_id
+    SELECT DISTINCT p.id AS person_id
       FROM player_rsvp_eligibility ple
-      JOIN external_person_aliases epa
-        ON epa.provider = 'leagueapps'
-       AND epa.external_user_id = ple.leagueapps_user_id::text
+      JOIN persons p
+        ON p.la_user_id = ple.leagueapps_user_id::text
     UNION
     SELECT DISTINCT person_id FROM team_persons WHERE removed_at IS NULL
     UNION
@@ -57,11 +56,10 @@ pairs AS (
                  WHERE fet.fh_event_id = e.fh_event_id
                    AND (EXISTS (SELECT 1
                                   FROM player_rsvp_eligibility ple
-                                  JOIN external_person_aliases epa
-                                    ON epa.provider = 'leagueapps'
-                                   AND epa.external_user_id = ple.leagueapps_user_id::text
+                                  JOIN persons p
+                                    ON p.la_user_id = ple.leagueapps_user_id::text
                                  WHERE ple.team_id = fet.team_id
-                                   AND epa.person_id = i.person_id)
+                                   AND p.id = i.person_id)
                      OR EXISTS (SELECT 1
                                   FROM team_coaches tc
                                   JOIN coaches co ON co.id = tc.coach_id

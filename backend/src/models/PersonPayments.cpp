@@ -442,8 +442,8 @@ PersonPayments::loadAllByProgram(long long programId) {
 // programs the transaction's userId is the PARENT (payer), which never
 // matches the child's alias → child's membership row.
 //
-// A LEFT JOIN through external_person_aliases still resolves la_user_id
-// for display purposes only (drives the "open in LA" link).
+// persons.la_user_id is selected directly for display purposes only
+// (drives the "open in LA" link).
 // ──────────────────────────────────────────────────────────────────────────
 std::vector<PersonPayments::MemberRow>
 PersonPayments::loadMembersForProgram(long long programId) {
@@ -497,12 +497,6 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "         cur_start + interval '1 month' AS cur_end,"
         "         cur_start - interval '1 month' AS prev_start"
         "    FROM win"
-        "),"
-        "aliases AS ("
-        "  SELECT person_id, MAX(external_user_id::bigint) AS la_user_id"
-        "    FROM external_person_aliases"
-        "   WHERE provider = 'leagueapps' AND external_user_id IS NOT NULL"
-        "   GROUP BY person_id"
         "),"
         "person_own_email AS ("
         // Prefer is_primary=true, then most-recently-created. One row per person.
@@ -663,7 +657,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       ph.phone_number           AS phone,"
         "       COALESCE(ph.can_receive_sms,   FALSE) AS phone_sms,"
         "       COALESCE(ph.can_receive_calls, FALSE) AS phone_call,"
-        "       a.la_user_id,"
+        "       p.la_user_id::bigint AS la_user_id,"
         "       m.la_registration_id      AS la_registration_id,"
         "       TO_CHAR(m.la_registered_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS la_registered_iso,"
         // Normalized due-date anchor (migration 117).  Read directly
@@ -732,7 +726,6 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       END AS days_overdue"
         "  FROM person_la_memberships m"
         "  JOIN persons p ON p.id = m.person_id"
-        "  LEFT JOIN aliases a          ON a.person_id           = p.id"
         "  LEFT JOIN primary_email pe   ON pe.person_id          = p.id"
         "  LEFT JOIN primary_phone ph   ON ph.person_id          = p.id"
         "  LEFT JOIN agg                ON agg.la_registration_id    = m.la_registration_id"

@@ -90,7 +90,7 @@ std::string intArrayLiteral(const std::vector<int>& ids) {
 
 // Build a Postgres `text[]` literal from a vector of strings.  Each element
 // is double-quoted; embedded " or \ are backslash-escaped.  Used to bind the
-// LA userId list for the external_person_aliases lookup.
+// LA userId list for the persons.la_user_id lookup.
 std::string textArrayLiteral(const std::vector<std::string>& items) {
     std::ostringstream os;
     os << '{';
@@ -214,21 +214,20 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         }
     }
 
-    // 3. Resolve LA userIds → local personId via external_person_aliases.
+    // 3. Resolve LA userIds → local personId via persons.la_user_id.
     std::unordered_map<std::string, int> personIdByLaId;
     std::vector<std::string> laUserIdList(syncResult.activeUserIds.begin(),
                                           syncResult.activeUserIds.end());
     if (!laUserIdList.empty()) {
         const std::string sql =
-            "SELECT external_user_id, person_id "
-            "  FROM external_person_aliases "
-            " WHERE provider = 'leagueapps' "
-            "   AND external_user_id = ANY($1::text[])";
+            "SELECT la_user_id, id "
+            "  FROM persons "
+            " WHERE la_user_id = ANY($1::text[])";
         const std::vector<std::string> params = {textArrayLiteral(laUserIdList)};
         const auto rows = db_->query(sql, params);
         for (const auto& row : rows) {
-            if (row["external_user_id"].is_null() || row["person_id"].is_null()) continue;
-            personIdByLaId.emplace(row["external_user_id"].c_str(), row["person_id"].as<int>());
+            if (row["la_user_id"].is_null() || row["id"].is_null()) continue;
+            personIdByLaId.emplace(row["la_user_id"].c_str(), row["id"].as<int>());
         }
     }
 
@@ -287,11 +286,9 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
                 // separate eligibility grant exists anymore.
                 const std::string sql =
                     "INSERT INTO team_persons (team_id, person_id, on_roster) "
-                    "SELECT t.id, epa.person_id, false "
+                    "SELECT t.id, p.id, false "
                     "  FROM UNNEST($1::text[]) AS ua(uid) "
-                    "  JOIN external_person_aliases epa "
-                    "    ON epa.provider = 'leagueapps' "
-                    "   AND epa.external_user_id = ua.uid "
+                    "  JOIN persons p ON p.la_user_id = ua.uid "
                     "  CROSS JOIN teams t "
                     "  JOIN team_eligible_genders teg "
                     "    ON teg.team_id = t.id AND teg.gender = 'mens' "
@@ -329,13 +326,11 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         for (const auto& kv : personIdByLaIdCopy) laIds.push_back(kv.first);
 
         const std::string sql =
-            "SELECT epa.external_user_id AS lauid, tp.team_id "
+            "SELECT p.la_user_id AS lauid, tp.team_id "
             "  FROM team_persons tp "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = tp.person_id "
-            "   AND epa.provider = 'leagueapps' "
+            "  JOIN persons p ON p.id = tp.person_id "
             " WHERE tp.removed_at IS NULL "
-            "   AND epa.external_user_id = ANY($1::text[])";
+            "   AND p.la_user_id = ANY($1::text[])";
         const std::vector<std::string> params = { textArrayLiteral(laIds) };
         const auto rows = db_->query(sql, params);
         for (const auto& row : rows) {

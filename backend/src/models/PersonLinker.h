@@ -9,12 +9,13 @@ class Database;
 // PersonLinker — find-or-create the `persons` row for an upstream record.
 //
 // LA path (linkLa):
-//   1. Existing alias for (provider='leagueapps', external_user_id) → fast hit
+//   1. Existing persons row with this la_user_id → fast hit
 //   2. Existing persons row for (LOWER(first_name), LOWER(last_name))
 //      with DOB tie-break (skip with `dob-mismatch` reason if persons.dob and
 //      LA dob both present and differ)
 //   3. Otherwise INSERT a new persons row
-//   4. UPSERT the LA alias so step 1 hits next time
+//   4. Set persons.la_user_id in place so step 1 hits next time (overwrites
+//      any previous value — a person has exactly one current LA userId)
 //
 // Skips (Result.skipReason populated) are non-fatal — the caller logs and
 // keeps going.  This mirrors meta-leads-webhook person-data.js exactly.
@@ -24,7 +25,7 @@ public:
     struct Result {
         int  personId       = 0;      // 0 if not linked (skip)
         bool created        = false;  // a new persons row was inserted
-        bool aliasCreated   = false;
+        bool aliasCreated   = false;  // persons.la_user_id was set/updated
         // Set instead of `created`/`aliasCreated` when `dryRun = true`.
         // Mirrors Node's personLinker.linkLa(rec, {dryRun:true}) result.
         bool wouldCreatePerson = false;
@@ -77,8 +78,8 @@ public:
     // LaProgramSync just accepted as "still a member" for this program —
     // i.e. registrationStatus in {SPOT_RESERVED, SPOT_PENDING, WAITING_LIST}).
     // Callers MUST pass the CANONICAL LA userId set — persons whose
-    // external_person_aliases row maps to an id in this set are kept open,
-    // everyone else for this program is closed.  Best-effort: logs +
+    // la_user_id is in this set are kept open, everyone else for this
+    // program is closed.  Best-effort: logs +
     // swallows on DB errors.  User directive 2026-07-12: membership
     // MUST come from LA every time — no more "sync only opens" behavior.
     void closeStaleMemberships(long long programId,

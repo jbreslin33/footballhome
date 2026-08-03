@@ -10,8 +10,8 @@
 // directly — the roster_assignments table, the v_team_members union
 // view and the fn_grant_default_rsvp_eligibility trigger are all
 // retired.  The public API stays keyed by leagueapps_user_id (the
-// frontend board cards carry it); each query resolves the alias to a
-// person via external_person_aliases at the SQL edge.
+// frontend board cards carry it); each query resolves it to a person
+// via persons.la_user_id (migration 256) at the SQL edge.
 //
 // Board mutex behavior: addAssignment still honors the caller-supplied
 // mutexGroup (one-of within a column group).  Whether official teams
@@ -25,12 +25,11 @@
 namespace {
 
 // Scalar subquery fragment: resolve a leagueapps user id (param $N)
-// to a person id.  external_user_id is unique per alias row, so this
+// to a person id.  persons.la_user_id is unique when non-null, so this
 // is at most one person.
 std::string personFromLa(const char* param) {
     return std::string(
-        "(SELECT person_id FROM external_person_aliases "
-        "  WHERE provider = 'leagueapps' AND external_user_id = ") +
+        "(SELECT id FROM persons WHERE la_user_id = ") +
         param + "::text)";
 }
 
@@ -47,21 +46,22 @@ MensTeamAssignments::MensTeamAssignments(std::string domain)
 MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     ByUser out;
     // One row per (person, team) active membership on this domain's
-    // teams.  DISTINCT ON collapses multi-alias persons (post-merge
-    // accounts) onto their most recent LA alias so each membership
-    // renders exactly one board card.
+    // teams, keyed by the person's single current LA userId.  Used to
+    // be a DISTINCT ON over external_person_aliases picking whichever
+    // alias was inserted most recently — which could (and did) diverge
+    // from whatever userId the live LA API reports for that same person
+    // elsewhere on the same page load, silently breaking board-card
+    // lookups for anyone with more than one historical alias.  With
+    // persons.la_user_id there's exactly one id per person, so no
+    // collapsing/tie-break is needed.
     const auto rows = db_->query(
-        "SELECT DISTINCT ON (tp.person_id, tp.team_id) "
-        "       epa.external_user_id AS leagueapps_user_id, "
+        "SELECT p.la_user_id AS leagueapps_user_id, "
         "       tp.team_id, tp.on_roster, tp.coach_sort_order "
         "  FROM team_persons tp "
         "  JOIN teams t ON t.id = tp.team_id "
         "   AND t.gender_category = $1 "
-        "  JOIN external_person_aliases epa "
-        "    ON epa.person_id = tp.person_id "
-        "   AND epa.provider = 'leagueapps' "
-        " WHERE tp.removed_at IS NULL "
-        " ORDER BY tp.person_id, tp.team_id, epa.id DESC",
+        "  JOIN persons p ON p.id = tp.person_id "
+        " WHERE tp.removed_at IS NULL",
         {domain_}
     );
     for (const auto& row : rows) {
@@ -146,10 +146,9 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
     if (restored.empty()) {
         tx->exec_params(
             "INSERT INTO team_persons (team_id, person_id) "
-            "SELECT $2, epa.person_id "
-            "  FROM external_person_aliases epa "
-            " WHERE epa.provider = 'leagueapps' "
-            "   AND epa.external_user_id = $1::text "
+            "SELECT $2, p.id "
+            "  FROM persons p "
+            " WHERE p.la_user_id = $1::text "
             "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING",
             userId, teamId
@@ -166,8 +165,7 @@ std::vector<int> MensTeamAssignments::removeAssignment(long long userId, int tea
         "UPDATE team_persons "
         "   SET removed_at = now(), "
         "       removed_reason = 'admin_remove' "
-        " WHERE person_id = (SELECT person_id FROM external_person_aliases "
-        "                     WHERE provider = 'leagueapps' AND external_user_id = $1::text) "
+        " WHERE person_id = (SELECT id FROM persons WHERE la_user_id = $1::text) "
         "   AND team_id = $2 "
         "   AND removed_at IS NULL",
         {std::to_string(userId), std::to_string(teamId)}
@@ -181,8 +179,7 @@ std::optional<bool> MensTeamAssignments::setRosterStatus(long long userId,
     const auto rows = db_->query(
         "UPDATE team_persons "
         "   SET on_roster = $3 "
-        " WHERE person_id = (SELECT person_id FROM external_person_aliases "
-        "                     WHERE provider = 'leagueapps' AND external_user_id = $1::text) "
+        " WHERE person_id = (SELECT id FROM persons WHERE la_user_id = $1::text) "
         "   AND team_id = $2 "
         "   AND removed_at IS NULL "
         " RETURNING on_roster",
@@ -310,10 +307,9 @@ long long MensTeamAssignments::bulkEnsureActive(const std::vector<long long>& us
         // bulkRestoreForDelinquent so the row is active again.
         pqxx::result r = tx->exec_params(
             "INSERT INTO team_persons (team_id, person_id) "
-            "SELECT $2, epa.person_id "
-            "  FROM external_person_aliases epa "
-            " WHERE epa.provider = 'leagueapps' "
-            "   AND epa.external_user_id = $1::text "
+            "SELECT $2, p.id "
+            "  FROM persons p "
+            " WHERE p.la_user_id = $1::text "
             "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING "
             "RETURNING id",

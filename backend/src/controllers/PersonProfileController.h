@@ -14,8 +14,8 @@
 //   GET /api/persons/la/:leagueAppsUserId
 //   GET /api/persons/:personId
 //
-// Bridges LA user id ↔ persons.id via external_person_aliases
-// (provider='leagueapps'), then bundles a person's core identity +
+// Bridges LA user id ↔ persons.id via persons.la_user_id,
+// then bundles a person's core identity +
 // contact + LA memberships + upcoming bill + open charge flags +
 // field-level overrides + merge history into one JSON payload.
 //

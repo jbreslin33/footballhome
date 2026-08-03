@@ -37,17 +37,17 @@ ChargeFlags::Row fromRow(const pqxx::row& r) {
     }
     out.resolvedAt    = colStr(r, "resolved_at_iso");
     out.resolvedNote  = colStr(r, "resolved_note");
-    // First/last name backfilled via LEFT JOIN external_person_aliases in
-    // list/get queries; blank on plain SELECTs.
+    // First/last name backfilled via LEFT JOIN persons in list/get
+    // queries; blank on plain SELECTs.
     if (r.column_number("first_name") != -1) out.firstName = colStr(r, "first_name");
     if (r.column_number("last_name")  != -1) out.lastName  = colStr(r, "last_name");
     return out;
 }
 
-// SELECT list used by every read path.  Joins `external_person_aliases`
-// (provider='leagueapps') to denormalise the person's name into each row
-// so the queue UI doesn't need a per-row lookup.  Left join — a flag for
-// an LA userId with no alias row is still returned (blank name).
+// SELECT list used by every read path.  Joins `persons` (by la_user_id)
+// to denormalise the person's current name into each row so the queue UI
+// doesn't need a per-row lookup.  Left join — a flag for an LA userId
+// with no linked person is still returned (blank name).
 const char* kBaseSelect =
     "SELECT f.id, f.la_user_id, f.la_program_id, f.amount_cents, f.reason, "
     "       f.status, f.created_by, "
@@ -56,12 +56,11 @@ const char* kBaseSelect =
     "       CASE WHEN f.resolved_at IS NULL THEN NULL "
     "            ELSE TO_CHAR(f.resolved_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') END AS resolved_at_iso, "
     "       f.resolved_note, "
-    "       a.alias_first_name AS first_name, "
-    "       a.alias_last_name  AS last_name "
+    "       p.first_name AS first_name, "
+    "       p.last_name  AS last_name "
     "  FROM person_charge_flags f "
-    "  LEFT JOIN external_person_aliases a "
-    "         ON a.provider = 'leagueapps' "
-    "        AND a.external_user_id = f.la_user_id::text ";
+    "  LEFT JOIN persons p "
+    "         ON p.la_user_id = f.la_user_id::text ";
 
 } // namespace
 

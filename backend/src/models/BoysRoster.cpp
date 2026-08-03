@@ -362,15 +362,13 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     try {
         auto* db = Database::getInstance();
         pqxx::result rows = db->query(
-            "SELECT epa.external_user_id AS la_user_id, "
+            "SELECT p.la_user_id AS la_user_id, "
             "       TO_CHAR(MIN(plm.la_registered_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reg_iso "
             "  FROM person_la_memberships plm "
-            "  JOIN external_person_aliases epa "
-            "    ON epa.person_id = plm.person_id "
-            "   AND epa.provider  = 'leagueapps' "
+            "  JOIN persons p ON p.id = plm.person_id "
             " WHERE plm.la_registered_at IS NOT NULL "
-            "   AND epa.external_user_id IS NOT NULL "
-            " GROUP BY epa.external_user_id "
+            "   AND p.la_user_id IS NOT NULL "
+            " GROUP BY p.la_user_id "
         );
         for (const auto& r : rows) {
             if (r["la_user_id"].is_null() || r["reg_iso"].is_null()) continue;

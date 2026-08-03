@@ -138,13 +138,12 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
 
     int parentPersonId = 0;
     try {
-        // 1. Existing LA alias for the parent userId?
+        // 1. Existing person already linked to the parent userId?
         auto hit = db_->query(
-            "SELECT person_id FROM external_person_aliases "
-            "WHERE provider = 'leagueapps' AND external_user_id = $1 LIMIT 1",
+            "SELECT id FROM persons WHERE la_user_id = $1 LIMIT 1",
             {parentUserId});
         if (!hit.empty()) {
-            parentPersonId = hit[0]["person_id"].as<int>();
+            parentPersonId = hit[0]["id"].as<int>();
         } else {
             // 2. Existing persons row by parent name?
             auto pHit = db_->query(
@@ -164,15 +163,11 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
                 if (!ins.empty()) parentPersonId = ins[0]["id"].as<int>();
             }
 
-            // 4. Upsert LA alias for the parent so step 1 hits next time.
+            // 4. Set the parent's la_user_id so step 1 hits next time.
             if (parentPersonId > 0) {
                 db_->query(
-                    "INSERT INTO external_person_aliases "
-                    "  (provider, alias_first_name, alias_last_name, person_id, external_user_id) "
-                    "VALUES ('leagueapps', $1, $2, $3::int, $4) "
-                    "ON CONFLICT (provider, external_user_id) WHERE external_user_id IS NOT NULL "
-                    "DO UPDATE SET person_id = EXCLUDED.person_id, updated_at = NOW()",
-                    {parentFirst, parentLast, std::to_string(parentPersonId), parentUserId});
+                    "UPDATE persons SET la_user_id = $1, updated_at = NOW() WHERE id = $2::int",
+                    {parentUserId, std::to_string(parentPersonId)});
             }
         }
     } catch (const std::exception& e) {
@@ -226,14 +221,13 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
         return out;
     }
 
-    // 1. Alias fast-path.
+    // 1. Fast-path: person already linked to this LA userId?
     try {
         auto hit = db_->query(
-            "SELECT person_id FROM external_person_aliases "
-            "WHERE provider = 'leagueapps' AND external_user_id = $1 LIMIT 1",
+            "SELECT id FROM persons WHERE la_user_id = $1 LIMIT 1",
             {laUserId});
         if (!hit.empty()) {
-            out.personId = hit[0]["person_id"].as<int>();
+            out.personId = hit[0]["id"].as<int>();
             // Contact backfill even on the fast path — an existing alias
             // may have been created before we started ingesting email/phone,
             // and paused-program regs need their contact rows just as much
@@ -293,14 +287,12 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
             out.created = true;
         }
 
-        // 4. Upsert the LA alias (so step 1 hits next time).
+        // 4. Set la_user_id in place (so step 1 hits next time).  Overwrites
+        // whatever this person's previous LA userId was -- there is only
+        // ever one current id per person now, enforced by a unique index.
         db_->query(
-            "INSERT INTO external_person_aliases "
-            "  (provider, alias_first_name, alias_last_name, person_id, external_user_id) "
-            "VALUES ('leagueapps', $1, $2, $3::int, $4) "
-            "ON CONFLICT (provider, external_user_id) WHERE external_user_id IS NOT NULL "
-            "DO UPDATE SET person_id = EXCLUDED.person_id, updated_at = NOW()",
-            {firstName, lastName, std::to_string(personId), laUserId});
+            "UPDATE persons SET la_user_id = $1, updated_at = NOW() WHERE id = $2::int",
+            {laUserId, std::to_string(personId)});
 
         out.personId     = personId;
         out.aliasCreated = true;
@@ -424,23 +416,17 @@ void PersonLinker::closeStaleMemberships(long long programId,
                                          const std::set<std::string>& activeLaUserIds) {
     if (programId <= 0) return;
     try {
-        // Pull every OPEN row for this program alongside ALL of its
-        // person's leagueapps aliases (via external_person_aliases) and
-        // aggregate with bool_or: keep the row if ANY alias is in the
-        // active set, close it only if NONE are (or there's no alias at
-        // all — orphaned/manual insert).
-        //
-        // A person can carry more than one 'leagueapps' alias — e.g. a
-        // corrected re-registration under a new LA userId after the old
-        // one was deleted (2026-07-29, Sheldon Rhoden: old fraudulent-DOB
-        // account alias kept alongside the real one after merge).  A
-        // flat LEFT JOIN + per-row check here previously fanned out into
-        // one row per alias and closed the membership the instant ANY
-        // single alias — even a long-dead, unrelated one — wasn't in
-        // this sync's active set, regardless of whether another alias
-        // for the same person matched fine.  That reopened-then-closed
-        // the row on every single sync pass.  Aggregating per plm.id
-        // fixes it: the row only closes when NO alias is current.
+        // Pull every OPEN row for this program alongside its person's
+        // current la_user_id and close any whose id isn't in this sync's
+        // active set (or has no la_user_id at all — orphaned/manual
+        // insert).  Previously this joined through external_person_aliases
+        // and had to aggregate over potentially several alias rows per
+        // person with bool_or (2026-07-29, Sheldon Rhoden case: a stale
+        // second alias could otherwise flip a still-valid membership
+        // closed on every sync).  With persons.la_user_id always holding
+        // whichever id linkLa() just wrote this same sync pass, there is
+        // no longer a stale id left over to aggregate around — a plain
+        // per-row check is correct.
         //
         // We fetch first + UPDATE by id list rather than a subquery so
         // the DB call count is bounded (2 round-trips) even for a large
@@ -458,15 +444,12 @@ void PersonLinker::closeStaleMemberships(long long programId,
 
         auto rows = db_->query(
             "SELECT plm.id, "
-            "       bool_or(epa.external_user_id IS NOT NULL "
-            "               AND epa.external_user_id = ANY($2::text[])) AS keep "
+            "       (p.la_user_id IS NOT NULL "
+            "        AND p.la_user_id = ANY($2::text[])) AS keep "
             "  FROM person_la_memberships plm "
-            "  LEFT JOIN external_person_aliases epa "
-            "         ON epa.person_id = plm.person_id "
-            "        AND epa.provider  = 'leagueapps' "
+            "  JOIN persons p ON p.id = plm.person_id "
             " WHERE plm.la_program_id = $1::bigint "
-            "   AND plm.ended_at IS NULL "
-            " GROUP BY plm.id",
+            "   AND plm.ended_at IS NULL",
             {std::to_string(programId), activeArrLit});
 
         std::vector<std::string> toCloseIds;

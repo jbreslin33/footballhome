@@ -33,9 +33,9 @@
 //
 //   * Roster eligibility flows: fh_event_teams → teams →
 //     player_rsvp_eligibility.team_id → LA user ID →
-//     external_person_aliases → persons.  Same chain the write
-//     endpoint (POST /api/calendar/rsvp) uses, so anything the
-//     applier auto-registers is also something the user could have
+//     persons.la_user_id.  Same chain the write endpoint
+//     (POST /api/calendar/rsvp) uses, so anything the applier
+//     auto-registers is also something the user could have
 //     manually RSVP'd for.
 //
 //   * Skips events whose starts_at is > 1 day in the past — no
@@ -115,16 +115,15 @@ async function main() {
         const insertRes = await client.query(`
           INSERT INTO fh_event_rsvps
               (fh_event_id, person_id, response, responded_at, created_via)
-          SELECT DISTINCT $1::bigint, epa.person_id, frr.response,
+          SELECT DISTINCT $1::bigint, p.id, frr.response,
                           now(), 'standing'
             FROM fh_event_teams fet
             JOIN player_rsvp_eligibility ple
               ON ple.team_id = fet.team_id
-            JOIN external_person_aliases epa
-              ON epa.provider = 'leagueapps'
-             AND epa.external_user_id = ple.leagueapps_user_id::text
+            JOIN persons p
+              ON p.la_user_id = ple.leagueapps_user_id::text
             JOIN fh_recurring_rsvps frr
-              ON frr.person_id = epa.person_id
+              ON frr.person_id = p.id
              AND frr.active    = true
              AND frr.kind      = $2::text
              AND ( ($3::text IS NULL AND frr.category IS NULL)
