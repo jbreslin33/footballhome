@@ -429,7 +429,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
         // teams (e.g. the old grassroots buckets like Puerto Rico/DR/U23,
         // which still carry a fully-resolving division_id) show up here
         // but nowhere on the rosters pages.
-        std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, "
+        std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, t.gender_category, "
                           "       ch.id AS chat_id, ch.name AS chat_name, "
                           "       COUNT(tp.player_id) AS player_count "
                           "FROM coaches co "
@@ -440,7 +440,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
                           "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
                           "  AND t.board_sort_order IS NOT NULL "
                           "  AND t.board_archived_at IS NULL "
-                          "GROUP BY t.id, t.name, t.club_id, ch.id, ch.name "
+                          "GROUP BY t.id, t.name, t.club_id, t.gender_category, ch.id, ch.name "
                           "ORDER BY ch.name NULLS LAST, t.name";
 
         pqxx::result result;
@@ -453,7 +453,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
             }
 
             std::cerr << "⚠️ team_division_players missing, falling back to team_players in handleCoachTeams" << std::endl;
-            const std::string fallback_sql = "SELECT DISTINCT t.id, t.name, NULL::integer AS club_id, "
+            const std::string fallback_sql = "SELECT DISTINCT t.id, t.name, NULL::integer AS club_id, t.gender_category, "
                                              "       ch.id AS chat_id, ch.name AS chat_name, "
                                              "       COUNT(tp.player_id) AS player_count "
                                              "FROM coaches co "
@@ -464,7 +464,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
                                              "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
                                              "  AND t.board_sort_order IS NOT NULL "
                                              "  AND t.board_archived_at IS NULL "
-                                             "GROUP BY t.id, t.name, ch.id, ch.name "
+                                             "GROUP BY t.id, t.name, t.gender_category, ch.id, ch.name "
                                              "ORDER BY ch.name NULLS LAST, t.name";
             result = db_->query(fallback_sql, {user_id});
         }
@@ -504,12 +504,14 @@ Response AuthController::handleCoachTeams(const Request& request) {
             const std::string teamName = row["name"].as<std::string>();
             const std::string rawChatName = row["chat_name"].is_null() ? "" : row["chat_name"].as<std::string>();
             const std::string displayName = rawChatName.empty() ? teamName : rawChatName;
+            const std::string genderCategory = row["gender_category"].is_null() ? "" : row["gender_category"].as<std::string>();
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
                       << "\"display_name\":\"" << jsonEscape(displayName) << "\","
                       << "\"name\":\"" << jsonEscape(teamName) << "\","
                       << "\"chat_id\":" << (row["chat_id"].is_null() ? "null" : std::to_string(row["chat_id"].as<int>())) << ","
                       << "\"chat_name\":" << (rawChatName.empty() ? "null" : ("\"" + jsonEscape(rawChatName) + "\"")) << ","
                       << "\"club_id\":" << (row["club_id"].is_null() ? "null" : std::to_string(row["club_id"].as<int>())) << ","
+                      << "\"gender_category\":" << (genderCategory.empty() ? "null" : ("\"" + jsonEscape(genderCategory) + "\"")) << ","
                       << "\"player_count\":" << row["player_count"].as<int>() << "}";
         }
         teams_json << "]";
