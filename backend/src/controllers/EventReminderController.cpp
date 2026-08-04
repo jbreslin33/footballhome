@@ -258,9 +258,6 @@ Response EventReminderController::handleSendReminders(const Request& request,
         const std::string eventKind  = ev[0]["kind"].is_null()
                                      ? std::string{}
                                      : ev[0]["kind"].as<std::string>();
-        const std::string eventTitle = ev[0]["title"].is_null()
-                                     ? std::string{}
-                                     : ev[0]["title"].as<std::string>();
         const std::string eventDate  = ev[0]["event_date"].is_null()
                                      ? std::string{}
                                      : ev[0]["event_date"].as<std::string>();
@@ -421,9 +418,10 @@ Response EventReminderController::handleSendReminders(const Request& request,
                 replaceAll(replaceAll(templateBody, "{first}", firstName),
                            "{event_phrase}", eventPhrase);
 
-            const std::string subject =
-                std::string("Football Home \u2014 RSVP")
-                + (eventTitle.empty() ? "" : (" for " + eventTitle));
+            // kindName ("Practice"/"Game"/...), never the gcal event title \u2014
+            // the gcal title is in-house LH admin copy (e.g. "Soccer 11th
+            // grade+ Practice") and shouldn't leak into player-facing mail.
+            const std::string subject = "RSVP needed for " + kindName;
 
             json rec = {
                 {"person_id",  personId},
@@ -660,6 +658,13 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
             //    lookup so pickup-only members render in the collapsed
             //    section at the bottom of the column (user directive
             //    2026-07-07).
+            // Players (team_persons) unioned with coaches of the event's teams
+            // (team_coaches) — coaches were previously invisible on this board
+            // even though they're RSVP-eligible for the same events, so a
+            // coach who never responds never got tracked/reminded. Coaches
+            // fold straight into the regular "players" bucket (is_coach:
+            // true, is_pickup_only: false) rather than a separate list, so
+            // the existing No-Response bcc button just picks them up too.
             auto players = db->query(
                 "SELECT DISTINCT p.id AS person_id, "
                 "       p.first_name, p.last_name, "
@@ -685,7 +690,8 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
                 "         WHEN 120 THEN 'L1' "
                 "         WHEN 121 THEN 'L2' "
                 "         WHEN 122 THEN 'Adult' "
-                "         ELSE NULL END AS home_team_short "
+                "         ELSE NULL END AS home_team_short, "
+                "       false AS is_coach "
                 "  FROM fh_event_teams fet "
                 "  JOIN team_persons tp "
                 "    ON tp.team_id = fet.team_id "
@@ -712,7 +718,50 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
                 "        AND plm.ended_at IS NULL "
                 "        AND lp.variant   = 'paused' "
                 "   ) "
-                " ORDER BY p.last_name, p.first_name",
+                ""
+                " UNION "
+                ""
+                "SELECT DISTINCT p.id, "
+                "       p.first_name, p.last_name, "
+                "       (SELECT email FROM person_emails "
+                "         WHERE person_id = p.id "
+                "         ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "       (SELECT phone_number FROM person_phones "
+                "         WHERE person_id = p.id "
+                "         ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "       (SELECT phone_number FROM person_phones "
+                "         WHERE person_id = p.id AND can_receive_sms = true "
+                "         ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "       r.response, "
+                "       false, "
+                "       ht.team_id, "
+                "       CASE ht.team_id "
+                "         WHEN 35  THEN 'APSL' "
+                "         WHEN 120 THEN 'L1' "
+                "         WHEN 121 THEN 'L2' "
+                "         WHEN 122 THEN 'Adult' "
+                "         ELSE NULL END, "
+                "       true "
+                "  FROM fh_event_teams fet "
+                "  JOIN team_coaches tc "
+                "    ON tc.team_id = fet.team_id "
+                "   AND tc.ended_at IS NULL "
+                "  JOIN coaches co ON co.id = tc.coach_id "
+                "  JOIN persons p ON p.id = co.person_id "
+                "  LEFT JOIN LATERAL ( "
+                "     SELECT tct.team_id "
+                "       FROM team_coaches tct "
+                "      WHERE tct.coach_id = tc.coach_id "
+                "        AND tct.ended_at IS NULL "
+                "        AND tct.team_id IN (35, 120, 121, 122) "
+                "      ORDER BY tct.team_id LIMIT 1 "
+                "  ) ht ON true "
+                "  LEFT JOIN fh_event_rsvps r "
+                "    ON r.fh_event_id = $1::bigint "
+                "   AND r.person_id   = p.id "
+                " WHERE fet.fh_event_id = $1::bigint "
+                ""
+                " ORDER BY last_name, first_name",
                 {std::to_string(fhEventId)});
 
             json plist = json::array();
@@ -729,6 +778,7 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
                     {"rsvp_status",r["rsvp_status"].is_null() ? json(nullptr)
                                                               : json(r["rsvp_status"].as<std::string>())},
                     {"is_pickup_only", !r["is_pickup_only"].is_null() && r["is_pickup_only"].as<bool>()},
+                    {"is_coach",       !r["is_coach"].is_null() && r["is_coach"].as<bool>()},
                 };
                 plist.push_back(std::move(rec));
             }

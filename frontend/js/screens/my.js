@@ -374,7 +374,8 @@ class MyScreen extends Screen {
     const rows = going
       .map(r => {
         const name = (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
-        return `<div style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}</div>`;
+        const coachTag = r && r.is_coach ? ' <span style="opacity:0.65; font-weight:600;">(Coach)</span>' : '';
+        return `<div style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}${coachTag}</div>`;
       })
       .join('');
 

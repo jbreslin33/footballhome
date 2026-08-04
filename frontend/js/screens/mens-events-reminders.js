@@ -345,12 +345,10 @@ class MensEventsRemindersScreen extends Screen {
     // so coaches can plan (mirrors the same policy line in the magic-
     // link body served by EventReminderController::handleSendReminders
     // and the /#my week-schedule page).
-    const eventWhen = [ev.date_str, ev.time_str].filter(Boolean).join(' ');
-    const eventTitle = ev.title || ev.type_label || 'the next event';
-    const isPractice = String(ev.kind || '').toLowerCase() === 'practice';
-    const eventLabel = isPractice
-      ? (eventWhen ? `today's practice` : 'practice')
-      : `${eventTitle}${eventWhen ? ' on ' + eventWhen : ''}`;
+    // Subject uses type_label ("Practice"/"Game"/"Pickup"), never ev.title —
+    // the gcal event title is in-house LH admin copy (e.g. "Soccer 11th
+    // grade+ Practice") and shouldn't leak into player-facing mail.
+    const typeLabel = ev.type_label || 'Event';
     const bodyLines = [
       `Hi ${p.first_name || 'there'} — Heads up you have not set availability.`,
       '',
@@ -360,7 +358,7 @@ class MensEventsRemindersScreen extends Screen {
     ];
     const plainBody = bodyLines.join('\n');
     const plainSmsBody = bodyLines.join('\n');
-    const plainSubject = `Football Home — RSVP for ${eventTitle}`;
+    const plainSubject = `RSVP needed for ${typeLabel}`;
 
     const hasEmail = !!p.email;
     const hasSms   = !!(p.phone && p.sms_capable);
@@ -398,10 +396,14 @@ class MensEventsRemindersScreen extends Screen {
                  style="${btnBase}background:#0ea5e9;color:#fff;">🔗💬</button>`
       : this._disabledBtn(btnBase, '🔗💬', 'No SMS phone on file');
 
+    const coachTag = p.is_coach
+      ? ' <span style="font-size:0.68rem;font-weight:700;opacity:0.75;">(Coach)</span>'
+      : '';
+
     return `
       <div style="display:flex;flex-direction:column;gap:3px;padding:5px 6px;background:rgba(15,23,42,0.35);border-radius:6px;">
         <div style="font-size:0.82rem;font-weight:600;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-          ${name}
+          ${name}${coachTag}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:nowrap;">
           ${emailPlainBtn}${smsPlainBtn}${emailMagicBtn}${smsMagicBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: p.leagueapps_user_id || p.la_user_id, personId: p.person_id, firstName: p.first_name, fullName: `${p.first_name || ''} ${p.last_name || ''}`.trim() }, { returnTo: 'mensEventsReminders' }) : ''}
@@ -488,12 +490,17 @@ class MensEventsRemindersScreen extends Screen {
       return;
     }
 
+    // type_label ("Practice"/"Game"/"Pickup"), never ev.title — the gcal
+    // event title is in-house LH admin copy (e.g. "Soccer 11th grade+
+    // Practice") and shouldn't leak into player-facing mail. Time still
+    // comes from the gcal event (date_str/time_str) since that part is
+    // legitimately player-facing.
     const eventWhen = [ev.date_str, ev.time_str].filter(Boolean).join(' ');
-    const eventTitle = ev.title || ev.type_label || 'the event';
+    const typeLabel = ev.type_label || 'Event';
     const isPractice = String(ev.kind || '').toLowerCase() === 'practice';
     const eventLabel = isPractice
       ? (eventWhen ? `today's practice (${eventWhen})` : 'today\'s practice')
-      : `${eventTitle}${eventWhen ? ' — ' + eventWhen : ''}`;
+      : `${typeLabel}${eventWhen ? ' — ' + eventWhen : ''}`;
 
     const lines = [
       `Hi — you're currently showing as No Response for ${eventLabel}.`,
@@ -508,7 +515,7 @@ class MensEventsRemindersScreen extends Screen {
       `Thanks!`,
     );
     const body = lines.join('\n');
-    const subject = `RSVP needed — ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
+    const subject = `RSVP needed for ${typeLabel}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
 
     // Same Gmail-compose convention as _plainMailtoHref, but with `bcc`
     // instead of `to` so the group stays private from each other

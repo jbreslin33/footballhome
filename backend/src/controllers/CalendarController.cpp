@@ -501,7 +501,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                         'response',       roster.response,
                                                         'created_via',    roster.created_via,
                                                         'responded_at',   roster.responded_at,
-                                                        'is_pickup_only', roster.is_pickup_only
+                                                        'is_pickup_only', roster.is_pickup_only,
+                                                        'is_coach',       roster.is_coach
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
@@ -514,7 +515,25 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                  roster.person_id ASC
                     )
                                         FROM (
-                                                SELECT DISTINCT ON (p.id)
+                                                -- Players (team_persons) unioned with coaches (team_coaches, §5.3
+                                                -- roster-membership-adjacent but a separate role/table entirely) —
+                                                -- coaches are RSVP-eligible (see EXISTS block below / isEventCoachOrAdmin)
+                                                -- but were invisible in this player-facing "who's going" list since it
+                                                -- only ever walked team_persons. DISTINCT ON (person_id) picks the
+                                                -- player row over the coach row on the rare overlap (ORDER BY is_coach
+                                                -- puts is_coach=false first).
+                                                SELECT DISTINCT ON (combined.person_id)
+                                                             combined.person_id,
+                                                             combined.first_name,
+                                                             combined.last_name,
+                                                             combined.name,
+                                                             combined.response,
+                                                             combined.created_via,
+                                                             combined.responded_at,
+                                                             combined.is_pickup_only,
+                                                             combined.is_coach
+                                                    FROM (
+                                                        SELECT
                                                              p.id AS person_id,
                                                              p.first_name,
                                                              p.last_name,
@@ -535,17 +554,46 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                                     AND tp_sel.team_id    IN (35, 120, 121, 122)
                                                                      )
                                                                      ELSE false
-                                                             END AS is_pickup_only
-                                                    FROM fh_event_teams fet
-                                                    JOIN team_persons tp
-                                                        ON tp.team_id = fet.team_id
-                                                       AND tp.removed_at IS NULL
-                                                    JOIN persons p ON p.id = tp.person_id
-                                                    LEFT JOIN fh_event_rsvps er
-                                                        ON er.fh_event_id = fe.id
-                                                     AND er.person_id   = p.id
-                                                 WHERE fet.fh_event_id = fe.id
-                                                 ORDER BY p.id
+                                                             END AS is_pickup_only,
+                                                             false AS is_coach
+                                                        FROM fh_event_teams fet
+                                                        JOIN team_persons tp
+                                                            ON tp.team_id = fet.team_id
+                                                           AND tp.removed_at IS NULL
+                                                        JOIN persons p ON p.id = tp.person_id
+                                                        LEFT JOIN fh_event_rsvps er
+                                                            ON er.fh_event_id = fe.id
+                                                         AND er.person_id   = p.id
+                                                     WHERE fet.fh_event_id = fe.id
+
+                                                        UNION ALL
+
+                                                        SELECT
+                                                             p.id,
+                                                             p.first_name,
+                                                             p.last_name,
+                                                             NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
+                                                             er.response,
+                                                             er.created_via,
+                                                             CASE
+                                                                     WHEN er.responded_at IS NULL THEN NULL
+                                                                     ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
+                                                                                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                                             END,
+                                                             false,
+                                                             true
+                                                        FROM fh_event_teams fet
+                                                        JOIN team_coaches tc
+                                                            ON tc.team_id = fet.team_id
+                                                           AND tc.ended_at IS NULL
+                                                        JOIN coaches co ON co.id = tc.coach_id
+                                                        JOIN persons p ON p.id = co.person_id
+                                                        LEFT JOIN fh_event_rsvps er
+                                                            ON er.fh_event_id = fe.id
+                                                         AND er.person_id   = p.id
+                                                     WHERE fet.fh_event_id = fe.id
+                                                    ) combined
+                                                 ORDER BY combined.person_id, combined.is_coach ASC
                                         ) roster
                                         WHERE roster.is_pickup_only = false
                                              OR roster.response = 'yes'
