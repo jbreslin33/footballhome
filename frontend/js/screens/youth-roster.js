@@ -15,6 +15,15 @@
 //   U10                               — U9 + U10      (co-ed)
 //   U12                               — U11 + U12     (co-ed)
 //   Philadelphia League — Boys/Girls — U13+          (split by club)
+//
+// No manual move/assign here — bucketing is fully automatic (by age),
+// and YouthRosterController registers no POST /assign route. So this
+// screen was confirmed OUT of scope for the 2026-08-03 boys/mens roster
+// move-bug fix (LA userId drift + personId-keyed writes, see
+// MensTeamAssignments.h) — there's no move click to be affected.
+// Girls (GirlsRosterScreen) and Womens (WomensRosterScreen) both extend
+// BoysRosterScreen and hit /api/boys-roster, so that fix already covers
+// them too — nothing screen-specific was needed there.
 class YouthRosterScreen extends Screen {
   render() {
     const div = document.createElement('div');
