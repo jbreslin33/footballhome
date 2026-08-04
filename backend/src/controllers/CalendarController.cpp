@@ -402,6 +402,30 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 fe.category,
                 fe.is_home,
                 fe.opponent,
+                -- Opponent crest: gcal_opponent_aliases (migration 258)
+                -- first — the hand-seeded, unambiguous mapping from
+                -- free-form Opponent: text to a real team, same pattern
+                -- as gcal_team_aliases for our own Team:/Club: tags — then
+                -- falls back to an exact (case/whitespace-insensitive)
+                -- teams.name match for opponents that happen to be typed
+                -- verbatim. No fuzzy/substring matching: "Oaklyn United"
+                -- as typed is a substring/word-match against three
+                -- different scraped team rows, so guessing would risk
+                -- showing the wrong club's crest. NULL falls through to
+                -- the Lighthouse crest on the frontend. New opponents
+                -- just need one INSERT into gcal_opponent_aliases.
+                COALESCE(
+                    (SELECT t.logo_url
+                       FROM gcal_opponent_aliases goa
+                       JOIN teams t ON t.id = goa.team_id
+                      WHERE fe.opponent IS NOT NULL
+                        AND LOWER(BTRIM(goa.alias)) = LOWER(BTRIM(fe.opponent))
+                      LIMIT 1),
+                    (SELECT t.logo_url FROM teams t
+                      WHERE fe.opponent IS NOT NULL
+                        AND LOWER(BTRIM(t.name)) = LOWER(BTRIM(fe.opponent))
+                      LIMIT 1)
+                ) AS opponent_logo_url,
                 fe.fh_notes,
                 CASE
                     WHEN fe.rsvps_open_at IS NULL THEN NULL
@@ -621,6 +645,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["category"]          = textOrNull(row, "category");
             ev["is_home"]           = boolOrNull(row, "is_home");
             ev["opponent"]          = textOrNull(row, "opponent");
+            ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");
             ev["fh_notes"]          = textOrNull(row, "fh_notes");
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();

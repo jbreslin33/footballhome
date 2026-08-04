@@ -78,6 +78,31 @@ class Screen {
     return `<img src="${resolvedUrl}" class="${className}" alt="${safeAlt}" onerror="this.onerror=null;this.outerHTML='${placeholderHtml}'">`;
   }
   
+  // Full-size photo viewer usable by any screen — attach
+  // data-lightbox-src="<url>" to a thumbnail and wire a click handler that
+  // calls this. Closes on backdrop click, the ✕ button, or Escape.
+  openImageLightbox(imageUrl) {
+    if (!imageUrl) return;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; padding:var(--space-4); cursor:zoom-out;';
+    overlay.innerHTML = `
+      <img src="${this.escapeHtml(imageUrl)}" alt="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:var(--radius-sm); box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+      <button type="button" aria-label="Close" style="position:fixed; top:var(--space-3); right:var(--space-3); background:rgba(0,0,0,0.6); color:#fff; border:1px solid rgba(255,255,255,0.4); border-radius:50%; width:2.2rem; height:2.2rem; font-size:1.1rem; line-height:1; cursor:pointer;">✕</button>
+    `;
+    const close = () => {
+      overlay.remove();
+      document.removeEventListener('keydown', onKeyDown);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('button')) close();
+    });
+    document.addEventListener('keydown', onKeyDown);
+    document.body.appendChild(overlay);
+  }
+
   // Safe fetch that ignores results if screen unmounted
   safeFetch(url, onSuccess, onError) {
     return this.auth.fetch(url)

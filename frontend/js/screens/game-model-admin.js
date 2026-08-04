@@ -98,6 +98,11 @@ class GameModelAdminScreen extends Screen {
       const deleteImageBtn = e.target.closest('.delete-exercise-image-btn');
       if (deleteImageBtn) {
         this.deleteExerciseImage(parseInt(deleteImageBtn.getAttribute('data-image-id'), 10));
+        return;
+      }
+      const lightboxImg = e.target.closest('[data-lightbox-src]');
+      if (lightboxImg) {
+        this.openImageLightbox(lightboxImg.getAttribute('data-lightbox-src'));
       }
     });
     this.element.addEventListener('change', (e) => {
@@ -466,7 +471,7 @@ class GameModelAdminScreen extends Screen {
           : '—';
         const images = (this.parentOptions.exercise_images || []).filter((img) => img.exercise_id === item.id);
         const photosCell = images.length
-          ? `<img src="${this.escapeHtml(images[0].image_url)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px;vertical-align:middle;border:1px solid var(--border-color);">${images.length > 1 ? ` +${images.length - 1}` : ''}`
+          ? `<img src="${this.escapeHtml(images[0].image_url)}" alt="" data-lightbox-src="${this.escapeHtml(images[0].image_url)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;vertical-align:middle;border:1px solid var(--border-color);cursor:zoom-in;">${images.length > 1 ? ` +${images.length - 1}` : ''}`
           : '—';
         return `
           <tr>
@@ -659,7 +664,7 @@ class GameModelAdminScreen extends Screen {
 
     const thumbs = images.map((img) => `
       <div style="position:relative; width:110px;">
-        <img src="${this.escapeHtml(img.image_url)}" alt="Exercise photo" style="width:110px; height:110px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:block;">
+        <img src="${this.escapeHtml(img.image_url)}" alt="Exercise photo" data-lightbox-src="${this.escapeHtml(img.image_url)}" style="width:110px; height:110px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:block; cursor:zoom-in;">
         <button type="button" class="btn btn-danger btn-sm delete-exercise-image-btn" data-image-id="${img.id}" title="Remove photo" style="position:absolute; top:4px; right:4px; padding:0.2rem 0.5rem; line-height:1;">✕</button>
       </div>
     `).join('');
@@ -718,21 +723,39 @@ class GameModelAdminScreen extends Screen {
     try {
       if (statusEl) statusEl.textContent = 'Reading photo…';
       const dataUrl = await this.resizeImageForUpload(file, 2000, 0.92);
-      const text = await this.uploadExerciseDescriptionOcr(dataUrl);
-      const targetEl = this.find(`#gm-admin-field-${targetKey}`);
-      if (!targetEl) {
-        if (statusEl) statusEl.textContent = 'Could not find that field.';
-        return;
-      }
-      if (targetEl.value.trim() !== '') {
-        const fieldLabel = targetSelect.options[targetSelect.selectedIndex].text;
-        if (!window.confirm(`Replace the existing ${fieldLabel} text with the text read from the photo?`)) {
-          if (statusEl) statusEl.textContent = '';
-          return;
+      const result = await this.uploadExerciseDescriptionOcr(dataUrl);
+      // The photo is always saved (it'll show up in the Photos section
+      // below once we reload/re-render), even if OCR itself failed —
+      // that way there's still something to look at.
+      await this.reloadExerciseImages();
+
+      // Decide what to do with the transcribed text *before* re-rendering
+      // (openEditor rebuilds fields from this.entities, wiping any value we
+      // set on the old, about-to-be-discarded textarea).
+      let finalStatus;
+      let textToApply = null;
+      if (result.ocrError) {
+        finalStatus = `Photo saved, but couldn't read text: ${result.ocrError}`;
+      } else {
+        const targetEl = this.find(`#gm-admin-field-${targetKey}`);
+        if (!targetEl) {
+          finalStatus = 'Photo saved, but could not find that field.';
+        } else if (targetEl.value.trim() !== '' &&
+                   !window.confirm(`Replace the existing ${targetSelect.options[targetSelect.selectedIndex].text} text with the text read from the photo?`)) {
+          finalStatus = 'Photo saved.';
+        } else {
+          textToApply = result.text.trim();
+          finalStatus = 'Done — review and edit the text, then Save.';
         }
       }
-      targetEl.value = text.trim();
-      if (statusEl) statusEl.textContent = 'Done — review and edit the text, then Save.';
+
+      this.openEditor(this.currentEditId, this.currentContext);
+      if (textToApply !== null) {
+        const refreshedTargetEl = this.find(`#gm-admin-field-${targetKey}`);
+        if (refreshedTargetEl) refreshedTargetEl.value = textToApply;
+      }
+      const refreshedStatusEl = this.find('[data-exercise-description-ocr-status]');
+      if (refreshedStatusEl) refreshedStatusEl.textContent = finalStatus;
     } catch (e) {
       console.error('Error reading description photo:', e);
       if (statusEl) statusEl.textContent = 'Failed to read photo. Please try again.';
@@ -749,7 +772,8 @@ class GameModelAdminScreen extends Screen {
       throw new Error(`HTTP ${response.status}`);
     }
     const payload = await response.json();
-    return (payload && payload.data && payload.data.text) || '';
+    const data = (payload && payload.data) || {};
+    return { text: data.text || '', ocrError: data.ocr_error || null };
   }
 
   // Downscales/re-encodes to JPEG client-side before upload — phone
@@ -838,6 +862,7 @@ class GameModelAdminScreen extends Screen {
       })
       .catch(() => {});
   }
+
 
   // New exercises only: mirror Title into Slug/Simulator Slug as the user
   // types, so they don't have to hand-type a slug for every drill. Stops

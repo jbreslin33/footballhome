@@ -10,6 +10,7 @@ class PracticePlanScreen extends Screen {
     this.sessions = [];
     this.sessionExercises = [];
     this.exercises = [];
+    this.exerciseImages = [];
     this.searchFilterId = null;
   }
 
@@ -100,14 +101,23 @@ class PracticePlanScreen extends Screen {
       .then((payload) => Array.isArray(payload) ? payload : (payload?.data || []))
       .catch(() => []);
 
-    Promise.all([daysRequest, practicesRequest, sessionsRequest, sessionExercisesRequest, exercisesRequest])
-      .then(([days, practices, sessions, sessionExercises, exercises]) => {
+    const exerciseImagesRequest = this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercise_images`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((payload) => Array.isArray(payload) ? payload : (payload?.data || []))
+      .catch(() => []);
+
+    Promise.all([daysRequest, practicesRequest, sessionsRequest, sessionExercisesRequest, exercisesRequest, exerciseImagesRequest])
+      .then(([days, practices, sessions, sessionExercises, exercises, exerciseImages]) => {
         if (!this.isMounted) return;
         this.days = days || [];
         this.practices = practices || [];
         this.sessions = sessions || [];
         this.sessionExercises = sessionExercises || [];
         this.exercises = exercises || [];
+        this.exerciseImages = exerciseImages || [];
         container.innerHTML = this.renderContent();
         this.bindInteractions();
       })
@@ -174,6 +184,11 @@ class PracticePlanScreen extends Screen {
     });
 
     this.element.addEventListener('click', async (e) => {
+      const lightboxImg = e.target.closest('[data-lightbox-src]');
+      if (lightboxImg) {
+        this.openImageLightbox(lightboxImg.getAttribute('data-lightbox-src'));
+        return;
+      }
       if (e.target.closest('[data-exercise-option]')) {
         const option = e.target.closest('[data-exercise-option]');
         const sessionId = parseInt(option.getAttribute('data-session-id'));
@@ -292,6 +307,13 @@ class PracticePlanScreen extends Screen {
   renderDayPlan(day) {
     const dayPractices = (this.practices || []).filter((practice) => practice?.day_id === day?.id);
     const exerciseMap = new Map((this.exercises || []).map((exercise) => [exercise.id, exercise]));
+    const exerciseImageMap = new Map();
+    (this.exerciseImages || [])
+      .slice()
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .forEach((img) => {
+        if (!exerciseImageMap.has(img.exercise_id)) exerciseImageMap.set(img.exercise_id, img.image_url);
+      });
     const sessionExercisesBySession = new Map();
 
     (this.sessionExercises || []).forEach((entry) => {
@@ -343,7 +365,7 @@ class PracticePlanScreen extends Screen {
                       .slice()
                       .sort((a, b) => (a?.sequence_order || 0) - (b?.sequence_order || 0));
 
-                    return this.renderSessionEditCard(session, sessionExercises, exerciseMap, practice);
+                    return this.renderSessionEditCard(session, sessionExercises, exerciseMap, practice, exerciseImageMap);
                   }).join('')}
                   <div style="padding-top: var(--space-2); display:flex; gap: var(--space-2);">
                     <button class="btn btn-secondary" type="button" data-add-session data-practice-id="${practice.id}" style="flex:1;">+ Add Session</button>
@@ -366,7 +388,7 @@ class PracticePlanScreen extends Screen {
     `;
   }
 
-  renderSessionEditCard(session, sessionExercises, exerciseMap, practice) {
+  renderSessionEditCard(session, sessionExercises, exerciseMap, practice, exerciseImageMap = new Map()) {
     const startTime = this.formatTimeValue(session.start_time);
     const endTime = this.formatTimeValue(session.end_time);
 
@@ -383,13 +405,20 @@ class PracticePlanScreen extends Screen {
         <div style="display: grid; gap: var(--space-1);">
           ${sessionExercises.length > 0 ? sessionExercises.map((se) => {
             const ex = exerciseMap.get(se.exercise_id);
+            const imageUrl = exerciseImageMap.get(se.exercise_id);
+            const thumbMarkup = imageUrl
+              ? `<img src="${this.escapeHtml(imageUrl)}" alt="" data-lightbox-src="${this.escapeHtml(imageUrl)}" style="width:44px;height:44px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border-color);cursor:zoom-in;flex-shrink:0;">`
+              : '';
             return `
-              <div style="padding: var(--space-1); background: rgba(255,255,255,0.05); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                  <div style="font-weight: 500;">${this.escapeHtml(ex?.title || 'Exercise')}</div>
-                  <div style="opacity: 0.7; font-size: 0.85rem;">${this.escapeHtml(ex?.summary || '')}</div>
+              <div style="padding: var(--space-1); background: rgba(255,255,255,0.05); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);">
+                <div style="display: flex; align-items: center; gap: var(--space-2); min-width: 0;">
+                  ${thumbMarkup}
+                  <div style="min-width: 0;">
+                    <div style="font-weight: 500;">${this.escapeHtml(ex?.title || 'Exercise')}</div>
+                    <div style="opacity: 0.7; font-size: 0.85rem;">${this.escapeHtml(ex?.summary || '')}</div>
+                  </div>
                 </div>
-                <button class="btn btn-danger btn-sm" type="button" data-delete-exercise data-session-exercise-id="${se.id}">Remove</button>
+                <button class="btn btn-danger btn-sm" type="button" data-delete-exercise data-session-exercise-id="${se.id}" style="flex-shrink:0;">Remove</button>
               </div>
             `;
           }).join('') : '<div style="opacity: 0.7; font-size: 0.9rem;">No exercises yet</div>'}

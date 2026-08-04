@@ -753,35 +753,13 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Image too large (max 8MB)"));
         }
 
-        const std::string mediaDir = "/app/images/exercises";
-        mkdir(mediaDir.c_str(), 0755);
-
-        auto nextSort = db_->query(
-            "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM club_game_model_exercise_images WHERE exercise_id = $1::int",
-            { std::to_string(exercise_id) });
-        int sortOrder = nextSort.empty() ? 0 : nextSort[0]["next_sort"].as<int>();
-
-        long long stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
-        std::string filename = "exercise_" + std::to_string(exercise_id) + "_" + std::to_string(stamp) + "." + ext;
-        std::string filepath = mediaDir + "/" + filename;
-
-        std::ofstream outFile(filepath, std::ios::binary);
-        if (!outFile.is_open()) {
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write image file"));
-        }
-        outFile.write(imageBytes.data(), static_cast<std::streamsize>(imageBytes.size()));
-        outFile.close();
-
-        std::string publicUrl = "/images/exercises/" + filename;
-
-        auto inserted = db_->query(
-            "INSERT INTO club_game_model_exercise_images (exercise_id, image_path, image_url, sort_order, created_at) "
-            "VALUES ($1::int, $2, $3, $4::int, NOW()) RETURNING id",
-            { std::to_string(exercise_id), filename, publicUrl, std::to_string(sortOrder) });
+        long long imageId = 0;
+        std::string publicUrl;
+        int sortOrder = 0;
+        saveExerciseImage(exercise_id, imageBytes, ext, imageId, publicUrl, sortOrder);
 
         std::ostringstream data;
-        data << "{\"id\":" << inserted[0]["id"].as<long long>()
+        data << "{\"id\":" << imageId
              << ",\"exercise_id\":" << exercise_id
              << ",\"image_url\":\"" << escapeJson(publicUrl) << "\""
              << ",\"sort_order\":" << sortOrder << "}";
@@ -791,6 +769,39 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
         std::cerr << "Error uploading exercise image: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
+}
+
+// Shared by handleUploadExerciseImage and handleExerciseDescriptionOcr — both
+// persist a photo to the same club_game_model_exercise_images table.
+void ClubController::saveExerciseImage(int exercise_id, const std::string& imageBytes, const std::string& ext,
+                                        long long& outId, std::string& outImageUrl, int& outSortOrder) {
+    const std::string mediaDir = "/app/images/exercises";
+    mkdir(mediaDir.c_str(), 0755);
+
+    auto nextSort = db_->query(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM club_game_model_exercise_images WHERE exercise_id = $1::int",
+        { std::to_string(exercise_id) });
+    outSortOrder = nextSort.empty() ? 0 : nextSort[0]["next_sort"].as<int>();
+
+    long long stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    std::string filename = "exercise_" + std::to_string(exercise_id) + "_" + std::to_string(stamp) + "." + ext;
+    std::string filepath = mediaDir + "/" + filename;
+
+    std::ofstream outFile(filepath, std::ios::binary);
+    if (!outFile.is_open()) {
+        throw std::runtime_error("Failed to write image file");
+    }
+    outFile.write(imageBytes.data(), static_cast<std::streamsize>(imageBytes.size()));
+    outFile.close();
+
+    outImageUrl = "/images/exercises/" + filename;
+
+    auto inserted = db_->query(
+        "INSERT INTO club_game_model_exercise_images (exercise_id, image_path, image_url, sort_order, created_at) "
+        "VALUES ($1::int, $2, $3, $4::int, NOW()) RETURNING id",
+        { std::to_string(exercise_id), filename, outImageUrl, std::to_string(outSortOrder) });
+    outId = inserted[0]["id"].as<long long>();
 }
 
 // DELETE /api/clubs/:id/game-model/admin/exercises/:exerciseId/images/:imageId
@@ -847,9 +858,11 @@ Response ClubController::handleDeleteExerciseImage(const Request& request) {
 
 // POST /api/clubs/:id/game-model/admin/exercises/:exerciseId/description-ocr
 // Body: { "image": "data:image/...;base64,..." } — same shape as the photo
-// upload above, but the bytes are never written to disk; they're forwarded
-// to VisionOcrService and the transcribed text is returned for the
-// frontend to drop into whichever textarea the coach picked.
+// upload above. The photo is always persisted via saveExerciseImage (same
+// table/disk path as a regular exercise photo) so the coach has something to
+// look at even if OCR fails; it's also forwarded to VisionOcrService and the
+// transcribed text is returned for the frontend to drop into whichever
+// textarea the coach picked.
 Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
     if (!requireBearer(request)) {
         return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
@@ -906,6 +919,8 @@ Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
         if (!std::regex_search(dataValue, mimeMatch, mimeRe)) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Only PNG/JPEG/WebP/GIF images are supported"));
         }
+        std::string ext = mimeMatch[1].str();
+        if (ext == "jpeg") ext = "jpg";
         std::string subtype = mimeMatch[1].str();
         if (subtype == "jpg") subtype = "jpeg";
         std::string mediaType = "image/" + subtype;
@@ -920,16 +935,32 @@ Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Image too large (max 8MB)"));
         }
 
+        long long imageId = 0;
+        std::string publicUrl;
+        int sortOrder = 0;
+        try {
+            saveExerciseImage(exercise_id, imageBytes, ext, imageId, publicUrl, sortOrder);
+        } catch (const std::exception& e) {
+            std::cerr << "Error saving exercise OCR image: " << e.what() << std::endl;
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to save image"));
+        }
+
         std::string text;
+        std::string ocrError;
         try {
             text = VisionOcrService::getInstance().extractText(b64Data, mediaType);
         } catch (const VisionOcrError& e) {
             std::cerr << "Vision OCR error: " << e.what() << std::endl;
-            return Response(HttpStatus::BAD_GATEWAY, createJSONResponse(false, e.what()));
+            ocrError = e.what();
         }
 
         std::ostringstream data;
-        data << "{\"text\":\"" << escapeJson(text) << "\"}";
+        data << "{\"text\":" << (ocrError.empty() ? ("\"" + escapeJson(text) + "\"") : "null")
+             << ",\"ocr_error\":" << (ocrError.empty() ? "null" : ("\"" + escapeJson(ocrError) + "\""))
+             << ",\"image\":{\"id\":" << imageId
+             << ",\"exercise_id\":" << exercise_id
+             << ",\"image_url\":\"" << escapeJson(publicUrl) << "\""
+             << ",\"sort_order\":" << sortOrder << "}}";
         return Response(HttpStatus::OK, createJSONResponse(true, "OK", data.str()));
     } catch (const std::exception& e) {
         std::cerr << "Error running exercise description OCR: " << e.what() << std::endl;

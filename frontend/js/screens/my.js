@@ -351,9 +351,11 @@ class MyScreen extends Screen {
     const kindLabel  = kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
     const catLabel   = catLabels[category] || category || '';
 
-    if (kindLabel && catLabel) return `${kindLabel} · ${catLabel}`;
-    if (kindLabel) return kindLabel;
-    if (catLabel) return catLabel;
+    const base = (kindLabel && catLabel) ? `${kindLabel} · ${catLabel}` : (kindLabel || catLabel);
+    if (kind === 'match' && ev.opponent) {
+      return base ? `${base} vs ${ev.opponent}` : `vs ${ev.opponent}`;
+    }
+    if (base) return base;
 
     // Fall back to the tagged team names if classification is missing.
     const teams = Array.isArray(ev.teams) ? ev.teams : [];
@@ -423,6 +425,21 @@ class MyScreen extends Screen {
     const isExpanded = this.expandedEventId === ev.fh_event_id;
     const viewLabel = isExpanded ? 'Hide' : 'View';
 
+    // Crest shown on the card front: opponent's (when resolved) for
+    // games, falling back to Lighthouse's own crest when the opponent
+    // isn't in gcal_opponent_aliases yet — every card gets a crest,
+    // never blank. Practice/pickup always show Lighthouse's own.
+    const LIGHTHOUSE_CREST = '/images/teams/logos/lighthouse-1893.png';
+    const crestUrl = kind === 'match'
+      ? (ev.opponent_logo_url || LIGHTHOUSE_CREST)
+      : ((kind === 'practice' || kind === 'pickup') ? LIGHTHOUSE_CREST : null);
+    const crestHtml = crestUrl ? `
+      <img src="${this.escapeHtml(crestUrl)}" alt=""
+           style="width:20px; height:20px; border-radius:50%; object-fit:contain;
+                  background:#fff; flex-shrink:0;"
+           onerror="this.onerror=null; this.src='${LIGHTHOUSE_CREST}';">
+    ` : '';
+
     const compactTitle = `${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)} · ${this.escapeHtml((catLabel + ' ' + kindLabel).trim())}`;
     const compactMeta = `${goingCount} going · ${notGoingCount} not going`;
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · '), venue].filter(Boolean);
@@ -434,6 +451,7 @@ class MyScreen extends Screen {
                   padding: 5px 6px;
                   margin-bottom: 4px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+          ${crestHtml}
           <div style="min-width:0; flex:1;">
             <div style="font-weight:700; font-size:0.7rem; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${compactTitle}</div>
             <div style="font-size:0.6rem; opacity:0.74; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(title)} · ${compactMeta}</div>
