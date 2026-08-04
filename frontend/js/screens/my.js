@@ -370,26 +370,31 @@ class MyScreen extends Screen {
   _eventRsvpHtml(ev) {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const going = rsvps.filter(r => r && r.response === 'yes');
-    const summary = going.length ? `${going.length} going` : 'No one is going yet.';
-    const rows = going
-      .map(r => {
-        const name = (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
-        const coachTag = r && r.is_coach ? ' <span style="opacity:0.65; font-weight:600;">(Coach)</span>' : '';
-        return `<div style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}${coachTag}</div>`;
-      })
+    const playersGoing = going.filter(r => !r.is_coach);
+    const coachesGoing = going.filter(r => r.is_coach);
+
+    const nameOf = (r) => (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
+    const rowsHtml = (list) => list
+      .map(r => `<div style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}</div>`)
       .join('');
+
+    const groupHtml = (label, list) => `
+      <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                  color:rgba(226,232,240,0.75); margin-bottom:4px;">
+        ${this.escapeHtml(label)}
+      </div>
+      <div style="font-size:0.9rem; font-weight:700; color:rgba(226,232,240,0.92);">
+        ${list.length ? `${list.length} going` : 'None yet.'}
+      </div>
+      ${list.length ? `<div style="display:grid; gap:3px; margin-top:6px;">${rowsHtml(list)}</div>` : ''}
+    `;
 
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
-                  border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
-        <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                    color:rgba(226,232,240,0.75); margin-bottom:4px;">
-          Going
-        </div>
-        <div style="font-size:0.9rem; font-weight:700; color:rgba(226,232,240,0.92);">
-          ${this.escapeHtml(summary)}
-        </div>
-        ${rows ? `<div style="display:grid; gap:3px; margin-top:6px;">${rows}</div>` : ''}
+                  border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);
+                  display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+        <div>${groupHtml('Players Going', playersGoing)}</div>
+        <div>${groupHtml('Coaches Going', coachesGoing)}</div>
       </div>`;
   }
 
@@ -421,7 +426,8 @@ class MyScreen extends Screen {
     const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const goingCount = rsvps.filter(r => r && r.response === 'yes').length;
+    const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach).length;
+    const coachesGoingCount = rsvps.filter(r => r && r.response === 'yes' && r.is_coach).length;
     const notGoingCount = rsvps.filter(r => r && r.response === 'no').length;
     const isExpanded = this.expandedEventId === ev.fh_event_id;
     const viewLabel = isExpanded ? 'Hide' : 'View';
@@ -442,7 +448,7 @@ class MyScreen extends Screen {
     ` : '';
 
     const compactTitle = `${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)} · ${this.escapeHtml((catLabel + ' ' + kindLabel).trim())}`;
-    const compactMeta = `${goingCount} going · ${notGoingCount} not going`;
+    const compactMeta = `${playersGoingCount} players, ${coachesGoingCount} coaches going · ${notGoingCount} not going`;
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · '), venue].filter(Boolean);
 
     return `
