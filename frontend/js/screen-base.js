@@ -24,17 +24,55 @@ class Screen {
   // that keeps recurring because screens hand-roll this URL individually.
   // Every screen extends Screen, so building it here makes the fix apply
   // by default to new buttons instead of relying on copy/paste.
-  buildGmailComposeHref({ to, subject = '', body = '', authuser = 'soccer@lighthouse1893.org' } = {}) {
-    if (!to) return null;
-    return `https://mail.google.com/mail/?${new URLSearchParams({
-      view: 'cm',
-      fs: '1',
-      tf: '1',
-      authuser,
-      to,
-      su: subject,
-      body,
-    }).toString()}`;
+  //
+  // Android (2026-08-04, revised): mail.google.com is a verified Android
+  // App Link, so this URL gets intercepted into the native Gmail app
+  // instead of opening as a web page — and that app's own deep-link
+  // parser for mail.google.com only understands to/su/body, silently
+  // dropping cc/bcc (compose opens with nothing pre-filled beyond
+  // whatever `to` was). Tried forcing the navigation through Chrome via
+  // an intent://...;package=com.android.chrome;... wrapper to keep it on
+  // the *web* compose view (which does support bcc) — unreliable in
+  // practice, still landed in the native app on a real test device.
+  // mailto: sidesteps all of this: it's a standard RFC 6068 URI that
+  // Android routes straight to Gmail's compose (ACTION_SENDTO) intent,
+  // which *does* honor cc/bcc/subject/body correctly. The one thing
+  // mailto: can't do is pin the sending account — there's no mailto:
+  // equivalent of authuser — so on Android the coach may need to tap
+  // Gmail's own "From" field to switch to soccer@lighthouse1893.org.
+  buildGmailComposeHref({ to, cc, bcc, subject = '', body = '', authuser = 'soccer@lighthouse1893.org' } = {}) {
+    if (!to && !cc && !bcc) return null;
+
+    if (/Android/i.test(navigator.userAgent || '')) {
+      // mailto: is RFC 6068 — needs %20-style percent-encoding, not the
+      // application/x-www-form-urlencoded "+"-for-space that
+      // URLSearchParams produces. Gmail's compose intent takes "+"
+      // literally, so subject/body showed up full of plus signs.
+      const pairs = [];
+      if (cc)      pairs.push(`cc=${encodeURIComponent(cc)}`);
+      if (bcc)     pairs.push(`bcc=${encodeURIComponent(bcc)}`);
+      if (subject) pairs.push(`subject=${encodeURIComponent(subject)}`);
+      if (body)    pairs.push(`body=${encodeURIComponent(body)}`);
+      const qs = pairs.join('&');
+      return `mailto:${to || ''}${qs ? '?' + qs : ''}`;
+    }
+
+    const params = { view: 'cm', fs: '1', tf: '1', authuser, su: subject, body };
+    if (to)  params.to  = to;
+    if (cc)  params.cc  = cc;
+    if (bcc) params.bcc = bcc;
+    return `https://mail.google.com/mail/?${new URLSearchParams(params).toString()}`;
+  }
+
+  // Navigates to a Gmail compose href from JS (vs. a plain <a href>
+  // button, which the browser navigates on tap without any JS needed).
+  openGmailCompose(href) {
+    if (!href) return;
+    if (href.startsWith('mailto:')) {
+      window.location.href = href;
+    } else {
+      window.open(href, '_blank', 'noopener');
+    }
   }
 
   resolveAssetUrl(url) {

@@ -517,34 +517,14 @@ class MensEventsRemindersScreen extends Screen {
     const body = lines.join('\n');
     const subject = `RSVP needed for ${typeLabel}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
 
-    // Same Gmail-compose convention as _plainMailtoHref, but with `bcc`
-    // instead of `to` so the group stays private from each other
-    // (matches members.js's "Email All" bulk action).
-    const params = new URLSearchParams({
-      view: 'cm',
-      fs: '1',
-      authuser: 'soccer@lighthouse1893.org',
-      bcc: emails.join(','),
-      su: subject,
-      body: body,
-    });
-    window.open(`https://mail.google.com/mail/?${params.toString()}`, '_blank', 'noopener');
+    // bcc (not to) so the group stays private from each other, matching
+    // members.js's "Email All" bulk action.
+    const href = this.buildGmailComposeHref({ bcc: emails.join(','), subject, body });
+    this.openGmailCompose(href);
   }
 
   _plainMailtoHref(email, subject, body) {
-    // Gmail compose URL is a lot friendlier on desktop than a raw
-    // mailto:; mens-roster.js does the same thing.  authuser= pins the
-    // sender so the coach doesn't accidentally send from a personal
-    // Google account.
-    const params = new URLSearchParams({
-      view: 'cm',
-      fs: '1',
-      authuser: 'soccer@lighthouse1893.org',
-      to: email,
-      su: subject,
-      body: body,
-    });
-    return `https://mail.google.com/mail/?${params.toString()}`;
+    return this.buildGmailComposeHref({ to: email, subject, body });
   }
 
   _typeBadge(kind) {
