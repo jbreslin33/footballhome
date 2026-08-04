@@ -209,7 +209,8 @@ json BoysRoster::shapePlayer(const json& rec, const std::string& club, int seaso
 BoysRoster::Result BoysRoster::run(bool includeAll,
                                    bool refreshLa,
                                    const std::vector<json>& boysRecs,
-                                   const std::vector<json>& girlsRecs) {
+                                   const std::vector<json>& girlsRecs,
+                                   const std::unordered_map<std::string, long long>& personIdByUserId) {
     Result out;
 
     auto cols          = columns_->loadAll();
@@ -548,9 +549,32 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     for (auto& p : all) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
 
+        // Carried on every row so the frontend's move buttons can send
+        // it back on assign — see MensTeamAssignments.h doc on why the
+        // write path prefers personId over the live LA userId.
+        {
+            auto pit = personIdByUserId.find(uid);
+            p["personId"] = (pit != personIdByUserId.end() && pit->second > 0)
+                ? json(pit->second) : json(nullptr);
+        }
+
         const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;
+        std::vector<MensTeamAssignments::Cell> fallbackCells;
         auto it = assignmentMap.find(uid);
-        if (it != assignmentMap.end()) userCells = &it->second;
+        if (it != assignmentMap.end()) {
+            userCells = &it->second;
+        } else {
+            // LA occasionally reports a drifting userId for the same
+            // registration across syncs (see LaProgramSync.h) — when the
+            // live uid doesn't match persons.la_user_id, fall back to the
+            // person id THIS sync pass resolved via linkLa, which isn't
+            // subject to that race.
+            auto pit = personIdByUserId.find(uid);
+            if (pit != personIdByUserId.end() && pit->second > 0) {
+                fallbackCells = assignments_->cellsForPerson(pit->second);
+                if (!fallbackCells.empty()) userCells = &fallbackCells;
+            }
+        }
 
         std::vector<int> relevant;
         if (userCells) {

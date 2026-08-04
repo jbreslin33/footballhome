@@ -126,6 +126,7 @@ class RosterScreenBase extends Screen {
       // user directive) rather than a dead end.
       return `<button class="roster-move-option" type="button"
                       data-user-id="${player.leagueAppsUserId}"
+                      data-person-id="${player.personId || ''}"
                       data-target-team-id="${t.id}"
                       data-current-team-id="${currentTeamId}"
                       title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"

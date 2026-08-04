@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "../third_party/json.hpp"
 
@@ -50,10 +51,16 @@ public:
     // `refreshLa` gates payment `syncFromLa()` (kept as a knob so
     // background jobs can skip it) — LA membership sync itself is
     // ALWAYS done by the caller regardless.
+    // `personIdByUserId` is boys+girls LaProgramSync::Result::
+    // personIdByUserId merged together — a fallback identity map used
+    // when a player's live LA userId doesn't match persons.la_user_id
+    // (LA occasionally reports a drifting userId for the same
+    // registration across syncs; see LaProgramSync.h for details).
     Result run(bool includeAll,
                bool refreshLa,
                const std::vector<nlohmann::json>& boysRecs,
-               const std::vector<nlohmann::json>& girlsRecs);
+               const std::vector<nlohmann::json>& girlsRecs,
+               const std::unordered_map<std::string, long long>& personIdByUserId = {});
 
     // Public accessors so controllers registering laGet(static) know
     // exactly which LA programs to sync — keeps the routing table

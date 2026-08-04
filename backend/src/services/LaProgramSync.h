@@ -46,6 +46,18 @@ public:
         // Raw LA records (every page, deduped) — JSON objects exactly as
         // returned by LeagueAppsService::fetchProgramRegistrations.
         std::vector<nlohmann::json>                  recs;
+        // Stringified LA userId → persons.id, as resolved by linkLa()
+        // during THIS sync pass. Exists because LA occasionally reports a
+        // drifting/unstable userId for the same registration across
+        // consecutive fetches (observed 2026-08-03: one registration
+        // alternated between two userIds call to call) — persons.la_user_id
+        // gets overwritten by whichever sync last ran, so re-deriving a
+        // person's identity from "the live rec's userId, joined against
+        // persons.la_user_id" can miss even within a single request. This
+        // map is captured at the moment linkLa resolved each rec, so it's
+        // immune to that race — callers whose primary lookup (via
+        // persons.la_user_id) misses should fall back to this.
+        std::unordered_map<std::string, long long>  personIdByUserId;
         // LA-side authoritative payment state, keyed by registrationId.
         // Used by PaymentsController to cross-check against our locally
         // computed status every time the payments screen loads.

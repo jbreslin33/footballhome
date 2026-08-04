@@ -49,25 +49,59 @@ public:
 
     ByUser loadAll();
 
-    // Add an assignment.  When mutexGroup is non-empty, drops every other
-    // assignment for the user that lives in the same mutex group BEFORE
-    // inserting (one DELETE … USING + one INSERT … ON CONFLICT inside a
-    // single transaction).  Returns the user's full set of team_ids after.
+    // Fallback lookup keyed by the stable internal person id rather than
+    // the (occasionally LA-drifting) la_user_id — see LaProgramSync::
+    // Result::personIdByUserId for why callers need this. Same shape/
+    // filters as loadAll()'s per-row query, just scoped to one person.
+    std::vector<Cell> cellsForPerson(long long personId);
+
+    // Add an assignment.  Closes every OTHER active board column this
+    // person is on in this domain first (2026-08-03: always a move —
+    // see addAssignmentForPerson doc).  Returns the person's full set
+    // of team_ids after. `userId` is resolved to a person via
+    // persons.la_user_id — prefer addAssignmentForPerson when the
+    // caller already has a trustworthy person id (see doc there for
+    // why: LA's live userId can drift out from under this lookup).
     std::vector<int> addAssignment(long long userId,
                                    int teamId,
                                    const std::string& mutexGroup);
 
-    // Plain DELETE; returns the user's remaining team_ids.
+    // Plain close; returns the person's remaining team_ids. Prefer
+    // removeAssignmentForPerson — see addAssignmentForPerson doc.
     std::vector<int> removeAssignment(long long userId, int teamId);
 
     // UPDATE on_roster.  Returns the new value, or nullopt when no row
     // exists (i.e. the assignment was never created — UI is stale).
+    // Prefer setRosterStatusForPerson — see addAssignmentForPerson doc.
     std::optional<bool> setRosterStatus(long long userId,
                                         int teamId,
                                         bool onRoster);
 
     // Helper: the user's full set of team_ids in ascending order.
     std::vector<int> teamIdsForUser(long long userId);
+
+    // ── person_id-keyed write path (2026-08-03) ──────────────────────
+    //
+    // The userId-keyed methods above resolve the person via
+    // `persons.la_user_id = $1`, matched against whatever LA userId
+    // the FRONTEND last saw for this player. LA has been observed
+    // reporting a drifting userId for the same registration across
+    // syncs (see LaProgramSync.h) — when persons.la_user_id has since
+    // moved on by the time a move is clicked, that lookup silently
+    // matches zero rows: no error, no-op, board looks stuck ("I can't
+    // move players"). Controllers that already have a resolved,
+    // request-scoped person id (LaProgramSync::Result::
+    // personIdByUserId, captured fresh on the same GET that rendered
+    // the button) should call these directly instead — immune to the
+    // race because it never re-derives identity from the live userId.
+    std::vector<int> addAssignmentForPerson(long long personId,
+                                             int teamId,
+                                             const std::string& mutexGroup);
+    std::vector<int> removeAssignmentForPerson(long long personId, int teamId);
+    std::optional<bool> setRosterStatusForPerson(long long personId,
+                                                 int teamId,
+                                                 bool onRoster);
+    std::vector<int> teamIdsForPerson(long long personId);
 
     // ── Delinquency soft-delete (2026-07-04, sweep disabled) ─────────
     //

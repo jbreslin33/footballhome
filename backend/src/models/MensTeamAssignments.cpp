@@ -78,6 +78,31 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     return out;
 }
 
+std::vector<MensTeamAssignments::Cell> MensTeamAssignments::cellsForPerson(long long personId) {
+    std::vector<Cell> out;
+    const auto rows = db_->query(
+        "SELECT tp.team_id, tp.on_roster, tp.coach_sort_order "
+        "  FROM team_persons tp "
+        "  JOIN teams t ON t.id = tp.team_id "
+        "   AND t.gender_category = $1 "
+        " WHERE tp.person_id = $2 "
+        "   AND tp.removed_at IS NULL",
+        {domain_, std::to_string(personId)}
+    );
+    out.reserve(rows.size());
+    for (const auto& row : rows) {
+        if (row["team_id"].is_null()) continue;
+        Cell c;
+        c.teamId   = row["team_id"].as<int>();
+        c.onRoster = !row["on_roster"].is_null() && row["on_roster"].as<bool>();
+        if (!row["coach_sort_order"].is_null()) {
+            c.coachSortOrder = row["coach_sort_order"].as<int>();
+        }
+        out.push_back(c);
+    }
+    return out;
+}
+
 std::vector<int> MensTeamAssignments::teamIdsForUser(long long userId) {
     std::vector<int> out;
     const auto rows = db_->query(
@@ -96,31 +121,60 @@ std::vector<int> MensTeamAssignments::teamIdsForUser(long long userId) {
     return out;
 }
 
+namespace {
+// Snapshot resolve — same fallibility as the rest of the userId-keyed
+// path (see MensTeamAssignments.h doc on the person_id-keyed methods).
+// Returns 0 when unresolvable.
+long long resolvePersonIdFromLa(Database* db, long long userId) {
+    const auto rows = db->query(
+        "SELECT id FROM persons WHERE la_user_id = $1::text",
+        {std::to_string(userId)});
+    if (rows.empty() || rows[0]["id"].is_null()) return 0;
+    return rows[0]["id"].as<long long>();
+}
+}  // namespace
+
 std::vector<int> MensTeamAssignments::addAssignment(long long userId,
                                                      int teamId,
                                                      const std::string& mutexGroup) {
+    const long long personId = resolvePersonIdFromLa(db_, userId);
+    if (personId <= 0) return {};
+    return addAssignmentForPerson(personId, teamId, mutexGroup);
+}
+
+std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
+                                                              int teamId,
+                                                              const std::string& mutexGroup) {
     // Single transaction so the mutex-sibling closure, delinquent
     // restore and the upsert land atomically.
     auto tx = db_->beginTransaction();
 
-    if (!mutexGroup.empty()) {
-        // Close (not delete) active memberships on mutex-sibling teams
-        // — one-of within the column group (teams.mutex_group since
-        // migration 250 folded roster_columns into teams).
-        tx->exec_params(
-            "UPDATE team_persons tp "
-            "   SET removed_at = now(), "
-            "       removed_reason = 'board_move' "
-            "  FROM teams c "
-            " WHERE c.id = tp.team_id "
-            "   AND c.gender_category = $4 "
-            "   AND tp.person_id = " + personFromLa("$1") +
-            "   AND c.mutex_group = $2 "
-            "   AND tp.team_id <> $3 "
-            "   AND tp.removed_at IS NULL",
-            userId, mutexGroup, teamId, domain_
-        );
-    }
+    // 2026-08-03 (user directive): "only being able to be in one
+    // category per screen — always a move." Board columns within a
+    // domain are exclusive regardless of teams.mutex_group (the
+    // per-column opt-in from migration 250 that let official columns
+    // go multi-team caused confusing clicks — a move to a DIFFERENT
+    // mutex_group left the player on both, and the dropdown's
+    // "current" pick could still resolve to the old column). Close
+    // every OTHER board column the person is active on within this
+    // domain — scoped to board_sort_order IS NOT NULL / not archived
+    // so hidden buckets like mens Practice/Pickup (908/909, board-
+    // archived but still gender_category='mens') are left alone.
+    (void)mutexGroup;
+    tx->exec_params(
+        "UPDATE team_persons tp "
+        "   SET removed_at = now(), "
+        "       removed_reason = 'board_move' "
+        "  FROM teams c "
+        " WHERE c.id = tp.team_id "
+        "   AND c.gender_category = $3 "
+        "   AND c.board_sort_order IS NOT NULL "
+        "   AND c.board_archived_at IS NULL "
+        "   AND tp.person_id = $1 "
+        "   AND tp.team_id <> $2 "
+        "   AND tp.removed_at IS NULL",
+        personId, teamId, domain_
+    );
 
     // If the SAME (person, team) row exists but was soft-deleted for
     // delinquency, restore it in place so audit history + joined_at
@@ -131,7 +185,7 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
         "   SET removed_at = NULL, "
         "       removed_reason = NULL, "
         "       removed_details = NULL "
-        " WHERE person_id = " + personFromLa("$1") +
+        " WHERE person_id = $1 "
         "   AND team_id = $2 "
         "   AND removed_at IS NOT NULL "
         "   AND removed_reason = 'delinquent' "
@@ -140,53 +194,71 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
         "          AND a.team_id = team_persons.team_id "
         "          AND a.removed_at IS NULL) "
         " RETURNING id",
-        userId, teamId
+        personId, teamId
     );
 
     if (restored.empty()) {
         tx->exec_params(
             "INSERT INTO team_persons (team_id, person_id) "
-            "SELECT $2, p.id "
-            "  FROM persons p "
-            " WHERE p.la_user_id = $1::text "
+            "VALUES ($2, $1) "
             "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING",
-            userId, teamId
+            personId, teamId
         );
     }
 
     db_->commit(tx);
-    return teamIdsForUser(userId);
+    return teamIdsForPerson(personId);
 }
 
 std::vector<int> MensTeamAssignments::removeAssignment(long long userId, int teamId) {
+    const long long personId = resolvePersonIdFromLa(db_, userId);
+    if (personId <= 0) return {};
+    return removeAssignmentForPerson(personId, teamId);
+}
+
+std::vector<int> MensTeamAssignments::removeAssignmentForPerson(long long personId, int teamId) {
     // Close, don't delete — membership history is roster history.
     db_->query(
         "UPDATE team_persons "
         "   SET removed_at = now(), "
         "       removed_reason = 'admin_remove' "
-        " WHERE person_id = (SELECT id FROM persons WHERE la_user_id = $1::text) "
+        " WHERE person_id = $1 "
         "   AND team_id = $2 "
         "   AND removed_at IS NULL",
-        {std::to_string(userId), std::to_string(teamId)}
+        {std::to_string(personId), std::to_string(teamId)}
     );
-    return teamIdsForUser(userId);
+    return teamIdsForPerson(personId);
 }
 
 std::optional<bool> MensTeamAssignments::setRosterStatus(long long userId,
                                                           int teamId,
                                                           bool onRoster) {
+    const long long personId = resolvePersonIdFromLa(db_, userId);
+    if (personId <= 0) return std::nullopt;
+    return setRosterStatusForPerson(personId, teamId, onRoster);
+}
+
+std::optional<bool> MensTeamAssignments::setRosterStatusForPerson(long long personId,
+                                                                   int teamId,
+                                                                   bool onRoster) {
     const auto rows = db_->query(
         "UPDATE team_persons "
         "   SET on_roster = $3 "
-        " WHERE person_id = (SELECT id FROM persons WHERE la_user_id = $1::text) "
+        " WHERE person_id = $1 "
         "   AND team_id = $2 "
         "   AND removed_at IS NULL "
         " RETURNING on_roster",
-        {std::to_string(userId), std::to_string(teamId), onRoster ? "true" : "false"}
+        {std::to_string(personId), std::to_string(teamId), onRoster ? "true" : "false"}
     );
     if (rows.empty()) return std::nullopt;
     return rows[0]["on_roster"].is_null() ? false : rows[0]["on_roster"].as<bool>();
+}
+
+std::vector<int> MensTeamAssignments::teamIdsForPerson(long long personId) {
+    std::vector<int> out;
+    for (const auto& c : cellsForPerson(personId)) out.push_back(c.teamId);
+    return out;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

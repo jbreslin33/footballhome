@@ -973,6 +973,7 @@ class MensRosterScreen extends RosterScreenBase {
   //     other division, so we don't need a separate remove call.
   async onMoveOptionClick(btn) {
     const userId        = parseInt(btn.dataset.userId, 10);
+    const personId       = parseInt(btn.dataset.personId, 10) || undefined;
     const targetTeamId  = parseInt(btn.dataset.targetTeamId, 10);
     const currentTeamId = parseInt(btn.dataset.currentTeamId || '0', 10);
     if (!userId || Number.isNaN(targetTeamId)) return;
@@ -990,9 +991,9 @@ class MensRosterScreen extends RosterScreenBase {
       let body;
       if (targetTeamId === 0) {
         if (currentTeamId <= 0) { await this.load(); return; }
-        body = { leagueAppsUserId: userId, teamId: currentTeamId, action: 'remove' };
+        body = { leagueAppsUserId: userId, personId, teamId: currentTeamId, action: 'remove' };
       } else {
-        body = { leagueAppsUserId: userId, teamId: targetTeamId, action: 'add' };
+        body = { leagueAppsUserId: userId, personId, teamId: targetTeamId, action: 'add' };
       }
       const res = await this.auth.fetch('/api/mens-roster/assign', {
         method:  'POST',

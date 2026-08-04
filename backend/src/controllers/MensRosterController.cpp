@@ -5,6 +5,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "../database/Database.h"
@@ -224,8 +225,10 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
         static const std::vector<nlohmann::json> kEmpty;
         const auto it = sync.find(model_->mensProgramId());
         const auto& recs = (it != sync.end()) ? it->second.recs : kEmpty;
+        static const std::unordered_map<std::string, long long> kEmptyPersonIds;
+        const auto& personIdByUserId = (it != sync.end()) ? it->second.personIdByUserId : kEmptyPersonIds;
 
-        auto result = model_->run(includeAll, refreshLa, recs);
+        auto result = model_->run(includeAll, refreshLa, recs, personIdByUserId);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";
@@ -253,6 +256,8 @@ Response MensRosterController::handleAssign(const Request& request) {
 
     long long userId = 0;
     long long teamIdLL = 0;
+    long long personId = 0;
+    readInt(body, "personId", personId);  // optional — see MensTeamAssignments.h doc
     if (!readInt(body, "leagueAppsUserId", userId) ||
         !readInt(body, "teamId",            teamIdLL) ||
         userId <= 0 || teamIdLL <= 0) {
@@ -295,9 +300,16 @@ Response MensRosterController::handleAssign(const Request& request) {
             // mutexGroup stays empty — pool teams don't mutex.
         }
 
+        // Prefer personId when the frontend sent one (attached to the
+        // row from LaProgramSync::Result::personIdByUserId at render
+        // time — see MensTeamAssignments.h). It's immune to LA's
+        // live-userId drift; leagueAppsUserId-only requests fall back
+        // to the old (drift-vulnerable) persons.la_user_id lookup.
         std::vector<int> teamIds;
         if (action == "remove") {
-            teamIds = assignments_->removeAssignment(userId, teamId);
+            teamIds = personId > 0
+                ? assignments_->removeAssignmentForPerson(personId, teamId)
+                : assignments_->removeAssignment(userId, teamId);
         } else {
             // Delinquency gate REMOVED (2026-07-04 pm).  Admin decides
             // roster + Dues Owed placement manually now — the fetch-time
@@ -306,7 +318,9 @@ Response MensRosterController::handleAssign(const Request& request) {
             // shows an "Nd OVERDUE" chip so admin sees the risk, but the
             // backend no longer refuses the assignment.
 
-            teamIds = assignments_->addAssignment(userId, teamId, mutexGroup);
+            teamIds = personId > 0
+                ? assignments_->addAssignmentForPerson(personId, teamId, mutexGroup)
+                : assignments_->addAssignment(userId, teamId, mutexGroup);
 
             // Practice / Pickup auto-membership on APSL / Liga 1 / Liga 2
             // assign (2026-07-04, extended 2026-07-07): immediate mirror
@@ -324,8 +338,13 @@ Response MensRosterController::handleAssign(const Request& request) {
                     assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
                     assignments_->bulkEnsureActive({userId}, kPickupTeamId);
                     // Refresh returned teamIds so the client sees Practice
-                    // + Pickup without a round-trip.
-                    teamIds = assignments_->teamIdsForUser(userId);
+                    // + Pickup without a round-trip. Via personId when we
+                    // have one — teamIdsForUser re-derives identity from
+                    // the (possibly drifted) live userId and would wipe
+                    // out a personId-path result with an empty list.
+                    teamIds = personId > 0
+                        ? assignments_->teamIdsForPerson(personId)
+                        : assignments_->teamIdsForUser(userId);
                 } catch (const std::exception& e) {
                     std::cerr << "[MensRoster] practice/pickup auto-add on APSL/Liga1/Liga2 failed: "
                               << e.what() << std::endl;

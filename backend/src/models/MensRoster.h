@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "../third_party/json.hpp"
 
@@ -50,9 +51,14 @@ public:
     // `refreshLa` still gates payment `syncFromLa()` as a knob for
     // background callers that want to skip the transaction pull.  LA
     // membership sync itself is ALWAYS done by the caller regardless.
+    // `personIdByUserId` (LaProgramSync::Result::personIdByUserId) is a
+    // fallback identity map used when a player's live LA userId doesn't
+    // match persons.la_user_id — LA occasionally reports a drifting
+    // userId for the same registration across syncs; see LaProgramSync.h.
     Result run(bool includeAll,
                bool refreshLa,
-               const std::vector<nlohmann::json>& recs);
+               const std::vector<nlohmann::json>& recs,
+               const std::unordered_map<std::string, long long>& personIdByUserId = {});
 
     // Public accessor so controllers registering laGet(static) know
     // which LA program to sync.

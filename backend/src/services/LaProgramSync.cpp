@@ -203,7 +203,10 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 std::cerr << "[la-sync program=" << programId
                           << "] linkLa skipped userId=" << uid
                           << ": " << r.skipReason << std::endl;
-            } else if (r.personId > 0 && isMember) {
+            } else if (r.personId > 0) {
+                out.personIdByUserId[uid] = r.personId;
+            }
+            if (r.skipReason.empty() && r.personId > 0 && isMember) {
                 // Pull LA's authoritative registration timestamp so
                 // recordMembership can populate person_la_memberships
                 // .la_registered_at on INSERT (and backfill if NULL on

@@ -273,7 +273,8 @@ json MensRoster::shapeMensPlayer(const json& rec) {
 
 MensRoster::Result MensRoster::run(bool includeAll,
                                    bool refreshLa,
-                                   const std::vector<nlohmann::json>& recs) {
+                                   const std::vector<nlohmann::json>& recs,
+                                   const std::unordered_map<std::string, long long>& personIdByUserId) {
     Result out;
 
     auto cols          = columns_->loadAll();
@@ -998,8 +999,22 @@ MensRoster::Result MensRoster::run(bool includeAll,
         // Find the user's assignment list; intersect with the configured
         // columns so off-dashboard team_ids never leak into the response.
         const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;
+        std::vector<MensTeamAssignments::Cell> fallbackCells;
         auto it = assignmentMap.find(uid);
-        if (it != assignmentMap.end()) userCells = &it->second;
+        if (it != assignmentMap.end()) {
+            userCells = &it->second;
+        } else {
+            // LA occasionally reports a drifting userId for the same
+            // registration across syncs (see LaProgramSync.h) — when the
+            // live uid doesn't match persons.la_user_id, fall back to the
+            // person id THIS sync pass resolved via linkLa, which isn't
+            // subject to that race.
+            auto pit = personIdByUserId.find(uid);
+            if (pit != personIdByUserId.end() && pit->second > 0) {
+                fallbackCells = assignments_->cellsForPerson(pit->second);
+                if (!fallbackCells.empty()) userCells = &fallbackCells;
+            }
+        }
 
         std::vector<int> relevant;
         if (userCells) {
@@ -1087,6 +1102,13 @@ MensRoster::Result MensRoster::run(bool includeAll,
                     if (pid <= 0) {
                         auto pit = personIdByUid.find(uid);
                         if (pit != personIdByUid.end()) pid = pit->second;
+                    }
+                    if (pid <= 0) {
+                        // Last resort: this request's own LaProgramSync
+                        // pass (immune to LA's live-userId drift — see
+                        // MensTeamAssignments.h).
+                        auto sit = personIdByUserId.find(uid);
+                        if (sit != personIdByUserId.end()) pid = sit->second;
                     }
                     row["personId"] = pid > 0 ? json(pid) : json(nullptr);
                     row["fhLastActivityAt"] = fhLastActivityFor(pid);

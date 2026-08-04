@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 
 #include "../database/Database.h"
 #include "../models/MensTeamAssignments.h"
@@ -149,7 +150,11 @@ Response BoysRosterController::handleGet(const Request& request, const LaSyncMap
         const auto& boysRecs  = (boysIt  != sync.end()) ? boysIt->second.recs  : kEmpty;
         const auto& girlsRecs = (girlsIt != sync.end()) ? girlsIt->second.recs : kEmpty;
 
-        auto result = model_->run(includeAll, refreshLa, boysRecs, girlsRecs);
+        std::unordered_map<std::string, long long> personIdByUserId;
+        if (boysIt  != sync.end()) personIdByUserId.insert(boysIt->second.personIdByUserId.begin(),  boysIt->second.personIdByUserId.end());
+        if (girlsIt != sync.end()) personIdByUserId.insert(girlsIt->second.personIdByUserId.begin(), girlsIt->second.personIdByUserId.end());
+
+        auto result = model_->run(includeAll, refreshLa, boysRecs, girlsRecs, personIdByUserId);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";
@@ -175,6 +180,8 @@ Response BoysRosterController::handleAssign(const Request& request) {
 
     long long userId = 0;
     long long teamIdLL = 0;
+    long long personId = 0;
+    readInt(body, "personId", personId);  // optional — see doc below
     if (!readInt(body, "leagueAppsUserId", userId) ||
         !readInt(body, "teamId",            teamIdLL) ||
         userId <= 0 || teamIdLL <= 0) {
@@ -197,11 +204,20 @@ Response BoysRosterController::handleAssign(const Request& request) {
         }
         const std::string mutexGroup = col->mutexGroup;
 
+        // Prefer personId when the frontend sent one (attached to the
+        // row from LaProgramSync::Result::personIdByUserId at render
+        // time — see MensTeamAssignments.h). It's immune to LA's
+        // live-userId drift; leagueAppsUserId-only requests fall back
+        // to the old (drift-vulnerable) persons.la_user_id lookup.
         std::vector<int> teamIds;
         if (action == "remove") {
-            teamIds = assignments_->removeAssignment(userId, teamId);
+            teamIds = personId > 0
+                ? assignments_->removeAssignmentForPerson(personId, teamId)
+                : assignments_->removeAssignment(userId, teamId);
         } else {
-            teamIds = assignments_->addAssignment(userId, teamId, mutexGroup);
+            teamIds = personId > 0
+                ? assignments_->addAssignmentForPerson(personId, teamId, mutexGroup)
+                : assignments_->addAssignment(userId, teamId, mutexGroup);
         }
 
         json out;
