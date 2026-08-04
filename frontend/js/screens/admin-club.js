@@ -437,6 +437,13 @@ class AdminClubScreen extends Screen {
   bindPracticePlanInteractions() {
     if (!this.element) return;
 
+    this.element.querySelectorAll('[data-lightbox-src]').forEach((img) => {
+      img.onclick = (event) => {
+        event.stopPropagation();
+        this.openImageLightbox(img.getAttribute('data-lightbox-src'));
+      };
+    });
+
     this.element.querySelectorAll('[data-toggle-practice-exercise]').forEach((button) => {
       button.onclick = (event) => {
         event.stopPropagation();
@@ -513,15 +520,23 @@ class AdminClubScreen extends Screen {
       .then((payload) => Array.isArray(payload) ? payload : (payload?.data || []))
       .catch(() => []);
 
-    Promise.all([structureRequest, daysRequest, practicesRequest, sessionsRequest, sessionExercisesRequest, exercisesRequest])
-      .then(([structure, days, practices, sessions, sessionExercises, exercises]) => {
+    const exerciseImagesRequest = this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercise_images`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((payload) => Array.isArray(payload) ? payload : (payload?.data || []))
+      .catch(() => []);
+
+    Promise.all([structureRequest, daysRequest, practicesRequest, sessionsRequest, sessionExercisesRequest, exercisesRequest, exerciseImagesRequest])
+      .then(([structure, days, practices, sessions, sessionExercises, exercises, exerciseImages]) => {
         if (!this.isMounted) return;
 
         const structureHtml = structure?.phases?.length
           ? this.renderStructuredGameModel(structure)
           : (structure?.content_html || structure?.content || '<div style="opacity: 0.7;">Game model content is not available yet.</div>');
 
-        const practicePlanHtml = this.renderPracticePlanSection({ days, practices, sessions, sessionExercises, exercises });
+        const practicePlanHtml = this.renderPracticePlanSection({ days, practices, sessions, sessionExercises, exercises, exerciseImages });
 
         contentsEl.innerHTML = `
           <div style="display:grid; gap: var(--space-3);">
@@ -538,9 +553,15 @@ class AdminClubScreen extends Screen {
       });
   }
 
-  renderPracticePlanSection({ days = [], practices = [], sessions = [], sessionExercises = [], exercises = [] }) {
+  renderPracticePlanSection({ days = [], practices = [], sessions = [], sessionExercises = [], exercises = [], exerciseImages = [] }) {
     const dayMap = new Map((days || []).map((day) => [day.id, day]));
     const exerciseMap = new Map((exercises || []).map((exercise) => [exercise.id, exercise]));
+    const exerciseDiagramMap = new Map();
+    const exerciseSummaryImageMap = new Map();
+    (exerciseImages || []).forEach((img) => {
+      if (img.role === 'diagram') exerciseDiagramMap.set(img.exercise_id, img.image_url);
+      if (img.role === 'summary') exerciseSummaryImageMap.set(img.exercise_id, img.image_url);
+    });
     const sessionExercisesBySession = new Map();
 
     (sessionExercises || []).forEach((entry) => {
@@ -609,17 +630,27 @@ class AdminClubScreen extends Screen {
                               if (!exercise) return '';
                               const detailId = `practice-exercise-${session.id}-${exercise.id}`;
                               const detailLines = [exercise.summary, exercise.setup, exercise.coaching_points].filter(Boolean);
-                              const detailMarkup = detailLines.length
+                              const summaryImageUrl = exerciseSummaryImageMap.get(exercise.id);
+                              const summaryImageMarkup = summaryImageUrl
+                                ? `<img src="${this.escapeHtml(summaryImageUrl)}" alt="" data-lightbox-src="${this.escapeHtml(summaryImageUrl)}" style="display:block; max-width:100%; width:220px; height:auto; border-radius:var(--radius-sm); border:1px solid var(--border-color); cursor:zoom-in; margin-bottom:0.4rem;">`
+                                : '';
+                              const detailMarkup = (detailLines.length || summaryImageMarkup)
                                 ? `<div id="${detailId}" style="display:none; margin-top: 0.4rem; padding: 0.6rem; border-radius: var(--radius-sm); background: rgba(255,255,255,0.04);">
+                                    ${summaryImageMarkup}
                                     ${detailLines.map((line) => `<div style="margin-top: 0.25rem; opacity: 0.9;">${this.escapeHtml(line)}</div>`).join('')}
                                   </div>`
                                 : `<div id="${detailId}" style="display:none; margin-top: 0.4rem; padding: 0.6rem; border-radius: var(--radius-sm); background: rgba(255,255,255,0.04);">
                                     <div style="opacity: 0.75;">Details will be filled in as the plan is refined.</div>
                                   </div>`;
+                              const diagramUrl = exerciseDiagramMap.get(exercise.id);
+                              const diagramThumbMarkup = diagramUrl
+                                ? `<img src="${this.escapeHtml(diagramUrl)}" alt="" data-lightbox-src="${this.escapeHtml(diagramUrl)}" style="width:28px; height:28px; object-fit:cover; border-radius:4px; border:1px solid var(--border-color); cursor:zoom-in; flex-shrink:0;">`
+                                : '';
                               return `
                                 <li style="margin-left: var(--space-3); list-style: none; margin-top: 0.25rem;">
-                                  <button type="button" class="btn btn-secondary" data-toggle-practice-exercise="${detailId}" style="width: 100%; justify-content: flex-start; padding: 0.55rem 0.7rem; text-align: left;">
-                                    ${this.escapeHtml(exercise.title || 'Exercise')}
+                                  <button type="button" class="btn btn-secondary" data-toggle-practice-exercise="${detailId}" style="width: 100%; display:flex; align-items:center; gap:0.5rem; justify-content: flex-start; padding: 0.55rem 0.7rem; text-align: left;">
+                                    ${diagramThumbMarkup}
+                                    <span>${this.escapeHtml(exercise.title || 'Exercise')}</span>
                                   </button>
                                   ${detailMarkup}
                                 </li>

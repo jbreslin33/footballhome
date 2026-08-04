@@ -435,7 +435,7 @@ class MyScreen extends Screen {
       : ((kind === 'practice' || kind === 'pickup') ? LIGHTHOUSE_CREST : null);
     const crestHtml = crestUrl ? `
       <img src="${this.escapeHtml(crestUrl)}" alt=""
-           style="width:20px; height:20px; border-radius:50%; object-fit:contain;
+           style="width:32px; height:32px; border-radius:50%; object-fit:contain;
                   background:#fff; flex-shrink:0;"
            onerror="this.onerror=null; this.src='${LIGHTHOUSE_CREST}';">
     ` : '';

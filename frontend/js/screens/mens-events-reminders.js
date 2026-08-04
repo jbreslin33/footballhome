@@ -76,6 +76,12 @@ class MensEventsRemindersScreen extends Screen {
       if (magicBtn) {
         e.preventDefault();
         this.handleMagicClick(magicBtn);
+        return;
+      }
+      const emailAllBtn = e.target.closest('.mer-email-noresponse-btn');
+      if (emailAllBtn) {
+        e.preventDefault();
+        this.handleEmailNoResponseClick(emailAllBtn);
       }
     });
 
@@ -289,6 +295,14 @@ class MensEventsRemindersScreen extends Screen {
             <b style="color:${totalMissing > 0 ? '#fca5a5' : '#86efac'};">${totalMissing}</b>
             missing of ${totalPlayers}
           </div>
+          ${totalMissing > 0 ? `
+          <button type="button" class="mer-email-noresponse-btn" data-fh-event-id="${ev.fh_event_id}"
+                  title="Open Gmail with all ${totalMissing} No Response players BCC'd"
+                  style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;
+                         padding:4px 8px;border-radius:6px;font-size:0.72rem;font-weight:700;
+                         border:none;cursor:pointer;background:#ef4444;color:#fff;">
+            📧 Email ${totalMissing} No Response
+          </button>` : ''}
           ${breakdownChips}
         </div>
         <div style="padding:8px;display:flex;flex-direction:column;gap:8px;">
@@ -448,6 +462,66 @@ class MensEventsRemindersScreen extends Screen {
       btn.disabled = false;
       btn.innerHTML = original;
     }
+  }
+
+  // Same "no response" bucketing as renderColumn (regular players only —
+  // pickup-only members are excluded here just like the main No Response
+  // section, so the count on the button always matches who gets BCC'd).
+  _noResponsePlayers(ev) {
+    const isPickupEvent = ev.kind === 'pickup';
+    const allPlayers = ev.players || [];
+    const regularPlayers = isPickupEvent ? allPlayers.filter(p => !p.is_pickup_only) : allPlayers;
+    return regularPlayers.filter(p => p.rsvp_status !== 'yes' && p.rsvp_status !== 'no');
+  }
+
+  handleEmailNoResponseClick(btn) {
+    const fhEventId = btn.getAttribute('data-fh-event-id');
+    const ev = (this.data && this.data.events || []).find(
+      (e) => String(e.fh_event_id) === String(fhEventId)
+    );
+    if (!ev) return;
+
+    const players = this._noResponsePlayers(ev);
+    const emails = [...new Set(players.map((p) => (p.email || '').trim()).filter(Boolean))];
+    if (!emails.length) {
+      alert('No email addresses on file for the No Response players.');
+      return;
+    }
+
+    const eventWhen = [ev.date_str, ev.time_str].filter(Boolean).join(' ');
+    const eventTitle = ev.title || ev.type_label || 'the event';
+    const isPractice = String(ev.kind || '').toLowerCase() === 'practice';
+    const eventLabel = isPractice
+      ? (eventWhen ? `today's practice (${eventWhen})` : 'today\'s practice')
+      : `${eventTitle}${eventWhen ? ' — ' + eventWhen : ''}`;
+
+    const lines = [
+      `Hi — you're currently showing as No Response for ${eventLabel}.`,
+      '',
+    ];
+    if (ev.venue_name) lines.push(`Location: ${ev.venue_name}`, '');
+    lines.push(
+      `Please RSVP here: https://footballhome.org/#my`,
+      '',
+      `While you're there, please also set your availability for the rest of this week — that way we don't have to message everyone again this week.`,
+      '',
+      `Thanks!`,
+    );
+    const body = lines.join('\n');
+    const subject = `RSVP needed — ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
+
+    // Same Gmail-compose convention as _plainMailtoHref, but with `bcc`
+    // instead of `to` so the group stays private from each other
+    // (matches members.js's "Email All" bulk action).
+    const params = new URLSearchParams({
+      view: 'cm',
+      fs: '1',
+      authuser: 'soccer@lighthouse1893.org',
+      bcc: emails.join(','),
+      su: subject,
+      body: body,
+    });
+    window.open(`https://mail.google.com/mail/?${params.toString()}`, '_blank', 'noopener');
   }
 
   _plainMailtoHref(email, subject, body) {

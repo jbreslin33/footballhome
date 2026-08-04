@@ -591,11 +591,8 @@ class PlayerRosterScreen extends RostersScreen {
   }
 
   onEnter(params) {
-    this.chip = 'mens';
-    this._syncHeaderState();
-    this._buildFilterBar();
+    super.onEnter(params);
     this._renderWelcomeCard();
-    this._mountForChip();
   }
 
   _renderWelcomeCard() {
@@ -647,34 +644,6 @@ class PlayerRosterScreen extends RostersScreen {
       this._welcomeDismissed = true;
       card.remove();
     });
-  }
-
-  _syncHeaderState() {
-    const subtitle = this.element?.querySelector('#rs-subtitle');
-    if (subtitle) {
-      subtitle.textContent = 'Mens team players — APSL and Liga 1 only';
-    }
-  }
-
-  _buildFilterBar() {
-    const host = this.find('#rosters-filters');
-    if (!host) return;
-    if (!this._filterBar) {
-      this._filterBar = new FilterBar({ host });
-    }
-    this._filterBar.setRows([
-      {
-        name: 'category',
-        chips: [{ id: 'mens', label: '👨 Mens' }],
-        selected: this.chip,
-        onSelect: (id) => {
-          if (id == null || id === this.chip) return;
-          this.chip = id;
-          this._buildFilterBar();
-          this._mountForChip();
-        },
-      },
-    ]);
   }
 }
 

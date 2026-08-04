@@ -221,40 +221,43 @@ class MensRosterScreen extends RosterScreenBase {
     const container = this.find('#mr-list');
 
     if (this._isPlayerView()) {
-      const columns = (data.columns || []).filter((c) => {
-        const teamId = Number(c.teamId);
-        return teamId === 35 || teamId === 120 || teamId === 122;
-      }).sort((a, b) => {
-        const order = { 35: 0, 120: 1, 122: 2 };
-        return (order[Number(a.teamId)] ?? 99) - (order[Number(b.teamId)] ?? 99);
-      });
-      const sections = columns.map((col) => {
-        const players = (data.buckets && data.buckets[String(col.teamId)]) || [];
-        const rows = players.map((p) => {
-          const fullName = this.escape(`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.fullName || 'Player');
-          const dob = this._formatPlayerDob(p.birthDate);
-          return `
-            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
-              <div style="font-size:0.82rem; font-weight:600;">${fullName}</div>
-              <div style="font-size:0.78rem; opacity:0.72; white-space:nowrap;">${this.escape(dob)}</div>
-            </div>`;
-        }).join('');
+      // Full column parity with the admin board (Unassigned + every
+      // configured column) — players used to see a hardcoded 3-team
+      // subset here, which meant "all rosters" from #my quietly
+      // wasn't actually all of them.
+      const renderRows = (players) => players.map((p) => {
+        const fullName = this.escape(`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.fullName || 'Player');
+        const dob = this._formatPlayerDob(p.birthDate);
         return `
-          <section style="background:var(--bg-secondary); border:1px solid var(--color-border); border-radius:var(--radius-md); overflow:hidden; min-width:0;">
-            <div style="padding:8px 10px; border-bottom:1px solid var(--color-border); background:rgba(255,255,255,0.04); font-weight:700; font-size:0.82rem;">
-              ${this.escape(col.label || `Team ${col.teamId}`)}
-            </div>
-            <div style="padding:8px 10px; display:flex; flex-direction:column; gap:2px;">
-              ${rows || '<div style="opacity:0.55; font-size:0.8rem;">No players</div>'}
-            </div>
-          </section>`;
+          <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:0.82rem; font-weight:600;">${fullName}</div>
+            <div style="font-size:0.78rem; opacity:0.72; white-space:nowrap;">${this.escape(dob)}</div>
+          </div>`;
       }).join('');
+      const renderSection = (label, players) => `
+        <section style="background:var(--bg-secondary); border:1px solid var(--color-border); border-radius:var(--radius-md); overflow:hidden; min-width:0;">
+          <div style="padding:8px 10px; border-bottom:1px solid var(--color-border); background:rgba(255,255,255,0.04); font-weight:700; font-size:0.82rem;">
+            ${this.escape(label)}
+          </div>
+          <div style="padding:8px 10px; display:flex; flex-direction:column; gap:2px;">
+            ${renderRows(players) || '<div style="opacity:0.55; font-size:0.8rem;">No players</div>'}
+          </div>
+        </section>`;
+
+      const columns = data.columns || [];
+      const sections = [
+        renderSection('📦 Unassigned', data.unassigned || []),
+        ...columns.map((col) => renderSection(
+          col.label || `Team ${col.teamId}`,
+          (data.buckets && data.buckets[String(col.teamId)]) || [],
+        )),
+      ].join('');
 
       container.innerHTML = `
         <div style="padding:0 var(--space-2) var(--space-2); display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px; align-items:start;">
           ${sections}
         </div>`;
-      this.setBanner({ icon: '✓', text: 'Read-only team players · APSL, Liga 1, and Lighthouse League', showRefresh: false });
+      this.setBanner({ icon: '✓', text: 'Read-only team players · every column', showRefresh: false });
       return;
     }
 

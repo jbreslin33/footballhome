@@ -312,6 +312,10 @@ class PracticePlanScreen extends Screen {
       .slice()
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
       .forEach((img) => {
+        // Diagram is the dedicated "show at a glance what this drill looks
+        // like" photo — exactly what this card thumbnail is for. Fall back
+        // to any other photo only when an exercise has no diagram yet.
+        if (img.role === 'diagram') { exerciseImageMap.set(img.exercise_id, img.image_url); return; }
         if (!exerciseImageMap.has(img.exercise_id)) exerciseImageMap.set(img.exercise_id, img.image_url);
       });
     const sessionExercisesBySession = new Map();

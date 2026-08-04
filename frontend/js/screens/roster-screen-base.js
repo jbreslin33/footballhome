@@ -15,6 +15,16 @@ class RosterScreenBase extends Screen {
     });
   }
 
+  // Shared with MensRosterScreen's own copy (mens-roster.js) — kept as
+  // a separate method rather than hoisting fully because Mens renders
+  // an entirely different read-only layout for players, while the
+  // Boys/Girls/Womens family (this base class) reuses the normal card
+  // layout and just strips the drag/move affordances below.
+  _isPlayerView() {
+    const role = (this.navigation?.context?.role || this.auth?.user?.role || '').toString().toLowerCase();
+    return role === 'player';
+  }
+
   formatDobShort(value) {
     if (!value) return '';
     const d = new Date(`${value}T00:00:00Z`);
@@ -182,9 +192,15 @@ class RosterScreenBase extends Screen {
     const ageChip = player.ageGroup
       ? `<span style="font-size:0.68rem; line-height:1.2; font-weight:800; letter-spacing:0.02em; padding:0 6px; border-radius:8px; background:${isFemale ? '#eab308' : '#1e3a8a'}; color:${isFemale ? '#422006' : '#dbeafe'}; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
       : '';
-    const dragAttrs = col && col.teamId
+    // Players get a look-but-don't-touch board — no drag handle, no
+    // move dropdown (server-side team assignment has no separate
+    // admin check of its own, so the UI is the only gate; see
+    // _isPlayerView above).
+    const isPlayerView = this._isPlayerView();
+    const dragAttrs = (col && col.teamId && !isPlayerView)
       ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}"`
       : '';
+    if (isPlayerView) rosterSelectHtml = '';
     const laUidAttr = player.leagueAppsUserId
       ? `data-la-user-id="${player.leagueAppsUserId}"`
       : '';

@@ -106,6 +106,12 @@ class GameModelAdminScreen extends Screen {
       }
     });
     this.element.addEventListener('change', (e) => {
+      const roleInput = e.target.closest('[data-exercise-role-photo-input]');
+      if (roleInput && roleInput.files && roleInput.files.length) {
+        this.handleExercisePhotoSelect(roleInput.files, roleInput.getAttribute('data-exercise-role-photo-input'));
+        roleInput.value = '';
+        return;
+      }
       const fileInput = e.target.closest('[data-exercise-photo-input]');
       if (fileInput && fileInput.files && fileInput.files.length) {
         this.handleExercisePhotoSelect(fileInput.files);
@@ -470,16 +476,23 @@ class GameModelAdminScreen extends Screen {
           ? `${item.default_duration_minutes}m`
           : '—';
         const images = (this.parentOptions.exercise_images || []).filter((img) => img.exercise_id === item.id);
-        const photosCell = images.length
-          ? `<img src="${this.escapeHtml(images[0].image_url)}" alt="" data-lightbox-src="${this.escapeHtml(images[0].image_url)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;vertical-align:middle;border:1px solid var(--border-color);cursor:zoom-in;">${images.length > 1 ? ` +${images.length - 1}` : ''}`
+        const diagramImg = images.find((img) => img.role === 'diagram');
+        const summaryImg = images.find((img) => img.role === 'summary');
+        const galleryImages = images.filter((img) => img.role !== 'diagram' && img.role !== 'summary');
+        const thumbHtml = (img) => `<img src="${this.escapeHtml(img.image_url)}" alt="" data-lightbox-src="${this.escapeHtml(img.image_url)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;vertical-align:middle;border:1px solid var(--border-color);cursor:zoom-in;">`;
+        const diagramCell = diagramImg ? thumbHtml(diagramImg) : '—';
+        const summaryCell = `${item.summary ? this.escapeHtml(item.summary) : ''}${summaryImg ? `${item.summary ? '<br>' : ''}${thumbHtml(summaryImg)}` : ''}` || '—';
+        const photosCell = galleryImages.length
+          ? `${thumbHtml(galleryImages[0])}${galleryImages.length > 1 ? ` +${galleryImages.length - 1}` : ''}`
           : '—';
         return `
           <tr>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.title || item.slug || 'Untitled')}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${diagramCell}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.slug || '—')}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(players)}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(duration)}</td>
-            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.summary || '—')}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${summaryCell}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${photosCell}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
               <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
@@ -498,6 +511,7 @@ class GameModelAdminScreen extends Screen {
           <thead>
             <tr>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Exercise</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Diagram</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Slug</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Players</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Duration</th>
@@ -647,7 +661,9 @@ class GameModelAdminScreen extends Screen {
 
   // Photos live on a child table (club_game_model_exercise_images) keyed
   // by exercise_id, so a brand-new exercise has nowhere to attach a photo
-  // to until it's been saved once and has a real id.
+  // to until it's been saved once and has a real id. Diagram/summary are
+  // singleton roles (uploading again replaces the existing one); the
+  // gallery below is the untagged, unlimited-count leftover.
   renderExercisePhotosSection(exerciseId) {
     if (exerciseId == null) {
       return `
@@ -662,7 +678,29 @@ class GameModelAdminScreen extends Screen {
       .slice()
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-    const thumbs = images.map((img) => `
+    const diagramImg = images.find((img) => img.role === 'diagram');
+    const summaryImg = images.find((img) => img.role === 'summary');
+    const galleryImages = images.filter((img) => img.role !== 'diagram' && img.role !== 'summary');
+
+    const renderRoleSlot = (label, helpText, role, image) => `
+      <div style="display:grid; gap:var(--space-2);">
+        <span style="font-weight:600;">${this.escapeHtml(label)}</span>
+        <p style="margin:0; opacity:0.75; font-size:0.85rem;">${this.escapeHtml(helpText)}</p>
+        ${image ? `
+          <div style="position:relative; width:110px;">
+            <img src="${this.escapeHtml(image.image_url)}" alt="${this.escapeHtml(label)}" data-lightbox-src="${this.escapeHtml(image.image_url)}" style="width:110px; height:110px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:block; cursor:zoom-in;">
+            <button type="button" class="btn btn-danger btn-sm delete-exercise-image-btn" data-image-id="${image.id}" title="Remove photo" style="position:absolute; top:4px; right:4px; padding:0.2rem 0.5rem; line-height:1;">✕</button>
+          </div>
+        ` : '<div style="opacity:0.7; font-size:0.9rem;">None yet.</div>'}
+        <label class="btn btn-secondary" style="width:fit-content; cursor:pointer;">
+          ${image ? '+ Replace photo' : '+ Add photo'}
+          <input type="file" accept="image/*" data-exercise-role-photo-input="${role}" style="display:none;">
+        </label>
+        <div data-exercise-${role}-status style="font-size:0.85rem; opacity:0.8;"></div>
+      </div>
+    `;
+
+    const galleryThumbs = galleryImages.map((img) => `
       <div style="position:relative; width:110px;">
         <img src="${this.escapeHtml(img.image_url)}" alt="Exercise photo" data-lightbox-src="${this.escapeHtml(img.image_url)}" style="width:110px; height:110px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:block; cursor:zoom-in;">
         <button type="button" class="btn btn-danger btn-sm delete-exercise-image-btn" data-image-id="${img.id}" title="Remove photo" style="position:absolute; top:4px; right:4px; padding:0.2rem 0.5rem; line-height:1;">✕</button>
@@ -670,14 +708,18 @@ class GameModelAdminScreen extends Screen {
     `).join('');
 
     return `
-      <div style="display:grid; gap:var(--space-2);">
-        <span style="font-weight:600;">Photos</span>
-        ${thumbs ? `<div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">${thumbs}</div>` : '<div style="opacity:0.7; font-size:0.9rem;">No photos yet.</div>'}
-        <label class="btn btn-secondary" style="width:fit-content; cursor:pointer;">
-          + Add photo
-          <input type="file" accept="image/*" multiple data-exercise-photo-input style="display:none;">
-        </label>
-        <div data-exercise-photo-status style="font-size:0.85rem; opacity:0.8;"></div>
+      <div style="display:grid; gap:var(--space-4);">
+        ${renderRoleSlot('Diagram', 'The at-a-glance photo shown wherever this exercise is listed.', 'diagram', diagramImg)}
+        ${renderRoleSlot('Summary photo', 'Stands in for (or supplements) the Summary text below.', 'summary', summaryImg)}
+        <div style="display:grid; gap:var(--space-2);">
+          <span style="font-weight:600;">Other photos</span>
+          ${galleryThumbs ? `<div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">${galleryThumbs}</div>` : '<div style="opacity:0.7; font-size:0.9rem;">No other photos yet.</div>'}
+          <label class="btn btn-secondary" style="width:fit-content; cursor:pointer;">
+            + Add photo
+            <input type="file" accept="image/*" multiple data-exercise-photo-input style="display:none;">
+          </label>
+          <div data-exercise-photo-status style="font-size:0.85rem; opacity:0.8;"></div>
+        </div>
       </div>
     `;
   }
@@ -807,15 +849,15 @@ class GameModelAdminScreen extends Screen {
     });
   }
 
-  async handleExercisePhotoSelect(fileList) {
-    const statusEl = this.find('[data-exercise-photo-status]');
+  async handleExercisePhotoSelect(fileList, role = null) {
+    const statusEl = this.find(role ? `[data-exercise-${role}-status]` : '[data-exercise-photo-status]');
     const files = Array.from(fileList);
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (statusEl) statusEl.textContent = `Uploading ${i + 1} of ${files.length}…`;
       try {
         const dataUrl = await this.resizeImageForUpload(file);
-        await this.uploadExercisePhoto(dataUrl);
+        await this.uploadExercisePhoto(dataUrl, role);
       } catch (e) {
         console.error('Error uploading exercise photo:', e);
         if (statusEl) statusEl.textContent = `Failed to upload ${file.name}.`;
@@ -827,11 +869,12 @@ class GameModelAdminScreen extends Screen {
     this.openEditor(this.currentEditId, this.currentContext);
   }
 
-  async uploadExercisePhoto(dataUrl) {
+  async uploadExercisePhoto(dataUrl, role = null) {
+    const body = role ? { image: dataUrl, role } : { image: dataUrl };
     const response = await this.auth.fetch(`/api/clubs/${this.clubId}/game-model/admin/exercises/${this.currentEditId}/images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: dataUrl })
+      body: JSON.stringify(body)
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);

@@ -314,7 +314,7 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
                      "ORDER BY eai.exercise_id, eai.id";
         } else if (entity == "exercise_images") {
             table = "club_game_model_exercise_images";
-            select = "SELECT ei.id, ei.exercise_id, ei.image_url, ei.sort_order "
+            select = "SELECT ei.id, ei.exercise_id, ei.image_url, ei.sort_order, ei.role "
                      "FROM club_game_model_exercise_images ei "
                      "JOIN club_game_model_exercises ex ON ex.id = ei.exercise_id "
                      "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
@@ -406,6 +406,7 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
                 json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
                 json << ",\"image_url\":\"" << escapeJson(row["image_url"].c_str()) << "\"";
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
+                json << ",\"role\":" << (row["role"].is_null() ? "null" : "\"" + escapeJson(row["role"].c_str()) + "\"");
             }
             json << "}";
         }
@@ -735,6 +736,22 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
         }
         std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
 
+        // Optional "role": "diagram" | "summary" — anything else (absent,
+        // null, unrecognized) falls back to the plain gallery (NULL role).
+        std::string role;
+        size_t roleKeyPos = body.find("\"role\"");
+        if (roleKeyPos != std::string::npos) {
+            size_t roleColon = body.find(':', roleKeyPos + 6);
+            size_t roleQuoteStart = (roleColon == std::string::npos) ? std::string::npos : body.find('"', roleColon + 1);
+            size_t roleQuoteEnd = (roleQuoteStart == std::string::npos) ? std::string::npos : body.find('"', roleQuoteStart + 1);
+            if (roleColon != std::string::npos && roleQuoteStart != std::string::npos && roleQuoteEnd != std::string::npos) {
+                std::string candidate = body.substr(roleQuoteStart + 1, roleQuoteEnd - roleQuoteStart - 1);
+                if (candidate == "diagram" || candidate == "summary") {
+                    role = candidate;
+                }
+            }
+        }
+
         static const std::regex mimeRe("^data:image/(png|jpe?g|webp|gif);base64,");
         std::smatch mimeMatch;
         if (!std::regex_search(dataValue, mimeMatch, mimeRe)) {
@@ -756,13 +773,14 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
         long long imageId = 0;
         std::string publicUrl;
         int sortOrder = 0;
-        saveExerciseImage(exercise_id, imageBytes, ext, imageId, publicUrl, sortOrder);
+        saveExerciseImage(exercise_id, imageBytes, ext, role, imageId, publicUrl, sortOrder);
 
         std::ostringstream data;
         data << "{\"id\":" << imageId
              << ",\"exercise_id\":" << exercise_id
              << ",\"image_url\":\"" << escapeJson(publicUrl) << "\""
-             << ",\"sort_order\":" << sortOrder << "}";
+             << ",\"sort_order\":" << sortOrder
+             << ",\"role\":" << (role.empty() ? "null" : "\"" + role + "\"") << "}";
 
         return Response(HttpStatus::OK, createJSONResponse(true, "Uploaded", data.str()));
     } catch (const std::exception& e) {
@@ -773,10 +791,27 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
 
 // Shared by handleUploadExerciseImage and handleExerciseDescriptionOcr — both
 // persist a photo to the same club_game_model_exercise_images table.
+// role == "diagram" or "summary" replaces that exercise's existing photo of
+// the same role (at most one of each, enforced by the partial unique index
+// from migration 260); role == "" lands in the plain gallery alongside any
+// number of other untagged photos.
 void ClubController::saveExerciseImage(int exercise_id, const std::string& imageBytes, const std::string& ext,
+                                        const std::string& role,
                                         long long& outId, std::string& outImageUrl, int& outSortOrder) {
     const std::string mediaDir = "/app/images/exercises";
     mkdir(mediaDir.c_str(), 0755);
+
+    if (!role.empty()) {
+        auto existing = db_->query(
+            "SELECT id, image_path FROM club_game_model_exercise_images WHERE exercise_id = $1::int AND role = $2",
+            { std::to_string(exercise_id), role });
+        if (!existing.empty()) {
+            std::string oldPath = mediaDir + "/" + existing[0]["image_path"].c_str();
+            std::remove(oldPath.c_str());
+            db_->query("DELETE FROM club_game_model_exercise_images WHERE id = $1::int",
+                       { existing[0]["id"].c_str() });
+        }
+    }
 
     auto nextSort = db_->query(
         "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM club_game_model_exercise_images WHERE exercise_id = $1::int",
@@ -797,10 +832,17 @@ void ClubController::saveExerciseImage(int exercise_id, const std::string& image
 
     outImageUrl = "/images/exercises/" + filename;
 
-    auto inserted = db_->query(
-        "INSERT INTO club_game_model_exercise_images (exercise_id, image_path, image_url, sort_order, created_at) "
-        "VALUES ($1::int, $2, $3, $4::int, NOW()) RETURNING id",
-        { std::to_string(exercise_id), filename, outImageUrl, std::to_string(outSortOrder) });
+    std::vector<std::string> insertParams = { std::to_string(exercise_id), filename, outImageUrl, std::to_string(outSortOrder) };
+    std::string insertSql = "INSERT INTO club_game_model_exercise_images (exercise_id, image_path, image_url, sort_order, role, created_at) "
+                             "VALUES ($1::int, $2, $3, $4::int, ";
+    if (role.empty()) {
+        insertSql += "NULL, NOW()) RETURNING id";
+    } else {
+        insertSql += "$5, NOW()) RETURNING id";
+        insertParams.push_back(role);
+    }
+
+    auto inserted = db_->query(insertSql, insertParams);
     outId = inserted[0]["id"].as<long long>();
 }
 
@@ -939,7 +981,7 @@ Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
         std::string publicUrl;
         int sortOrder = 0;
         try {
-            saveExerciseImage(exercise_id, imageBytes, ext, imageId, publicUrl, sortOrder);
+            saveExerciseImage(exercise_id, imageBytes, ext, "", imageId, publicUrl, sortOrder);
         } catch (const std::exception& e) {
             std::cerr << "Error saving exercise OCR image: " << e.what() << std::endl;
             return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to save image"));

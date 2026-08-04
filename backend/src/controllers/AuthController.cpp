@@ -420,7 +420,15 @@ Response AuthController::handleCoachTeams(const Request& request) {
         }
 
         // Pull the team's chat (if any) alongside the team so the UI can
-        // label teams by their chat name when one exists.
+        // label teams by their chat name when one exists. The rosters
+        // boards (mens/boys/girls/womens pills — MensTeamColumns::loadAll)
+        // gate a team's visibility purely on board_sort_order IS NOT NULL
+        // AND board_archived_at IS NULL; they don't care about
+        // division/conference/season/league at all. So "Select Team to
+        // Coach" must filter on the same two columns, or archived internal
+        // teams (e.g. the old grassroots buckets like Puerto Rico/DR/U23,
+        // which still carry a fully-resolving division_id) show up here
+        // but nowhere on the rosters pages.
         std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, "
                           "       ch.id AS chat_id, ch.name AS chat_name, "
                           "       COUNT(tp.player_id) AS player_count "
@@ -430,6 +438,8 @@ Response AuthController::handleCoachTeams(const Request& request) {
                           "LEFT JOIN chats ch ON ch.team_id = t.id "
                           "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
                           "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
+                          "  AND t.board_sort_order IS NOT NULL "
+                          "  AND t.board_archived_at IS NULL "
                           "GROUP BY t.id, t.name, t.club_id, ch.id, ch.name "
                           "ORDER BY ch.name NULLS LAST, t.name";
 
@@ -452,6 +462,8 @@ Response AuthController::handleCoachTeams(const Request& request) {
                                              "LEFT JOIN chats ch ON ch.team_id = t.id "
                                              "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
                                              "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
+                                             "  AND t.board_sort_order IS NOT NULL "
+                                             "  AND t.board_archived_at IS NULL "
                                              "GROUP BY t.id, t.name, ch.id, ch.name "
                                              "ORDER BY ch.name NULLS LAST, t.name";
             result = db_->query(fallback_sql, {user_id});
