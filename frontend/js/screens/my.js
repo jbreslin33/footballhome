@@ -40,6 +40,7 @@ class MyScreen extends Screen {
     this.standingSaving = new Set();     // "kind::category::response" tokens in-flight
     this.dataError      = null;
     this.expandedEventId = null;         // toggled by the compact View button
+    this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
 
     // Chat state (compressed: latest message on top, expandable).
     this.chatMessages   = [];            // full history, stored oldest-first
@@ -187,6 +188,21 @@ class MyScreen extends Screen {
         e.stopPropagation();
         const targetScreen = playerNavBtn.getAttribute('data-player-nav-target');
         if (targetScreen) this.navigation.goTo(targetScreen);
+        return;
+      }
+      // Peer "Remind" nudge — sms: link already does the work (opens the
+      // clicker's own Messages app, pre-filled, they hit send); we just
+      // flip it to a disabled "Reminded" state after one tap so a single
+      // viewer can't re-blast the same teammate all afternoon. No
+      // preventDefault — the sms: navigation still needs to fire.
+      const remindLink = target.closest('[data-remind-key]');
+      if (remindLink) {
+        e.stopPropagation();
+        const key = remindLink.getAttribute('data-remind-key');
+        if (key) this.remindedKeys.add(key);
+        remindLink.textContent = 'Reminded ✓';
+        remindLink.style.opacity = '0.55';
+        remindLink.style.pointerEvents = 'none';
         return;
       }
       // Per-event RSVP button (Going / Not Going).
@@ -372,6 +388,7 @@ class MyScreen extends Screen {
     const going = rsvps.filter(r => r && r.response === 'yes');
     const playersGoing = going.filter(r => !r.is_coach);
     const coachesGoing = going.filter(r => r.is_coach);
+    const noResponsePlayers = rsvps.filter(r => r && !r.is_coach && !r.response);
 
     const nameOf = (r) => (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
     const rowsHtml = (list) => list
@@ -389,12 +406,48 @@ class MyScreen extends Screen {
       ${list.length ? `<div style="display:grid; gap:3px; margin-top:6px;">${rowsHtml(list)}</div>` : ''}
     `;
 
+    // Plain sms: link — no server round-trip, same pattern as the coach
+    // reminders board (mens-events-reminders.js). Opens the clicker's own
+    // Messages app pre-filled; they still have to hit send themselves.
+    const eventTitle = this._eventTitle(ev);
+    const noResponseRows = noResponsePlayers.map(r => {
+      const key = `${ev.fh_event_id}:${r.person_id}`;
+      const name = nameOf(r);
+      const alreadyReminded = this.remindedKeys.has(key);
+      let actionHtml;
+      if (alreadyReminded) {
+        actionHtml = `<span style="font-size:0.68rem; opacity:0.55;">Reminded ✓</span>`;
+      } else if (r.phone) {
+        const body = `Hey ${r.first_name || ''}, don't forget to RSVP for ${eventTitle}! https://footballhome.org/#my`.trim();
+        actionHtml = `<a href="sms:${this.escapeHtml(r.phone)}?body=${encodeURIComponent(body)}"
+             data-remind-key="${this.escapeHtml(key)}"
+             style="font-size:0.68rem; font-weight:700; color:#0f172a; background:#38bdf8;
+                    padding:3px 8px; border-radius:999px; text-decoration:none; line-height:1.4;">💬 Remind</a>`;
+      } else {
+        actionHtml = `<span style="font-size:0.66rem; opacity:0.5;">No SMS on file</span>`;
+      }
+      return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}</span>
+          ${actionHtml}
+        </div>`;
+    }).join('');
+
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
-                  border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);
-                  display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
-        <div>${groupHtml('Players Going', playersGoing)}</div>
-        <div>${groupHtml('Coaches Going', coachesGoing)}</div>
+                  border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
+        <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+          <div>${groupHtml('Players Going', playersGoing)}</div>
+          <div>${groupHtml('Coaches Going', coachesGoing)}</div>
+        </div>
+        ${noResponsePlayers.length ? `
+          <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
+            <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                        color:rgba(226,232,240,0.75); margin-bottom:6px;">
+              No Response (${noResponsePlayers.length})
+            </div>
+            <div style="display:grid; gap:6px;">${noResponseRows}</div>
+          </div>
+        ` : ''}
       </div>`;
   }
 

@@ -204,7 +204,7 @@ void AdminLaBackfillController::registerRoutes(Router& router,
 // endpoints (transactions, payments, etc.) before wiring them into
 // production models.  Remove after we've discovered the right shape.
 Response AdminLaBackfillController::handleProbe(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     std::string path = urlDecode(request.getQueryParam("path"));
@@ -236,7 +236,7 @@ Response AdminLaBackfillController::handleProbe(const Request& request) {
 }
 
 Response AdminLaBackfillController::handleBackfill(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
@@ -785,7 +785,7 @@ static std::string resolveCategory(const Request& request) {
 
 Response AdminLaBackfillController::handleMembers(const Request& request, const LaSyncMap& sync) {
     (void)sync;  // LA fetch was executed by laGet(); handler reads DB only.
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     return respondMembers(resolveVariant(request, "active"), resolveCategory(request));
@@ -806,7 +806,7 @@ Response AdminLaBackfillController::handleMembers(const Request& request, const 
 //                                  admin_level } ], total } }
 // ────────────────────────────────────────────────────────────────────────────
 Response AdminLaBackfillController::handleStaff(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     try {
@@ -857,7 +857,7 @@ Response AdminLaBackfillController::handleStaff(const Request& request) {
 //   { success, data: { view, total, people: [ { person_id, … } ] } }
 // ────────────────────────────────────────────────────────────────────────────
 Response AdminLaBackfillController::handlePeople(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
@@ -1165,7 +1165,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
 // snapshot with zero additional LA traffic.
 // ────────────────────────────────────────────────────────────────────────────
 Response AdminLaBackfillController::handleSyncMemberships(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 

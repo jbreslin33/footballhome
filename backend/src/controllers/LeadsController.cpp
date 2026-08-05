@@ -348,7 +348,7 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
 // POST /api/leads/sync?force=1
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleSync(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     const std::string force = request.getQueryParam("force");
     const bool forceFlag = (force == "1" || force == "true");
@@ -389,7 +389,7 @@ Response LeadsController::handleSync(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleList(const Request& request, const LaSyncMap& sync) {
     (void)sync;   // LA fetch was executed by laGet(); this handler reads DB only.
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {
         auto leads = Lead::listAll();
@@ -411,7 +411,7 @@ Response LeadsController::handleList(const Request& request, const LaSyncMap& sy
 // POST /api/leads/:id/contact
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleLogContact(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -537,7 +537,7 @@ Response LeadsController::handleLogContact(const Request& request) {
 // ]}
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleListContacts(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -577,7 +577,7 @@ Response LeadsController::handleListContacts(const Request& request) {
 // 404 when the (lead_id, contact_id) pair doesn't match an existing row.
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleDeleteContact(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0, contactId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -615,7 +615,7 @@ Response LeadsController::handleDeleteContact(const Request& request) {
 // lead row (same JSON shape as /api/leads).
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleMarkConverted(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -653,7 +653,7 @@ Response LeadsController::handleMarkConverted(const Request& request) {
 }
 
 Response LeadsController::handleUnmarkConverted(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -679,7 +679,7 @@ Response LeadsController::handleUnmarkConverted(const Request& request) {
 // in the "All" + "Dead" tabs and the action is one-click reversible.
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleMarkDead(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -697,7 +697,7 @@ Response LeadsController::handleMarkDead(const Request& request) {
 }
 
 Response LeadsController::handleUnmarkDead(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -724,7 +724,7 @@ Response LeadsController::handleUnmarkDead(const Request& request) {
 // the client can post `{"status": null}` or `{}` to reset.
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleSetStatusOverride(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {
@@ -760,7 +760,7 @@ Response LeadsController::handleSetStatusOverride(const Request& request) {
 // GET /api/leads/contact-stats
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleContactStats(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {
         auto stats = LeadContact::fetchStats();
@@ -801,7 +801,7 @@ Response LeadsController::handleContactStats(const Request& request) {
 //   chat_id = 5 (Philadelphia Pickup ⚽️)
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleNextPickup(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     constexpr int kPickupChatId = 5;
     try {
@@ -890,7 +890,7 @@ Response LeadsController::handleNextPickup(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleUnjoinedMembers(const Request& request, const LaSyncMap& sync) {
     (void)sync;   // LA fetch was executed by laGet(); this handler reads DB only.
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {
         auto db = Database::getInstance();
@@ -1186,7 +1186,7 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
 // and is NOT called on every load; it's opened deliberately.
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleAnalytics(const Request& request, const LaSyncMap& sync) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     using nlohmann::json;
 
@@ -1602,7 +1602,7 @@ Response LeadsController::handleAnalytics(const Request& request, const LaSyncMa
 // GET /api/leads/:id/vcard?kind=self|parent|player|youth-pair
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleVcard(const Request& request) {
-    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {

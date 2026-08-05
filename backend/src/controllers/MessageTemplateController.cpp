@@ -53,6 +53,9 @@ void MessageTemplateController::registerRoutes(Router& router, const std::string
 }
 
 Response MessageTemplateController::handleList(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
     try {
         std::string query = R"(
             SELECT id, category, label, kind, tier, subject, body, html_body, is_active, sort_order

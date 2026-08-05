@@ -856,7 +856,7 @@ bool isEligibilityTeamId(int teamId) {
 }  // namespace
 
 Response MensRosterController::handleGetRsvpEligibility(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     long long userId = 0;
@@ -898,7 +898,7 @@ Response MensRosterController::handleGetRsvpEligibility(const Request& request) 
 }
 
 Response MensRosterController::handlePutRsvpEligibility(const Request& request) {
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
     json body;

@@ -187,6 +187,9 @@ Response ClubController::handleGetAllClubs(const Request& request) {
 }
 
 Response ClubController::handleListGameModelAdminEntities(const Request& request, const std::string& entity) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
     try {
         std::string path = request.getPath();
         std::string prefix = "/api/clubs/";
@@ -420,6 +423,9 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
 }
 
 Response ClubController::handleCreateGameModelAdminEntity(const Request& request, const std::string& entity) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
     try {
         std::string path = request.getPath();
         std::string prefix = "/api/clubs/";
@@ -630,6 +636,9 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
 }
 
 Response ClubController::handleDeleteGameModelAdminEntity(const Request& request, const std::string& entity, int id) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
     try {
         std::string path = request.getPath();
         std::string prefix = "/api/clubs/";
@@ -1011,6 +1020,9 @@ Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
 }
 
 Response ClubController::handleGetClubGameModelStructure(const Request& request) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
     try {
         std::string path = request.getPath();
         std::string prefix = "/api/clubs/";
@@ -1150,6 +1162,9 @@ Response ClubController::handleGetClubGameModelStructure(const Request& request)
 }
 
 Response ClubController::handleGetClubGameModel(const Request& request) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
     try {
         std::string path = request.getPath();
         std::string prefix = "/api/clubs/";

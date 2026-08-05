@@ -3,34 +3,6 @@
 // hang off persons.  Scraped league/opponent-only people stay in
 // System Admin until linked into a Lighthouse membership.
 class AdminClubScreen extends Screen {
-  buildGameModelReadmeButtonHtml() {
-    return `
-      <button class="btn btn-secondary game-model-readme-btn" type="button" style="display: inline-flex; align-items: center; gap: var(--space-2);">
-        <span>📘</span>
-        <span>Open Practice Design README</span>
-      </button>
-    `;
-  }
-
-  buildGameModelReadmeViewHtml() {
-    return `
-      <article style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary); box-shadow: var(--shadow-sm);">
-        <h4 style="margin: 0 0 var(--space-2) 0;">📘 Practice Design README</h4>
-        <div style="margin: 0; opacity: 0.85; line-height: 1.5;">
-          <p style="margin: 0 0 var(--space-2) 0;"><strong>Practice structure</strong></p>
-          <p style="margin: 0 0 var(--space-2) 0;">
-            Each practice should follow a simple rhythm: 3 sections, with 2 possessions and 1 game.
-            Each 30-minute block of practice will always strive, with low numbers, to have at minimum a rondo for 20 minutes followed by 10 minutes of technical work.
-          </p>
-          <p style="margin: 0 0 var(--space-2) 0;"><strong>Group management</strong></p>
-          <p style="margin: 0;">
-            At the high end, we would add as many technical stations and duplicate the rondo as needed to keep the groups at the proper size of 3–6 players each.
-          </p>
-        </div>
-      </article>
-    `;
-  }
-
   render() {
     const div = document.createElement('div');
     div.className = 'screen screen-admin-club';
@@ -51,12 +23,13 @@ class AdminClubScreen extends Screen {
           </p>
         </div>
 
-        <!-- ── Club-admin funnel · People → Billing → Roster → RSVP Eligibility ──
+        <!-- ── Club-admin funnel · People → Billing → RSVP Eligibility ──
              Person is the hub. Everything below derives from persons:
                1. People       — who is this Lighthouse human? (users, roles, links)
                2. Billing      — if a member, are they paid up?
-               3. Roster       — assigned to which team?
-               4. RSVP Elig.   — which team events can they RSVP for?
+               3. RSVP Elig.   — which team events can they RSVP for?
+             Roster (Team Players) moved to the Coach screen — it's coach
+             work, not club-admin work.
              Outside-club / scraped people: System Admin. -->
 
         <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">🎯 Recruitment</h3>
@@ -77,15 +50,9 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-billing" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🎽 Roster</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 3 — put each paid member on a specific team. Mens tiers (APSL / Liga 1 / Liga 2 / Adult / Practice / Pickup), Boys teams, Girls teams, cross-domain master board.
-        </p>
-        <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗳️ Event Access</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 4 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
+          Step 3 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
         </p>
         <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
@@ -95,25 +62,11 @@ class AdminClubScreen extends Screen {
         </p>
         <div id="section-schedule" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📢 Reminders</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Event RSVP nudges. Mens reminders are live now; this section is the home for expanding the same workflow to women, boys, and girls.
-        </p>
-        <div id="section-reminders" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📣 Communications</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Outbound club voice: recipient-first messages, public social posts, and reusable poster/flyer assets.
         </p>
         <div id="section-communications"></div>
-
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧠 Game Model</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          The club’s game model, principles, and weekly session plan with player-count variations for each day.
-        </p>
-        <div style="margin-bottom: var(--space-3);">${this.buildGameModelReadmeButtonHtml()}</div>
-        <div id="game-model-readme-view" style="display: none; margin-top: var(--space-3);">${this.buildGameModelReadmeViewHtml()}</div>
-        <div id="section-game-model" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Teams &amp; Structure</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -168,15 +121,6 @@ class AdminClubScreen extends Screen {
         return;
       }
 
-      const readmeBtn = e.target.closest('.game-model-readme-btn');
-      if (readmeBtn) {
-        const readmeView = this.find('#game-model-readme-view');
-        if (readmeView) {
-          readmeView.style.display = readmeView.style.display === 'block' ? 'none' : 'block';
-        }
-        return;
-      }
-      
       const subNavBtn = e.target.closest('.sub-nav-btn');
       if (subNavBtn) {
         const section = subNavBtn.getAttribute('data-section');
@@ -265,16 +209,6 @@ class AdminClubScreen extends Screen {
     ];
     renderInto('#section-recruitment', recruitmentTiles);
 
-    // ── Reminders ────────────────────────────────────────────────────
-    // Mens reminders are the only live implementation today.  Keep the
-    // tile data category-scoped so women/boys/girls can become adjacent
-    // tiles without changing the click routing shape.
-    const reminderTiles = [
-      { id: 'event-reminders-mens', target: 'mens-events-reminders', params: { category: 'mens' }, icon: '📢', label: 'Event Reminders', description: 'Mens events now; same workflow can expand to women, boys, and girls' },
-    ];
-    this._dashTiles = reminderTiles;
-    renderInto('#section-reminders', reminderTiles);
-
     // ── RSVP ──────────────────────────────────────────────────────────
     // Single diagnostic tile — opens the RSVP-eligibility board with
     // All / Men / Women / Boys / Girls tabs so the coach can see at a
@@ -340,30 +274,10 @@ class AdminClubScreen extends Screen {
     renderInto('#section-billing', billingTiles);
     this._dashTiles = (this._dashTiles || []).concat(billingTiles);
 
-    // ── 🎽 Roster funnel section ─────────────────────────────────────
-    // Step 3 of the club-admin funnel.  Assign each paid member to a
-    // specific team.  Consolidated 2026-07-13 into a single tile that
-    // routes to the /#rosters screen — a FilterBar chip switcher
-    // (All / Mens / Womens / Boys / Girls) which mounts the appropriate
-    // sub-screen underneath.  Same UX pattern as Members + Payments.
-    const rosterTiles = [
-      { id: 'rosters', target: 'rosters', params: {}, icon: '🎽', label: 'Team Players', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side)' },
-    ];
-    renderInto('#section-rosters', rosterTiles);
-    this._dashTiles = (this._dashTiles || []).concat(
-      rosterTiles.filter(t => t.target)
-    );
-
-    // ── Training / Game Model ───────────────────────────────────────
-    const gameModelTiles = [
-      { id: 'game-model', target: 'game-model', params: {}, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
-      { id: 'practice-plans', target: 'practice-plan', params: {}, icon: '📋', label: 'Practice Plans', description: 'Open the weekly day-by-day practice-plan view' },
-      { id: 'game-model-days', target: 'game-model-admin', params: { entity: 'days' }, icon: '🗓️', label: 'Days', description: 'Create and edit the weekly day structure' },
-      { id: 'game-model-exercises', target: 'game-model-admin', params: { entity: 'exercises' }, icon: '🏋️', label: 'Exercises', description: 'Manage the drills and activities used in sessions' },
-    ];
-    renderInto('#section-game-model', gameModelTiles);
-    this._dashTiles = (this._dashTiles || []).concat(gameModelTiles.filter(tile => tile.target));
-
+    // Game Model reference panel below (#game-model-panel /
+    // #game-model-contents) stays here — it's explicitly the "Club admin
+    // reference" read view. The editable tiles (Game Model / Practice
+    // Plans / Days / Exercises) moved to CoachHomeScreen.
     const gameModelContent = '<div style="opacity: 0.75;">Loading game model content…</div>';
     const gameModelContentsEl = this.find('#game-model-contents');
     if (gameModelContentsEl) {
@@ -853,27 +767,6 @@ class AdminClubScreen extends Screen {
       return;
     }
     
-    if (section === 'game-model') {
-      this.navigation.goTo('game-model', {
-        clubId: this.clubId,
-        clubName: this.clubName,
-      });
-      return;
-    }
-
-    if (section === 'game-model-admin' || section === 'game-model-days' || section === 'game-model-exercises') {
-      const entity = section === 'game-model-admin' ? 'game-model'
-        : section === 'game-model-days' ? 'days'
-        : section === 'game-model-exercises' ? 'exercises'
-        : 'game-model';
-      this.navigation.goTo('game-model-admin', {
-        clubId: this.clubId,
-        clubName: this.clubName,
-        entity,
-      });
-      return;
-    }
-
     if (section === 'tactics') {
       this.navigation.goTo('tactical-board', {
         clubId: this.clubId,

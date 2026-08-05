@@ -10,6 +10,14 @@ class RoleSelectionScreen extends Screen {
     // Check if user has admin role (club, sport division, team, super, or system level)
     const isAdmin = user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' || user.role === 'super' || user.role === 'system' || user.role === 'league');
     const adminButtonDisplay = isAdmin ? 'flex' : 'none';
+
+    // Marketing is a narrower admin_level (Recruitment + Communications
+    // only — see backend Controller::requireAdminLevel call sites). Its
+    // own button, not folded into isAdmin: club/super already reach the
+    // same tools via Club Admin, so this button is only meaningful for
+    // someone who holds marketing and nothing broader.
+    const isMarketingOnly = user?.role === 'marketing';
+    const marketingButtonDisplay = isMarketingOnly ? 'flex' : 'none';
     
     div.innerHTML = `
       <div class="screen-header">
@@ -47,6 +55,14 @@ class RoleSelectionScreen extends Screen {
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Club Admin</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Social media, events & club management</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="marketing" style="display: ${marketingButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📣</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Marketing</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Leads and outbound communications</div>
           </div>
         </button>
 
@@ -262,7 +278,9 @@ class RoleSelectionScreen extends Screen {
       //  eligible events via mens_team_assignments internally.)
       this.navigation.goTo('my');
     } else if (role === 'coach') {
-      this.navigation.goTo('context-selection', { role: role });
+      this.navigation.goTo('coach-home');
+    } else if (role === 'marketing') {
+      this.navigation.goTo('marketing-home');
     } else {
       this.handleError(new Error('Unknown role: ' + role), 'role-selection');
     }
@@ -288,16 +306,17 @@ class RoleSelectionScreen extends Screen {
   // players never need to see the picker.
   //
   // Also treats admin-level `user.role` (club / sport_division / team
-  // / super / system / league) as "keep the picker" so admins retain
-  // the ability to switch modes even if the DB has no matching
-  // `admins` / `team_coaches` rows yet.
+  // / super / system / league / marketing) as "keep the picker" so
+  // admins retain the ability to switch modes even if the DB has no
+  // matching `admins` / `team_coaches` rows yet.
   async _maybeAutoSkipToMy() {
     try {
       const user = this.navigation.context.user || {};
       const isAdmin = user.role && (
         user.role === 'club' || user.role === 'sport_division' ||
         user.role === 'team' || user.role === 'super' ||
-        user.role === 'system' || user.role === 'league'
+        user.role === 'system' || user.role === 'league' ||
+        user.role === 'marketing'
       );
       if (isAdmin) return;
 

@@ -119,22 +119,22 @@ int ChargeFlagsController::bearerUserId(const Request& req) {
 
 void ChargeFlagsController::registerRoutes(Router& router, const std::string& prefix) {
     router.post(prefix, [this](const Request& r) {
-        if (!requireBearer(r)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        if (!requireAdminLevel(r, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
         return this->handleCreate(r);
     });
 
     router.get(prefix, [this](const Request& r) {
-        if (!requireBearer(r)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        if (!requireAdminLevel(r, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
         return this->handleList(r);
     });
 
     router.get(prefix + "/:id", [this](const Request& r) {
-        if (!requireBearer(r)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        if (!requireAdminLevel(r, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
         return this->handleGetById(r);
     });
 
     router.put(prefix + "/:id", [this](const Request& r) {
-        if (!requireBearer(r)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        if (!requireAdminLevel(r, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
         return this->handlePatch(r);
     });
 }

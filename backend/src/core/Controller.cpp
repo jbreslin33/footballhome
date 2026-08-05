@@ -1,6 +1,7 @@
 #include "Controller.h"
 #include "Crypto.h"
 #include "../database/Database.h"
+#include <algorithm>
 #include <cstdio>
 #include <chrono>
 #include <future>
@@ -199,6 +200,36 @@ bool Controller::requireBearer(const Request& request) {
     }
 
     return true;
+}
+
+bool Controller::requireAdminLevel(const Request& request,
+                                    const std::vector<std::string>& allowedLevels) {
+    std::string h = request.getHeader("Authorization");
+    if (h.empty()) h = request.getHeader("authorization");
+    if (h.size() <= 7 || h.compare(0, 7, "Bearer ") != 0) return false;
+
+    const std::string token = h.substr(7);
+    std::string payload;
+    if (!fh::crypto::verifyJwtHS256(token, &payload)) return false;
+
+    static const std::regex uidRe("\"userId\"\\s*:\\s*\"([0-9]+)\"");
+    std::smatch m;
+    if (!std::regex_search(payload, m, uidRe) || m.size() <= 1) return false;
+
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result result = db->query(
+            "SELECT al.name FROM admins a "
+            "JOIN admin_levels al ON al.id = a.admin_level_id "
+            "WHERE a.user_id = $1::int",
+            {m[1].str()});
+        if (result.empty()) return false;
+        const std::string level = result[0][0].as<std::string>();
+        return std::find(allowedLevels.begin(), allowedLevels.end(), level) != allowedLevels.end();
+    } catch (const std::exception& e) {
+        std::cerr << "[requireAdminLevel] lookup failed: " << e.what() << std::endl;
+        return false;
+    }
 }
 // ────────────────────────────────────────────────────────────────────────────
 // LA-sync route primitives.  See doc block in Controller.h.

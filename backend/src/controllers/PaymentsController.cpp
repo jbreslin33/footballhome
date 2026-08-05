@@ -64,22 +64,22 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // sync that laGet handles).
     laGet(router, prefix + "/mens", {mensProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetForProgram("mens", mensProgramId_, sync);
         });
     laGet(router, prefix + "/womens", {womensProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetForProgram("womens", womensProgramId_, sync);
         });
     laGet(router, prefix + "/boys", {boysProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetForProgram("boys", boysProgramId_, sync);
         });
     laGet(router, prefix + "/girls", {girlsProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetForProgram("girls", girlsProgramId_, sync);
         });
 
@@ -91,22 +91,22 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // against our locally computed status.
     laGet(router, prefix + "/mens/members", {mensProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetMembersForProgram("mens", mensProgramId_, sync);
         });
     laGet(router, prefix + "/womens/members", {womensProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetMembersForProgram("womens", womensProgramId_, sync);
         });
     laGet(router, prefix + "/boys/members", {boysProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetMembersForProgram("boys", boysProgramId_, sync);
         });
     laGet(router, prefix + "/girls/members", {girlsProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
             return this->handleGetMembersForProgram("girls", girlsProgramId_, sync);
         });
 
@@ -116,7 +116,7 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // nextDueSource}) so this stays on router.post and is exempt from
     // the STRICT rule — see enforce-la-sync.sh whitelist.
     router.post(prefix + "/members/:regId/next-due", [this](const Request& req) {
-        if (!requireBearer(req)) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
         return this->handleSetNextDue(req);
     });
 }

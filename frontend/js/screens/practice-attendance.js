@@ -1,11 +1,16 @@
-// PracticeAttendanceScreen - coach/admin check-in for practices and
-// matches. Route slug stays 'practice-attendance' (existing entry
-// point from practice-options.js) but the screen now covers both
-// event kinds — match-options.js links here too.
+// PracticeAttendanceScreen - the coach's weekly attendance board.
+// Route slug stays 'practice-attendance' (existing entry points from
+// coach-home.js, practice-options.js, match-options.js) but the screen
+// is no longer team-scoped — it's the coach's version of #my: every
+// practice/match across every team for the week, gcal-based, with a
+// category chip row (All / Mens / Womens / Boys / Girls) instead of a
+// per-team drill-down. Any coach can mark attendance on any event —
+// see CalendarController::isEventCoachOrAdmin (2026-08-04 — dropped
+// the "must coach one of this event's teams" restriction).
 //
 // Data:
 //   GET /api/calendar/upcoming?start=<iso>&days=<n>
-//     → shared with calendar.js; filtered client-side to this team's
+//     → shared with calendar.js / #my; filtered client-side to
 //       practice/match events (see docs/calendar-design.md §10.1).
 //   GET  /api/calendar/events/:fhEventId/attendance
 //     → { fh_event_id, can_mark, roster: [{ person_id, first_name,
@@ -20,10 +25,14 @@ class PracticeAttendanceScreen extends Screen {
       <div class="screen-header">
         <button id="back-btn" class="btn btn-secondary">← Back</button>
         <h1>📋 Attendance</h1>
-        <p class="subtitle">Select a practice or match to check in players</p>
+        <p class="subtitle">This week's practices &amp; matches — set your own availability, or tap a card to check in players</p>
       </div>
 
-      <div style="padding: var(--space-4);">
+      <div style="padding: 0 var(--space-4);">
+        <div id="pa-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom: var(--space-3);"></div>
+      </div>
+
+      <div style="padding: 0 var(--space-4) var(--space-4);">
         <div id="practice-list" class="practice-cards"></div>
       </div>
 
@@ -51,9 +60,30 @@ class PracticeAttendanceScreen extends Screen {
     ];
     this.currentFhEventId = null;
     this.canMark = false;
+    this.allEvents = [];
+    this.category = 'all';
+
+    this.renderChips();
     this.loadEvents();
 
     this.element.addEventListener('click', (e) => {
+      const chipBtn = e.target.closest('[data-category]');
+      if (chipBtn) {
+        this.category = chipBtn.getAttribute('data-category');
+        this.renderChips();
+        this.renderEventList();
+        return;
+      }
+
+      const rsvpBtn = e.target.closest('.my-rsvp-btn');
+      if (rsvpBtn) {
+        e.stopPropagation();
+        const fhEventId = rsvpBtn.getAttribute('data-fh-event-id');
+        const response = rsvpBtn.getAttribute('data-response');
+        this.sendMyRsvp(fhEventId, response);
+        return;
+      }
+
       const eventCard = e.target.closest('[data-fh-event-id]');
       if (eventCard) {
         this.openAttendanceModal(eventCard.getAttribute('data-fh-event-id'),
@@ -80,13 +110,24 @@ class PracticeAttendanceScreen extends Screen {
     });
   }
 
-  loadEvents() {
-    const teamId = this.navigation.context.team?.id;
-    if (!teamId) {
-      console.error('No team selected');
-      return;
-    }
+  renderChips() {
+    const host = this.find('#pa-chips');
+    if (!host) return;
+    const chips = [
+      { id: 'all',    label: '🗂️ All'    },
+      { id: 'mens',   label: '👨 Mens'   },
+      { id: 'womens', label: '👩 Womens' },
+      { id: 'boys',   label: '👦 Boys'   },
+      { id: 'girls',  label: '👧 Girls'  },
+    ];
+    host.innerHTML = chips.map(c => `
+      <button type="button" data-category="${c.id}" class="btn btn-sm ${this.category === c.id ? 'btn-primary' : 'btn-secondary'}">
+        ${c.label}
+      </button>
+    `).join('');
+  }
 
+  loadEvents() {
     const listContainer = this.find('#practice-list');
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading events...</p></div>';
 
@@ -98,60 +139,109 @@ class PracticeAttendanceScreen extends Screen {
     this.safeFetch(
       `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=28`,
       response => {
-        const events = (response.events || [])
-          .filter(ev => (ev.kind === 'practice' || ev.kind === 'match') &&
-                        (ev.teams || []).some(t => t.id === teamId));
-
-        const now = new Date();
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-        const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-
-        const items = events.map(ev => {
-          const startsAt = new Date(ev.starts_at);
-          let dateDisplay;
-          if (startsAt.toDateString() === today.toDateString()) dateDisplay = 'Today';
-          else if (startsAt.toDateString() === tomorrow.toDateString()) dateDisplay = 'Tomorrow';
-          else if (startsAt.toDateString() === yesterday.toDateString()) dateDisplay = 'Yesterday';
-          else dateDisplay = startsAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-          const title = ev.kind === 'match'
-            ? `${ev.is_home === false ? '@ ' : 'vs '}${ev.opponent || 'Match'}`
-            : (ev.summary || 'Practice');
-
-          return {
-            fhEventId: ev.fh_event_id,
-            title,
-            kind: ev.kind,
-            dateDisplay,
-            time: startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            location: ev.location,
-            isPast: startsAt < now,
-          };
-        }); // already ascending by starts_at — that's the API's own ORDER BY
-
-        this.renderList('#practice-list', items,
-          ev => `
-            <div class="card practice-card" data-fh-event-id="${ev.fhEventId}" data-event-title="${ev.title}"
-                 style="cursor: pointer; ${ev.isPast ? 'opacity: 0.85;' : ''}">
-              <div class="practice-card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3>${ev.kind === 'match' ? '⚽' : '🏃'} ${ev.title}</h3>
-                <span class="badge ${ev.isPast ? 'badge-secondary' : 'badge-primary'}">${ev.isPast ? 'Past' : 'Upcoming'}</span>
-              </div>
-              <div class="practice-card-meta">
-                <div class="meta-item"><span class="meta-icon">📅</span><span>${ev.dateDisplay}</span></div>
-                <div class="meta-item"><span class="meta-icon">🕐</span><span>${ev.time}</span></div>
-                ${ev.location ? `<div class="meta-item"><span class="meta-icon">📍</span><span>${ev.location}</span></div>` : ''}
-              </div>
-              <p style="margin-top: var(--space-3); color: var(--text-muted); font-size: 0.9em;">
-                Tap to check in players →
-              </p>
-            </div>
-          `,
-          '<div class="empty-state"><p>⚽ No practices or matches found</p></div>'
-        );
+        this.allEvents = (response.events || [])
+          .filter(ev => ev.kind === 'practice' || ev.kind === 'match');
+        this.renderEventList();
       }
     );
+  }
+
+  renderEventList() {
+    const events = this.category === 'all'
+      ? this.allEvents
+      : this.allEvents.filter(ev => (ev.teams || []).some(t => t.gender_category === this.category));
+
+    const now = new Date();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+
+    const categoryLabels = { mens: '👨 Mens', womens: '👩 Womens', boys: '👦 Boys', girls: '👧 Girls' };
+
+    const items = events.map(ev => {
+      const startsAt = new Date(ev.starts_at);
+      let dateDisplay;
+      if (startsAt.toDateString() === today.toDateString()) dateDisplay = 'Today';
+      else if (startsAt.toDateString() === tomorrow.toDateString()) dateDisplay = 'Tomorrow';
+      else if (startsAt.toDateString() === yesterday.toDateString()) dateDisplay = 'Yesterday';
+      else dateDisplay = startsAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+      const title = ev.kind === 'match'
+        ? `${ev.is_home === false ? '@ ' : 'vs '}${ev.opponent || 'Match'}`
+        : (ev.summary || 'Practice');
+
+      const teamBadges = (ev.teams || [])
+        .map(t => categoryLabels[t.gender_category] || t.name)
+        .filter((v, i, arr) => arr.indexOf(v) === i); // de-dupe
+
+      return {
+        fhEventId: ev.fh_event_id,
+        title,
+        kind: ev.kind,
+        dateDisplay,
+        time: startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        location: ev.location,
+        teamBadges,
+        isPast: startsAt < now,
+        myRsvp: ev.my_rsvp,
+        myRsvpEligible: ev.my_rsvp_eligible !== false,
+        rsvpsOpenNow: ev.rsvps_open_now !== false,
+      };
+    }); // already ascending by starts_at — that's the API's own ORDER BY
+
+    this.renderList('#practice-list', items,
+      ev => `
+        <div class="card practice-card" data-fh-event-id="${ev.fhEventId}" data-event-title="${ev.title}"
+             style="cursor: pointer; ${ev.isPast ? 'opacity: 0.85;' : ''}">
+          <div class="practice-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>${ev.kind === 'match' ? '⚽' : '🏃'} ${ev.title}</h3>
+            <span class="badge ${ev.isPast ? 'badge-secondary' : 'badge-primary'}">${ev.isPast ? 'Past' : 'Upcoming'}</span>
+          </div>
+          <div class="practice-card-meta">
+            <div class="meta-item"><span class="meta-icon">📅</span><span>${ev.dateDisplay}</span></div>
+            <div class="meta-item"><span class="meta-icon">🕐</span><span>${ev.time}</span></div>
+            ${ev.location ? `<div class="meta-item"><span class="meta-icon">📍</span><span>${ev.location}</span></div>` : ''}
+            ${ev.teamBadges.length ? `<div class="meta-item"><span class="meta-icon">👥</span><span>${ev.teamBadges.join(', ')}</span></div>` : ''}
+          </div>
+          ${!ev.isPast && ev.myRsvpEligible && ev.rsvpsOpenNow ? `
+            <div style="margin-top: var(--space-2); display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.82rem; color: var(--text-muted);">Your availability:</span>
+              <button type="button" class="my-rsvp-btn btn btn-sm ${ev.myRsvp === 'yes' ? 'btn-primary' : 'btn-secondary'}"
+                      data-fh-event-id="${ev.fhEventId}" data-response="yes">✅ Going</button>
+              <button type="button" class="my-rsvp-btn btn btn-sm ${ev.myRsvp === 'no' ? 'btn-primary' : 'btn-secondary'}"
+                      data-fh-event-id="${ev.fhEventId}" data-response="no">❌ Can't go</button>
+            </div>
+          ` : ''}
+          <p style="margin-top: var(--space-3); color: var(--text-muted); font-size: 0.9em;">
+            Tap the card to check in players →
+          </p>
+        </div>
+      `,
+      '<div class="empty-state"><p>⚽ No practices or matches found</p></div>'
+    );
+  }
+
+  sendMyRsvp(fhEventId, response) {
+    const numericId = Number(fhEventId);
+    this.auth.fetch('/api/calendar/rsvp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fh_event_id: numericId, response }),
+    })
+      .then(r => {
+        if (!r.ok) throw new Error('RSVP failed');
+        return r.json();
+      })
+      .then(body => {
+        const ev = this.allEvents.find(e => e.fh_event_id === numericId);
+        if (ev) {
+          ev.my_rsvp = (body && body.rsvp && body.rsvp.response) || response;
+        }
+        this.renderEventList();
+      })
+      .catch(err => {
+        console.error('Failed to save RSVP:', err);
+      });
   }
 
   openAttendanceModal(fhEventId, title) {
@@ -205,7 +295,7 @@ class PracticeAttendanceScreen extends Screen {
         </div>
       `).join('') + (this.canMark ? '' : `
         <p style="text-align:center; color: var(--text-muted); margin-top: var(--space-3);">
-          Only this team's coaches or a club admin can mark attendance.
+          Only coaches or a club admin can mark attendance.
         </p>
       `);
     });

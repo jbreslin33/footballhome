@@ -125,4 +125,15 @@ protected:
     // header (case-insensitive) starts with "Bearer ".  Does NOT validate
     // the token — handlers that need claims still parse it themselves.
     static bool requireBearer(const Request& request);
+
+    // Role gate: validates the bearer token (same JWT check as
+    // requireBearer) AND requires the caller's admins.admin_level_id
+    // (via admin_levels.name) to be one of `allowedLevels`. Levels are
+    // NOT hierarchical in the DB — 'club'/'super' vs 'marketing' are
+    // separate rows — so call sites list every level that should pass,
+    // e.g. {"club","super"} for People/Billing/RSVP-eligibility,
+    // {"club","super","marketing"} for Communications/Recruitment.
+    // A user with no admins row (plain coach/player) always fails.
+    static bool requireAdminLevel(const Request& request,
+                                   const std::vector<std::string>& allowedLevels);
 };

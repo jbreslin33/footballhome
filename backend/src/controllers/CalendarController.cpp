@@ -252,24 +252,25 @@ std::string resolveUserId(Database* db, long long personId) {
 }
 
 // True when personId may mark attendance for fhEventId — a club admin,
-// or a coach of one of the teams attached to the event. Same shape as
-// the eligibility EXISTS block in handlePostRsvp; factored out here
-// because both attendance handlers need the identical check.
-bool isEventCoachOrAdmin(Database* db, long long personId, long long fhEventId) {
+// or ANY coach (any team, not just one attached to this event — user
+// directive 2026-08-04: the attendance screen is a weekly, all-team
+// board, so any coach can check in any team's practice/match). fhEventId
+// is unused now but kept in the signature/call sites in case a
+// narrower per-event check is wanted again later.
+bool isEventCoachOrAdmin(Database* db, long long personId, long long /*fhEventId*/) {
     auto rows = db->query(
         "SELECT ("
         "  EXISTS ("
         "    SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
-        "    WHERE u.person_id = $2::int"
+        "    WHERE u.person_id = $1::int"
         "  )"
         "  OR EXISTS ("
-        "    SELECT 1 FROM fh_event_teams fet "
-        "    JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
-        "    JOIN coaches co ON co.id = tc.coach_id "
-        "    WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int"
+        "    SELECT 1 FROM coaches co "
+        "    JOIN team_coaches tc ON tc.coach_id = co.id AND tc.ended_at IS NULL "
+        "    WHERE co.person_id = $1::int"
         "  )"
         ") AS can_mark",
-        {std::to_string(fhEventId), std::to_string(personId)});
+        {std::to_string(personId)});
     return !rows.empty() && rows[0]["can_mark"].as<bool>();
 }
 
@@ -502,7 +503,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                         'created_via',    roster.created_via,
                                                         'responded_at',   roster.responded_at,
                                                         'is_pickup_only', roster.is_pickup_only,
-                                                        'is_coach',       roster.is_coach
+                                                        'is_coach',       roster.is_coach,
+                                                        'phone',          roster.phone
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
@@ -531,7 +533,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              combined.created_via,
                                                              combined.responded_at,
                                                              combined.is_pickup_only,
-                                                             combined.is_coach
+                                                             combined.is_coach,
+                                                             combined.phone
                                                     FROM (
                                                         SELECT
                                                              p.id AS person_id,
@@ -555,7 +558,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                      )
                                                                      ELSE false
                                                              END AS is_pickup_only,
-                                                             false AS is_coach
+                                                             false AS is_coach,
+                                                             (SELECT phone_number FROM person_phones
+                                                               WHERE person_id = p.id AND can_receive_sms = true
+                                                               ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone
                                                         FROM fh_event_teams fet
                                                         JOIN team_persons tp
                                                             ON tp.team_id = fet.team_id
@@ -581,7 +587,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                                                 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                                                              END,
                                                              false,
-                                                             true
+                                                             true,
+                                                             (SELECT phone_number FROM person_phones
+                                                               WHERE person_id = p.id AND can_receive_sms = true
+                                                               ORDER BY is_primary DESC, id ASC LIMIT 1)
                                                         FROM fh_event_teams fet
                                                         JOIN team_coaches tc
                                                             ON tc.team_id = fet.team_id

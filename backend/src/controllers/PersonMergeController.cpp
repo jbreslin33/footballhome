@@ -46,7 +46,7 @@ void PersonMergeController::registerRoutes(Router& router, const std::string& pr
 // ────────────────────────────────────────────────────────────────────────────
 Response PersonMergeController::handleMerge(const Request& request, const LaSyncMap& sync) {
     (void)sync;
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
@@ -84,7 +84,7 @@ Response PersonMergeController::handleMerge(const Request& request, const LaSync
 // ────────────────────────────────────────────────────────────────────────────
 Response PersonMergeController::handleUnmerge(const Request& request, const LaSyncMap& sync) {
     (void)sync;
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
@@ -120,7 +120,7 @@ Response PersonMergeController::handleUnmerge(const Request& request, const LaSy
 // ────────────────────────────────────────────────────────────────────────────
 Response PersonMergeController::handleListMerges(const Request& request, const LaSyncMap& sync) {
     (void)sync;
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
@@ -157,7 +157,7 @@ Response PersonMergeController::handleListMerges(const Request& request, const L
 // ────────────────────────────────────────────────────────────────────────────
 Response PersonMergeController::handleScrapedMatchCandidates(const Request& request, const LaSyncMap& sync) {
     (void)sync;
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
@@ -245,7 +245,7 @@ Response PersonMergeController::handleScrapedMatchCandidates(const Request& requ
 // ────────────────────────────────────────────────────────────────────────────
 Response PersonMergeController::handleLinkScraped(const Request& request, const LaSyncMap& sync) {
     (void)sync;
-    if (!requireBearer(request)) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
     }
 
