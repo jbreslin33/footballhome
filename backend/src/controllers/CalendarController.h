@@ -67,15 +67,16 @@
 //        rsvps_open_at trips past now() while the row is active.
 //
 //   GET /api/calendar/events/:fhEventId/attendance
-//        Session-gated.  Returns the roster for the event (every
-//        person on a team attached via fh_event_teams/team_persons)
-//        left-joined to their fh_event_attendance mark, plus
-//        `can_mark:bool` — true when the caller is a club admin or a
-//        coach of one of the event's teams. 404 when the fh_event
-//        doesn't exist. Read is not restricted to can_mark==true
-//        callers (matches my_rsvp_eligible's read-is-open stance);
-//        the frontend uses can_mark to decide whether to render the
-//        tap-to-mark buttons or a read-only list.
+//        Session-gated.  Returns the roster for the event — every
+//        player (fh_event_teams/team_persons) AND every coach
+//        (fh_event_teams/team_coaches) of an attached team, tagged
+//        `is_coach:bool` — left-joined to their fh_event_attendance
+//        mark, plus `can_mark:bool` — true when the caller is a club
+//        admin or a coach of one of the event's teams. 404 when the
+//        fh_event doesn't exist. Read is not restricted to
+//        can_mark==true callers (matches my_rsvp_eligible's
+//        read-is-open stance); the frontend uses can_mark to decide
+//        whether to render the tap-to-mark buttons or a read-only list.
 //
 //   POST /api/calendar/events/:fhEventId/attendance
 //        Body: { person_id:int, status:'present'|'absent'|'late'|
@@ -84,7 +85,8 @@
 //        with a real permission bar above "bearer present" — do not
 //        weaken it to a client-supplied role flag). 403 when the
 //        caller isn't a coach/admin for this event's team(s), 400
-//        when person_id isn't on the roster for one of those teams.
+//        when person_id isn't a player OR coach on one of those
+//        teams (coaches can mark each other, not just players).
 //        Upserts fh_event_attendance on (fh_event_id, person_id).
 //
 //   DELETE /api/calendar/events/:fhEventId/attendance

@@ -425,7 +425,7 @@ class MyScreen extends Screen {
     const rowsHtml = (list) => list
       .map(r => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
           <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}</span>
-          ${!r.is_coach ? this._attendanceCellHtml(ev.fh_event_id, r.person_id, att) : ''}
+          ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
         </div>`)
       .join('');
 

@@ -1207,29 +1207,44 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
 
         const bool canMark = isEventCoachOrAdmin(db, personId, fhEventId);
 
-        // Roster for every team attached to this event, left-joined to
-        // the current attendance mark. DISTINCT ON (p.id) collapses a
-        // person who's on more than one team attached to the same
-        // event (co-ed/multi-team events); nested so we can still sort
-        // alphabetically outside the DISTINCT ON's forced p.id order —
-        // same shape as the rsvps_json subquery in handleGetUpcoming.
+        // Roster for every team attached to this event, players (team_persons)
+        // unioned with coaches (team_coaches) — same pattern as the rsvps_json
+        // subquery in handleGetUpcoming, so coaches can be checked in too, not
+        // just players. Left-joined to the current attendance mark.
+        // DISTINCT ON (combined.person_id) collapses a person who's on more
+        // than one attached team, or who is both a player and a coach
+        // (ORDER BY is_coach ASC prefers the player row on that overlap);
+        // nested so we can still sort alphabetically outside the DISTINCT
+        // ON's forced person_id order.
         auto rows = db->query(
-            "SELECT person_id, first_name, last_name, status, marked_at "
+            "SELECT person_id, first_name, last_name, is_coach, status, marked_at "
             "  FROM ( "
-            "    SELECT DISTINCT ON (p.id) "
-            "           p.id AS person_id, p.first_name, p.last_name, "
+            "    SELECT DISTINCT ON (combined.person_id) "
+            "           combined.person_id, combined.first_name, combined.last_name, "
+            "           combined.is_coach, "
             "           fea.status, "
             "           to_char(fea.marked_at AT TIME ZONE 'UTC', "
             "                   'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS marked_at "
-            "      FROM fh_event_teams fet "
-            "      JOIN team_persons tp ON tp.team_id = fet.team_id "
-            "                          AND tp.removed_at IS NULL "
-            "      JOIN persons p ON p.id = tp.person_id "
+            "      FROM ( "
+            "        SELECT p.id AS person_id, p.first_name, p.last_name, false AS is_coach "
+            "          FROM fh_event_teams fet "
+            "          JOIN team_persons tp ON tp.team_id = fet.team_id "
+            "                              AND tp.removed_at IS NULL "
+            "          JOIN persons p ON p.id = tp.person_id "
+            "         WHERE fet.fh_event_id = $1::bigint "
+            "        UNION ALL "
+            "        SELECT p.id, p.first_name, p.last_name, true "
+            "          FROM fh_event_teams fet "
+            "          JOIN team_coaches tc ON tc.team_id = fet.team_id "
+            "                              AND tc.ended_at IS NULL "
+            "          JOIN coaches co ON co.id = tc.coach_id "
+            "          JOIN persons p ON p.id = co.person_id "
+            "         WHERE fet.fh_event_id = $1::bigint "
+            "      ) combined "
             "      LEFT JOIN fh_event_attendance fea "
             "             ON fea.fh_event_id = $1::bigint "
-            "            AND fea.person_id   = p.id "
-            "     WHERE fet.fh_event_id = $1::bigint "
-            "     ORDER BY p.id "
+            "            AND fea.person_id   = combined.person_id "
+            "     ORDER BY combined.person_id, combined.is_coach ASC "
             "  ) roster "
             " ORDER BY roster.last_name, roster.first_name, roster.person_id",
             {std::to_string(fhEventId)});
@@ -1240,6 +1255,7 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
                 {"person_id",  row["person_id"].as<long long>()},
                 {"first_name", textOrNull(row, "first_name")},
                 {"last_name",  textOrNull(row, "last_name")},
+                {"is_coach",   row["is_coach"].as<bool>()},
                 {"status",     textOrNull(row, "status")},
                 {"marked_at",  textOrNull(row, "marked_at")},
             });
@@ -1300,20 +1316,26 @@ Response CalendarController::handlePostEventAttendance(const Request& request) {
                              "can mark attendance.");
         }
 
-        // The target must be on the roster for one of the event's
+        // The target must be a player OR coach on one of the event's
         // teams — otherwise a coach could mark attendance for an
-        // arbitrary person_id outside their own roster.
+        // arbitrary person_id outside the event's roster/staff.
         auto rosterCheck = db->query(
             "SELECT EXISTS ( "
             "  SELECT 1 FROM fh_event_teams fet "
             "  JOIN team_persons tp ON tp.team_id = fet.team_id "
             "                      AND tp.removed_at IS NULL "
             "  WHERE fet.fh_event_id = $1::bigint AND tp.person_id = $2::int "
+            "  UNION ALL "
+            "  SELECT 1 FROM fh_event_teams fet "
+            "  JOIN team_coaches tc ON tc.team_id = fet.team_id "
+            "                      AND tc.ended_at IS NULL "
+            "  JOIN coaches co ON co.id = tc.coach_id "
+            "  WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int "
             ") AS on_roster",
             {std::to_string(fhEventId), std::to_string(targetPersonId)});
         if (rosterCheck.empty() || !rosterCheck[0]["on_roster"].as<bool>()) {
             return jsonError(HttpStatus::BAD_REQUEST,
-                             "person is not on the roster for this event");
+                             "person is not on the roster/staff for this event");
         }
 
         const std::string markedByUserId = resolveUserId(db, personId);
