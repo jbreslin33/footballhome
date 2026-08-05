@@ -315,3 +315,125 @@ phase leaves the app working.
   conflate.
 - Standing principles: normalize the DB, OOP, pure JS frontend,
   C++-first backend.
+
+## Session update (2026-08-05) — status + next steps
+
+Picking this back up mid-session (via `#my`/attendance work, unrelated
+entry point) surfaced that Phases 1–2 are further along than this doc's
+"migration not yet started" status line suggests. Correcting the record
+and queuing the next concrete steps, since we're pausing before
+finishing (back after practice).
+
+**Confirmed already applied**, migrations `250`–`255` (2026-07-31 —
+2026-08-02): `teams.kind`/`roster_columns` fold-in, `team_persons`,
+APSL/Liga 1/Boys Trialists+Reserves internal groups (924–929),
+season-reset of `on_roster`. Verified live against `schema_migrations`.
+
+**`teams.is_active`** (migration `262`, this session) — a small
+*addition* on top of this ADR's design, not part of it. Gap it fills:
+`kind`/`board_archived_at`/`board_sort_order` describe board
+*presentation*, not "is this team operationally real right now" — a
+team can lack a board_sort_order without being defunct. `is_active`
+is that flag, read by `MensTeamColumns` (board columns) and
+`AuthController::handleCoachTeams` (coach team-picker) — nowhere else,
+so it can't affect RSVP/attendance/event-tagging. Applied and correctly
+defaults `true`; only the 6 previously-`board_archived_at`-set Lighthouse
+teams (903, 904, 905, 908, 909, 915) came out `false`.
+
+**Correction to a mid-session assumption**: 924–929 (the Trialists/
+Reserves `kind='internal'` teams) having `club_id = NULL` is *by design*
+per decision 1 ("internal groups... connect to nothing"), not a gap —
+no action needed there, and no `club_id` should be set on them.
+
+**Queued, not yet done (resume after practice):**
+1. Rename `912`/`913`/`914` — drop the "(Admin)" suffix
+   ("U8 Boys (Admin)" → "U8 Boys", etc). Cosmetic, no conflict with
+   `kind='internal'` already carrying the real semantic.
+2. `teams.is_active` backfill scoped to `club_id = 134` (Lighthouse) —
+   the 16 teams currently rendering on the rosters board (7 mens + 9
+   boys, after the two renames above still count) → `true`; the other
+   7 club-134 teams (903, 904, 905, 908, 909, 915, plus 901 Tri County
+   Women → explicitly `true` per user, it's real, just never had a
+   Womens board to render on) → per the table below. Non-Lighthouse
+   teams untouched (stay at the column default `true` — they're real,
+   currently-playing opponents, this club just doesn't administer
+   their activity status).
+3. **Open decision, not yet made**: `915` "Dues Owed (Boys)" — this
+   ADR explicitly names it as the canonical `admin_bucket` example
+   (decision 6), but it has zero `team_persons` rows ever, and real
+   dues/payment status already lives on `players.is_paid_up_to_date` /
+   `persons.leagueapps_payment_status`, independent of any team
+   membership. Delete it (redundant, unused), or keep it per this
+   ADR's original intent (a manual roster-board workflow bucket,
+   independent of the payment-status boolean)? User to decide.
+4. `908`/`909` (Practice/Pickup) — do NOT delete yet, per this ADR's
+   own Phase 3 criterion ("after nothing references them"): `909`
+   still has one live `fh_event_teams` row. Leave `is_active=false`
+   (already applied) until that last event gets retagged and Phase 3
+   removes the rows for real.
+5. `roster_columns` (17 rows) and `coach_rsvp_eligibility` (72 rows,
+   still growing — its sync trigger is still firing) — both confirmed
+   dead this session (zero backend/frontend reads for either). This
+   *is* the Phase 2 coach-side audit this doc calls for in Open Items.
+   Both are already Phase 3 drop candidates; safe to drop now rather
+   than waiting, since nothing reads them.
+6. Two dead `clubs` rows confirmed zero-referenced, safe to drop:
+   `id=20004` ("Lighthouse"), `id=20010` ("Lighthouse Boys Club U23").
+
+**LH team active/inactive table (club_id=134), as decided:**
+
+| id | name | → |
+|---|---|---|
+| 916, 917, 911, 912(→U8 Boys), 913(→U10 Boys), 914(→U12 Boys), 122, 35, 120, 121, 924, 925, 926, 927, 928, 929, 901 | (16 on-rosters teams + Tri County Women) | `is_active = true` |
+| 903, 904, 905, 908, 909 | (off-season/pool, kept per item 4 above) | `is_active = false` |
+| 915 | Dues Owed (Boys) | pending decision (item 3) — delete, or keep `is_active=false` |
+
+### New scope this ADR didn't cover: club sections (Mens/Boys/Girls/Womens)
+
+Separate from roster membership — this is about the **club/organization
+hierarchy**, not team membership, so it's additive to this ADR rather
+than part of it.
+
+**Problem**: "Mens Club"/"Boys Club"/etc. (the program-level split under
+Lighthouse) only exists today as the bare string `teams.gender_category`
+— no real entity, nothing to hang section-specific config on, no
+composed display name ("Lighthouse Mens Club") without hardcoding it
+somewhere.
+
+**Decision**: `clubs.organization_id` already supports one organization
+holding multiple clubs (`clubs`' own doc comment gives "Boys Club" as
+the literal example) — never actually used that way (every org today
+has exactly 1 club). Rather than reuse `clubs` rows for sections
+(rejected — `clubs.sport_id` already means a club is scoped to one
+sport; sections are a different, orthogonal axis), add a small generic
+lookup table, since section names ("Mens"/"Boys"/etc.) have no
+per-club attributes of their own — same shape as `match_types`/
+`admin_levels`:
+
+```sql
+CREATE TABLE club_sections (
+    id         SERIAL PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,   -- 'Mens','Womens','Boys','Girls'
+                                        -- (match existing gender_category values)
+    code       TEXT,
+    sort_order INTEGER
+);
+-- seed: Mens/M/1, Womens/W/2, Boys/B/3, Girls/G/4
+
+ALTER TABLE teams ADD COLUMN club_section_id INTEGER REFERENCES club_sections(id);
+```
+
+A team's full section applies only to `kind='official'` teams (internal/
+admin_bucket teams stay unlinked from `club_id`/`club_section_id`, same
+as they're unlinked from `division_id` today — consistent with decision
+1's "connect to nothing"). No junction table — `(club_id,
+club_section_id)` on the team row itself is the relationship. Display
+label ("Lighthouse Mens Club") is composed at read time by joining
+`organizations`/`clubs`/`club_sections`, never stored. `gender_category`
+stays as-is for now (read by 8 backend + 6 frontend files) rather than
+a big-bang replace — `club_section_id` becomes the real relationship in
+parallel, individual screens migrate onto composed labels opportunistically.
+
+**Not yet written**: the actual migration for `club_sections` +
+`teams.club_section_id` + backfill from `gender_category` for the 16
+Lighthouse official teams. Next session.

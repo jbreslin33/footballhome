@@ -32,7 +32,9 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
     // roster_columns in (label/short_label/color/board_sort_order/
     // mutex_group/max_roster/board_archived_at).  The old `domain`
     // filter is now teams.gender_category — one less thing to forget
-    // in a migration.
+    // in a migration. Activity gate is teams.is_active (migration
+    // 262) — board_archived_at is presentation-only now, not the
+    // "does this team operate" signal.
     const auto rows = db_->query(
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
@@ -40,7 +42,7 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
         "  FROM teams t "
         " WHERE t.gender_category = $1 "
         "   AND t.board_sort_order IS NOT NULL "
-        "   AND t.board_archived_at IS NULL "
+        "   AND t.is_active = true "
         " ORDER BY t.board_sort_order",
         {domain_}
     );
@@ -58,7 +60,7 @@ std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId)
         " WHERE t.gender_category = $1 "
         "   AND t.id = $2 "
         "   AND t.board_sort_order IS NOT NULL "
-        "   AND t.board_archived_at IS NULL",
+        "   AND t.is_active = true",
         {domain_, std::to_string(teamId)}
     );
     if (rows.empty()) return std::nullopt;
