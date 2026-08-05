@@ -33,7 +33,7 @@ class RoleSelectionScreen extends Screen {
             <div style="font-size: 0.85rem; opacity: 0.8;">Manage your teams</div>
           </div>
         </button>
-        
+
         <button class="btn btn-lg btn-primary" data-role="player" style="display: flex; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">👤</span>
           <div style="flex: 1; text-align: left;">

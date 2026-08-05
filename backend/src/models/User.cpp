@@ -191,70 +191,75 @@ std::string User::getUserRoles(const std::string& user_id) {
     bool hasRoles = false;
     
     try {
-        // Check if user is a player on any teams
-        std::string player_sql = 
+        // Check if user is a player on any teams.  team_persons is the
+        // current normalized roster-membership table (see
+        // docs/adr/2026-07-30-roster-membership-rsvp-normalization.md) —
+        // the previous version of this query targeted the legacy
+        // team_division_players/rosters/players chain with a user_id
+        // passed straight as player_id (wrong FK), a nonexistent
+        // clubs.club_id self-join, and a row["organization_name"] read
+        // that didn't match any selected column — all of which threw
+        // and were silently swallowed by the catch below, so this
+        // endpoint never actually returned player/coach rows.
+        std::string player_sql =
             "SELECT DISTINCT "
-            "  'player' as role_type, "
             "  t.id as team_id, "
             "  t.name as team_name, "
             "  tp.jersey_number, "
             "  c.name as club_name "
-            "FROM team_division_players tp "
-            "JOIN teams t ON tp.team_id = t.id "
-            "JOIN clubs sd ON t.club_id = sd.id "
-            "JOIN clubs c ON sd.club_id = c.id "
-            "WHERE tp.player_id = $1 AND tp.is_active = true";
-        
+            "FROM team_persons tp "
+            "JOIN teams t ON t.id = tp.team_id "
+            "LEFT JOIN clubs c ON c.id = t.club_id "
+            "WHERE tp.person_id = (SELECT person_id FROM users WHERE id = $1) "
+            "  AND tp.removed_at IS NULL";
+
         pqxx::result player_result = executeQuery(player_sql, {user_id});
-        
+
         for (const auto& row : player_result) {
             if (hasRoles) json << ",";
             json << "{";
             json << "\"type\":\"player\",";
             json << "\"teamId\":\"" << row["team_id"].as<std::string>() << "\",";
             json << "\"teamName\":\"" << row["team_name"].as<std::string>() << "\",";
-            json << "\"clubName\":\"" << row["organization_name"].as<std::string>() << "\",";
-            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>());
+            json << "\"clubName\":" << (row["club_name"].is_null() ? "null" : ("\"" + row["club_name"].as<std::string>() + "\"")) << ",";
+            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : ("\"" + row["jersey_number"].as<std::string>() + "\""));
             json << "}";
             hasRoles = true;
         }
-        
-        // Check if user is a coach on any teams
-        std::string coach_sql = 
+
+        // Check if user is a coach on any teams — same coaches/team_coaches
+        // join already proven correct by AuthController::handleCoachTeams
+        // and isEventCoachOrAdmin.
+        std::string coach_sql =
             "SELECT DISTINCT "
-            "  'coach' as role_type, "
             "  t.id as team_id, "
             "  t.name as team_name, "
-            "  tc.coach_role, "
-            "  tc.is_primary, "
             "  c.name as club_name "
-            "FROM team_coaches tc "
-            "JOIN teams t ON tc.team_id = t.id "
-            "JOIN clubs sd ON t.club_id = sd.id "
-            "JOIN clubs c ON sd.club_id = c.id "
-            "WHERE tc.coach_id = $1 AND tc.is_active = true";
-        
+            "FROM coaches co "
+            "JOIN team_coaches tc ON tc.coach_id = co.id AND tc.ended_at IS NULL "
+            "JOIN teams t ON t.id = tc.team_id "
+            "LEFT JOIN clubs c ON c.id = t.club_id "
+            "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1)";
+
         pqxx::result coach_result = executeQuery(coach_sql, {user_id});
-        
+
         for (const auto& row : coach_result) {
             if (hasRoles) json << ",";
             json << "{";
             json << "\"type\":\"coach\",";
             json << "\"teamId\":\"" << row["team_id"].as<std::string>() << "\",";
             json << "\"teamName\":\"" << row["team_name"].as<std::string>() << "\",";
-            json << "\"clubName\":\"" << row["organization_name"].as<std::string>() << "\",";
-            json << "\"coachRole\":\"" << row["coach_role"].as<std::string>() << "\",";
-            json << "\"isPrimary\":" << (row["is_primary"].as<bool>() ? "true" : "false");
+            json << "\"clubName\":" << (row["club_name"].is_null() ? "null" : ("\"" + row["club_name"].as<std::string>() + "\""));
             json << "}";
             hasRoles = true;
         }
-        
+
         // Check if user is an admin (system, league, club, etc.)
-        std::string admin_sql = 
+        std::string admin_sql =
             "SELECT al.name as admin_level "
             "FROM admins a "
             "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
-            "WHERE a.id = $1";
+            "WHERE a.user_id = $1";
         
         pqxx::result admin_result = executeQuery(admin_sql, {user_id});
         

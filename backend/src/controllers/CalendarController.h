@@ -86,6 +86,12 @@
 //        caller isn't a coach/admin for this event's team(s), 400
 //        when person_id isn't on the roster for one of those teams.
 //        Upserts fh_event_attendance on (fh_event_id, person_id).
+//
+//   DELETE /api/calendar/events/:fhEventId/attendance
+//        Body: { person_id:int }.  Clears a mark back to "not yet
+//        marked" (deletes the fh_event_attendance row) rather than
+//        setting it to some fifth status — same coach/admin + roster
+//        checks as POST. 404 if there was no mark to clear.
 class CalendarController : public Controller {
 public:
     CalendarController();
@@ -100,4 +106,5 @@ private:
     Response handlePostMyStanding      (const Request& request);
     Response handleGetEventAttendance  (const Request& request);
     Response handlePostEventAttendance (const Request& request);
+    Response handleDeleteEventAttendance(const Request& request);
 };

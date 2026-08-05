@@ -61,7 +61,7 @@ class PracticeOptionsScreen extends Screen {
         if (action === 'manage') {
           this.navigation.goTo('practice-management');
         } else if (action === 'attendance') {
-          this.navigation.goTo('practice-attendance');
+          this.navigation.goTo('my');
         } else if (action === 'tactical-board') {
           this.navigation.goTo('tactical-board', { 
             practiceTitle: 'General Practice Planning' 

@@ -63,7 +63,7 @@ class MatchOptionsScreen extends Screen {
         if (action === 'manage') {
           this.navigation.goTo('match-management');
         } else if (action === 'attendance') {
-          this.navigation.goTo('practice-attendance');
+          this.navigation.goTo('my');
         } else if (action === 'rsvp') {
           this.navigation.goTo('match-list');
         } else if (action === 'tactical-board') {

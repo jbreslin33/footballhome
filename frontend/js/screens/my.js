@@ -42,6 +42,12 @@ class MyScreen extends Screen {
     this.expandedEventId = null;         // toggled by the compact View button
     this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
 
+    // Attendance-taking (coach/admin only, but fetched lazily for anyone
+    // who expands a card so the read-only status badges show for players
+    // too). Keyed by fh_event_id -> {canMark, roster: Map(person_id -> {status, marked_at})}.
+    this.attendanceByEvent = new Map();
+    this.attendanceSaving  = new Set(); // "fh_event_id:person_id" tokens in-flight
+
     // Chat state (compressed: latest message on top, expandable).
     this.chatMessages   = [];            // full history, stored oldest-first
     this.chatViewerId   = 0;             // server-echoed users.id — decides "mine"
@@ -190,6 +196,26 @@ class MyScreen extends Screen {
         if (targetScreen) this.navigation.goTo(targetScreen);
         return;
       }
+      // Attendance status button (coach/admin only — server re-checks).
+      // Tapping the already-active status clears the mark instead of
+      // re-sending the same status — that's the only way to undo a
+      // mis-tap back to "not yet marked".
+      const attBtn = target.closest('[data-att-btn]');
+      if (attBtn) {
+        e.stopPropagation();
+        const status = attBtn.getAttribute('data-att-btn');
+        const personId = parseInt(attBtn.getAttribute('data-person-id'), 10);
+        const fhEventId = parseInt(attBtn.getAttribute('data-fh-event-id'), 10);
+        const isActive = attBtn.getAttribute('data-active') === '1';
+        if (fhEventId && personId && status) {
+          if (isActive) {
+            this._clearAttendance(fhEventId, personId);
+          } else {
+            this._setAttendance(fhEventId, personId, status);
+          }
+        }
+        return;
+      }
       // Peer "Remind" nudge — sms: link already does the work (opens the
       // clicker's own Messages app, pre-filled, they hit send); we just
       // flip it to a disabled "Reminded" state after one tap so a single
@@ -222,6 +248,9 @@ class MyScreen extends Screen {
         e.stopPropagation();
         const fhEventId = parseInt(viewBtn.getAttribute('data-view-event-id'), 10);
         this.expandedEventId = this.expandedEventId === fhEventId ? null : fhEventId;
+        if (this.expandedEventId === fhEventId && !this.attendanceByEvent.has(fhEventId)) {
+          this._loadAttendance(fhEventId);
+        }
         this._renderEvents();
         return;
       }
@@ -390,9 +419,14 @@ class MyScreen extends Screen {
     const coachesGoing = going.filter(r => r.is_coach);
     const noResponsePlayers = rsvps.filter(r => r && !r.is_coach && !r.response);
 
+    const att = this.attendanceByEvent.get(ev.fh_event_id) || null;
+
     const nameOf = (r) => (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
     const rowsHtml = (list) => list
-      .map(r => `<div style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}</div>`)
+      .map(r => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}</span>
+          ${!r.is_coach ? this._attendanceCellHtml(ev.fh_event_id, r.person_id, att) : ''}
+        </div>`)
       .join('');
 
     const groupHtml = (label, list) => `
@@ -428,7 +462,10 @@ class MyScreen extends Screen {
       }
       return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}</span>
-          ${actionHtml}
+          <span style="display:flex; align-items:center; gap:6px;">
+            ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
+            ${actionHtml}
+          </span>
         </div>`;
     }).join('');
 
@@ -449,6 +486,109 @@ class MyScreen extends Screen {
           </div>
         ` : ''}
       </div>`;
+  }
+
+  // Read-only status badge for everyone; P/A/L/E mark buttons appended
+  // only when `att.canMark` is true (server-scoped to coach/admin of one
+  // of this event's teams — see CalendarController::isEventCoachOrAdmin).
+  // `att` is null until the card's first expand triggers `_loadAttendance`.
+  _attendanceCellHtml(fhEventId, personId, att) {
+    const STATUS_META = [
+      { id: 'present', letter: 'P', label: 'Present', color: '#22c55e' },
+      { id: 'absent',  letter: 'A', label: 'Absent',  color: '#ef4444' },
+      { id: 'late',    letter: 'L', label: 'Late',    color: '#f59e0b' },
+      { id: 'excused', letter: 'E', label: 'Excused', color: '#64748b' },
+    ];
+    if (!att) {
+      return '<span style="font-size:0.6rem; opacity:0.35;">…</span>';
+    }
+    const entry = att.roster.get(personId);
+    const status = entry && entry.status;
+    const meta = STATUS_META.find(s => s.id === status);
+    const badge = meta
+      ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px;
+                      border-radius:50%; background:${meta.color}; color:#fff; font-size:0.55rem; font-weight:800;"
+               title="${meta.label}">${meta.letter}</span>`
+      : `<span style="font-size:0.62rem; opacity:0.4;" title="Not marked">—</span>`;
+
+    if (!att.canMark) return badge;
+
+    const saving = this.attendanceSaving.has(`${fhEventId}:${personId}`);
+    const buttonsHtml = STATUS_META.map(s => {
+      const active = status === s.id;
+      return `<button type="button" data-att-btn="${s.id}" data-person-id="${personId}" data-fh-event-id="${fhEventId}"
+                data-active="${active ? '1' : '0'}"
+                title="${active ? `${s.label} — tap to clear` : s.label}" ${saving ? 'disabled' : ''}
+                style="width:15px; height:15px; padding:0; border-radius:50%; line-height:1;
+                       border:1px solid ${s.color}; background:${active ? s.color : 'transparent'};
+                       color:${active ? '#fff' : s.color}; font-size:0.55rem; font-weight:800;
+                       cursor:${saving ? 'wait' : 'pointer'}; opacity:${saving ? '0.5' : '1'};">${s.letter}</button>`;
+    }).join('');
+    return `<span style="display:inline-flex; align-items:center; gap:2px;">${badge}${buttonsHtml}</span>`;
+  }
+
+  async _loadAttendance(fhEventId) {
+    try {
+      const body = await this._fetch(`/api/calendar/events/${fhEventId}/attendance`);
+      const roster = new Map((body.roster || []).map(r => [r.person_id, r]));
+      this.attendanceByEvent.set(fhEventId, { canMark: !!body.can_mark, roster });
+    } catch (err) {
+      console.error('[my] attendance load failed:', err);
+      this.attendanceByEvent.set(fhEventId, { canMark: false, roster: new Map() });
+    }
+    this._renderEvents();
+  }
+
+  async _setAttendance(fhEventId, personId, status) {
+    const key = `${fhEventId}:${personId}`;
+    if (this.attendanceSaving.has(key)) return;
+    const att = this.attendanceByEvent.get(fhEventId);
+    if (!att) return;
+    const prevEntry = att.roster.get(personId) || null;
+
+    this.attendanceSaving.add(key);
+    att.roster.set(personId, { person_id: personId, status, marked_at: new Date().toISOString() });
+    this._renderEvents();
+    try {
+      await this._fetch(`/api/calendar/events/${fhEventId}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: personId, status }),
+      });
+    } catch (err) {
+      console.error('[my] attendance update failed:', err);
+      if (prevEntry) att.roster.set(personId, prevEntry); else att.roster.delete(personId);
+      alert(`Could not save attendance: ${err.message}`);
+    } finally {
+      this.attendanceSaving.delete(key);
+      this._renderEvents();
+    }
+  }
+
+  async _clearAttendance(fhEventId, personId) {
+    const key = `${fhEventId}:${personId}`;
+    if (this.attendanceSaving.has(key)) return;
+    const att = this.attendanceByEvent.get(fhEventId);
+    if (!att) return;
+    const prevEntry = att.roster.get(personId) || null;
+
+    this.attendanceSaving.add(key);
+    att.roster.delete(personId);
+    this._renderEvents();
+    try {
+      await this._fetch(`/api/calendar/events/${fhEventId}/attendance`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: personId }),
+      });
+    } catch (err) {
+      console.error('[my] attendance clear failed:', err);
+      if (prevEntry) att.roster.set(personId, prevEntry);
+      alert(`Could not clear attendance: ${err.message}`);
+    } finally {
+      this.attendanceSaving.delete(key);
+      this._renderEvents();
+    }
   }
 
   _renderEventCard(ev) {

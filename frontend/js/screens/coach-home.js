@@ -1,11 +1,12 @@
 // CoachHomeScreen — coach operations hub. Landing screen for the Coach
-// role: the coach's version of #my (My Week — weekly practice/match
-// board across every team, own availability + attendance-taking, see
-// practice-attendance.js), club-wide roster/reminders/game-model tools
-// (moved off admin-club so coach work is separate from club-admin
-// work), plus a Teams entry point into the existing per-team flow
-// (schedule, practices, matches, lineups via context-selection →
-// team-dashboard).
+// role: My Week now hands off to MyScreen (my.js) — the same weekly
+// schedule players use, where a coach/admin additionally gets P/A/L/E
+// attendance controls per event (scoped to teams they actually coach,
+// see CalendarController::isEventCoachOrAdmin). This screen also hosts
+// club-wide roster/reminders/game-model tools (moved off admin-club so
+// coach work is separate from club-admin work), plus a Teams entry
+// point into the existing per-team flow (schedule, practices, matches,
+// lineups via context-selection → team-dashboard).
 class CoachHomeScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -70,7 +71,7 @@ class CoachHomeScreen extends Screen {
     };
 
     const weekTiles = [
-      { id: 'attendance', target: 'practice-attendance', params: {}, icon: '📋', label: 'Attendance & Availability', description: 'This week — set your own availability, or check in players for any team' },
+      { id: 'attendance', target: 'my', params: {}, icon: '📋', label: 'Attendance & Availability', description: 'This week — set your own availability, or check in players for teams you coach' },
     ];
     renderInto('#section-week', weekTiles);
 

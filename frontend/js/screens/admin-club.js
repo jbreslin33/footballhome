@@ -277,7 +277,8 @@ class AdminClubScreen extends Screen {
     // Game Model reference panel below (#game-model-panel /
     // #game-model-contents) stays here — it's explicitly the "Club admin
     // reference" read view. The editable tiles (Game Model / Practice
-    // Plans / Days / Exercises) moved to CoachHomeScreen.
+    // Plans / Days / Exercises) are reachable from the coach-only nav
+    // pills on MyScreen (see my.js _renderCoachPills).
     const gameModelContent = '<div style="opacity: 0.75;">Loading game model content…</div>';
     const gameModelContentsEl = this.find('#game-model-contents');
     if (gameModelContentsEl) {

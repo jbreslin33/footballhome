@@ -252,25 +252,24 @@ std::string resolveUserId(Database* db, long long personId) {
 }
 
 // True when personId may mark attendance for fhEventId — a club admin,
-// or ANY coach (any team, not just one attached to this event — user
-// directive 2026-08-04: the attendance screen is a weekly, all-team
-// board, so any coach can check in any team's practice/match). fhEventId
-// is unused now but kept in the signature/call sites in case a
-// narrower per-event check is wanted again later.
-bool isEventCoachOrAdmin(Database* db, long long personId, long long /*fhEventId*/) {
+// or a coach of one of the teams attached to the event. Same shape as
+// the eligibility EXISTS block in handlePostRsvp; factored out here
+// because both attendance handlers need the identical check.
+bool isEventCoachOrAdmin(Database* db, long long personId, long long fhEventId) {
     auto rows = db->query(
         "SELECT ("
         "  EXISTS ("
         "    SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
-        "    WHERE u.person_id = $1::int"
+        "    WHERE u.person_id = $2::int"
         "  )"
         "  OR EXISTS ("
-        "    SELECT 1 FROM coaches co "
-        "    JOIN team_coaches tc ON tc.coach_id = co.id AND tc.ended_at IS NULL "
-        "    WHERE co.person_id = $1::int"
+        "    SELECT 1 FROM fh_event_teams fet "
+        "    JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
+        "    JOIN coaches co ON co.id = tc.coach_id "
+        "    WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int"
         "  )"
         ") AS can_mark",
-        {std::to_string(personId)});
+        {std::to_string(fhEventId), std::to_string(personId)});
     return !rows.empty() && rows[0]["can_mark"].as<bool>();
 }
 
@@ -298,6 +297,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     });
     router.post(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
         return this->handlePostEventAttendance(req);
+    });
+    router.del(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
+        return this->handleDeleteEventAttendance(req);
     });
 }
 
@@ -381,6 +383,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         // event payload — Google puts it on `hangoutLink` for events
         // with a Meet attached.  NULL when no Meet.
         const std::string sql = R"SQL(
+            WITH base AS (
             SELECT
                 fe.id                  AS fh_event_id,
                 ge.id                  AS gcal_event_id,
@@ -646,7 +649,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                               )
                         )
                     )
-                END AS my_rsvp_eligible
+                END AS my_rsvp_eligible,
+                ge.starts_at            AS raw_starts_at,
+                ge.id                   AS raw_gcal_id
                         FROM gcal_events ge
             JOIN gcal_calendars gc ON gc.id = ge.calendar_id
                         LEFT JOIN fh_events fe ON fe.gcal_event_id = ge.id
@@ -667,7 +672,15 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                         fe.id IS NOT NULL
                                    OR ($3::bool AND (gc.role = 'soccer' OR ge.summary ILIKE '%Soccer%'))
                                )
-            ORDER BY ge.starts_at ASC, ge.id ASC
+            )
+            -- Team-scoped visibility: everyone (player, coach, or admin)
+            -- only sees events for teams they're actually on/coach —
+            -- `eligible` already ORs in "caller is admin" so admins keep
+            -- seeing every event for free. Anonymous callers ($1=0) are
+            -- left unfiltered (unchanged public-calendar behavior).
+            SELECT * FROM base
+            WHERE $1::int = 0 OR base.eligible
+            ORDER BY base.raw_starts_at ASC, base.raw_gcal_id ASC
             LIMIT 500
         )SQL";
 
@@ -1334,6 +1347,64 @@ Response CalendarController::handlePostEventAttendance(const Request& request) {
         return jsonOk({{"attendance", attendance}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostEventAttendance: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handleDeleteEventAttendance(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+
+    json body;
+    try {
+        body = request.getBody().empty()
+            ? json::object()
+            : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         std::string("Invalid JSON: ") + e.what());
+    }
+
+    auto targetPersonIdOpt = jsonInt(body, "person_id");
+    if (!targetPersonIdOpt || *targetPersonIdOpt <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "person_id (positive int) required");
+    }
+    const long long targetPersonId = *targetPersonIdOpt;
+
+    auto* db = Database::getInstance();
+    try {
+        auto evRows = db->query(
+            "SELECT 1 FROM fh_events WHERE id = $1::bigint",
+            {std::to_string(fhEventId)});
+        if (evRows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        }
+
+        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "Only a coach of this event's team(s) or a club admin "
+                             "can mark attendance.");
+        }
+
+        auto row = db->query(
+            "DELETE FROM fh_event_attendance "
+            " WHERE fh_event_id = $1::bigint AND person_id = $2::int "
+            "RETURNING id",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+
+        if (row.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "no attendance mark to clear");
+        }
+        return jsonOk({{"cleared", true}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleDeleteEventAttendance: "
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }

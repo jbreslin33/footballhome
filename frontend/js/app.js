@@ -36,7 +36,6 @@ class App {
       practiceList: new PracticeListScreen(this.navigation, this.auth),
       practiceDetail: new PracticeDetailScreen(this.navigation, this.auth),
       practicePlan: new PracticePlanScreen(this.navigation, this.auth),
-      practiceAttendance: new PracticeAttendanceScreen(this.navigation, this.auth),
       matchOptions: new MatchOptionsScreen(this.navigation, this.auth),
       matchManagement: new MatchManagementScreen(this.navigation, this.auth),
       matchForm: new MatchFormScreen(this.navigation, this.auth),
@@ -118,7 +117,6 @@ class App {
     this.screenManager.register('practice-list', this.screens.practiceList);
     this.screenManager.register('practice-detail', this.screens.practiceDetail);
     this.screenManager.register('practice-plan', this.screens.practicePlan);
-    this.screenManager.register('practice-attendance', this.screens.practiceAttendance);
     this.screenManager.register('match-options', this.screens.matchOptions);
     this.screenManager.register('match-management', this.screens.matchManagement);
     this.screenManager.register('match-form', this.screens.matchForm);
