@@ -498,6 +498,16 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "         cur_start - interval '1 month' AS prev_start"
         "    FROM win"
         "),"
+        // Next upcoming 1st-Friday due date (today's if not yet passed,
+        // else next month's) — the "final notice" flag below compares
+        // each member's next_due_at against this rollover.
+        "due_cycle AS ("
+        "  SELECT CASE"
+        "           WHEN (now() AT TIME ZONE 'UTC')::date <= first_friday_of_month(now())"
+        "             THEN first_friday_of_month(now())"
+        "           ELSE first_friday_of_month(now() + interval '1 month')"
+        "         END AS upcoming_due"
+        "),"
         "person_own_email AS ("
         // Prefer is_primary=true, then most-recently-created. One row per person.
         "  SELECT DISTINCT ON (pe.person_id) pe.person_id, pe.email"
@@ -723,8 +733,19 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "           THEN GREATEST(0, ((now() AT TIME ZONE 'UTC')::date"
         "                             - (lce.end_ts AT TIME ZONE 'UTC')::date))"
         "         ELSE 0"
-        "       END AS days_overdue"
+        "       END AS days_overdue,"
+        // final_notice: true when next_due_at's month already falls a
+        // full calendar month (or more) before the upcoming rollover —
+        // i.e. if still unpaid at that rollover, this person will be
+        // carrying TWO unpaid cycles (owner protocol 2026-08-05). Both
+        // dates are always month-aligned (first-Friday anchors), so a
+        // plain month_trunc comparison is exact — no day-count fudging.
+        "       (m.next_due_at IS NOT NULL"
+        "        AND date_trunc('month', dc.upcoming_due::timestamptz)"
+        "            > date_trunc('month', m.next_due_at)) AS final_notice,"
+        "       TO_CHAR(dc.upcoming_due, 'YYYY-MM-DD') AS upcoming_due_iso"
         "  FROM person_la_memberships m"
+        "  CROSS JOIN due_cycle dc"
         "  JOIN persons p ON p.id = m.person_id"
         "  LEFT JOIN primary_email pe   ON pe.person_id          = p.id"
         "  LEFT JOIN primary_phone ph   ON ph.person_id          = p.id"
@@ -780,6 +801,8 @@ PersonPayments::loadMembersForProgram(long long programId) {
         if (!r["last_paid_iso"].is_null())   m.lastPaidAt    = r["last_paid_iso"].c_str();
         if (!r["last_amount"].is_null())     m.lastAmount    = r["last_amount"].as<double>();
         if (!r["days_overdue"].is_null())    m.daysOverdue   = r["days_overdue"].as<int>();
+        if (!r["final_notice"].is_null())    m.finalNotice   = r["final_notice"].as<bool>();
+        if (!r["upcoming_due_iso"].is_null()) m.upcomingDueAt = r["upcoming_due_iso"].c_str();
 
         if (!r["recent_txns"].is_null()) {
             try {

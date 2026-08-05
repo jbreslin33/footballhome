@@ -241,7 +241,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     //        red-badge warning strip.
     json members = json::array();
     json mismatches = json::array();
-    int cCurrent = 0, cBehind = 0, cOverdue = 0, cNever = 0;
+    int cCurrent = 0, cBehind = 0, cOverdue = 0, cNever = 0, cFinalNotice = 0;
     for (const auto& m : rows) {
         if      (m.status == "current") ++cCurrent;
         else if (m.status == "behind")  ++cBehind;
@@ -270,6 +270,9 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["daysOverdue"]   = m.daysOverdue;
         row["nextDueAt"]     = m.nextDueAt.empty()     ? json(nullptr) : json(m.nextDueAt);
         row["nextDueSource"] = m.nextDueSource.empty() ? json(nullptr) : json(m.nextDueSource);
+        row["finalNotice"]   = m.finalNotice;
+        row["upcomingDueAt"] = m.upcomingDueAt.empty() ? json(nullptr) : json(m.upcomingDueAt);
+        if (m.finalNotice) ++cFinalNotice;
 
         // Reconciliation.  Skip entirely if LA was unreachable OR if we
         // never resolved a registrationId for this membership row (e.g.
@@ -384,10 +387,11 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     out["programId"]   = programId;
     out["total"]       = members.size();
     out["counts"]      = {
-        {"current", cCurrent},
-        {"behind",  cBehind},
-        {"overdue", cOverdue},
-        {"never",   cNever},
+        {"current",     cCurrent},
+        {"behind",      cBehind},
+        {"overdue",     cOverdue},
+        {"never",       cNever},
+        {"finalNotice", cFinalNotice},
     };
     out["needsAttention"] = cNever + cOverdue;  // headline number for the badge
     out["reconciliation"] = {

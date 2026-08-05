@@ -150,6 +150,20 @@ public:
         // `nextDueSource` ∈ {'la_seed','payment_advance','operator_override'}.
         std::string nextDueAt;
         std::string nextDueSource;
+        // True when next_due_at's cycle already falls a full calendar
+        // month (or more) before the next upcoming first-Friday due
+        // date — i.e. if unpaid, this person will be carrying TWO
+        // unpaid cycles as of that rollover (owner protocol 2026-08-05:
+        // 2 months unpaid at the due-date rollover = pause candidate).
+        // Purely informational — nothing auto-sends or auto-pauses off
+        // of this; it just flags the row for the operator's existing
+        // manual "final" reminder tier / pause workflow.
+        bool        finalNotice = false;
+        // The next 1st-Friday due-date rollover (YYYY-MM-DD, same value
+        // on every row) — lets the frontend build the final-notice
+        // copy's date/month text from real data instead of a hardcoded
+        // string.
+        std::string upcomingDueAt;
         std::vector<RecentTxn> recentTxns; // last-2-calendar-months window
     };
     std::vector<MemberRow>

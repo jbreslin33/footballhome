@@ -318,11 +318,12 @@ class PaymentsScreen extends Screen {
     // every setRows() call so numbers stay live.
     const c = this._activeCounts();
     const statusChips = [
-      { id: 'all',     label: 'All',            count: this._activeTotal() },
-      { id: 'overdue', label: '🔴 Overdue',    count: c.overdue || 0 },
-      { id: 'never',   label: '⚫ Never Paid', count: c.never   || 0 },
-      { id: 'behind',  label: '🟡 Behind',     count: c.behind  || 0 },
-      { id: 'current', label: '🟢 Paid Up',    count: c.current || 0 },
+      { id: 'all',          label: 'All',                 count: this._activeTotal() },
+      { id: 'final-notice', label: '⚠️ Final Notice',    count: c.finalNotice || 0 },
+      { id: 'overdue',      label: '🔴 Overdue',         count: c.overdue || 0 },
+      { id: 'never',        label: '⚫ Never Paid',      count: c.never   || 0 },
+      { id: 'behind',       label: '🟡 Behind',          count: c.behind  || 0 },
+      { id: 'current',      label: '🟢 Paid Up',         count: c.current || 0 },
     ];
 
     // Category-row selection reflects the current tab; program-row
@@ -410,14 +411,15 @@ class PaymentsScreen extends Screen {
       const d = this.membersByTab[this.tab];
       return (d && d.counts) || {};
     }
-    const combined = { current: 0, behind: 0, overdue: 0, never: 0 };
+    const combined = { current: 0, behind: 0, overdue: 0, never: 0, finalNotice: 0 };
     for (const k of ['mens','womens','boys','girls']) {
       const d = this.membersByTab[k];
       if (!d || !d.counts) continue;
-      combined.current += d.counts.current || 0;
-      combined.behind  += d.counts.behind  || 0;
-      combined.overdue += d.counts.overdue || 0;
-      combined.never   += d.counts.never   || 0;
+      combined.current     += d.counts.current     || 0;
+      combined.behind      += d.counts.behind      || 0;
+      combined.overdue      += d.counts.overdue     || 0;
+      combined.never       += d.counts.never       || 0;
+      combined.finalNotice += d.counts.finalNotice || 0;
     }
     return combined;
   }
@@ -705,6 +707,7 @@ class PaymentsScreen extends Screen {
     // Search + optional status filter.
     const q = this.search;
     const rows = (data.members || []).filter((mm) => {
+      if (this.statusFilter === 'final-notice') return !!mm.finalNotice;
       if (this.statusFilter && mm.status !== this.statusFilter) return false;
       if (!q) return true;
       const hay = [mm.firstName, mm.lastName, mm.status, String(mm.laUserId || ''),
@@ -805,9 +808,68 @@ class PaymentsScreen extends Screen {
     return `https://manager.leagueapps.com/console/sites/${this.laSiteId}/memberDetails?memberId=${uid}`;
   }
 
-  _buildPaymentReminderEmailBody(firstName, link, variant = 'reminder') {
-    const first = (firstName || '').trim() || 'there';
+  // Parses a "YYYY-MM-DD..." prefix into a LOCAL calendar date, ignoring
+  // any time/timezone suffix — next_due_at / upcoming_due_at are always
+  // calendar-date anchors (first-Friday-of-month), so treating them via
+  // `new Date(isoString)` (which applies the browser's timezone offset
+  // to a UTC midnight) risks rolling a 1st-of-month date back into the
+  // prior month for any timezone behind UTC. Reading the y/m/d digits
+  // directly sidesteps that entirely.
+  _parseIsoDateOnly(iso) {
+    if (!iso) return null;
+    const [y, mo, d] = iso.slice(0, 10).split('-').map(Number);
+    if (!y || !mo || !d) return null;
+    return new Date(y, mo - 1, d);
+  }
+
+  // For a member flagged `finalNotice` (owner protocol 2026-08-05: unpaid
+  // at the next due-date rollover = carrying 2 unpaid cycles = pause
+  // candidate) — builds the real month names + due date from the data
+  // instead of a hardcoded "2 months" string. Returns null when the
+  // dates aren't both present (nothing to compute) or nothing is owed.
+  _finalNoticeDetails(m) {
+    const due      = this._parseIsoDateOnly(m.nextDueAt);
+    const upcoming = this._parseIsoDateOnly(m.upcomingDueAt);
+    if (!due || !upcoming) return null;
+    const monthName = (d) => d.toLocaleDateString('en-US', { month: 'long' });
+    const owedMonths = [];
+    const cursor = new Date(due.getFullYear(), due.getMonth(), 1);
+    const upcomingMonthStart = new Date(upcoming.getFullYear(), upcoming.getMonth(), 1);
+    while (cursor < upcomingMonthStart) {
+      owedMonths.push(monthName(cursor));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    if (!owedMonths.length) return null;
+    return {
+      owedMonths,
+      owedPhrase: owedMonths.join(' and '),
+      nextMonthName: monthName(upcoming),
+      // Total months unpaid once `upcoming` also passes unpaid — usually
+      // 2, but climbs higher for anyone already several cycles behind
+      // (e.g. next_due_at 3 months ago → will be 4 months behind).
+      monthsBehindAtRollover: owedMonths.length + 1,
+      upcomingLabel: upcoming.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+    };
+  }
+
+  _buildPaymentReminderEmailBody(m, link, variant = 'reminder') {
+    const first = (m && m.firstName || '').trim() || 'there';
     if (variant === 'firm') {
+      const fd = this._finalNoticeDetails(m);
+      if (fd) {
+        return [
+          `Hi ${first},`,
+          '',
+          `You still owe dues for ${fd.owedPhrase}. Starting ${fd.upcomingLabel}, ${fd.nextMonthName} will also come due — `
+            + `at that point you'll be ${fd.monthsBehindAtRollover} months behind, and per club policy your membership will be paused until dues are paid in full.`,
+          '',
+          `Please make your payment before ${fd.upcomingLabel} using this link: ${link}`,
+          '',
+          'Thanks,',
+          'James Breslin',
+          'Soccer Director at Lighthouse',
+        ].join('\n');
+      }
       return [
         `Hi ${first},`,
         '',
@@ -824,9 +886,9 @@ class PaymentsScreen extends Screen {
       return [
         `Hi ${first},`,
         '',
-        `This is a final reminder that your membership payment is overdue. Please make your payment immediately using this link: ${link}`,
+        `Your membership has been paused due to unpaid dues. Your spot is on hold until payment is received in full.`,
         '',
-        'If we do not receive payment, your membership will be paused and your spot may be released.',
+        `To reactivate, please make your payment using this link: ${link}`,
         '',
         'Thanks,',
         'James Breslin',
@@ -844,13 +906,17 @@ class PaymentsScreen extends Screen {
     ].join('\n');
   }
 
-  _buildPaymentReminderText(firstName, link, variant = 'reminder') {
-    const first = (firstName || '').trim() || 'there';
+  _buildPaymentReminderText(m, link, variant = 'reminder') {
+    const first = (m && m.firstName || '').trim() || 'there';
     if (variant === 'firm') {
+      const fd = this._finalNoticeDetails(m);
+      if (fd) {
+        return `Hi ${first}, you owe dues for ${fd.owedPhrase}. Starting ${fd.upcomingLabel} you'll be ${fd.monthsBehindAtRollover} months behind and your membership will be paused per club policy. Please pay before then: ${link}`;
+      }
       return `Hi ${first}, your membership payment is still outstanding. Please make your payment by the end of today here: ${link}`;
     }
     if (variant === 'final') {
-      return `Hi ${first}, this is a final reminder that your membership payment is overdue. Please pay immediately here: ${link}`;
+      return `Hi ${first}, your membership has been paused due to unpaid dues. To reactivate, please pay in full here: ${link}`;
     }
     return `Hi ${first}, please make your payment as soon as possible. You can pay here: ${link}`;
   }
@@ -906,11 +972,11 @@ class PaymentsScreen extends Screen {
     if (m.email) {
       const emailVariants = [
         { variant: 'reminder', label: '✉️ Reminder', subject: 'Football Home — payment reminder' },
-        { variant: 'firm', label: '✉️ Firm', subject: 'Football Home — overdue payment' },
-        { variant: 'final', label: '✉️ Final', subject: 'Football Home — final payment reminder' },
+        { variant: 'firm', label: m.finalNotice ? '✉️ Firm ⚠️' : '✉️ Firm', subject: 'Football Home — overdue payment' },
+        { variant: 'final', label: '✉️ Final', subject: 'Football Home — membership paused' },
       ];
       for (const item of emailVariants) {
-        const body = this._buildPaymentReminderEmailBody(m.firstName, paymentLink, item.variant);
+        const body = this._buildPaymentReminderEmailBody(m, paymentLink, item.variant);
         const gmailUrl = this.buildGmailComposeHref({ to: m.email, subject: item.subject, body });
         contactBtns.push(
           `<a href="${gmailUrl}" target="_blank" rel="noopener"
@@ -924,11 +990,11 @@ class PaymentsScreen extends Screen {
     if (phoneDigits && m.phoneSms !== false) {
       const textVariants = [
         { variant: 'reminder', label: '💬 Reminder' },
-        { variant: 'firm', label: '💬 Firm' },
+        { variant: 'firm', label: m.finalNotice ? '💬 Firm ⚠️' : '💬 Firm' },
         { variant: 'final', label: '💬 Final' },
       ];
       for (const item of textVariants) {
-        const textBody = this._buildPaymentReminderText(m.firstName, paymentLink, item.variant);
+        const textBody = this._buildPaymentReminderText(m, paymentLink, item.variant);
         contactBtns.push(
           `<a href="sms:${phoneDigits}?body=${encodeURIComponent(textBody)}"
                style="padding:6px 10px; border-radius:4px; text-decoration:none;
@@ -1201,6 +1267,19 @@ class PaymentsScreen extends Screen {
          </div>`
       : `<div style="font-size:0.8rem; opacity:0.55; font-style:italic;">No due date set — pick a Friday below</div>`;
 
+    // Final-notice strip — real month names/date computed from the
+    // data (see _finalNoticeDetails), not a hardcoded string. Only
+    // shown when the backend flags this row (m.finalNotice).
+    const fd = m.finalNotice ? this._finalNoticeDetails(m) : null;
+    const finalNoticeBlock = fd
+      ? `<div style="width:100%; font-size:0.78rem; font-weight:700; color:#fbbf24;
+                    background:#3a2e05; border:1px solid #d97706; border-radius:4px;
+                    padding:5px 8px;">
+           ⚠️ Owes ${fd.owedPhrase} — ${fd.nextMonthName} also comes due ${fd.upcomingLabel}.
+           Unpaid then = ${fd.monthsBehindAtRollover} months behind → paused per club policy.
+         </div>`
+      : '';
+
     return `
       <div style="background:#0b1220; border:1px solid ${overdue ? '#7f1d1d' : '#1f2937'};
                   border-radius:6px; padding:8px 10px;
@@ -1208,6 +1287,7 @@ class PaymentsScreen extends Screen {
                   gap:10px; flex-wrap:wrap;">
         ${amountBlock}
         ${dateBlock}
+        ${finalNoticeBlock}
       </div>
     `;
   }
