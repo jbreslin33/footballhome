@@ -345,40 +345,40 @@ Reserves `kind='internal'` teams) having `club_id = NULL` is *by design*
 per decision 1 ("internal groups... connect to nothing"), not a gap —
 no action needed there, and no `club_id` should be set on them.
 
-**Queued, not yet done (resume after practice):**
-1. Rename `912`/`913`/`914` — drop the "(Admin)" suffix
-   ("U8 Boys (Admin)" → "U8 Boys", etc). Cosmetic, no conflict with
-   `kind='internal'` already carrying the real semantic.
-2. `teams.is_active` backfill scoped to `club_id = 134` (Lighthouse) —
-   the 16 teams currently rendering on the rosters board (7 mens + 9
-   boys, after the two renames above still count) → `true`; the other
-   7 club-134 teams (903, 904, 905, 908, 909, 915, plus 901 Tri County
-   Women → explicitly `true` per user, it's real, just never had a
-   Womens board to render on) → per the table below. Non-Lighthouse
-   teams untouched (stay at the column default `true` — they're real,
-   currently-playing opponents, this club just doesn't administer
-   their activity status).
-3. **Open decision, not yet made**: `915` "Dues Owed (Boys)" — this
-   ADR explicitly names it as the canonical `admin_bucket` example
-   (decision 6), but it has zero `team_persons` rows ever, and real
-   dues/payment status already lives on `players.is_paid_up_to_date` /
-   `persons.leagueapps_payment_status`, independent of any team
-   membership. Delete it (redundant, unused), or keep it per this
-   ADR's original intent (a manual roster-board workflow bucket,
-   independent of the payment-status boolean)? User to decide.
-4. `908`/`909` (Practice/Pickup) — do NOT delete yet, per this ADR's
+**Queued 2026-08-05, resolved 2026-08-06:**
+1. ✅ **Done** (migration 263). Renamed `912`/`913`/`914`, dropping the
+   "(Admin)" suffix ("U8 Boys (Admin)" → "U8 Boys", etc). Cosmetic, no
+   conflict with `kind='internal'` already carrying the real semantic.
+2. ✅ **Already satisfied, no action needed.** Re-checked 2026-08-06:
+   migration 262's backfill (previously-`board_archived_at`-set →
+   `false`, column default `true` otherwise) already produced exactly
+   the table below — no separate backfill was required.
+3. ✅ **Resolved: delete.** `915` "Dues Owed (Boys)" had zero
+   `team_persons` rows ever, and real dues/payment status already
+   lives on `players.is_paid_up_to_date` /
+   `persons.leagueapps_payment_status`, independent of team
+   membership — keeping it as a dormant `admin_bucket` team would just
+   be unused surface. **Not yet executed** — deferred to a follow-up
+   pass (this session only ran migration 263, items 1/5/6).
+4. `908`/`909` (Practice/Pickup) — still not deleted, per this ADR's
    own Phase 3 criterion ("after nothing references them"): `909`
    still has one live `fh_event_teams` row. Leave `is_active=false`
-   (already applied) until that last event gets retagged and Phase 3
-   removes the rows for real.
-5. `roster_columns` (17 rows) and `coach_rsvp_eligibility` (72 rows,
-   still growing — its sync trigger is still firing) — both confirmed
-   dead this session (zero backend/frontend reads for either). This
-   *is* the Phase 2 coach-side audit this doc calls for in Open Items.
-   Both are already Phase 3 drop candidates; safe to drop now rather
-   than waiting, since nothing reads them.
-6. Two dead `clubs` rows confirmed zero-referenced, safe to drop:
-   `id=20004` ("Lighthouse"), `id=20010` ("Lighthouse Boys Club U23").
+   until that last event gets retagged and Phase 3 removes the rows
+   for real.
+5. ✅ **Done** (migration 263). Dropped `roster_columns` (17 rows,
+   folded into `teams` by migration 250) and `coach_rsvp_eligibility`
+   (72 rows — dropped its sync trigger
+   `trg_sync_coach_rsvp_eligibility` /
+   `fn_sync_coach_rsvp_eligibility_from_team_coaches()` first). Both
+   confirmed zero backend/frontend reads before dropping. This *is*
+   the Phase 2 coach-side audit this doc calls for in Open Items.
+6. ✅ **Done** (migration 263). Dropped the two dead `clubs` rows,
+   confirmed zero references across every table with a `club_id` FK
+   first: `id=20004` ("Lighthouse"), `id=20010` ("Lighthouse Boys Club
+   U23").
+
+**Still open:** item 3's actual `DELETE FROM teams WHERE id=915`, and
+the `club_sections` migration below (not started).
 
 **LH team active/inactive table (club_id=134), as decided:**
 
