@@ -552,12 +552,30 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                                                 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                                                              END AS responded_at,
                                                              CASE
+                                                                     -- "Pickup only" means this person's ONLY
+                                                                     -- connection to THIS event's tagged teams is via
+                                                                     -- the generic Practice(908)/Pickup(909) pool —
+                                                                     -- not via any specifically-named team tagged on
+                                                                     -- the event, official (35/120/121/122) or
+                                                                     -- trialist/reserve (924-929). Computed
+                                                                     -- person-level (scoped to fe.id's own tagged
+                                                                     -- teams) rather than per-row, so it's stable
+                                                                     -- under DISTINCT ON regardless of which of a
+                                                                     -- multi-team person's rows wins the tie. A
+                                                                     -- hardcoded (35,120,121,122) whitelist predates
+                                                                     -- the trialist teams and wrongly hid trialists
+                                                                     -- tagged on their own practice events (they'd
+                                                                     -- never RSVP'd yet, so got filtered out below
+                                                                     -- entirely).
                                                                      WHEN fe.category = 'mens' THEN NOT EXISTS (
                                                                              SELECT 1
                                                                                  FROM team_persons tp_sel
-                                                                                WHERE tp_sel.person_id  = p.id
+                                                                                 JOIN fh_event_teams fet_sel
+                                                                                   ON fet_sel.team_id = tp_sel.team_id
+                                                                                WHERE tp_sel.person_id    = p.id
                                                                                     AND tp_sel.removed_at IS NULL
-                                                                                    AND tp_sel.team_id    IN (35, 120, 121, 122)
+                                                                                    AND fet_sel.fh_event_id = fe.id
+                                                                                    AND tp_sel.team_id NOT IN (908, 909)
                                                                      )
                                                                      ELSE false
                                                              END AS is_pickup_only,

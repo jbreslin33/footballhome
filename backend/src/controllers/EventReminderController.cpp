@@ -678,11 +678,19 @@ Response EventReminderController::handleGetMensWeek(const Request& request,
                 "         WHERE person_id = p.id AND can_receive_sms = true "
                 "         ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone_sms, "
                 "       r.response AS rsvp_status, "
+                // Same fix as CalendarController::handleGetUpcoming: "pickup
+                // only" means no connection to THIS event's tagged teams
+                // except the generic Practice(908)/Pickup(909) pool. The old
+                // (35,120,121,122) whitelist predates the trialist/reserve
+                // teams (924-929) and wrongly bucketed trialists tagged on
+                // their own events into the collapsed pickup-only section.
                 "       NOT EXISTS ( "
                 "         SELECT 1 FROM team_persons tp_sel "
-                "          WHERE tp_sel.person_id   = p.id "
-                "            AND tp_sel.removed_at  IS NULL "
-                "            AND tp_sel.team_id     IN (35, 120, 121, 122) "
+                "         JOIN fh_event_teams fet_sel ON fet_sel.team_id = tp_sel.team_id "
+                "          WHERE tp_sel.person_id    = p.id "
+                "            AND tp_sel.removed_at   IS NULL "
+                "            AND fet_sel.fh_event_id = $1::bigint "
+                "            AND tp_sel.team_id NOT IN (908, 909) "
                 "       ) AS is_pickup_only, "
                 "       ht.team_id AS home_team_id, "
                 "       CASE ht.team_id "

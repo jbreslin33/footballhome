@@ -41,6 +41,7 @@ class MyScreen extends Screen {
     this.dataError      = null;
     this.expandedEventId = null;         // toggled by the compact View button
     this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
+    this.notGoingExpandedEvents = new Set(); // fh_event_ids with "Not Going" list open
 
     // Old-events range picker. 'current' (default) reuses the existing
     // this-week `this.events` array untouched; any other value swaps the
@@ -237,6 +238,20 @@ class MyScreen extends Screen {
         remindLink.textContent = 'Reminded ✓';
         remindLink.style.opacity = '0.55';
         remindLink.style.pointerEvents = 'none';
+        return;
+      }
+      // "Not Going" list show/hide (collapsed by default — can be a long
+      // list, no per-row action needed since they've already responded).
+      const notGoingToggle = target.closest('[data-toggle-not-going]');
+      if (notGoingToggle) {
+        e.stopPropagation();
+        const fhEventId = parseInt(notGoingToggle.getAttribute('data-toggle-not-going'), 10);
+        if (this.notGoingExpandedEvents.has(fhEventId)) {
+          this.notGoingExpandedEvents.delete(fhEventId);
+        } else {
+          this.notGoingExpandedEvents.add(fhEventId);
+        }
+        this._renderEvents();
         return;
       }
       // Per-event RSVP button (Going / Not Going).
@@ -555,10 +570,15 @@ class MyScreen extends Screen {
 
   _eventRsvpHtml(ev, isPast = false) {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const going = rsvps.filter(r => r && r.response === 'yes');
-    const playersGoing = going.filter(r => !r.is_coach);
-    const coachesGoing = going.filter(r => r.is_coach);
-    const noResponsePlayers = rsvps.filter(r => r && !r.is_coach && !r.response);
+    const going          = rsvps.filter(r => r && r.response === 'yes');
+    const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
+    const noResponseAll  = rsvps.filter(r => r && !r.response);
+    const playersGoing      = going.filter(r => !r.is_coach);
+    const coachesGoing      = going.filter(r => r.is_coach);
+    const notGoingPlayers   = notGoingAll.filter(r => !r.is_coach);
+    const notGoingCoaches   = notGoingAll.filter(r => r.is_coach);
+    const noResponsePlayers = noResponseAll.filter(r => !r.is_coach);
+    const noResponseCoaches = noResponseAll.filter(r => r.is_coach);
 
     const att = this.attendanceByEvent.get(ev.fh_event_id) || null;
 
@@ -570,22 +590,24 @@ class MyScreen extends Screen {
         </div>`)
       .join('');
 
-    const groupHtml = (label, list) => `
-      <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                  color:rgba(226,232,240,0.75); margin-bottom:4px;">
-        ${this.escapeHtml(label)}
-      </div>
-      <div style="font-size:0.9rem; font-weight:700; color:rgba(226,232,240,0.92);">
-        ${list.length ? `${list.length} going` : 'None yet.'}
-      </div>
-      ${list.length ? `<div style="display:grid; gap:3px; margin-top:6px;">${rowsHtml(list)}</div>` : ''}
-    `;
+    // "Present" sits right beside "Players/Coaches <status>" as a matched
+    // label+total pair, for every status (not just Going) — late counts
+    // toward present (P/L green/amber both mean "showed up"; A/E or a
+    // blank dash mean not present); catches the "said no but showed up
+    // anyway" case too. Only counted once attendance has actually loaded
+    // (`att` set) — no bogus 0 while still loading. No separate
+    // present-only list, to avoid showing every name twice.
+    const presentCount = (list) => list.filter(r => {
+      const entry = att && att.roster.get(r.person_id);
+      return entry && (entry.status === 'present' || entry.status === 'late');
+    }).length;
 
     // Plain sms: link — no server round-trip, same pattern as the coach
     // reminders board (mens-events-reminders.js). Opens the clicker's own
     // Messages app pre-filled; they still have to hit send themselves.
+    // Shared by both the Players and Coaches No Response groups.
     const eventTitle = this._eventTitle(ev);
-    const noResponseRows = noResponsePlayers.map(r => {
+    const remindRowsHtml = (list) => list.map(r => {
       const key = `${ev.fh_event_id}:${r.person_id}`;
       const name = nameOf(r);
       const alreadyReminded = this.remindedKeys.has(key);
@@ -612,20 +634,70 @@ class MyScreen extends Screen {
         </div>`;
     }).join('');
 
+    // Same label+count(+Present) shape for every RSVP status and for
+    // both players and coaches — Going/Not Going/No Response all get
+    // identical treatment instead of coaches only showing up under
+    // Going. `rows` is pre-rendered so each status can supply its own
+    // row style (plain name+attendance vs. remind-action rows).
+    const groupHtml = (label, list, countWord, rows) => `
+      <div style="display:flex; align-items:flex-start; gap:14px; margin-bottom:4px;">
+        <div>
+          <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                      color:rgba(226,232,240,0.75);">${this.escapeHtml(label)}</div>
+          <div style="font-size:0.9rem; font-weight:700; color:rgba(226,232,240,0.92);">
+            ${list.length ? `${list.length} ${countWord}` : 'None.'}
+          </div>
+        </div>
+        ${list.length && att ? `
+        <div>
+          <div style="font-size:0.6rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                      color:rgba(226,232,240,0.5);">Present</div>
+          <div style="font-size:0.9rem; font-weight:700; color:#22c55e;">${presentCount(list)}</div>
+        </div>` : ''}
+      </div>
+      ${list.length ? `<div style="display:grid; gap:3px; margin-top:6px;">${rows}</div>` : ''}
+    `;
+
+    const notGoingExpanded = this.notGoingExpandedEvents.has(ev.fh_event_id);
+    const notGoingTotal    = notGoingPlayers.length + notGoingCoaches.length;
+    const noResponseTotal  = noResponsePlayers.length + noResponseCoaches.length;
+
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
                   border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
         <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
-          <div>${groupHtml('Players Going', playersGoing)}</div>
-          <div>${groupHtml('Coaches Going', coachesGoing)}</div>
+          <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
+          <div>${groupHtml('Coaches Going', coachesGoing, 'going', rowsHtml(coachesGoing))}</div>
         </div>
-        ${noResponsePlayers.length ? `
+        ${notGoingTotal ? `
+          <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
+            <button type="button" data-toggle-not-going="${ev.fh_event_id}"
+                    style="display:flex; align-items:center; justify-content:space-between; width:100%;
+                           background:transparent; border:none; padding:0; cursor:pointer; color:inherit;">
+              <span style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                          color:rgba(226,232,240,0.75);">
+                Not Going (${notGoingTotal})
+              </span>
+              <span style="font-size:0.62rem; opacity:0.6;">${notGoingExpanded ? '▲ Hide' : '▼ Show'}</span>
+            </button>
+            ${notGoingExpanded ? `
+              <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:6px;">
+                <div>${groupHtml('Players Not Going', notGoingPlayers, 'not going', rowsHtml(notGoingPlayers))}</div>
+                <div>${groupHtml('Coaches Not Going', notGoingCoaches, 'not going', rowsHtml(notGoingCoaches))}</div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+        ${noResponseTotal ? `
           <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
             <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
                         color:rgba(226,232,240,0.75); margin-bottom:6px;">
-              No Response (${noResponsePlayers.length})
+              No Response (${noResponseTotal})
             </div>
-            <div style="display:grid; gap:6px;">${noResponseRows}</div>
+            <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', remindRowsHtml(noResponsePlayers))}</div>
+              <div>${groupHtml('Coaches No Response', noResponseCoaches, 'no response', remindRowsHtml(noResponseCoaches))}</div>
+            </div>
           </div>
         ` : ''}
       </div>`;
