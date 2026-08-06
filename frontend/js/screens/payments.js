@@ -801,11 +801,7 @@ class PaymentsScreen extends Screen {
   }
 
   _buildPaymentReminderLink(m) {
-    const uid = m && m.laUserId ? String(m.laUserId) : '';
-    if (!uid) {
-      return `https://manager.leagueapps.com/console/sites/${this.laSiteId}/memberDetails`;
-    }
-    return `https://manager.leagueapps.com/console/sites/${this.laSiteId}/memberDetails?memberId=${uid}`;
+    return 'https://lighthouse1893.leagueapps.com/dashboard';
   }
 
   // Parses a "YYYY-MM-DD..." prefix into a LOCAL calendar date, ignoring
@@ -866,8 +862,7 @@ class PaymentsScreen extends Screen {
           `Please make your payment before ${fd.upcomingLabel} using this link: ${link}`,
           '',
           'Thanks,',
-          'James Breslin',
-          'Soccer Director at Lighthouse',
+          'Treasurer, Lighthouse 1893',
         ].join('\n');
       }
       return [
@@ -878,8 +873,7 @@ class PaymentsScreen extends Screen {
         'If payment is not received soon, your membership may be paused and your spot may be released.',
         '',
         'Thanks,',
-        'James Breslin',
-        'Soccer Director at Lighthouse',
+        'Treasurer, Lighthouse 1893',
       ].join('\n');
     }
     if (variant === 'final') {
@@ -891,8 +885,7 @@ class PaymentsScreen extends Screen {
         `To reactivate, please make your payment using this link: ${link}`,
         '',
         'Thanks,',
-        'James Breslin',
-        'Soccer Director at Lighthouse',
+        'Treasurer, Lighthouse 1893',
       ].join('\n');
     }
     return [
@@ -901,8 +894,7 @@ class PaymentsScreen extends Screen {
       `Please make your payment as soon as possible. You can pay here: ${link}`,
       '',
       'Thanks,',
-      'James Breslin',
-      'Soccer Director at Lighthouse',
+      'Treasurer, Lighthouse 1893',
     ].join('\n');
   }
 
