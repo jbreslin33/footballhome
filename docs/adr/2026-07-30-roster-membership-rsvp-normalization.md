@@ -353,13 +353,15 @@ no action needed there, and no `club_id` should be set on them.
    migration 262's backfill (previously-`board_archived_at`-set →
    `false`, column default `true` otherwise) already produced exactly
    the table below — no separate backfill was required.
-3. ✅ **Resolved: delete.** `915` "Dues Owed (Boys)" had zero
-   `team_persons` rows ever, and real dues/payment status already
+3. ✅ **Done** (migration 264). `915` "Dues Owed (Boys)" deleted —
+   zero `team_persons` rows ever, and real dues/payment status already
    lives on `players.is_paid_up_to_date` /
    `persons.leagueapps_payment_status`, independent of team
-   membership — keeping it as a dormant `admin_bucket` team would just
-   be unused surface. **Not yet executed** — deferred to a follow-up
-   pass (this session only ran migration 263, items 1/5/6).
+   membership. Cascaded 4 `team_coaches` rows and 1
+   `team_eligible_genders` row (verified `ON DELETE CASCADE` on both
+   before running); the 4 coach rows were from the same 2026-07-10
+   bulk-seed timestamp that attached those coaches to nearly every
+   team, not a real per-team assignment.
 4. `908`/`909` (Practice/Pickup) — still not deleted, per this ADR's
    own Phase 3 criterion ("after nothing references them"): `909`
    still has one live `fh_event_teams` row. Leave `is_active=false`
@@ -377,8 +379,9 @@ no action needed there, and no `club_id` should be set on them.
    first: `id=20004` ("Lighthouse"), `id=20010` ("Lighthouse Boys Club
    U23").
 
-**Still open:** item 3's actual `DELETE FROM teams WHERE id=915`, and
-the `club_sections` migration below (not started).
+**All six queued items resolved as of migrations 263–264.** The
+`club_sections` migration below is also now done (migration 265) —
+see its own note at the end of that section.
 
 **LH team active/inactive table (club_id=134), as decided:**
 
@@ -434,6 +437,14 @@ stays as-is for now (read by 8 backend + 6 frontend files) rather than
 a big-bang replace — `club_section_id` becomes the real relationship in
 parallel, individual screens migrate onto composed labels opportunistically.
 
-**Not yet written**: the actual migration for `club_sections` +
-`teams.club_section_id` + backfill from `gender_category` for the 16
-Lighthouse official teams. Next session.
+**Done (migration 265, 2026-08-06)**: `club_sections` created and
+seeded (Mens/Womens/Boys/Girls), `teams.club_section_id` added,
+backfilled for Lighthouse (`club_id=134`) `kind='official'` teams by
+`gender_category`. Landed on **8** teams, not the "16 on-rosters
+teams" figure from the session-update table above — that table counts
+everything rendering on the roster board (`is_active=true`), which
+includes 9 `kind='internal'` teams (912–914, 924–929). Per this
+section's own rule ("applies only to `kind='official'` teams"), those
+correctly got no `club_section_id`: 35 (APSL), 120 (Liga 1), 121
+(Liga 2), 122 (Adult), 911 (U16), 916 (U8), 917 (U12), 901 (Tri County
+Women).
