@@ -42,6 +42,14 @@ class MyScreen extends Screen {
     this.expandedEventId = null;         // toggled by the compact View button
     this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
 
+    // Old-events range picker. 'current' (default) reuses the existing
+    // this-week `this.events` array untouched; any other value swaps the
+    // section over to a fetched-on-demand past-events list.
+    this.eventsRange     = 'current';    // 'current' | 'yesterday' | 'last7' | 'last30' | 'all'
+    this.oldEvents       = null;         // cached results for the active non-current range
+    this.oldEventsLoading = false;
+    this.oldEventsError  = null;
+
     // Attendance-taking (coach/admin only, but fetched lazily for anyone
     // who expands a card so the read-only status badges show for players
     // too). Keyed by fh_event_id -> {canMark, roster: Map(person_id -> {status, marked_at})}.
@@ -290,6 +298,11 @@ class MyScreen extends Screen {
       ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
       this._syncChatComposerState();
     });
+    this.element.addEventListener('change', (e) => {
+      const select = e.target.closest('#events-range-select');
+      if (!select) return;
+      this._onRangeChange(select.value);
+    });
   }
 
   _renderError() {
@@ -349,6 +362,14 @@ class MyScreen extends Screen {
     const box = this.find('#my-events');
     if (!box) return;
 
+    const rangeHtml = this._rangeSelectHtml();
+    const sub = this.find('#my-subtitle');
+
+    if (this.eventsRange !== 'current') {
+      this._renderOldEvents(box, rangeHtml, sub);
+      return;
+    }
+
     // Keep the player-facing schedule focused on the current week and on
     // the days the team actually uses for RSVPs: Tue through Sun.
     const weekEnd = this._weekWindowEnd();
@@ -361,7 +382,6 @@ class MyScreen extends Screen {
         return !isNaN(t) && t <= weekEnd && allowedDays.has(t.getDay());
       });
 
-    const sub = this.find('#my-subtitle');
     if (sub) {
       sub.textContent = list.length
         ? `${list.length} event${list.length !== 1 ? 's' : ''} this week`
@@ -369,7 +389,7 @@ class MyScreen extends Screen {
     }
 
     if (list.length === 0) {
-      box.innerHTML = `
+      box.innerHTML = rangeHtml + `
         <div class="empty-state" style="padding: var(--space-4); text-align:center; opacity: 0.7;">
           <div style="font-size:2rem; margin-bottom:8px;">📅</div>
           <div>Nothing on your calendar this week.</div>
@@ -380,10 +400,131 @@ class MyScreen extends Screen {
       return;
     }
 
-    box.innerHTML = `
+    box.innerHTML = rangeHtml + `
       <h2 style="margin: 0 0 4px; font-size:0.8rem;">This Week</h2>
       ${list.map(e => this._renderEventCard(e)).join('')}
     `;
+  }
+
+  // ────── Old events (range picker) ─────────────────────────────────
+
+  _rangeSelectHtml() {
+    const options = [
+      ['current', 'This Week'],
+      ['yesterday', 'Yesterday'],
+      ['last7', 'Last Week'],
+      ['last30', 'Last Month'],
+      ['all', 'All'],
+    ];
+    const optsHtml = options.map(([val, label]) =>
+      `<option value="${val}" ${this.eventsRange === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`
+    ).join('');
+    return `
+      <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
+        <select id="events-range-select" style="padding:3px 6px; border-radius:6px;
+                border:1px solid rgba(255,255,255,0.16); background:rgba(15,23,42,0.7);
+                color:#dbeafe; font-size:0.68rem; font-weight:600;">
+          ${optsHtml}
+        </select>
+      </div>`;
+  }
+
+  _onRangeChange(value) {
+    if (this.eventsRange === value) return;
+    this.eventsRange = value;
+    this.expandedEventId = null;
+    if (value !== 'current') {
+      this.oldEvents = null;
+      this.oldEventsError = null;
+    }
+    this._renderEvents();
+    if (value !== 'current' && this.oldEvents === null) {
+      this._loadOldEvents(value);
+    }
+  }
+
+  // 'yesterday'/'last7'/'last30' are rolling day windows (not calendar-
+  // day-aligned) ending now; 'all' pages backward in 90-day chunks (the
+  // backend's `days` cap) until a chunk comes back empty or a safety cap
+  // of 4 chunks (~1 year) is hit, since /api/calendar/upcoming has no
+  // true "no limit" mode.
+  async _loadOldEvents(rangeKey) {
+    this.oldEventsLoading = true;
+    this.oldEventsError = null;
+    this._renderEvents();
+
+    try {
+      let events;
+      if (rangeKey === 'all') {
+        events = [];
+        let chunkEnd = new Date();
+        for (let i = 0; i < 4; i++) {
+          const chunkStart = new Date(chunkEnd.getTime() - 90 * 24 * 60 * 60 * 1000);
+          const res = await this._fetch(
+            `/api/calendar/upcoming?start=${encodeURIComponent(chunkStart.toISOString())}&days=90`);
+          const chunk = res.events || [];
+          if (chunk.length === 0) break;
+          events = events.concat(chunk);
+          chunkEnd = chunkStart;
+        }
+      } else {
+        const daysBack = { yesterday: 1, last7: 7, last30: 30 }[rangeKey] || 7;
+        const start = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+        const res = await this._fetch(
+          `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=${daysBack}`);
+        events = res.events || [];
+      }
+      if (this.eventsRange !== rangeKey) return; // user switched ranges while this was in flight
+      this.oldEvents = events;
+    } catch (err) {
+      if (this.eventsRange !== rangeKey) return;
+      console.error('[my] old events load failed:', err);
+      this.oldEventsError = err.message || 'Failed to load.';
+    } finally {
+      if (this.eventsRange === rangeKey) this.oldEventsLoading = false;
+      this._renderEvents();
+    }
+  }
+
+  _renderOldEvents(box, rangeHtml, sub) {
+    if (this.oldEventsLoading) {
+      if (sub) sub.textContent = 'Loading…';
+      box.innerHTML = rangeHtml + `<div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>`;
+      return;
+    }
+    if (this.oldEventsError) {
+      if (sub) sub.textContent = 'Failed to load';
+      box.innerHTML = rangeHtml + `
+        <div class="empty-state" style="padding: var(--space-4); text-align:center; opacity: 0.7;">
+          <p><strong>Error:</strong> ${this.escapeHtml(this.oldEventsError)}</p>
+        </div>`;
+      return;
+    }
+
+    const list = (this.oldEvents || [])
+      .filter(e => this._isPlayerScheduleEvent(e))
+      .filter(e => e.starts_at && !isNaN(new Date(e.starts_at)))
+      .sort((a, b) => new Date(b.starts_at) - new Date(a.starts_at)); // most recent first
+
+    const rangeLabels = { yesterday: 'yesterday', last7: 'the last week', last30: 'the last month', all: 'your history' };
+    const rangeLabel = rangeLabels[this.eventsRange] || 'this range';
+
+    if (sub) {
+      sub.textContent = list.length
+        ? `${list.length} event${list.length !== 1 ? 's' : ''} in ${rangeLabel}`
+        : `Nothing in ${rangeLabel}`;
+    }
+
+    if (list.length === 0) {
+      box.innerHTML = rangeHtml + `
+        <div class="empty-state" style="padding: var(--space-4); text-align:center; opacity: 0.7;">
+          <div style="font-size:2rem; margin-bottom:8px;">📅</div>
+          <div>No events in ${this.escapeHtml(rangeLabel)}.</div>
+        </div>`;
+      return;
+    }
+
+    box.innerHTML = rangeHtml + list.map(e => this._renderEventCard(e, /*isPast*/ true)).join('');
   }
 
   _eventTitle(ev) {
@@ -412,7 +553,7 @@ class MyScreen extends Screen {
     return 'Event';
   }
 
-  _eventRsvpHtml(ev) {
+  _eventRsvpHtml(ev, isPast = false) {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const going = rsvps.filter(r => r && r.response === 'yes');
     const playersGoing = going.filter(r => !r.is_coach);
@@ -449,7 +590,9 @@ class MyScreen extends Screen {
       const name = nameOf(r);
       const alreadyReminded = this.remindedKeys.has(key);
       let actionHtml;
-      if (alreadyReminded) {
+      if (isPast) {
+        actionHtml = `<span style="font-size:0.66rem; opacity:0.5;">—</span>`;
+      } else if (alreadyReminded) {
         actionHtml = `<span style="font-size:0.68rem; opacity:0.55;">Reminded ✓</span>`;
       } else if (r.phone) {
         const body = `Hey ${r.first_name || ''}, don't forget to RSVP for ${eventTitle}! https://footballhome.org/#my`.trim();
@@ -591,7 +734,7 @@ class MyScreen extends Screen {
     }
   }
 
-  _renderEventCard(ev) {
+  _renderEventCard(ev, isPast = false) {
     const kind      = ev.kind || '';
     const category  = ev.category || '';
     const per       = ev.my_rsvp;              // 'yes' | 'no' | 'maybe' | null
@@ -601,7 +744,7 @@ class MyScreen extends Screen {
     const eligibilityMsg = eligibilityOk ? '' : (
       ev.my_rsvp_eligibility_reason || 'Not eligible to RSVP for this event'
     );
-    const disabledMsg = eligibilityMsg || openMsg;
+    const disabledMsg = isPast ? 'Event has passed' : (eligibilityMsg || openMsg);
 
     const evYesKey  = `${ev.fh_event_id}:yes`;
     const evNoKey   = `${ev.fh_event_id}:no`;
@@ -670,7 +813,7 @@ class MyScreen extends Screen {
           <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
             <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
             ${venue ? `<div style="font-size:0.64rem; line-height:1.3; opacity:0.72;">${this.escapeHtml(venue)}</div>` : ''}
-            ${this._eventRsvpHtml(ev)}
+            ${this._eventRsvpHtml(ev, isPast)}
           </div>
         ` : ''}
       </div>
