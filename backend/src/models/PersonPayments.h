@@ -169,6 +169,13 @@ public:
     std::vector<MemberRow>
     loadMembersForProgram(long long programId);
 
+    // Real LA club name for `programId` (leagueapps_programs.program_name),
+    // e.g. "Lighthouse Men's Club 1893 Soccer Membership" — used for
+    // member-facing text (email subjects) instead of the "Football Home"
+    // app brand, which members don't recognize as anything they pay.
+    // Returns empty string if the program isn't in leagueapps_programs.
+    std::string programName(long long programId);
+
     // Operator override — set / update the next_due_at anchor on the
     // (open) membership row identified by la_registration_id.  Writes
     // next_due_source='operator_override' + touches next_due_updated_at.

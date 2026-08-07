@@ -36,11 +36,22 @@ private:
     int boysProgramId_;
     int girlsProgramId_;
 
+    // "Inactive" sub-program per category (migration 266) — members moved
+    // here in LA after 2 months unpaid.  Still shown on the payments
+    // screen (separate top section) so ops can monitor for reactivation,
+    // but excluded from rosters/pool (LaPool.cpp §3a).  0 = not configured
+    // yet for that category (boys/girls pending LA-side id confirmation).
+    int mensInactiveProgramId_;
+    int womensInactiveProgramId_;
+    int boysInactiveProgramId_;
+    int girlsInactiveProgramId_;
+
     Response handleGetForProgram(const std::string& programKey,
                                  long long programId,
                                  const LaSyncMap& sync);
     Response handleGetMembersForProgram(const std::string& programKey,
                                         long long programId,
+                                        long long inactiveProgramId,
                                         const LaSyncMap& sync);
     // Operator override: POST /api/payments/members/:regId/next-due.
     Response handleSetNextDue(const Request& request);

@@ -49,7 +49,11 @@ PaymentsController::PaymentsController()
       mensProgramId_   (envIntOr("LEAGUEAPPS_MENS_PROGRAM_ID",         5039300)),
       womensProgramId_ (envIntOr("LEAGUEAPPS_WOMENS_PROGRAM_ID",       5039340)),
       boysProgramId_   (envIntOr("LEAGUEAPPS_BOYS_CLUB_PROGRAM_ID",    5039252)),
-      girlsProgramId_  (envIntOr("LEAGUEAPPS_GIRLS_CLUB_PROGRAM_ID",   5039357)) {}
+      girlsProgramId_  (envIntOr("LEAGUEAPPS_GIRLS_CLUB_PROGRAM_ID",   5039357)),
+      mensInactiveProgramId_   (envIntOr("LEAGUEAPPS_MENS_INACTIVE_PROGRAM_ID",   5093107)),
+      womensInactiveProgramId_ (envIntOr("LEAGUEAPPS_WOMENS_INACTIVE_PROGRAM_ID", 5114228)),
+      boysInactiveProgramId_   (envIntOr("LEAGUEAPPS_BOYS_INACTIVE_PROGRAM_ID",   0)),
+      girlsInactiveProgramId_  (envIntOr("LEAGUEAPPS_GIRLS_INACTIVE_PROGRAM_ID",  0)) {}
 
 PaymentsController::~PaymentsController() = default;
 
@@ -89,25 +93,37 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // + computed status ("what have you done for me lately").  Uses the
     // LaSyncMap payload to reconcile LA's authoritative paymentStatus
     // against our locally computed status.
-    laGet(router, prefix + "/mens/members", {mensProgramId_},
+    // Each category's sync list includes its "inactive" sub-program
+    // (when configured) alongside the active one, so laGet's pre-dispatch
+    // sync (§ Membership Data Flow) refreshes both before the handler
+    // reads person_la_memberships.
+    std::vector<int> mensMembersPrograms = {mensProgramId_};
+    if (mensInactiveProgramId_ > 0) mensMembersPrograms.push_back(mensInactiveProgramId_);
+    laGet(router, prefix + "/mens/members", mensMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-            return this->handleGetMembersForProgram("mens", mensProgramId_, sync);
+            return this->handleGetMembersForProgram("mens", mensProgramId_, mensInactiveProgramId_, sync);
         });
-    laGet(router, prefix + "/womens/members", {womensProgramId_},
+    std::vector<int> womensMembersPrograms = {womensProgramId_};
+    if (womensInactiveProgramId_ > 0) womensMembersPrograms.push_back(womensInactiveProgramId_);
+    laGet(router, prefix + "/womens/members", womensMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-            return this->handleGetMembersForProgram("womens", womensProgramId_, sync);
+            return this->handleGetMembersForProgram("womens", womensProgramId_, womensInactiveProgramId_, sync);
         });
-    laGet(router, prefix + "/boys/members", {boysProgramId_},
+    std::vector<int> boysMembersPrograms = {boysProgramId_};
+    if (boysInactiveProgramId_ > 0) boysMembersPrograms.push_back(boysInactiveProgramId_);
+    laGet(router, prefix + "/boys/members", boysMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-            return this->handleGetMembersForProgram("boys", boysProgramId_, sync);
+            return this->handleGetMembersForProgram("boys", boysProgramId_, boysInactiveProgramId_, sync);
         });
-    laGet(router, prefix + "/girls/members", {girlsProgramId_},
+    std::vector<int> girlsMembersPrograms = {girlsProgramId_};
+    if (girlsInactiveProgramId_ > 0) girlsMembersPrograms.push_back(girlsInactiveProgramId_);
+    laGet(router, prefix + "/girls/members", girlsMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
-            return this->handleGetMembersForProgram("girls", girlsProgramId_, sync);
+            return this->handleGetMembersForProgram("girls", girlsProgramId_, girlsInactiveProgramId_, sync);
         });
 
     // POST /api/payments/members/:regId/next-due
@@ -186,6 +202,7 @@ Response PaymentsController::handleGetForProgram(const std::string& programKey,
 
 Response PaymentsController::handleGetMembersForProgram(const std::string& programKey,
                                                         long long programId,
+                                                        long long inactiveProgramId,
                                                         const LaSyncMap& sync) {
     // 1. Membership state has ALREADY been refreshed by laGet's wrapper
     //    (LaProgramSync::run(programId) fired before dispatch).  All we
@@ -219,6 +236,22 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         rows = payments_->loadMembersForProgram(programId);
     } catch (const std::exception& e) {
         return internalErr(std::string("Failed to load members: ") + e.what());
+    }
+
+    // 3b. Members moved to the category's "inactive" sub-program
+    // (migration 266 — 2-months-unpaid, moved off the active LA program
+    // so they drop off rosters/pool, but ops still needs to see them here
+    // to monitor for reactivation).  No LA reconciliation for these —
+    // their laRegistrationId belongs to a different program than the one
+    // `sync`/`laPayments` was built for.
+    std::vector<PersonPayments::MemberRow> inactiveRows;
+    if (inactiveProgramId > 0) {
+        try {
+            inactiveRows = payments_->loadMembersForProgram(inactiveProgramId);
+        } catch (const std::exception& e) {
+            std::cerr << "[PaymentsController::members] inactive-program load failed: "
+                      << e.what() << std::endl;
+        }
     }
 
     // 4. Serialise.  Counts per status let the tile badge / summary strip
@@ -272,6 +305,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["nextDueSource"] = m.nextDueSource.empty() ? json(nullptr) : json(m.nextDueSource);
         row["finalNotice"]   = m.finalNotice;
         row["upcomingDueAt"] = m.upcomingDueAt.empty() ? json(nullptr) : json(m.upcomingDueAt);
+        row["variant"]       = "active";
         if (m.finalNotice) ++cFinalNotice;
 
         // Reconciliation.  Skip entirely if LA was unreachable OR if we
@@ -382,10 +416,64 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         members.push_back(std::move(row));
     }
 
+    // 6. Append the inactive-program rows.  No reconciliation (their
+    // laRegistrationId belongs to a different LA program than `sync`
+    // covers) — the operator's whole point in checking this section is
+    // "did they pay yet", not payment-discrepancy auditing.
+    for (const auto& m : inactiveRows) {
+        json row = json::object();
+        row["personId"]         = m.personId;
+        row["laUserId"]         = m.laUserId;
+        row["laRegistrationId"] = m.laRegistrationId ? json(m.laRegistrationId) : json(nullptr);
+        row["firstName"]     = m.firstName;
+        row["lastName"]      = m.lastName;
+        row["dob"]           = m.dob.empty()   ? json(nullptr) : json(m.dob);
+        row["email"]         = m.email.empty() ? json(nullptr) : json(m.email);
+        row["phone"]         = m.phone.empty() ? json(nullptr) : json(m.phone);
+        row["phoneSms"]      = m.phoneSms;
+        row["phoneCall"]     = m.phoneCall;
+        row["laRegisteredAt"] = m.laRegisteredAt.empty() ? json(nullptr) : json(m.laRegisteredAt);
+        row["status"]        = m.status;
+        row["totalPaid"]     = m.totalPaid;
+        row["totalRefunded"] = m.totalRefunded;
+        row["txnCount"]      = m.txnCount;
+        row["firstPaidAt"]   = m.firstPaidAt.empty() ? json(nullptr) : json(m.firstPaidAt);
+        row["lastPaidAt"]    = m.lastPaidAt.empty()  ? json(nullptr) : json(m.lastPaidAt);
+        row["lastAmount"]    = m.lastAmount;
+        row["daysOverdue"]   = m.daysOverdue;
+        row["nextDueAt"]     = m.nextDueAt.empty()     ? json(nullptr) : json(m.nextDueAt);
+        row["nextDueSource"] = m.nextDueSource.empty() ? json(nullptr) : json(m.nextDueSource);
+        row["finalNotice"]   = m.finalNotice;
+        row["upcomingDueAt"] = m.upcomingDueAt.empty() ? json(nullptr) : json(m.upcomingDueAt);
+        row["discrepancy"]   = json(nullptr);
+        row["variant"]       = "inactive";
+        json txns = json::array();
+        for (const auto& t : m.recentTxns) {
+            json j = json::object();
+            j["transactionId"] = t.transactionId;
+            j["amount"]        = t.amount;
+            j["txnType"]       = t.txnType;
+            j["paidAt"]        = t.paidAt.empty() ? json(nullptr) : json(t.paidAt);
+            j["gateway"]       = t.gateway;
+            txns.push_back(std::move(j));
+        }
+        row["recentTransactions"] = std::move(txns);
+        members.push_back(std::move(row));
+    }
+
+    // The active club's name (e.g. "Lighthouse Men's Club 1893 Soccer
+    // Membership") is what belongs in member-facing text even for
+    // inactive-section rows — it's their real, recognized club
+    // membership that's paused, not the internal "Inactive" bucket.
+    const std::string programName = payments_->programName(programId);
+    for (auto& row : members) row["programName"] = programName;
+
     json out = json::object();
-    out["program"]     = programKey;
-    out["programId"]   = programId;
-    out["total"]       = members.size();
+    out["program"]        = programKey;
+    out["programId"]      = programId;
+    out["programName"]    = programName;
+    out["total"]          = members.size();
+    out["inactiveCount"]  = inactiveRows.size();
     out["counts"]      = {
         {"current",     cCurrent},
         {"behind",      cBehind},

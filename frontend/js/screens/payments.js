@@ -424,15 +424,18 @@ class PaymentsScreen extends Screen {
     return combined;
   }
 
+  // Excludes the Inactive section — this feeds the "All" status chip,
+  // which is a payment-status total, not a headcount of everyone shown
+  // on the screen.
   _activeTotal() {
     if (this.tab !== 'all') {
       const d = this.membersByTab[this.tab];
-      return (d && d.total) || 0;
+      return d ? (d.total || 0) - (d.inactiveCount || 0) : 0;
     }
     let n = 0;
     for (const k of ['mens','womens','boys','girls']) {
       const d = this.membersByTab[k];
-      if (d && d.total) n += d.total;
+      if (d) n += (d.total || 0) - (d.inactiveCount || 0);
     }
     return n;
   }
@@ -452,6 +455,7 @@ class PaymentsScreen extends Screen {
       programId:   null,
       programName: 'All Programs',
       total:       0,
+      inactiveCount: 0,
       counts:      { current: 0, behind: 0, overdue: 0, never: 0 },
       members:     [],
       // Fields needed by _summarize().  Concatenating recentPayments
@@ -464,6 +468,7 @@ class PaymentsScreen extends Screen {
     };
     for (const d of shards) {
       out.total += (d.total || 0);
+      out.inactiveCount += (d.inactiveCount || 0);
       for (const k of ['current','behind','overdue','never']) {
         out.counts[k] += (d.counts?.[k] || 0);
       }
@@ -673,12 +678,14 @@ class PaymentsScreen extends Screen {
     // Summary strip
     const c = data.counts || {};
     const fin = this._summarize(data);
+    const inactiveCount = data.inactiveCount || 0;
     this.find('#pay-summary').innerHTML = `
-      <div><span style="opacity:0.7;">Members:</span> <span style="font-weight:700;">${data.total ?? 0}</span></div>
+      <div><span style="opacity:0.7;">Members:</span> <span style="font-weight:700;">${(data.total ?? 0) - inactiveCount}</span></div>
       <div><span style="opacity:0.7;">🟢 Current:</span> <span style="font-weight:700; color:#86efac;">${c.current || 0}</span></div>
       <div><span style="opacity:0.7;">🟡 Behind:</span> <span style="font-weight:700; color:#fbbf24;">${c.behind || 0}</span></div>
       <div><span style="opacity:0.7;">🔴 Overdue:</span> <span style="font-weight:700; color:#fca5a5;">${c.overdue || 0}</span></div>
       <div><span style="opacity:0.7;">⚫ Never paid:</span> <span style="font-weight:700; color:#e5e7eb;">${c.never || 0}</span></div>
+      <div><span style="opacity:0.7;">🚫 Inactive:</span> <span style="font-weight:700; color:#c4b5fd;">${inactiveCount}</span></div>
       <div style="flex-basis:100%; height:0;"></div>
       <div><span style="opacity:0.7;">💰 Collected:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.netCollected)}</span></div>
       <div><span style="opacity:0.7;">This Month:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.thisMonth)}</span></div>
@@ -704,19 +711,33 @@ class PaymentsScreen extends Screen {
     // data (works for both single-tab and 'all' aggregation modes).
     this._buildFilterBar();
 
-    // Search + optional status filter.
+    // Search (shared by every section) + optional status filter (status
+    // groups only — the Inactive section isn't a payment-status bucket,
+    // so status chips don't apply to it).
     const q = this.search;
-    const rows = (data.members || []).filter((mm) => {
-      if (this.statusFilter === 'final-notice') return !!mm.finalNotice;
-      if (this.statusFilter && mm.status !== this.statusFilter) return false;
+    const searchMatch = (mm) => {
       if (!q) return true;
       const hay = [mm.firstName, mm.lastName, mm.status, String(mm.laUserId || ''),
                    mm.email, mm.phone, mm.dob]
         .filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
+    };
+
+    // Members moved to the category's "inactive" LA sub-program (2 months
+    // unpaid — migration 266) render in their own section above the
+    // status groups, not folded into Overdue/Never/etc, so ops can watch
+    // this specific "did they pay yet, do we restore them" queue.
+    const inactiveMembers = (data.members || [])
+      .filter((mm) => mm.variant === 'inactive' && searchMatch(mm));
+
+    const rows = (data.members || []).filter((mm) => {
+      if (mm.variant === 'inactive') return false;
+      if (this.statusFilter === 'final-notice') return !!mm.finalNotice;
+      if (this.statusFilter && mm.status !== this.statusFilter) return false;
+      return searchMatch(mm);
     });
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && inactiveMembers.length === 0) {
       m.innerHTML = `
         <div style="padding: 20px; text-align:center; opacity:0.6; border:1px dashed var(--border-color, #374151); border-radius:6px;">
           ${data.members && data.members.length ? 'No members match this filter.' : 'No members on this program yet.'}
@@ -797,7 +818,21 @@ class PaymentsScreen extends Screen {
         </section>`
       : '';
 
-    m.innerHTML = statusOrder.map(groupHtml).join('') + otherHtml;
+    // Inactive section always renders first — moved off the active LA
+    // program, so they're gone from rosters/pool, but ops still needs
+    // eyes on them to catch a payment and restore them.
+    const inactiveHtml = inactiveMembers.length
+      ? `
+        <section style="margin-bottom: var(--space-5);">
+          ${sectionBar({ icon:'🚫', label:'INACTIVE — MONITOR FOR REACTIVATION',
+                         fg:'#4c1d95', bg:'#ede9fe', border:'#7c3aed' }, inactiveMembers.length)}
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
+            ${inactiveMembers.map((mm) => this.renderMemberCard(mm)).join('')}
+          </div>
+        </section>`
+      : '';
+
+    m.innerHTML = inactiveHtml + statusOrder.map(groupHtml).join('') + otherHtml;
   }
 
   _buildPaymentReminderLink(m) {
@@ -962,10 +997,15 @@ class PaymentsScreen extends Screen {
     const contactBtns = [];
     const paymentLink = this._buildPaymentReminderLink(m);
     if (m.email) {
+      // Subject uses the real LA club name (e.g. "Lighthouse Men's Club 1893
+      // Soccer Membership"), not "Football Home" — members don't pay FH
+      // anything, they pay Lighthouse dues, so an FH-branded subject reads
+      // as unrecognized/spam and gets ignored.
+      const clubName = m.programName || 'Lighthouse 1893';
       const emailVariants = [
-        { variant: 'reminder', label: '✉️ Reminder', subject: 'Football Home — payment reminder' },
-        { variant: 'firm', label: m.finalNotice ? '✉️ Firm ⚠️' : '✉️ Firm', subject: 'Football Home — overdue payment' },
-        { variant: 'final', label: '✉️ Final', subject: 'Football Home — membership paused' },
+        { variant: 'reminder', label: '✉️ Reminder', subject: `${clubName} — payment reminder` },
+        { variant: 'firm', label: m.finalNotice ? '✉️ Firm ⚠️' : '✉️ Firm', subject: `${clubName} — overdue payment` },
+        { variant: 'final', label: '✉️ Final', subject: `${clubName} — membership paused` },
       ];
       for (const item of emailVariants) {
         const body = this._buildPaymentReminderEmailBody(m, paymentLink, item.variant);

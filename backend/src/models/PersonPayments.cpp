@@ -833,6 +833,15 @@ PersonPayments::loadMembersForProgram(long long programId) {
     return out;
 }
 
+std::string PersonPayments::programName(long long programId) {
+    if (!db_ || programId <= 0) return "";
+    auto res = db_->query(
+        "SELECT program_name FROM leagueapps_programs WHERE program_id = $1::bigint",
+        {std::to_string(programId)});
+    if (res.empty() || res[0]["program_name"].is_null()) return "";
+    return res[0]["program_name"].c_str();
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Operator override: set next_due_at on the currently-open
 // person_la_memberships row for a given la_registration_id.  Called by

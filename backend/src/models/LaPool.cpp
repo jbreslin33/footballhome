@@ -231,12 +231,14 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         }
     }
 
-    // 3a. Filter out anyone currently on a paused-variant LA sub-program.
-    // A person is "paused" iff there's an open row in
+    // 3a. Filter out anyone currently on a paused- or inactive-variant LA
+    // sub-program.  A person is "paused" iff there's an open row in
     // person_la_memberships (`ended_at IS NULL`) pointing at a program
-    // whose `leagueapps_programs.variant = 'paused'`.  Paused members
-    // are still club members (they show up in the Paused Membership
-    // admin screen) but are not eligible for the pool / team rosters.
+    // whose `leagueapps_programs.variant` is 'paused' or 'inactive'.
+    // Paused/inactive members are still club members (paused shows up in
+    // the Paused Membership admin screen; inactive shows up in the
+    // payments-screen Inactive section, migration 266) but are not
+    // eligible for the pool / team rosters.
     std::unordered_set<int> pausedPersonIds;
     if (!personIdByLaId.empty()) {
         std::vector<std::string> personIdStrs;
@@ -248,7 +250,7 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
                 "  FROM person_la_memberships plm "
                 "  JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
                 " WHERE plm.ended_at IS NULL "
-                "   AND lp.variant = 'paused' "
+                "   AND lp.variant IN ('paused', 'inactive') "
                 "   AND plm.person_id = ANY($1::int[])";
             const std::vector<std::string> params = { textArrayLiteral(personIdStrs) };
             const auto rows = db_->query(sql, params);
