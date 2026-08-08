@@ -21,6 +21,14 @@ class Database;
 // ────────────────────────────────────────────────────────────────────────────
 class PersonPayments {
 public:
+    // Monthly dues rate in dollars. NOTE: PersonPayments.cpp's cycle-math
+    // SQL (coverage windows, cycles_paid) still has this baked in as a
+    // literal "35.0" in a few queries — this constant is the source of
+    // truth for code that references dues outside SQL (e.g. LaProgramSync's
+    // months_overdue snapshot). If the price ever changes, grep for 35.0
+    // in PersonPayments.cpp too.
+    static constexpr double kMonthlyDuesUsd = 35.0;
+
     PersonPayments();
     ~PersonPayments();
 
@@ -150,6 +158,10 @@ public:
         // `nextDueSource` ∈ {'la_seed','payment_advance','operator_override'}.
         std::string nextDueAt;
         std::string nextDueSource;
+        // LA-authoritative months-behind bucket (migration 270), snapshotted
+        // by LaProgramSync from outstandingBalance on every sync. -1 means
+        // "no snapshot yet" (row not yet synced against LA).
+        int         monthsOverdue = -1;
         // True when next_due_at's cycle already falls a full calendar
         // month (or more) before the next upcoming first-Friday due
         // date — i.e. if unpaid, this person will be carrying TWO

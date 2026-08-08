@@ -676,6 +676,11 @@ PersonPayments::loadMembersForProgram(long long programId) {
         // above to rewrite itself.
         "       TO_CHAR(m.next_due_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS next_due_iso,"
         "       m.next_due_source          AS next_due_source,"
+        // LA-authoritative bucket, snapshotted by LaProgramSync on each
+        // sync from outstandingBalance (migration 270) — same source for
+        // active AND inactive-tier members, unlike status/days_overdue
+        // above which are locally-derived.
+        "       m.months_overdue           AS months_overdue,"
         "       COALESCE(agg.total_paid,     0) AS total_paid,"        "       COALESCE(agg.total_refunded, 0) AS total_refunded,"
         "       COALESCE(agg.txn_count,      0) AS txn_count,"
         "       TO_CHAR(agg.first_paid_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS first_paid_iso,"
@@ -793,6 +798,8 @@ PersonPayments::loadMembersForProgram(long long programId) {
             m.nextDueAt = r["next_due_iso"].c_str();
         if (!r["next_due_source"].is_null())
             m.nextDueSource = r["next_due_source"].c_str();
+        if (!r["months_overdue"].is_null())
+            m.monthsOverdue = r["months_overdue"].as<int>();
         if (!r["status"].is_null())     m.status    = r["status"].c_str();
         if (!r["total_paid"].is_null())      m.totalPaid     = r["total_paid"].as<double>();
         if (!r["total_refunded"].is_null())  m.totalRefunded = r["total_refunded"].as<double>();

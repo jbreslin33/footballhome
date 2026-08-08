@@ -11,6 +11,7 @@
 
 #include "../database/Database.h"
 #include "../models/PersonLinker.h"
+#include "../models/PersonPayments.h"
 #include "LeagueAppsService.h"
 
 namespace {
@@ -129,6 +130,7 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
         long long ownedCents;
         long long paidCents;
         std::string paymentStatus;
+        int monthsOverdue;
     };
     std::vector<PendingSnap> pendingSnaps;
     pendingSnaps.reserve(recs.size());
@@ -240,6 +242,14 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                     snap.paidCents     = static_cast<long long>(
                         std::llround(lpSnap.amountPaid * 100.0));
                     snap.paymentStatus = lpSnap.paymentStatus;
+                    // Bucket by LA's authoritative outstandingBalance, not
+                    // a locally-derived amount, so active AND inactive-tier
+                    // members get the same treatment (owner directive
+                    // 2026-08-08). min 0 — a $0 or negative (credit)
+                    // balance is not "overdue".
+                    snap.monthsOverdue = lpSnap.outstanding > 0.0
+                        ? static_cast<int>(std::ceil(lpSnap.outstanding / PersonPayments::kMonthlyDuesUsd))
+                        : 0;
                     pendingSnaps.push_back(std::move(snap));
                 }
             }
@@ -270,13 +280,15 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 valuesSql << "("  << s.regId       << "::bigint,"
                                   << s.ownedCents  << "::int,"
                                   << s.paidCents   << "::int,"
-                          << db->escape(s.paymentStatus) << "::text)";
+                          << db->escape(s.paymentStatus) << "::text,"
+                                  << s.monthsOverdue << "::int)";
             }
             const std::string sql =
                 "UPDATE person_la_memberships plm "
                 "   SET la_amount_owed_cents = v.owed_cents,"
                 "       la_amount_paid_cents = v.paid_cents,"
                 "       la_payment_status    = NULLIF(v.pay_status, ''),"
+                "       months_overdue       = v.months_overdue,"
                 "       la_snapshot_at       = now(),"
                 "       next_due_at = CASE"
                 "         WHEN plm.next_due_at      IS NOT NULL THEN plm.next_due_at"
@@ -295,7 +307,7 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 "         WHEN plm.la_registered_at IS NULL     THEN plm.next_due_updated_at"
                 "         ELSE now()"
                 "       END "
-                "  FROM (VALUES " + valuesSql.str() + ") AS v(reg_id, owed_cents, paid_cents, pay_status) "
+                "  FROM (VALUES " + valuesSql.str() + ") AS v(reg_id, owed_cents, paid_cents, pay_status, months_overdue) "
                 " WHERE plm.la_registration_id = v.reg_id "
                 "   AND plm.ended_at IS NULL";
             db->query(sql);

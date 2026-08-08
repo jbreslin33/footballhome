@@ -222,6 +222,20 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
                   << std::endl;
     }
 
+    // Inactive-program LA payments — same sync map, keyed off the
+    // inactive program id instead.  laGet's wrapper already fires
+    // LaProgramSync::run() for this id too (see mensInactiveProgramId_
+    // etc. in registerRoutes), so the balances are sitting in `sync`
+    // unused until now.
+    std::unordered_map<long long, LaProgramSync::LaPayment> laPaymentsInactive;
+    bool laReachableInactive = false;
+    if (inactiveProgramId > 0) {
+        if (auto it = sync.find(static_cast<int>(inactiveProgramId)); it != sync.end()) {
+            laPaymentsInactive = it->second.paymentByRegistration;
+            laReachableInactive = true;
+        }
+    }
+
     // 2. Refresh payment cursor — cheap after the first pass on this
     //    process (0 rows once caught up).
     try {
@@ -294,6 +308,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["phoneCall"]     = m.phoneCall;
         row["laRegisteredAt"] = m.laRegisteredAt.empty() ? json(nullptr) : json(m.laRegisteredAt);
         row["status"]        = m.status;
+        row["monthsOverdue"] = (m.monthsOverdue < 0) ? json(nullptr) : json(m.monthsOverdue);
         row["totalPaid"]     = m.totalPaid;
         row["totalRefunded"] = m.totalRefunded;
         row["txnCount"]      = m.txnCount;
@@ -416,10 +431,10 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         members.push_back(std::move(row));
     }
 
-    // 6. Append the inactive-program rows.  No reconciliation (their
-    // laRegistrationId belongs to a different LA program than `sync`
-    // covers) — the operator's whole point in checking this section is
-    // "did they pay yet", not payment-discrepancy auditing.
+    // 6. Append the inactive-program rows.  No discrepancy auditing (the
+    // operator's whole point in checking this section is "did they pay
+    // yet", not comparing local vs LA numbers) — but we still attach LA's
+    // outstanding balance so the card can show a total amount due.
     for (const auto& m : inactiveRows) {
         json row = json::object();
         row["personId"]         = m.personId;
@@ -434,6 +449,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["phoneCall"]     = m.phoneCall;
         row["laRegisteredAt"] = m.laRegisteredAt.empty() ? json(nullptr) : json(m.laRegisteredAt);
         row["status"]        = m.status;
+        row["monthsOverdue"] = (m.monthsOverdue < 0) ? json(nullptr) : json(m.monthsOverdue);
         row["totalPaid"]     = m.totalPaid;
         row["totalRefunded"] = m.totalRefunded;
         row["txnCount"]      = m.txnCount;
@@ -447,6 +463,19 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["upcomingDueAt"] = m.upcomingDueAt.empty() ? json(nullptr) : json(m.upcomingDueAt);
         row["discrepancy"]   = json(nullptr);
         row["variant"]       = "inactive";
+
+        if (laReachableInactive && m.laRegistrationId != 0) {
+            auto it = laPaymentsInactive.find(m.laRegistrationId);
+            if (it != laPaymentsInactive.end()) {
+                const auto& la = it->second;
+                row["laAmountPaid"]         = la.amountPaid;
+                row["laOutstandingBalance"] = la.outstanding;
+                row["laPaymentStatus"]      = la.paymentStatus.empty()
+                                              ? json(nullptr)
+                                              : json(la.paymentStatus);
+            }
+        }
+
         json txns = json::array();
         for (const auto& t : m.recentTxns) {
             json j = json::object();

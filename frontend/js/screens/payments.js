@@ -767,6 +767,24 @@ class PaymentsScreen extends Screen {
       else other.push(row);
     }
 
+    // Overdue is subdivided by the LA-authoritative months-behind bucket
+    // (monthsOverdue, migration 270 — $1-35 due = 1 month, $36-70 = 2
+    // months, etc.) instead of one flat OVERDUE pile, so ops can tell
+    // "probably still going to pay" from "further gone" at a glance
+    // (owner directive 2026-08-08). Rows with no snapshot yet
+    // (monthsOverdue null) fall back into a plain OVERDUE bucket rather
+    // than disappearing.
+    const overdueByMonths = {};
+    const overdueUnknown = [];
+    for (const row of byStatus.overdue) {
+      const mo = Number.isFinite(row.monthsOverdue) ? row.monthsOverdue : null;
+      if (mo === null || mo < 1) {
+        overdueUnknown.push(row);
+      } else {
+        (overdueByMonths[mo] = overdueByMonths[mo] || []).push(row);
+      }
+    }
+
     // Full-width section bar — bold status label on the left, count
     // pill on the right, coloured stripe on the left edge.
     const sectionBar = (meta, count) => `
@@ -807,6 +825,39 @@ class PaymentsScreen extends Screen {
       `;
     };
 
+    // Worst (most months behind) first — matches the existing work-queue
+    // urgency convention (overdue sat above never/behind/current before
+    // this split).
+    const overdueMonthsHtml = Object.keys(overdueByMonths)
+      .map(Number)
+      .sort((a, b) => b - a)
+      .map((mo) => {
+        const list = overdueByMonths[mo];
+        const meta = {
+          icon: '🔴',
+          label: `OVERDUE — ${mo} MONTH${mo === 1 ? '' : 'S'}`,
+          fg: '#7f1d1d', bg: '#fee2e2', border: '#dc2626',
+        };
+        return `
+          <section style="margin-bottom: var(--space-5);">
+            ${sectionBar(meta, list.length)}
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
+              ${list.map((mm) => this.renderMemberCard(mm)).join('')}
+            </div>
+          </section>
+        `;
+      }).join('');
+
+    const overdueUnknownHtml = overdueUnknown.length
+      ? `
+        <section style="margin-bottom: var(--space-5);">
+          ${sectionBar(statusMeta.overdue, overdueUnknown.length)}
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
+            ${overdueUnknown.map((mm) => this.renderMemberCard(mm)).join('')}
+          </div>
+        </section>`
+      : '';
+
     const otherHtml = other.length
       ? `
         <section style="margin-bottom: var(--space-5);">
@@ -832,7 +883,8 @@ class PaymentsScreen extends Screen {
         </section>`
       : '';
 
-    m.innerHTML = inactiveHtml + statusOrder.map(groupHtml).join('') + otherHtml;
+    m.innerHTML = inactiveHtml + overdueMonthsHtml + overdueUnknownHtml
+      + statusOrder.filter((st) => st !== 'overdue').map(groupHtml).join('') + otherHtml;
   }
 
   _buildPaymentReminderLink(m) {
@@ -1281,6 +1333,17 @@ class PaymentsScreen extends Screen {
     const amountColor = (owedNum && owedNum > 0.005) ? '#fca5a5' : '#86efac';
     const dateColor   = overdue ? '#fca5a5' : '#cbd5e1';
 
+    // Months-behind bucket — server-computed (ceil(LA outstandingBalance /
+    // monthly dues), migration 270) so active AND inactive-tier cards get
+    // the same treatment. Only shown when it's actually ≥1 month.
+    const monthsOverdue = Number.isFinite(m.monthsOverdue) ? m.monthsOverdue : null;
+    const monthsBadge = (monthsOverdue !== null && monthsOverdue >= 1)
+      ? `<span style="font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:3px;
+                      background:#3a1f1f; color:#fca5a5; white-space:nowrap;">
+           ${monthsOverdue} month${monthsOverdue === 1 ? '' : 's'} behind
+         </span>`
+      : '';
+
     const amountBlock = (owedFmt !== null)
       ? `<div style="display:flex; align-items:baseline; gap:6px;">
            <span style="font-size:0.65rem; opacity:0.55; text-transform:uppercase; letter-spacing:0.5px;">Due</span>
@@ -1290,6 +1353,7 @@ class PaymentsScreen extends Screen {
            ${owedSource === 'snapshot'
              ? '<span style="font-size:0.6rem; opacity:0.4;">(cached)</span>'
              : ''}
+           ${monthsBadge}
          </div>`
       : `<div style="font-size:0.75rem; opacity:0.5;">LA balance unavailable</div>`;
 
