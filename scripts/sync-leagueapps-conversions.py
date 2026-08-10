@@ -30,9 +30,12 @@ Env (optional — at least one program ID must be set):
 Env (optional — backend integration):
   BACKEND_URL                         default http://localhost:3001
   LEADS_SYNC_BEARER                   bearer used to call /api/leads.
-                                       Backend currently checks bearer
-                                       *presence* only, so the value is
-                                       opaque — any string works.
+                                       Backend matches this exact value
+                                       (LeadsController::isLeadsSyncBearer)
+                                       as an alternative to a signed admin
+                                       JWT — must equal the backend
+                                       service's LEADS_SYNC_BEARER env var
+                                       in docker-compose.yml.
                                        Default: "leagueapps-sync".
 """
 

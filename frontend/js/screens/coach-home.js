@@ -38,12 +38,6 @@ class CoachHomeScreen extends Screen {
         </p>
         <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📢 Reminders</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Event RSVP nudges. Mens reminders are live now; this section is the home for expanding the same workflow to women, boys, and girls.
-        </p>
-        <div id="section-reminders" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧠 Game Model</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           The club's game model, principles, and weekly session plan with player-count variations for each day.
@@ -71,7 +65,7 @@ class CoachHomeScreen extends Screen {
     };
 
     const weekTiles = [
-      { id: 'attendance', target: 'my', params: {}, icon: '📋', label: 'Attendance & Availability', description: 'This week — set your own availability, or check in players for teams you coach' },
+      { id: 'attendance', target: 'my', params: {}, icon: '📋', label: 'Attendance & Availability', description: 'This week — set your own availability, check in players for teams you coach, and nudge no-response players' },
     ];
     renderInto('#section-week', weekTiles);
 
@@ -85,11 +79,6 @@ class CoachHomeScreen extends Screen {
     ];
     renderInto('#section-rosters', rosterTiles);
 
-    const reminderTiles = [
-      { id: 'event-reminders-mens', target: 'mens-events-reminders', params: { category: 'mens' }, icon: '📢', label: 'Event Reminders', description: 'Mens events now; same workflow can expand to women, boys, and girls' },
-    ];
-    renderInto('#section-reminders', reminderTiles);
-
     const gameModelTiles = [
       { id: 'game-model', target: 'game-model', params: {}, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
       { id: 'practice-plans', target: 'practice-plan', params: {}, icon: '📋', label: 'Practice Plans', description: 'Open the weekly day-by-day practice-plan view' },
@@ -98,7 +87,7 @@ class CoachHomeScreen extends Screen {
     ];
     renderInto('#section-game-model', gameModelTiles);
 
-    this._dashTiles = [...weekTiles, ...teamsTiles, ...rosterTiles, ...reminderTiles, ...gameModelTiles];
+    this._dashTiles = [...weekTiles, ...teamsTiles, ...rosterTiles, ...gameModelTiles];
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {

@@ -135,6 +135,7 @@ class MyScreen extends Screen {
       this._renderChatShell();
       await this._loadChat(/*initial*/ true);
       this._startChatPoll();
+      this._initPushUI().catch((err) => console.warn('[my] push UI init failed:', err));
     } catch (err) {
       console.error('[my] bootstrap failed:', err);
       this.dataError = err.message || 'Failed to load.';
@@ -235,9 +236,20 @@ class MyScreen extends Screen {
         e.stopPropagation();
         const key = remindLink.getAttribute('data-remind-key');
         if (key) this.remindedKeys.add(key);
-        remindLink.textContent = 'Reminded ✓';
+        const icon = remindLink.getAttribute('data-remind-icon');
+        remindLink.textContent = icon ? `${icon} ✓` : 'Reminded ✓';
         remindLink.style.opacity = '0.55';
         remindLink.style.pointerEvents = 'none';
+        return;
+      }
+      // Bulk "Email N No Response" — BCC compose to everyone still
+      // showing no response for one event, same pattern as the old
+      // coach reminders board's per-column bulk button.
+      const emailNoResponseBtn = target.closest('[data-email-noresponse]');
+      if (emailNoResponseBtn) {
+        e.stopPropagation();
+        const fhEventId = parseInt(emailNoResponseBtn.getAttribute('data-email-noresponse'), 10);
+        if (fhEventId) this._emailNoResponse(fhEventId);
         return;
       }
       // "Not Going" list show/hide (collapsed by default — can be a long
@@ -286,6 +298,11 @@ class MyScreen extends Screen {
         e.stopPropagation();
         this.chatExpanded = !this.chatExpanded;
         this._renderChatMessages();
+        return;
+      }
+      if (target.closest('#push-enable-btn')) {
+        e.stopPropagation();
+        this._onEnablePushClick();
         return;
       }
       // Compressed → expanded chat toggle.
@@ -602,34 +619,49 @@ class MyScreen extends Screen {
       return entry && (entry.status === 'present' || entry.status === 'late');
     }).length;
 
-    // Plain sms: link — no server round-trip, same pattern as the coach
-    // reminders board (mens-events-reminders.js). Opens the clicker's own
-    // Messages app pre-filled; they still have to hit send themselves.
+    // Plain sms:/mailto: links — no server round-trip. Opens the
+    // clicker's own Messages/Mail app pre-filled; they still have to hit
+    // send themselves. Each channel tracks its own "already reminded"
+    // key so texting someone doesn't hide the option to also email them.
     // Shared by both the Players and Coaches No Response groups.
     const eventTitle = this._eventTitle(ev);
     const remindRowsHtml = (list) => list.map(r => {
-      const key = `${ev.fh_event_id}:${r.person_id}`;
       const name = nameOf(r);
-      const alreadyReminded = this.remindedKeys.has(key);
-      let actionHtml;
+      let actionsHtml;
       if (isPast) {
-        actionHtml = `<span style="font-size:0.66rem; opacity:0.5;">—</span>`;
-      } else if (alreadyReminded) {
-        actionHtml = `<span style="font-size:0.68rem; opacity:0.55;">Reminded ✓</span>`;
-      } else if (r.phone) {
-        const body = `Hey ${r.first_name || ''}, don't forget to RSVP for ${eventTitle}! https://footballhome.org/#my`.trim();
-        actionHtml = `<a href="sms:${this.escapeHtml(r.phone)}?body=${encodeURIComponent(body)}"
-             data-remind-key="${this.escapeHtml(key)}"
-             style="font-size:0.68rem; font-weight:700; color:#0f172a; background:#38bdf8;
-                    padding:3px 8px; border-radius:999px; text-decoration:none; line-height:1.4;">💬 Remind</a>`;
+        actionsHtml = `<span style="font-size:0.66rem; opacity:0.5;">—</span>`;
       } else {
-        actionHtml = `<span style="font-size:0.66rem; opacity:0.5;">No SMS on file</span>`;
+        const smsKey   = `${ev.fh_event_id}:${r.person_id}:sms`;
+        const emailKey = `${ev.fh_event_id}:${r.person_id}:email`;
+        const remindBody = `Hey ${r.first_name || ''}, don't forget to RSVP for ${eventTitle}! https://footballhome.org/#my`.trim();
+
+        const smsBtn = this.remindedKeys.has(smsKey)
+          ? `<span style="font-size:0.62rem; opacity:0.55;">💬 ✓</span>`
+          : (r.phone
+              ? `<a href="sms:${this.escapeHtml(r.phone)}?body=${encodeURIComponent(remindBody)}"
+                     data-remind-key="${this.escapeHtml(smsKey)}" data-remind-icon="💬"
+                     title="Text ${this.escapeHtml(name)} a reminder"
+                     style="font-size:0.68rem; font-weight:700; color:#0f172a; background:#38bdf8;
+                            padding:3px 7px; border-radius:999px; text-decoration:none; line-height:1.4;">💬</a>`
+              : `<span style="font-size:0.6rem; opacity:0.35;" title="No SMS on file">💬</span>`);
+
+        const emailBtn = this.remindedKeys.has(emailKey)
+          ? `<span style="font-size:0.62rem; opacity:0.55;">📧 ✓</span>`
+          : (r.email
+              ? `<a href="mailto:${this.escapeHtml(r.email)}?subject=${encodeURIComponent('RSVP needed for ' + eventTitle)}&body=${encodeURIComponent(remindBody)}"
+                     data-remind-key="${this.escapeHtml(emailKey)}" data-remind-icon="📧"
+                     title="Email ${this.escapeHtml(name)} a reminder"
+                     style="font-size:0.68rem; font-weight:700; color:#0f172a; background:#a78bfa;
+                            padding:3px 7px; border-radius:999px; text-decoration:none; line-height:1.4;">📧</a>`
+              : `<span style="font-size:0.6rem; opacity:0.35;" title="No email on file">📧</span>`);
+
+        actionsHtml = `<span style="display:flex; align-items:center; gap:4px;">${smsBtn}${emailBtn}</span>`;
       }
       return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}</span>
           <span style="display:flex; align-items:center; gap:6px;">
             ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
-            ${actionHtml}
+            ${actionsHtml}
           </span>
         </div>`;
     }).join('');
@@ -690,9 +722,12 @@ class MyScreen extends Screen {
         ` : ''}
         ${noResponseTotal ? `
           <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
-            <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                        color:rgba(226,232,240,0.75); margin-bottom:6px;">
-              No Response (${noResponseTotal})
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+              <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                          color:rgba(226,232,240,0.75);">
+                No Response (${noResponseTotal})
+              </div>
+              ${this._bulkEmailNoResponseBtnHtml(ev, noResponsePlayers.concat(noResponseCoaches), isPast)}
             </div>
             <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
               <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', remindRowsHtml(noResponsePlayers))}</div>
@@ -701,6 +736,58 @@ class MyScreen extends Screen {
           </div>
         ` : ''}
       </div>`;
+  }
+
+  _bulkEmailNoResponseBtnHtml(ev, noResponseList, isPast) {
+    if (isPast) return '';
+    const emails = [...new Set(noResponseList.map(r => (r.email || '').trim()).filter(Boolean))];
+    if (!emails.length) return '';
+    return `
+      <button type="button" data-email-noresponse="${ev.fh_event_id}"
+              title="Open Gmail with all ${emails.length} No Response player${emails.length !== 1 ? 's' : ''} BCC'd"
+              style="padding:3px 8px; border-radius:999px; border:none; cursor:pointer;
+                     background:#ef4444; color:#fff; font-size:0.66rem; font-weight:700;">
+        📧 Email ${emails.length} No Response
+      </button>`;
+  }
+
+  // BCC compose to everyone still showing "no response" for one event —
+  // ported from the retired coach reminders board (mens-events-reminders.js).
+  _emailNoResponse(fhEventId) {
+    const ev = (this.events || []).find(e => e.fh_event_id === fhEventId)
+            || (this.oldEvents || []).find(e => e.fh_event_id === fhEventId);
+    if (!ev) return;
+
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const noResponse = rsvps.filter(r => r && !r.response);
+    const emails = [...new Set(noResponse.map(r => (r.email || '').trim()).filter(Boolean))];
+    if (!emails.length) {
+      alert('No email addresses on file for the No Response players.');
+      return;
+    }
+
+    const eventTitle = this._eventTitle(ev);
+    const eventWhen = [this._eventDateStr(ev.starts_at), this._eventTimeStr(ev.starts_at)].filter(Boolean).join(' ');
+    const venue = ev.location || '';
+
+    const lines = [
+      `Hi — you're currently showing as No Response for ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}.`,
+      '',
+    ];
+    if (venue) lines.push(`Location: ${venue}`, '');
+    lines.push(
+      `Please RSVP here: https://footballhome.org/#my`,
+      '',
+      `While you're there, please also set your availability for the rest of this week — that way we don't have to message everyone again this week.`,
+      '',
+      `Thanks!`,
+    );
+    const body = lines.join('\n');
+    const subject = `RSVP needed for ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
+
+    // bcc (not to) so the group stays private from each other.
+    const href = this.buildGmailComposeHref({ bcc: emails.join(','), subject, body });
+    this.openGmailCompose(href);
   }
 
   // Read-only status badge for everyone; P/A/L/E mark buttons appended
@@ -1029,11 +1116,18 @@ class MyScreen extends Screen {
                     padding:5px 7px; border-bottom:1px solid rgba(255,255,255,0.08);
                     background: rgba(15,23,42,0.75);">
           <div style="font-size:0.72rem; font-weight:700; opacity:0.9;">Chat</div>
-          <button id="chat-view-btn" type="button" aria-label="View chat"
-                  style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16);
-                         background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
-            View chat
-          </button>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button id="push-enable-btn" type="button" style="display:none; padding:2px 7px;
+                    border-radius:999px; border:1px solid rgba(255,255,255,0.16);
+                    background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
+              🔔 Enable notifications
+            </button>
+            <button id="chat-view-btn" type="button" aria-label="View chat"
+                    style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16);
+                           background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
+              View chat
+            </button>
+          </div>
         </div>
         <div id="chat-list" style="padding: 5px 7px 6px;">
           <div class="loading-state"><div class="spinner"></div><p>Loading chat…</p></div>
@@ -1060,6 +1154,105 @@ class MyScreen extends Screen {
     const btn = this.find('#chat-send-btn');
     if (!input || !btn) return;
     btn.disabled = this.chatSending || !input.value.trim();
+  }
+
+  // ────── Push notifications (opt-in only — see backend/src/services/
+  // WebPushService.h for why this can never be silent/automatic) ─────
+
+  // Sets the enable-notifications button's visibility/label/enabled
+  // state to match reality: already subscribed, blocked, unsupported
+  // (bare Safari on iOS — Push API only exists there once "installed"
+  // via Add to Home Screen), or ready to opt in.
+  async _initPushUI() {
+    const btn = this.find('#push-enable-btn');
+    if (!btn) return;
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+      if (isIOS && !isStandalone) {
+        btn.style.display = '';
+        btn.disabled = true;
+        btn.textContent = '🔔 Add to Home Screen to enable';
+        btn.title = 'On iPhone/iPad: Share → Add to Home Screen, then open it from there to turn on notifications.';
+      }
+      // Any other unsupported browser: leave the button hidden — no
+      // clean self-serve fix to point them at.
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      btn.style.display = '';
+      btn.disabled = true;
+      btn.textContent = '🔔 Notifications blocked';
+      btn.title = "You've blocked notifications for this site — re-enable them in your browser's site settings to change that.";
+      return;
+    }
+
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        btn.style.display = '';
+        btn.disabled = true;
+        btn.textContent = '🔔 Notifications on';
+        return;
+      }
+    } catch (err) {
+      console.warn('[my] push subscription check failed:', err);
+    }
+
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '🔔 Enable notifications';
+  }
+
+  // Tap handler: requests permission (must be a user gesture — this
+  // IS one), subscribes with the server's VAPID key, and saves the
+  // subscription. Every step is one deliberate user action; there is
+  // no path that sends a push without it.
+  async _onEnablePushClick() {
+    const btn = this.find('#push-enable-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Enabling…'; }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        if (btn) { btn.disabled = true; btn.textContent = '🔔 Notifications blocked'; }
+        return;
+      }
+      const { key } = await this._fetch('/api/push/vapid-public-key');
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: this._urlBase64ToUint8Array(key),
+      });
+      const subJson = sub.toJSON();
+      await this._fetch('/api/my/push-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: subJson.endpoint,
+          keys: subJson.keys,
+          userAgent: navigator.userAgent,
+        }),
+      });
+      if (btn) { btn.disabled = true; btn.textContent = '🔔 Notifications on'; }
+    } catch (err) {
+      console.error('[my] enable notifications failed:', err);
+      if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable notifications'; }
+    }
+  }
+
+  // PushManager.subscribe wants applicationServerKey as a Uint8Array,
+  // not the base64url string the backend hands back.
+  _urlBase64ToUint8Array(base64Url) {
+    const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
+    const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
   }
 
   _renderChatMessages() {

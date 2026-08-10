@@ -16,8 +16,19 @@ class ContentPostsScreen extends Screen {
       { key: 'sponsor', label: 'We Love Junk', icon: '💰', src: '/images/sponsors/welovejunk_logo.png', pos: 'tr' },
       { key: 'epysa', label: 'EPYSA', icon: '🏅', src: '/images/leagues/epysa.png', pos: null },
       { key: 'apsl', label: 'APSL', icon: '⚽', src: '/images/leagues/apsl.png', pos: null },
-      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null }
+      { key: 'casa', label: 'CASA', icon: '🏆', src: '/images/leagues/casa.png', pos: null },
+      // 'qr' has no static src — its image is generated on the fly from
+      // the #content-link-url input (see qrSrcUrl()). It behaves exactly
+      // like any other 'logo' overlay in the render/composite paths.
+      { key: 'qr', label: 'QR Code', icon: '🔗', src: null, pos: null },
     ];
+  }
+
+  // Builds the QR-image URL for the current link input, or null if empty.
+  qrSrcUrl() {
+    const link = (this.find('#content-link-url')?.value || '').trim();
+    if (!link) return null;
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(link);
   }
 
   getSelectedOverlaysWithPositions() {
@@ -68,7 +79,95 @@ class ContentPostsScreen extends Screen {
         return;
       }
     });
-    this.loadPosts();
+    this.loadPosts().then(() => this.applyContentPrefill());
+  }
+
+  // Prefill from a calendar event (see calendar.js "Post" action →
+  // navigation.context.contentPrefill). Fills the form AND — when
+  // matchGraphic is present — auto-generates the matchup graphic as
+  // the selected file, so there's already a real image in the preview.
+  // Everything (caption, overlays, the image itself via re-upload)
+  // stays editable before Save Draft.
+  async applyContentPrefill() {
+    const prefill = this.navigation.context.contentPrefill;
+    if (!prefill) return;
+    this.navigation.context.contentPrefill = null;
+    const titleEl = this.find('#content-title');
+    const captionEl = this.find('#content-caption');
+    const linkEl = this.find('#content-link-url');
+    if (titleEl && prefill.title) titleEl.value = prefill.title;
+    if (captionEl && prefill.caption) captionEl.value = prefill.caption;
+    if (linkEl && prefill.link) linkEl.value = prefill.link;
+
+    if (prefill.matchGraphic) {
+      try {
+        const dataUrl = await this.generateMatchGraphicDataUrl(prefill.matchGraphic);
+        const blob = await (await fetch(dataUrl)).blob();
+        this.currentFile = new File([blob], 'match-graphic.jpg', { type: 'image/jpeg' });
+        const nameEl = this.find('#content-file-name');
+        if (nameEl) nameEl.textContent = 'Auto-generated match graphic (replace above if you want a real photo instead)';
+        this.updatePreview();
+      } catch (err) {
+        console.warn('[content-posts] match graphic generation failed:', err);
+      }
+    }
+  }
+
+  // Renders a 1080×1080 matchup graphic (team logos, VS, date/time/
+  // location) off-screen via html2canvas and returns a JPEG data URL.
+  // cfg: { eyebrow, ourName, ourLogo, opponent, opponentLogo, dateStr, timeStr, location }
+  async generateMatchGraphicDataUrl(cfg) {
+    if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed; left:-9999px; top:0;';
+    const logoBlock = (logoUrl) => logoUrl
+      ? `<img src="${logoUrl}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:contain;padding:20px;box-sizing:border-box;">`
+      : `<span style="font-size:64px;">⚽</span>`;
+    wrap.innerHTML = `
+      <div id="mg-render" style="width:1080px;height:1080px;position:relative;overflow:hidden;
+        background:linear-gradient(160deg,#1565C0 0%,#0a1628 55%,#0D47A1 100%);
+        color:white;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;box-sizing:border-box;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;
+          display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:60px 60px;">
+          <div style="font-size:32px;font-weight:800;letter-spacing:6px;text-transform:uppercase;color:#f5d442;">${this.escapeHtml(cfg.eyebrow || 'Game Day')}</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:50px;width:100%;">
+            <div style="display:flex;flex-direction:column;align-items:center;width:340px;">
+              <div style="width:260px;height:260px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,0.4);overflow:hidden;flex-shrink:0;">
+                ${logoBlock(cfg.ourLogo)}
+              </div>
+              <div style="font-size:30px;font-weight:700;margin-top:20px;text-align:center;">${this.escapeHtml(cfg.ourName || 'Lighthouse')}</div>
+            </div>
+            <div style="font-size:56px;font-weight:900;opacity:0.6;font-style:italic;">VS</div>
+            <div style="display:flex;flex-direction:column;align-items:center;width:340px;">
+              <div style="width:260px;height:260px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,0.4);overflow:hidden;flex-shrink:0;">
+                ${logoBlock(cfg.opponentLogo)}
+              </div>
+              <div style="font-size:30px;font-weight:700;margin-top:20px;text-align:center;">${this.escapeHtml(cfg.opponent || 'Opponent')}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;width:100%;">
+            <div style="background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:16px 24px;font-size:26px;font-weight:600;text-align:center;">
+              📅 ${this.escapeHtml(cfg.dateStr || '')}${cfg.timeStr ? ' · ⏰ ' + this.escapeHtml(cfg.timeStr) : ''}
+            </div>
+            ${cfg.location ? `<div style="background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:16px 24px;font-size:24px;font-weight:600;text-align:center;">📍 ${this.escapeHtml(cfg.location)}</div>` : ''}
+          </div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:3px;color:#f5d442;">LIGHTHOUSE 1893</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    try {
+      // Let logo <img> tags finish loading before capture.
+      await new Promise(resolve => setTimeout(resolve, 400));
+      const canvas = await html2canvas(wrap.querySelector('#mg-render'), {
+        scale: 1, useCORS: true, allowTaint: false, backgroundColor: null, width: 1080, height: 1080,
+      });
+      return canvas.toDataURL('image/jpeg', 0.92);
+    } finally {
+      wrap.remove();
+    }
   }
 
   async loadPosts() {
@@ -239,6 +338,11 @@ class ContentPostsScreen extends Screen {
         </div>
 
         <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:6px;">Link <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— optional; fill this in and place the QR Code below to add it to the image</span></label>
+          <input type="text" id="content-link-url" class="form-input" placeholder="https://…" style="width:100%;box-sizing:border-box;">
+        </div>
+
+        <div style="margin-bottom:16px;">
           <label style="display:block;font-weight:600;margin-bottom:8px;">Logo Overlays <span style="font-weight:400;font-size:0.8rem;opacity:0.6;">— tap a grid cell to place, tap again to remove</span></label>
           <div style="display:flex;flex-direction:column;gap:8px;">
             ${this.overlayOptions.map(o => `
@@ -298,6 +402,8 @@ class ContentPostsScreen extends Screen {
     const textColorSwatch = this.find('#content-text-color-swatch');
     if (textInput) textInput.addEventListener('input', () => { if (this.currentFile) this.updatePreview(); });
     if (textPosInput) textPosInput.addEventListener('change', () => { if (this.currentFile) this.updatePreview(); });
+    const linkInput = this.find('#content-link-url');
+    if (linkInput) linkInput.addEventListener('input', () => { if (this.currentFile) this.updatePreview(); });
     if (textColorInput) {
       textColorInput.addEventListener('input', () => {
         if (textColorSwatch) textColorSwatch.style.background = textColorInput.value;
@@ -407,6 +513,10 @@ class ContentPostsScreen extends Screen {
               <img src="${opt.src}" style="height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,0,0,0.7));">
             </div>`;
           }
+          if (key === 'qr') {
+            const qrSrc = this.qrSrcUrl();
+            return qrSrc ? `<img src="${qrSrc}" style="height:44px;width:44px;object-fit:contain;filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));" title="QR Code">` : '';
+          }
           const opt = this.overlayOptions.find(o => o.key === key);
           return opt ? `<img src="${opt.src}" style="height:28px;object-fit:contain;filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));" title="${opt.label}">` : '';
         }).join('');
@@ -495,7 +605,7 @@ class ContentPostsScreen extends Screen {
       } else {
         // For images: render with canvas to add logo overlays
         if (saveBtn) saveBtn.textContent = '\u23f3 Generating image...';
-        const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, selectedWithPos, overlayText, textPos, textColor);
+        const finalDataUrl = await this.renderImageWithOverlay(this.currentFile, selectedWithPos, overlayText, textPos, textColor, this.qrSrcUrl());
         const uploadResp = await this.auth.fetch(`/api/social/content/${postId}/media`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -529,7 +639,7 @@ class ContentPostsScreen extends Screen {
     });
   }
 
-  renderImageWithOverlay(file, overlaysWithPos, overlayText = '', textPos = 'bc', textColor = '#ffffff') {
+  renderImageWithOverlay(file, overlaysWithPos, overlayText = '', textPos = 'bc', textColor = '#ffffff', qrSrc = null) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -555,10 +665,16 @@ class ContentPostsScreen extends Screen {
           regions[s.pos].push(s.key);
         });
 
-        // Collect images to load (all non-clubname overlays that have src)
+        // Collect images to load (all non-clubname overlays that have src).
+        // 'qr' has no static src — its image comes from qrSrc, generated
+        // from the link input at call time (see saveDraft()).
         const toLoad = [];
         overlaysWithPos.forEach(s => {
           if (s.key === 'clubname') return;
+          if (s.key === 'qr') {
+            if (qrSrc) toLoad.push({ key: 'qr', src: qrSrc, pos: s.pos });
+            return;
+          }
           const opt = this.overlayOptions.find(o => o.key === s.key);
           if (opt && opt.src) toLoad.push({ key: s.key, src: opt.src, pos: s.pos });
         });
@@ -726,6 +842,9 @@ class ContentPostsScreen extends Screen {
         const loadedImages = {};
         toLoad.forEach(item => {
           const logo = new Image();
+          // qr's src is cross-origin (api.qrserver.com) — without this,
+          // drawing it taints the canvas and toDataURL() throws.
+          if (item.key === 'qr') logo.crossOrigin = 'anonymous';
           logo.onload = () => {
             loadedImages[item.key] = logo;
             loadCount++;

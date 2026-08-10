@@ -1,21 +1,17 @@
 /*
- * Football Home service worker — DISABLED (2026-07-07).
+ * Football Home service worker — push-only (2026-08-09).
  *
- * Prior versions of this file registered a passthrough SW so the site
- * would qualify as an installable PWA.  Per project owner directive
- * ("get rid of all cache; only login should be saved on browser"),
- * PWA install is disabled and the SW is being retired.
+ * Re-enabled after the 2026-07-07 disable ("get rid of all cache; only
+ * login should be saved on browser") to support Web Push notifications
+ * (RSVP reminders, men's chat). The no-cache directive still applies:
+ * this file does NOT call cache.put() anywhere, has no fetch handler,
+ * and does nothing but relay push events into OS notifications. Every
+ * network request still goes straight to the network, exactly as if
+ * there were no service worker at all — the SW only exists so the
+ * browser has somewhere to deliver a push event in the background.
  *
- * This file remains at /sw.js so that any browser that installed the
- * previous SW (SW_VERSION 2026-07-03a or earlier) will fetch this new
- * copy during its normal update-check, activate it, then self-
- * unregister.  After that the browser goes back to a plain network
- * path with no SW in the middle of any request.
- *
- * If you re-enable PWA install later, revert this file to the
- * passthrough SW AND re-add the `navigator.serviceWorker.register`
- * block in index.html.  Do NOT introduce cache.put() without the
- * owner's explicit sign-off.
+ * Do NOT add a fetch handler or cache.put() here without the owner's
+ * explicit sign-off (same rule as before).
  */
 
 self.addEventListener('install', () => {
@@ -23,23 +19,57 @@ self.addEventListener('install', () => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    // Delete every Cache Storage bucket this origin owns.
-    try {
-      const names = await caches.keys();
-      await Promise.all(names.map((n) => caches.delete(n).catch(() => {})));
-    } catch (_) { /* no-op */ }
-
-    // Take control of any open tabs so we can immediately unregister
-    // without waiting for the next navigation.
-    try { await self.clients.claim(); } catch (_) { /* no-op */ }
-
-    // Unregister self.  Existing tabs keep working — the browser
-    // falls back to plain network fetches.
-    try { await self.registration.unregister(); } catch (_) { /* no-op */ }
-  })());
+  // Take control of any open tabs immediately so a page that was open
+  // before this SW version installed still gets push delivery without
+  // needing a reload.
+  event.waitUntil(self.clients.claim());
 });
 
-// No fetch handler on purpose: without one the browser bypasses the
-// SW entirely for network requests even before the unregister
-// completes.
+// Push payload is JSON: { title, body, url? } — written by
+// WebPushService::sendToPerson on the backend (see
+// backend/src/services/WebPushService.cpp).
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Football Home', body: '' };
+  try {
+    if (event.data) payload = Object.assign(payload, event.data.json());
+  } catch (_) {
+    // Non-JSON payload (shouldn't happen — we always send JSON) — fall
+    // back to plain text so a malformed push still shows *something*
+    // instead of silently dropping.
+    try { payload.body = event.data ? event.data.text() : ''; } catch (_) { /* no-op */ }
+  }
+
+  const title = payload.title || 'Football Home';
+  const options = {
+    body: payload.body || '',
+    icon: '/images/lighthouse-1893-crest.png',
+    badge: '/images/lighthouse-1893-crest.png',
+    data: { url: payload.url || '/' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tapping a notification focuses an existing footballhome.org tab if
+// one is open (navigating it to the notification's url), otherwise
+// opens a new one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clientsList) {
+      if ('focus' in client) {
+        await client.focus();
+        if ('navigate' in client) {
+          try { await client.navigate(targetUrl); } catch (_) { /* no-op */ }
+        }
+        return;
+      }
+    }
+    if (self.clients.openWindow) {
+      await self.clients.openWindow(targetUrl);
+    }
+  })());
+});

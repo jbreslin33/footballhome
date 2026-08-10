@@ -39,9 +39,9 @@ long long extractSeriesIdFromPath(const std::string& path) {
     return 0;
 }
 
-// Pull the Authorization bearer user id (userId string claim).  Same
-// pattern used in EventReminderController.  requireBearer() has
-// already verified the signature so we skip re-checking.
+// Pull the Authorization bearer user id (userId string claim).
+// requireBearer() has already verified the signature so we skip
+// re-checking.
 std::string bearerUserIdString(const Request& request) {
     const std::string h = request.getHeader("Authorization");
     if (h.size() < 8 || h.compare(0, 7, "Bearer ") != 0) return {};

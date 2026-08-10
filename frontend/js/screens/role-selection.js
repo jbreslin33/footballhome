@@ -11,13 +11,13 @@ class RoleSelectionScreen extends Screen {
     const isAdmin = user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' || user.role === 'super' || user.role === 'system' || user.role === 'league');
     const adminButtonDisplay = isAdmin ? 'flex' : 'none';
 
-    // Marketing is a narrower admin_level (Recruitment + Communications
-    // only — see backend Controller::requireAdminLevel call sites). Its
-    // own button, not folded into isAdmin: club/super already reach the
-    // same tools via Club Admin, so this button is only meaningful for
-    // someone who holds marketing and nothing broader.
-    const isMarketingOnly = user?.role === 'marketing';
-    const marketingButtonDisplay = isMarketingOnly ? 'flex' : 'none';
+    // Marketing (Recruitment + all Socials/Communications — see backend
+    // Controller::requireAdminLevel call sites) is the one place for all
+    // of that; Club Admin no longer duplicates it. Visible to the
+    // marketing-only role and to any broader admin level (club/super/
+    // team/etc.) who needs to reach it too.
+    const canSeeMarketing = isAdmin || user?.role === 'marketing';
+    const marketingButtonDisplay = canSeeMarketing ? 'flex' : 'none';
     
     div.innerHTML = `
       <div class="screen-header">
@@ -54,7 +54,15 @@ class RoleSelectionScreen extends Screen {
           <span style="font-size: 2rem;">🏢</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Club Admin</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Social media, events & club management</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">People, RSVP & club structure</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="financial" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">💰</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Financial</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Payments — Paid Up · Behind · Overdue · Never Paid</div>
           </div>
         </button>
 
@@ -272,6 +280,10 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'club-admin') {
       // Club Admin - fetch user's club and go to club admin dashboard
       this.loadClubAdmin();
+    } else if (role === 'financial') {
+      // Financial — straight to Payments (the only tile this section
+      // has today; formerly buried under Club Admin's Billing group).
+      this.navigation.goTo('payments');
     } else if (role === 'player') {
       // Player - jump straight to their unified weekly schedule.
       // (Team-picking is intentionally skipped; MyController resolves

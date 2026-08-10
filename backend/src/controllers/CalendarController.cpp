@@ -487,7 +487,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         jsonb_build_object(
                             'id',              t.id,
                             'name',            t.name,
-                            'gender_category', t.gender_category
+                            'gender_category', t.gender_category,
+                            'logo_url',        t.logo_url
                         )
                         ORDER BY t.id
                     )
@@ -507,7 +508,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                         'responded_at',   roster.responded_at,
                                                         'is_pickup_only', roster.is_pickup_only,
                                                         'is_coach',       roster.is_coach,
-                                                        'phone',          roster.phone
+                                                        'phone',          roster.phone,
+                                                        'email',          roster.email
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
@@ -537,7 +539,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              combined.responded_at,
                                                              combined.is_pickup_only,
                                                              combined.is_coach,
-                                                             combined.phone
+                                                             combined.phone,
+                                                             combined.email
                                                     FROM (
                                                         SELECT
                                                              p.id AS person_id,
@@ -582,7 +585,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              false AS is_coach,
                                                              (SELECT phone_number FROM person_phones
                                                                WHERE person_id = p.id AND can_receive_sms = true
-                                                               ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone
+                                                               ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone,
+                                                             (SELECT email FROM person_emails
+                                                               WHERE person_id = p.id
+                                                               ORDER BY is_primary DESC, id ASC LIMIT 1) AS email
                                                         FROM fh_event_teams fet
                                                         JOIN team_persons tp
                                                             ON tp.team_id = fet.team_id
@@ -611,6 +617,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              true,
                                                              (SELECT phone_number FROM person_phones
                                                                WHERE person_id = p.id AND can_receive_sms = true
+                                                               ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                             (SELECT email FROM person_emails
+                                                               WHERE person_id = p.id
                                                                ORDER BY is_primary DESC, id ASC LIMIT 1)
                                                         FROM fh_event_teams fet
                                                         JOIN team_coaches tc

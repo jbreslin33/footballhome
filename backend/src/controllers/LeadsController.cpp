@@ -256,6 +256,32 @@ std::optional<int> decodeUserIdFromBearer(const std::string& bearer) {
     return std::nullopt;
 }
 
+// ── Internal service auth for the leagueapps-sync sidecar ─────────────────
+// scripts/sync-leagueapps-conversions.py (footballhome_leagueapps_sync
+// container, docker-compose.yml) reads LeagueApps registrations and POSTs
+// mark-converted for matching leads. It has no human user to mint a signed
+// admin JWT for, so it authenticates with a static bearer instead — this
+// was the original design (docker-compose.yml: "Bearer is presence-only
+// today; LEADS_SYNC_BEARER is opaque but kept overridable") until
+// 2026-08-05's requireAdminLevel migration silently broke it for every
+// LeadsController route, this one included. Restore it narrowly: only the
+// two routes the sidecar actually calls (GET /api/leads,
+// POST /:id/mark-converted) accept this bearer as an alternative to a real
+// admin JWT. The sidecar never leaves the compose network, so an opaque
+// shared literal is an acceptable trust boundary here — same as the
+// original design's.
+bool isLeadsSyncBearer(const Request& request) {
+    static const std::string expected = [] {
+        const char* v = std::getenv("LEADS_SYNC_BEARER");
+        return v ? std::string(v) : std::string{};
+    }();
+    if (expected.empty()) return false;  // unset in this environment — no bypass
+    std::string h = request.getHeader("Authorization");
+    if (h.empty()) h = request.getHeader("authorization");
+    if (h.size() <= 7 || h.compare(0, 7, "Bearer ") != 0) return false;
+    return h.substr(7) == expected;
+}
+
 // ── ISO timestamp formatter for the sync response ─────────────────────────
 // "new Date(ms).toISOString()" → YYYY-MM-DDTHH:MM:SS.sssZ
 std::string isoFromMs(long long ms) {
@@ -389,7 +415,8 @@ Response LeadsController::handleSync(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleList(const Request& request, const LaSyncMap& sync) {
     (void)sync;   // LA fetch was executed by laGet(); this handler reads DB only.
-    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})
+        && !isLeadsSyncBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {
         auto leads = Lead::listAll();
@@ -615,7 +642,8 @@ Response LeadsController::handleDeleteContact(const Request& request) {
 // lead row (same JSON shape as /api/leads).
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleMarkConverted(const Request& request) {
-    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})
+        && !isLeadsSyncBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     int leadId = 0;
     if (!extractLeadId(request.getPath(), leadId) || leadId <= 0) {

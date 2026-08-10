@@ -827,6 +827,26 @@ class MensRosterScreen extends RosterScreenBase {
       .forEach(el => el.classList.remove('mr-drop-empty'));
   }
 
+  // Resolves "where in this zone does clientY want to insert" from the
+  // pointer's Y position alone — not from which element it's precisely
+  // hovering. Old behavior required the pointer to be directly over a
+  // card's rect to get any insertion marker at all; landing in the gap
+  // between cards fell through to "no overCard" and silently
+  // reinterpreted the drop as "append to end", which read as the drag
+  // just not working. Walking every non-dragging card's vertical
+  // midpoint instead makes the whole zone height — gaps included —
+  // resolve to a sensible slot, matching ordinary Trello-style
+  // drag-reorder behavior.
+  _dragInsertionPoint(zone, clientY) {
+    const cards = Array.from(zone.querySelectorAll('.mr-card[draggable="true"]'))
+      .filter(el => !el.classList.contains('mr-dragging'));
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return { before: card, cards };
+    }
+    return { before: null, cards };
+  }
+
   onDragStart(e) {
     const card = e.target.closest && e.target.closest('.mr-card[draggable="true"]');
     if (!card) return;
@@ -865,16 +885,16 @@ class MensRosterScreen extends RosterScreenBase {
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
     this._dragClearMarkers();
 
-    const overCard = e.target.closest && e.target.closest('.mr-card[draggable="true"]');
-    if (!overCard || overCard.classList.contains('mr-dragging')) {
-      // Empty area (or over the currently dragged card) — highlight
-      // the whole zone so the user knows "drop at end".
-      if (zone.children.length === 0) zone.classList.add('mr-drop-empty');
-      return;
+    const { before, cards } = this._dragInsertionPoint(zone, e.clientY);
+    if (before) {
+      before.classList.add('mr-drop-before');
+    } else if (cards.length === 0) {
+      // Nothing left to anchor to (empty column, or dragging the column's
+      // only card) — highlight the whole zone so the user knows "drop here".
+      zone.classList.add('mr-drop-empty');
+    } else {
+      cards[cards.length - 1].classList.add('mr-drop-after');
     }
-    const rect = overCard.getBoundingClientRect();
-    const before = (e.clientY - rect.top) < (rect.height / 2);
-    overCard.classList.add(before ? 'mr-drop-before' : 'mr-drop-after');
   }
 
   onDragLeave(e) {
@@ -903,29 +923,32 @@ class MensRosterScreen extends RosterScreenBase {
     );
     if (!sourceCard) { this._dragClearMarkers(); return; }
 
-    const overCard = e.target.closest && e.target.closest('.mr-card[draggable="true"]');
-    if (overCard && overCard !== sourceCard) {
-      const rect = overCard.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < (rect.height / 2);
-      overCard.parentNode.insertBefore(sourceCard, before ? overCard : overCard.nextSibling);
-    } else if (!overCard) {
-      // Dropped in empty area of the zone → append at end.
+    const { before } = this._dragInsertionPoint(zone, e.clientY);
+    if (before) {
+      before.parentNode.insertBefore(sourceCard, before);
+    } else {
       zone.appendChild(sourceCard);
     }
     this._dragClearMarkers();
 
-    // Collect ordered userIds directly from the DOM (source of truth
-    // after the manual insertBefore above) and persist.
-    const orderedIds = Array.from(
-      zone.querySelectorAll('.mr-card[draggable="true"]')
-    ).map(el => parseInt(el.dataset.userId, 10)).filter(n => Number.isFinite(n));
+    // Collect ordered userIds (+ parallel personIds, when every card has
+    // one) directly from the DOM (source of truth after the manual
+    // insertBefore above) and persist. personIds is the drift-immune
+    // path (see MensTeamAssignments::reorderTeamForPersons) — sent
+    // whenever available so a stale persons.la_user_id can't make one
+    // card's drag silently no-op and snap back after reload.
+    const cardEls = Array.from(zone.querySelectorAll('.mr-card[draggable="true"]'));
+    const orderedIds = cardEls
+      .map(el => parseInt(el.dataset.userId, 10)).filter(n => Number.isFinite(n));
     if (orderedIds.length === 0) return;
+    const orderedPersonIds = cardEls.map(el => parseInt(el.dataset.personId, 10));
+    const personIds = orderedPersonIds.every(n => Number.isFinite(n)) ? orderedPersonIds : null;
 
     try {
       const res = await this.auth.fetch('/api/mens-roster/reorder', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ teamId, userIds: orderedIds }),
+        body:    JSON.stringify({ teamId, userIds: orderedIds, ...(personIds ? { personIds } : {}) }),
       });
       if (!res.ok) {
         const text = await res.text();

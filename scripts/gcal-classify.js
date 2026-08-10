@@ -112,6 +112,14 @@ const RSVPS_OPEN_AT_SQL = `
   ELSE NULL END
 `;
 
+// A schedule-tag param (e.g. $7, holding "17:15:00" or NULL) is a bare
+// time-of-day; combine it with the gcal event's own local start date
+// (America/New_York) to get the timestamptz to store. NULL propagates
+// through the ::time cast and the arithmetic, so no CASE needed.
+function scheduleTagSql(paramRef) {
+  return `(date_trunc('day', ge.starts_at AT TIME ZONE 'America/New_York') + ${paramRef}::time) AT TIME ZONE 'America/New_York'`;
+}
+
 // ─── Classify one pattern ─────────────────────────────────────────────
 // Returns { inserted, updated, unchanged } stats.
 async function classifyPattern(pg, p) {
@@ -230,8 +238,34 @@ function jsNormAlias(s) {
 // notes (rendered verbatim to fh_events.fh_notes). Empty arrays are
 // possible: a description with `Notes:` but no Team: is legal — the
 // legacy classifier or a later manual classification handles kind.
+// Parses a bare time-of-day value ("5:15pm", "5pm", "17:15", "5:15 PM")
+// into a "HH:MI:SS" 24h string for casting to ::time in SQL. Returns
+// null on anything unparseable — same "ignore silently" contract as an
+// unrecognized Home: value, so a typo doesn't crash the classifier.
+function parseTimeOfDay(raw) {
+  if (raw == null) return null;
+  const m = String(raw).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if (!m) return null;
+  let hour = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const ampm = m[3] ? m[3].toLowerCase() : null;
+  if (min > 59) return null;
+  if (ampm) {
+    if (hour < 1 || hour > 12) return null;
+    if (ampm === 'pm' && hour !== 12) hour += 12;
+    if (ampm === 'am' && hour === 12) hour = 0;
+  } else if (hour > 23) {
+    return null;
+  }
+  return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+}
+
 function parseDsl(description) {
-  const out = { teams: [], clubs: [], kind: null, isHome: null, opponent: null, notes: null };
+  const out = {
+    teams: [], clubs: [], kind: null, isHome: null, opponent: null, notes: null,
+    startTime: null, endTime: null, arrivalTime: null, warmupTime: null,
+    kickoffTime: null, gameEndTime: null,
+  };
   if (!description) return out;
 
   // gcal often HTML-encodes the description into `<br>`-separated
@@ -291,6 +325,27 @@ function parseDsl(description) {
         // Preserve exact user text — no normalize. Multiple `Notes:`
         // lines concatenate with newline separators.
         out.notes = out.notes == null ? val : (out.notes + '\n' + val);
+        break;
+      // Schedule tags (§6.1.5 addendum). Each is a bare time-of-day —
+      // the date always comes from the gcal event's own local start
+      // date, applied where these are combined into a timestamptz.
+      case 'start':
+        out.startTime = parseTimeOfDay(val);
+        break;
+      case 'end':
+        out.endTime = parseTimeOfDay(val);
+        break;
+      case 'arrival':
+        out.arrivalTime = parseTimeOfDay(val);
+        break;
+      case 'warmup':
+        out.warmupTime = parseTimeOfDay(val);
+        break;
+      case 'kickoff':
+        out.kickoffTime = parseTimeOfDay(val);
+        break;
+      case 'gameend':
+        out.gameEndTime = parseTimeOfDay(val);
         break;
       // Unknown tag → ignore silently (forward-compat with future tags).
     }
@@ -414,8 +469,13 @@ async function classifyDsl(pg) {
       // churn when nothing meaningfully changed.
       const upsertSql = `
         WITH upsert AS (
-          INSERT INTO fh_events (gcal_event_id, kind, category, is_home, opponent, fh_notes, rsvps_open_at)
-          SELECT $1, $2, $3, $4, $5, $6, ${RSVPS_OPEN_AT_SQL}
+          INSERT INTO fh_events (
+            gcal_event_id, kind, category, is_home, opponent, fh_notes, rsvps_open_at,
+            start_at, end_at, arrival_at, warmup_at, kickoff_at, game_end_at
+          )
+          SELECT $1, $2, $3, $4, $5, $6, ${RSVPS_OPEN_AT_SQL},
+                 ${scheduleTagSql('$7')}, ${scheduleTagSql('$8')}, ${scheduleTagSql('$9')},
+                 ${scheduleTagSql('$10')}, ${scheduleTagSql('$11')}, ${scheduleTagSql('$12')}
           FROM   gcal_events ge
           WHERE  ge.id = $1
           ON CONFLICT (gcal_event_id) DO UPDATE SET
@@ -425,6 +485,12 @@ async function classifyDsl(pg) {
             opponent      = EXCLUDED.opponent,
             fh_notes      = EXCLUDED.fh_notes,
             rsvps_open_at = EXCLUDED.rsvps_open_at,
+            start_at      = EXCLUDED.start_at,
+            end_at        = EXCLUDED.end_at,
+            arrival_at    = EXCLUDED.arrival_at,
+            warmup_at     = EXCLUDED.warmup_at,
+            kickoff_at    = EXCLUDED.kickoff_at,
+            game_end_at   = EXCLUDED.game_end_at,
             updated_at    = now()
           WHERE fh_events.kind          IS DISTINCT FROM EXCLUDED.kind
              OR fh_events.category      IS DISTINCT FROM EXCLUDED.category
@@ -432,6 +498,12 @@ async function classifyDsl(pg) {
              OR fh_events.opponent      IS DISTINCT FROM EXCLUDED.opponent
              OR fh_events.fh_notes      IS DISTINCT FROM EXCLUDED.fh_notes
              OR fh_events.rsvps_open_at IS DISTINCT FROM EXCLUDED.rsvps_open_at
+             OR fh_events.start_at      IS DISTINCT FROM EXCLUDED.start_at
+             OR fh_events.end_at        IS DISTINCT FROM EXCLUDED.end_at
+             OR fh_events.arrival_at    IS DISTINCT FROM EXCLUDED.arrival_at
+             OR fh_events.warmup_at     IS DISTINCT FROM EXCLUDED.warmup_at
+             OR fh_events.kickoff_at    IS DISTINCT FROM EXCLUDED.kickoff_at
+             OR fh_events.game_end_at   IS DISTINCT FROM EXCLUDED.game_end_at
           RETURNING id
         )
         SELECT COALESCE((SELECT id FROM upsert),
@@ -440,7 +512,10 @@ async function classifyDsl(pg) {
       `;
       const { rows: [upRow] } = await client.query(
         upsertSql,
-        [ev.id, kind, category, dsl.isHome, dsl.opponent, dsl.notes],
+        [
+          ev.id, kind, category, dsl.isHome, dsl.opponent, dsl.notes,
+          dsl.startTime, dsl.endTime, dsl.arrivalTime, dsl.warmupTime, dsl.kickoffTime, dsl.gameEndTime,
+        ],
       );
       if (upRow.wrote) stats.upserted += 1;
       const fhEventId = upRow.fh_event_id;

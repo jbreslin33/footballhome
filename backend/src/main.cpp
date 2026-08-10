@@ -50,7 +50,7 @@
 #include "controllers/PublicController.h"
 #include "controllers/MatchSeriesController.h"
 #include "controllers/MyController.h"
-#include "controllers/EventReminderController.h"
+#include "controllers/PushController.h"
 #include "controllers/MessageTemplateController.h"
 #include "controllers/CalendarController.h"
 #include "controllers/SimLobbyController.h"
@@ -107,7 +107,7 @@ private:
     std::shared_ptr<PublicController> public_controller_;
     std::shared_ptr<MatchSeriesController> match_series_controller_;
     std::shared_ptr<MyController> my_controller_;
-    std::shared_ptr<EventReminderController> event_reminder_controller_;
+    std::shared_ptr<PushController> push_controller_;
     std::shared_ptr<MessageTemplateController> message_template_controller_;
     std::shared_ptr<CalendarController> calendar_controller_;
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
@@ -178,7 +178,7 @@ public:
         public_controller_ = std::make_shared<PublicController>();
         match_series_controller_ = std::make_shared<MatchSeriesController>();
         my_controller_ = std::make_shared<MyController>();
-        event_reminder_controller_ = std::make_shared<EventReminderController>();
+        push_controller_ = std::make_shared<PushController>();
         message_template_controller_ = std::make_shared<MessageTemplateController>();
         calendar_controller_ = std::make_shared<CalendarController>();
         sim_lobby_controller_ = std::make_shared<SimLobbyController>();
@@ -466,10 +466,9 @@ private:
         // preferences live in fh_recurring_rsvps and are toggled via
         // the same calendar surface.
         router_.useController("/api/my", my_controller_);
-        // Coach-triggered reminder nudges + magic-link verify.
-        //   POST /api/events/:fhEventId/remind
-        //   GET  /api/reminders/verify
-        router_.useController("/api", event_reminder_controller_);
+        // Web Push opt-in: GET /api/push/vapid-public-key (public) +
+        // POST/DELETE /api/my/push-subscriptions (session required).
+        router_.useController("/api/my", push_controller_);
         router_.useController("/api/messages/templates", message_template_controller_);
 
         // Google Calendar mirror read surface (Slice 4, see

@@ -300,8 +300,29 @@ Response BoysRosterController::handleReorder(const Request& request) {
         ordered.push_back(v);
     }
 
+    // Optional personIds[] parallel array — immune to LA's live-userId
+    // drift (see MensTeamAssignments.h doc on the person_id-keyed write
+    // path / addAssignmentForPerson). When present and the same length
+    // as userIds, prefer it; a drifted la_user_id would otherwise match
+    // zero rows for that one card and it'd silently snap back to its old
+    // position after the reload ("I can't drag <player>").
+    std::vector<long long> orderedPersonIds;
+    if (auto pit = body.find("personIds"); pit != body.end() && pit->is_array()
+        && pit->size() == ordered.size()) {
+        orderedPersonIds.reserve(pit->size());
+        for (const auto& e : *pit) {
+            long long v = 0;
+            if (e.is_number_integer())       v = e.get<long long>();
+            else if (e.is_number_unsigned()) v = static_cast<long long>(e.get<unsigned long long>());
+            if (v <= 0) { orderedPersonIds.clear(); break; }
+            orderedPersonIds.push_back(v);
+        }
+    }
+
     try {
-        const long long touched = assignments_->reorderTeam(teamId, ordered);
+        const long long touched = orderedPersonIds.size() == ordered.size()
+            ? assignments_->reorderTeamForPersons(teamId, orderedPersonIds)
+            : assignments_->reorderTeam(teamId, ordered);
         std::ostringstream out;
         out << "{\"teamId\":" << teamId
             << ",\"touched\":" << touched

@@ -76,7 +76,6 @@ class App {
       womensRoster: new WomensRosterScreen(this.navigation, this.auth),
       rosters: new RostersScreen(this.navigation, this.auth),
       person: new PersonScreen(this.navigation, this.auth),
-      mensEventsReminders: new MensEventsRemindersScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
@@ -87,6 +86,7 @@ class App {
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
       publicSchedule: new PublicScheduleScreen(this.navigation, this.auth),
+      publicProgramInfo: new PublicProgramInfoScreen(this.navigation, this.auth),
       my: new MyScreen(this.navigation, this.auth),
       adminSeriesEditor: new AdminSeriesEditorScreen(this.navigation, this.auth),
       calendar: new CalendarScreen(this.navigation, this.auth),
@@ -159,7 +159,6 @@ class App {
     // Universal person profile — reachable from any card that shows a
     // person (Members, Payments, Rosters, …).  See screens/person.js.
     this.screenManager.register('person', this.screens.person);
-    this.screenManager.register('mens-events-reminders', this.screens.mensEventsReminders);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     this.screenManager.register('payments', this.screens.payments);
     this.screenManager.register('messages', this.screens.messages);
@@ -181,6 +180,7 @@ class App {
     this.screenManager.register('public-gameday', this.screens.publicGameday);
     this.screenManager.register('public-lineup', this.screens.publicLineup);
     this.screenManager.register('public-schedule', this.screens.publicSchedule);
+    this.screenManager.register('public-program-info', this.screens.publicProgramInfo);
     this.screenManager.register('my', this.screens.my);
     this.screenManager.register('admin-series-editor', this.screens.adminSeriesEditor);
     // Google Calendar mirror view — CalendarScreen renders the
@@ -202,7 +202,18 @@ class App {
     // and re-route on hashchange so navigating between the 3 sub-views
     // does NOT require a full reload.
     const routePublic = () => {
-      const m = (window.location.hash || '').match(/^#t\/([^\/]+)\/(gameday|lineup|schedule)$/);
+      const hash = window.location.hash || '';
+
+      // Public flyer/QR-code landing pages: #info/youth, #info/adult.
+      // Static content (no team slug, no API fetch) — see
+      // frontend/js/screens/public-program-info.js.
+      const infoMatch = hash.match(/^#info\/(youth|adult)$/);
+      if (infoMatch) {
+        this.screenManager.show('public-program-info', { audience: infoMatch[1] });
+        return true;
+      }
+
+      const m = hash.match(/^#t\/([^\/]+)\/(gameday|lineup|schedule)$/);
       if (!m) return false;
       const slug = decodeURIComponent(m[1]);
       const view = m[2];

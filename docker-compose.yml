@@ -52,6 +52,11 @@ services:
       META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID:-}
       META_PAGE_ID: ${META_PAGE_ID:-}
       META_ADS_TOKEN: ${META_ADS_TOKEN:-}
+      # Shared literal with the leagueapps-sync sidecar below — lets
+      # LeadsController::isLeadsSyncBearer() authenticate that sidecar's
+      # GET /api/leads + POST /:id/mark-converted calls without a signed
+      # admin JWT (it has no human user). Compose-internal only.
+      LEADS_SYNC_BEARER: ${LEADS_SYNC_BEARER:-leagueapps-sync}
       # Slice 13 sub-slice 8: sim debug endpoints (/api/sim/debug/*).
       # Admin-only + rate-limited; still gated behind this flag so a
       # future prod deploy can turn it off without a rebuild.
@@ -144,9 +149,13 @@ services:
   # converted_at is already non-NULL).
   #
   # The sidecar speaks only to the backend HTTP API — no direct DB
-  # access — so it stays cleanly isolated.  Bearer is presence-only
-  # today; LEADS_SYNC_BEARER is opaque but kept overridable so we can
-  # tighten this later without a code change here.
+  # access — so it stays cleanly isolated.  LEADS_SYNC_BEARER is an
+  # opaque literal shared with the `backend` service above (see
+  # LeadsController::isLeadsSyncBearer, 2026-08-08) — it's checked as
+  # an alternative to a signed admin JWT on exactly the two routes this
+  # sidecar calls.  Keep it identical in both services' `environment:`
+  # blocks; overridable via the host env so we can tighten it later
+  # without a code change here.
   leagueapps-sync:
     image: python:3.11-slim
     container_name: footballhome_leagueapps_sync

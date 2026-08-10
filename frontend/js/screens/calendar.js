@@ -131,6 +131,253 @@ class CalendarScreen extends Screen {
         }
         return;
       }
+      // Clicking a link/summary inside a card (Meet, gcal link, raw
+      // description toggle) should do that, not open the action menu.
+      if (e.target.closest('a, summary')) return;
+
+      const eventEl = e.target.closest('[data-gcal-event-id]');
+      if (eventEl) {
+        this._openEventActions(eventEl.dataset.gcalEventId);
+        return;
+      }
+    });
+  }
+
+  // Small "what do you want to do with this event" menu — same options
+  // regardless of which view (week/month/agenda) the event was clicked in.
+  _openEventActions(gcalEventId) {
+    const ev = this.events.find(e => String(e.gcal_event_id) === String(gcalEventId));
+    if (!ev) return;
+    const s = this._publicEventSummary(ev);
+    const isMatch = ev.kind === 'match';
+
+    // Matches get three specific post types instead of one generic
+    // button. Lineup is shown but not wired yet — setting a lineup for
+    // a gcal-sourced match needs its own rework first. Game Result
+    // always prompts for the score/scorers: there's no scrape/result
+    // lookup wired to gcal-sourced matches today (the league scraper
+    // only knows about the separate, mostly-unused `matches` table).
+    const buttonsHtml = isMatch ? `
+        <button type="button" class="btn btn-primary ea-announce-btn" style="text-align:left;">📣 Game Announcement</button>
+        <button type="button" class="btn btn-primary ea-lineup-btn" style="text-align:left;">📋 Lineup Post</button>
+        <button type="button" class="btn btn-primary ea-result-btn" style="text-align:left;">🏆 Game Result</button>
+      ` : `
+        <button type="button" class="btn btn-primary ea-post-btn" style="text-align:left;">📷 Make Instagram Post</button>
+      `;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width: 380px;">
+        <div class="modal-header">
+          <h2>${this._escape(s.title)}${s.subtitle ? ' — ' + this._escape(s.subtitle) : ''}</h2>
+          <button class="modal-close" data-action="close">&times;</button>
+        </div>
+        <p style="opacity:0.7; font-size:0.9rem; margin-top:-8px;">${this._escape(s.dateStr)}${s.timeStr ? ' · ' + this._escape(s.timeStr) : ''}</p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${buttonsHtml}
+          <button type="button" class="btn btn-secondary ea-flyer-btn" style="text-align:left;">🖨️ Make Flyer</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('[data-action="close"]')) close();
+    });
+    overlay.querySelector('.ea-flyer-btn').addEventListener('click', () => {
+      close();
+      this._startFlyerFromEvent(gcalEventId);
+    });
+
+    if (isMatch) {
+      overlay.querySelector('.ea-announce-btn').addEventListener('click', () => {
+        close();
+        this._startPostFromEvent(gcalEventId);
+      });
+      overlay.querySelector('.ea-lineup-btn').addEventListener('click', () => {
+        close();
+        alert('Lineup posts aren\'t wired up yet — setting a lineup for a calendar-synced match needs its own update first. Coming later.');
+      });
+      overlay.querySelector('.ea-result-btn').addEventListener('click', () => {
+        close();
+        this._openResultForm(gcalEventId);
+      });
+    } else {
+      overlay.querySelector('.ea-post-btn').addEventListener('click', () => {
+        close();
+        this._startPostFromEvent(gcalEventId);
+      });
+    }
+  }
+
+  // ---------- Post / Flyer prefill ----------
+
+  // Public-safe summary of an event — never touches ev.summary (raw
+  // gcal title is admin-only), only kind/category/opponent/date/time/
+  // location, same fields already shown on the card itself.
+  _publicEventSummary(ev) {
+    const meta = this._eventMeta(ev);
+    const startD = new Date(ev.starts_at);
+    const dateStr = startD.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const timeStr = ev.all_day ? '' : startD.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    // Matches often carry several squad-level teams for the same game
+    // (e.g. APSL + APSL Reserves + Liga 1 Trialists all on one event) —
+    // exact team name only makes sense for the single-team case;
+    // otherwise fall back to the club-wide "Lighthouse" branding
+    // already used everywhere else (#Lighthouse1893). Logo still picks
+    // the first linked team that actually has one, regardless of count.
+    const teamName = meta.teams.length === 1 ? meta.teams[0].name : (meta.teams.length ? 'Lighthouse' : '');
+    const teamWithLogo = meta.teams.find(t => t.logo_url);
+
+    let title, subtitle;
+    if (ev.kind === 'match') {
+      title = meta.homeAway === 'Away' ? 'AWAY MATCH' : 'GAME DAY';
+      subtitle = meta.opponent ? `vs ${meta.opponent}` : teamName;
+    } else {
+      title = meta.kindText.toUpperCase();
+      subtitle = teamName;
+    }
+
+    return {
+      kind: ev.kind,
+      title,
+      subtitle,
+      badge: teamName || meta.scopeText,
+      dateStr,
+      timeStr,
+      location: ev.location || '',
+      teamName,
+      teamLogo: teamWithLogo ? (teamWithLogo.logo_url || '') : '',
+      opponent: meta.opponent || '',
+      opponentLogo: ev.opponent_logo_url || '',
+    };
+  }
+
+  _startPostFromEvent(gcalEventId) {
+    const ev = this.events.find(e => String(e.gcal_event_id) === String(gcalEventId));
+    if (!ev) return;
+    const s = this._publicEventSummary(ev);
+    const lines = [`⚽ ${s.title}!`, ''];
+    if (s.subtitle) lines.push(s.subtitle);
+    lines.push(`📅 ${s.dateStr}`);
+    if (s.timeStr) lines.push(`⏰ ${s.timeStr}`);
+    if (s.location) lines.push(`📍 ${s.location}`);
+    lines.push('', '#Lighthouse1893 #PhillySoccer');
+
+    this.navigation.context.contentPrefill = {
+      title: `${s.title}${s.subtitle ? ' - ' + s.subtitle : ''}`,
+      caption: lines.join('\n'),
+      matchGraphic: s.kind === 'match' ? {
+        eyebrow: s.title,
+        ourName: s.teamName || 'Lighthouse',
+        ourLogo: s.teamLogo,
+        opponent: s.opponent || 'Opponent',
+        opponentLogo: s.opponentLogo,
+        dateStr: s.dateStr,
+        timeStr: s.timeStr,
+        location: s.location,
+      } : null,
+    };
+    this.navigation.goTo('content-posts', {});
+  }
+
+  _startFlyerFromEvent(gcalEventId) {
+    const ev = this.events.find(e => String(e.gcal_event_id) === String(gcalEventId));
+    if (!ev) return;
+    const s = this._publicEventSummary(ev);
+    const pills = [
+      { icon: '📅', label: 'Date', value: s.dateStr },
+    ];
+    if (s.timeStr) pills.push({ icon: '🕒', label: 'Time', value: s.timeStr });
+    if (s.location) pills.push({ icon: '📍', label: 'Location', value: s.location });
+
+    this.navigation.context.flyerPrefill = {
+      badge: s.badge,
+      eyebrow: s.kind === 'match' ? (s.title === 'AWAY MATCH' ? 'Away Match' : 'Game Day') : this._titleCase(s.kind),
+      title: s.title,
+      subtitle: s.subtitle,
+      pills,
+    };
+    this.navigation.goTo('flyers', {});
+  }
+
+  // No result-lookup exists for gcal-sourced matches yet (the league
+  // scraper only writes to the separate `matches` table — see
+  // EventController::handleSyncLeague), so this always prompts rather
+  // than trying to auto-fill a score.
+  _openResultForm(gcalEventId) {
+    const ev = this.events.find(e => String(e.gcal_event_id) === String(gcalEventId));
+    if (!ev) return;
+    const s = this._publicEventSummary(ev);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2>🏆 Game Result</h2>
+          <button class="modal-close" data-action="close">&times;</button>
+        </div>
+        <p style="opacity:0.7; font-size:0.9rem; margin-top:-8px;">${this._escape(s.subtitle || s.title)} · ${this._escape(s.dateStr)}</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem;">Our score</label>
+              <input type="number" id="rf-our-score" class="form-input" min="0" style="width:100%; box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem;">Their score</label>
+              <input type="number" id="rf-their-score" class="form-input" min="0" style="width:100%; box-sizing:border-box;">
+            </div>
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem;">Scorers <span style="font-weight:400; opacity:0.6;">— optional, one per line</span></label>
+            <textarea id="rf-scorers" class="form-input" rows="3" style="width:100%; box-sizing:border-box; resize:vertical;" placeholder="e.g. J. Smith\nOG"></textarea>
+          </div>
+          <button type="button" id="rf-generate-btn" class="btn btn-primary">Generate Post</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('[data-action="close"]')) close();
+    });
+
+    overlay.querySelector('#rf-generate-btn').addEventListener('click', () => {
+      const ourScore = parseInt(overlay.querySelector('#rf-our-score').value, 10);
+      const theirScore = parseInt(overlay.querySelector('#rf-their-score').value, 10);
+      if (Number.isNaN(ourScore) || Number.isNaN(theirScore)) {
+        alert('Enter both scores.');
+        return;
+      }
+      const scorers = (overlay.querySelector('#rf-scorers').value || '')
+        .split('\n').map(l => l.trim()).filter(Boolean);
+
+      const result = ourScore > theirScore ? '🟢 WIN' : ourScore < theirScore ? '🔴 LOSS' : '🟡 DRAW';
+      const opponent = s.subtitle ? s.subtitle.replace(/^vs\s*/i, '') : 'Opponent';
+      const lines = [
+        result,
+        '',
+        `${s.badge || 'Lighthouse'} ${ourScore} - ${theirScore} ${opponent}`,
+        `📅 ${s.dateStr}`,
+      ];
+      if (s.location) lines.push(`📍 ${s.location}`);
+      if (scorers.length) {
+        lines.push('');
+        scorers.forEach(sc => lines.push(`⚽ ${sc}`));
+      }
+      lines.push('', '#Lighthouse1893 #PhillySoccer #MatchResult');
+
+      close();
+      this.navigation.context.contentPrefill = {
+        title: `Result - ${s.badge || 'Lighthouse'} ${ourScore}-${theirScore} ${opponent}`,
+        caption: lines.join('\n'),
+      };
+      this.navigation.goTo('content-posts', {});
     });
   }
 
@@ -307,7 +554,7 @@ class CalendarScreen extends Screen {
     return `
       <div class="cal-month-event" data-gcal-event-id="${ev.gcal_event_id}"
            style="border-left:3px solid ${meta.color.bg};background:${meta.color.bg}1f;
-                  border-radius:4px;padding:4px 5px;line-height:1.2;">
+                  border-radius:4px;padding:4px 5px;line-height:1.2;cursor:pointer;">
         <div style="font-size:0.67rem;color:${meta.color.fg};font-weight:700;">${this._escape(timeLbl)} · ${this._escape(meta.kindText)}</div>
         <div style="font-size:0.72rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._escape(meta.title)}</div>
       </div>
@@ -485,7 +732,7 @@ class CalendarScreen extends Screen {
       <div class="cal-card" data-gcal-event-id="${ev.gcal_event_id}"
            style="background: var(--bg-secondary);
            border:1px solid var(--color-border); border-radius: var(--radius-md);
-           padding: var(--space-3); display:flex; flex-direction:column; gap:6px;">
+           padding: var(--space-3); display:flex; flex-direction:column; gap:6px; cursor:pointer;">
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="background:${kc.bg}; color:${kc.fg};
                        padding:2px 8px; border-radius:9999px;
@@ -522,6 +769,7 @@ class CalendarScreen extends Screen {
             <div style="white-space:pre-wrap;margin-top:4px;color:var(--text-muted);">${this._escape(ev.description)}</div>
           </details>` : ''}
         ${gcalLink ? `<div style="margin-top:auto; padding-top: var(--space-1);">${gcalLink}</div>` : ''}
+        <div style="opacity:0.5; font-size:0.75rem; padding-top:2px;">Tap card for post / flyer actions →</div>
       </div>
     `;
   }
@@ -536,7 +784,7 @@ class CalendarScreen extends Screen {
     return `
       <div class="cal-week-event" data-gcal-event-id="${ev.gcal_event_id}"
            style="border-left:4px solid ${meta.color.bg};background:${meta.color.bg}18;
-                  border-radius:6px;padding:7px 8px;display:flex;flex-direction:column;gap:3px;">
+                  border-radius:6px;padding:7px 8px;display:flex;flex-direction:column;gap:3px;cursor:pointer;">
         <div style="font-size:0.72rem;font-weight:700;color:${meta.color.fg};text-transform:uppercase;letter-spacing:0.04em;">
           ${this._escape(timeLbl)} · ${this._escape(meta.kindText)}
         </div>

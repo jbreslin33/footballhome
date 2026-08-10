@@ -197,8 +197,13 @@ class RosterScreenBase extends Screen {
     // admin check of its own, so the UI is the only gate; see
     // _isPlayerView above).
     const isPlayerView = this._isPlayerView();
+    // data-person-id rides along with data-user-id so the drag/reorder
+    // handler can POST the drift-immune person_id path (see
+    // MensTeamAssignments::reorderTeamForPersons) instead of the plain
+    // LA userId, which can silently drift out from under a specific
+    // player and make their card look stuck / revert on drop.
     const dragAttrs = (col && col.teamId && !isPlayerView)
-      ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}"`
+      ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"`
       : '';
     if (isPlayerView) rosterSelectHtml = '';
     const laUidAttr = player.leagueAppsUserId

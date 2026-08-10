@@ -269,6 +269,9 @@
   <script src="js/entities/Zone.js"></script>
   <script src="js/entities/Arrow.js"></script>
   
+  <!-- Shared content modules -->
+  <script src="js/lib/program-info.js"></script>
+
   <!-- Screens -->
   <script src="js/screens/login.js"></script>
   <script src="js/screens/oauth-success.js"></script>
@@ -336,7 +339,6 @@
   <script src="js/screens/womens-roster.js"></script>
   <script src="js/screens/rosters.js"></script>
   <script src="js/screens/person.js"></script>
-  <script src="js/screens/mens-events-reminders.js?v=20260707a"></script>
   <script src="js/screens/admin-club-teams.js"></script>
   <script src="js/screens/club-events.js"></script>
   <script src="js/screens/admin-sport-division.js"></script>
@@ -360,45 +362,30 @@
   <script src="js/screens/club-directory.js"></script>
   <script src="js/screens/club-detail.js"></script>
   <script src="js/screens/public-team.js"></script>
+  <script src="js/screens/public-program-info.js"></script>
   <script src="js/screens/my.js?v=20260709a"></script>
   <script src="js/screens/admin-series-editor.js"></script>
     <!-- App Bootstrap -->
     <script src="js/app.js"></script>
 
-    <!-- ── Service worker cleanup (2026-07-07) ─────────────────────────
-         PWA install-prompt SW disabled per project owner directive
-         ("get rid of all cache").  This block runs on EVERY page load
-         and forces cleanup of any lingering SW:
-           1) getRegistrations() finds every SW registered for this
-              origin (there should be 0-1).
-           2) For each: call .update() first.  This bypasses the
-              browser's default 24 h SW-update cache and forces an
-              immediate byte-comparison against /sw.js on the server.
-              If sw.js changed, the new one installs → activates →
-              runs its own cleanup handler → unregisters itself.
-           3) Then call .unregister() as a belt-and-suspenders in case
-              step 2 didn't finish.
-           4) Delete every Cache Storage bucket regardless.
-         Note: localStorage is a *different* API and is NEVER touched
-         by any of this.  The user's login (`token` + `user` keys in
-         localStorage, set by auth.js) survives all of it.
-         When we re-introduce PWA install, revert this block to a
-         `navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })`
-         call — `updateViaCache: 'none'` is important: it tells the
-         browser to never cache /sw.js in HTTP cache, so future
-         updates always propagate on the next navigation. -->
+    <!-- ── Service worker registration (2026-08-09) ─────────────────────
+         Re-enabled to support Web Push (RSVP reminders, men's chat) —
+         see frontend/sw.js. The 2026-07-07 "no cache" directive still
+         holds: sw.js has no fetch handler and never calls cache.put(),
+         so this SW changes nothing about how pages/assets load — it
+         only exists so the browser has somewhere to deliver push
+         events in the background. `updateViaCache: 'none'` tells the
+         browser to never HTTP-cache sw.js itself, so future updates to
+         this file always propagate on the next navigation. As a
+         belt-and-suspenders, we also sweep any stray Cache Storage
+         buckets on every load — nothing in this codebase writes to
+         Cache Storage, so this should always be a no-op, but it costs
+         nothing and guards against a future regression. localStorage
+         (the `token`/`user` login keys, set by auth.js) is a different
+         API and is never touched by any of this. -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function (regs) {
-          regs.forEach(function (r) {
-            // Force byte-check against server's /sw.js NOW (don't
-            // wait 24 h for the browser's default check).  If sw.js
-            // has changed, this triggers install→activate→cleanup.
-            try { r.update(); } catch (_) {}
-            // Then unregister regardless — we don't want any SW.
-            r.unregister().catch(function () {});
-          });
-        }).catch(function () {});
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(function () {});
       }
       if (window.caches && caches.keys) {
         caches.keys().then(function (names) {

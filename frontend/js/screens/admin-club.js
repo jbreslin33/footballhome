@@ -23,36 +23,26 @@ class AdminClubScreen extends Screen {
           </p>
         </div>
 
-        <!-- ── Club-admin funnel · People → Billing → RSVP Eligibility ──
+        <!-- ── Club-admin funnel · People → RSVP Eligibility ──
              Person is the hub. Everything below derives from persons:
                1. People       — who is this Lighthouse human? (users, roles, links)
-               2. Billing      — if a member, are they paid up?
-               3. RSVP Elig.   — which team events can they RSVP for?
+               2. RSVP Elig.   — which team events can they RSVP for?
              Roster (Team Players) moved to the Coach screen — it's coach
-             work, not club-admin work.
+             work, not club-admin work. Billing/Payments moved to the
+             standalone Financial section on Role Selection (2026-08-10) —
+             it's money data, not club structure, and coaches/marketing
+             never needed it buried in here.
              Outside-club / scraped people: System Admin. -->
 
-        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">🎯 Recruitment</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 0 — before someone is a member, they're a lead. Ad-interest form submissions, funnel touch-history, and conversion analytics from first touch through LA registration.
-        </p>
-        <div id="section-recruitment" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">👥 People</h3>
+        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">👥 People</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Step 1 — Lighthouse <code>persons</code> and everything that derives from them: users, players, coaches/admins, membership, roster connections, RSVP ability. Scraped league/opponent people stay in System Admin unless linked.
         </p>
         <div id="section-people"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">💰 Billing</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 2 — if you're a member, we bill you and track it. Payments by status (Paid Up · Behind · Overdue · Never Paid), delinquent queue, LA charge flags.
-        </p>
-        <div id="section-billing" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗳️ Event Access</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Step 3 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
+          Step 2 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
         </p>
         <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
@@ -61,12 +51,6 @@ class AdminClubScreen extends Screen {
           Google Calendar owns event timing and tags. Football Home mirrors soccer events here and translates FH details when classification exists.
         </p>
         <div id="section-schedule" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📣 Communications</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Outbound club voice: recipient-first messages, public social posts, and reusable poster/flyer assets.
-        </p>
-        <div id="section-communications"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Teams &amp; Structure</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -197,18 +181,6 @@ class AdminClubScreen extends Screen {
     ];
     renderGroupsInto('#section-people', peopleGroups);
 
-    // ── Recruitment ────────────────────────────────────────────────────
-    // Step 0 of the funnel — the world before someone is a member.
-    // Leads (Meta ad-form submissions) + Leads Analytics (touch-history
-    // → LA-registration conversion).  Both handlers stay in
-    // handleSubNavigation() below (`section === 'leads'` / `'leads-analytics'`)
-    // so tile ids remain stable across the reorg.
-    const recruitmentTiles = [
-      { id: 'leads',           icon: '📋', label: 'Leads',           description: 'Ad interest form submissions' },
-      { id: 'leads-analytics', icon: '📊', label: 'Leads Analytics', description: 'What touches actually turn into LA registrations' },
-    ];
-    renderInto('#section-recruitment', recruitmentTiles);
-
     // ── RSVP ──────────────────────────────────────────────────────────
     // Single diagnostic tile — opens the RSVP-eligibility board with
     // All / Men / Women / Boys / Girls tabs so the coach can see at a
@@ -227,52 +199,6 @@ class AdminClubScreen extends Screen {
       { id: 'admin-calendar', icon: '🗓️', label: 'Soccer Calendar', description: 'FH-translated soccer events from Google Calendar. To add/change timing, edit them in gcal.' },
     ];
     renderInto('#section-schedule', scheduleTiles);
-
-    // ── Communications ─────────────────────────────────────────────────
-    // Outbound club voice.  Messages are recipient-first; socials are
-    // channel-first; posters/flyers are assets that can be printed,
-    // shared directly, or exported into social formats.
-    const communicationGroups = [
-      {
-        label: 'Messages',
-        tiles: [
-          { id: 'messages', icon: '💬', label: 'Messages', description: 'Canned responses, welcomes, broadcasts, and follow-up copy per team' },
-        ],
-      },
-      {
-        label: 'Socials',
-        tiles: [
-          { id: 'holiday-posts', icon: '🎉', label: 'Holiday Posts', description: 'Instagram holiday posts' },
-          { id: 'promo-posts', icon: '📢', label: 'Promo Posts', description: 'Instagram promotional posts' },
-          { id: 'content-posts', icon: '📷', label: 'Content Posts', description: 'Upload photos & videos to Instagram' },
-          { id: 'ad-preview', icon: '📱', label: 'Ad Preview', description: 'See exactly what your ads look like' },
-        ],
-      },
-      {
-        label: 'Posters & Assets',
-        tiles: [
-          { id: 'flyers', icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
-          { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits', description: 'Publicly shareable poster boards & history pages' },
-          { id: 'exhibit-social', icon: '📲', label: 'Exhibit → Social', description: 'Export poster assets as IG carousel, 4:5 single, or long poster renders' },
-        ],
-      },
-    ];
-    renderGroupsInto('#section-communications', communicationGroups);
-
-    // ── 💰 Billing funnel section ────────────────────────────────────
-    // Step 2 of the club-admin funnel.  Everything money-related lives
-    // here — the Payments screen groups members by status (Paid Up /
-    // Behind / Overdue / Never Paid) with client-side aggregation across
-    // all four programs (Mens / Womens / Boys / Girls).  The old dedicated
-    // Delinquent tile was retired 2026-07-13 — the Overdue chip on Payments
-    // surfaces the same past-due queue with better filtering.
-    //
-    // Uses the shared `_dashTiles` lookup for click routing.
-    const billingTiles = [
-      { id: 'payments',        target: 'payments',        params: {},                    icon: '💳', label: 'Payments',           description: 'Members grouped by status: Paid Up · Behind · Overdue · Never Paid — filter by Men / Women / Boys / Girls inside' },
-    ];
-    renderInto('#section-billing', billingTiles);
-    this._dashTiles = (this._dashTiles || []).concat(billingTiles);
 
     // Game Model reference panel below (#game-model-panel /
     // #game-model-contents) stays here — it's explicitly the "Club admin
@@ -776,90 +702,11 @@ class AdminClubScreen extends Screen {
       return;
     }
 
-    if (section === 'holiday-posts') {
-      this.navigation.goTo('holiday-posts', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'promo-posts') {
-      this.navigation.goTo('promo-posts', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'content-posts') {
-      this.navigation.goTo('content-posts', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'flyers') {
-      this.navigation.goTo('flyers', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'leads') {
-      this.navigation.goTo('leads', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'leads-analytics') {
-      this.navigation.goTo('leads-analytics', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'messages') {
-      this.navigation.goTo('messages', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
     if (section === 'rsvp-eligibility') {
       this.navigation.goTo('rsvp-eligibility', {
         clubId: this.clubId,
         clubName: this.clubName
       });
-      return;
-    }
-
-    if (section === 'ad-preview') {
-      this.navigation.goTo('ad-preview', {
-        clubId: this.clubId,
-        clubName: this.clubName
-      });
-      return;
-    }
-
-    if (section === 'public-exhibits') {
-      // Public, no-login pages. Open in a new tab so coaches/staff can share the link.
-      window.open('/exhibit/lighthouse-history.html', '_blank', 'noopener');
-      return;
-    }
-
-    if (section === 'exhibit-social') {
-      // Local preview of the rendered IG carousel + 4:5 single + long poster.
-      // The slideshow viewer reads PNGs from /images/posts/exhibit-pNN-*.png, which are
-      // generated directly from lighthouse-history.html by
-      // `scripts/render-poster-from-source.js <N>` and live-served by nginx.
-      window.open('/exhibit/slideshow.html?p=1', '_blank', 'noopener');
       return;
     }
 

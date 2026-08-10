@@ -427,3 +427,36 @@ long long MensTeamAssignments::reorderTeam(int teamId,
     db_->commit(tx);
     return touched;
 }
+
+// person_id-keyed twin of reorderTeam() — see addAssignmentForPerson's doc
+// on why: persons.la_user_id can drift out from under the la_user_id
+// lookup, silently matching zero rows for one player while the rest of
+// the drag reorders normally (that player's card just snaps back after
+// the reload). Callers with a request-scoped person id should call this
+// instead.
+long long MensTeamAssignments::reorderTeamForPersons(
+        int teamId,
+        const std::vector<long long>& personIdsInOrder) {
+    if (personIdsInOrder.empty()) return 0;
+
+    long long touched = 0;
+    auto tx = db_->beginTransaction();
+
+    int rank = 1;
+    for (long long personId : personIdsInOrder) {
+        pqxx::result r = tx->exec_params(
+            "UPDATE team_persons "
+            "   SET coach_sort_order = $3 "
+            " WHERE person_id = $1 "
+            "   AND team_id = $2 "
+            "   AND removed_at IS NULL "
+            " RETURNING id",
+            personId, teamId, rank
+        );
+        touched += static_cast<long long>(r.size());
+        ++rank;
+    }
+
+    db_->commit(tx);
+    return touched;
+}

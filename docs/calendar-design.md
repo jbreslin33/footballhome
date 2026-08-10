@@ -316,6 +316,16 @@ CREATE TABLE fh_events (
     standing_applied_at  TIMESTAMPTZ,
     -- Freeform notes visible to coaches on FH but not exported to gcal
     fh_notes       TEXT,
+    -- Schedule tags (migration 271, §6.1.5). start_at/end_at are
+    -- OVERRIDES ONLY — read the effective field window via
+    -- COALESCE(start_at, gcal_events.starts_at) / COALESCE(end_at, gcal_events.ends_at).
+    -- arrival_at/warmup_at/kickoff_at/game_end_at have no fallback.
+    start_at       TIMESTAMPTZ,
+    end_at         TIMESTAMPTZ,
+    arrival_at     TIMESTAMPTZ,
+    warmup_at      TIMESTAMPTZ,
+    kickoff_at     TIMESTAMPTZ,
+    game_end_at    TIMESTAMPTZ,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -458,6 +468,23 @@ and `mens.` all collapse to the same key.
 | `Home:`   | optional      | `Yes` \| `No` \| `Neutral`. Sets `fh_events.is_home`. Only meaningful on matches.  |
 | `Opponent:` | optional    | Free-form opponent name. Only meaningful on matches; rendered as the FH opponent instead of guessing from the Google title. |
 | `Notes:`  | optional      | Free text. Stored verbatim in `fh_events.fh_notes`; rendered in the card body.     |
+| `Start:`  | optional      | Bare time-of-day (`5:00pm`, `17:00`). Field-booking window override → `fh_events.start_at`. NULL when untagged means "use `gcal_events.starts_at`" — read the effective value via `COALESCE(fh_events.start_at, gcal_events.starts_at)`, never `start_at` alone. |
+| `End:`    | optional      | Same shape as `Start:`, for the field-booking window end → `fh_events.end_at`, defaulting to `gcal_events.ends_at`. |
+| `Arrival:` | optional     | Bare time-of-day. When players should show up → `fh_events.arrival_at`. No default; NULL means not specified. |
+| `Warmup:` | optional      | Bare time-of-day. Warmup start → `fh_events.warmup_at`. No default. |
+| `Kickoff:` | optional     | Bare time-of-day. Whistle time → `fh_events.kickoff_at`. No default. |
+| `GameEnd:` | optional     | Bare time-of-day. Expected final whistle → `fh_events.game_end_at`. No default. |
+
+**Schedule tags** (`Start:`/`End:`/`Arrival:`/`Warmup:`/`Kickoff:`/`GameEnd:`,
+locked 2026-08-09). Each carries a bare time-of-day only — no date. The
+date is always the gcal event's own local (`America/New_York`) start
+date; `scripts/gcal-classify.js`'s `scheduleTagSql()` combines the two
+into the stored `timestamptz`, so `Kickoff: 5:15pm` on an event whose
+gcal start date is 2026-08-09 becomes `2026-08-09 17:15 America/New_York`.
+Single-token tag names only (parser regex is `[A-Za-z]+` before the
+colon) — hence `GameEnd:`, not `Game End:`. Malformed values (e.g.
+`Kickoff: whenever`) are ignored silently, same contract as an
+unrecognized `Home:` value.
 
 **Multi-club events.** `Team:` and `Club:` are both **list-friendly** —
 either comma-separated on a single line (`Club: Mens, Womens`) or

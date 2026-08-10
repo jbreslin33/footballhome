@@ -1807,17 +1807,11 @@ class LeadsScreen extends Screen {
     const snippets = [];
 
     // ── LeagueApps Program Description ────────────────────────────────
-    // Canonical copy for the LA program-listing "Description" field.
-    // Written as HTML (not Markdown) so it pastes into LeagueApps'
-    // WYSIWYG editor as formatted content — the Copy button on the
-    // Messages screen writes both text/html and text/plain to the
-    // clipboard for HTML snippets.  Tone is factual / policy-page —
-    // we're a nonprofit club, not a product pitch.  Only three things
-    // vary between programs:
-    //   • the two dollar figures
-    //   • adult vs. parent phrasing ("your membership" / "your player's
-    //     membership")
-    //   • the kit pronoun ("your kit" / "their kit")
+    // Canonical copy for the LA program-listing "Description" field, built
+    // by window.LighthouseProgramInfo.buildProgramDescription() (see
+    // frontend/js/lib/program-info.js) — the single source of truth for
+    // this copy, also used by the public program-info pages linked from
+    // flyer QR codes.  Edit the copy there, not here.
     //
     // Hoisted to the outer function scope (via `let laDescText`) so the
     // ℹ️ More info follow-up snippet below can reuse the exact same
@@ -1826,218 +1820,12 @@ class LeadsScreen extends Screen {
     // more-info email reply.
     let laDescText;
     {
-      const monthly = c.isWomensClub ? '10'   : '35';
-      const membership = c.isYouth
-        ? "Your player's membership"
-        : "Your membership";
-      const kit = c.isYouth ? 'their uniform' : 'your uniform';
-
-      // ── Schedule block ──
-      // LA program pages get a clean, audience-wide schedule — not the
-      // per-team specifics (which live in the funnel-specific messages
-      // below).  Rationale:
-      //   • adult men → list all five weekly sessions equally and set
-      //     the expectation ("attend at least 2 sessions per week").
-      //     Framing them as 5 equivalent sessions instead of
-      //     "practice + pickup fallback" avoids the old confusion about
-      //     whether pickup counts.
-      //   • adult women → no practice yet; Sunday games starting
-      //     September.
-      //   • youth → split by grade tier so parents scanning the page
-      //     immediately see which days apply to their kid: 2nd and
-      //     under practice Mon/Wed; 3rd and older practice Mon/Wed/Fri.
-      // Field is club-wide and always the same.
-      let practiceBlockHtml;
-      let practiceBlockText;
-      let gamesLine;
-      if (c.isYouth) {
-        practiceBlockHtml =
-          `<li><strong>Practice:</strong>` +
-            `<ul>` +
-              `<li>2nd grade and younger &mdash; Mondays &amp; Wednesdays, 4:30&ndash;5:30pm</li>` +
-              `<li>3rd grade and older &mdash; Mondays, Wednesdays &amp; Fridays, 5:30&ndash;7pm</li>` +
-            `</ul>` +
-          `</li>`;
-        practiceBlockText =
-          `  • Practice:\n` +
-          `      – 2nd grade and younger — Mondays & Wednesdays, 4:30–5:30pm\n` +
-          `      – 3rd grade and older — Mondays, Wednesdays & Fridays, 5:30–7pm\n`;
-        gamesLine = 'Sunday mornings to early afternoon';
-      } else if (c.isWomensClub) {
-        practiceBlockHtml = '';   // no practice bullet on women's LA page
-        practiceBlockText = '';
-        gamesLine = 'Sundays, starting in September';
-      } else {
-        // Men's Club: 5 weekly sessions split into 2 structured
-        // practices (Wed, Fri) + 3 pickups (Tue, Thu, Sat).  We list
-        // them as separate schedule items so the audience sees the
-        // structure, then follow with a "Purpose of 5 weekly sessions"
-        // bullet that explains why 5 (fits work schedules → aim for
-        // any 2), how practice and pickup differ, and how together
-        // they cover the four pillars of player development.
-        const adultPurpose =
-          "Five sessions a week fit real work schedules \u2014 aim for any 2 of the 5 and you're a regular \u2014 and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments \u2014 not around a cone that can't defend. Together they cover the four pillars of player development: technical, tactical, physical, and psychological.";
-        practiceBlockHtml =
-          `<li><strong>Practice:</strong> Wednesday &amp; Friday, 7:00&ndash;8:30pm</li>` +
-          `<li><strong>Pickup:</strong> Tuesday &amp; Thursday, 7:00&ndash;8:30pm; Saturday, 11:00am&ndash;12:30pm</li>` +
-          `<li><strong>Purpose of 5 weekly sessions:</strong> Five sessions a week fit real work schedules &mdash; aim for any 2 of the 5 and you're a regular &mdash; and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments &mdash; not around a cone that can't defend. Together they cover the four pillars of player development: <strong>technical, tactical, physical, and psychological.</strong></li>`;
-        practiceBlockText =
-          `  • Practice: Wednesday & Friday, 7:00–8:30pm\n` +
-          `  • Pickup: Tuesday & Thursday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n` +
-          `  • Purpose of 5 weekly sessions: ${adultPurpose}\n`;
-        gamesLine = 'Sundays';
-      }
-      const outdoorLine =
-        'Lighthouse Sports Complex, 199 E Erie Avenue, Philadelphia PA 19140';
-      const indoorLine =
-        'Lighthouse Community Center, 141 W Somerset Street, Philadelphia PA 19133';
-
-      // ── Teams block (youth only) ──
-      // Up-front explanation of which travel squads currently exist +
-      // what happens for age bands that don't (yet) have one.  The
-      // travel teams we've entered for Fall 2026 are U8, U10 and U12,
-      // all in a boys-division travel league; girls are welcome on
-      // those squads until we have the numbers for a dedicated girls
-      // travel program.  Every player outside those bands (and every
-      // player not selected for a travel squad) plays in Lighthouse
-      // League — our in-house games — while we grow.  Same copy for
-      // Boys Club and Girls Club LA pages: parents on both sides need
-      // the same policy up front so nobody signs up expecting a girls-
-      // only travel team that doesn't exist yet.
-      //
-      // Framing (2026-07-07): describe Lighthouse League and travel
-      // as two DIFFERENT options for different family preferences,
-      // not as tiers.  Travel is not framed as prestige, elite, or
-      // a "step up" — that undercuts the club's affordable /
-      // accessible / local mission and pressures families into
-      // signing up for something they didn't actually come for.
-      // Lighthouse League is described as the option for people who
-      // want a local, no-travel experience; travel is described as
-      // the option for people who want to travel to games.  Neither
-      // sits above the other.  Headcount claims are avoided (both
-      // rosters are still filling).
-      let teamsBlockHtml = '';
-      let teamsBlockText = '';
-      if (c.isYouth) {
-        teamsBlockHtml =
-          `<h3>Teams</h3>` +
-          `<p><strong>Lighthouse League</strong> is our in-house program &mdash; games played primarily at the Lighthouse fields, with occasional events elsewhere. It's for players and families looking for a <strong>local, low-to-no-travel soccer experience</strong>, and it's open to every member regardless of skill level, age, or experience.</p>` +
-          `<p>For players who want to travel to games as part of their season, we also field select travel squads (Fall 2026):</p>` +
-          `<ul>` +
-            `<li><strong>U8, U10, U12</strong> &mdash; competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.</li>` +
-          `</ul>` +
-          `<p>We add travel teams for additional age bands as interest and readiness grow.</p>`;
-        teamsBlockText =
-          `TEAMS:\n` +
-          `Lighthouse League is our in-house program — games played primarily at the Lighthouse fields, with occasional events elsewhere. It's for players and families looking for a local, low-to-no-travel soccer experience, and it's open to every member regardless of skill level, age, or experience.\n\n` +
-          `For players who want to travel to games as part of their season, we also field select travel squads (Fall 2026):\n` +
-          `  • U8, U10, U12 — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n\n` +
-          `We add travel teams for additional age bands as interest and readiness grow.\n\n`;
-      } else if (funnelLabel === "Men's Club") {
-        // Men's Club: lead with competitive squads (APSL / Liga 1 / Liga 2),
-        // frame Lighthouse League as (a) the option for members who want a
-        // local, low-to-no-travel experience AND (b) where anyone not
-        // selected to a competitive squad plays.  "We don't cut members" is
-        // the mission tagline — nobody who signs up gets sent home.  U23 /
-        // PR / Brazil are advertised via their own funnels and are
-        // intentionally omitted from this list.
-        //
-        // 2026-07-09: Prepend a summer-trials heads-up covering the three
-        // competitions that Lighthouse's 1st team enters this year
-        // (U.S. Open Cup, APSL 1st Team, U.S. National Amateur Cup),
-        // with a short factual description of each so leads landing on
-        // the LA page know what they're playing for.  Applies to the
-        // Men's Club LA description only — the other men funnels (PR /
-        // Brazil / U23) don't render a Teams block.
-        teamsBlockHtml =
-          `<h3>Teams</h3>` +
-          `<p><strong>Trials have begun</strong> for the <strong>U.S. Open Cup</strong>, <strong>APSL 1st Team</strong>, and <strong>U.S. National Amateur Cup</strong>. Join the Men's Club to be considered.</p>` +
-          `<ul>` +
-            `<li><strong>U.S. Open Cup</strong> &mdash; the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination &mdash; MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.</li>` +
-            `<li><strong>U.S. National Amateur Cup</strong> &mdash; U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.</li>` +
-            `<li><strong>APSL (American Premier Soccer League)</strong> &mdash; a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.</li>` +
-          `</ul>` +
-          `<p>Our competitive squads (Fall 2026):</p>` +
-          `<ul>` +
-            `<li><strong>APSL</strong></li>` +
-            `<li><strong>Liga 1</strong></li>` +
-            `<li><strong>Liga 2</strong></li>` +
-          `</ul>` +
-          `<p><strong>Lighthouse League</strong> is our in-house program at the Lighthouse fields &mdash; for members who want a <strong>local, low-to-no-travel soccer experience</strong>, and for anyone not selected to a competitive squad. <strong>We don't cut members.</strong></p>`;
-        teamsBlockText =
-          `TEAMS:\n` +
-          `Trials have begun for the U.S. Open Cup, APSL 1st Team, and U.S. National Amateur Cup. Join the Men's Club to be considered.\n` +
-          `  • U.S. Open Cup — the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination — MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.\n` +
-          `  • U.S. National Amateur Cup — U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.\n` +
-          `  • APSL (American Premier Soccer League) — a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.\n\n` +
-          `Our competitive squads (Fall 2026):\n` +
-          `  • APSL\n` +
-          `  • Liga 1\n` +
-          `  • Liga 2\n\n` +
-          `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n`;
-      } else if (c.isWomensClub) {
-        // Women's Club: same theme as Men's Club — lead with competitive
-        // squads, frame Lighthouse League as low-to-no-travel option AND
-        // as the home for anyone not selected to a competitive squad.
-        // "We don't cut members" mirrors mens copy.
-        teamsBlockHtml =
-          `<h3>Teams</h3>` +
-          `<p>Our competitive squads (Fall 2026):</p>` +
-          `<ul>` +
-            `<li><strong>U23 Women</strong> (USASA)</li>` +
-            `<li><strong>Tri County Women</strong></li>` +
-          `</ul>` +
-          `<p><strong>Lighthouse League</strong> is our in-house program at the Lighthouse fields &mdash; for members who want a <strong>local, low-to-no-travel soccer experience</strong>, and for anyone not selected to a competitive squad. <strong>We don't cut members.</strong></p>`;
-        teamsBlockText =
-          `TEAMS:\n` +
-          `Our competitive squads (Fall 2026):\n` +
-          `  • U23 Women (USASA)\n` +
-          `  • Tri County Women\n\n` +
-          `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n`;
-      }
-
-      const laDescHtml =
-        `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game <strong>affordable, accessible, local, and high-quality</strong> for every family in our community.</p>` +
-        `<p>Our history speaks to that quality. Lighthouse teams have won <strong>5 U-19 national championships</strong> and sent <strong>7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics</strong> &mdash; and, more importantly, through its <strong>Boys Club, Girls Club, Men's Club, and Women's Club</strong>, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. <strong>It's a club for life in the neighborhood.</strong> Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.</p>` +
-        `<h3>Membership</h3>` +
-        `<p>For 133 years, Lighthouse has operated on a membership model to build community and belonging &mdash; because a community is stronger when it's organized together. ${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>` +
-        teamsBlockHtml +
-        `<h3>Schedule</h3>` +
-        `<ul>` +
-        practiceBlockHtml +
-        `<li><strong>Games:</strong> ${this.escapeHtml(gamesLine)}</li>` +
-        `<li><strong>Home Outdoor Facility:</strong> ${this.escapeHtml(outdoorLine)}</li>` +
-        `<li><strong>Home Indoor Facility:</strong> ${this.escapeHtml(indoorLine)}</li>` +
-        `</ul>` +
-        `<h3>Billing</h3>` +
-        `<p>Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.</p>` +
-        `<p>From then on, the normal $${monthly}/month membership is invoiced on the <strong>first Friday of each month</strong>.</p>` +
-        `<p><strong>Membership requires a valid card on file with sufficient funds</strong> so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.</p>` +
-        `<h3>Changes &amp; questions</h3>` +
-        `<p>To pause or cancel a membership, or ask a question, email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`;
-      // Plain-text fallback used when the clipboard API can't write
-      // text/html (older browsers) and when the snippet is displayed in
-      // any surface that expects plain text.  Mirrors the HTML content
-      // without markup so nothing looks broken.  Assigned to the
-      // outer-scope `laDescText` so the More info snippet can reuse it
-      // verbatim below.
-      laDescText =
-        `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community.\n\n` +
-        `Our history speaks to that quality. Lighthouse teams have won 5 U-19 national championships and sent 7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics — and, more importantly, through its Boys Club, Girls Club, Men's Club, and Women's Club, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. It's a club for life in the neighborhood. Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.\n\n` +
-        `MEMBERSHIP:\n` +
-        `For 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. ${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
-        teamsBlockText +
-        `SCHEDULE:\n` +
-        practiceBlockText +
-        `  • Games: ${gamesLine}\n` +
-        `  • Home Outdoor Facility: ${outdoorLine}\n` +
-        `  • Home Indoor Facility: ${indoorLine}\n\n` +
-        `BILLING:\n` +
-        `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
-        `From then on, the normal $${monthly}/month membership is invoiced on the first Friday of each month.\n\n` +
-        `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
-        `CHANGES & QUESTIONS:\n` +
-        `To pause or cancel a membership, or ask a question, email soccer@lighthouse1893.org.`;
+      const { html: laDescHtml, text: descText, monthly } = window.LighthouseProgramInfo.buildProgramDescription({
+        isYouth: c.isYouth,
+        isWomensClub: c.isWomensClub,
+        isMensClub: funnelLabel === "Men's Club",
+      });
+      laDescText = descText;
       snippets.push({
         id: 'la-program-description',
         label: `📋 LA Program Description ($${monthly}/mo)`,
@@ -2467,13 +2255,18 @@ class LeadsScreen extends Screen {
         const moreInfoDescText = nextPracticeLine
           ? laDescText.replace(/SCHEDULE:\n/, `SCHEDULE:\n${nextPracticeLine}`)
           : laDescText;
+        const registerLine = c.isLegacyYouth
+          ? `To register, head here:\n` +
+            `• Boys: ${c.linkBoys}\n` +
+            `• Girls: ${c.linkGirls}\n`
+          : `To register, head here: ${c.link}\n`;
         const moreInfoBody = c.isYouth
           ? (
             `Hi {first},\n` +
             `\n` +
             `Let me know any questions!\n` +
             `\n` +
-            `To register, head here: ${c.link}\n` +
+            registerLine +
             `\n` +
             `Here's the full program description:\n` +
             `\n` +

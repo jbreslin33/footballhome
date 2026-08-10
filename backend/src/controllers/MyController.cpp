@@ -3,12 +3,14 @@
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../services/SessionService.h"
+#include "../services/WebPushService.h"
 #include "../third_party/json.hpp"
 
 #include <exception>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 using nlohmann::json;
@@ -183,6 +185,31 @@ bool isMensChatMember(long long personId) {
         std::cerr << "[isMensChatMember] " << e.what() << std::endl;
         return false;
     }
+}
+
+// Every person currently eligible for the men's chat (same rule as
+// isMensChatMember, just enumerated instead of a membership check),
+// minus the sender — the push fan-out list for a new chat message.
+std::vector<long long> mensChatMemberPersonIds(long long excludePersonId) {
+    std::vector<long long> out;
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT DISTINCT person_id FROM ("
+            "  SELECT tp.person_id FROM team_persons tp "
+            "    JOIN teams t ON t.id = tp.team_id "
+            "   WHERE t.gender_category = 'mens' AND tp.removed_at IS NULL "
+            "  UNION "
+            "  SELECT u.person_id FROM admins a JOIN users u ON u.id = a.user_id "
+            ") AS members "
+            "WHERE person_id != $1::int",
+            {std::to_string(excludePersonId)});
+        out.reserve(r.size());
+        for (const auto& row : r) out.push_back(row["person_id"].as<long long>());
+    } catch (const std::exception& e) {
+        std::cerr << "[mensChatMemberPersonIds] " << e.what() << std::endl;
+    }
+    return out;
 }
 
 // users.id for caller.  chat_messages.user_id is NOT NULL, so a
@@ -364,11 +391,30 @@ Response MyController::handlePostChatMessage(const Request& request) {
             {"message",    trimmed},
             {"created_at", ins[0]["created_at"].as<std::string>()},
         };
+        std::string senderFirstName = "Someone";
         if (!meta.empty()) {
             out["author_first_name"] = meta[0]["first_name"].is_null() ? std::string{} : meta[0]["first_name"].as<std::string>();
             out["author_last_name"]  = meta[0]["last_name"].is_null()  ? std::string{} : meta[0]["last_name"].as<std::string>();
             out["person_id"]         = meta[0]["person_id"].as<long long>();
+            if (!meta[0]["first_name"].is_null()) senderFirstName = meta[0]["first_name"].as<std::string>();
         }
+
+        // Push fan-out — fire-and-forget on a detached thread so a slow
+        // or unreachable push service never delays the chat POST
+        // response. Recipients: current men's-chat membership (same
+        // rule as isMensChatMember), minus the sender.
+        {
+            const std::string pushTitle = senderFirstName + " — Men's Chat";
+            std::string pushBody = trimmed;
+            if (pushBody.size() > 160) pushBody = pushBody.substr(0, 157) + "...";
+            auto recipients = mensChatMemberPersonIds(personId);
+            std::thread([recipients, pushTitle, pushBody]() {
+                for (long long recipientId : recipients) {
+                    WebPushService::getInstance().sendToPerson(recipientId, pushTitle, pushBody, "/#my");
+                }
+            }).detach();
+        }
+
         return jsonOk(out);
     } catch (const std::exception& e) {
         std::cerr << "[POST /api/my/chat/messages] " << e.what() << std::endl;

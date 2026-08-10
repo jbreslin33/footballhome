@@ -856,7 +856,7 @@ Response AuthController::handleForgotPassword(const Request& request) {
         }
 
         // Build reset link.  PUBLIC_BASE_URL is the canonical origin (no
-        // trailing slash).  Keep in sync with EventReminderController.
+        // trailing slash).
         std::string baseUrl;
         {
             const char* env = std::getenv("PUBLIC_BASE_URL");

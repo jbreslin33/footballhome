@@ -168,6 +168,13 @@ public:
     // number of rows touched for logging.
     long long reorderTeam(int teamId, const std::vector<long long>& userIdsInOrder);
 
+    // person_id-keyed twin of reorderTeam() — see the person_id-keyed
+    // write path doc above (addAssignmentForPerson) for why. Prefer this
+    // when the caller has a request-scoped person id for every card
+    // being reordered (drag-and-drop payloads carry `personId` on each
+    // row — see BoysRoster.cpp / MensRoster.cpp shapePlayer output).
+    long long reorderTeamForPersons(int teamId, const std::vector<long long>& personIdsInOrder);
+
     const std::string& domain() const { return domain_; }
 
 private:
