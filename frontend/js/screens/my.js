@@ -305,6 +305,11 @@ class MyScreen extends Screen {
         this._onEnablePushClick();
         return;
       }
+      if (target.closest('#push-test-btn')) {
+        e.stopPropagation();
+        this._onPushTestClick();
+        return;
+      }
       // Compressed → expanded chat toggle.
       if (target.closest('#chat-expand-toggle')) {
         e.stopPropagation();
@@ -1122,6 +1127,12 @@ class MyScreen extends Screen {
                     background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
               🔔 Enable notifications
             </button>
+            <button id="push-test-btn" type="button" style="display:none; padding:2px 7px;
+                    border-radius:999px; border:1px solid rgba(255,255,255,0.16);
+                    background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;"
+                    title="Sends a test push to this device only — /api/my/push-test always targets the caller, never anyone else">
+              🔔 Send test
+            </button>
             <button id="chat-view-btn" type="button" aria-label="View chat"
                     style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16);
                            background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
@@ -1165,6 +1176,7 @@ class MyScreen extends Screen {
   // via Add to Home Screen), or ready to opt in.
   async _initPushUI() {
     const btn = this.find('#push-enable-btn');
+    const testBtn = this.find('#push-test-btn');
     if (!btn) return;
 
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -1197,6 +1209,7 @@ class MyScreen extends Screen {
         btn.style.display = '';
         btn.disabled = true;
         btn.textContent = '🔔 Notifications on';
+        if (testBtn) testBtn.style.display = '';
         return;
       }
     } catch (err) {
@@ -1238,9 +1251,31 @@ class MyScreen extends Screen {
         }),
       });
       if (btn) { btn.disabled = true; btn.textContent = '🔔 Notifications on'; }
+      const testBtn = this.find('#push-test-btn');
+      if (testBtn) testBtn.style.display = '';
     } catch (err) {
       console.error('[my] enable notifications failed:', err);
       if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable notifications'; }
+    }
+  }
+
+  // Tap handler: POSTs to /api/my/push-test, which always targets the
+  // caller's own person_id — there is no way to point this at anyone
+  // else, so it's safe to expose with no confirmation dialog.
+  async _onPushTestClick() {
+    const btn = this.find('#push-test-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      const res = await this._fetch('/api/my/push-test', { method: 'POST' });
+      const sent = res && res.sent;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = sent ? '🔔 Sent!' : '🔔 No subscription found';
+        setTimeout(() => { if (btn) btn.textContent = '🔔 Send test'; }, 3000);
+      }
+    } catch (err) {
+      console.error('[my] push test failed:', err);
+      if (btn) { btn.disabled = false; btn.textContent = '🔔 Send test'; }
     }
   }
 

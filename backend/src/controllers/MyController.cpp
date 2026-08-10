@@ -243,6 +243,8 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     // prefix is "/api/my".
     router.get (prefix + "/chat/messages",  [this](const Request& r) { return handleGetChatMessages(r); });
     router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
+    router.post(prefix + "/events/push-remind", [this](const Request& r) { return handlePushRemind(r); });
+    router.post(prefix + "/push-test", [this](const Request& r) { return handlePushTest(r); });
 }
 
 // GET /api/my/chat/messages?since_id=<int>
@@ -418,6 +420,113 @@ Response MyController::handlePostChatMessage(const Request& request) {
         return jsonOk(out);
     } catch (const std::exception& e) {
         std::cerr << "[POST /api/my/chat/messages] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /api/my/events/push-remind — {fh_event_id, person_id}
+Response MyController::handlePushRemind(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    long long callerPersonId = gate.session->personId;
+    if (auto err = applyImpersonation(request, callerPersonId, /*allowImpersonation=*/false, &callerPersonId))
+        return *err;
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON"); }
+
+    long long fhEventId = 0, targetPersonId = 0;
+    if (body.contains("fh_event_id") && body["fh_event_id"].is_number_integer())
+        fhEventId = body["fh_event_id"].get<long long>();
+    if (body.contains("person_id") && body["person_id"].is_number_integer())
+        targetPersonId = body["person_id"].get<long long>();
+    if (fhEventId <= 0 || targetPersonId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id and person_id required");
+    }
+
+    try {
+        auto* db = Database::getInstance();
+
+        // Same gate as CalendarController::isEventCoachOrAdmin (club
+        // admin, or a coach of one of the event's teams) — duplicated
+        // here rather than shared across controllers, same call as
+        // that function's own doc comment on why.
+        auto canRemindRows = db->query(
+            "SELECT ("
+            "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.person_id = $2::int)"
+            "  OR EXISTS ("
+            "    SELECT 1 FROM fh_event_teams fet "
+            "    JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
+            "    JOIN coaches co ON co.id = tc.coach_id "
+            "    WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int"
+            "  )"
+            ") AS can_remind",
+            {std::to_string(fhEventId), std::to_string(callerPersonId)});
+        if (canRemindRows.empty() || !canRemindRows[0]["can_remind"].as<bool>()) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "Only a coach or admin can send an RSVP reminder for this event");
+        }
+
+        // Target must be on the event's roster (player or coach on one
+        // of its teams) AND have no response on file yet — a stale UI
+        // can't re-ping someone who already answered, and this can't be
+        // used to push arbitrary people who aren't even on the event.
+        auto targetRows = db->query(
+            "SELECT ge.summary, fe.kind "
+            "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+            " WHERE fe.id = $1::bigint "
+            "   AND EXISTS ("
+            "     SELECT 1 FROM fh_event_teams fet "
+            "     WHERE fet.fh_event_id = fe.id AND ("
+            "       EXISTS (SELECT 1 FROM team_persons tp WHERE tp.team_id = fet.team_id "
+            "               AND tp.person_id = $2::int AND tp.removed_at IS NULL) "
+            "       OR EXISTS (SELECT 1 FROM team_coaches tc JOIN coaches co ON co.id = tc.coach_id "
+            "                  WHERE tc.team_id = fet.team_id AND tc.ended_at IS NULL AND co.person_id = $2::int) "
+            "     )"
+            "   ) "
+            "   AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps r "
+            "                    WHERE r.fh_event_id = fe.id AND r.person_id = $2::int "
+            "                      AND r.response IS NOT NULL)",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+        if (targetRows.empty()) {
+            return jsonError(HttpStatus::CONFLICT,
+                             "That person already responded, or isn't on this event's roster");
+        }
+
+        std::string eventLabel = targetRows[0]["summary"].is_null()
+            ? std::string() : targetRows[0]["summary"].as<std::string>();
+        if (eventLabel.empty()) {
+            eventLabel = targetRows[0]["kind"].is_null()
+                ? std::string("an upcoming event") : targetRows[0]["kind"].as<std::string>();
+        }
+        const std::string pushBody = "Don't forget to RSVP for " + eventLabel + "!";
+
+        const int sent = WebPushService::getInstance()
+            .sendToPerson(targetPersonId, "RSVP needed", pushBody, "/#my");
+        return jsonOk({{"sent", sent}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/my/events/push-remind] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /api/my/push-test — no body. Always targets the CALLER's own
+// person_id, never anyone else — see MyController.h doc on why this
+// has no target param at all (push-remind is the only path that can
+// reach another person, and it's coach/admin-gated).
+Response MyController::handlePushTest(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.session->personId;
+
+    try {
+        const int sent = WebPushService::getInstance().sendToPerson(
+            personId, "Test notification",
+            "Push notifications are working! 🎉", "/#my");
+        return jsonOk({{"sent", sent}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/my/push-test] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
