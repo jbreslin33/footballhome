@@ -206,6 +206,19 @@ class MyScreen extends Screen {
         if (targetScreen) this.navigation.goTo(targetScreen);
         return;
       }
+      const lineupBtn = target.closest('[data-lineup-match-id]');
+      if (lineupBtn) {
+        e.stopPropagation();
+        const matchId = parseInt(lineupBtn.getAttribute('data-lineup-match-id'), 10);
+        if (matchId) {
+          this.navigation.goTo('game-lineup', {
+            matchId,
+            title: lineupBtn.getAttribute('data-lineup-title') || '',
+            when: lineupBtn.getAttribute('data-lineup-when') || '',
+          });
+        }
+        return;
+      }
       // Attendance status button (coach/admin only — server re-checks).
       // Tapping the already-active status clears the mark instead of
       // re-sending the same status — that's the only way to undo a
@@ -971,6 +984,14 @@ class MyScreen extends Screen {
             <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
               ${this.escapeHtml(viewLabel)}
             </button>
+            ${kind === 'match' && ev.match_id ? `
+              <button type="button" data-lineup-match-id="${ev.match_id}"
+                      data-lineup-title="${this.escapeHtml(title)}"
+                      data-lineup-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
+                      style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
+                ⚽ Lineup
+              </button>
+            ` : ''}
           </div>
         </div>
         ${isExpanded ? `

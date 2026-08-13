@@ -157,8 +157,8 @@ class GameDayRosterScreen extends Screen {
         return;
       }
       if (id === 'set-starters-btn') {
-        this.navigation.context.match = this.matchDetails;
-        this.navigation.goTo('game-day-lineup');
+        const matchId = this.navigation.context.match?.id;
+        if (matchId) this.navigation.goTo('game-lineup', { matchId });
         return;
       }
 

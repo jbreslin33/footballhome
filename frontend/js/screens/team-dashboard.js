@@ -173,9 +173,8 @@ class TeamDashboardScreen extends Screen {
       // Game Day Lineup button
       const lineupBtn = e.target.closest('[data-action="lineup"]');
       if (lineupBtn) {
-        this.navigation.context.match = { id: lineupBtn.getAttribute('data-id'), title: lineupBtn.getAttribute('data-title') };
-        this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
-        this.navigation.goTo('game-day-lineup');
+        const matchId = lineupBtn.getAttribute('data-id');
+        if (matchId) this.navigation.goTo('game-lineup', { matchId, title: lineupBtn.getAttribute('data-title') || '' });
         return;
       }
 

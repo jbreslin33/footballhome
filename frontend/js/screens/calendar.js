@@ -198,7 +198,15 @@ class CalendarScreen extends Screen {
       });
       overlay.querySelector('.ea-lineup-btn').addEventListener('click', () => {
         close();
-        alert('Lineup posts aren\'t wired up yet — setting a lineup for a calendar-synced match needs its own update first. Coming later.');
+        if (!ev.match_id) {
+          alert('This match hasn\'t been linked to a lineup yet — it may be missing a team tag in the calendar sync.');
+          return;
+        }
+        this.navigation.goTo('game-lineup', {
+          matchId: ev.match_id,
+          title: s.title,
+          when: [s.dateStr, s.timeStr].filter(Boolean).join(' · '),
+        });
       });
       overlay.querySelector('.ea-result-btn').addEventListener('click', () => {
         close();

@@ -674,8 +674,36 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
     if (matchId.empty()) {
         return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Match ID is required"));
     }
-    
+
     try {
+        // Caller's team_id + isCoach — this endpoint stays readable by any
+        // player (no 401 on a missing/absent token), but the game-lineup
+        // screen needs to know whether to render edit vs. read-only.
+        pqxx::result teamRow = db_->query(
+            "SELECT home_team_id, away_team_id FROM matches WHERE id = $1", {matchId}
+        );
+        std::string teamIdForResponse = (!teamRow.empty() && !teamRow[0]["home_team_id"].is_null())
+            ? teamRow[0]["home_team_id"].c_str() : "";
+
+        bool isCoach = false;
+        std::string userId = extractUserIdFromToken(request);
+        if (!userId.empty() && !teamRow.empty()) {
+            std::string homeTeamId = teamRow[0]["home_team_id"].is_null() ? "0" : teamRow[0]["home_team_id"].c_str();
+            std::string awayTeamId = teamRow[0]["away_team_id"].is_null() ? "0" : teamRow[0]["away_team_id"].c_str();
+            pqxx::result authRows = db_->query(
+                "SELECT ("
+                "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+                "          WHERE u.id = $1::int)"
+                "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+                "             JOIN coaches co ON co.id = tc.coach_id "
+                "             JOIN users u ON u.person_id = co.person_id "
+                "             WHERE tc.team_id IN ($2::int, $3::int) AND tc.ended_at IS NULL "
+                "             AND u.id = $1::int)"
+                ") AS is_coach",
+                {userId, homeTeamId, awayTeamId});
+            isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
+        }
+
         std::string query = R"(
             SELECT ml.player_id, ml.is_starter, ml.position_id,
                    ml.slot_number, ml.zone,
@@ -699,7 +727,9 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         
         std::ostringstream json;
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
-        
+        json << "\"teamId\":" << (teamIdForResponse.empty() ? "null" : teamIdForResponse) << ",";
+        json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
+
         // Metadata
         if (!metaResult.empty()) {
             json << "\"formationId\":" << (metaResult[0]["formation_id"].is_null() ? "null" : metaResult[0]["formation_id"].c_str()) << ",";
@@ -759,16 +789,40 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
     
     try {
         std::string body = request.getBody();
-        
+
         // Get the team_id from the match
         pqxx::result matchResult = db_->query(
-            "SELECT home_team_id FROM matches WHERE id = $1", {matchId}
+            "SELECT home_team_id, away_team_id FROM matches WHERE id = $1", {matchId}
         );
         if (matchResult.empty()) {
             return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Match not found"));
         }
         std::string teamId = matchResult[0]["home_team_id"].c_str();
-        
+
+        // Coach/admin authorization — this was previously unchecked (any
+        // authenticated user, including a player, could overwrite any
+        // match's lineup). Same admins-OR-coach-of-this-team EXISTS
+        // pattern used for handleGetMatchLineup's isCoach flag above.
+        {
+            std::string homeTeamId = matchResult[0]["home_team_id"].is_null() ? "0" : matchResult[0]["home_team_id"].c_str();
+            std::string awayTeamId = matchResult[0]["away_team_id"].is_null() ? "0" : matchResult[0]["away_team_id"].c_str();
+            pqxx::result authRows = db_->query(
+                "SELECT ("
+                "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+                "          WHERE u.id = $1::int)"
+                "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+                "             JOIN coaches co ON co.id = tc.coach_id "
+                "             JOIN users u ON u.person_id = co.person_id "
+                "             WHERE tc.team_id IN ($2::int, $3::int) AND tc.ended_at IS NULL "
+                "             AND u.id = $1::int)"
+                ") AS is_coach",
+                {userId, homeTeamId, awayTeamId});
+            bool isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
+            if (!isCoach) {
+                return Response(HttpStatus::FORBIDDEN, createJsonResponse(false, "Not authorized to edit this match's lineup"));
+            }
+        }
+
         // Parse formation and roster size
         int formationId = parseJsonInt(body, "formationId", 0);
         int rosterSize = parseJsonInt(body, "rosterSize", 20);

@@ -59,6 +59,7 @@ class App {
       clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
       clubDetail: new ClubDetailScreen(this.navigation, this.auth),
       gameDayLineup: new GameDayLineupScreen(this.navigation, this.auth),
+      gameLineup: new GameLineupScreen(this.navigation, this.auth),
       teamHub: new TeamHubScreen(this.navigation, this.auth),
       matchSocial: new MatchSocialScreen(this.navigation, this.auth),
       socialSchedule: new SocialScheduleScreen(this.navigation, this.auth),
@@ -140,6 +141,7 @@ class App {
     this.screenManager.register('club-directory', this.screens.clubDirectory);
     this.screenManager.register('club-detail', this.screens.clubDetail);
     this.screenManager.register('game-day-lineup', this.screens.gameDayLineup);
+    this.screenManager.register('game-lineup', this.screens.gameLineup);
     this.screenManager.register('team-hub', this.screens.teamHub);
     this.screenManager.register('match-social', this.screens.matchSocial);
     this.screenManager.register('social-schedule', this.screens.socialSchedule);

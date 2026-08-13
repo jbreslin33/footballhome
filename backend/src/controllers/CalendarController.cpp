@@ -405,6 +405,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 COALESCE(fe.kind, 'other') AS kind,
                 fe.category,
                 fe.is_home,
+                fe.match_id,
                 fe.opponent,
                 -- Opponent crest: gcal_opponent_aliases (migration 258)
                 -- first — the hand-seeded, unambiguous mapping from
@@ -741,6 +742,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["kind"]              = row["kind"].c_str();
             ev["category"]          = textOrNull(row, "category");
             ev["is_home"]           = boolOrNull(row, "is_home");
+            ev["match_id"]          = longLongOrNull(row, "match_id");
             ev["opponent"]          = textOrNull(row, "opponent");
             ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");
             ev["fh_notes"]          = textOrNull(row, "fh_notes");

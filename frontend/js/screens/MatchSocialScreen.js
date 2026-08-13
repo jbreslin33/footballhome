@@ -65,7 +65,7 @@ class MatchSocialScreen extends Screen {
         this.navigation.context.match = match;
         this.navigation.context.lineupTeamId = this.team?.id || '';
 
-        if (screen === 'game-day-roster' || screen === 'game-day-lineup') {
+        if (screen === 'game-day-roster' || screen === 'game-day-lineup' || screen === 'game-lineup') {
           this.navigation.goTo(screen, { matchId });
         } else if (screen === 'match-form') {
           this.navigation.goTo(screen, { mode: 'edit', matchId });
@@ -168,7 +168,7 @@ class MatchSocialScreen extends Screen {
       const typeConfig = {
         pre_match_announcement: { icon: '📢', color: '#3b82f6', nav: 'match-list', label: 'Match List' },
         game_day:               { icon: '⚽', color: '#f59e0b', nav: 'game-day-roster', label: 'Game Day Roster' },
-        lineup:                 { icon: '📋', color: '#8b5cf6', nav: 'game-day-lineup', label: 'Lineup Page' },
+        lineup:                 { icon: '📋', color: '#8b5cf6', nav: 'game-lineup', label: 'Lineup Page' },
         post_game:              { icon: '🏆', color: '#22c55e', nav: 'match-form', label: 'Match Form' }
       };
 
