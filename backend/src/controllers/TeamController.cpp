@@ -1,4 +1,5 @@
 #include "TeamController.h"
+#include "../core/Crypto.h"
 #include <sstream>
 #include <regex>
 #include <iostream>
@@ -37,6 +38,12 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
     // Remove player from roster
     router.del(prefix + "/:teamId/roster/:playerId", [this](const Request& request) {
         return this->handleRemoveRosterMember(request);
+    });
+
+    // Set/clear a player's starter/bench-eligible designation for this team
+    //   body: { "lineupRole": "starter" | "bench" | null }
+    router.put(prefix + "/:teamId/roster/:playerId/lineup-role", [this](const Request& request) {
+        return this->handleSetLineupRole(request);
     });
     
     // Get team accolades
@@ -226,6 +233,66 @@ Response TeamController::handleUpdateRosterMember(const Request& request) {
     }
 }
 
+// PUT /api/teams/:teamId/roster/:playerId/lineup-role
+// Coach/admin-only manual "starter eligible / bench eligible" designation,
+// edited on the fly from the game-lineup screen. See migration 279.
+Response TeamController::handleSetLineupRole(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        std::string player_id = extractPlayerIdFromPath(request.getPath());
+        if (team_id.empty() || player_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid team ID or player ID"));
+        }
+
+        std::string userId = extractUserIdFromToken(request);
+        if (userId.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Authentication required"));
+        }
+
+        pqxx::result authRows = db_->query(
+            "SELECT ("
+            "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.id = $1::int)"
+            "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+            "             JOIN coaches co ON co.id = tc.coach_id "
+            "             JOIN users u ON u.person_id = co.person_id "
+            "             WHERE tc.team_id = $2::int AND tc.ended_at IS NULL AND u.id = $1::int)"
+            ") AS is_coach",
+            {userId, team_id});
+        bool isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
+        if (!isCoach) {
+            return Response(HttpStatus::FORBIDDEN, createJSONResponse(false, "Not authorized to edit this team's roster"));
+        }
+
+        std::string body = request.getBody();
+        std::string lineupRole;
+        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"(starter|bench)")rx");
+        std::smatch m;
+        bool hasRole = std::regex_search(body, m, roleRegex);
+        if (hasRole) lineupRole = m[1].str();
+        // Absence of a matched value (including explicit null) clears the flag.
+
+        pqxx::result result = db_->query(
+            "UPDATE team_persons SET lineup_role = NULLIF($1, '') "
+            "WHERE team_id = $2::int "
+            "  AND person_id = (SELECT person_id FROM players WHERE id = $3::int) "
+            "  AND removed_at IS NULL "
+            "RETURNING id",
+            {hasRole ? lineupRole : std::string(), team_id, player_id}
+        );
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Roster entry not found"));
+        }
+
+        std::string data = "{\"playerId\":" + player_id + ",\"lineupRole\":" +
+            (hasRole ? "\"" + lineupRole + "\"" : "null") + "}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "Lineup role updated", data));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleSetLineupRole: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update lineup role"));
+    }
+}
+
 Response TeamController::handleRemoveRosterMember(const Request& request) {
     try {
         std::string team_id = extractTeamIdFromPath(request.getPath());
@@ -325,6 +392,35 @@ std::string TeamController::extractTeamIdGeneric(const std::string& path) {
 bool TeamController::hasBearerToken(const Request& request) {
     std::string h = request.getHeader("Authorization");
     return !h.empty() && h.substr(0, 7) == "Bearer ";
+}
+
+std::string TeamController::extractUserIdFromToken(const Request& request) {
+    std::string auth_header = request.getHeader("Authorization");
+    if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") return "";
+
+    std::string token = auth_header.substr(7);
+
+    if (token.find('.') != std::string::npos) {
+        size_t first_dot = token.find('.');
+        size_t second_dot = token.find('.', first_dot + 1);
+        if (first_dot != std::string::npos && second_dot != std::string::npos) {
+            std::string payload = fh::crypto::base64UrlDecode(token.substr(first_dot + 1, second_dot - first_dot - 1));
+            std::regex user_id_regex(R"re("userId"\s*:\s*"([^"]+)")re");
+            std::smatch match;
+            if (std::regex_search(payload, match, user_id_regex)) {
+                return match[1].str();
+            }
+        }
+    }
+
+    if (token.length() > 4 && token.substr(0, 4) == "jwt_") {
+        size_t last_underscore = token.rfind('_');
+        if (last_underscore != std::string::npos && last_underscore > 4) {
+            return token.substr(4, last_underscore - 4);
+        }
+    }
+
+    return "";
 }
 
 std::string TeamController::extractTeamIdForLiveMatch(const std::string& path) {

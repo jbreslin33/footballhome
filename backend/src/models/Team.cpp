@@ -140,7 +140,8 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  r.jersey_number, "
             "  pos.name as position, "
             "  (r.removed_at IS NULL) as is_active, "
-            "  DATE(r.joined_at) as joined_date "
+            "  DATE(r.joined_at) as joined_date, "
+            "  r.lineup_role "
             "FROM team_persons r "
             "JOIN persons pe ON pe.id = r.person_id "
             "JOIN players pl ON pl.person_id = pe.id "
@@ -189,6 +190,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"showInRsvp\":true,";
             json << "\"showInOfficialRoster\":true,";
             json << "\"joinedDate\":\"" << joined_date << "\",";
+            json << "\"lineupRole\":" << (row["lineup_role"].is_null() ? "null" : "\"" + row["lineup_role"].as<std::string>() + "\"") << ",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
             
@@ -239,6 +241,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"showInRsvp\":true,";
             json << "\"showInOfficialRoster\":true,";
             json << "\"joinedDate\":\"\",";
+            json << "\"lineupRole\":null,";
             json << "\"roleType\":\"COACH\"";
             json << "}";
             

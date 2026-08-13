@@ -9,9 +9,17 @@
 //
 // Backend surface:
 //   GET /api/eligibility/lineup/:matchId → { success, data: {
-//     matchId, teamId, isCoach, lineup: [{playerId, zone, firstName, lastName, ...}] } }
-//   GET /api/teams/:teamId/roster        → { success, data: [{id, name, roleType}, ...] }
+//     matchId, teamId, isCoach, rosterStats: [{playerId, practicesAttended,
+//     practicesRecentTotal, practicesProjected, practicesUpcomingTotal,
+//     gameRsvp}], lineup: [{playerId, zone, firstName, lastName, ...}] } }
+//     rosterStats is coach-only (empty array for players) — see migration
+//     278 (fh_events<->matches bridge) for why this reads fh_events/
+//     fh_event_attendance/fh_event_rsvps instead of the old chat_events path.
+//   GET /api/teams/:teamId/roster        → { success, data: [{id, name,
+//     roleType, lineupRole}, ...] }
 //   PUT /api/eligibility/lineup/:matchId → same shape lineups.js already writes
+//   PUT /api/teams/:teamId/roster/:playerId/lineup-role → { lineupRole: 'starter'|'bench'|null }
+//     coach/admin-only manual starter/bench-eligible designation (migration 279)
 //
 // Reached via navigation.goTo('game-lineup', { matchId, title, when }) —
 // title/when are optional, already-sanitized display strings (never pass a
@@ -24,8 +32,9 @@ class GameLineupScreen extends Screen {
     this.when      = '';
     this.teamId    = null;
     this.isCoach   = false;
-    this.roster    = [];   // [{id:Number, name}] — PLAYER rows only
+    this.roster    = [];   // [{id:Number, name, lineupRole}] — PLAYER rows only
     this.zones     = new Map(); // playerId:Number -> 'starter'|'bench'|'alternate'
+    this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
     this.error     = null;
     this._saveTimer = null;
@@ -72,6 +81,13 @@ class GameLineupScreen extends Screen {
         const playerId = Number(zoneBtn.getAttribute('data-player-id'));
         const zone = zoneBtn.getAttribute('data-lineup-zone-btn');
         this._toggleZone(playerId, zone);
+        return;
+      }
+      const roleBtn = e.target.closest('[data-lineup-role-btn]');
+      if (roleBtn && this.isCoach) {
+        const playerId = Number(roleBtn.getAttribute('data-player-id'));
+        const role = roleBtn.getAttribute('data-lineup-role-btn');
+        this._setLineupRole(playerId, role);
       }
     });
   }
@@ -99,6 +115,10 @@ class GameLineupScreen extends Screen {
           this.zones.set(Number(row.playerId), row.zone);
         }
       }
+      this.stats = new Map();
+      for (const row of (lineupData.data.rosterStats || [])) {
+        this.stats.set(Number(row.playerId), row);
+      }
 
       if (this.teamId) {
         const rosterRes = await this.auth.fetch(`/api/teams/${this.teamId}/roster`);
@@ -106,7 +126,7 @@ class GameLineupScreen extends Screen {
         const arr = Array.isArray(rosterData?.data) ? rosterData.data : [];
         this.roster = arr
           .filter(p => p.roleType === 'PLAYER')
-          .map(p => ({ id: Number(p.id), name: p.name || '(unnamed)' }));
+          .map(p => ({ id: Number(p.id), name: p.name || '(unnamed)', lineupRole: p.lineupRole || null }));
       } else {
         this.roster = [];
       }
@@ -161,6 +181,31 @@ class GameLineupScreen extends Screen {
     }
   }
 
+  // Coach-set "starter eligible" / "bench eligible" designation — a plain
+  // manual flag on team_persons (migration 279), separate from this
+  // match's zone assignment. Tapping the active role again clears it.
+  async _setLineupRole(playerId, role) {
+    const player = this.roster.find(p => p.id === playerId);
+    if (!player || !this.teamId) return;
+    const nextRole = player.lineupRole === role ? null : role;
+    const prevRole = player.lineupRole;
+    player.lineupRole = nextRole;
+    this._render();
+    try {
+      const res = await this.auth.fetch(`/api/teams/${this.teamId}/roster/${playerId}/lineup-role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineupRole: nextRole }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Save failed');
+    } catch (err) {
+      console.error('[game-lineup] lineup-role save failed:', err);
+      player.lineupRole = prevRole;
+      this._render();
+    }
+  }
+
   _render() {
     const box = this.find('#gl-body');
     if (!box) return;
@@ -201,10 +246,46 @@ class GameLineupScreen extends Screen {
         }).join('')}
       </div>`;
 
+    const roleButtons = (p) => `
+      <div style="display:flex; gap:4px;">
+        ${['starter', 'bench'].map(r => {
+          const active = p.lineupRole === r;
+          const label = r === 'starter' ? 'Elig: Start' : 'Elig: Bench';
+          return `<button type="button" data-lineup-role-btn="${r}" data-player-id="${p.id}"
+            class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}"
+            style="padding:1px 6px; font-size:0.68rem; opacity:${active ? '1' : '0.7'};">${label}</button>`;
+        }).join('')}
+      </div>`;
+
+    const rsvpBadge = (rsvp) => {
+      if (rsvp === 'yes') return '<span title="RSVP: Going" style="color:#22c55e;">✓</span>';
+      if (rsvp === 'no') return '<span title="RSVP: Not going" style="color:#ef4444;">✗</span>';
+      if (rsvp === 'maybe') return '<span title="RSVP: Maybe" style="opacity:0.7;">?</span>';
+      return '<span title="No RSVP yet" style="opacity:0.4;">–</span>';
+    };
+
+    const statsLine = (playerId) => {
+      const s = this.stats.get(playerId);
+      if (!s) return '';
+      return `<div style="font-size:0.68rem; opacity:0.65; margin-top:2px;">
+        Practices ${s.practicesAttended}/${s.practicesRecentTotal}
+        ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
+        · Game ${rsvpBadge(s.gameRsvp)}
+      </div>`;
+    };
+
     const playerRow = (p) => `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
-        <span style="font-size:0.9em;">${this.escapeHtml(p.name)}</span>
-        ${this.isCoach ? zoneButtons(p.id) : ''}
+      <div style="padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:0.9em;">${this.escapeHtml(p.name)}</span>
+          ${this.isCoach ? zoneButtons(p.id) : ''}
+        </div>
+        ${this.isCoach ? `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px;">
+            ${statsLine(p.id)}
+            ${roleButtons(p)}
+          </div>
+        ` : ''}
       </div>`;
 
     const section = (label, players) => `

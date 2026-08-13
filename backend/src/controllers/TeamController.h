@@ -20,6 +20,7 @@ private:
     Response handleGetDivisionStandings(const Request& request);
     Response handleUpdateRosterMember(const Request& request);
     Response handleRemoveRosterMember(const Request& request);
+    Response handleSetLineupRole(const Request& request);
     Response handleGetTeamAccolades(const Request& request);
     Response handleSetLiveMatch(const Request& request);
     Response handleGetShareInfo(const Request& request);
@@ -30,4 +31,5 @@ private:
     std::string extractTeamIdGeneric(const std::string& path);
     std::string extractTeamIdForLiveMatch(const std::string& path);
     bool hasBearerToken(const Request& request);
+    std::string extractUserIdFromToken(const Request& request);
 };

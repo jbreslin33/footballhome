@@ -84,6 +84,81 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
         }
 
+        // Roster stats (practice attendance/projection + this match's RSVP),
+        // computed against the CURRENT calendar system (fh_events/
+        // fh_event_attendance/fh_event_rsvps) — coach-only, internal info.
+        // Keyed by player_id so the frontend can merge it onto the roster
+        // fetched separately from /api/teams/:teamId/roster.
+        std::ostringstream statsJson;
+        statsJson << "[";
+        if (isCoach && !teamIdForResponse.empty()) {
+            pqxx::result statsRows = db_->query(R"(
+                WITH match_event AS (
+                    SELECT fe.id AS fh_event_id, ge.starts_at
+                    FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                    WHERE fe.match_id = $1::int
+                    LIMIT 1
+                ),
+                team_practice_events AS (
+                    SELECT fe.id AS fh_event_id, fe.kind, fe.category, ge.starts_at
+                    FROM fh_events fe
+                    JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                    JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+                    WHERE fet.team_id = $2::int
+                      AND fe.kind IN ('practice', 'pickup')
+                ),
+                recent_practices AS (
+                    SELECT tpe.fh_event_id
+                    FROM team_practice_events tpe, match_event me
+                    WHERE tpe.starts_at < me.starts_at
+                    ORDER BY tpe.starts_at DESC
+                    LIMIT 5
+                ),
+                upcoming_practices AS (
+                    SELECT tpe.fh_event_id, tpe.kind, tpe.category
+                    FROM team_practice_events tpe, match_event me
+                    WHERE tpe.starts_at >= now() AND tpe.starts_at < me.starts_at
+                )
+                SELECT pl.id AS player_id,
+                       (SELECT count(*) FROM recent_practices) AS recent_total,
+                       (SELECT count(*) FROM fh_event_attendance fea
+                          WHERE fea.person_id = pe.id
+                            AND fea.fh_event_id IN (SELECT fh_event_id FROM recent_practices)
+                            AND fea.status IN ('present', 'late')) AS practices_attended,
+                       (SELECT count(*) FROM upcoming_practices) AS upcoming_total,
+                       (SELECT count(*) FROM upcoming_practices up
+                          WHERE COALESCE(
+                              (SELECT r.response FROM fh_event_rsvps r
+                                 WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id),
+                              (SELECT rr.response FROM fh_recurring_rsvps rr
+                                 WHERE rr.person_id = pe.id AND rr.active
+                                   AND rr.kind = up.kind
+                                   AND rr.category IS NOT DISTINCT FROM up.category)
+                          ) = 'yes') AS practices_projected,
+                       (SELECT r.response FROM fh_event_rsvps r, match_event me
+                          WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp
+                FROM team_persons tp
+                JOIN persons pe ON pe.id = tp.person_id
+                JOIN players pl ON pl.person_id = pe.id
+                WHERE tp.team_id = $2::int AND tp.removed_at IS NULL
+            )", {matchId, teamIdForResponse});
+
+            bool firstStat = true;
+            for (const auto& row : statsRows) {
+                if (!firstStat) statsJson << ",";
+                firstStat = false;
+                statsJson << "{";
+                statsJson << "\"playerId\":" << row["player_id"].c_str() << ",";
+                statsJson << "\"practicesAttended\":" << row["practices_attended"].c_str() << ",";
+                statsJson << "\"practicesRecentTotal\":" << row["recent_total"].c_str() << ",";
+                statsJson << "\"practicesProjected\":" << row["practices_projected"].c_str() << ",";
+                statsJson << "\"practicesUpcomingTotal\":" << row["upcoming_total"].c_str() << ",";
+                statsJson << "\"gameRsvp\":" << (row["game_rsvp"].is_null() ? "null" : "\"" + std::string(row["game_rsvp"].c_str()) + "\"");
+                statsJson << "}";
+            }
+        }
+        statsJson << "]";
+
         std::string query = R"(
             SELECT ml.player_id, ml.is_starter, ml.position_id,
                    ml.slot_number, ml.zone,
@@ -109,6 +184,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
         json << "\"teamId\":" << (teamIdForResponse.empty() ? "null" : teamIdForResponse) << ",";
         json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
+        json << "\"rosterStats\":" << statsJson.str() << ",";
 
         // Metadata
         if (!metaResult.empty()) {
