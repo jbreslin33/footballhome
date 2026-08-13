@@ -65,7 +65,7 @@ class MatchSocialScreen extends Screen {
         this.navigation.context.match = match;
         this.navigation.context.lineupTeamId = this.team?.id || '';
 
-        if (screen === 'game-day-roster' || screen === 'game-day-lineup' || screen === 'game-lineup') {
+        if (screen === 'game-day-roster' || screen === 'game-lineup') {
           this.navigation.goTo(screen, { matchId });
         } else if (screen === 'match-form') {
           this.navigation.goTo(screen, { mode: 'edit', matchId });

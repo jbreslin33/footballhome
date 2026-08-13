@@ -5,70 +5,6 @@
 #include <vector>
 #include <string>
 
-// Represents the resolved eligibility policy for a given scope
-struct EligibilityPolicy {
-    int id;
-    int lookback_count;
-    int min_sessions_to_start;
-    int priority_starter_sessions;
-    int priority_starter_slots;
-    bool game_counts_as_session;
-    bool pickup_counts_as_session;
-    int keeper_discount;
-};
-
-// Eligibility status categories
-enum class EligibilityStatus {
-    PRIORITY_STARTER,   // Met priority_starter_sessions threshold
-    ELIGIBLE_STARTER,   // Met min_sessions_to_start threshold
-    BENCH_ONLY,         // Some attendance but below starter threshold
-    INELIGIBLE          // Zero attendance or below minimum
-};
-
-// Per-player eligibility result
-struct PlayerEligibility {
-    int player_id;
-    std::string first_name;
-    std::string last_name;
-    std::string jersey_number;
-    std::string position;
-    std::string photo_url;
-    bool is_keeper;
-    bool is_child;
-    bool is_designated;
-    int  num_clubs;
-    bool is_coach;               // True if person has an active team_coaches row for this team
-    std::string internal_role;   // coach_assessments.status for this team (empty if none)
-    bool is_injured;             // player_availability: 'injured' active record exists
-    bool is_suspended_league;    // player_availability: 'suspended_league' active record
-    bool is_suspended_inhouse;   // player_availability: 'suspended_inhouse' active record
-    // Eligibility (sourced from player_eligibilities table)
-    bool elig_apsl_starter;
-    bool elig_apsl_bench;
-    bool elig_liga1_starter;
-    bool elig_liga1_bench;
-    bool elig_liga2_starter;
-    bool elig_liga2_bench;
-    int sessions_in_window;
-    int sessions_attended;
-    int projected_sessions;        // sessions_attended + future RSVP "yes" count
-    int effective_min_sessions;    // After family discount
-    EligibilityStatus status;
-    EligibilityStatus projected_status;  // Status if player attends future RSVP'd sessions
-    std::string match_rsvp;       // "yes", "no", or ""
-    bool on_lineup;
-    bool is_starter;
-    std::string lineup_zone;       // "starter", "bench", "alternate", or ""
-    bool on_official_roster;       // true if on the specific team's league roster
-    bool is_lighthouse_registered; // manual registration checkbox override
-    bool is_paid_up_to_date;       // manual paid checkbox override
-    int person_id;
-    std::string date_of_birth;     // ISO date string "YYYY-MM-DD" or ""
-    std::string payment_status;    // LeagueApps payment status string or ""
-    int required_sessions;         // final required sessions (age-derived or override)
-    int required_sessions_override; // -1 = not set (use age rule)
-};
-
 class EligibilityController : public Controller {
 private:
     Database* db_;
@@ -78,50 +14,12 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
-    // Eligibility computation
-    Response handleGetMatchEligibility(const Request& request);
-    
-    // Policy management
-    Response handleGetTeamPolicy(const Request& request);
-    Response handleUpdateTeamPolicy(const Request& request);
-    
     // Lineup management
     Response handleGetMatchLineup(const Request& request);
     Response handleSaveMatchLineup(const Request& request);
     Response handleGetLineupMetadata(const Request& request);
     Response handleSaveLineupMetadata(const Request& request);
-    
-    // Player attendance
-    Response handleGetPlayerAttendance(const Request& request);
-    Response handleUpdatePlayerAttendance(const Request& request);
 
-    // Player flags (designated, numClubs, hasFamilyDiscount, jerseyNumber)
-    Response handleUpdatePlayerFlags(const Request& request);
-
-    // Person DOB update
-    Response handleUpdatePersonDob(const Request& request);
-    
-    // Helper: resolve cascading policy
-    EligibilityPolicy resolvePolicy(const std::string& matchId, 
-                                     const std::string& teamId, 
-                                     const std::string& clubId);
-    
-    // Helper: get recent session IDs in lookback window
-    std::vector<int> getRecentSessionIds(const std::string& teamId, 
-                                          const std::string& clubId,
-                                          const std::string& matchDate, 
-                                          int lookbackCount,
-                                          bool gameCountsAsSession,
-                                          bool pickupCountsAsSession);
-    
-    // Helper: classify eligibility
-    EligibilityStatus classifyEligibility(int sessionsAttended, 
-                                           int effectiveMinSessions,
-                                           int priorityStarterSessions);
-    
-    // Helper: status to string
-    std::string statusToString(EligibilityStatus status);
-    
     // Path/JSON helpers
     std::string extractIdFromPath(const std::string& path, const std::string& pattern);
     std::string extractUserIdFromToken(const Request& request);

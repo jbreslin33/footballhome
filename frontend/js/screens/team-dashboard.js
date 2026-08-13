@@ -217,14 +217,19 @@ class TeamDashboardScreen extends Screen {
         return;
       }
 
-      // Open Lineup without pre-selecting a match — the lineup screen
-      // will auto-resolve to the team's next/live match and let the coach
-      // override via the in-header match picker.
+      // Open Lineup without pre-selecting a match — resolves to the
+      // team's next upcoming match from the already-loaded schedule.
       const openLineupBtn = e.target.closest('[data-action="open-next-lineup"]');
       if (openLineupBtn) {
-        this.navigation.context.match = null;
-        this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
-        this.navigation.goTo('game-day-lineup');
+        const now = Date.now();
+        const upcoming = (this.scheduleMatches || [])
+          .filter(m => m.event_date && new Date(m.event_date).getTime() >= now)
+          .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+        if (upcoming[0]) {
+          this.navigation.goTo('game-lineup', { matchId: upcoming[0].id, title: upcoming[0].title || '' });
+        } else {
+          alert('No upcoming match found for this team.');
+        }
         return;
       }
 
@@ -334,6 +339,7 @@ class TeamDashboardScreen extends Screen {
   }
   
   renderSchedule(matches) {
+    this.scheduleMatches = matches;
     const sortedMatches = [...matches].sort((a, b) => {
       const aTime = new Date(a.event_date).getTime();
       const bTime = new Date(b.event_date).getTime();
