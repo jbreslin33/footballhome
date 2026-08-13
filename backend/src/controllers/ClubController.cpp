@@ -268,7 +268,7 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             select = "SELECT sp.id, sp.principle_id, sp.slug, sp.title, sp.definition, sp.sort_order, sp.is_active FROM club_game_model_sub_principles sp JOIN club_game_model_principles pr ON pr.id = sp.principle_id JOIN club_game_model_phases p ON p.id = pr.phase_id JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = $1::int ORDER BY sp.sort_order, sp.id";
         } else if (entity == "exercises") {
             table = "club_game_model_exercises";
-            select = "SELECT id, slug, title, summary, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
+            select = "SELECT id, slug, title, description, diagram_text, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
         } else if (entity == "practices") {
             table = "club_game_model_practices";
             select = "SELECT pr.id, pr.fh_event_id, pr.day_id, pr.notes, ge.summary AS event_summary, "
@@ -367,7 +367,8 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             } else if (entity == "exercises") {
                 json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
                 json << ",\"title\":" << "\"" << escapeJson(row["title"].c_str()) << "\"";
-                json << ",\"summary\":" << (row["summary"].is_null() ? "null" : "\"" + escapeJson(row["summary"].c_str()) + "\"");
+                json << ",\"description\":" << (row["description"].is_null() ? "null" : "\"" + escapeJson(row["description"].c_str()) + "\"");
+                json << ",\"diagram_text\":" << (row["diagram_text"].is_null() ? "null" : "\"" + escapeJson(row["diagram_text"].c_str()) + "\"");
                 json << ",\"setup\":" << (row["setup"].is_null() ? "null" : "\"" + escapeJson(row["setup"].c_str()) + "\"");
                 json << ",\"coaching_points\":" << (row["coaching_points"].is_null() ? "null" : "\"" + escapeJson(row["coaching_points"].c_str()) + "\"");
                 json << ",\"min_players\":" << (row["min_players"].is_null() ? "null" : std::to_string(row["min_players"].as<int>()));
@@ -444,9 +445,9 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
         std::string body = request.getBody();
         std::string slug = "";
         std::string title = "";
-        std::string summary = "";
         std::string label = "";
         std::string description = "";
+        std::string diagram_text = "";
         std::string setup = "";
         std::string coaching_points = "";
         std::string simulator_slug = "";
@@ -506,9 +507,9 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
         id = parse_int("id");
         slug = parse_value("slug");
         title = parse_value("title");
-        summary = parse_value("summary");
         label = parse_value("label");
         description = parse_value("description");
+        diagram_text = parse_value("diagram_text");
         setup = parse_value("setup");
         coaching_points = parse_value("coaching_points");
         simulator_slug = parse_value("simulator_slug");
@@ -590,9 +591,9 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
             std::string max_players_sql = has_max_players ? std::to_string(max_players) : "NULL";
             std::string default_duration_sql = has_default_duration_minutes ? std::to_string(default_duration_minutes) : "NULL";
             if (id > 0) {
-                query << "UPDATE club_game_model_exercises SET slug = '" << escapeJson(slug) << "', title = '" << escapeJson(title) << "', summary = '" << escapeJson(summary) << "', setup = '" << escapeJson(setup) << "', coaching_points = '" << escapeJson(coaching_points) << "', min_players = " << min_players_sql << ", max_players = " << max_players_sql << ", default_duration_minutes = " << default_duration_sql << ", simulator_slug = '" << escapeJson(simulator_slug) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
+                query << "UPDATE club_game_model_exercises SET slug = '" << escapeJson(slug) << "', title = '" << escapeJson(title) << "', description = '" << escapeJson(description) << "', diagram_text = '" << escapeJson(diagram_text) << "', setup = '" << escapeJson(setup) << "', coaching_points = '" << escapeJson(coaching_points) << "', min_players = " << min_players_sql << ", max_players = " << max_players_sql << ", default_duration_minutes = " << default_duration_sql << ", simulator_slug = '" << escapeJson(simulator_slug) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
             } else {
-                query << "INSERT INTO club_game_model_exercises (club_game_model_id, slug, title, summary, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(summary) << "', '" << escapeJson(setup) << "', '" << escapeJson(coaching_points) << "', " << min_players_sql << ", " << max_players_sql << ", " << default_duration_sql << ", '" << escapeJson(simulator_slug) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_game_model_id, slug) DO UPDATE SET title = EXCLUDED.title, summary = EXCLUDED.summary, setup = EXCLUDED.setup, coaching_points = EXCLUDED.coaching_points, min_players = EXCLUDED.min_players, max_players = EXCLUDED.max_players, default_duration_minutes = EXCLUDED.default_duration_minutes, simulator_slug = EXCLUDED.simulator_slug, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
+                query << "INSERT INTO club_game_model_exercises (club_game_model_id, slug, title, description, diagram_text, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(description) << "', '" << escapeJson(diagram_text) << "', '" << escapeJson(setup) << "', '" << escapeJson(coaching_points) << "', " << min_players_sql << ", " << max_players_sql << ", " << default_duration_sql << ", '" << escapeJson(simulator_slug) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_game_model_id, slug) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, diagram_text = EXCLUDED.diagram_text, setup = EXCLUDED.setup, coaching_points = EXCLUDED.coaching_points, min_players = EXCLUDED.min_players, max_players = EXCLUDED.max_players, default_duration_minutes = EXCLUDED.default_duration_minutes, simulator_slug = EXCLUDED.simulator_slug, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
             }
         } else if (entity == "session_exercises") {
             if (session_id <= 0 || exercise_id <= 0) {
@@ -745,8 +746,9 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
         }
         std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
 
-        // Optional "role": "diagram" | "summary" — anything else (absent,
-        // null, unrecognized) falls back to the plain gallery (NULL role).
+        // Optional "role": "diagram" | "description" — anything else
+        // (absent, null, unrecognized) falls back to the plain gallery
+        // (NULL role).
         std::string role;
         size_t roleKeyPos = body.find("\"role\"");
         if (roleKeyPos != std::string::npos) {
@@ -755,7 +757,7 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
             size_t roleQuoteEnd = (roleQuoteStart == std::string::npos) ? std::string::npos : body.find('"', roleQuoteStart + 1);
             if (roleColon != std::string::npos && roleQuoteStart != std::string::npos && roleQuoteEnd != std::string::npos) {
                 std::string candidate = body.substr(roleQuoteStart + 1, roleQuoteEnd - roleQuoteStart - 1);
-                if (candidate == "diagram" || candidate == "summary") {
+                if (candidate == "diagram" || candidate == "description") {
                     role = candidate;
                 }
             }
@@ -800,7 +802,7 @@ Response ClubController::handleUploadExerciseImage(const Request& request) {
 
 // Shared by handleUploadExerciseImage and handleExerciseDescriptionOcr — both
 // persist a photo to the same club_game_model_exercise_images table.
-// role == "diagram" or "summary" replaces that exercise's existing photo of
+// role == "diagram" or "description" replaces that exercise's existing photo of
 // the same role (at most one of each, enforced by the partial unique index
 // from migration 260); role == "" lands in the plain gallery alongside any
 // number of other untagged photos.
@@ -1292,7 +1294,7 @@ Response ClubController::handleGetClubGameModel(const Request& request) {
 
                     std::string session_exercises_query = R"(
                         SELECT se.id, se.player_count, se.duration_minutes, se.notes, se.sort_order,
-                               e.id AS exercise_id, e.slug, e.title, e.summary AS exercise_summary,
+                               e.id AS exercise_id, e.slug, e.title, e.description AS exercise_description,
                                e.setup, e.coaching_points, e.simulator_slug
                         FROM club_game_model_session_exercises se
                         JOIN club_game_model_exercises e ON e.id = se.exercise_id
@@ -1312,7 +1314,7 @@ Response ClubController::handleGetClubGameModel(const Request& request) {
                         plan_json << "\"id\":" << exercise_id << ",";
                         plan_json << "\"slug\":" << "\"" << escapeJson(exercise_row["slug"].c_str()) << "\"" << ",";
                         plan_json << "\"title\":" << "\"" << escapeJson(exercise_row["title"].c_str()) << "\"" << ",";
-                        plan_json << "\"summary\":" << (exercise_row["exercise_summary"].is_null() ? "null" : "\"" + escapeJson(exercise_row["exercise_summary"].c_str()) + "\"") << ",";
+                        plan_json << "\"description\":" << (exercise_row["exercise_description"].is_null() ? "null" : "\"" + escapeJson(exercise_row["exercise_description"].c_str()) + "\"") << ",";
                         plan_json << "\"setup\":" << (exercise_row["setup"].is_null() ? "null" : "\"" + escapeJson(exercise_row["setup"].c_str()) + "\"") << ",";
                         plan_json << "\"coaching_points\":" << (exercise_row["coaching_points"].is_null() ? "null" : "\"" + escapeJson(exercise_row["coaching_points"].c_str()) + "\"") << ",";
                         plan_json << "\"simulator_slug\":" << (exercise_row["simulator_slug"].is_null() ? "null" : "\"" + escapeJson(exercise_row["simulator_slug"].c_str()) + "\"") << ",";
@@ -1452,7 +1454,7 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             JOIN leagues l ON s.league_id = l.id
             LEFT JOIN team_persons r ON r.team_id = t.id
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
-            WHERE t.club_id = )" + std::to_string(club_id) + genderFilter + R"(
+            WHERE t.club_id = )" + std::to_string(club_id) + R"( AND t.is_active = true)" + genderFilter + R"(
             GROUP BY t.id, t.name, t.is_pool, d.name, s.name, l.name
             ORDER BY l.name, d.name, t.name
         )";

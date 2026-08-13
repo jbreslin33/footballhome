@@ -23,6 +23,7 @@ class App {
       coachHome: new CoachHomeScreen(this.navigation, this.auth),
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
       contextSelection: new ContextSelectionScreen(this.navigation, this.auth),
+      clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
       divisionSelection: new DivisionSelectionScreen(this.navigation, this.auth),
       divisionMenu: new DivisionMenuScreen(this.navigation, this.auth),
       divisionManagement: new DivisionManagementScreen(this.navigation, this.auth),
@@ -104,6 +105,7 @@ class App {
     this.screenManager.register('coach-home', this.screens.coachHome);
     this.screenManager.register('marketing-home', this.screens.marketingHome);
     this.screenManager.register('context-selection', this.screens.contextSelection);
+    this.screenManager.register('club-selection', this.screens.clubSelection);
     this.screenManager.register('division-selection', this.screens.divisionSelection);
     this.screenManager.register('division-menu', this.screens.divisionMenu);
     this.screenManager.register('division-management', this.screens.divisionManagement);

@@ -285,7 +285,7 @@ class SocialPostCard {
           const boxScore = this.parseScorersBoxScore(this.scorersText);
           if (boxScore) statsLines = '\n\n' + boxScore;
         }
-        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}${leagueLine}\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer #MatchResult`;
+        return `${result}\n\n${homeName} ${hs} - ${as} ${awayName}${leagueLine}\n📅 ${dateStr}\n📍 ${venue}${statsLines}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer`;
       }
       default:
         return '';

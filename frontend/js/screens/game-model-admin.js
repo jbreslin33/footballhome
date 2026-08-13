@@ -37,8 +37,9 @@ class GameModelAdminScreen extends Screen {
   }
 
   onEnter(params) {
-    this.clubId = params?.clubId;
-    this.clubName = params?.clubName || 'Club';
+    const requestedClubId = params?.clubId ?? params?.club?.id ?? 134;
+    this.clubId = Number.isFinite(Number(requestedClubId)) ? Number(requestedClubId) : 134;
+    this.clubName = params?.clubName || (this.clubId === 134 ? 'Lighthouse' : 'Club');
     const validEntities = [
       'days', 'phases', 'principles', 'sub_principles', 'exercises',
       'practices', 'session_exercises',
@@ -477,11 +478,11 @@ class GameModelAdminScreen extends Screen {
           : '—';
         const images = (this.parentOptions.exercise_images || []).filter((img) => img.exercise_id === item.id);
         const diagramImg = images.find((img) => img.role === 'diagram');
-        const summaryImg = images.find((img) => img.role === 'summary');
-        const galleryImages = images.filter((img) => img.role !== 'diagram' && img.role !== 'summary');
+        const descriptionImg = images.find((img) => img.role === 'description');
+        const galleryImages = images.filter((img) => img.role !== 'diagram' && img.role !== 'description');
         const thumbHtml = (img) => `<img src="${this.escapeHtml(img.image_url)}" alt="" data-lightbox-src="${this.escapeHtml(img.image_url)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;vertical-align:middle;border:1px solid var(--border-color);cursor:zoom-in;">`;
-        const diagramCell = diagramImg ? thumbHtml(diagramImg) : '—';
-        const summaryCell = `${item.summary ? this.escapeHtml(item.summary) : ''}${summaryImg ? `${item.summary ? '<br>' : ''}${thumbHtml(summaryImg)}` : ''}` || '—';
+        const diagramCell = `${item.diagram_text ? this.escapeHtml(item.diagram_text) : ''}${diagramImg ? `${item.diagram_text ? '<br>' : ''}${thumbHtml(diagramImg)}` : ''}` || '—';
+        const descriptionCell = `${item.description ? this.escapeHtml(item.description) : ''}${descriptionImg ? `${item.description ? '<br>' : ''}${thumbHtml(descriptionImg)}` : ''}` || '—';
         const photosCell = galleryImages.length
           ? `${thumbHtml(galleryImages[0])}${galleryImages.length > 1 ? ` +${galleryImages.length - 1}` : ''}`
           : '—';
@@ -492,7 +493,7 @@ class GameModelAdminScreen extends Screen {
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(item.slug || '—')}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(players)}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${this.escapeHtml(duration)}</td>
-            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${summaryCell}</td>
+            <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${descriptionCell}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">${photosCell}</td>
             <td style="padding: 0.7rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
               <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
@@ -515,7 +516,7 @@ class GameModelAdminScreen extends Screen {
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Slug</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Players</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Duration</th>
-              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Summary</th>
+              <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Description</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Photos</th>
               <th style="text-align:left; padding:0.7rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.12);">Actions</th>
             </tr>
@@ -556,7 +557,7 @@ class GameModelAdminScreen extends Screen {
   renderItem(item) {
     const id = item.id;
     let label = item.title || item.label || item.name || item.slug || 'Untitled';
-    let subtitle = item.summary || item.description || item.definition || item.notes || '';
+    let subtitle = item.description || item.definition || item.notes || '';
     const meta = [];
     if (item.slug) meta.push(`slug: ${item.slug}`);
     if (item.day_of_week != null) meta.push(`day: ${this.getDayOfWeekLabel(item.day_of_week)}`);
@@ -661,8 +662,8 @@ class GameModelAdminScreen extends Screen {
 
   // Photos live on a child table (club_game_model_exercise_images) keyed
   // by exercise_id, so a brand-new exercise has nowhere to attach a photo
-  // to until it's been saved once and has a real id. Diagram/summary are
-  // singleton roles (uploading again replaces the existing one); the
+  // to until it's been saved once and has a real id. Diagram/description
+  // are singleton roles (uploading again replaces the existing one); the
   // gallery below is the untagged, unlimited-count leftover.
   renderExercisePhotosSection(exerciseId) {
     if (exerciseId == null) {
@@ -679,8 +680,8 @@ class GameModelAdminScreen extends Screen {
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
     const diagramImg = images.find((img) => img.role === 'diagram');
-    const summaryImg = images.find((img) => img.role === 'summary');
-    const galleryImages = images.filter((img) => img.role !== 'diagram' && img.role !== 'summary');
+    const descriptionImg = images.find((img) => img.role === 'description');
+    const galleryImages = images.filter((img) => img.role !== 'diagram' && img.role !== 'description');
 
     const renderRoleSlot = (label, helpText, role, image) => `
       <div style="display:grid; gap:var(--space-2);">
@@ -709,8 +710,8 @@ class GameModelAdminScreen extends Screen {
 
     return `
       <div style="display:grid; gap:var(--space-4);">
-        ${renderRoleSlot('Diagram', 'The at-a-glance photo shown wherever this exercise is listed.', 'diagram', diagramImg)}
-        ${renderRoleSlot('Summary photo', 'Stands in for (or supplements) the Summary text below.', 'summary', summaryImg)}
+        ${renderRoleSlot('Diagram photo', 'Stands in for (or supplements) the Diagram Notes text above — the at-a-glance visual shown wherever this exercise is listed.', 'diagram', diagramImg)}
+        ${renderRoleSlot('Description photo', 'Stands in for (or supplements) the Description text below.', 'description', descriptionImg)}
         <div style="display:grid; gap:var(--space-2);">
           <span style="font-weight:600;">Other photos</span>
           ${galleryThumbs ? `<div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">${galleryThumbs}</div>` : '<div style="opacity:0.7; font-size:0.9rem;">No other photos yet.</div>'}
@@ -725,7 +726,7 @@ class GameModelAdminScreen extends Screen {
   }
 
   // Photo-of-text -> OCR -> drops the transcribed text into whichever
-  // description-ish textarea the coach picks (summary/setup/coaching
+  // textarea the coach picks (diagram notes/description/setup/coaching
   // points). Doesn't touch the DB itself and never disables the target
   // textarea, so the coach can freely edit the result afterward — same
   // "save this exercise first" gate as photos, since the backend route
@@ -744,7 +745,8 @@ class GameModelAdminScreen extends Screen {
         <span style="font-weight:600;">Read description from photo</span>
         <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
           <select data-ocr-target-field style="padding:0.5rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
-            <option value="summary">Summary</option>
+            <option value="diagram_text">Diagram Notes</option>
+            <option value="description">Description</option>
             <option value="setup">Setup</option>
             <option value="coaching_points">Coaching Points</option>
           </select>
@@ -761,7 +763,7 @@ class GameModelAdminScreen extends Screen {
   async handleExerciseDescriptionOcrSelect(file) {
     const statusEl = this.find('[data-exercise-description-ocr-status]');
     const targetSelect = this.find('[data-ocr-target-field]');
-    const targetKey = targetSelect ? targetSelect.value : 'summary';
+    const targetKey = targetSelect ? targetSelect.value : 'description';
     try {
       if (statusEl) statusEl.textContent = 'Reading photo…';
       const dataUrl = await this.resizeImageForUpload(file, 2000, 0.92);
@@ -1012,7 +1014,8 @@ class GameModelAdminScreen extends Screen {
         return [
           { key: 'slug', label: 'Slug', value: base.slug || '', type: 'text' },
           { key: 'title', label: 'Title', value: base.title || '', type: 'text' },
-          { key: 'summary', label: 'Summary', value: base.summary || '', type: 'textarea' },
+          { key: 'diagram_text', label: 'Diagram Notes', value: base.diagram_text || '', type: 'textarea' },
+          { key: 'description', label: 'Description', value: base.description || '', type: 'textarea' },
           { key: 'setup', label: 'Setup', value: base.setup || '', type: 'textarea' },
           { key: 'coaching_points', label: 'Coaching Points', value: base.coaching_points || '', type: 'textarea' },
           { key: 'min_players', label: 'Min Players', value: base.min_players != null ? base.min_players : '', type: 'number' },

@@ -50,7 +50,11 @@ void AuthController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix + "/coach/teams", [this](const Request& request) {
         return this->handleCoachTeams(request);
     });
-    
+
+    router.get(prefix + "/coach/clubs", [this](const Request& request) {
+        return this->handleCoachClubs(request);
+    });
+
     router.get(prefix + "/player/teams", [this](const Request& request) {
         return this->handlePlayerTeams(request);
     });
@@ -524,6 +528,68 @@ Response AuthController::handleCoachTeams(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ AuthController::handleCoachTeams error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve coach teams");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+// GET /api/auth/coach/clubs
+//   Distinct clubs the logged-in coach has an active team in — the
+//   same board_sort_order/is_active gate as handleCoachTeams (a coach
+//   "has" a club only via teams that actually show up on the rosters
+//   boards). Drives the coach-home club resolution: role-selection
+//   skips straight to coach-home when this returns exactly one club
+//   (the common case today — everyone coaches at Lighthouse), and
+//   routes through a club-selection picker when it returns more than
+//   one.
+Response AuthController::handleCoachClubs(const Request& request) {
+    try {
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
+        }
+
+        std::string sql = "SELECT DISTINCT c.id, c.name "
+                          "FROM coaches co "
+                          "JOIN team_coaches tc ON co.id = tc.coach_id "
+                          "JOIN teams t ON tc.team_id = t.id "
+                          "JOIN clubs c ON t.club_id = c.id "
+                          "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
+                          "  AND t.board_sort_order IS NOT NULL "
+                          "  AND t.is_active = true "
+                          "ORDER BY c.name";
+
+        pqxx::result result = db_->query(sql, {user_id});
+
+        auto jsonEscape = [](const std::string& s) {
+            std::string out;
+            out.reserve(s.size() + 2);
+            for (char c : s) {
+                switch (c) {
+                    case '"':  out += "\\\""; break;
+                    case '\\': out += "\\\\"; break;
+                    default:   out += c;
+                }
+            }
+            return out;
+        };
+
+        std::ostringstream clubs_json;
+        clubs_json << "[";
+        bool first = true;
+        for (auto row : result) {
+            if (!first) clubs_json << ",";
+            first = false;
+            clubs_json << "{\"id\":" << row["id"].as<int>() << ","
+                      << "\"name\":\"" << jsonEscape(row["name"].as<std::string>()) << "\"}";
+        }
+        clubs_json << "]";
+
+        std::string json = createJSONResponse(true, "Coach clubs retrieved successfully", clubs_json.str());
+        return Response(HttpStatus::OK, json);
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ AuthController::handleCoachClubs error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve coach clubs");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }

@@ -37,8 +37,9 @@ class PracticePlanScreen extends Screen {
   }
 
   onEnter(params) {
-    this.clubId = params?.clubId ?? params?.club?.id ?? null;
-    this.clubName = params?.clubName || 'Club';
+    const requestedClubId = params?.clubId ?? params?.club?.id ?? 134;
+    this.clubId = Number.isFinite(Number(requestedClubId)) ? Number(requestedClubId) : 134;
+    this.clubName = params?.clubName || (this.clubId === 134 ? 'Lighthouse' : 'Club');
     this.selectedDayKey = null;
 
     this.find('#practice-plan-title').textContent = `${this.clubName} · Practice Plans`;
@@ -419,7 +420,7 @@ class PracticePlanScreen extends Screen {
                   ${thumbMarkup}
                   <div style="min-width: 0;">
                     <div style="font-weight: 500;">${this.escapeHtml(ex?.title || 'Exercise')}</div>
-                    <div style="opacity: 0.7; font-size: 0.85rem;">${this.escapeHtml(ex?.summary || '')}</div>
+                    <div style="opacity: 0.7; font-size: 0.85rem;">${this.escapeHtml(ex?.description || '')}</div>
                   </div>
                 </div>
                 <button class="btn btn-danger btn-sm" type="button" data-delete-exercise data-session-exercise-id="${se.id}" style="flex-shrink:0;">Remove</button>
@@ -466,7 +467,7 @@ class PracticePlanScreen extends Screen {
     dropdown.innerHTML = filtered.map((ex) => `
       <div data-exercise-option data-session-id="${sessionId}" data-exercise-id="${ex.id}" style="padding: var(--space-2); border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: background 0.2s;">
         <div style="font-weight: 500;">${this.escapeHtml(ex.title)}</div>
-        <div style="opacity: 0.7; font-size: 0.85rem;">${this.escapeHtml(ex.summary || '')}</div>
+        <div style="opacity: 0.7; font-size: 0.85rem;">${this.escapeHtml(ex.description || '')}</div>
       </div>
     `).join('');
 

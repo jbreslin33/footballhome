@@ -49,7 +49,10 @@ class CoachHomeScreen extends Screen {
     return div;
   }
 
-  onEnter() {
+  onEnter(params) {
+    this.clubId = params?.clubId ?? null;
+    this.clubName = params?.clubName || 'Club';
+
     const renderInto = (elId, tiles) => {
       const el = this.find(elId);
       if (!el) return;
@@ -79,11 +82,12 @@ class CoachHomeScreen extends Screen {
     ];
     renderInto('#section-rosters', rosterTiles);
 
+    const clubParams = { clubId: this.clubId, clubName: this.clubName };
     const gameModelTiles = [
-      { id: 'game-model', target: 'game-model', params: {}, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
-      { id: 'practice-plans', target: 'practice-plan', params: {}, icon: '📋', label: 'Practice Plans', description: 'Open the weekly day-by-day practice-plan view' },
-      { id: 'game-model-days', target: 'game-model-admin', params: { entity: 'days' }, icon: '🗓️', label: 'Days', description: 'Create and edit the weekly day structure' },
-      { id: 'game-model-exercises', target: 'game-model-admin', params: { entity: 'exercises' }, icon: '🏋️', label: 'Exercises', description: 'Manage the drills and activities used in sessions' },
+      { id: 'game-model', target: 'game-model', params: { ...clubParams }, icon: '🧠', label: 'Game Model', description: 'Open the club’s live game-model view from the database' },
+      { id: 'practice-plans', target: 'practice-plan', params: { ...clubParams }, icon: '📋', label: 'Practice Plans', description: 'Open the weekly day-by-day practice-plan view' },
+      { id: 'game-model-days', target: 'game-model-admin', params: { ...clubParams, entity: 'days' }, icon: '🗓️', label: 'Days', description: 'Create and edit the weekly day structure' },
+      { id: 'game-model-exercises', target: 'game-model-admin', params: { ...clubParams, entity: 'exercises' }, icon: '🏋️', label: 'Exercises', description: 'Manage the drills and activities used in sessions' },
     ];
     renderInto('#section-game-model', gameModelTiles);
 

@@ -357,7 +357,8 @@ class CalendarScreen extends Screen {
       const scorers = (overlay.querySelector('#rf-scorers').value || '')
         .split('\n').map(l => l.trim()).filter(Boolean);
 
-      const result = ourScore > theirScore ? '🟢 WIN' : ourScore < theirScore ? '🔴 LOSS' : '🟡 DRAW';
+      const resultLabel = ourScore > theirScore ? 'WIN' : ourScore < theirScore ? 'LOSS' : 'DRAW';
+      const result = { WIN: '🟢 WIN', LOSS: '🔴 LOSS', DRAW: '🟡 DRAW' }[resultLabel];
       const opponent = s.subtitle ? s.subtitle.replace(/^vs\s*/i, '') : 'Opponent';
       const lines = [
         result,
@@ -370,12 +371,24 @@ class CalendarScreen extends Screen {
         lines.push('');
         scorers.forEach(sc => lines.push(`⚽ ${sc}`));
       }
-      lines.push('', '#Lighthouse1893 #PhillySoccer #MatchResult');
+      lines.push('', '#Lighthouse1893 #PhillySoccer');
 
       close();
       this.navigation.context.contentPrefill = {
         title: `Result - ${s.badge || 'Lighthouse'} ${ourScore}-${theirScore} ${opponent}`,
         caption: lines.join('\n'),
+        resultGraphic: {
+          result: resultLabel,
+          ourName: s.teamName || s.badge || 'Lighthouse',
+          ourLogo: s.teamLogo,
+          ourScore,
+          opponent,
+          opponentLogo: s.opponentLogo,
+          theirScore,
+          dateStr: s.dateStr,
+          location: s.location,
+          scorers,
+        },
       };
       this.navigation.goTo('content-posts', {});
     });

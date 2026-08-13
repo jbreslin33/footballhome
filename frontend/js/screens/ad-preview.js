@@ -14,6 +14,7 @@ class AdPreviewScreen extends Screen {
         <div id="ap-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading ads…</div>
         <div id="ap-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="ap-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No ads found.</div>
+        <div id="ap-pills"   style="display:none; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap:wrap;"></div>
         <div id="ap-list"    style="display:none; display: flex; flex-direction: column; gap: var(--space-5);"></div>
       </div>
     `;
@@ -24,9 +25,17 @@ class AdPreviewScreen extends Screen {
   onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
+    this.allAds   = [];
+    this.filter   = 'all';
 
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) this.navigation.goBack();
+      const pill = e.target.closest('.ap-pill');
+      if (pill) {
+        this.filter = pill.dataset.status;
+        this.renderPills();
+        this.renderList();
+      }
     });
 
     this.loadAds();
@@ -36,6 +45,7 @@ class AdPreviewScreen extends Screen {
     this.find('#ap-loading').style.display = 'block';
     this.find('#ap-error').style.display   = 'none';
     this.find('#ap-list').style.display    = 'none';
+    this.find('#ap-pills').style.display   = 'none';
     this.find('#ap-empty').style.display   = 'none';
 
     try {
@@ -50,9 +60,18 @@ class AdPreviewScreen extends Screen {
         return;
       }
 
-      const list = this.find('#ap-list');
-      list.style.display = 'flex';
-      list.innerHTML = ads.map(ad => this.renderAdCard(ad)).join('');
+      // Default sort: newest created first, regardless of status —
+      // status filtering (below) is a separate axis from ordering.
+      // Ads with no created_time (shouldn't normally happen) sort last.
+      this.allAds = [...ads].sort((a, b) => {
+        const ta = a.created_time ? Date.parse(a.created_time) : 0;
+        const tb = b.created_time ? Date.parse(b.created_time) : 0;
+        return tb - ta;
+      });
+      this.filter = 'all';
+
+      this.renderPills();
+      this.renderList();
     } catch (err) {
       this.find('#ap-loading').style.display = 'none';
       this.find('#ap-error').style.display   = 'block';
@@ -60,13 +79,115 @@ class AdPreviewScreen extends Screen {
     }
   }
 
+  // Classify an ad by `effective_status` — the real delivery state Meta
+  // computes from ad + adset + campaign together — rather than the ad's
+  // own `status` field, which stays ACTIVE even when its adset or
+  // campaign is paused (i.e. it isn't actually delivering). Falls back
+  // to `status` only if Meta ever omits effective_status.
+  // Bucket is what pills/filtering key off; label/color drive the badge.
+  classify(ad) {
+    const es = ad.effective_status || ad.status || 'OTHER';
+    if (es === 'ACTIVE') {
+      return { bucket: 'ACTIVE', label: '● LIVE', color: '#22c55e' };
+    }
+    if (es === 'PAUSED' || es === 'CAMPAIGN_PAUSED' || es === 'ADSET_PAUSED') {
+      // Show *why* it's not delivering when it's not a plain ad-level pause.
+      const reason = es === 'CAMPAIGN_PAUSED' ? 'CAMPAIGN PAUSED'
+                   : es === 'ADSET_PAUSED'    ? 'ADSET PAUSED'
+                   : 'PAUSED';
+      return { bucket: 'PAUSED', label: `⏸ ${reason}`, color: '#f59e0b' };
+    }
+    if (['PENDING_REVIEW', 'PREAPPROVED', 'PENDING_BILLING_INFO', 'IN_PROCESS'].includes(es)) {
+      return { bucket: 'PENDING', label: `🕓 ${es.replace(/_/g, ' ')}`, color: '#3b82f6' };
+    }
+    if (es === 'DISAPPROVED' || es === 'WITH_ISSUES') {
+      return { bucket: 'ISSUES', label: `⚠ ${es.replace(/_/g, ' ')}`, color: '#ef4444' };
+    }
+    if (es === 'ARCHIVED' || es === 'DELETED') {
+      return { bucket: 'ARCHIVED', label: `🗄 ${es}`, color: '#6b7280' };
+    }
+    return { bucket: 'OTHER', label: es, color: '#6b7280' };
+  }
+
+  // Status pills: "All" plus one per bucket actually present in the
+  // account, each with a count. There's no separate "new/draft" status
+  // in Meta's model — every ad is created PAUSED (see
+  // scripts/ads/create-ad.js) and only becomes ACTIVE when manually
+  // launched, so a freshly-built ad and a deliberately-paused old one
+  // both bucket as PAUSED here. renderAdCard() below adds a "NEW" badge
+  // (created_time-based heuristic) to tell them apart at a glance.
+  renderPills() {
+    const pillsEl = this.find('#ap-pills');
+    if (!pillsEl) return;
+
+    const bucketMeta = {
+      ACTIVE:   { label: 'Active',   color: '#22c55e' },
+      PAUSED:   { label: 'Paused',   color: '#f59e0b' },
+      PENDING:  { label: 'Pending',  color: '#3b82f6' },
+      ISSUES:   { label: 'Issues',   color: '#ef4444' },
+      ARCHIVED: { label: 'Archived', color: '#6b7280' },
+      OTHER:    { label: 'Other',    color: '#6b7280' },
+    };
+    const bucketOrder = ['ACTIVE', 'PAUSED', 'PENDING', 'ISSUES', 'ARCHIVED', 'OTHER'];
+
+    const counts = { all: this.allAds.length };
+    for (const ad of this.allAds) {
+      const b = this.classify(ad).bucket;
+      counts[b] = (counts[b] || 0) + 1;
+    }
+
+    const pills = [
+      { key: 'all', label: 'All', color: 'var(--text-secondary, #6b7280)' },
+      ...bucketOrder.filter(b => counts[b]).map(b => ({ key: b, ...bucketMeta[b] })),
+    ];
+
+    pillsEl.style.display = 'flex';
+    pillsEl.innerHTML = pills.map(p => {
+      const active = this.filter === p.key;
+      return `
+        <button type="button" class="ap-pill" data-status="${p.key}" style="
+          display:flex; align-items:center; gap:6px;
+          padding: 6px 14px; border-radius: 999px; cursor:pointer;
+          font-size:0.85rem; font-weight:600;
+          border: 1px solid ${active ? p.color : 'var(--border-color)'};
+          background: ${active ? p.color + '22' : 'transparent'};
+          color: ${active ? p.color : 'var(--text-primary)'};
+        ">
+          <span style="width:8px; height:8px; border-radius:50%; background:${p.color}; flex-shrink:0;"></span>
+          ${p.label}
+          <span style="opacity:0.6;">${counts[p.key] || 0}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  renderList() {
+    const list = this.find('#ap-list');
+    if (!list) return;
+
+    const filtered = this.filter === 'all'
+      ? this.allAds
+      : this.allAds.filter(ad => this.classify(ad).bucket === this.filter);
+
+    list.style.display = 'flex';
+    list.innerHTML = filtered.length
+      ? filtered.map(ad => this.renderAdCard(ad)).join('')
+      : `<div style="text-align:center; padding: var(--space-6); opacity:0.6;">No ads in this category.</div>`;
+  }
+
   renderAdCard(ad) {
-    const statusColor = ad.status === 'ACTIVE'  ? '#22c55e'
-                      : ad.status === 'PAUSED'  ? '#f59e0b'
-                      : '#6b7280';
-    const statusLabel = ad.status === 'ACTIVE'  ? '● LIVE'
-                      : ad.status === 'PAUSED'  ? '⏸ PAUSED'
-                      : ad.status;
+    const { bucket, label: statusLabel, color: statusColor } = this.classify(ad);
+
+    // "NEW" badge: created in the last 7 days and bucketed PAUSED — every
+    // ad starts PAUSED (see scripts/ads/create-ad.js) so this is a
+    // heuristic for "never launched yet" rather than "we paused an old
+    // one," not a real Meta status. A launched-then-repaused ad within 7
+    // days would also get this badge; acceptable since the window is short.
+    const createdMs = ad.created_time ? Date.parse(ad.created_time) : NaN;
+    const isNew = bucket === 'PAUSED' && !isNaN(createdMs) && (Date.now() - createdMs) < 7 * 24 * 60 * 60 * 1000;
+    const createdLabel = !isNaN(createdMs)
+      ? new Date(createdMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
 
     // Format body text: newlines → <br>, preserve emoji
     const bodyHtml = ad.body
@@ -184,9 +305,13 @@ class AdPreviewScreen extends Screen {
     return `
       <div style="max-width: 400px; margin: 0 auto; width: 100%;">
         <!-- Status badge -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-3);">
-          <span style="font-size:0.75rem; font-weight:600; color:${statusColor};">${statusLabel}</span>
-          <span style="font-size:0.7rem; opacity:0.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;" title="${ad.name}">${ad.name}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-3); gap: var(--space-2);">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span style="font-size:0.75rem; font-weight:600; color:${statusColor}; white-space:nowrap;">${statusLabel}</span>
+            ${isNew ? '<span style="font-size:0.65rem; font-weight:700; color:#fff; background:#3b82f6; padding:1px 7px; border-radius:999px; letter-spacing:.03em;">NEW</span>' : ''}
+            ${createdLabel ? `<span style="font-size:0.7rem; opacity:0.45; white-space:nowrap;">${createdLabel}</span>` : ''}
+          </div>
+          <span style="font-size:0.7rem; opacity:0.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:45%;" title="${ad.name}">${ad.name}</span>
         </div>
         ${facebookMockup}
         ${instagramMockup}

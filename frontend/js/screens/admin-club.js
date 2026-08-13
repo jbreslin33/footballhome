@@ -398,10 +398,10 @@ class AdminClubScreen extends Screen {
     const dayMap = new Map((days || []).map((day) => [day.id, day]));
     const exerciseMap = new Map((exercises || []).map((exercise) => [exercise.id, exercise]));
     const exerciseDiagramMap = new Map();
-    const exerciseSummaryImageMap = new Map();
+    const exerciseDescriptionImageMap = new Map();
     (exerciseImages || []).forEach((img) => {
       if (img.role === 'diagram') exerciseDiagramMap.set(img.exercise_id, img.image_url);
-      if (img.role === 'summary') exerciseSummaryImageMap.set(img.exercise_id, img.image_url);
+      if (img.role === 'description') exerciseDescriptionImageMap.set(img.exercise_id, img.image_url);
     });
     const sessionExercisesBySession = new Map();
 
@@ -470,14 +470,14 @@ class AdminClubScreen extends Screen {
                               const exercise = exerciseMap.get(link.exercise_id);
                               if (!exercise) return '';
                               const detailId = `practice-exercise-${session.id}-${exercise.id}`;
-                              const detailLines = [exercise.summary, exercise.setup, exercise.coaching_points].filter(Boolean);
-                              const summaryImageUrl = exerciseSummaryImageMap.get(exercise.id);
-                              const summaryImageMarkup = summaryImageUrl
-                                ? `<img src="${this.escapeHtml(summaryImageUrl)}" alt="" data-lightbox-src="${this.escapeHtml(summaryImageUrl)}" style="display:block; max-width:100%; width:220px; height:auto; border-radius:var(--radius-sm); border:1px solid var(--border-color); cursor:zoom-in; margin-bottom:0.4rem;">`
+                              const detailLines = [exercise.diagram_text, exercise.description, exercise.setup, exercise.coaching_points].filter(Boolean);
+                              const descriptionImageUrl = exerciseDescriptionImageMap.get(exercise.id);
+                              const descriptionImageMarkup = descriptionImageUrl
+                                ? `<img src="${this.escapeHtml(descriptionImageUrl)}" alt="" data-lightbox-src="${this.escapeHtml(descriptionImageUrl)}" style="display:block; max-width:100%; width:220px; height:auto; border-radius:var(--radius-sm); border:1px solid var(--border-color); cursor:zoom-in; margin-bottom:0.4rem;">`
                                 : '';
-                              const detailMarkup = (detailLines.length || summaryImageMarkup)
+                              const detailMarkup = (detailLines.length || descriptionImageMarkup)
                                 ? `<div id="${detailId}" style="display:none; margin-top: 0.4rem; padding: 0.6rem; border-radius: var(--radius-sm); background: rgba(255,255,255,0.04);">
-                                    ${summaryImageMarkup}
+                                    ${descriptionImageMarkup}
                                     ${detailLines.map((line) => `<div style="margin-top: 0.25rem; opacity: 0.9;">${this.escapeHtml(line)}</div>`).join('')}
                                   </div>`
                                 : `<div id="${detailId}" style="display:none; margin-top: 0.4rem; padding: 0.6rem; border-radius: var(--radius-sm); background: rgba(255,255,255,0.04);">

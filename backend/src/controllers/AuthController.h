@@ -24,6 +24,7 @@ private:
     Response handleUserRoles(const Request& request);
     Response handleUserTeams(const Request& request);
     Response handleCoachTeams(const Request& request);
+    Response handleCoachClubs(const Request& request);
     Response handlePlayerTeams(const Request& request);
     Response handleAdminContexts(const Request& request);
 

@@ -147,6 +147,7 @@ struct PreviewAd {
     std::string name;
     std::string status;       // PAUSED / ACTIVE / etc
     std::string createdTime;  // ISO 8601 from Meta
+    std::string effectiveStatus; // ACTIVE / PAUSED / CAMPAIGN_PAUSED / ADSET_PAUSED / PENDING_REVIEW / etc — the real delivery state, unlike `status` which just reflects the ad object's own configured flag even when its campaign/adset is paused.
     std::string headline;
     std::string body;
     std::string imageUrl;
@@ -158,10 +159,11 @@ struct PreviewAd {
 PreviewAd projectPreview(const json& ad,
                          const std::unordered_map<std::string, std::string>& hashToUrl) {
     PreviewAd p;
-    p.id          = strOrEmpty(dig(ad, {"id"}));
-    p.name        = strOrEmpty(dig(ad, {"name"}));
-    p.status      = strOrEmpty(dig(ad, {"status"}));
-    p.createdTime = strOrEmpty(dig(ad, {"created_time"}));
+    p.id              = strOrEmpty(dig(ad, {"id"}));
+    p.name            = strOrEmpty(dig(ad, {"name"}));
+    p.status          = strOrEmpty(dig(ad, {"status"}));
+    p.effectiveStatus = strOrEmpty(dig(ad, {"effective_status"}));
+    p.createdTime     = strOrEmpty(dig(ad, {"created_time"}));
 
     const json* creative = dig(ad, {"creative"});
     const json* linkData = dig(ad, {"creative", "object_story_spec", "link_data"});
@@ -197,10 +199,11 @@ PreviewAd projectPreview(const json& ad,
 std::string serializePreviewAd(const PreviewAd& a) {
     std::ostringstream o;
     o << '{'
-      <<  "\"id\":"           << jsStr(a.id)
-      << ",\"name\":"         << jsStr(a.name)
-      << ",\"status\":"       << jsStr(a.status)
-      << ",\"created_time\":" << jsStrOrNull(a.createdTime)
+      <<  "\"id\":"               << jsStr(a.id)
+      << ",\"name\":"             << jsStr(a.name)
+      << ",\"status\":"           << jsStr(a.status)
+      << ",\"effective_status\":" << jsStrOrNull(a.effectiveStatus)
+      << ",\"created_time\":"     << jsStrOrNull(a.createdTime)
       << ",\"headline\":"     << jsStrOrNull(a.headline)
       << ",\"body\":"         << jsStrOrNull(a.body)
       << ",\"image_url\":"    << jsStrOrNull(a.imageUrl)

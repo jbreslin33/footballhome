@@ -37,11 +37,13 @@ window.LighthouseProgramInfo = (function () {
             `<li>2nd grade and younger &mdash; Mondays &amp; Wednesdays, 4:30&ndash;5:30pm</li>` +
             `<li>3rd grade and older &mdash; Mondays, Wednesdays &amp; Fridays, 5:30&ndash;7pm</li>` +
           `</ul>` +
-        `</li>`;
+        `</li>` +
+        `<li><strong>Why multiple days:</strong> We know families are busy, so we offer practice several days a week &mdash; the goal is that every player can make at least one. There's no requirement to attend all of them; come to as many as work for your schedule.</li>`;
       practiceBlockText =
         `  • Practice:\n` +
         `      – 2nd grade and younger — Mondays & Wednesdays, 4:30–5:30pm\n` +
-        `      – 3rd grade and older — Mondays, Wednesdays & Fridays, 5:30–7pm\n`;
+        `      – 3rd grade and older — Mondays, Wednesdays & Fridays, 5:30–7pm\n` +
+        `  • Why multiple days: We know families are busy, so we offer practice several days a week — the goal is that every player can make at least one. There's no requirement to attend all of them; come to as many as work for your schedule.\n`;
       gamesLine = 'Sunday mornings to early afternoon';
     } else if (isWomensClub) {
       practiceBlockHtml = '';

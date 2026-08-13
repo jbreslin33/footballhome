@@ -104,23 +104,21 @@ class RsvpEligibilityScreen extends Screen {
       { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
       { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
       { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6', category: 'men' },
-      { id: 122, short: 'Adult',  label: 'Adult',    color: '#a78bfa', category: 'men' },
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
-      { id: 924, short: 'RES',    label: 'APSL Reserves',  color: '#60a5fa', category: 'men' },
-      { id: 925, short: 'TRI',    label: 'APSL Trialists', color: '#f97316', category: 'men' },
-      { id: 926, short: 'L1 TRI', label: 'Liga 1 Trialists', color: '#f97316', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
-      { id: 916, short: 'U8',     label: 'Boys U8',  color: '#16a34a', category: 'boys' },
-      { id: 917, short: 'U12',    label: 'Boys U12', color: '#7c3aed', category: 'boys' },
-      { id: 911, short: 'U16',    label: 'Boys U16', color: '#2563eb', category: 'boys' },
-      { id: 927, short: 'U8 TRI',  label: 'U8 Boys Trialists',  color: '#f97316', category: 'boys' },
-      { id: 928, short: 'U10 TRI', label: 'U10 Boys Trialists', color: '#f97316', category: 'boys' },
-      { id: 929, short: 'U12 TRI', label: 'U12 Boys Trialists', color: '#f97316', category: 'boys' },
+      { id: 931, short: 'U6',  label: 'U6',  color: '#ca8a04', category: 'boys' },
+      { id: 912, short: 'U8',  label: 'U8',  color: '#16a34a', category: 'boys' },
+      { id: 913, short: 'U10', label: 'U10', color: '#0891b2', category: 'boys' },
+      { id: 914, short: 'U12', label: 'U12', color: '#7c3aed', category: 'boys' },
+      { id: 932, short: 'U19', label: 'U19', color: '#be123c', category: 'boys' },
       // Phantom pool ids 918-923 (migration 232) never existed in prod;
       // dropped with the group model (migration 250).  Category-level
       // practice/pickup access now comes from tagging real teams on
       // the gcal event.
+      // 2026-08-12: consolidated to the real teams (migration 275/276) —
+      // Lighthouse Youth League/Trialists/Adult League/APSL Reserves &
+      // Trialists retired, dropped from this list.
     ];
   }
 

@@ -290,7 +290,7 @@ class RoleSelectionScreen extends Screen {
       //  eligible events via mens_team_assignments internally.)
       this.navigation.goTo('my');
     } else if (role === 'coach') {
-      this.navigation.goTo('coach-home');
+      this.loadCoachHome();
     } else if (role === 'marketing') {
       this.navigation.goTo('marketing-home');
     } else {
@@ -304,6 +304,38 @@ class RoleSelectionScreen extends Screen {
       clubId: 134,
       clubName: 'Lighthouse 1893 SC'
     });
+  }
+
+  // Resolve which club(s) this coach actually belongs to (via their
+  // active teams — /api/auth/coach/clubs) and route accordingly: skip
+  // straight to coach-home when there's exactly one, otherwise show a
+  // club picker first. Everyone coaches at Lighthouse today, so this
+  // is a one-club result in practice, but stays correct once a second
+  // club has coaches of its own.
+  async loadCoachHome() {
+    try {
+      const response = await this.auth.fetch('/api/auth/coach/clubs');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      const clubs = payload?.data || [];
+
+      if (clubs.length === 1) {
+        this.navigation.goTo('coach-home', {
+          clubId: clubs[0].id,
+          clubName: clubs[0].name,
+        });
+      } else if (clubs.length > 1) {
+        this.navigation.goTo('club-selection', {
+          clubs,
+          target: 'coach-home',
+        });
+      } else {
+        this.navigation.goTo('coach-home');
+      }
+    } catch (e) {
+      console.error('[role-selection] failed to load coach clubs:', e);
+      this.navigation.goTo('coach-home');
+    }
   }
   
   handleLogout() {

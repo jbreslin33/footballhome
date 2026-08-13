@@ -111,6 +111,19 @@ class ContentPostsScreen extends Screen {
         console.warn('[content-posts] match graphic generation failed:', err);
       }
     }
+
+    if (prefill.resultGraphic) {
+      try {
+        const dataUrl = await this.generateResultGraphicDataUrl(prefill.resultGraphic);
+        const blob = await (await fetch(dataUrl)).blob();
+        this.currentFile = new File([blob], 'result-graphic.jpg', { type: 'image/jpeg' });
+        const nameEl = this.find('#content-file-name');
+        if (nameEl) nameEl.textContent = 'Auto-generated result graphic (replace above if you have a real photo)';
+        this.updatePreview();
+      } catch (err) {
+        console.warn('[content-posts] result graphic generation failed:', err);
+      }
+    }
   }
 
   // Renders a 1080×1080 matchup graphic (team logos, VS, date/time/
@@ -162,6 +175,77 @@ class ContentPostsScreen extends Screen {
       // Let logo <img> tags finish loading before capture.
       await new Promise(resolve => setTimeout(resolve, 400));
       const canvas = await html2canvas(wrap.querySelector('#mg-render'), {
+        scale: 1, useCORS: true, allowTaint: false, backgroundColor: null, width: 1080, height: 1080,
+      });
+      return canvas.toDataURL('image/jpeg', 0.92);
+    } finally {
+      wrap.remove();
+    }
+  }
+
+  // Renders a 1080×1080 result graphic (WIN/LOSS/DRAW, score, team
+  // logos, optional scorers) off-screen via html2canvas and returns a
+  // JPEG data URL. Used as the fallback image for game-result posts
+  // when there's no real match photo to upload.
+  // cfg: { result, ourName, ourLogo, ourScore, opponent, opponentLogo,
+  //        theirScore, dateStr, location, scorers }
+  async generateResultGraphicDataUrl(cfg) {
+    if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
+
+    const resultColors = { WIN: '#22c55e', LOSS: '#ef4444', DRAW: '#f5d442' };
+    const resultColor = resultColors[cfg.result] || '#f5d442';
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed; left:-9999px; top:0;';
+    const logoBlock = (logoUrl) => logoUrl
+      ? `<img src="${logoUrl}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:contain;padding:20px;box-sizing:border-box;">`
+      : `<span style="font-size:64px;">⚽</span>`;
+    const scorers = (cfg.scorers || []).slice(0, 8);
+    const scorersHtml = scorers.length ? `
+      <div style="background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:16px 24px;width:100%;box-sizing:border-box;">
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:22px;font-weight:600;text-align:center;">
+          ${scorers.map(sc => `<div>⚽ ${this.escapeHtml(sc)}</div>`).join('')}
+        </div>
+      </div>` : '';
+    wrap.innerHTML = `
+      <div id="rg-render" style="width:1080px;height:1080px;position:relative;overflow:hidden;
+        background:linear-gradient(160deg,#1565C0 0%,#0a1628 55%,#0D47A1 100%);
+        color:white;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;box-sizing:border-box;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;
+          display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:60px 60px;">
+          <div style="font-size:40px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:${resultColor};">${this.escapeHtml(cfg.result || '')}</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:50px;width:100%;">
+            <div style="display:flex;flex-direction:column;align-items:center;width:300px;">
+              <div style="width:220px;height:220px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,0.4);overflow:hidden;flex-shrink:0;">
+                ${logoBlock(cfg.ourLogo)}
+              </div>
+              <div style="font-size:28px;font-weight:700;margin-top:18px;text-align:center;">${this.escapeHtml(cfg.ourName || 'Lighthouse')}</div>
+            </div>
+            <div style="font-size:72px;font-weight:900;letter-spacing:4px;">${this.escapeHtml(String(cfg.ourScore ?? '?'))} - ${this.escapeHtml(String(cfg.theirScore ?? '?'))}</div>
+            <div style="display:flex;flex-direction:column;align-items:center;width:300px;">
+              <div style="width:220px;height:220px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,0.4);overflow:hidden;flex-shrink:0;">
+                ${logoBlock(cfg.opponentLogo)}
+              </div>
+              <div style="font-size:28px;font-weight:700;margin-top:18px;text-align:center;">${this.escapeHtml(cfg.opponent || 'Opponent')}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;width:100%;">
+            ${scorersHtml}
+            <div style="background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:16px 24px;font-size:26px;font-weight:600;text-align:center;">
+              📅 ${this.escapeHtml(cfg.dateStr || '')}
+            </div>
+            ${cfg.location ? `<div style="background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:16px 24px;font-size:24px;font-weight:600;text-align:center;">📍 ${this.escapeHtml(cfg.location)}</div>` : ''}
+          </div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:3px;color:#f5d442;">LIGHTHOUSE 1893</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    try {
+      // Let logo <img> tags finish loading before capture.
+      await new Promise(resolve => setTimeout(resolve, 400));
+      const canvas = await html2canvas(wrap.querySelector('#rg-render'), {
         scale: 1, useCORS: true, allowTaint: false, backgroundColor: null, width: 1080, height: 1080,
       });
       return canvas.toDataURL('image/jpeg', 0.92);

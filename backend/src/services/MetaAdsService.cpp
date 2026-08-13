@@ -65,7 +65,7 @@ json MetaAdsService::fetchAdsForPreview() {
     }
 
     const std::string fields =
-        "name,status,created_time,"
+        "name,status,effective_status,created_time,"
         "creative{name,body,title,image_url,object_story_spec}";
 
     const std::string url = graphUrl(adAccountId_ + "/ads")

@@ -258,10 +258,10 @@ const ADS = {
   'apsl-trials': {
     name:    'Lighthouse APSL Trials — Fall 2026',
     imageUrl: 'https://footballhome.org/images/posts/apsl-trials-ad.png',
-    caption: `⚽ APSL TRIALS — FALL 2026\n\nOpen tryouts this summer for Lighthouse 1893's APSL squad.\nTrain with the group, compete on weekends, earn a fall roster spot.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Trials #PhillySoccer #MensSoccer`,
+    caption: `⚽ APSL TRYOUTS — FALL 2026 SEASON\n\nLighthouse 1893 is finalizing its roster for the fall APSL season.\nSemi-pro level, committed players only — regular training, real competition. Come earn one of the remaining spots.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Tryouts #PhillySoccer #MensSoccer`,
     ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=apsl-trials',
     ctaType: 'SIGN_UP',
-    defaultBudget: 5,
+    defaultBudget: 14, // raised from 5 → 14 on 2026-08-13 to match mens-club-LEADS/youth-signup
     // no defaultDays — runs until manually cancelled
     leadForm: {
       questions: [
@@ -284,15 +284,16 @@ const ADS = {
         style: 'LIST_STYLE',
         title: 'Lighthouse APSL Trials — Fall 2026',
         content: [
-          'Semi-pro adult men — Philadelphia',
+          'Semi-pro APSL — committed players only',
+          'Regular training, not a rec team',
           '199 East Erie Avenue · since 1893',
-          'Trial this summer, earn your spot for the APSL fall season.',
+          'A coach will follow up with tryout dates and next steps.',
         ],
         button_text: 'Continue',
       },
       thank_you_page: {
         title: 'Thanks — talk soon!',
-        body: "A Lighthouse 1893 coach will reach out within 24–48 hours with trial dates and next steps.",
+        body: "A Lighthouse 1893 coach will reach out within 24–48 hours with tryout dates and next steps.",
         button_type: 'VIEW_WEBSITE',
         button_text: 'Follow @lighthouse1893soccerclub',
         website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
@@ -366,14 +367,23 @@ const ADS = {
     },
   },
   'womens-club': {
-    name:    'Lighthouse Womens Club — Tri County',
-    // PAUSED 2026-06-20 — was a broken hybrid (see mens-club). Spec kept as template.
+    name:    "Lighthouse Women's Club 1895 — Tri County Womens League — LEADS",
+    // Relaunched 2026-08-13 as a proper LEADS-objective campaign — the
+    // 6/13 "womens-club" campaign (now paused) had the same broken
+    // OUTCOME_TRAFFIC + attached lead form hybrid that mens-club had
+    // before its 6/25 LEADS relaunch. Copy also softened: dropped
+    // "Open-tryout" (reads competitive/selective) for open-to-everyone
+    // framing. League is "Tri County Womens League" (not just "Tri
+    // County"), format is 11v11. Founding year is 1895 for the Women's
+    // Club specifically — distinct from the overall club's 1893 (see
+    // conversation). Gender targeting stays locked to female below —
+    // only the tone changed, not the audience.
     imageUrl: 'https://footballhome.org/images/posts/womens-club-ad.png',
-    caption: `⚽ JOIN LIGHTHOUSE WOMENS CLUB — TRI COUNTY\n\nOpen-tryout adult women's team — Tri County League. Games on Sundays.\nAll skill levels welcome. Train with the squad, compete this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #TriCounty #PhillySoccer #WomensSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=womens-club',
+    caption: `⚽ JOIN LIGHTHOUSE WOMEN'S CLUB 1895\n\nAdult women's 11v11 soccer, open to everyone — all skill levels, all backgrounds, no experience required.\nTrain with the squad, play in the Tri County Womens League this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #TriCountyWomensLeague #PhillySoccer #WomensSoccer`,
+    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_leads_2026&utm_content=womens-club',
     ctaType: 'SIGN_UP',
-    defaultBudget: 3,
-    // no defaultDays — runs until manually cancelled
+    defaultBudget: 14,
+    // no defaultDays — runs until manually cancelled (matches mens-club-LEADS)
     leadForm: {
       questions: [
         { type: 'FULL_NAME' },
@@ -393,17 +403,17 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Womens Club — Tri County',
+        title: "Lighthouse Women's Club 1895 — Tri County Womens League",
         content: [
-          'Adult open-tryout team — Tri County League',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with tryout dates, fees, and next steps.',
+          "Adult women's 11v11 soccer — open to everyone, all skill levels",
+          '199 East Erie Avenue · since 1895',
+          'A coach will follow up with season details and next steps.',
         ],
         button_text: 'Continue',
       },
       thank_you_page: {
         title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with tryout details and next steps.',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
         button_type: 'VIEW_WEBSITE',
         button_text: 'Follow @lighthouse1893soccerclub',
         website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
