@@ -63,7 +63,7 @@ class MyScreen extends Screen {
     this.chatLoaded     = false;
     this.chatSending    = false;
     this.chatError      = null;
-    this.chatPollTimer  = null;
+    this.pollTimer      = null;
     this.chatExpanded   = false;         // true → show full history; false → latest only
   }
 
@@ -115,7 +115,7 @@ class MyScreen extends Screen {
   }
 
   onExit() {
-    this._stopChatPoll();
+    this._stopPoll();
   }
 
   // ---------- bootstrap ----------
@@ -134,7 +134,7 @@ class MyScreen extends Screen {
       this._renderEvents();
       this._renderChatShell();
       await this._loadChat(/*initial*/ true);
-      this._startChatPoll();
+      this._startPoll();
       this._initPushUI().catch((err) => console.warn('[my] push UI init failed:', err));
     } catch (err) {
       console.error('[my] bootstrap failed:', err);
@@ -1387,20 +1387,46 @@ class MyScreen extends Screen {
       : { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  _startChatPoll() {
-    this._stopChatPoll();
+  // Background refetch of events + RSVPs, called from the unified poll so
+  // other players' Going/Not Going responses show up without a manual
+  // reload. Silent on failure — just keeps showing last-known data. Only
+  // re-renders when the "This Week" range is active; browsing an old-range
+  // view (_renderOldEvents) is left alone so it doesn't get yanked out from
+  // under the player mid-scroll.
+  async _refreshEvents() {
+    let upRes, standingRes;
+    try {
+      [upRes, standingRes] = await Promise.all([
+        this._fetch('/api/calendar/upcoming?days=7'),
+        this._fetch('/api/calendar/my-standing').catch(() => ({ prefs: this.standing || [] })),
+      ]);
+    } catch (err) {
+      return;
+    }
+    this.events   = upRes.events      || [];
+    this.standing = standingRes.prefs || this.standing || [];
+    if (this.eventsRange === 'current') {
+      this._renderEvents();
+    }
+  }
+
+  _startPoll() {
+    this._stopPoll();
     // Single unified poll — this is a one-screen layout, so there's no
-    // "background" vs "foreground" distinction any more.
-    this.chatPollTimer = setInterval(() => {
+    // "background" vs "foreground" distinction any more. Refreshes both
+    // chat and the events/RSVP data so other players' responses show up
+    // without a manual page reload.
+    this.pollTimer = setInterval(() => {
       if (document.hidden) return;
       this._loadChat(/*initial*/ false).catch(() => {});
+      this._refreshEvents().catch(() => {});
     }, 15000);
   }
 
-  _stopChatPoll() {
-    if (this.chatPollTimer) {
-      clearInterval(this.chatPollTimer);
-      this.chatPollTimer = null;
+  _stopPoll() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
     }
   }
 
