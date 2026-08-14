@@ -11,9 +11,12 @@
 //   GET /api/eligibility/lineup/:matchId → { success, data: {
 //     matchId, teamId, isCoach, rosterStats: [{playerId, practicesAttended,
 //     practicesRecentTotal, practicesProjected, practicesUpcomingTotal,
-//     gameRsvp, practices: [{date, attended}, ...]}], lineup: [{playerId,
-//     zone, firstName, lastName, ...}] } } — practices is the same ≤5 most
-//     recent team practices for every player, oldest first.
+//     gameRsvp, practices: [{date, future, attended}, ...]}], lineup: [{
+//     playerId, zone, firstName, lastName, ...}] } } — practices is the
+//     team's Tue-Sat practice window before this match (≤5), oldest
+//     first. future=false entries use real attendance; future=true
+//     entries (days that haven't happened yet) use RSVP/standing
+//     projection instead — attended there means "projected to go".
 //     rosterStats is coach-only (empty array for players) — see migration
 //     278 (fh_events<->matches bridge) for why this reads fh_events/
 //     fh_event_attendance/fh_event_rsvps instead of the old chat_events path.
@@ -274,8 +277,11 @@ class GameLineupScreen extends Screen {
           const d = new Date(p.date);
           const label = `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
           const bg = p.attended ? '#22c55e' : '#ef4444';
-          return `<span title="${label}: ${p.attended ? 'Present' : 'Absent'}"
-            style="background:${bg}; color:#fff; border-radius:10px; padding:1px 6px; font-size:0.62rem; white-space:nowrap;">${label}</span>`;
+          const statusText = p.future
+            ? (p.attended ? 'Projected: Going' : 'Projected: Not going / no response')
+            : (p.attended ? 'Present' : 'Absent');
+          return `<span title="${label}: ${statusText}"
+            style="background:${bg}; color:#fff; border-radius:10px; padding:1px 6px; font-size:0.62rem; white-space:nowrap; ${p.future ? 'opacity:0.75;' : ''}">${label}</span>`;
         }).join('')}
       </div>`;
     };

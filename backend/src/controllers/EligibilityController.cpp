@@ -126,6 +126,18 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     SELECT tpe.fh_event_id, tpe.kind, tpe.category
                     FROM team_practice_events tpe, match_event me
                     WHERE tpe.starts_at >= now() AND tpe.starts_at < me.starts_at
+                ),
+                -- Same Tue-Sat window as recent_practices, but NOT cut off at
+                -- now() — this is what the pill row renders, so it includes
+                -- practices that haven't happened yet (days 4-5 of a 5-day
+                -- week when "today" falls mid-week).
+                pill_window AS (
+                    SELECT tpe.fh_event_id, tpe.kind, tpe.category, tpe.starts_at
+                    FROM team_practice_events tpe, match_event me
+                    WHERE tpe.starts_at >= me.starts_at - interval '6 days'
+                      AND tpe.starts_at <  me.starts_at
+                    ORDER BY tpe.starts_at DESC
+                    LIMIT 5
                 )
                 SELECT pl.id AS player_id,
                        (SELECT count(*) FROM recent_practices) AS recent_total,
@@ -146,13 +158,31 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                        (SELECT r.response FROM fh_event_rsvps r, match_event me
                           WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
                        (SELECT json_agg(json_build_object(
-                                  'date', to_char(rp.starts_at, 'YYYY-MM-DD"T"HH24:MI:SS'),
-                                  'attended', EXISTS(
-                                      SELECT 1 FROM fh_event_attendance fea
-                                      WHERE fea.person_id = pe.id AND fea.fh_event_id = rp.fh_event_id
-                                        AND fea.status IN ('present', 'late'))
-                                ) ORDER BY rp.starts_at)
-                          FROM recent_practices rp) AS practice_pills
+                                  'date', to_char(pw.starts_at, 'YYYY-MM-DD"T"HH24:MI:SS'),
+                                  'future', pw.starts_at >= now(),
+                                  'attended', CASE WHEN pw.starts_at >= now() THEN
+                                      -- Hasn't happened yet: green if projected to go
+                                      -- (RSVP yes, falling back to standing preference
+                                      -- like practicesProjected above), red otherwise.
+                                      COALESCE(
+                                          COALESCE(
+                                              (SELECT r.response FROM fh_event_rsvps r
+                                                 WHERE r.fh_event_id = pw.fh_event_id AND r.person_id = pe.id),
+                                              (SELECT rr.response FROM fh_recurring_rsvps rr
+                                                 WHERE rr.person_id = pe.id AND rr.active
+                                                   AND rr.kind = pw.kind
+                                                   AND rr.category IS NOT DISTINCT FROM pw.category)
+                                          ) = 'yes',
+                                          false
+                                      )
+                                  ELSE
+                                      EXISTS(
+                                          SELECT 1 FROM fh_event_attendance fea
+                                          WHERE fea.person_id = pe.id AND fea.fh_event_id = pw.fh_event_id
+                                            AND fea.status IN ('present', 'late'))
+                                  END
+                                ) ORDER BY pw.starts_at)
+                          FROM pill_window pw) AS practice_pills
                 FROM team_persons tp
                 JOIN persons pe ON pe.id = tp.person_id
                 JOIN players pl ON pl.person_id = pe.id
