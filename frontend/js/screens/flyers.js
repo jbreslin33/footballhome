@@ -448,12 +448,12 @@ class FlyersScreen extends Screen {
 
   youthClubsFlyerHTML() {
     const links = window.LighthouseProgramInfo.REGISTER_LINKS;
-    const monthly = window.LighthouseProgramInfo.buildProgramDescription({ isYouth: true }).monthly;
+    const feeLabel = window.LighthouseProgramInfo.buildProgramDescription({ isYouth: true }).feeLabel;
     return this.twoQrFlyerHTML({
       title: 'Youth Soccer at Lighthouse',
       boxes: [
-        { label: 'Lighthouse Boys Club', link: links.boys, cost: `$1 to register, then $${monthly}/mo` },
-        { label: 'Lighthouse Girls Club', link: links.girls, cost: `$1 to register, then $${monthly}/mo` },
+        { label: 'Lighthouse Boys Club', link: links.boys, cost: feeLabel },
+        { label: 'Lighthouse Girls Club', link: links.girls, cost: feeLabel },
       ],
       venue: 'The Lighthouse Sports & Entertainment Complex',
     });
@@ -461,13 +461,13 @@ class FlyersScreen extends Screen {
 
   adultClubsFlyerHTML() {
     const links = window.LighthouseProgramInfo.REGISTER_LINKS;
-    const mensMonthly = window.LighthouseProgramInfo.buildProgramDescription({ isMensClub: true }).monthly;
-    const womensMonthly = window.LighthouseProgramInfo.buildProgramDescription({ isWomensClub: true }).monthly;
+    const mensFeeLabel = window.LighthouseProgramInfo.buildProgramDescription({ isMensClub: true }).feeLabel;
+    const womensFeeLabel = window.LighthouseProgramInfo.buildProgramDescription({ isWomensClub: true }).feeLabel;
     return this.twoQrFlyerHTML({
       title: 'Adult Soccer at Lighthouse',
       boxes: [
-        { label: "Lighthouse Men's Club", link: links.mens, cost: `$1 to register, then $${mensMonthly}/mo` },
-        { label: "Lighthouse Women's Club", link: links.womens, cost: `$1 to register, then $${womensMonthly}/mo` },
+        { label: "Lighthouse Men's Club", link: links.mens, cost: mensFeeLabel },
+        { label: "Lighthouse Women's Club", link: links.womens, cost: womensFeeLabel },
       ],
       venue: 'The Lighthouse Sports & Entertainment Complex',
     });

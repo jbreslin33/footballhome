@@ -52,10 +52,10 @@ class PublicProgramInfoScreen extends Screen {
     `;
   }
 
-  registerButton(label, url, monthly) {
+  registerButton(label, url, feeLabel) {
     return `
       <a href="${this.escapeHtml(url)}" target="_blank" rel="noopener" style="display:block; text-align:center; background:#f5d442; color:#0a1628; font-weight:800; font-size:16px; padding:14px 20px; border-radius:12px; text-decoration:none; margin-bottom:10px; box-sizing:border-box;">
-        ${this.escapeHtml(label)} — $1 to register, then $${this.escapeHtml(monthly)}/mo
+        ${this.escapeHtml(label)} — ${this.escapeHtml(feeLabel)}
       </a>
     `;
   }
@@ -71,8 +71,8 @@ class PublicProgramInfoScreen extends Screen {
       <h1 style="text-align:center; font-size:27px; margin:0 0 4px;">Youth Soccer at Lighthouse</h1>
       <p style="text-align:center; opacity:0.7; margin:0 0 22px;">Boys Club &amp; Girls Club — ages 5–19</p>
       <div style="margin-bottom:6px;">
-        ${this.registerButton('⚽ Register — Lighthouse Boys Club', links.boys, desc.monthly)}
-        ${this.registerButton('⚽ Register — Lighthouse Girls Club', links.girls, desc.monthly)}
+        ${this.registerButton('⚽ Register — Lighthouse Boys Club', links.boys, desc.feeLabel)}
+        ${this.registerButton('⚽ Register — Lighthouse Girls Club', links.girls, desc.feeLabel)}
       </div>
       ${this.descCard(desc.html)}
     `);
@@ -87,11 +87,11 @@ class PublicProgramInfoScreen extends Screen {
       <p style="text-align:center; opacity:0.7; margin:0 0 22px;">Men's Club &amp; Women's Club</p>
 
       <h2 style="font-size:19px; margin:0 0 10px; color:#f5d442;">Lighthouse Men's Club</h2>
-      ${this.registerButton("⚽ Register — Lighthouse Men's Club", links.mens, mens.monthly)}
+      ${this.registerButton("⚽ Register — Lighthouse Men's Club", links.mens, mens.feeLabel)}
       ${this.descCard(mens.html)}
 
       <h2 style="font-size:19px; margin:26px 0 10px; color:#f5d442;">Lighthouse Women's Club</h2>
-      ${this.registerButton("⚽ Register — Lighthouse Women's Club", links.womens, womens.monthly)}
+      ${this.registerButton("⚽ Register — Lighthouse Women's Club", links.womens, womens.feeLabel)}
       ${this.descCard(womens.html)}
     `);
   }

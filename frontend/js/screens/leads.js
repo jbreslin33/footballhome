@@ -1294,13 +1294,15 @@ class LeadsScreen extends Screen {
   //   first converts at 10-20% based on most documented youth-sports SMS data.
   //
   // Pricing (used in the Register snippet, not the first text):
-  //   • $1 to register (card capture)
-  //   • Youth / Men → $35/month
-  //   • Women       → $10/month
-  //   • Mid-month signups get a single prorated invoice for the rest of
+  //   • Youth / Men → $1 to register (card capture), then $35/month.
+  //     Mid-month signups get a single prorated invoice for the rest of
   //     the current month (calendar-day prorate on $35/mo), then normal
-  //     $35 on the first Friday of each following month.  See the LA
-  //     Program Description snippet for the full customer-facing copy.
+  //     $35 on the first Friday of each following month.
+  //   • Women       → LA registration is free (no card-on-file model).
+  //     Cost instead is a few $/game for refs (paid at the field) plus a
+  //     separate $35 registration with the Women's Tri County Soccer
+  //     League on their own site.
+  //   See the LA Program Description snippet for the full customer-facing copy.
   //
   // Per-program LeagueApps registration URLs and qualifying questions live in
   // funnelContext() below — single source of truth used by both the initial
@@ -1434,7 +1436,7 @@ class LeadsScreen extends Screen {
         practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
       },
       'Tri County Women': {
-        day:      'Sundays',
+        day: 'Sundays, late morning to early afternoon',
       },
       // U23 Women — funnel not live yet (no ads running). When launched
       // it'll mirror U23 Men (Sundays + CASA-equivalent women's league).
@@ -1561,8 +1563,11 @@ class LeadsScreen extends Screen {
       schedule:      SCHEDULES[baseLabel] || null,
       whose:         isYouth ? "your player's" : 'your',
       whoseCap:      isYouth ? "Your player's" : 'Your',
-      initialFee:    '$1',
-      pricing:       isWomensClub ? '$10/month' : '$35/month',
+      // Women's Club: LA registration itself is free; cost comes from
+      // per-game ref fees plus a separate league registration — no card-
+      // on-file / auto-charge model applies (see program-info.js).
+      initialFee:    isWomensClub ? 'Free' : '$1',
+      pricing:       isWomensClub ? 'a few $/game for refs; $35 separately on the league site' : '$35/month',
       isYouth,
       isLegacyYouth,
       isWomensClub,
@@ -1828,7 +1833,7 @@ class LeadsScreen extends Screen {
     // more-info email reply.
     let laDescText;
     {
-      const { html: laDescHtml, text: descText, monthly } = window.LighthouseProgramInfo.buildProgramDescription({
+      const { html: laDescHtml, text: descText, feeShort } = window.LighthouseProgramInfo.buildProgramDescription({
         isYouth: c.isYouth,
         isWomensClub: c.isWomensClub,
         isMensClub: funnelLabel === "Men's Club",
@@ -1836,7 +1841,7 @@ class LeadsScreen extends Screen {
       laDescText = descText;
       snippets.push({
         id: 'la-program-description',
-        label: `📋 LA Program Description ($${monthly}/mo)`,
+        label: `📋 LA Program Description (${feeShort})`,
         tier: 'program',
         subject: 'Program Description',
         html: laDescHtml,
@@ -2054,9 +2059,15 @@ class LeadsScreen extends Screen {
         id: 'register',
         label: `💳 Register (${c.initialFee})`,
         tier: 'close',
-        body:
-          `Great. To become a member of the club it's ${c.initialFee} registration on this link: ${c.link}\n` +
-          `Once you're in you can start coming to trainings and games.`,
+        body: c.isWomensClub
+          ? (
+            `Great. Registering with Lighthouse is free — register here: ${c.link}\n` +
+            `Once you're in you can start coming to trainings and games. Games run a few $ per player for refs, and you'll separately register with the Women's Tri County Soccer League for $35.`
+          )
+          : (
+            `Great. To become a member of the club it's ${c.initialFee} registration on this link: ${c.link}\n` +
+            `Once you're in you can start coming to trainings and games.`
+          ),
       });
     }
 
@@ -2283,41 +2294,14 @@ class LeadsScreen extends Screen {
           : (
             `Hi {first},\n` +
             `\n` +
-            `That's great that you want to play soccer for Lighthouse Men's Soccer Club 1893!\n` +
+            `That's great that you want to play soccer for Lighthouse ${c.isWomensClub ? "Women's" : "Men's"} Soccer Club 1893!\n` +
             `\n` +
-            `To register, head here: https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership\n` +
+            `To register, head here: ${c.link}\n` +
             `\n` +
-            `Once registered you can join in practices and games to find your appropriate place at the club.\n` +
-            `\n` +
+            (c.isWomensClub ? '' : `Once registered you can join in practices and games to find your appropriate place at the club.\n\n`) +
             `Here's the full program description:\n` +
             `\n` +
-            `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community.\n\n` +
-            `Our history speaks to that quality. Lighthouse teams have won 5 U-19 national championships and sent 7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics — and, more importantly, through its Boys Club, Girls Club, Men's Club, and Women's Club, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. It's a club for life in the neighborhood. Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.\n\n` +
-            `MEMBERSHIP:\n` +
-            `For 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. Your membership runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and your uniform. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
-            `TEAMS:\n` +
-            `Trials have begun for the U.S. Open Cup, APSL 1st Team, and U.S. National Amateur Cup. Join the Men's Club to be considered.\n` +
-            `  • U.S. Open Cup — the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination — MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.\n` +
-            `  • U.S. National Amateur Cup — U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.\n` +
-            `  • APSL (American Premier Soccer League) — a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.\n\n` +
-            `Our competitive squads (Fall 2026):\n` +
-            `  • APSL\n` +
-            `  • Liga 1\n` +
-            `  • Liga 2\n\n` +
-            `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n` +
-            `SCHEDULE:\n` +
-            `  • Next practice: Thu, Jul 23\n` +
-            `  • Practice: Wednesday & Friday, 7:00–8:30pm\n` +
-            `  • Pickup: Tuesday & Thursday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n` +
-            `  • Purpose of 5 weekly sessions: Five sessions a week fit real work schedules — aim for any 2 of the 5 and you're a regular — and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments — not around a cone that can't defend. Together they cover the four pillars of player development: technical, tactical, physical, and psychological.\n` +
-            `  • Games: Sundays\n` +
-            `  • Home Outdoor Facility: Lighthouse Sports Complex, 199 E Erie Avenue, Philadelphia PA 19140\n` +
-            `  • Home Indoor Facility: Lighthouse Community Center, 141 W Somerset Street, Philadelphia PA 19133\n\n` +
-            `BILLING:\n` +
-            `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
-            `From then on, the normal $35/month membership is invoiced on the first Friday of each month.\n\n` +
-            `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
-            `Reply with any other questions to soccer@lighthouse1893.org`
+            moreInfoDescText
           );
         return {
           id: 'more-info',
@@ -2328,12 +2312,14 @@ class LeadsScreen extends Screen {
           // the full description; keeps field address, cost, card-on-
           // file requirement, and register link (the four questions
           // leads actually ask via text — and the one policy line that
-          // sets billing expectation before checkout).
+          // sets billing expectation before checkout). Women's Club has
+          // no card-on-file model (LA registration is free), so that
+          // line is skipped for it.
           smsBody:
             `Hi {first} — quick details on ${c.program}:\n` +
             `• Field: 199 E Erie Ave, Philadelphia PA\n` +
             `• Cost: ${c.initialFee} to register, then ${c.pricing}\n` +
-            `• Card on file with sufficient funds required (auto-charged monthly)\n` +
+            (c.isWomensClub ? '' : `• Card on file with sufficient funds required (auto-charged monthly)\n`) +
             `Register: ${c.isLegacyYouth ? (c.linkBoys + ' (boys) · ' + c.linkGirls + ' (girls)') : c.link}\n` +
             `Reply w/ any Qs — {coachFirst}`,
         };
@@ -2430,7 +2416,9 @@ class LeadsScreen extends Screen {
         label: '💵 Cost',
         tier: 'info',
         body:
-          `${c.initialFee} today to lock ${c.whose} spot. After that it's ${c.pricing}.\n` +
+          (c.isWomensClub
+            ? `Registering with Lighthouse is free. After that it's ${c.pricing}.\n`
+            : `${c.initialFee} today to lock ${c.whose} spot. After that it's ${c.pricing}.\n`) +
           `\n` +
           closeLink('Register here:'),
       },

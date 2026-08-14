@@ -25,9 +25,21 @@ window.LighthouseProgramInfo = (function () {
   // falls back to the generic adult-men schedule (Brazil/PR/U23/APSL
   // funnels in leads.js — not currently surfaced on a public page).
   function buildProgramDescription({ isYouth, isWomensClub, isMensClub }) {
-    const monthly = isWomensClub ? '10' : '35';
+    // Only Youth/Men's run on the recurring LeagueApps membership model.
+    // Women's Club registration with Lighthouse is free — cost instead
+    // comes from per-game ref fees plus a separate league registration
+    // (see billingBlock below) — so `monthly` has no meaning there.
+    const monthly = '35';
     const membership = isYouth ? "Your player's membership" : 'Your membership';
     const kit = isYouth ? 'their uniform' : 'your uniform';
+    // Short cost label for chip/button UI, and a one-line label for
+    // register buttons/flyers — single source of truth so every surface
+    // (LA Program Description chip, public program page, flyers) quotes
+    // the same figure instead of re-deriving it.
+    const feeShort = isWomensClub ? 'Free' : `$${monthly}/mo`;
+    const feeLabel = isWomensClub
+      ? 'Free to register — $35 league fee + refs per game'
+      : `$1 to register, then $${monthly}/mo`;
 
     let practiceBlockHtml, practiceBlockText, gamesLine;
     if (isYouth) {
@@ -48,7 +60,7 @@ window.LighthouseProgramInfo = (function () {
     } else if (isWomensClub) {
       practiceBlockHtml = '';
       practiceBlockText = '';
-      gamesLine = 'Sundays, starting in September';
+      gamesLine = 'Sundays, late morning to early afternoon — September through November, winter break, then resuming late March through June';
     } else {
       practiceBlockHtml =
         `<li><strong>Practice:</strong> Wednesday &amp; Friday, 7:00&ndash;8:30pm</li>` +
@@ -110,25 +122,60 @@ window.LighthouseProgramInfo = (function () {
     } else if (isWomensClub) {
       teamsBlockHtml =
         `<h3>Teams</h3>` +
-        `<p>Our competitive squads (Fall 2026):</p>` +
+        `<p>Our competitive squad (Fall 2026):</p>` +
         `<ul>` +
-          `<li><strong>U23 Women</strong> (USASA)</li>` +
-          `<li><strong>Tri County Women</strong></li>` +
-        `</ul>` +
-        `<p><strong>Lighthouse League</strong> is our in-house program at the Lighthouse fields &mdash; for members who want a <strong>local, low-to-no-travel soccer experience</strong>, and for anyone not selected to a competitive squad. <strong>We don't cut members.</strong></p>`;
+          `<li><strong>Tri County Women</strong> (Women's Tri County Soccer League, Division 2)</li>` +
+        `</ul>`;
       teamsBlockText =
         `TEAMS:\n` +
-        `Our competitive squads (Fall 2026):\n` +
-        `  • U23 Women (USASA)\n` +
-        `  • Tri County Women\n\n` +
-        `Lighthouse League is our in-house program at the Lighthouse fields — for members who want a local, low-to-no-travel soccer experience, and for anyone not selected to a competitive squad. We don't cut members.\n\n`;
+        `Our competitive squad (Fall 2026):\n` +
+        `  • Tri County Women (Women's Tri County Soccer League, Division 2)\n\n`;
+    }
+
+    // Membership & Billing — Youth/Men's run on the recurring LeagueApps
+    // membership model (card on file, auto-charged monthly). Women's Club
+    // registration with Lighthouse is free; cost instead comes from
+    // per-game ref fees plus a separate league registration, so it gets
+    // its own copy — no card-on-file / auto-charge language applies.
+    let membershipBlockHtml, membershipBlockText, billingBlockHtml, billingBlockText;
+    if (isWomensClub) {
+      membershipBlockHtml =
+        `<h3>Membership</h3>` +
+        `<p>Registration with Lighthouse is <strong>free</strong> &mdash; there's no LeagueApps membership fee, and ${kit} is supplied at no cost by the club.</p>`;
+      membershipBlockText =
+        `MEMBERSHIP:\n` +
+        `Registration with Lighthouse is free — there's no LeagueApps membership fee, and ${kit} is supplied at no cost by the club.\n\n`;
+      billingBlockHtml =
+        `<h3>Billing</h3>` +
+        `<p>Games cost a few dollars per player to cover referee fees, paid at the field.</p>` +
+        `<p>Separately, players register directly with the <strong>Women's Tri County Soccer League</strong> on their site for <strong>$35</strong>.</p>`;
+      billingBlockText =
+        `BILLING:\n` +
+        `Games cost a few dollars per player to cover referee fees, paid at the field.\n\n` +
+        `Separately, players register directly with the Women's Tri County Soccer League on their site for $35.\n\n`;
+    } else {
+      membershipBlockHtml =
+        `<h3>Membership</h3>` +
+        `<p>For 133 years, Lighthouse has operated on a membership model to build community and belonging &mdash; because a community is stronger when it's organized together. ${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>`;
+      membershipBlockText =
+        `MEMBERSHIP:\n` +
+        `For 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. ${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n`;
+      billingBlockHtml =
+        `<h3>Billing</h3>` +
+        `<p>Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.</p>` +
+        `<p>From then on, the normal $${monthly}/month membership is invoiced on the <strong>first Friday of each month</strong>.</p>` +
+        `<p><strong>Membership requires a valid card on file with sufficient funds</strong> so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.</p>`;
+      billingBlockText =
+        `BILLING:\n` +
+        `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
+        `From then on, the normal $${monthly}/month membership is invoiced on the first Friday of each month.\n\n` +
+        `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n`;
     }
 
     const laDescHtml =
       `<p><strong>Lighthouse 1893</strong> is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game <strong>affordable, accessible, local, and high-quality</strong> for every family in our community.</p>` +
       `<p>Our history speaks to that quality. Lighthouse teams have won <strong>5 U-19 national championships</strong> and sent <strong>7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics</strong> &mdash; and, more importantly, through its <strong>Boys Club, Girls Club, Men's Club, and Women's Club</strong>, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. <strong>It's a club for life in the neighborhood.</strong> Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.</p>` +
-      `<h3>Membership</h3>` +
-      `<p>For 133 years, Lighthouse has operated on a membership model to build community and belonging &mdash; because a community is stronger when it's organized together. ${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.</p>` +
+      membershipBlockHtml +
       teamsBlockHtml +
       `<h3>Schedule</h3>` +
       `<ul>` +
@@ -137,32 +184,29 @@ window.LighthouseProgramInfo = (function () {
       `<li><strong>Home Outdoor Facility:</strong> ${escapeHtml(outdoorLine)}</li>` +
       `<li><strong>Home Indoor Facility:</strong> ${escapeHtml(indoorLine)}</li>` +
       `</ul>` +
-      `<h3>Billing</h3>` +
-      `<p>Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.</p>` +
-      `<p>From then on, the normal $${monthly}/month membership is invoiced on the <strong>first Friday of each month</strong>.</p>` +
-      `<p><strong>Membership requires a valid card on file with sufficient funds</strong> so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.</p>` +
+      billingBlockHtml +
       `<h3>Changes &amp; questions</h3>` +
-      `<p>To pause or cancel a membership, or ask a question, email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`;
+      (isWomensClub
+        ? `<p>Questions? Email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`
+        : `<p>To pause or cancel a membership, or ask a question, email <a href="mailto:soccer@lighthouse1893.org">soccer@lighthouse1893.org</a>.</p>`);
 
     const laDescText =
       `Lighthouse 1893 is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game affordable, accessible, local, and high-quality for every family in our community.\n\n` +
       `Our history speaks to that quality. Lighthouse teams have won 5 U-19 national championships and sent 7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics — and, more importantly, through its Boys Club, Girls Club, Men's Club, and Women's Club, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. It's a club for life in the neighborhood. Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors.\n\n` +
-      `MEMBERSHIP:\n` +
-      `For 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. ${membership} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and ${kit}. There are no per-season, per-tournament, indoor, or uniform fees.\n\n` +
+      membershipBlockText +
       teamsBlockText +
       `SCHEDULE:\n` +
       practiceBlockText +
       `  • Games: ${gamesLine}\n` +
       `  • Home Outdoor Facility: ${outdoorLine}\n` +
       `  • Home Indoor Facility: ${indoorLine}\n\n` +
-      `BILLING:\n` +
-      `Registration is $1 at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\n` +
-      `From then on, the normal $${monthly}/month membership is invoiced on the first Friday of each month.\n\n` +
-      `Membership requires a valid card on file with sufficient funds so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime.\n\n` +
+      billingBlockText +
       `CHANGES & QUESTIONS:\n` +
-      `To pause or cancel a membership, or ask a question, email soccer@lighthouse1893.org.`;
+      (isWomensClub
+        ? `Questions? Email soccer@lighthouse1893.org.`
+        : `To pause or cancel a membership, or ask a question, email soccer@lighthouse1893.org.`);
 
-    return { html: laDescHtml, text: laDescText, monthly };
+    return { html: laDescHtml, text: laDescText, monthly, feeShort, feeLabel };
   }
 
   return { REGISTER_LINKS, buildProgramDescription };
