@@ -11,7 +11,9 @@
 //   GET /api/eligibility/lineup/:matchId → { success, data: {
 //     matchId, teamId, isCoach, rosterStats: [{playerId, practicesAttended,
 //     practicesRecentTotal, practicesProjected, practicesUpcomingTotal,
-//     gameRsvp}], lineup: [{playerId, zone, firstName, lastName, ...}] } }
+//     gameRsvp, practices: [{date, attended}, ...]}], lineup: [{playerId,
+//     zone, firstName, lastName, ...}] } } — practices is the same ≤5 most
+//     recent team practices for every player, oldest first.
 //     rosterStats is coach-only (empty array for players) — see migration
 //     278 (fh_events<->matches bridge) for why this reads fh_events/
 //     fh_event_attendance/fh_event_rsvps instead of the old chat_events path.
@@ -264,6 +266,20 @@ class GameLineupScreen extends Screen {
       return '<span title="No RSVP yet" style="opacity:0.4;">–</span>';
     };
 
+    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const practicePills = (practices) => {
+      if (!practices || !practices.length) return '';
+      return `<div style="display:flex; gap:3px; margin-top:2px;">
+        ${practices.map(p => {
+          const d = new Date(p.date);
+          const label = `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+          const bg = p.attended ? '#22c55e' : '#ef4444';
+          return `<span title="${label}: ${p.attended ? 'Present' : 'Absent'}"
+            style="background:${bg}; color:#fff; border-radius:10px; padding:1px 6px; font-size:0.62rem; white-space:nowrap;">${label}</span>`;
+        }).join('')}
+      </div>`;
+    };
+
     const statsLine = (playerId) => {
       const s = this.stats.get(playerId);
       if (!s) return '';
@@ -271,6 +287,7 @@ class GameLineupScreen extends Screen {
         Practices ${s.practicesAttended}/${s.practicesRecentTotal}
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
         · Game ${rsvpBadge(s.gameRsvp)}
+        ${practicePills(s.practices)}
       </div>`;
     };
 

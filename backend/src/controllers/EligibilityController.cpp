@@ -106,11 +106,19 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
                     WHERE fet.team_id = $2::int
                       AND fe.kind IN ('practice', 'pickup')
+                      AND ge.deleted_at IS NULL
                 ),
                 recent_practices AS (
-                    SELECT tpe.fh_event_id
+                    -- Bounded to the 6 days immediately before the match (Tue-Sat
+                    -- for a Sunday game) rather than a pure "last 5 occurred"
+                    -- lookback — an unbounded lookback reaches back into the PRIOR
+                    -- week to backfill its quota whenever a practice was cancelled,
+                    -- producing duplicate weekdays (e.g. two Thursdays). LIMIT 5
+                    -- is just a defensive cap; the date window is what matters.
+                    SELECT tpe.fh_event_id, tpe.starts_at
                     FROM team_practice_events tpe, match_event me
-                    WHERE tpe.starts_at < me.starts_at
+                    WHERE tpe.starts_at >= me.starts_at - interval '6 days'
+                      AND tpe.starts_at <  LEAST(me.starts_at, now())
                     ORDER BY tpe.starts_at DESC
                     LIMIT 5
                 ),
@@ -136,7 +144,15 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                                    AND rr.category IS NOT DISTINCT FROM up.category)
                           ) = 'yes') AS practices_projected,
                        (SELECT r.response FROM fh_event_rsvps r, match_event me
-                          WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp
+                          WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
+                       (SELECT json_agg(json_build_object(
+                                  'date', to_char(rp.starts_at, 'YYYY-MM-DD"T"HH24:MI:SS'),
+                                  'attended', EXISTS(
+                                      SELECT 1 FROM fh_event_attendance fea
+                                      WHERE fea.person_id = pe.id AND fea.fh_event_id = rp.fh_event_id
+                                        AND fea.status IN ('present', 'late'))
+                                ) ORDER BY rp.starts_at)
+                          FROM recent_practices rp) AS practice_pills
                 FROM team_persons tp
                 JOIN persons pe ON pe.id = tp.person_id
                 JOIN players pl ON pl.person_id = pe.id
@@ -153,7 +169,8 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 statsJson << "\"practicesRecentTotal\":" << row["recent_total"].c_str() << ",";
                 statsJson << "\"practicesProjected\":" << row["practices_projected"].c_str() << ",";
                 statsJson << "\"practicesUpcomingTotal\":" << row["upcoming_total"].c_str() << ",";
-                statsJson << "\"gameRsvp\":" << (row["game_rsvp"].is_null() ? "null" : "\"" + std::string(row["game_rsvp"].c_str()) + "\"");
+                statsJson << "\"gameRsvp\":" << (row["game_rsvp"].is_null() ? "null" : "\"" + std::string(row["game_rsvp"].c_str()) + "\"") << ",";
+                statsJson << "\"practices\":" << (row["practice_pills"].is_null() ? "[]" : row["practice_pills"].c_str());
                 statsJson << "}";
             }
         }

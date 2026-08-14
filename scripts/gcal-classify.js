@@ -42,6 +42,16 @@
 //     end so the operator can manually intervene. Deleting would
 //     lose attached RSVPs.
 //
+//   * Pass C (migrateSplitSeriesRsvps) handles a Google Calendar quirk:
+//     editing a recurring event's time as "this and following" doesn't
+//     move the existing series — it cancels it and mints a brand new
+//     series with a new master event id. gcal-sync.js mirrors that
+//     correctly (tombstone old, insert new), but with nothing to carry
+//     RSVPs across the split they'd otherwise vanish. This pass detects
+//     same-day/same-summary/same-location tombstone→live pairs on the
+//     same calendar and copies RSVPs/attendance forward. Idempotent
+//     (ON CONFLICT DO NOTHING), safe to run every tick.
+//
 // Run: node scripts/gcal-classify.js
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -553,6 +563,80 @@ async function classifyDsl(pg) {
   return stats;
 }
 
+// ─── Pass C: recurring-series-split RSVP/attendance carry-forward ─────
+// When an admin edits a recurring event's time as "this and following"
+// in Google Calendar, Google does NOT update the existing series in
+// place — it cancels the old recurring series' future instances and
+// mints a brand new series with a new master event id. gcal-sync.js
+// faithfully mirrors that (tombstones the old gcal_events rows, inserts
+// the new ones), which is correct, but it means RSVPs/attendance
+// attached to the old (now-dead) fh_events row have nowhere to go and
+// silently vanish from anyone's view.
+//
+// This pass detects that specific split pattern — same calendar, same
+// summary, same location, same calendar day (America/New_York), a
+// modest time shift (<=3h), and the new row appearing close in time to
+// the old one being tombstoned (<=2 days, covers the normal case where
+// both happen in the same sync tick) — and carries forward any RSVPs/
+// attendance the old fh_events row had onto the new one. ON CONFLICT DO
+// NOTHING means it never overwrites someone who already re-RSVP'd on
+// the new event, and re-running this every 5 minutes is a no-op once a
+// pair has been migrated.
+async function migrateSplitSeriesRsvps(pg) {
+  const stats = { pairs: 0, rsvpsMoved: 0, attendanceMoved: 0 };
+
+  const { rows: pairs } = await pg.query(`
+    SELECT old_fe.id AS old_fh_event_id, new_fe.id AS new_fh_event_id,
+           old.id AS old_gcal_id, new.id AS new_gcal_id, new.starts_at
+    FROM gcal_events old
+    JOIN gcal_events new
+      ON  new.calendar_id = old.calendar_id
+      AND new.deleted_at IS NULL
+      AND old.deleted_at IS NOT NULL
+      AND new.google_event_id <> old.google_event_id
+      AND new.summary IS NOT DISTINCT FROM old.summary
+      AND new.location IS NOT DISTINCT FROM old.location
+      AND (new.starts_at AT TIME ZONE 'America/New_York')::date
+        = (old.starts_at AT TIME ZONE 'America/New_York')::date
+      AND abs(extract(epoch FROM (new.starts_at - old.starts_at))) <= 3 * 3600
+      AND abs(extract(epoch FROM (new.first_seen_at - old.deleted_at))) <= 2 * 86400
+    JOIN fh_events old_fe ON old_fe.gcal_event_id = old.id
+    JOIN fh_events new_fe ON new_fe.gcal_event_id = new.id
+    ORDER BY new.starts_at
+  `);
+  stats.pairs = pairs.length;
+
+  for (const p of pairs) {
+    const rsvpRes = await pg.query(`
+      INSERT INTO fh_event_rsvps (fh_event_id, person_id, response, responded_at, created_via)
+      SELECT $2, r.person_id, r.response, r.responded_at, r.created_via
+      FROM fh_event_rsvps r
+      WHERE r.fh_event_id = $1
+      ON CONFLICT (fh_event_id, person_id) DO NOTHING
+    `, [p.old_fh_event_id, p.new_fh_event_id]);
+    stats.rsvpsMoved += rsvpRes.rowCount;
+
+    const attRes = await pg.query(`
+      INSERT INTO fh_event_attendance (fh_event_id, person_id, status, marked_by_user_id, marked_at)
+      SELECT $2, a.person_id, a.status, a.marked_by_user_id, a.marked_at
+      FROM fh_event_attendance a
+      WHERE a.fh_event_id = $1
+      ON CONFLICT (fh_event_id, person_id) DO NOTHING
+    `, [p.old_fh_event_id, p.new_fh_event_id]);
+    stats.attendanceMoved += attRes.rowCount;
+
+    if (rsvpRes.rowCount || attRes.rowCount) {
+      console.log(
+        `  carried forward: gcal ${p.old_gcal_id} -> ${p.new_gcal_id}` +
+        ` (fh_event ${p.old_fh_event_id} -> ${p.new_fh_event_id}, starts_at=${p.starts_at.toISOString()})` +
+        ` rsvps=${rsvpRes.rowCount} attendance=${attRes.rowCount}`
+      );
+    }
+  }
+
+  return stats;
+}
+
 // ─── Report soccer-prefixed rows nothing matched ──────────────────────
 // These are the Slice 8 "admin classification queue" candidates.
 // Excludes events that carry a `Team:` marker in their description —
@@ -631,10 +715,16 @@ async function unclassifiedReport(pg) {
       console.log(`\ngcal-classify: every soccer-prefixed event has a classifier match`);
     }
 
+    // ─── Pass C: carry forward RSVPs/attendance across recurring-series splits ───
+    console.log(`\ngcal-classify: recurring-series-split carry-forward pass`);
+    const sp = await migrateSplitSeriesRsvps(pg);
+    console.log(`  pairs=${sp.pairs} rsvps-moved=${sp.rsvpsMoved} attendance-moved=${sp.attendanceMoved}`);
+
     console.log(
       `\ngcal-classify: totals` +
       ` dsl-upserted=${ds.upserted}` +
       ` legacy-inserted=${totalInserted} legacy-updated=${totalUpdated} legacy-unchanged=${totalUnchanged}` +
+      ` split-rsvps-moved=${sp.rsvpsMoved}` +
       `  (${((Date.now() - t0) / 1000).toFixed(2)}s)`
     );
   } finally {
