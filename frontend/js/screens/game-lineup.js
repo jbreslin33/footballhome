@@ -36,6 +36,7 @@ class GameLineupScreen extends Screen {
     this.title     = '';
     this.when      = '';
     this.teamId    = null;
+    this.matchStartsAt = null; // naive UTC-string date of this match, for the trailing "game" pill
     this.isCoach   = false;
     this.roster    = [];   // [{id:Number, name, lineupRole}] — PLAYER rows only
     this.zones     = new Map(); // playerId:Number -> 'starter'|'bench'|'alternate'
@@ -113,6 +114,7 @@ class GameLineupScreen extends Screen {
       if (!lineupData.success) throw new Error(lineupData.message || 'Failed to load lineup');
 
       this.teamId  = lineupData.data.teamId || null;
+      this.matchStartsAt = lineupData.data.matchStartsAt || null;
       this.isCoach = !!lineupData.data.isCoach;
       this.zones = new Map();
       for (const row of (lineupData.data.lineup || [])) {
@@ -224,6 +226,17 @@ class GameLineupScreen extends Screen {
       return;
     }
 
+    // Unassigned default sort: Going first (not going / no response after —
+    // maybe counts as no response, same "yes or it didn't happen" read as
+    // the practice pills), then Starter Eligible within each RSVP tier.
+    const rsvpRank = (playerId) => {
+      const rsvp = this.stats.get(playerId)?.gameRsvp;
+      if (rsvp === 'yes') return 0;
+      if (rsvp === 'no') return 1;
+      return 2;
+    };
+    const starterEligibleRank = (p) => p.lineupRole === 'starter' ? 0 : 1;
+
     const byZone = { starter: [], bench: [], alternate: [] };
     const unassigned = [];
     for (const p of this.roster) {
@@ -231,6 +244,9 @@ class GameLineupScreen extends Screen {
       if (z && byZone[z]) byZone[z].push(p);
       else unassigned.push(p);
     }
+    unassigned.sort((a, b) =>
+      (rsvpRank(a.id) - rsvpRank(b.id)) || (starterEligibleRank(a) - starterEligibleRank(b))
+    );
 
     if (!this.isCoach && byZone.starter.length === 0) {
       box.innerHTML = `
@@ -270,20 +286,28 @@ class GameLineupScreen extends Screen {
     };
 
     const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const practicePills = (practices) => {
+    const pill = (label, ok, tooltip, dim) => `<span title="${tooltip}"
+      style="background:${ok ? '#22c55e' : '#ef4444'}; color:#fff; border-radius:10px; padding:1px 6px;
+        font-size:0.62rem; white-space:nowrap; ${dim ? 'opacity:0.75;' : ''}">${label}</span>`;
+
+    const practicePills = (s) => {
+      const practices = s?.practices;
       if (!practices || !practices.length) return '';
-      return `<div style="display:flex; gap:3px; margin-top:2px;">
-        ${practices.map(p => {
-          const d = new Date(p.date);
-          const label = `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
-          const bg = p.attended ? '#22c55e' : '#ef4444';
-          const statusText = p.future
-            ? (p.attended ? 'Projected: Going' : 'Projected: Not going / no response')
-            : (p.attended ? 'Present' : 'Absent');
-          return `<span title="${label}: ${statusText}"
-            style="background:${bg}; color:#fff; border-radius:10px; padding:1px 6px; font-size:0.62rem; white-space:nowrap; ${p.future ? 'opacity:0.75;' : ''}">${label}</span>`;
-        }).join('')}
-      </div>`;
+      const spans = practices.map(p => {
+        const d = new Date(p.date);
+        const label = `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+        const statusText = p.future
+          ? (p.attended ? 'Projected: Going' : 'Projected: Not going / no response')
+          : (p.attended ? 'Present' : 'Absent');
+        return pill(label, p.attended, `${label}: ${statusText}`, p.future);
+      });
+      if (this.matchStartsAt) {
+        const gd = new Date(this.matchStartsAt);
+        const gameLabel = `Game ${gd.getMonth() + 1}/${gd.getDate()}`;
+        const going = s.gameRsvp === 'yes';
+        spans.push(pill(gameLabel, going, `${gameLabel}: ${going ? 'Going' : 'Not going / no response'}`, true));
+      }
+      return `<div style="display:flex; gap:3px; margin-top:2px;">${spans.join('')}</div>`;
     };
 
     const statsLine = (playerId) => {
@@ -293,7 +317,7 @@ class GameLineupScreen extends Screen {
         Practices ${s.practicesAttended}/${s.practicesRecentTotal}
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
         · Game ${rsvpBadge(s.gameRsvp)}
-        ${practicePills(s.practices)}
+        ${practicePills(s)}
       </div>`;
     };
 

@@ -65,6 +65,18 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         std::string teamIdForResponse = (!teamRow.empty() && !teamRow[0]["home_team_id"].is_null())
             ? teamRow[0]["home_team_id"].c_str() : "";
 
+        // Same naive-UTC-string convention as the practice pills below (no
+        // offset marker) so the frontend's Date parsing treats them
+        // identically when rendering the "game" pill after the practice ones.
+        pqxx::result matchStartRow = db_->query(
+            "SELECT to_char(ge.starts_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS starts_at "
+            "FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+            "WHERE fe.match_id = $1 LIMIT 1",
+            {matchId}
+        );
+        std::string matchStartsAt = (!matchStartRow.empty() && !matchStartRow[0]["starts_at"].is_null())
+            ? matchStartRow[0]["starts_at"].c_str() : "";
+
         bool isCoach = false;
         std::string userId = extractUserIdFromToken(request);
         if (!userId.empty() && !teamRow.empty()) {
@@ -229,6 +241,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         
         std::ostringstream json;
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
+        json << "\"matchStartsAt\":" << (matchStartsAt.empty() ? "null" : "\"" + matchStartsAt + "\"") << ",";
         json << "\"teamId\":" << (teamIdForResponse.empty() ? "null" : teamIdForResponse) << ",";
         json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
         json << "\"rosterStats\":" << statsJson.str() << ",";
