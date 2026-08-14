@@ -342,7 +342,33 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         // Parse formation and roster size
         int formationId = parseJsonInt(body, "formationId", 0);
         int rosterSize = parseJsonInt(body, "rosterSize", 20);
-        
+
+        // Zone caps — starter (full XI) and bench mirror the frontend's
+        // tap-to-assign guard so a direct API call can't exceed them either.
+        // Alternate, and the separate starter/bench-eligible flag, are
+        // unlimited.
+        {
+            auto countPlayerIds = [&](const std::string& key) -> int {
+                size_t start = body.find("\"" + key + "\"");
+                size_t arrStart = (start != std::string::npos) ? body.find("[", start) : std::string::npos;
+                size_t arrEnd = (arrStart != std::string::npos) ? body.find("]", arrStart) : std::string::npos;
+                if (start == std::string::npos || arrStart == std::string::npos || arrEnd == std::string::npos) return 0;
+                std::string section = body.substr(arrStart, arrEnd - arrStart + 1);
+                std::regex idPattern(R"("playerId"\s*:\s*(\d+))");
+                return (int)std::distance(
+                    std::sregex_iterator(section.begin(), section.end(), idPattern),
+                    std::sregex_iterator());
+            };
+            int starterCount = countPlayerIds("starters");
+            int benchCount = countPlayerIds("bench");
+            if (starterCount > 11) {
+                return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Starting XI cannot exceed 11 players"));
+            }
+            if (benchCount > 9) {
+                return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Bench cannot exceed 9 players"));
+            }
+        }
+
         // Save metadata
         if (formationId > 0 || rosterSize > 0) {
             if (formationId > 0) {

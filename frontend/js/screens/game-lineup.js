@@ -29,6 +29,12 @@
 // Reached via navigation.goTo('game-lineup', { matchId, title, when }) —
 // title/when are optional, already-sanitized display strings (never pass a
 // raw gcal event title here — see [[feedback_gcal_title_admin_only]]).
+//
+// Zone caps: starter max 11 (a full XI), bench max 9. Alternate and the
+// starter/bench-eligible flags (lineupRole, separate from zone) are
+// unlimited.
+const ZONE_CAPS = { starter: 11, bench: 9 };
+
 class GameLineupScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -152,10 +158,38 @@ class GameLineupScreen extends Screen {
     if (current === zone) {
       this.zones.delete(playerId); // tap active zone again → unassign
     } else {
+      const cap = ZONE_CAPS[zone];
+      if (cap != null) {
+        const countInZone = [...this.zones.values()].filter(z => z === zone).length;
+        if (countInZone >= cap) {
+          this._toast(`${zone === 'starter' ? 'Starting XI' : 'Bench'} is full (${cap} max)`);
+          return;
+        }
+      }
       this.zones.set(playerId, zone);
     }
     this._render();
     this._scheduleSave();
+  }
+
+  _toast(msg) {
+    // Cheap, no-dep toast. Clears itself after 2.5s.
+    let t = this.find('#game-lineup-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'game-lineup-toast';
+      t.style.cssText = `
+        position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+        background:#0b3a2e; color:#a7f3d0; padding:10px 16px;
+        border-radius:8px; font-weight:600; z-index:9999;
+        box-shadow:0 4px 20px rgba(0,0,0,0.4);
+        transition:opacity 0.25s;`;
+      this.element.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => { if (t) t.style.opacity = '0'; }, 2500);
   }
 
   _scheduleSave() {
