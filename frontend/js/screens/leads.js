@@ -109,6 +109,10 @@ class LeadsScreen extends Screen {
           <button id="leads-sync-refresh" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px;">🔄 Sync now</button>
         </div>
         <div id="leads-sync-log" style="display:block; margin: 0 0 var(--space-3) 0; max-height: 220px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #1e293b; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.4;"></div>
+        <div id="leads-form-status-pills" style="display:flex; gap:var(--space-2); margin-bottom:var(--space-3);">
+          <button type="button" class="form-status-pill" data-form-status="active">🟢 Active</button>
+          <button type="button" class="form-status-pill" data-form-status="inactive">⚪ Inactive</button>
+        </div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="leads-empty"   style="display:none; text-align:center; padding: var(--space-6); opacity:0.6;">No leads yet.</div>
@@ -123,6 +127,13 @@ class LeadsScreen extends Screen {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
 
+    // Active/Inactive pill above the board — filters which Meta lead
+    // forms are shown by whether they currently have a live ad running.
+    // Always defaults to Active on screen entry (not persisted) so a
+    // coach who last looked at Inactive doesn't land there again and
+    // miss new leads.
+    this._formStatus = 'active';
+
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) this.navigation.goBack();
       if (e.target.closest('#leads-sync-refresh')) this.loadLeads({ force: true });
@@ -130,13 +141,61 @@ class LeadsScreen extends Screen {
         const log = this.find('#leads-sync-log');
         if (log) log.style.display = (log.style.display === 'none') ? 'block' : 'none';
       }
+      const pillBtn = e.target.closest('.form-status-pill');
+      if (pillBtn) this.switchFormStatus(pillBtn.getAttribute('data-form-status'));
     });
 
+    this._updateFormStatusPills();
     this.loadLeads();
     // Ticker keeps the last-sync pill's color/age label fresh while the
     // screen stays open (green → yellow → orange → red as time drifts).
     this._updateSyncPill();
     this._startSyncTicker();
+  }
+
+  _updateFormStatusPills() {
+    const wrap = this.find('#leads-form-status-pills');
+    if (!wrap) return;
+    wrap.querySelectorAll('.form-status-pill').forEach(btn => {
+      const active = btn.getAttribute('data-form-status') === this._formStatus;
+      btn.style.padding      = '6px 14px';
+      btn.style.fontSize     = '0.85rem';
+      btn.style.fontWeight   = '700';
+      btn.style.borderRadius = '999px';
+      btn.style.cursor       = 'pointer';
+      btn.style.background   = active ? '#14532d' : 'var(--bg-secondary)';
+      btn.style.color        = active ? '#bbf7d0' : 'inherit';
+      btn.style.border       = `1px solid ${active ? '#22c55e' : 'transparent'}`;
+    });
+  }
+
+  // Switching the Active/Inactive pill is a pure DB re-read filtered by
+  // lead_forms (already kept fresh by the live Meta pull that runs at
+  // the top of loadLeads()) — no Meta round-trip here, so it's fast and
+  // doesn't disturb the sync banner/log.
+  async switchFormStatus(status) {
+    if (status === this._formStatus) return;
+    this._formStatus = status;
+    this._updateFormStatusPills();
+
+    this.find('#leads-error').style.display   = 'none';
+    this.find('#leads-empty').style.display   = 'none';
+    this.find('#leads-list').style.display    = 'none';
+    this.find('#leads-loading').style.display = 'block';
+
+    try {
+      const res = await this.auth.fetch(`/api/leads?status=${encodeURIComponent(status)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const leads = await res.json();
+      this._leads = leads;
+      this.find('#leads-loading').style.display = 'none';
+      this.find('#leads-list').style.display    = 'block';
+      this.renderLeads(leads);
+    } catch (err) {
+      this.find('#leads-loading').style.display = 'none';
+      this.find('#leads-error').style.display   = 'block';
+      this.find('#leads-error').textContent     = `Failed to load ${status} leads: ${err.message}`;
+    }
   }
 
   onExit() {
@@ -283,9 +342,29 @@ class LeadsScreen extends Screen {
     this._clearLog();
     this._appendLog(`Load started${force ? ' (force=1, bypassing 30s TTL)' : ''}.`, 'step');
     this._appendLog('POST /api/leads/sync — pulling latest from Meta Graph API…', 'step');
+    this._appendLog('POST /api/leads/refresh-ad-status — pulling live ad status from Instagram/Facebook…', 'step');
 
     const syncStartMs = Date.now();
     let syncReport = null;
+
+    // First thing on load: ask Meta which lead forms currently have a
+    // live ad running (not the DB — that's the whole point) and upsert
+    // that into lead_forms server-side. The Active-pill leads GET below
+    // waits on this so it always filters against a just-refreshed set,
+    // never a stale one.
+    const adStatusPromise = (async () => {
+      const start = Date.now();
+      try {
+        const res = await this.auth.fetch('/api/leads/refresh-ad-status', { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.ok === false) throw new Error(data.error || 'unknown error');
+        const n = (data.active_form_ids || []).length;
+        this._appendLog(`Ad status OK: ${n} form(s) currently active on Meta (${Date.now() - start}ms).`, 'ok');
+      } catch (err) {
+        this._appendLog(`Ad status refresh FAILED: ${err.message} — Active/Inactive split may be stale.`, 'warn');
+      }
+    })();
 
     const syncPromise = (async () => {
       try {
@@ -330,9 +409,10 @@ class LeadsScreen extends Screen {
     })();
 
     const leadsPromise = (async () => {
-      this._appendLog('GET /api/leads — reading from database…', 'step');
+      await adStatusPromise;  // don't filter against a stale lead_forms table
+      this._appendLog(`GET /api/leads?status=${this._formStatus} — reading from database…`, 'step');
       const dbStart = Date.now();
-      const leadsRes = await this.auth.fetch('/api/leads');
+      const leadsRes = await this.auth.fetch(`/api/leads?status=${encodeURIComponent(this._formStatus)}`);
       if (!leadsRes.ok) throw new Error(`HTTP ${leadsRes.status}`);
       const leads = await leadsRes.json();
       this._appendLog(`DB returned ${leads.length} lead(s) in ${Date.now() - dbStart}ms.`, 'ok');

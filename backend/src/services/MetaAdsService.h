@@ -59,6 +59,21 @@ public:
     // adset+creative+insights subfields).  Throws on graph error.
     nlohmann::json fetchAdsForTargeting();
 
+    struct AdFormStatus {
+        std::string formId;
+        std::string effectiveStatus;
+    };
+
+    // GET /v21.0/<account>/ads — minimal effective_status + lead_gen_form_id
+    // pull.  No insights, no per-ad fan-out — one Graph call, ~200 ads max.
+    // One form_id may appear more than once (several ads reusing the same
+    // form); callers should treat a form as "active" if ANY row for that
+    // form_id comes back ACTIVE.  Used by LeadsController to split lead
+    // forms into "has a currently active ad" vs everything else, live,
+    // with zero hardcoded form-id lists on either side.  Throws on graph
+    // error (same as fetchAdsForTargeting).
+    std::vector<AdFormStatus> fetchAdFormStatuses();
+
     // GET /v21.0/<adId>/insights?breakdowns=region — best-effort, swallows
     // errors per Node's try/catch.  Returns an empty array on failure.
     nlohmann::json fetchRegionInsights(const std::string& adId);

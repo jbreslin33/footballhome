@@ -10,7 +10,18 @@
 //
 // Routes (mounted at prefix "/api/leads"):
 //   POST   /api/leads/sync                refresh-from-Meta + return report
-//   GET    /api/leads                     DB-only list with per-row contact agg
+//   POST   /api/leads/refresh-ad-status    live Meta ad-status pull -> upserts
+//                                          lead_forms (migration 282) so the
+//                                          Active/Inactive pills below have a
+//                                          fresh set to filter against
+//   GET    /api/leads?status=active|inactive|all
+//                                          DB-only list with per-row contact
+//                                          agg, filtered by lead_forms via
+//                                          Lead::listAll(formStatus).
+//                                          Omitting status means "all", so
+//                                          existing callers (e.g. the
+//                                          LeagueApps-sync sidecar) are
+//                                          unaffected.
 //   POST   /api/leads/:id/contact         log a text/email/whatsapp/call send
 //   GET    /api/leads/:id/contacts        recent touches for one lead (audit)
 //   DELETE /api/leads/:id/contacts/:cid   remove an accidental touch (+ siblings)
@@ -51,6 +62,12 @@ public:
 
 private:
     Response handleSync             (const Request& request);
+    // POST /api/leads/refresh-ad-status — live MetaAdsService::
+    // fetchAdFormStatuses() pull, folded into LeadForm::replaceActive()
+    // (a form counts as active if ANY ad row for it comes back ACTIVE).
+    // No LaSyncMap dependency — registered as a plain router.post, not
+    // through laGet.
+    Response handleRefreshAdStatus  (const Request& request);
     // GET /api/leads' member_status column (per row) checks
     // person_la_memberships directly (§ enforce-la-sync.sh STRICT rule)
     // to flag leads who already joined. Routed through laGet(dynamic,

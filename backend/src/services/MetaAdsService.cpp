@@ -25,6 +25,21 @@ std::string jsonStringArray(const std::vector<std::string>& items) {
     return arr.dump();
 }
 
+// Nested-field lookup + string accessor, mirroring AdsController's local
+// helpers of the same name/shape.
+const json* dig(const json& root, std::initializer_list<const char*> path) {
+    const json* p = &root;
+    for (auto* k : path) {
+        if (!p || !p->is_object() || !p->contains(k)) return nullptr;
+        p = &(*p)[k];
+    }
+    return p;
+}
+
+std::string strOrEmpty(const json* j) {
+    return (j && j->is_string()) ? j->get<std::string>() : std::string{};
+}
+
 } // namespace
 
 MetaAdsService& MetaAdsService::getInstance() {
@@ -157,6 +172,51 @@ json MetaAdsService::fetchAdsForTargeting() {
         return json::array();
     }
     return parsed["data"];
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Leads screen Active/Inactive pills backend
+// ────────────────────────────────────────────────────────────────────────────
+std::vector<MetaAdsService::AdFormStatus> MetaAdsService::fetchAdFormStatuses() {
+    ensureConfigured();
+    if (token_.empty()) {
+        throw std::runtime_error("Missing META_ADS_TOKEN");
+    }
+
+    const std::string fields =
+        "effective_status,"
+        "creative{object_story_spec{link_data{call_to_action}}}";
+
+    const std::string url = graphUrl(adAccountId_ + "/ads")
+        + "?fields=" + HttpClient::urlEncode(fields)
+        + "&limit=200"
+        + "&access_token=" + token_;
+
+    auto resp = http_->get(url);
+    if (!resp.error.empty()) {
+        throw std::runtime_error(resp.error);
+    }
+    json parsed;
+    try { parsed = json::parse(resp.body); }
+    catch (const std::exception& e) {
+        throw std::runtime_error(std::string{"Meta returned malformed JSON: "} + e.what());
+    }
+    if (parsed.contains("error") && parsed["error"].is_object()) {
+        throw MetaApiError(parsed["error"].value("message", "Meta API error"));
+    }
+
+    std::vector<AdFormStatus> out;
+    if (!parsed.contains("data") || !parsed["data"].is_array()) {
+        return out;
+    }
+
+    for (const auto& ad : parsed["data"]) {
+        const json* cta = dig(ad, {"creative", "object_story_spec", "link_data", "call_to_action"});
+        std::string formId = cta ? strOrEmpty(dig(*cta, {"value", "lead_gen_form_id"})) : std::string{};
+        if (formId.empty()) continue;  // not a lead-form ad (e.g. LeagueApps direct-link CTA)
+        out.push_back({formId, strOrEmpty(dig(ad, {"effective_status"}))});
+    }
+    return out;
 }
 
 json MetaAdsService::fetchRegionInsights(const std::string& adId) {

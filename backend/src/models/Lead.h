@@ -95,7 +95,12 @@ public:
     std::string status;
 
     // GET /api/leads — DB-only LEFT JOIN aggregate.  Sorted created_at DESC.
-    static std::vector<Lead> listAll();
+    // formStatus filters against `lead_forms` (migration 282, kept fresh
+    // by LeadForm::replaceActive from a live Meta ad-status pull):
+    //   "active"   — l.form_id IN lead_forms (has a currently active ad)
+    //   "inactive" — l.form_id NOT IN lead_forms (paused/deleted/unknown)
+    //   anything else (default "all") — no filter, every lead
+    static std::vector<Lead> listAll(const std::string& formStatus = "all");
 
     // GET /api/leads/:id/vcard — single-row lookup, no aggregate.
     static std::optional<Lead> findById(int leadId);

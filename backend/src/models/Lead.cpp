@@ -189,8 +189,7 @@ const char* kSelectListAggregate =
     "         WHEN (SELECT MAX(lc.sent_at) FROM lead_contacts lc WHERE lc.lead_id = l.id) IS NOT NULL THEN 'responded' "
     "         ELSE 'new' "
     "       END) AS status "
-    "  FROM leads l "
-    " ORDER BY l.created_at DESC";
+    "  FROM leads l ";
 
 const char* kSelectById =
     "SELECT id, leadgen_id, form_id, page_id, ad_id, "
@@ -202,9 +201,16 @@ const char* kSelectById =
 
 } // namespace
 
-std::vector<Lead> Lead::listAll() {
+std::vector<Lead> Lead::listAll(const std::string& formStatus) {
     auto db = Database::getInstance();
-    auto rs = db->query(kSelectListAggregate);
+    std::string sql = kSelectListAggregate;
+    if (formStatus == "active") {
+        sql += " WHERE l.form_id IN (SELECT form_id FROM lead_forms) ";
+    } else if (formStatus == "inactive") {
+        sql += " WHERE l.form_id NOT IN (SELECT form_id FROM lead_forms) ";
+    }
+    sql += " ORDER BY l.created_at DESC";
+    auto rs = db->query(sql);
     std::vector<Lead> out;
     out.reserve(rs.size());
     for (const auto& row : rs) out.push_back(rowToLead(row));
@@ -226,8 +232,7 @@ static std::optional<Lead> fetchListRowById(int leadId) {
     auto db = Database::getInstance();
     // Wrap kSelectListAggregate in an outer SELECT * FROM (...) WHERE id = $1
     // so we get the same projection + aggregate join without duplicating
-    // the query string in two places.  ORDER BY is harmless on a 1-row
-    // result so we leave it baked into the inner.
+    // the query string in two places.
     const std::string sql =
         std::string("SELECT * FROM (") + kSelectListAggregate +
         std::string(") AS agg WHERE id = $1");

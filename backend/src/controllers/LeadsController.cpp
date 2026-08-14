@@ -18,9 +18,11 @@
 #include "../database/Database.h"
 #include "../models/Lead.h"
 #include "../models/LeadContact.h"
+#include "../models/LeadForm.h"
 #include "../models/MensRoster.h"
 #include "../models/YouthRoster.h"
 #include "../services/LeagueAppsService.h"
+#include "../services/MetaAdsService.h"
 #include "../services/MetaLeadsService.h"
 #include "../third_party/json.hpp"
 
@@ -316,6 +318,7 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
             return handleList(r, sync);
         });
     router.post(prefix + "/sync",             [this](const Request& r){ return handleSync            (r); });
+    router.post(prefix + "/refresh-ad-status",[this](const Request& r){ return handleRefreshAdStatus (r); });
     router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
     // /unjoined-members renders the "Members" section which is 100% LA
@@ -411,7 +414,49 @@ Response LeadsController::handleSync(const Request& request) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// GET /api/leads
+// POST /api/leads/refresh-ad-status
+//
+// Live Meta pull -- NOT the DB.  Frontend calls this first thing on every
+// Leads screen load (before the Active-pill GET /api/leads?status=active)
+// so the Active/Inactive split reflects which ads are running on
+// Instagram/Facebook RIGHT NOW, not whatever was true last time someone
+// happened to look.  A form is "active" if ANY ad row for its form_id
+// comes back with effective_status == ACTIVE.
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleRefreshAdStatus(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    try {
+        auto rows = MetaAdsService::getInstance().fetchAdFormStatuses();
+
+        std::set<std::string> activeFormIds;
+        for (const auto& row : rows) {
+            if (row.effectiveStatus == "ACTIVE") activeFormIds.insert(row.formId);
+        }
+
+        std::vector<std::string> activeVec(activeFormIds.begin(), activeFormIds.end());
+        LeadForm::replaceActive(activeVec);
+
+        std::ostringstream b;
+        b << "{\"ok\":true,\"active_form_ids\":[";
+        bool first = true;
+        for (const auto& id : activeVec) {
+            if (!first) b << ",";
+            first = false;
+            b << jsonStr(id);
+        }
+        b << "]}";
+        return errOk(HttpStatus::OK, b.str());
+    } catch (const std::exception& e) {
+        std::cerr << "Meta ad-status refresh failed: " << e.what() << std::endl;
+        std::ostringstream b;
+        b << "{\"ok\":false,\"error\":" << jsonStr(e.what()) << "}";
+        return errOk(HttpStatus::BAD_GATEWAY, b.str());
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/leads?status=active|inactive|all (default "all")
 // ────────────────────────────────────────────────────────────────────────────
 Response LeadsController::handleList(const Request& request, const LaSyncMap& sync) {
     (void)sync;   // LA fetch was executed by laGet(); this handler reads DB only.
@@ -419,7 +464,7 @@ Response LeadsController::handleList(const Request& request, const LaSyncMap& sy
         && !isLeadsSyncBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
 
     try {
-        auto leads = Lead::listAll();
+        auto leads = Lead::listAll(request.getQueryParam("status"));
         std::ostringstream b;
         b << "[";
         for (size_t i = 0; i < leads.size(); ++i) {
