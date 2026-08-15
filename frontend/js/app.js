@@ -30,15 +30,12 @@ class App {
       divisionRoster: new DivisionRosterScreen(this.navigation, this.auth),
       teamSelection: new TeamSelectionScreen(this.navigation, this.auth),
       teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
-      rosterManagement: new RosterManagementScreen(this.navigation, this.auth),
       practiceOptions: new PracticeOptionsScreen(this.navigation, this.auth),
       practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
       practiceForm: new PracticeFormScreen(this.navigation, this.auth),
       practiceList: new PracticeListScreen(this.navigation, this.auth),
       practiceDetail: new PracticeDetailScreen(this.navigation, this.auth),
       practicePlan: new PracticePlanScreen(this.navigation, this.auth),
-      matchOptions: new MatchOptionsScreen(this.navigation, this.auth),
-      matchManagement: new MatchManagementScreen(this.navigation, this.auth),
       matchForm: new MatchFormScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
       matchDetail: new MatchDetailScreen(this.navigation, this.auth),
@@ -52,7 +49,6 @@ class App {
       gameModel: new GameModelScreen(this.navigation, this.auth),
       playerActions: new PlayerActionsScreen(this.navigation, this.auth),
       adminClubTeams: new AdminClubTeamsScreen(this.navigation, this.auth),
-      clubEvents: new ClubEventsScreen(this.navigation, this.auth),
       adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
       adminTeam: new AdminTeamScreen(this.navigation, this.auth),
       tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth),
@@ -71,10 +67,6 @@ class App {
       members: new MembersScreen(this.navigation, this.auth),
       peopleWorkbench: new PeopleWorkbenchScreen(this.navigation, this.auth),
       mensGameEligibility: new MensGameEligibilityScreen(this.navigation, this.auth),
-      mensRoster: new MensRosterScreen(this.navigation, this.auth),
-      boysRoster: new BoysRosterScreen(this.navigation, this.auth),
-      girlsRoster: new GirlsRosterScreen(this.navigation, this.auth),
-      womensRoster: new WomensRosterScreen(this.navigation, this.auth),
       rosters: new RostersScreen(this.navigation, this.auth),
       person: new PersonScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
@@ -82,7 +74,6 @@ class App {
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
-      practiceDashboard: new PracticeDashboardScreen(this.navigation, this.auth),
       adPreview: new AdPreviewScreen(this.navigation, this.auth),
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
@@ -112,15 +103,12 @@ class App {
     this.screenManager.register('division-roster', this.screens.divisionRoster);
     this.screenManager.register('team-selection', this.screens.teamSelection);
     this.screenManager.register('team-dashboard', this.screens.teamDashboard);
-    this.screenManager.register('roster-management', this.screens.rosterManagement);
     this.screenManager.register('practice-options', this.screens.practiceOptions);
     this.screenManager.register('practice-management', this.screens.practiceManagement);
     this.screenManager.register('practice-form', this.screens.practiceForm);
     this.screenManager.register('practice-list', this.screens.practiceList);
     this.screenManager.register('practice-detail', this.screens.practiceDetail);
     this.screenManager.register('practice-plan', this.screens.practicePlan);
-    this.screenManager.register('match-options', this.screens.matchOptions);
-    this.screenManager.register('match-management', this.screens.matchManagement);
     this.screenManager.register('match-form', this.screens.matchForm);
     this.screenManager.register('match-list', this.screens.matchList);
     this.screenManager.register('match-detail', this.screens.matchDetail);
@@ -134,7 +122,7 @@ class App {
     this.screenManager.register('game-model', this.screens.gameModel);
     this.screenManager.register('player-actions', this.screens.playerActions);
     this.screenManager.register('admin-club-teams', this.screens.adminClubTeams);
-    this.screenManager.register('club-events', this.screens.clubEvents);    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
+    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
     this.screenManager.register('admin-team', this.screens.adminTeam);
     this.screenManager.register('tactical-board', this.screens.tacticalBoard);
     this.screenManager.register('club-directory', this.screens.clubDirectory);
@@ -153,10 +141,6 @@ class App {
     this.screenManager.register('members', this.screens.members);
     this.screenManager.register('people-workbench', this.screens.peopleWorkbench);
     this.screenManager.register('mens-game-eligibility', this.screens.mensGameEligibility);
-    this.screenManager.register('mens-roster', this.screens.mensRoster);
-    this.screenManager.register('boys-roster', this.screens.boysRoster);
-    this.screenManager.register('girls-roster', this.screens.girlsRoster);
-    this.screenManager.register('womens-roster', this.screens.womensRoster);
     this.screenManager.register('rosters', this.screens.rosters);
     // 'teams' is the canonical name going forward (absorbs the old
     // #context-selection role=coach picker and #admin-club-teams — see
@@ -171,18 +155,9 @@ class App {
     this.screenManager.register('messages', this.screens.messages);
     this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);
     // Mens is the default; womens is the same screen with a gender param.
-    // 'lineups' kept as a backward-compat alias for any old bookmarks / links.
-    this.screenManager.register('mens-lineups', this.screens.lineups);
-    this.screenManager.register('womens-lineups', this.screens.lineups);
+    // 'mens-lineups'/'womens-lineups' aliases removed 2026-08-15 — dead,
+    // nothing ever linked to them; 'lineups' is the one actually in use.
     this.screenManager.register('lineups', this.screens.lineups);
-    // Practice / Pickup dashboards — same screen instance, params drive
-    // gender (mens/womens/youth) and kind (practice/pickup).
-    this.screenManager.register('mens-practice-dash',   this.screens.practiceDashboard);
-    this.screenManager.register('womens-practice-dash', this.screens.practiceDashboard);
-    this.screenManager.register('youth-practice-dash',  this.screens.practiceDashboard);
-    this.screenManager.register('mens-pickup-dash',     this.screens.practiceDashboard);
-    this.screenManager.register('womens-pickup-dash',   this.screens.practiceDashboard);
-    this.screenManager.register('youth-pickup-dash',    this.screens.practiceDashboard);
     this.screenManager.register('ad-preview', this.screens.adPreview);
     this.screenManager.register('public-gameday', this.screens.publicGameday);
     this.screenManager.register('public-lineup', this.screens.publicLineup);
