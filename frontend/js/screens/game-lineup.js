@@ -9,22 +9,31 @@
 //
 // Backend surface:
 //   GET /api/eligibility/lineup/:matchId → { success, data: {
-//     matchId, teamId, isCoach, rosterStats: [{playerId, practicesAttended,
-//     practicesRecentTotal, practicesProjected, practicesUpcomingTotal,
-//     gameRsvp, practices: [{date, future, attended}, ...]}], lineup: [{
-//     playerId, zone, firstName, lastName, ...}] } } — practices is the
-//     team's Tue-Sat practice window before this match (≤5), oldest
-//     first. future=false entries use real attendance; future=true
-//     entries (days that haven't happened yet) use RSVP/standing
-//     projection instead — attended there means "projected to go".
-//     rosterStats is coach-only (empty array for players) — see migration
-//     278 (fh_events<->matches bridge) for why this reads fh_events/
-//     fh_event_attendance/fh_event_rsvps instead of the old chat_events path.
+//     matchId, teamId, rosterTeamIds, isCoach, rosterStats: [{playerId,
+//     practicesAttended, practicesRecentTotal, practicesProjected,
+//     practicesUpcomingTotal, gameRsvp, practices: [{date, future,
+//     attended}, ...]}], lineup: [{playerId, zone, firstName, lastName,
+//     ...}] } } — practices is the team's Tue-Sat practice window before
+//     this match (≤5), oldest first. future=false entries use real
+//     attendance; future=true entries (days that haven't happened yet)
+//     use RSVP/standing projection instead — attended there means
+//     "projected to go". rosterStats is coach-only (empty array for
+//     players) — see migration 278 (fh_events<->matches bridge) for why
+//     this reads fh_events/fh_event_attendance/fh_event_rsvps instead of
+//     the old chat_events path. rosterTeamIds is every team fh_event_teams
+//     tags this match to (e.g. a "Team: APSL, Liga1" game shares one
+//     roster pool across both) — teamId alone is just the primary/home
+//     team, kept for the lineup save below. Fetch+merge roster from every
+//     id in rosterTeamIds, not just teamId, or dual-rostered players go
+//     missing from Unassigned.
 //   GET /api/teams/:teamId/roster        → { success, data: [{id, name,
 //     roleType, lineupRole}, ...] }
 //   PUT /api/eligibility/lineup/:matchId → same shape lineups.js already writes
 //   PUT /api/teams/:teamId/roster/:playerId/lineup-role → { lineupRole: 'starter'|'bench'|null }
 //     coach/admin-only manual starter/bench-eligible designation (migration 279)
+//     — :teamId must be one of the teams that specific player actually
+//     rosters on (see roster merge below), not necessarily the match's
+//     primary team.
 //
 // Reached via navigation.goTo('game-lineup', { matchId, title, when }) —
 // title/when are optional, already-sanitized display strings (never pass a
@@ -133,16 +142,29 @@ class GameLineupScreen extends Screen {
         this.stats.set(Number(row.playerId), row);
       }
 
-      if (this.teamId) {
-        const rosterRes = await this.auth.fetch(`/api/teams/${this.teamId}/roster`);
-        const rosterData = await rosterRes.json();
+      // A game tagged "Team: APSL, Liga1" shares one roster pool across
+      // both — fetch every team in rosterTeamIds and merge, not just the
+      // primary teamId, or the second team's players go missing from
+      // Unassigned. Each player keeps the id of the FIRST team its roster
+      // row came from, since that's what the lineup-role PUT targets.
+      const rosterTeamIds = Array.isArray(lineupData.data.rosterTeamIds) && lineupData.data.rosterTeamIds.length
+        ? lineupData.data.rosterTeamIds
+        : (this.teamId ? [this.teamId] : []);
+
+      const rosterResults = await Promise.all(
+        rosterTeamIds.map(id => this.auth.fetch(`/api/teams/${id}/roster`).then(r => r.json()).then(d => ({ id, d })))
+      );
+      const byId = new Map();
+      for (const { id: fromTeamId, d: rosterData } of rosterResults) {
         const arr = Array.isArray(rosterData?.data) ? rosterData.data : [];
-        this.roster = arr
-          .filter(p => p.roleType === 'PLAYER')
-          .map(p => ({ id: Number(p.id), name: p.name || '(unnamed)', lineupRole: p.lineupRole || null }));
-      } else {
-        this.roster = [];
+        for (const p of arr) {
+          if (p.roleType !== 'PLAYER') continue;
+          const pid = Number(p.id);
+          if (byId.has(pid)) continue; // already merged from an earlier team
+          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lineupRole: p.lineupRole || null, teamId: fromTeamId });
+        }
       }
+      this.roster = [...byId.values()];
 
       this.loaded = true;
       this._render();
@@ -227,13 +249,13 @@ class GameLineupScreen extends Screen {
   // match's zone assignment. Tapping the active role again clears it.
   async _setLineupRole(playerId, role) {
     const player = this.roster.find(p => p.id === playerId);
-    if (!player || !this.teamId) return;
+    if (!player || !player.teamId) return;
     const nextRole = player.lineupRole === role ? null : role;
     const prevRole = player.lineupRole;
     player.lineupRole = nextRole;
     this._render();
     try {
-      const res = await this.auth.fetch(`/api/teams/${this.teamId}/roster/${playerId}/lineup-role`, {
+      const res = await this.auth.fetch(`/api/teams/${player.teamId}/roster/${playerId}/lineup-role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lineupRole: nextRole }),

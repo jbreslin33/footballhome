@@ -272,7 +272,8 @@ Response TeamController::handleSetLineupRole(const Request& request) {
         // Absence of a matched value (including explicit null) clears the flag.
 
         pqxx::result result = db_->query(
-            "UPDATE team_persons SET lineup_role = NULLIF($1, '') "
+            "UPDATE team_persons SET lineup_role_id = "
+            "  (SELECT id FROM lineup_roles WHERE name = NULLIF($1, '')) "
             "WHERE team_id = $2::int "
             "  AND person_id = (SELECT person_id FROM players WHERE id = $3::int) "
             "  AND removed_at IS NULL "

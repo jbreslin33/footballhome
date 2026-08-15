@@ -65,6 +65,39 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         std::string teamIdForResponse = (!teamRow.empty() && !teamRow[0]["home_team_id"].is_null())
             ? teamRow[0]["home_team_id"].c_str() : "";
 
+        // Roster-eligible teams for this match. A game tagged "Team: APSL,
+        // Liga1" in gcal (see gcal-classify.js's DSL pass) is one shared
+        // squad playing under two league umbrellas — fh_event_teams carries
+        // ALL of them, not just matches.home_team_id, which is one column
+        // and can't represent that. Everything below (isCoach, practice
+        // eligibility, roster pool) is scoped to this full set so a
+        // Liga1-only player still shows up for an APSL/Liga1 combined game.
+        // Falls back to home/away team_id if the event isn't bridged yet.
+        pqxx::result eventTeamsRow = db_->query(
+            "SELECT array_agg(DISTINCT fet.team_id) AS team_ids "
+            "FROM fh_events fe JOIN fh_event_teams fet ON fet.fh_event_id = fe.id "
+            "WHERE fe.match_id = $1",
+            {matchId}
+        );
+        std::string rosterTeamIdsArray; // Postgres array literal, e.g. "{35,120}"
+        if (!eventTeamsRow.empty() && !eventTeamsRow[0]["team_ids"].is_null()) {
+            rosterTeamIdsArray = eventTeamsRow[0]["team_ids"].c_str();
+        } else {
+            std::ostringstream fallback;
+            fallback << "{";
+            bool any = false;
+            if (!teamRow.empty() && !teamRow[0]["home_team_id"].is_null()) {
+                fallback << teamRow[0]["home_team_id"].c_str();
+                any = true;
+            }
+            if (!teamRow.empty() && !teamRow[0]["away_team_id"].is_null()) {
+                if (any) fallback << ",";
+                fallback << teamRow[0]["away_team_id"].c_str();
+            }
+            fallback << "}";
+            rosterTeamIdsArray = fallback.str();
+        }
+
         // Same naive-UTC-string convention as the practice pills below (no
         // offset marker) so the frontend's Date parsing treats them
         // identically when rendering the "game" pill after the practice ones.
@@ -80,8 +113,6 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         bool isCoach = false;
         std::string userId = extractUserIdFromToken(request);
         if (!userId.empty() && !teamRow.empty()) {
-            std::string homeTeamId = teamRow[0]["home_team_id"].is_null() ? "0" : teamRow[0]["home_team_id"].c_str();
-            std::string awayTeamId = teamRow[0]["away_team_id"].is_null() ? "0" : teamRow[0]["away_team_id"].c_str();
             pqxx::result authRows = db_->query(
                 "SELECT ("
                 "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
@@ -89,10 +120,10 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 "  OR EXISTS (SELECT 1 FROM team_coaches tc "
                 "             JOIN coaches co ON co.id = tc.coach_id "
                 "             JOIN users u ON u.person_id = co.person_id "
-                "             WHERE tc.team_id IN ($2::int, $3::int) AND tc.ended_at IS NULL "
+                "             WHERE tc.team_id = ANY($2::int[]) AND tc.ended_at IS NULL "
                 "             AND u.id = $1::int)"
                 ") AS is_coach",
-                {userId, homeTeamId, awayTeamId});
+                {userId, rosterTeamIdsArray});
             isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
         }
 
@@ -103,7 +134,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         // fetched separately from /api/teams/:teamId/roster.
         std::ostringstream statsJson;
         statsJson << "[";
-        if (isCoach && !teamIdForResponse.empty()) {
+        if (isCoach && !rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}") {
             pqxx::result statsRows = db_->query(R"(
                 WITH match_event AS (
                     SELECT fe.id AS fh_event_id, ge.starts_at
@@ -112,11 +143,15 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     LIMIT 1
                 ),
                 team_practice_events AS (
-                    SELECT fe.id AS fh_event_id, fe.kind, fe.category, ge.starts_at
+                    -- ANY(team_ids), not a single team — a game tagged
+                    -- "Team: APSL, Liga1" shares one practice pool across
+                    -- both leagues (see fh_event_teams), so a Liga1-only
+                    -- player's practices are still found here.
+                    SELECT DISTINCT fe.id AS fh_event_id, fe.kind, fe.category, ge.starts_at
                     FROM fh_events fe
                     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
                     JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
-                    WHERE fet.team_id = $2::int
+                    WHERE fet.team_id = ANY($2::int[])
                       AND fe.kind IN ('practice', 'pickup')
                       AND ge.deleted_at IS NULL
                 ),
@@ -151,7 +186,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     ORDER BY tpe.starts_at DESC
                     LIMIT 5
                 )
-                SELECT pl.id AS player_id,
+                SELECT DISTINCT ON (pl.id) pl.id AS player_id,
                        (SELECT count(*) FROM recent_practices) AS recent_total,
                        (SELECT count(*) FROM fh_event_attendance fea
                           WHERE fea.person_id = pe.id
@@ -198,8 +233,12 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 FROM team_persons tp
                 JOIN persons pe ON pe.id = tp.person_id
                 JOIN players pl ON pl.person_id = pe.id
-                WHERE tp.team_id = $2::int AND tp.removed_at IS NULL
-            )", {matchId, teamIdForResponse});
+                WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
+                -- A player rostered on more than one of the eligible teams
+                -- (e.g. both APSL and Liga1) would otherwise get one stats
+                -- row per team; collapse to one row per player.
+                ORDER BY pl.id
+            )", {matchId, rosterTeamIdsArray});
 
             bool firstStat = true;
             for (const auto& row : statsRows) {
@@ -243,6 +282,18 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
         json << "\"matchStartsAt\":" << (matchStartsAt.empty() ? "null" : "\"" + matchStartsAt + "\"") << ",";
         json << "\"teamId\":" << (teamIdForResponse.empty() ? "null" : teamIdForResponse) << ",";
+        {
+            // "{35,120}" -> "[35,120]" — rosterTeamIdsArray is a Postgres
+            // array literal of plain ints, safe to reuse verbatim as JSON.
+            std::string rosterTeamIdsJson = rosterTeamIdsArray;
+            if (!rosterTeamIdsJson.empty()) {
+                rosterTeamIdsJson.front() = '[';
+                rosterTeamIdsJson.back()  = ']';
+            } else {
+                rosterTeamIdsJson = "[]";
+            }
+            json << "\"rosterTeamIds\":" << rosterTeamIdsJson << ",";
+        }
         json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
         json << "\"rosterStats\":" << statsJson.str() << ",";
 
