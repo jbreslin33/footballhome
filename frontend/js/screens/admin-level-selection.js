@@ -64,13 +64,14 @@ class AdminLevelSelectionScreen extends Screen {
   }
   
   navigateToAdminScreen(levelType, entity) {
+    // /api/auth/admin/contexts only ever emits type 'super' or 'club'
+    // (sport_division/league/conference/division/team admin levels were
+    // never wired up backend-side — see AuthController::handleAdminContexts'
+    // TODO). Keeping dead branches here for types that can never appear
+    // just risks a "Screen not registered" crash if that ever changes
+    // without this file being updated too.
     const routes = {
       club: { screen: 'admin-club', params: { clubId: entity.id, clubName: entity.display_name } },
-      sport_division: { screen: 'admin-sport-division', params: { sportDivisionId: entity.id, sportDivisionName: entity.display_name } },
-      league: { screen: 'admin-league', params: { leagueId: entity.id, leagueName: entity.display_name } },
-      conference: { screen: 'admin-conference', params: { conferenceId: entity.id, conferenceName: entity.display_name } },
-      division: { screen: 'admin-division', params: { divisionId: entity.id, divisionName: entity.display_name } },
-      team: { screen: 'admin-team', params: { teamId: entity.id, teamName: entity.display_name } }
     };
     
     const route = routes[levelType];
@@ -102,21 +103,18 @@ class AdminLevelSelectionScreen extends Screen {
         grouped[ctx.type].push(ctx);
       });
       
-      // Define level configuration
+      // Define level configuration — only 'super'/'system'/'club' can ever
+      // appear (see navigateToAdminScreen's comment on why the other
+      // admin levels were removed from here rather than left dead).
       const levelConfig = {
         super: { icon: '🛡️', label: 'Super Admin', description: 'Global administration' },
         system: { icon: '👨‍💼', label: 'System', description: 'Global administration' },
         club: { icon: '🏢', label: 'Club', description: 'Club management' },
-        sport_division: { icon: '⚽', label: 'Sport Division', description: 'Sport division management' },
-        league: { icon: '🏆', label: 'League', description: 'League management' },
-        conference: { icon: '📋', label: 'Conference', description: 'Conference management' },
-        division: { icon: '📊', label: 'Division', description: 'Division management' },
-        team: { icon: '👥', label: 'Team', description: 'Team management' }
       };
-      
+
       // Render level buttons
       const levels = Object.keys(grouped).sort((a, b) => {
-        const order = ['super', 'system', 'club', 'sport_division', 'league', 'conference', 'division', 'team'];
+        const order = ['super', 'system', 'club'];
         return order.indexOf(a) - order.indexOf(b);
       });
       

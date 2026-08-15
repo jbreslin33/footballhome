@@ -28,14 +28,13 @@ class AdminEntityListScreen extends Screen {
       return;
     }
     
-    // Set title based on level type
+    // Set title based on level type. Only 'club' can ever reach this
+    // screen — /api/auth/admin/contexts never emits sport_division/
+    // league/conference/division/team (see admin-level-selection.js's
+    // navigateToAdminScreen comment); those branches were removed rather
+    // than left dead pointing at unregistered screens.
     const levelConfig = {
       club: { icon: '🏢', label: 'Clubs', singular: 'Club' },
-      sport_division: { icon: '⚽', label: 'Sport Divisions', singular: 'Sport Division' },
-      league: { icon: '🏆', label: 'Leagues', singular: 'League' },
-      conference: { icon: '📋', label: 'Conferences', singular: 'Conference' },
-      division: { icon: '📊', label: 'Divisions', singular: 'Division' },
-      team: { icon: '👥', label: 'Teams', singular: 'Team' }
     };
     
     const config = levelConfig[this.levelType];
@@ -66,11 +65,6 @@ class AdminEntityListScreen extends Screen {
   navigateToAdminScreen(entityId, entityName) {
     const routes = {
       club: { screen: 'admin-club', params: { clubId: entityId, clubName: entityName } },
-      sport_division: { screen: 'admin-sport-division', params: { sportDivisionId: entityId, sportDivisionName: entityName } },
-      league: { screen: 'admin-league', params: { leagueId: entityId, leagueName: entityName } },
-      conference: { screen: 'admin-conference', params: { conferenceId: entityId, conferenceName: entityName } },
-      division: { screen: 'admin-division', params: { divisionId: entityId, divisionName: entityName } },
-      team: { screen: 'admin-team', params: { teamId: entityId, teamName: entityName } }
     };
     
     const route = routes[this.levelType];
@@ -117,11 +111,6 @@ class AdminEntityListScreen extends Screen {
   getIconForType(type) {
     const icons = {
       club: '🏢',
-      sport_division: '⚽',
-      league: '🏆',
-      conference: '📋',
-      division: '📊',
-      team: '👥'
     };
     return icons[type] || '📋';
   }
