@@ -24,11 +24,6 @@ class App {
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
       contextSelection: new ContextSelectionScreen(this.navigation, this.auth),
       clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
-      divisionSelection: new DivisionSelectionScreen(this.navigation, this.auth),
-      divisionMenu: new DivisionMenuScreen(this.navigation, this.auth),
-      divisionManagement: new DivisionManagementScreen(this.navigation, this.auth),
-      divisionRoster: new DivisionRosterScreen(this.navigation, this.auth),
-      teamSelection: new TeamSelectionScreen(this.navigation, this.auth),
       teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
       practiceOptions: new PracticeOptionsScreen(this.navigation, this.auth),
       practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
@@ -49,8 +44,6 @@ class App {
       gameModel: new GameModelScreen(this.navigation, this.auth),
       playerActions: new PlayerActionsScreen(this.navigation, this.auth),
       adminClubTeams: new AdminClubTeamsScreen(this.navigation, this.auth),
-      adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
-      adminTeam: new AdminTeamScreen(this.navigation, this.auth),
       tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth),
       clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
       clubDetail: new ClubDetailScreen(this.navigation, this.auth),
@@ -96,11 +89,6 @@ class App {
     this.screenManager.register('marketing-home', this.screens.marketingHome);
     this.screenManager.register('context-selection', this.screens.contextSelection);
     this.screenManager.register('club-selection', this.screens.clubSelection);
-    this.screenManager.register('division-selection', this.screens.divisionSelection);
-    this.screenManager.register('division-menu', this.screens.divisionMenu);
-    this.screenManager.register('division-management', this.screens.divisionManagement);
-    this.screenManager.register('division-roster', this.screens.divisionRoster);
-    this.screenManager.register('team-selection', this.screens.teamSelection);
     this.screenManager.register('team-dashboard', this.screens.teamDashboard);
     this.screenManager.register('practice-options', this.screens.practiceOptions);
     this.screenManager.register('practice-management', this.screens.practiceManagement);
@@ -121,8 +109,6 @@ class App {
     this.screenManager.register('game-model', this.screens.gameModel);
     this.screenManager.register('player-actions', this.screens.playerActions);
     this.screenManager.register('admin-club-teams', this.screens.adminClubTeams);
-    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
-    this.screenManager.register('admin-team', this.screens.adminTeam);
     this.screenManager.register('tactical-board', this.screens.tacticalBoard);
     this.screenManager.register('club-directory', this.screens.clubDirectory);
     this.screenManager.register('club-detail', this.screens.clubDetail);

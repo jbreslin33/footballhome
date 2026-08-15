@@ -127,10 +127,6 @@ class NavigationStateMachine {
   // Clear context set by specific screens when navigating back
   clearContextForScreen(screenName) {
     switch(screenName) {
-      case 'team-selection':
-        // Going back from team selection clears role (set by role-selection)
-        this.context.role = null;
-        break;
       case 'practice-options':
         // Going back from practice options clears team (set by team-selection)
         this.context.team = null;
