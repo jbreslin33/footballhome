@@ -260,7 +260,12 @@ class RosterScreenBase extends Screen {
     const dragAttrs = (col && col.teamId && canMove)
       ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"`
       : '';
-    if (!canMove) rosterSelectHtml = '';
+    // canMove only gates drag-and-drop reordering within a coached column
+    // (dragAttrs above) — it's false for Unassigned cards since col.teamId
+    // is falsy there, even though renderMoveControl() correctly built a
+    // dropdown for them (currentTeamId===0 is an allowed case). Don't wipe
+    // rosterSelectHtml based on canMove; renderMoveControl() already
+    // decided whether a dropdown belongs on this card.
     const laUidAttr = player.leagueAppsUserId
       ? `data-la-user-id="${player.leagueAppsUserId}"`
       : '';
