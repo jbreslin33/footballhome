@@ -60,7 +60,8 @@ public:
                bool refreshLa,
                const std::vector<nlohmann::json>& boysRecs,
                const std::vector<nlohmann::json>& girlsRecs,
-               const std::unordered_map<std::string, long long>& personIdByUserId = {});
+               const std::unordered_map<std::string, long long>& personIdByUserId = {},
+               bool includeInactive = false);
 
     // Public accessors so controllers registering laGet(static) know
     // exactly which LA programs to sync — keeps the routing table

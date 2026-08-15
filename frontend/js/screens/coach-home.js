@@ -78,7 +78,7 @@ class CoachHomeScreen extends Screen {
     renderInto('#section-teams', teamsTiles);
 
     const rosterTiles = [
-      { id: 'rosters', target: 'rosters', params: {}, icon: '🎽', label: 'Team Players', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side)' },
+      { id: 'rosters', target: 'teams', params: {}, icon: '🎽', label: 'Team Players', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side), with an Active/Inactive filter' },
     ];
     renderInto('#section-rosters', rosterTiles);
 

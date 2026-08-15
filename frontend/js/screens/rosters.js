@@ -175,14 +175,44 @@ class RostersScreen extends Screen {
     return div;
   }
 
-  onEnter(params) {
+  async onEnter(params) {
     const allowed = new Set(['all', 'mens', 'womens', 'boys', 'girls']);
     if (params && typeof params.chip === 'string' && allowed.has(params.chip)) {
       this.chip = params.chip;
     }
+    // clubId/clubName accepted for parity with the old admin-club-teams
+    // entry point this screen absorbed — every sub-screen's endpoint
+    // (/api/mens-roster, /api/boys-roster, ...) is already single-club
+    // scoped server-side, so there's nothing to thread the id into yet.
+    this.clubId = params?.clubId ?? this.navigation.context?.club?.id ?? 134;
+    this.clubName = params?.clubName ?? 'Lighthouse';
+
+    this.includeInactive = false;
+    await this._ensureCoachedTeamIds();
     this._syncHeaderState();
     this._buildFilterBar();
     this._mountForChip();
+  }
+
+  // Coach-scoped move rights (CoachTeamCard, components/TeamCard.js) read
+  // navigation.context.coachedTeamIds — populate it once per entry so
+  // every mounted section (Mens/Boys/Girls/Womens) sees the same list
+  // without each re-fetching it. Admin doesn't need this at all — their
+  // card class derives "every column on this board" straight from
+  // whatever board it's rendering, no separate fetch required.
+  async _ensureCoachedTeamIds() {
+    const role = (this.navigation?.context?.role || this.auth?.user?.role || '').toString().toLowerCase();
+    if (role !== 'coach') return;
+    try {
+      const res = await this.auth.fetch('/api/auth/coach/teams');
+      if (!res.ok) return;
+      const body = await res.json();
+      const teams = body?.data || [];
+      this.navigation.context.coachedTeamIds = teams.map((t) => parseInt(t.id, 10)).filter((id) => !Number.isNaN(id));
+    } catch (err) {
+      console.error('[rosters] failed to load coached team ids:', err);
+      this.navigation.context.coachedTeamIds = [];
+    }
   }
 
   // ScreenManager's lifecycle hook is `onExit` (not `onLeave`).  We
@@ -229,6 +259,27 @@ class RostersScreen extends Screen {
           this.chip = id;
           this._buildFilterBar();
           this._mountForChip();
+        },
+      },
+      {
+        // is_active is the source of truth for "does this team show" —
+        // independent of the section pill above, so it's its own row
+        // (no `clears`). Defaults to Active on every fresh entry
+        // (this.includeInactive reset in onEnter).
+        name:     'status',
+        chips: [
+          { id: 'active',   label: 'Active' },
+          { id: 'inactive', label: 'Inactive' },
+        ],
+        selected: this.includeInactive ? 'inactive' : 'active',
+        onSelect: (id) => {
+          if (id == null) return;
+          this.includeInactive = id === 'inactive';
+          for (const child of this._mountedChildren) {
+            if (typeof child.setIncludeInactive === 'function') {
+              child.setIncludeInactive(this.includeInactive);
+            }
+          }
         },
       },
     ]);
@@ -561,6 +612,13 @@ class RostersScreen extends Screen {
       wrap.innerHTML = '';
       wrap.appendChild(el);
       this._mountedChildren.push(child);
+      // Active/Inactive pill state carries into every freshly-mounted
+      // child so its first load already asks for the right set —
+      // setIncludeInactive() (mens-roster.js/boys-roster.js) would
+      // otherwise only take effect on the NEXT toggle.
+      if (typeof child.setIncludeInactive === 'function') {
+        child.includeInactive = this.includeInactive;
+      }
       if (typeof child.onEnter === 'function') child.onEnter();
     } catch (err) {
       console.error(`[rosters] ${label} failed to mount`, err);

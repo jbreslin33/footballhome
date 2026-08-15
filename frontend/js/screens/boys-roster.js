@@ -131,6 +131,13 @@ class BoysRosterScreen extends RosterScreenBase {
     if (r) r.style.display = showRefresh ? '' : 'none';
   }
 
+  // Active/Inactive pill (RostersScreen host) — see mens-roster.js's
+  // identical setIncludeInactive for the rationale.
+  setIncludeInactive(value) {
+    this.includeInactive = !!value;
+    return this.load();
+  }
+
   async load({ refreshLa = false } = {}) {
     const loading = this.find('#br-loading');
     const errEl   = this.find('#br-error');
@@ -150,9 +157,11 @@ class BoysRosterScreen extends RosterScreenBase {
       // refreshLa=1 → backend does a live LA fetch + payment sync.
       // Otherwise the backend serves its cached snapshot so mid-session
       // reloads (e.g. after a move) don't wait on LeagueApps.
-      const url = refreshLa
-        ? '/api/boys-roster?refreshLa=1'
-        : '/api/boys-roster';
+      const params = new URLSearchParams();
+      if (refreshLa) params.set('refreshLa', '1');
+      if (this.includeInactive) params.set('includeInactive', '1');
+      const qs = params.toString();
+      const url = qs ? `/api/boys-roster?${qs}` : '/api/boys-roster';
       const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();
@@ -358,7 +367,7 @@ class BoysRosterScreen extends RosterScreenBase {
     // (id 0) means remove from whichever real column they're on.
     // Rendering itself is identical to mens (and girls/women's, which
     // inherit this screen), so it lives once in RosterScreenBase.
-    const moveSelect = this.renderMoveDropdown(p, columns);
+    const { rosterSelectHtml: moveSelect, canMove } = this._teamCardCapabilities(p, columns, col);
     // Shared button style — as thin as legible.  Zero vertical padding
     // plus a tight line-height give ~11-12 px total height while the
     // sides keep a proper 5 px cushion.  All actions (move, delinq,
@@ -624,6 +633,7 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
+      canMove,
     });
   }
 

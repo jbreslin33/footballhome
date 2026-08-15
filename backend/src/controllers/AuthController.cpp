@@ -435,45 +435,27 @@ Response AuthController::handleCoachTeams(const Request& request) {
         // buckets like Puerto Rico/DR/U23, which still carry a
         // fully-resolving division_id) show up here but nowhere on the
         // rosters pages.
+        //
+        // Player counts come from team_persons (the live membership
+        // table — see migration 107), the same source the rosters
+        // boards and ClubController use. The old team_division_players
+        // view sits over the frozen legacy `rosters` table (no writes
+        // since migration 107) and drifts out of sync with reality.
         std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, t.gender_category, "
                           "       ch.id AS chat_id, ch.name AS chat_name, "
-                          "       COUNT(tp.player_id) AS player_count "
+                          "       COUNT(tp.person_id) AS player_count "
                           "FROM coaches co "
                           "JOIN team_coaches tc ON co.id = tc.coach_id "
                           "JOIN teams t ON tc.team_id = t.id "
                           "LEFT JOIN chats ch ON ch.team_id = t.id "
-                          "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
+                          "LEFT JOIN team_persons tp ON t.id = tp.team_id AND tp.removed_at IS NULL "
                           "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
                           "  AND t.board_sort_order IS NOT NULL "
                           "  AND t.is_active = true "
                           "GROUP BY t.id, t.name, t.club_id, t.gender_category, ch.id, ch.name "
                           "ORDER BY ch.name NULLS LAST, t.name";
 
-        pqxx::result result;
-        try {
-            result = db_->query(sql, {user_id});
-        } catch (const std::exception& e) {
-            std::string error = e.what();
-            if (error.find("team_division_players") == std::string::npos) {
-                throw;
-            }
-
-            std::cerr << "⚠️ team_division_players missing, falling back to team_players in handleCoachTeams" << std::endl;
-            const std::string fallback_sql = "SELECT DISTINCT t.id, t.name, NULL::integer AS club_id, t.gender_category, "
-                                             "       ch.id AS chat_id, ch.name AS chat_name, "
-                                             "       COUNT(tp.player_id) AS player_count "
-                                             "FROM coaches co "
-                                             "JOIN team_coaches tc ON co.id = tc.coach_id "
-                                             "JOIN teams t ON tc.team_id = t.id "
-                                             "LEFT JOIN chats ch ON ch.team_id = t.id "
-                                             "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
-                                             "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
-                                             "  AND t.board_sort_order IS NOT NULL "
-                                             "  AND t.board_archived_at IS NULL "
-                                             "GROUP BY t.id, t.name, t.gender_category, ch.id, ch.name "
-                                             "ORDER BY ch.name NULLS LAST, t.name";
-            result = db_->query(fallback_sql, {user_id});
-        }
+        pqxx::result result = db_->query(sql, {user_id});
 
         // Helper: escape a string for embedding in a JSON string literal.
         auto jsonEscape = [](const std::string& s) {

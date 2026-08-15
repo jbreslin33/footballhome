@@ -58,7 +58,8 @@ public:
     Result run(bool includeAll,
                bool refreshLa,
                const std::vector<nlohmann::json>& recs,
-               const std::unordered_map<std::string, long long>& personIdByUserId = {});
+               const std::unordered_map<std::string, long long>& personIdByUserId = {},
+               bool includeInactive = false);
 
     // Public accessor so controllers registering laGet(static) know
     // which LA program to sync.

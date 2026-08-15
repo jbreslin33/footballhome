@@ -25,6 +25,58 @@ class RosterScreenBase extends Screen {
     return role === 'player';
   }
 
+  // Role → capability. Mirrors the role strings role-selection.js actually
+  // sets on navigation.context.role ('coach', 'player', 'club-admin') with
+  // a fallback to the account's DB-level role (auth.user.role — 'club',
+  // 'super', 'system', 'sport_division', 'team', 'league' all read as
+  // full club-admin per the same isAdmin list role-selection.js uses to
+  // decide whether to show the Administration tile at all).
+  _roleForCards() {
+    return (this.navigation?.context?.role || this.auth?.user?.role || '').toString().toLowerCase();
+  }
+
+  _cardClassFor() {
+    const role = this._roleForCards();
+    if (role === 'player') return TeamCard;
+    const adminRoles = ['admin', 'club-admin', 'club', 'sport_division', 'team', 'super', 'system', 'league'];
+    if (adminRoles.includes(role)) return AdminTeamCard;
+    if (role === 'coach') return CoachTeamCard;
+    // Unrecognized/missing role: default to view-only rather than
+    // silently granting move rights.
+    return TeamCard;
+  }
+
+  // Which teams the current card class is allowed to move players into.
+  // Admin gets every configured column on this board (full club access —
+  // no separate lookup needed, it's just "every column we already loaded").
+  // Coach gets the specific team_coaches-backed list the Teams screen
+  // fetched via GET /api/auth/coach/teams and stashed on
+  // navigation.context.coachedTeamIds before mounting this board (see
+  // rosters.js). Player never calls this (TeamCard ignores it).
+  _coachedTeamIds(columns) {
+    const role = this._roleForCards();
+    const adminRoles = ['admin', 'club-admin', 'club', 'sport_division', 'team', 'super', 'system', 'league'];
+    if (adminRoles.includes(role)) {
+      return (columns || []).map((c) => c.teamId);
+    }
+    return this.navigation?.context?.coachedTeamIds || [];
+  }
+
+  // Builds the role-gated move control + drag eligibility for one card via
+  // the TeamCard/CoachTeamCard/AdminTeamCard hierarchy (components/TeamCard.js).
+  // Returns { rosterSelectHtml, canMove } for renderCompactCard.
+  _teamCardCapabilities(player, columns, col) {
+    const CardClass = this._cardClassFor();
+    const card = new CardClass({ player, columns, col }, {
+      coachedTeamIds: this._coachedTeamIds(columns),
+      renderMoveDropdown: (p, cols) => this.renderMoveDropdown(p, cols),
+    });
+    return {
+      rosterSelectHtml: card.renderMoveControl(),
+      canMove: card.canDrag(),
+    };
+  }
+
   formatDobShort(value) {
     if (!value) return '';
     const d = new Date(`${value}T00:00:00Z`);
@@ -177,6 +229,7 @@ class RosterScreenBase extends Screen {
     duesLabel = '',
     dobShort = '',
     borderColor = '2px solid #facc15',
+    canMove = false,
   }) {
     const posChip = position
       ? `<span style="font-size:0.72rem; line-height:1.2; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
@@ -192,20 +245,22 @@ class RosterScreenBase extends Screen {
     const ageChip = player.ageGroup
       ? `<span style="font-size:0.68rem; line-height:1.2; font-weight:800; letter-spacing:0.02em; padding:0 6px; border-radius:8px; background:${isFemale ? '#eab308' : '#1e3a8a'}; color:${isFemale ? '#422006' : '#dbeafe'}; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
       : '';
-    // Players get a look-but-don't-touch board — no drag handle, no
-    // move dropdown (server-side team assignment has no separate
-    // admin check of its own, so the UI is the only gate; see
-    // _isPlayerView above).
-    const isPlayerView = this._isPlayerView();
+    // Move eligibility is decided by the TeamCard/CoachTeamCard/AdminTeamCard
+    // hierarchy (components/TeamCard.js) via _teamCardCapabilities() —
+    // players get canMove=false always; coaches get it true only for teams
+    // they specifically coach; admins get it true for every column. The
+    // backend enforces the same ownership check independently
+    // (Controller::canManageTeam) — this is UI-only convenience, not the
+    // security boundary.
     // data-person-id rides along with data-user-id so the drag/reorder
     // handler can POST the drift-immune person_id path (see
     // MensTeamAssignments::reorderTeamForPersons) instead of the plain
     // LA userId, which can silently drift out from under a specific
     // player and make their card look stuck / revert on drop.
-    const dragAttrs = (col && col.teamId && !isPlayerView)
+    const dragAttrs = (col && col.teamId && canMove)
       ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"`
       : '';
-    if (isPlayerView) rosterSelectHtml = '';
+    if (!canMove) rosterSelectHtml = '';
     const laUidAttr = player.leagueAppsUserId
       ? `data-la-user-id="${player.leagueAppsUserId}"`
       : '';

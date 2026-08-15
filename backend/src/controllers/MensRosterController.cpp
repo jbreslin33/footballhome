@@ -208,6 +208,7 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
     // else (initial cold cache aside) serves the cached snapshot so a
     // player-move round-trip doesn't get held up on the LeagueApps API.
     const bool refreshLa = (request.getQueryParam("refreshLa") == "1");
+    const bool includeInactive = (request.getQueryParam("includeInactive") == "1");
     try {
         // Per-load enforcement (migration 108): LA membership is source
         // of truth for roster composition.  Sweep out any rows whose
@@ -228,7 +229,7 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
         static const std::unordered_map<std::string, long long> kEmptyPersonIds;
         const auto& personIdByUserId = (it != sync.end()) ? it->second.personIdByUserId : kEmptyPersonIds;
 
-        auto result = model_->run(includeAll, refreshLa, recs, personIdByUserId);
+        auto result = model_->run(includeAll, refreshLa, recs, personIdByUserId, includeInactive);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";
@@ -269,6 +270,10 @@ Response MensRosterController::handleAssign(const Request& request) {
     for (auto& c : action) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     if (action != "add" && action != "remove") {
         return badRequest("leagueAppsUserId, teamId, action(add|remove) required");
+    }
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
     }
 
     try {
@@ -383,6 +388,10 @@ Response MensRosterController::handleRosterStatus(const Request& request) {
     const int  teamId   = static_cast<int>(teamIdLL);
     const bool onRoster = readBool(body, "onRoster", false);
 
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+
     try {
         auto result = assignments_->setRosterStatus(userId, teamId, onRoster);
         if (!result) {
@@ -432,6 +441,10 @@ Response MensRosterController::handleReorder(const Request& request) {
         return badRequest("teamId (positive int) required");
     }
     const int teamId = static_cast<int>(teamIdLL);
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
 
     auto it = body.find("userIds");
     if (it == body.end() || !it->is_array()) {

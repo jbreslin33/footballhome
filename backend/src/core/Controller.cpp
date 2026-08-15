@@ -231,6 +231,49 @@ bool Controller::requireAdminLevel(const Request& request,
         return false;
     }
 }
+
+bool Controller::canManageTeam(const Request& request, int teamId) {
+    std::string h = request.getHeader("Authorization");
+    if (h.empty()) h = request.getHeader("authorization");
+    if (h.size() <= 7 || h.compare(0, 7, "Bearer ") != 0) return false;
+
+    const std::string token = h.substr(7);
+    std::string payload;
+    if (!fh::crypto::verifyJwtHS256(token, &payload)) return false;
+
+    static const std::regex uidRe("\"userId\"\\s*:\\s*\"([0-9]+)\"");
+    std::smatch m;
+    if (!std::regex_search(payload, m, uidRe) || m.size() <= 1) return false;
+    const std::string userId = m[1].str();
+
+    try {
+        auto* db = Database::getInstance();
+
+        // Full club-admin bypass — same levels requireAdminLevel treats as
+        // club-management-capable elsewhere (People/Billing/RSVP-eligibility).
+        pqxx::result adminResult = db->query(
+            "SELECT al.name FROM admins a "
+            "JOIN admin_levels al ON al.id = a.admin_level_id "
+            "WHERE a.user_id = $1::int",
+            {userId});
+        if (!adminResult.empty()) {
+            const std::string level = adminResult[0][0].as<std::string>();
+            if (level == "club" || level == "super") return true;
+        }
+
+        // Otherwise: must specifically coach this team.
+        pqxx::result coachResult = db->query(
+            "SELECT 1 FROM team_coaches tc "
+            "JOIN coaches co ON co.id = tc.coach_id "
+            "JOIN users u ON u.person_id = co.person_id "
+            "WHERE u.id = $1::int AND tc.team_id = $2::int",
+            {userId, std::to_string(teamId)});
+        return !coachResult.empty();
+    } catch (const std::exception& e) {
+        std::cerr << "[canManageTeam] lookup failed: " << e.what() << std::endl;
+        return false;
+    }
+}
 // ────────────────────────────────────────────────────────────────────────────
 // LA-sync route primitives.  See doc block in Controller.h.
 //

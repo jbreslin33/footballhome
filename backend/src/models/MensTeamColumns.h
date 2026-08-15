@@ -37,7 +37,12 @@ public:
     // call-sites working; boys/girls pass their own domain string.
     explicit MensTeamColumns(std::string domain = "mens");
 
-    std::vector<Column> loadAll();
+    // includeInactive: when true, drops the `is_active = true` gate so
+    // retired/paused teams still render as columns (used by the Teams
+    // screen's Active/Inactive pill). board_sort_order IS NOT NULL still
+    // applies either way — a team with no configured column position has
+    // nothing to render regardless of active state.
+    std::vector<Column> loadAll(bool includeInactive = false);
 
     std::optional<Column> findByTeamId(int teamId);
 

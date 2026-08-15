@@ -26,7 +26,7 @@ MensTeamColumns::MensTeamColumns(std::string domain)
     : db_(Database::getInstance()),
       domain_(std::move(domain)) {}
 
-std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
+std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll(bool includeInactive) {
     std::vector<Column> out;
     // Board columns live directly on teams since migration 250 folded
     // roster_columns in (label/short_label/color/board_sort_order/
@@ -34,18 +34,18 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll() {
     // filter is now teams.gender_category — one less thing to forget
     // in a migration. Activity gate is teams.is_active (migration
     // 262) — board_archived_at is presentation-only now, not the
-    // "does this team operate" signal.
-    const auto rows = db_->query(
+    // "does this team operate" signal. includeInactive drops that gate
+    // for the Teams screen's Active/Inactive pill.
+    const std::string sql =
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
         "       t.color, t.mutex_group, t.max_roster "
         "  FROM teams t "
         " WHERE t.gender_category = $1 "
-        "   AND t.board_sort_order IS NOT NULL "
-        "   AND t.is_active = true "
-        " ORDER BY t.board_sort_order",
-        {domain_}
-    );
+        "   AND t.board_sort_order IS NOT NULL " +
+        std::string(includeInactive ? "" : "   AND t.is_active = true ") +
+        " ORDER BY t.board_sort_order";
+    const auto rows = db_->query(sql, {domain_});
     out.reserve(rows.size());
     for (const auto& row : rows) out.push_back(rowToColumn(row));
     return out;

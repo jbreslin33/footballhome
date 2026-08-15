@@ -1404,6 +1404,11 @@ Response ClubController::handleGetClubDetail(const Request& request) {
         std::string gender = request.getQueryParam("gender");
         if (gender.empty()) gender = "mens";
 
+        // Active/Inactive pill (Teams screen) — defaults to active-only,
+        // same as every other team listing in the app.
+        const bool includeInactive = (request.getQueryParam("includeInactive") == "1");
+        const std::string activeFilter = includeInactive ? "" : " AND t.is_active = true";
+
         std::string genderFilter;
         if (gender == "all") {
             genderFilter = "";
@@ -1454,7 +1459,7 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             JOIN leagues l ON s.league_id = l.id
             LEFT JOIN team_persons r ON r.team_id = t.id
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
-            WHERE t.club_id = )" + std::to_string(club_id) + R"( AND t.is_active = true)" + genderFilter + R"(
+            WHERE t.club_id = )" + std::to_string(club_id) + activeFilter + genderFilter + R"(
             GROUP BY t.id, t.name, t.is_pool, d.name, s.name, l.name
             ORDER BY l.name, d.name, t.name
         )";

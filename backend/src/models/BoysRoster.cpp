@@ -210,10 +210,11 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
                                    bool refreshLa,
                                    const std::vector<json>& boysRecs,
                                    const std::vector<json>& girlsRecs,
-                                   const std::unordered_map<std::string, long long>& personIdByUserId) {
+                                   const std::unordered_map<std::string, long long>& personIdByUserId,
+                                   bool includeInactive) {
     Result out;
 
-    auto cols          = columns_->loadAll();
+    auto cols          = columns_->loadAll(includeInactive);
     auto assignmentMap = assignments_->loadAll();
     if (cols.empty()) {
         out.noColumns = true;

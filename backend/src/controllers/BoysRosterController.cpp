@@ -132,6 +132,7 @@ Response BoysRosterController::handleGet(const Request& request, const LaSyncMap
     }
     const bool includeAll = (request.getQueryParam("includeAll") == "1");
     const bool refreshLa  = (request.getQueryParam("refreshLa")  == "1");
+    const bool includeInactive = (request.getQueryParam("includeInactive") == "1");
     try {
         // Per-load enforcement (migration 108): LA membership is source
         // of truth.  Sweep out non-compliant roster rows before serving.
@@ -154,7 +155,7 @@ Response BoysRosterController::handleGet(const Request& request, const LaSyncMap
         if (boysIt  != sync.end()) personIdByUserId.insert(boysIt->second.personIdByUserId.begin(),  boysIt->second.personIdByUserId.end());
         if (girlsIt != sync.end()) personIdByUserId.insert(girlsIt->second.personIdByUserId.begin(), girlsIt->second.personIdByUserId.end());
 
-        auto result = model_->run(includeAll, refreshLa, boysRecs, girlsRecs, personIdByUserId);
+        auto result = model_->run(includeAll, refreshLa, boysRecs, girlsRecs, personIdByUserId, includeInactive);
         if (result.noColumns) {
             std::ostringstream body;
             body << "{\"error\":" << jsonEscape(result.error) << "}";
@@ -193,6 +194,10 @@ Response BoysRosterController::handleAssign(const Request& request) {
     for (auto& c : action) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     if (action != "add" && action != "remove") {
         return badRequest("leagueAppsUserId, teamId, action(add|remove) required");
+    }
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
     }
 
     try {
@@ -249,6 +254,10 @@ Response BoysRosterController::handleRosterStatus(const Request& request) {
     const int  teamId   = static_cast<int>(teamIdLL);
     const bool onRoster = readBool(body, "onRoster", false);
 
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+
     try {
         auto result = assignments_->setRosterStatus(userId, teamId, onRoster);
         if (!result) return notFound("No assignment exists for that player on that team");
@@ -278,6 +287,10 @@ Response BoysRosterController::handleReorder(const Request& request) {
         return badRequest("teamId (positive int) required");
     }
     const int teamId = static_cast<int>(teamIdLL);
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
 
     auto it = body.find("userIds");
     if (it == body.end() || !it->is_array()) {

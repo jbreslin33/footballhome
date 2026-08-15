@@ -151,6 +151,15 @@ class MensRosterScreen extends RosterScreenBase {
     if (r) r.style.display = showRefresh ? '' : 'none';
   }
 
+  // Active/Inactive pill (RostersScreen host) — toggled via setIncludeInactive,
+  // read here so a reload after the toggle actually asks the backend for
+  // inactive teams' columns too (MensTeamColumns::loadAll's includeInactive
+  // param, threaded through GET /api/mens-roster?includeInactive=1).
+  setIncludeInactive(value) {
+    this.includeInactive = !!value;
+    return this.load();
+  }
+
   async load({ refreshLa = false } = {}) {
     const loading = this.find('#mr-loading');
     const errEl   = this.find('#mr-error');
@@ -170,9 +179,11 @@ class MensRosterScreen extends RosterScreenBase {
       // refreshLa=1 → backend does a live LA fetch + payment sync.
       // Otherwise the backend serves its cached snapshot so mid-session
       // reloads (e.g. after a move) don't wait on LeagueApps.
-      const url = refreshLa
-        ? '/api/mens-roster?refreshLa=1'
-        : '/api/mens-roster';
+      const params = new URLSearchParams();
+      if (refreshLa) params.set('refreshLa', '1');
+      if (this.includeInactive) params.set('includeInactive', '1');
+      const qs = params.toString();
+      const url = qs ? `/api/mens-roster?${qs}` : '/api/mens-roster';
       const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();
@@ -425,7 +436,7 @@ class MensRosterScreen extends RosterScreenBase {
     // client-side remove call needed.  Rendering itself is identical to
     // boys (and girls/women's, which inherit BoysRosterScreen), so it
     // lives once in RosterScreenBase.
-    const moveSelect = this.renderMoveDropdown(p, columns);
+    const { rosterSelectHtml: moveSelect, canMove } = this._teamCardCapabilities(p, columns, col);
     // Shared button style — as thin as legible.  Zero vertical padding
     // plus a tight line-height give ~11-12 px total height while the
     // sides keep a proper 5 px cushion.  All actions (move, delinq,
@@ -763,6 +774,7 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
+      canMove,
     });
   }
 

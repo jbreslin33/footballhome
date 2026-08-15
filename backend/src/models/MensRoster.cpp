@@ -274,10 +274,11 @@ json MensRoster::shapeMensPlayer(const json& rec) {
 MensRoster::Result MensRoster::run(bool includeAll,
                                    bool refreshLa,
                                    const std::vector<nlohmann::json>& recs,
-                                   const std::unordered_map<std::string, long long>& personIdByUserId) {
+                                   const std::unordered_map<std::string, long long>& personIdByUserId,
+                                   bool includeInactive) {
     Result out;
 
-    auto cols          = columns_->loadAll();
+    auto cols          = columns_->loadAll(includeInactive);
     auto assignmentMap = assignments_->loadAll();
     auto billingMap    = billing_->loadAll();
 

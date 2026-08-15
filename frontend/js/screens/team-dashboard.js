@@ -190,7 +190,7 @@ class TeamDashboardScreen extends Screen {
       if (manageBtn) {
         const genderCategory = this.navigation.context.team?.genderCategory;
         const chip = ['mens', 'boys', 'girls'].includes(genderCategory) ? genderCategory : 'all';
-        this.navigation.goTo('rosters', { chip });
+        this.navigation.goTo('teams', { chip });
         return;
       }
       

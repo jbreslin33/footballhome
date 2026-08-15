@@ -136,4 +136,16 @@ protected:
     // A user with no admins row (plain coach/player) always fails.
     static bool requireAdminLevel(const Request& request,
                                    const std::vector<std::string>& allowedLevels);
+
+    // Team-assignment ownership gate (Teams screen coach scoping).
+    // Validates the bearer token (same JWT check as requireBearer) AND
+    // requires EITHER:
+    //   - the caller has an admins row with admin_level 'club' or 'super'
+    //     (full club-admin bypass — matches requireAdminLevel's levels), OR
+    //   - the caller is a coach (team_coaches) of `teamId` specifically.
+    // Returns false for a bad/missing token OR a valid-but-unauthorized
+    // caller — write endpoints (assign/reorder/roster-status) should treat
+    // false as 403, since a 401 has already been ruled out by the
+    // requireBearer() call every handler makes first.
+    static bool canManageTeam(const Request& request, int teamId);
 };

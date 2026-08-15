@@ -158,6 +158,11 @@ class App {
     this.screenManager.register('girls-roster', this.screens.girlsRoster);
     this.screenManager.register('womens-roster', this.screens.womensRoster);
     this.screenManager.register('rosters', this.screens.rosters);
+    // 'teams' is the canonical name going forward (absorbs the old
+    // #context-selection role=coach picker and #admin-club-teams — see
+    // coach-home.js/admin-club.js). 'rosters' kept as a backward-compat
+    // alias for old bookmarks/links, same pattern as 'lineups' below.
+    this.screenManager.register('teams', this.screens.rosters);
     // Universal person profile — reachable from any card that shows a
     // person (Members, Payments, Rosters, …).  See screens/person.js.
     this.screenManager.register('person', this.screens.person);

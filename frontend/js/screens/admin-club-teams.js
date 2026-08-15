@@ -5,8 +5,9 @@
 // Purpose: list every team in the club as a card; clicking a card
 //          opens that team's home page (team-hub).
 //
-// Data source: GET /api/clubs/:clubId?gender=all (already returns
-// the full teams array; no new endpoint needed).
+// Data source: GET /api/clubs/:clubId?gender=all[&includeInactive=1]
+// (ClubController::handleGetClubDetail; is_active=true unless the
+// Inactive pill is selected).
 class AdminClubTeamsScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -29,6 +30,10 @@ class AdminClubTeamsScreen extends Screen {
             <button type="button" class="act-gender-pill" data-gender="womens" style="font-size:0.78rem;padding:6px 10px;border-radius:9999px;background:transparent;color:var(--text-muted);border:1px solid var(--border-color);cursor:pointer;">Women's</button>
             <button type="button" class="act-gender-pill" data-gender="youth"  style="font-size:0.78rem;padding:6px 10px;border-radius:9999px;background:transparent;color:var(--text-muted);border:1px solid var(--border-color);cursor:pointer;">Youth</button>
           </div>
+          <div id="act-status-pills" style="display:flex;gap:4px;">
+            <button type="button" class="act-status-pill" data-status="active"   style="font-size:0.78rem;padding:6px 10px;border-radius:9999px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);cursor:pointer;">Active</button>
+            <button type="button" class="act-status-pill" data-status="inactive" style="font-size:0.78rem;padding:6px 10px;border-radius:9999px;background:transparent;color:var(--text-muted);border:1px solid var(--border-color);cursor:pointer;">Inactive</button>
+          </div>
         </div>
 
         <div id="act-list" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));gap:var(--space-2);">
@@ -48,6 +53,7 @@ class AdminClubTeamsScreen extends Screen {
     this.clubName = params?.clubName ?? this.navigation.context?.club?.name ?? 'Club';
     this._teams = [];
     this._filter = 'all';
+    this._status = 'active';
     this._search = '';
 
     const title = this.find('#act-title');
@@ -68,6 +74,16 @@ class AdminClubTeamsScreen extends Screen {
         this._filter = pill.dataset.gender;
         this._renderPills();
         this._renderList();
+        return;
+      }
+      const statusPill = e.target.closest('.act-status-pill');
+      if (statusPill) {
+        this._status = statusPill.dataset.status;
+        this._renderStatusPills();
+        // is_active gates what the server even returns (ClubController's
+        // teams query), so a status flip needs a refetch, not just a
+        // client-side re-filter of already-loaded teams.
+        this._loadTeams();
         return;
       }
       const card = e.target.closest('[data-team-open]');
@@ -96,7 +112,8 @@ class AdminClubTeamsScreen extends Screen {
 
   async _loadTeams() {
     try {
-      const res = await this.auth.fetch(`/api/clubs/${this.clubId}?gender=all`);
+      const includeInactive = this._status === 'inactive' ? '&includeInactive=1' : '';
+      const res = await this.auth.fetch(`/api/clubs/${this.clubId}?gender=all${includeInactive}`);
       const payload = await res.json();
       // Backend returns club object with teams array — normalise both shapes.
       const club = payload?.data || payload;
@@ -111,6 +128,14 @@ class AdminClubTeamsScreen extends Screen {
   _renderPills() {
     this.element.querySelectorAll('.act-gender-pill').forEach(btn => {
       const active = btn.dataset.gender === this._filter;
+      btn.style.background = active ? 'var(--bg-secondary)' : 'transparent';
+      btn.style.color = active ? 'var(--text-primary)' : 'var(--text-muted)';
+    });
+  }
+
+  _renderStatusPills() {
+    this.element.querySelectorAll('.act-status-pill').forEach(btn => {
+      const active = btn.dataset.status === this._status;
       btn.style.background = active ? 'var(--bg-secondary)' : 'transparent';
       btn.style.color = active ? 'var(--text-primary)' : 'var(--text-muted)';
     });
