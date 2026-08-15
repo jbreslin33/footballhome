@@ -145,19 +145,29 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
         if (!hit.empty()) {
             parentPersonId = hit[0]["id"].as<int>();
         } else {
-            // 2. Existing persons row by parent name?
+            // 2. Existing persons row by parent name?  Must exclude the
+            // child's own row — a parent can share their child's exact
+            // name (Jr./Sr.), and persons.(first_name,last_name) is no
+            // longer unique (migration 284), so without this guard a
+            // same-named parent/child pair silently binds the parent's
+            // LA userId onto the CHILD's row, corrupting it (see
+            // migration 284 for the incident this fixed).
             auto pHit = db_->query(
                 "SELECT id FROM persons "
-                "WHERE LOWER(BTRIM(first_name)) = $1 AND LOWER(BTRIM(last_name)) = $2 LIMIT 1",
-                {normalizeName(parentFirst), normalizeName(parentLast)});
+                "WHERE LOWER(BTRIM(first_name)) = $1 AND LOWER(BTRIM(last_name)) = $2 "
+                "  AND id <> $3::int LIMIT 1",
+                {normalizeName(parentFirst), normalizeName(parentLast), std::to_string(childPersonId)});
             if (!pHit.empty()) {
                 parentPersonId = pHit[0]["id"].as<int>();
             } else {
-                // 3. Insert parent persons row (no birth_date — LA export
-                // gives the child's DOB, not the parent's).
+                // 3. Insert a new parent persons row (no birth_date — LA
+                // export gives the child's DOB, not the parent's).  No
+                // ON CONFLICT needed: persons.(first_name,last_name) is
+                // no longer unique (migration 284), so this always
+                // creates a genuinely distinct row rather than reusing
+                // whatever row happens to already hold that name.
                 auto ins = db_->query(
                     "INSERT INTO persons (first_name, last_name) VALUES ($1, $2) "
-                    "ON CONFLICT (first_name, last_name) DO UPDATE SET updated_at = NOW() "
                     "RETURNING id",
                     {parentFirst, parentLast});
                 if (!ins.empty()) parentPersonId = ins[0]["id"].as<int>();
