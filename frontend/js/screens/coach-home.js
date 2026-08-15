@@ -74,6 +74,7 @@ class CoachHomeScreen extends Screen {
 
     const teamsTiles = [
       { id: 'teams', target: 'context-selection', params: { role: 'coach' }, icon: '⚽', label: 'Teams', description: 'Pick a team you coach to open its schedule, practices, matches, and lineups' },
+      { id: 'game-eligibility', target: 'mens-game-eligibility', params: { clubId: this.clubId, clubName: this.clubName }, icon: '🎯', label: 'Game-Day Analytics', description: 'Projected APSL & Liga 1 starting lineups + bench, based on attendance-tier probability' },
     ];
     renderInto('#section-teams', teamsTiles);
 
