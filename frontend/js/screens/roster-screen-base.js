@@ -69,7 +69,7 @@ class RosterScreenBase extends Screen {
     const CardClass = this._cardClassFor();
     const card = new CardClass({ player, columns, col }, {
       coachedTeamIds: this._coachedTeamIds(columns),
-      renderMoveDropdown: (p, cols) => this.renderMoveDropdown(p, cols),
+      renderMoveDropdown: (p, cols, currentTeamId) => this.renderMoveDropdown(p, cols, currentTeamId),
     });
     return {
       rosterSelectHtml: card.renderMoveControl(),
@@ -140,22 +140,28 @@ class RosterScreenBase extends Screen {
     });
   }
 
-  // Roster-move dropdown: a <details>/<summary> popover showing the
-  // player's current column, with click-to-move buttons for every other
-  // column plus "Unassigned". Identical for boys/girls/women's/men's —
-  // mutex enforcement lives server-side; the frontend only needs the
-  // column list. Uses a single shared class name (not per-screen
-  // br-/mr- prefixed) because each screen's click listener is delegated
-  // on `this.element` (its own DOM subtree), so there's no cross-screen
-  // collision risk. The caller still owns click handling (onMoveOptionClick)
-  // since that POSTs to a screen-specific endpoint.
-  renderMoveDropdown(player, columns) {
+  // Roster-move dropdown: a <details>/<summary> popover for the ONE
+  // team_persons row this specific card represents (`currentTeamId` —
+  // 0 for an Unassigned card). Identical for boys/girls/women's/men's —
+  // uses a single shared class name (not per-screen br-/mr- prefixed)
+  // because each screen's click listener is delegated on `this.element`
+  // (its own DOM subtree), so there's no cross-screen collision risk.
+  // The caller still owns click handling (onMoveOptionClick) since that
+  // POSTs to a screen-specific endpoint.
+  //
+  // 2026-08-16 (multi-assign): a player can hold any number of active
+  // rows at once, so this dropdown no longer treats team selection as
+  // exclusive. Every option other than `currentTeamId` is an ADD (a new
+  // row for this player on that team — see MensTeamAssignments::
+  // addAssignmentForPerson, which stopped closing sibling rows) and
+  // never touches this card's own row. Picking "Unassigned" is the only
+  // way to remove — and it removes exactly `currentTeamId`, nothing
+  // else, since that's the one row this card owns. Options the player
+  // is ALSO already on (via a different card) get a distinct "already
+  // on" style so admin isn't surprised clicking one is a no-op instead
+  // of a move.
+  renderMoveDropdown(player, columns, currentTeamId = 0) {
     const assignedSet = new Set(player.teamIds || []);
-    const configuredIds = new Set((columns || []).map(c => c.teamId));
-    let currentTeamId = 0;
-    for (const tid of assignedSet) {
-      if (configuredIds.has(tid)) { currentTeamId = tid; break; }
-    }
 
     const targets = [
       { id: 0, label: 'Unassigned', color: '#475569' },
@@ -177,23 +183,40 @@ class RosterScreenBase extends Screen {
 
     const activeTarget = targets.find(t => t.id === currentTeamId) || targets[0];
     const optBtns = targets.map(t => {
-      const active = t.id === currentTeamId;
-      const style = active
-        ? `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:pointer; opacity:0.85;`
-        : `background:transparent; color:${t.color}; border:1px dashed ${t.color}88; cursor:pointer;`;
-      // The active/current option is NOT disabled — clicking it is a
-      // same-team no-op in onMoveOptionClick, which now closes the
-      // popover before checking that, so clicking your current
-      // selection is how you roll the dropdown back up (2026-08-02,
-      // user directive) rather than a dead end.
+      const isCurrent = t.id === currentTeamId;
+      // Already on this team via a DIFFERENT card (multi-assign) — not
+      // this card's own row, so clicking it re-adds (a harmless no-op)
+      // rather than removing anything. Styled distinctly from "current"
+      // so admin can tell the two apart at a glance.
+      const alsoAssigned = !isCurrent && t.id !== 0 && assignedSet.has(t.id);
+      let style;
+      let prefix = '';
+      let title;
+      if (isCurrent) {
+        style  = `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:pointer; opacity:0.85;`;
+        prefix = '✓ ';
+        title  = t.id === 0 ? 'Currently unassigned here' : `Currently on ${t.label} (this card)`;
+      } else if (alsoAssigned) {
+        style  = `background:transparent; color:${t.color}; border:1px solid ${t.color}; cursor:pointer; opacity:0.75;`;
+        prefix = '• ';
+        title  = `Already on ${t.label} (via another card)`;
+      } else {
+        style  = `background:transparent; color:${t.color}; border:1px dashed ${t.color}88; cursor:pointer;`;
+        title  = t.id === 0 ? `Remove from ${activeTarget.label}` : `Add to ${t.label}`;
+      }
+      // The current option is NOT disabled — clicking it is a same-team
+      // no-op in onMoveOptionClick, which now closes the popover before
+      // checking that, so clicking your current selection is how you
+      // roll the dropdown back up (2026-08-02, user directive) rather
+      // than a dead end.
       return `<button class="roster-move-option" type="button"
                       data-user-id="${player.leagueAppsUserId}"
                       data-person-id="${player.personId || ''}"
                       data-target-team-id="${t.id}"
                       data-current-team-id="${currentTeamId}"
-                      title="${active ? 'Currently on ' + t.label : 'Move to ' + t.label}"
+                      title="${title}"
                       style="${optBtnBase} ${style} text-align:left;">
-                ${active ? '✓ ' : ''}${t.label.toUpperCase()}
+                ${prefix}${t.label.toUpperCase()}
               </button>`;
     }).join('');
     // Trigger stretches to the full height of the card (a flex item
@@ -204,13 +227,35 @@ class RosterScreenBase extends Screen {
     return `
       <details class="roster-move-details" style="position:relative; display:flex; height:100%;">
         <summary style="${btnBase} height:100%; display:flex; align-items:center; justify-content:center; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
-                 title="Move ${this.escape(player.firstName || 'player')} to another column">
+                 title="Add ${this.escape(player.firstName || 'player')} to another team, or remove from this one">
           ${this.escape(activeTarget.label.toUpperCase())} ▾
         </summary>
         <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155; min-width:100%;">
           ${optBtns}
         </div>
       </details>`;
+  }
+
+  // Multi-team badge — flags a player who holds more than one active
+  // roster spot (e.g. a boy called up to a mens team, or someone on two
+  // mens squads) so it's visually obvious without cross-referencing
+  // every board. Only counts teams OTHER than the one this exact card
+  // lives in (col.teamId) — that one's already obvious from the column
+  // itself. Backed by ActiveTeamBadges (backend/src/models) via
+  // player.activeTeams (Boys/Girls/Mens boards) or player.active_teams
+  // (Women's Club cards, rosters.js) — covers every gender_category,
+  // not just this board's own domain.
+  renderActiveTeamsBadge(player, col) {
+    const teams = player.activeTeams || player.active_teams || [];
+    const currentTeamId = col && col.teamId ? col.teamId : null;
+    const others = teams.filter((t) => t && t.teamId !== currentTeamId);
+    if (!others.length) return '';
+    const icon = { boys: '🧒', girls: '👧', mens: '🧔', womens: '👩' };
+    return others.map((t) => {
+      const category = t.genderCategory || t.gender_category || '';
+      const name = t.name || 'Team';
+      return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(168,85,247,0.22); color:#c084fc; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(name)}</span>`;
+    }).join('');
   }
 
   // Two thin content rows (rank+name, then DOB/age/dues) on the left;
@@ -273,6 +318,7 @@ class RosterScreenBase extends Screen {
       ? `<span style="font-size:0.66rem; line-height:1.2; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>`
       : '';
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
+    const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
 
     return `
       <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
@@ -285,6 +331,7 @@ class RosterScreenBase extends Screen {
             ${dobMarkup}
             ${ageChip}
             ${duesLabel}
+            ${activeTeamsBadge}
           </div>
         </div>
         <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px;">

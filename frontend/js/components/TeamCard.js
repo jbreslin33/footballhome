@@ -17,10 +17,12 @@
 //                      so no override is needed — full-club access falls
 //                      out of the constructor args, not new code.
 //
-// context: { coachedTeamIds: number[], renderMoveDropdown(player, columns) }
+// context: { coachedTeamIds: number[], renderMoveDropdown(player, columns, currentTeamId) }
 //   renderMoveDropdown is threaded in from RosterScreenBase so the actual
 //   dropdown markup (styling, click targets) stays defined once, not
-//   duplicated into this file.
+//   duplicated into this file. currentTeamId is the ONE team_persons row
+//   this specific card represents (0 for Unassigned) — see
+//   RosterScreenBase.renderMoveDropdown's 2026-08-16 multi-assign doc.
 class TeamCard extends Card {
   // data: { player, columns, col }
   renderMoveControl() {
@@ -50,7 +52,7 @@ class CoachTeamCard extends TeamCard {
     const currentIsCoachedOrUnassigned = currentTeamId === 0 || coachedTeamIds.includes(currentTeamId);
     if (!currentIsCoachedOrUnassigned) return '';
     const allowedColumns = (columns || []).filter((c) => coachedTeamIds.includes(c.teamId));
-    return this.context.renderMoveDropdown(player, allowedColumns);
+    return this.context.renderMoveDropdown(player, allowedColumns, currentTeamId);
   }
 
   canDrag() {

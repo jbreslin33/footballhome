@@ -46,6 +46,7 @@ set(SOURCES
     src/models/YouthRoster.cpp
     src/models/MensTeamColumns.cpp
     src/models/MensTeamAssignments.cpp
+    src/models/ActiveTeamBadges.cpp
     src/models/MensRoster.cpp
     src/models/BoysRoster.cpp
     src/models/Lead.cpp

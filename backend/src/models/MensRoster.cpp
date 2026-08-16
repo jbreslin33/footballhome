@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ActiveTeamBadges.h"
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonBilling.h"
@@ -939,6 +940,31 @@ MensRoster::Result MensRoster::run(bool includeAll,
         return nullptr;
     };
 
+    // Every active team (any gender_category) each player currently holds
+    // — batch-loaded once so cards can badge multi-team players (see
+    // ActiveTeamBadges.h). Pre-pass mirrors the same personId resolution
+    // (personIdFor → personIdByUid → personIdByUserId) the per-row loop
+    // below does anyway, just to gather ids up front for one batch query.
+    std::unordered_map<long long, json> activeTeamsByPerson;
+    {
+        std::vector<long long> personIds;
+        personIds.reserve(all.size());
+        for (const auto& p : all) {
+            const std::string uid = userIdString(p.at("leagueAppsUserId"));
+            long long pid = personIdFor(p.at("registrationId"));
+            if (pid <= 0) {
+                auto pit = personIdByUid.find(uid);
+                if (pit != personIdByUid.end()) pid = pit->second;
+            }
+            if (pid <= 0) {
+                auto sit = personIdByUserId.find(uid);
+                if (sit != personIdByUserId.end()) pid = sit->second;
+            }
+            if (pid > 0) personIds.push_back(pid);
+        }
+        activeTeamsByPerson = ActiveTeamBadges::loadForPersons(personIds);
+    }
+
     for (auto& p : all) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
         const auto bill = PersonBilling::resolve(billingMap, uid);
@@ -1073,6 +1099,8 @@ MensRoster::Result MensRoster::run(bool includeAll,
                 }
                 row["personId"] = pid > 0 ? json(pid) : json(nullptr);
                 row["fhLastActivityAt"] = fhLastActivityFor(pid);
+                auto ait = activeTeamsByPerson.find(pid);
+                row["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
             }
             unassigned.push_back(std::move(row));
         } else {
@@ -1113,6 +1141,8 @@ MensRoster::Result MensRoster::run(bool includeAll,
                     }
                     row["personId"] = pid > 0 ? json(pid) : json(nullptr);
                     row["fhLastActivityAt"] = fhLastActivityFor(pid);
+                    auto ait = activeTeamsByPerson.find(pid);
+                    row["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
                 }
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }

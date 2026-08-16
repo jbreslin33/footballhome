@@ -274,10 +274,18 @@ class MensRosterScreen extends RosterScreenBase {
 
     // Admin view below remains unchanged.
     const visibleColumns = (data.columns || []).filter((c) => true);
-    const cols = [
+    const allCols = [
       { teamId: 0, label: '📦 Unassigned', color: '#475569', count: (data.unassigned || []).length, isUnassigned: true },
       ...visibleColumns,
     ];
+    // columnScope (2026-08-16, rosters.js side-by-side layout): see the
+    // identical block in boys-roster.js's renderRoster for the doc —
+    // same opt-in filter, undefined/'all' leaves this board unchanged.
+    const cols = this.columnScope === 'unassigned'
+      ? allCols.filter(c => c.isUnassigned)
+      : this.columnScope === 'teams'
+        ? allCols.filter(c => !c.isUnassigned)
+        : allCols;
 
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
@@ -1002,13 +1010,15 @@ class MensRosterScreen extends RosterScreenBase {
   }
 
   // Move-to-roster <details> popover option handler (2026-07-04 pm).
-  // Semantics unchanged:
-  //   • target == 0 (Unassigned)  → POST remove on whichever real team
-  //     the player currently sits on (backend mutex guarantees at most
-  //     one).  No-op if already unassigned.
-  //   • target == 35 / 120 / 121   → POST add.  Backend's mutex_group
-  //     handling in MensTeamAssignments::addAssignment auto-removes the
-  //     other division, so we don't need a separate remove call.
+  // 2026-08-16 (multi-assign): each card's dropdown owns exactly ONE
+  // team_persons row (`currentTeamId`, threaded through from
+  // RosterScreenBase.renderMoveDropdown):
+  //   • target == 0 (Unassigned)  → POST remove on `currentTeamId`, the
+  //     row THIS card represents. Never touches any other active row
+  //     the player may hold. No-op if this card is already Unassigned.
+  //   • target == 35 / 120 / 121   → POST add. Purely additive
+  //     (MensTeamAssignments::addAssignmentForPerson no longer closes
+  //     sibling rows) — the player keeps every other team they're on.
   async onMoveOptionClick(btn) {
     const userId        = parseInt(btn.dataset.userId, 10);
     const personId       = parseInt(btn.dataset.personId, 10) || undefined;

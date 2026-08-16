@@ -21,9 +21,11 @@
 // screen was confirmed OUT of scope for the 2026-08-03 boys/mens roster
 // move-bug fix (LA userId drift + personId-keyed writes, see
 // MensTeamAssignments.h) — there's no move click to be affected.
-// Girls (GirlsRosterScreen) and Womens (WomensRosterScreen) both extend
-// BoysRosterScreen and hit /api/boys-roster, so that fix already covers
-// them too — nothing screen-specific was needed there.
+// Girls (GirlsRosterScreen) extends BoysRosterScreen and hits
+// /api/boys-roster, so that fix already covers it too — nothing
+// screen-specific was needed there. (A WomensRosterScreen briefly did
+// the same thing but was removed 2026-08-16 — it showed youth players
+// under the Team Players screen's Womens pill; see rosters.js.)
 class YouthRosterScreen extends Screen {
   render() {
     const div = document.createElement('div');

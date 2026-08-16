@@ -1,4 +1,5 @@
 #include "ClubController.h"
+#include "../models/ActiveTeamBadges.h"
 #include "../services/VisionOcrService.h"
 #include <sstream>
 #include <iostream>
@@ -1479,7 +1480,8 @@ Response ClubController::handleGetClubDetail(const Request& request) {
             
             // Get roster for this team
             std::string rosterQuery = R"(
-                SELECT 
+                SELECT
+                    per.id AS person_id,
                     per.first_name,
                     per.last_name,
                     r.jersey_number
@@ -1489,20 +1491,54 @@ Response ClubController::handleGetClubDetail(const Request& request) {
                   AND r.removed_at IS NULL
                 ORDER BY per.last_name, per.first_name
             )";
-            
+
             pqxx::result rosterResult = db_->query(rosterQuery);
-            
+
+            // Every active team (any gender_category) each of these
+            // players holds — badges multi-team players (e.g. a boy
+            // called up to a mens team) on the card. See ActiveTeamBadges.h.
+            std::vector<long long> rosterPersonIds;
+            rosterPersonIds.reserve(rosterResult.size());
+            for (const auto& playerRow : rosterResult) {
+                if (!playerRow["person_id"].is_null()) {
+                    rosterPersonIds.push_back(playerRow["person_id"].as<long long>());
+                }
+            }
+            const auto activeTeamsByPerson = ActiveTeamBadges::loadForPersons(rosterPersonIds);
+
             std::ostringstream rosterJson;
             rosterJson << "[";
             bool firstPlayer = true;
             for (const auto& playerRow : rosterResult) {
                 if (!firstPlayer) rosterJson << ",";
                 firstPlayer = false;
-                
+
                 rosterJson << "{";
                 rosterJson << "\"first_name\":\"" << escapeJson(playerRow["first_name"].c_str()) << "\",";
                 rosterJson << "\"last_name\":\"" << escapeJson(playerRow["last_name"].c_str()) << "\",";
-                rosterJson << "\"jersey_number\":" << (playerRow["jersey_number"].is_null() ? "null" : "\"" + escapeJson(playerRow["jersey_number"].c_str()) + "\"");
+                rosterJson << "\"jersey_number\":" << (playerRow["jersey_number"].is_null() ? "null" : "\"" + escapeJson(playerRow["jersey_number"].c_str()) + "\"") << ",";
+                rosterJson << "\"active_teams\":";
+                if (playerRow["person_id"].is_null()) {
+                    rosterJson << "[]";
+                } else {
+                    auto ait = activeTeamsByPerson.find(playerRow["person_id"].as<long long>());
+                    if (ait == activeTeamsByPerson.end()) {
+                        rosterJson << "[]";
+                    } else {
+                        rosterJson << "[";
+                        bool firstBadgeTeam = true;
+                        for (const auto& t : ait->second) {
+                            if (!firstBadgeTeam) rosterJson << ",";
+                            firstBadgeTeam = false;
+                            rosterJson << "{\"teamId\":" << t.at("teamId").get<int>() << ","
+                                       << "\"name\":\"" << escapeJson(t.at("name").get<std::string>()) << "\","
+                                       << "\"genderCategory\":"
+                                       << (t.at("genderCategory").is_null() ? "null" : "\"" + escapeJson(t.at("genderCategory").get<std::string>()) + "\"")
+                                       << "}";
+                        }
+                        rosterJson << "]";
+                    }
+                }
                 rosterJson << "}";
             }
             rosterJson << "]";

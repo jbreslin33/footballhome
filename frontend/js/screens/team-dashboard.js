@@ -181,16 +181,16 @@ class TeamDashboardScreen extends Screen {
       // Training Attendance button — removed (was chat-backed)
       
       // Manage roster button — the actual roster-management tooling
-      // (drag-and-drop moves, LA-sync status) lives on the multi-team
-      // board, not a per-team screen, so land on the pill matching this
-      // team's own gender_category. Womens has no dedicated board yet
-      // (see rosters.js); fall back to the general rosters landing so a
-      // womens coach isn't dropped on an unrelated board.
+      // (drag-and-drop moves, LA-sync status) lives on the Teams panel
+      // of the Team Players screen, not a per-team screen, so land on
+      // the pill matching this team's own gender_category (Womens now
+      // has a real Teams-panel view too — see rosters.js
+      // _mountWomensSection, wired up 2026-08-16).
       const manageBtn = e.target.closest('[data-action="manage-roster"]');
       if (manageBtn) {
         const genderCategory = this.navigation.context.team?.genderCategory;
-        const chip = ['mens', 'boys', 'girls'].includes(genderCategory) ? genderCategory : 'all';
-        this.navigation.goTo('teams', { chip });
+        const teamsPill = ['mens', 'boys', 'girls', 'womens'].includes(genderCategory) ? genderCategory : 'mens';
+        this.navigation.goTo('teams', { teamsPill });
         return;
       }
       

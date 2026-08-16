@@ -4,161 +4,128 @@
 // Follows the same FilterBar pattern as Members + Payments (2026-07-13
 // directive: "condense them into 1 screen like the others").
 //
-// Behaviour
-// ─────────
-// One host container.  A single FilterBar row of category chips —
-// All / Mens / Womens / Boys / Girls — swaps which existing roster
-// screen is mounted underneath.
+// Behaviour (2026-08-16 rewrite — "always show Unassigned, side by side
+// with Teams, each independently filterable")
+// ─────────────────────────────────────────────────────────────────────
+// Two panels, always both visible:
+//   Unassigned (left)  — people with no active team_persons row, for
+//                          whichever category pill (Mens/Womens/Boys/
+//                          Girls) is selected on THIS panel.
+//   Teams (right)       — team columns/cards for whichever category
+//                          pill is selected on THIS panel, plus its own
+//                          Active/Inactive toggle.
+// The two pills are fully independent — Unassigned:Boys can sit next to
+// Teams:Mens at the same time. This replaces the old model where a
+// single top-level chip (All/Mens/Womens/Boys/Girls) swapped the whole
+// content area, and Unassigned was just the leftmost column INSIDE
+// whichever board that chip mounted.
 //
 // Rather than reimplement 2500+ lines of column layout, dues badges,
 // drag/drop, and LA sync, this screen COMPOSES the existing per-club
 // screens (BoysRosterScreen, MensRosterScreen, GirlsRosterScreen) by
 // mounting their rendered <div> into a shared host and forwarding
-// `onEnter` / `onLeave`.
+// `onEnter` / `onLeave` — same technique the old 'All' composite used.
+// Each of those boards already builds its columns as [Unassigned, ...
+// team columns] (see renderRoster in boys-roster.js/mens-roster.js); the
+// only change needed there was a `columnScope` filter ('unassigned' |
+// 'teams' | undefined) so a panel can ask for just its half instead of
+// the whole board. Trade-off: showing the same category on both panels
+// mounts TWO independent instances (two LA syncs, two fetches) rather
+// than sharing one — same class of double-fetch the old 'All' composite
+// already accepted for boys+mens, just now possible for any category.
 //
-// The 'All' chip inlines the horizontal composite layout that used to
-// live in the standalone ClubRostersScreen (retired 2026-07-13): Youth
-// (Boys) on the left, Men's Club on the right, per-section overdue
-// badges up top, one outer horizontal scroll.
-//
-// Chip → view mapping
-// ────────────────────
-//   All    → horizontal composite (Boys + Mens side-by-side, inline)
-//   Mens   → MensRosterScreen  (the workbench — assignment board)
-//   Womens → placeholder message (no dedicated screen yet)
-//   Boys   → BoysRosterScreen  (LA roster viewer)
-//   Girls  → GirlsRosterScreen (same data as Boys, girls-focused
-//                                header — girls play on boys teams)
+// Category → panel content mapping
+// ─────────────────────────────────
+//   Mens   → MensRosterScreen, columnScope='unassigned'|'teams'
+//   Boys   → BoysRosterScreen, columnScope='unassigned'|'teams'
+//   Girls  → GirlsRosterScreen (same data as Boys, girls play on boys
+//             teams — this only differs from Boys in a header label,
+//             which gets stripped when embedded; see the caption text
+//             instead), columnScope='unassigned'|'teams'
+//   Womens → No LA program feeds women's teams, so there's no board to
+//             reuse. Teams:Womens reads GET /api/clubs/:id?gender=womens
+//             (see _mountWomensSection, migration 285) and links into
+//             TeamHubScreen for roster edits. Unassigned:Womens has no
+//             equivalent data source yet — shows an honest placeholder.
 //
 // Deep-link
 // ─────────
-// `onEnter({ chip: 'mens' | 'womens' | 'boys' | 'girls' | 'all' })`
-// lets other screens push a specific default chip.  Otherwise defaults
-// to 'all' so a fresh navigation lands on the composite view (same
-// UX pattern as Payments' default 'all' tab).
+// `onEnter({ unassignedPill, teamsPill })` lets other screens push a
+// specific default per panel (see team-dashboard.js's "Manage roster"
+// button). Both default to 'mens'.
 class RostersScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.navigation = navigation;
     this.auth = auth;
-    this.chip = 'all';
-    this._filterBar = null;
-    // Track every child instance currently mounted (single-chip views
-    // hold one; the 'all' composite holds two — boys + mens).
+    this.unassignedPill = 'mens';
+    this.teamsPill = 'mens';
+    this.teamsIncludeInactive = false;
+    this._unassignedFilterBar = null;
+    this._teamsFilterBar = null;
+    // Track every child instance currently mounted across BOTH panels
+    // (not just one) so onExit/onLeave and the Active/Inactive toggle
+    // can walk them uniformly.
     this._mountedChildren = [];
-    // Lazy-instantiated sub-screens (created on first mount to keep
-    // the initial screen render cheap — mens+boys are hefty).
-    this._instances = {
-      mens:  null,
-      boys:  null,
-      girls: null,
-      womens: null,
-    };
-    // In-flight fetch generation for the pickup variant so a stale
-    // response from a previous category doesn't overwrite the DOM
-    // after the user clicks a different chip.
-    this._pickupFetchSeq = 0;
+    // Lazy-instantiated sub-screens, one cache per panel — a category
+    // shown on both panels at once needs two separate instances (each
+    // owns its own DOM/fetch), never one shared between them.
+    this._unassignedInstances = { mens: null, boys: null, girls: null };
+    this._teamsInstances      = { mens: null, boys: null, girls: null };
+    // In-flight fetch generation for the Women's Club data (Teams panel
+    // only — Unassigned:Womens has no fetch, just a static placeholder).
+    this._womensFetchSeq = 0;
   }
 
   render() {
-    // ScreenManager wipes container.innerHTML on every transition,
-    // so any DOM references cached on the instance (like a FilterBar
-    // bound to the previous mount's host element) are now detached
-    // garbage.  Reset them here so the next _buildFilterBar() call
-    // constructs a fresh one against the freshly-rendered host —
-    // otherwise the category pills quietly render into a dead node
-    // and vanish on the second visit.
-    this._filterBar = null;
+    // ScreenManager wipes container.innerHTML on every transition, so
+    // any DOM references cached on the instance (like a FilterBar bound
+    // to the previous mount's host element) are now detached garbage.
+    // Reset them here so the next _build*Pills() call constructs a
+    // fresh one against the freshly-rendered host.
+    this._unassignedFilterBar = null;
+    this._teamsFilterBar = null;
     this._mountedChildren = [];
 
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
       <style>
-        /* 'All' composite view overrides (inlined from the retired
-           ClubRostersScreen 2026-07-13).  Force each mounted child's
-           grid columns to a fixed width so they don't collapse when
-           the outer flex row shrinks their basis to content; also
-           drop each child's own overflow-x wrapper so we have ONE
-           outer horizontal scroll instead of three nested ones. */
-        .rs-hscroll {
-          overflow-x: auto;
-          overflow-y: visible;
-          padding: 0 var(--space-3) var(--space-4);
-        }
-        .rs-row {
-          display: inline-flex;
-          align-items: flex-start;
-          gap: var(--space-5);
-          min-width: 100%;
-        }
-        .rs-section { flex: 0 0 auto; }
-        .rs-section-title {
-          margin: var(--space-3) 0 var(--space-2);
-          padding: 6px 10px;
-          font-size: 1.05rem;
-          font-weight: 700;
-          letter-spacing: 0.02em;
+        .rs-panel {
           background: var(--bg-secondary, #111827);
-          border-radius: 6px;
-          border-left: 4px solid #64748b;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
+          border: 1px solid var(--border-color, #374151);
+          border-radius: 10px;
+          padding: var(--space-3);
+          min-width: 0;
         }
-        .rs-overdue-badge {
-          font-size: 0.8rem;
-          font-weight: 600;
-          letter-spacing: 0;
-          opacity: 0.9;
-          padding: 2px 8px;
-          border-radius: 4px;
-          background: rgba(148, 163, 184, 0.18);
+        .rs-panel-title {
+          margin: 0 0 var(--space-2);
+          font-size: 1rem;
+          font-weight: 700;
         }
-        .rs-overdue-badge.rs-overdue-warn {
-          background: rgba(251, 191, 36, 0.22);
-          color: #fbbf24;
-        }
-        .rs-overdue-badge.rs-overdue-alert {
-          background: rgba(239, 68, 68, 0.22);
-          color: #ef4444;
-        }
-        .rs-section [style*="grid-template-columns"] {
-          display: flex !important;
-          gap: var(--space-2) !important;
-          align-items: flex-start;
-        }
-        /* Fixed 440px-per-column forcing removed 2026-07-28 — that was
-           sized for the pre-refactor wide roster card. Cards are now a
-           compact 2-row layout (see RosterScreenBase.renderCompactCard),
-           and each column's own grid already sizes itself to
-           max-content (see boys-roster.js/mens-roster.js). Forcing 440px
-           here just re-stretched the already-narrow cards back out,
-           which is exactly the "All" pill still looking wide even
-           though it mounts the same BoysRosterScreen/MensRosterScreen
-           instances as the standalone pills. Flex's default
-           flex-basis:auto lets each column size to its own content
-           instead. */
-        .rs-section [style*="overflow-x"] {
-          overflow-x: visible !important;
-          padding-bottom: 0 !important;
-        }
-        .rs-section > div > div[style*="padding"] {
-          padding: 0 !important;
-        }
-
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🎽 Team Players</h1>
-        <p class="subtitle" id="rs-subtitle">Assign members to teams — pick a club, or view all side-by-side</p>
+        <p class="subtitle" id="rs-subtitle">Unassigned on the left, team rosters on the right — filter each side independently</p>
       </div>
-      <div style="padding: var(--space-3) var(--space-2);">
-        <div id="rosters-filters" style="margin-bottom: var(--space-3);"></div>
-        <div id="rosters-host" style="min-height: 200px;">
-          <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
-        </div>
+      <div style="padding: var(--space-3) var(--space-2); display:flex; gap: var(--space-4); align-items:flex-start; flex-wrap:wrap;">
+        <section class="rs-panel" style="flex: 0 0 340px; max-width: 100%;">
+          <h2 class="rs-panel-title">📦 Unassigned</h2>
+          <div id="rs-unassigned-pills" style="margin-bottom: var(--space-2);"></div>
+          <div id="rs-unassigned-caption" style="font-size:0.75rem; opacity:0.6; margin-bottom:var(--space-2);"></div>
+          <div id="rs-unassigned-body" style="min-height: 120px;">
+            <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
+          </div>
+        </section>
+        <section class="rs-panel" style="flex: 1 1 480px; min-width: 0;">
+          <h2 class="rs-panel-title">👥 Teams</h2>
+          <div id="rs-teams-pills" style="margin-bottom: var(--space-2);"></div>
+          <div id="rs-teams-caption" style="font-size:0.75rem; opacity:0.6; margin-bottom:var(--space-2);"></div>
+          <div id="rs-teams-body" style="min-height: 200px;">
+            <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
+          </div>
+        </section>
       </div>
     `;
     this.element = div;
@@ -176,9 +143,12 @@ class RostersScreen extends Screen {
   }
 
   async onEnter(params) {
-    const allowed = new Set(['all', 'mens', 'womens', 'boys', 'girls']);
-    if (params && typeof params.chip === 'string' && allowed.has(params.chip)) {
-      this.chip = params.chip;
+    const allowed = new Set(['mens', 'womens', 'boys', 'girls']);
+    if (params && typeof params.unassignedPill === 'string' && allowed.has(params.unassignedPill)) {
+      this.unassignedPill = params.unassignedPill;
+    }
+    if (params && typeof params.teamsPill === 'string' && allowed.has(params.teamsPill)) {
+      this.teamsPill = params.teamsPill;
     }
     // clubId/clubName accepted for parity with the old admin-club-teams
     // entry point this screen absorbed — every sub-screen's endpoint
@@ -187,18 +157,19 @@ class RostersScreen extends Screen {
     this.clubId = params?.clubId ?? this.navigation.context?.club?.id ?? 134;
     this.clubName = params?.clubName ?? 'Lighthouse';
 
-    this.includeInactive = false;
+    this.teamsIncludeInactive = false;
     await this._ensureCoachedTeamIds();
-    this._syncHeaderState();
-    this._buildFilterBar();
-    this._mountForChip();
+    this._buildUnassignedPills();
+    this._buildTeamsPills();
+    this._mountUnassignedPanel();
+    this._mountTeamsPanel();
   }
 
   // Coach-scoped move rights (CoachTeamCard, components/TeamCard.js) read
   // navigation.context.coachedTeamIds — populate it once per entry so
-  // every mounted section (Mens/Boys/Girls/Womens) sees the same list
-  // without each re-fetching it. Admin doesn't need this at all — their
-  // card class derives "every column on this board" straight from
+  // every mounted board (Mens/Boys/Girls, on either panel) sees the same
+  // list without each re-fetching it. Admin doesn't need this at all —
+  // their card class derives "every column on this board" straight from
   // whatever board it's rendering, no separate fetch required.
   async _ensureCoachedTeamIds() {
     const role = (this.navigation?.context?.role || this.auth?.user?.role || '').toString().toLowerCase();
@@ -216,68 +187,80 @@ class RostersScreen extends Screen {
   }
 
   // ScreenManager's lifecycle hook is `onExit` (not `onLeave`).  We
-  // also drop the cached FilterBar here so anything still holding a
+  // also drop the cached FilterBars here so anything still holding a
   // reference doesn't accidentally paint into the old host after we've
   // been detached.
   onExit() {
     this._unmountAll();
-    this._filterBar = null;
+    this._unassignedFilterBar = null;
+    this._teamsFilterBar = null;
   }
 
-  _syncHeaderState() {
-    const subtitle = this.element?.querySelector('#rs-subtitle');
-    if (subtitle) {
-      subtitle.textContent = 'Assign members to teams — pick a club, or view all side-by-side';
-    }
-  }
-
-  // ── FilterBar ─────────────────────────────────────────────────────
-  _buildFilterBar() {
-    const host = this.find('#rosters-filters');
-    if (!host) return;
-    if (!this._filterBar) {
-      this._filterBar = new FilterBar({ host });
-    }
-    const chips = [
-      { id: 'all',    label: '🗂️ All'    },
+  // ── Category pills, one FilterBar per panel ─────────────────────────
+  _categoryChips() {
+    return [
       { id: 'mens',   label: '👨 Mens'   },
       { id: 'womens', label: '👩 Womens' },
       { id: 'boys',   label: '👦 Boys'   },
       { id: 'girls',  label: '👧 Girls'  },
     ];
-    this._filterBar.setRows([
+  }
+
+  _buildUnassignedPills() {
+    const host = this.find('#rs-unassigned-pills');
+    if (!host) return;
+    if (!this._unassignedFilterBar) this._unassignedFilterBar = new FilterBar({ host });
+    this._unassignedFilterBar.setRows([{
+      name:     'unassigned-category',
+      chips:    this._categoryChips(),
+      selected: this.unassignedPill,
+      onSelect: (id) => {
+        if (id == null || id === this.unassignedPill) return;
+        this.unassignedPill = id;
+        this._buildUnassignedPills();
+        this._mountUnassignedPanel();
+      },
+    }]);
+  }
+
+  _buildTeamsPills() {
+    const host = this.find('#rs-teams-pills');
+    if (!host) return;
+    if (!this._teamsFilterBar) this._teamsFilterBar = new FilterBar({ host });
+    this._teamsFilterBar.setRows([
       {
-        name:     'category',
-        chips,
-        selected: this.chip,
+        name:     'teams-category',
+        chips:    this._categoryChips(),
+        selected: this.teamsPill,
         onSelect: (id) => {
-          // Non-toggle behaviour — every chip picks exactly one view;
-          // clicking the active chip is a no-op (falling back to
-          // 'all' on toggle-off would confuse the operator).
-          if (id == null) return;
-          if (id === this.chip) return;
-          this.chip = id;
-          this._buildFilterBar();
-          this._mountForChip();
+          if (id == null || id === this.teamsPill) return;
+          this.teamsPill = id;
+          this._buildTeamsPills();
+          this._mountTeamsPanel();
         },
       },
       {
         // is_active is the source of truth for "does this team show" —
-        // independent of the section pill above, so it's its own row
-        // (no `clears`). Defaults to Active on every fresh entry
-        // (this.includeInactive reset in onEnter).
-        name:     'status',
+        // independent of the category pill above, so it's its own row
+        // (no `clears`). Scoped to the Teams panel only — Womens'
+        // ClubController fetch also accepts includeInactive, threaded
+        // through in _mountWomensSection.
+        name:     'teams-status',
         chips: [
           { id: 'active',   label: 'Active' },
           { id: 'inactive', label: 'Inactive' },
         ],
-        selected: this.includeInactive ? 'inactive' : 'active',
+        selected: this.teamsIncludeInactive ? 'inactive' : 'active',
         onSelect: (id) => {
           if (id == null) return;
-          this.includeInactive = id === 'inactive';
+          this.teamsIncludeInactive = id === 'inactive';
+          if (this.teamsPill === 'womens') {
+            this._mountWomensSection(this.find('#rs-teams-body'));
+            return;
+          }
           for (const child of this._mountedChildren) {
-            if (typeof child.setIncludeInactive === 'function') {
-              child.setIncludeInactive(this.includeInactive);
+            if (child && child.columnScope === 'teams' && typeof child.setIncludeInactive === 'function') {
+              child.setIncludeInactive(this.teamsIncludeInactive);
             }
           }
         },
@@ -287,305 +270,179 @@ class RostersScreen extends Screen {
 
   // ── Sub-screen mounting ───────────────────────────────────────────
   //
-  // Instantiate on first use, cache thereafter.  Cached instances keep
-  // their own DOM around when we unmount them — cheaper than a full
-  // rebuild on chip flip.
-  _instanceForChip(chip) {
-    if (chip === 'mens') {
-      if (!this._instances.mens) {
-        this._instances.mens = new MensRosterScreen(this.navigation, this.auth);
-      }
-      return this._instances.mens;
+  // Instantiate on first use, cache thereafter (per panel — see the
+  // two-cache doc in the constructor). Cached instances keep their own
+  // DOM around when we unmount them — cheaper than a full rebuild on
+  // every pill flip.
+  _instanceForPanel(cache, pill) {
+    if (pill === 'mens') {
+      if (!cache.mens) cache.mens = new MensRosterScreen(this.navigation, this.auth);
+      return cache.mens;
     }
-    if (chip === 'boys') {
-      if (!this._instances.boys) {
-        this._instances.boys = new BoysRosterScreen(this.navigation, this.auth);
-      }
-      return this._instances.boys;
+    if (pill === 'boys') {
+      if (!cache.boys) cache.boys = new BoysRosterScreen(this.navigation, this.auth);
+      return cache.boys;
     }
-    if (chip === 'girls') {
-      if (!this._instances.girls) {
-        this._instances.girls = new GirlsRosterScreen(this.navigation, this.auth);
-      }
-      return this._instances.girls;
-    }
-    if (chip === 'womens') {
-      if (!this._instances.womens) {
-        this._instances.womens = new WomensRosterScreen(this.navigation, this.auth);
-      }
-      return this._instances.womens;
+    if (pill === 'girls') {
+      if (!cache.girls) cache.girls = new GirlsRosterScreen(this.navigation, this.auth);
+      return cache.girls;
     }
     return null;
   }
 
-  _mountForChip() {
-    const host = this.find('#rosters-host');
+  // Small caption under each panel's pills — without a header (stripped
+  // by _mountChildInto) Boys and Girls would otherwise render byte-for-
+  // byte identical content with no way to tell which one is selected
+  // besides the pill highlight.
+  _captionForPill(pill) {
+    return {
+      mens:   'Lighthouse Mens Club — LeagueApps APSL + Liga 1',
+      womens: 'Tri County Women',
+      boys:   'Boys + Girls Club — youth, LeagueApps',
+      girls:  'Same roster as Boys — girls play on boys teams',
+    }[pill] || '';
+  }
+
+  _mountUnassignedPanel() {
+    const host = this.find('#rs-unassigned-body');
     if (!host) return;
+    const caption = this.find('#rs-unassigned-caption');
+    if (caption) caption.textContent = this._captionForPill(this.unassignedPill);
 
-    // Detach previous children (fire their onLeave so timers/listeners
-    // are cleaned up) before swapping in the new view.
-    this._unmountAll();
-    host.innerHTML = '';
-
-
-    if (this.chip === 'all') {
-      this._mountComposite(host);
+    if (this.unassignedPill === 'womens') {
+      host.innerHTML = `
+        <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.85rem;">
+          No separate Unassigned pool for Women's Club yet — Tri County
+          Women's roster is managed directly from its Teams card.
+        </div>
+      `;
       return;
     }
-
-    // Single-child view (mens / boys / girls).
-    const child = this._instanceForChip(this.chip);
+    const child = this._instanceForPanel(this._unassignedInstances, this.unassignedPill);
     if (!child) {
-      host.innerHTML = `<div style="padding: var(--space-3); color: var(--color-error);">Unknown roster: ${this.chip}</div>`;
+      host.innerHTML = `<div style="padding: var(--space-3); color: var(--color-error);">Unknown category: ${this.unassignedPill}</div>`;
       return;
     }
-    this._mountChildInto(host, child, this.chip);
+    child.columnScope = 'unassigned';
+    this._mountChildInto(host, child, `unassigned (${this.unassignedPill})`);
   }
 
-  // ── Pickup rendering ─────────────────────────────────────────────
-  //
-  // Enforces the LA → DB → render rule end-to-end:
-  //   1. POST /api/admin/membership/sync?variant=pickup&category=<cat>
-  //      → server calls LaProgramSync::run() for the matching pickup
-  //        LA program (5070075 / 5064618 / 5064662 / 5064686),
-  //        upserts persons/aliases/memberships, closes ended_at for
-  //        anyone LA no longer returns.
-  //   2. GET /api/admin/members?variant=pickup&category=<cat>
-  //      → fresh DB read, no client-side filtering.
-  //   3. Render cards.
-  //
-  // If step 1 fails we DO NOT render stale data — surface the error.
-  async _mountPickupForCategory(host, category) {
-    const seq = ++this._pickupFetchSeq;
-    // Titles for each pickup category.
-    const catLabel = {
-      mens:   'Men',
-      womens: 'Women',
-      boys:   'Boys',
-      girls:  'Girls',
-    }[category] || category;
-    // Map screen category → backend category (backend uses singular).
-    const backendCategory = ({
-      mens:   'men',
-      womens: 'women',
-      boys:   'boys',
-      girls:  'girls',
-    })[category] || category;
+  _mountTeamsPanel() {
+    const host = this.find('#rs-teams-body');
+    if (!host) return;
+    const caption = this.find('#rs-teams-caption');
+    if (caption) caption.textContent = this._captionForPill(this.teamsPill);
 
-    host.innerHTML = `
-      <div id="rs-pickup-banner"
-           style="margin-bottom: var(--space-3); padding: var(--space-3);
-                  border-radius: 6px; background: var(--bg-secondary, #111827);
-                  border: 1px solid var(--border-color, #374151);
-                  display:flex; align-items:center; gap: var(--space-3);
-                  flex-wrap: wrap; font-size: 0.9rem;">
-        <span style="font-size: 1rem;">⏳</span>
-        <span style="flex:1; min-width: 200px;">Syncing ${catLabel} Pickup roster from LeagueApps…</span>
-      </div>
-      <div id="rs-pickup-list"
-           style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                  gap: var(--space-3);"></div>
-    `;
+    if (this.teamsPill === 'womens') {
+      this._mountWomensSection(host);
+      return;
+    }
+    const child = this._instanceForPanel(this._teamsInstances, this.teamsPill);
+    if (!child) {
+      host.innerHTML = `<div style="padding: var(--space-3); color: var(--color-error);">Unknown category: ${this.teamsPill}</div>`;
+      return;
+    }
+    child.columnScope = 'teams';
+    if (typeof child.setIncludeInactive === 'function') {
+      child.includeInactive = this.teamsIncludeInactive;
+    }
+    this._mountChildInto(host, child, `teams (${this.teamsPill})`);
+  }
 
-    const setBanner = (icon, text, isError = false) => {
-      if (seq !== this._pickupFetchSeq) return;
-      const b = this.element?.querySelector('#rs-pickup-banner');
-      if (!b) return;
-      b.style.borderColor = isError ? 'var(--color-error, #ef4444)' : 'var(--border-color, #374151)';
-      b.innerHTML = `
-        <span style="font-size: 1rem;">${icon}</span>
-        <span style="flex:1; min-width: 200px; ${isError ? 'color: var(--color-error, #ef4444);' : ''}">
-          ${text}
-        </span>
-      `;
-    };
-
+  // Women's Club roster — the Teams panel's Womens pill. There's no LA
+  // program feeding women's teams (Boys/Girls/Mens all sync from
+  // LeagueApps programs; women's teams are club-scoped only, managed by
+  // hand via team_persons), so this can't reuse the LA-backed board
+  // machinery those pills share. Instead it reads the same club-scoped
+  // team+roster data the admin Teams screen's Women's pill already
+  // serves (GET /api/clubs/:id?gender=womens — see
+  // ClubController::handleGetClubDetail, migration 285) and links each
+  // team into TeamHubScreen for actual roster edits, same as clicking a
+  // team card on that screen does.
+  async _mountWomensSection(host) {
+    if (!host) return;
+    // `host` (#rs-teams-body) persists across pill flips (only its
+    // children get wiped), so an isConnected check on it would never
+    // catch a stale response — use an explicit sequence counter instead.
+    const seq = ++this._womensFetchSeq;
+    host.innerHTML = `<div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading Women's Club…</div>`;
     try {
-      // Step 1: sync (mandatory — do NOT render on failure).
-      const syncQs = `variant=pickup&category=${encodeURIComponent(backendCategory)}`;
-      const syncRes = await this.auth.fetch(`/api/admin/membership/sync?${syncQs}`, { method: 'POST' });
-      if (seq !== this._pickupFetchSeq) return;
-      if (!syncRes.ok) {
-        const body = await syncRes.text();
-        throw new Error(`sync HTTP ${syncRes.status}: ${body.slice(0, 200)}`);
-      }
-
-      // Step 2: DB read (post-sync, fresh).
-      const fetchQs = `variant=pickup&category=${encodeURIComponent(backendCategory)}`;
-      const res = await this.auth.fetch(`/api/admin/members?${fetchQs}`);
-      if (seq !== this._pickupFetchSeq) return;
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`fetch HTTP ${res.status}: ${body.slice(0, 200)}`);
-      }
-      const payload = await res.json();
-      if (seq !== this._pickupFetchSeq) return;
-
-      // Response shape: { success, data: { groups: [{category, variant, label, members: [...]}, ...] } }
-      const groups = (payload && payload.data && Array.isArray(payload.data.groups))
-        ? payload.data.groups
-        : [];
-      // Endpoint returns exactly one group per (variant, category)
-      // pair — pickup + our category → one group.
-      const group = groups.find(g => g && g.variant === 'pickup') || groups[0] || null;
-      const members = (group && Array.isArray(group.members)) ? group.members : [];
-
-      setBanner('✓', `${catLabel} Pickup — ${members.length} member${members.length === 1 ? '' : 's'} live from LeagueApps`, false);
-      this._renderPickupCards(catLabel, members);
-    } catch (err) {
-      console.error('[rosters] pickup load failed', err);
-      setBanner('✗', `Could not load ${catLabel} Pickup: ${err && err.message ? err.message : err}`, true);
-      const list = this.element?.querySelector('#rs-pickup-list');
-      if (list) list.innerHTML = '';
-    }
-  }
-
-  _renderPickupCards(catLabel, members) {
-    const list = this.element?.querySelector('#rs-pickup-list');
-    if (!list) return;
-    if (!members.length) {
-      list.innerHTML = `
-        <div style="grid-column: 1 / -1; padding: var(--space-4);
-                    text-align: center; opacity: 0.6; font-size: 0.9rem;
-                    border: 1px dashed var(--border-color, #374151);
-                    border-radius: 6px;">
-          No ${catLabel} Pickup members yet.  Populate the pickup
-          sub-program on the LeagueApps console — they'll show here
-          on the next load.
-        </div>
-      `;
-      return;
-    }
-    const esc = (s) => String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const cards = members.map(m => {
-      const name = esc(`${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)');
-      const email = m.email ? esc(m.email) : '';
-      const phone = m.phone ? esc(m.phone) : '';
-      const joined = m.joined_at
-        ? new Date(m.joined_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-        : '';
-      const inClub = !!m.has_active;
-      const chip = inClub
-        ? `<span style="display:inline-block; padding: 2px 8px; border-radius: 4px;
-                        font-size: 0.75rem; font-weight: 600;
-                        background: rgba(34, 197, 94, 0.18); color: #22c55e;">
-             ✓ Also in Club
-           </span>`
-        : `<span style="display:inline-block; padding: 2px 8px; border-radius: 4px;
-                        font-size: 0.75rem; font-weight: 600;
-                        background: rgba(148, 163, 184, 0.18); color: #94a3b8;">
-             Pickup only
-           </span>`;
-      return `
-        <div style="padding: var(--space-3); border-radius: 6px;
-                    background: var(--bg-secondary, #111827);
-                    border: 1px solid var(--border-color, #374151);
-                    display:flex; flex-direction:column; gap: 6px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
-            <div style="font-weight: 700; font-size: 1rem;">${name}</div>
-            ${chip}
-          </div>
-          ${email ? `<div style="font-size: 0.85rem; opacity: 0.85;">✉ ${email}</div>` : ''}
-          ${phone ? `<div style="font-size: 0.85rem; opacity: 0.85;">📞 ${phone}</div>` : ''}
-          ${joined ? `<div style="font-size: 0.75rem; opacity: 0.6;">Pickup since ${esc(joined)}</div>` : ''}
-        </div>
-      `;
-    }).join('');
-    list.innerHTML = cards;
-  }
-
-  // Horizontal composite: Youth Club (Boys) + Men's Club side-by-side,
-  // plus a Women's Club placeholder card and per-section overdue
-  // badges up top.  Inlined from the retired ClubRostersScreen.
-  _mountComposite(host) {
-    host.innerHTML = `
-      <div class="rs-hscroll">
-        <div class="rs-row">
-          <section class="rs-section" id="rs-section-youth">
-            <h2 class="rs-section-title">
-              🧒 Youth Club (Boys + Girls)
-              <span class="rs-overdue-badge" id="rs-youth-overdue"></span>
-            </h2>
-            <div id="rs-boys-wrap">
-              <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.85rem;">Loading Youth Club…</div>
-            </div>
-          </section>
-          <section class="rs-section" id="rs-section-men">
-            <h2 class="rs-section-title">
-              🧔 Men's Club
-              <span class="rs-overdue-badge" id="rs-mens-overdue"></span>
-            </h2>
-            <div id="rs-mens-wrap">
-              <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.85rem;">Loading Men's Club…</div>
-            </div>
-          </section>
-          <section class="rs-section" id="rs-section-women">
-            <h2 class="rs-section-title">👩 Women's Club</h2>
-            <div style="padding: var(--space-3); min-width: 260px; opacity: 0.6; font-size: 0.85rem;">
-              No dedicated Women's roster board yet — womens players
-              are managed via Members / Payments.
-            </div>
-          </section>
-        </div>
-      </div>
-    `;
-
-    const boys = this._instanceForChip('boys');
-    const mens = this._instanceForChip('mens');
-    this._mountChildInto(host.querySelector('#rs-boys-wrap'), boys, 'boys (composite)');
-    this._mountChildInto(host.querySelector('#rs-mens-wrap'), mens, 'mens (composite)');
-    this._loadCompositeOverdueBadges();
-  }
-
-  // Populate the per-section overdue pill next to each composite
-  // section header.  Runs in parallel with the mounted child screens
-  // (they hit the same endpoints — no caching, so this is two extra
-  // roundtrips but keeps the aggregate visible even before the
-  // per-child banners paint).
-  async _loadCompositeOverdueBadges() {
-    const setBadge = (id, overdue, total) => {
-      const el = this.element?.querySelector('#' + id);
-      if (!el) return;
-      if (!total || total <= 0) { el.textContent = ''; return; }
-      const pct = Math.round((overdue / total) * 100);
-      const cls = overdue === 0
-        ? ''
-        : (pct >= 25 ? ' rs-overdue-alert' : ' rs-overdue-warn');
-      el.className = 'rs-overdue-badge' + cls;
-      el.textContent = `⚠ ${overdue}/${total} overdue (${pct}%)`;
-    };
-    const fetchJson = async (url) => {
-      const res = await this.auth.fetch(url);
+      const qs = this.teamsIncludeInactive ? '&includeInactive=1' : '';
+      const res = await this.auth.fetch(`/api/clubs/${this.clubId}?gender=womens${qs}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    };
-    // Mens — backend emits data.delinquency.overdueCount directly.
-    fetchJson('/api/mens-roster').then((data) => {
-      const overdue = data?.delinquency?.overdueCount || 0;
-      setBadge('rs-mens-overdue', overdue, data?.total || 0);
-    }).catch(() => setBadge('rs-mens-overdue', 0, 0));
-    // Boys — no server-side delinquency count; proxy from
-    // outstandingBalance > 0 || paymentStatus === 'UNPAID' per player,
-    // deduped by leagueAppsUserId across all buckets + unassigned.
-    fetchJson('/api/boys-roster').then((data) => {
-      let overdue = 0;
-      const seen = new Set();
-      const walk = (arr) => {
-        for (const p of arr || []) {
-          const uid = p.leagueAppsUserId;
-          if (uid == null || seen.has(uid)) continue;
-          seen.add(uid);
-          const bal = Number(p.outstandingBalance || 0);
-          const unpaid = String(p.paymentStatus || '').toUpperCase() === 'UNPAID';
-          if (bal > 0 || unpaid) overdue++;
-        }
+      const body = await res.json();
+      const teams = (body && body.data && Array.isArray(body.data.teams)) ? body.data.teams : [];
+      if (seq !== this._womensFetchSeq) return; // stale response after a pill flip / unmount
+
+      if (!teams.length) {
+        host.innerHTML = `
+          <div style="padding: var(--space-4); opacity: 0.6; font-size: 0.9rem;">
+            No ${this.teamsIncludeInactive ? '' : 'active '}women's team yet.
+          </div>
+        `;
+        return;
+      }
+
+      // Multi-team badge — same idea as RosterScreenBase.
+      // renderActiveTeamsBadge on the Boys/Girls/Mens boards: flags a
+      // player who holds more than one active roster spot (e.g. someone
+      // also on a Boys/Mens team) so it's visually obvious here too.
+      // Excludes the team this card is already listed under.
+      const icon = { boys: '🧒', girls: '👧', mens: '🧔', womens: '👩' };
+      const activeTeamsBadge = (player, currentTeamId) => {
+        const others = (Array.isArray(player.active_teams) ? player.active_teams : [])
+          .filter((at) => at && at.teamId !== currentTeamId);
+        if (!others.length) return '';
+        return others.map((at) => `<span title="Also on ${this.escapeHtml(at.name || 'this team')}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(168,85,247,0.22); color:#c084fc; white-space:nowrap;">${icon[at.genderCategory] || '⚽'} ${this.escapeHtml(at.name || 'Team')}</span>`).join('');
       };
-      walk(data?.unassigned);
-      for (const b of Object.values(data?.buckets || {})) walk(b);
-      setBadge('rs-youth-overdue', overdue, data?.total || 0);
-    }).catch(() => setBadge('rs-youth-overdue', 0, 0));
+
+      const cards = teams.map((t) => {
+        const roster = Array.isArray(t.roster) ? t.roster : [];
+        const rosterHtml = roster.length
+          ? roster.map((p) => `
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; font-size:0.85rem; flex-wrap:wrap; row-gap:2px;">
+                <span>${this.escapeHtml(`${p.first_name || ''} ${p.last_name || ''}`.trim() || '(no name)')}</span>
+                <span style="display:flex; align-items:center; gap:4px;">
+                  ${activeTeamsBadge(p, t.id)}
+                  ${p.jersey_number ? `<span style="opacity:0.6;">#${this.escapeHtml(String(p.jersey_number))}</span>` : ''}
+                </span>
+              </div>
+            `).join('')
+          : `<div style="opacity:0.6; font-size:0.85rem; padding:4px 0;">No players on roster yet.</div>`;
+
+        return `
+          <div style="padding: var(--space-3); border-radius: 8px; background: var(--bg-tertiary, #1f2937); border: 1px solid var(--border-color, #374151);">
+            <div style="font-weight:700; font-size:1rem; margin-bottom:6px;">${this.escapeHtml(t.name || 'Team')}</div>
+            <div style="font-size:0.75rem; opacity:0.6; margin-bottom:10px;">${t.player_count ?? roster.length} player${(t.player_count ?? roster.length) === 1 ? '' : 's'}</div>
+            ${rosterHtml}
+            <button type="button" class="btn btn-secondary" data-womens-team-open="${t.id}" style="margin-top:10px; font-size:0.8rem;">Manage roster →</button>
+          </div>
+        `;
+      }).join('');
+
+      host.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap: var(--space-3);">${cards}</div>`;
+      host.querySelectorAll('[data-womens-team-open]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const teamId = parseInt(btn.dataset.womensTeamOpen, 10);
+          const team = teams.find((t) => t.id === teamId);
+          if (!team) return;
+          this.navigation.goTo('team-hub', {
+            teamId: team.id,
+            teamName: team.name,
+            clubId: this.clubId,
+            lineupTeamId: team.id,
+          });
+        });
+      });
+    } catch (err) {
+      console.error('[rosters] womens load failed:', err);
+      if (seq !== this._womensFetchSeq) return;
+      host.innerHTML = `
+        <div style="padding: var(--space-4); color: var(--color-error);">
+          Could not load Women's Club: ${this.escapeHtml(err && err.message ? err.message : String(err))}
+        </div>
+      `;
+    }
   }
 
   // Render a child screen into `wrap`, strip its outer .screen chrome
@@ -612,13 +469,6 @@ class RostersScreen extends Screen {
       wrap.innerHTML = '';
       wrap.appendChild(el);
       this._mountedChildren.push(child);
-      // Active/Inactive pill state carries into every freshly-mounted
-      // child so its first load already asks for the right set —
-      // setIncludeInactive() (mens-roster.js/boys-roster.js) would
-      // otherwise only take effect on the NEXT toggle.
-      if (typeof child.setIncludeInactive === 'function') {
-        child.includeInactive = this.includeInactive;
-      }
       if (typeof child.onEnter === 'function') child.onEnter();
     } catch (err) {
       console.error(`[rosters] ${label} failed to mount`, err);
@@ -654,7 +504,7 @@ class PlayerRosterScreen extends RostersScreen {
   }
 
   _renderWelcomeCard() {
-    const host = this.find('#rosters-filters');
+    const host = this.find('#rs-unassigned-pills');
     if (!host) return;
 
     if (this._welcomeDismissed) {

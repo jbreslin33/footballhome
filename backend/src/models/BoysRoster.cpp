@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ActiveTeamBadges.h"
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonPayments.h"
@@ -547,16 +548,37 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         }
     };
 
+    // Every active team (any gender_category) each player currently holds
+    // — batch-loaded once so cards can badge multi-team players (see
+    // ActiveTeamBadges.h). Needs personId, so a first pass over `all`
+    // resolves the same personIdByUserId lookup the per-row loop below
+    // does anyway.
+    std::unordered_map<long long, json> activeTeamsByPerson;
+    {
+        std::vector<long long> personIds;
+        personIds.reserve(all.size());
+        for (const auto& p : all) {
+            auto pit = personIdByUserId.find(userIdString(p.at("leagueAppsUserId")));
+            if (pit != personIdByUserId.end() && pit->second > 0) personIds.push_back(pit->second);
+        }
+        activeTeamsByPerson = ActiveTeamBadges::loadForPersons(personIds);
+    }
+
     for (auto& p : all) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
 
         // Carried on every row so the frontend's move buttons can send
         // it back on assign — see MensTeamAssignments.h doc on why the
         // write path prefers personId over the live LA userId.
+        long long resolvedPersonId = 0;
         {
             auto pit = personIdByUserId.find(uid);
-            p["personId"] = (pit != personIdByUserId.end() && pit->second > 0)
-                ? json(pit->second) : json(nullptr);
+            resolvedPersonId = (pit != personIdByUserId.end() && pit->second > 0) ? pit->second : 0;
+            p["personId"] = resolvedPersonId > 0 ? json(resolvedPersonId) : json(nullptr);
+        }
+        {
+            auto ait = activeTeamsByPerson.find(resolvedPersonId);
+            p["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
         }
 
         const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;

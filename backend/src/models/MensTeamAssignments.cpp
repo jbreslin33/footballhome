@@ -145,36 +145,24 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
 std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
                                                               int teamId,
                                                               const std::string& mutexGroup) {
-    // Single transaction so the mutex-sibling closure, delinquent
-    // restore and the upsert land atomically.
+    // Single transaction so the delinquent restore and the upsert land
+    // atomically.
     auto tx = db_->beginTransaction();
 
-    // 2026-08-03 (user directive): "only being able to be in one
-    // category per screen — always a move." Board columns within a
-    // domain are exclusive regardless of teams.mutex_group (the
-    // per-column opt-in from migration 250 that let official columns
-    // go multi-team caused confusing clicks — a move to a DIFFERENT
-    // mutex_group left the player on both, and the dropdown's
-    // "current" pick could still resolve to the old column). Close
-    // every OTHER board column the person is active on within this
-    // domain — scoped to board_sort_order IS NOT NULL / not archived
-    // so hidden buckets like mens Practice/Pickup (908/909, board-
-    // archived but still gender_category='mens') are left alone.
+    // 2026-08-16 (user directive): a player can hold any number of
+    // active team_persons rows at once — same domain or different
+    // (e.g. a boy called up to a mens team, or two mens squads). This
+    // reverses the 2026-08-03 "always a move" directive that used to
+    // close every OTHER board column the person was active on in this
+    // domain before inserting the new one; that made every add
+    // destructive by default, which is exactly what multi-assign needs
+    // to not do. A caller that actually wants to move a player off
+    // their old team now does that as an explicit second action
+    // (removeAssignmentForPerson on the old team_id) — see
+    // RosterScreenBase.renderMoveDropdown / TeamCard.js on the
+    // frontend, which already sends "add" and "remove" as independent
+    // requests, one per specific team_persons row.
     (void)mutexGroup;
-    tx->exec_params(
-        "UPDATE team_persons tp "
-        "   SET removed_at = now(), "
-        "       removed_reason = 'board_move' "
-        "  FROM teams c "
-        " WHERE c.id = tp.team_id "
-        "   AND c.gender_category = $3 "
-        "   AND c.board_sort_order IS NOT NULL "
-        "   AND c.board_archived_at IS NULL "
-        "   AND tp.person_id = $1 "
-        "   AND tp.team_id <> $2 "
-        "   AND tp.removed_at IS NULL",
-        personId, teamId, domain_
-    );
 
     // If the SAME (person, team) row exists but was soft-deleted for
     // delinquency, restore it in place so audit history + joined_at

@@ -7,19 +7,20 @@
 class Database;
 
 // ────────────────────────────────────────────────────────────────────────────
-// MensTeamAssignments — read + write model for the join table that backs
-// the mens dashboard (`mens_team_assignments`: leagueapps_user_id ⨯
-// team_id, with a per-row `on_roster` flag).
+// MensTeamAssignments — read + write model over `team_persons` (⨯ `teams`
+// filtered to this domain's gender_category) that backs the Boys/Girls/Mens
+// roster boards.
 //
 // loadAll() returns every assignment grouped by user (key = stringified
 // LeagueApps user id, matching how PersonBilling keys its map so the two
 // can be composed without coercing types).
 //
 // Writes:
-//   • addAssignment(user, team, mutexGroup)  → upsert + (if mutexGroup
-//     non-empty) delete any sibling-column assignments for that user
-//     atomically via a single pqxx::work transaction.
-//   • removeAssignment(user, team)           → single DELETE.
+//   • addAssignment(user, team, mutexGroup)  → purely additive upsert
+//     (2026-08-16: multi-assign — see addAssignmentForPerson doc); every
+//     other active row this person holds is left untouched.
+//   • removeAssignment(user, team)           → soft-close (removed_at set,
+//     row kept for history), scoped to exactly this one team_id.
 //   • setRosterStatus(user, team, onRoster)  → UPDATE; returns nullopt
 //     when no assignment exists (caller maps to 404).
 //
@@ -55,13 +56,14 @@ public:
     // filters as loadAll()'s per-row query, just scoped to one person.
     std::vector<Cell> cellsForPerson(long long personId);
 
-    // Add an assignment.  Closes every OTHER active board column this
-    // person is on in this domain first (2026-08-03: always a move —
-    // see addAssignmentForPerson doc).  Returns the person's full set
-    // of team_ids after. `userId` is resolved to a person via
-    // persons.la_user_id — prefer addAssignmentForPerson when the
-    // caller already has a trustworthy person id (see doc there for
-    // why: LA's live userId can drift out from under this lookup).
+    // Add an assignment. Purely additive (2026-08-16: multi-assign —
+    // see addAssignmentForPerson doc) — every other active row this
+    // person holds, in this domain or any other, is left untouched.
+    // Returns the person's full set of team_ids after. `userId` is
+    // resolved to a person via persons.la_user_id — prefer
+    // addAssignmentForPerson when the caller already has a trustworthy
+    // person id (see doc there for why: LA's live userId can drift out
+    // from under this lookup).
     std::vector<int> addAssignment(long long userId,
                                    int teamId,
                                    const std::string& mutexGroup);
