@@ -200,7 +200,8 @@ async function classifyPattern(pg, p) {
 //
 //   Team:    Pickup | Practice | APSL | Liga 1 | Liga 2 | Adult | ...
 //   Club:    Mens   | Womens   | Boys | Girls        (list-friendly)
-//   Type:    Practice | Pickup | Match | Meeting | Camp | Other   (alias: Kind:)
+//   Type:    Practice | Pickup | Match | Meeting | Camp | Other | Barn Night
+//                                                              (alias: Kind:)
 //   Home:    Yes    | No       | Neutral                          (matches only)
 //   Opponent: free-form opponent name                          (matches only)
 //   Notes:   free-form text; stored in fh_events.fh_notes verbatim.
@@ -316,7 +317,7 @@ function parseDsl(description) {
       case 'kind': {
         const n = jsNormAlias(val);
         // Accept only values the CHECK constraint allows.
-        if (['practice','pickup','match','meeting','camp','other'].includes(n)) {
+        if (['practice','pickup','match','meeting','camp','other','barn night'].includes(n)) {
           out.kind = n;
         }
         break;

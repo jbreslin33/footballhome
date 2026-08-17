@@ -1157,8 +1157,9 @@ class MensRosterScreen extends RosterScreenBase {
       { id: 908, label: 'Practice', color: '#f59e0b' },
       { id: 909, label: 'Pickup',   color: '#10b981' },
       { id: 924, label: 'APSL Reserves',   color: '#60a5fa' },
-      { id: 925, label: 'APSL Trialists',  color: '#f97316' },
-      { id: 926, label: 'Liga 1 Trialists', color: '#f97316' },
+      // Trialists (925/926) retired 2026-08-12 — teams deactivated,
+      // dropped from every other eligibility catalog; this modal was
+      // the one place still offering them as a grantable checkbox.
       // Women / boys grants are editable on the RSVP Eligibility board
       // and person profile; mens roster modal stays mens-focused.
     ];
