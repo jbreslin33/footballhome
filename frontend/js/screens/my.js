@@ -620,7 +620,7 @@ class MyScreen extends Screen {
     const catLabel   = tags.club || catLabels[category] || category || '';
     const opponent   = ev.opponent || tags.opponent || '';
 
-    const base = (kindLabel && catLabel) ? `${kindLabel} · ${catLabel}` : (kindLabel || catLabel);
+    const base = (kindLabel && catLabel) ? `${catLabel} ${kindLabel}` : (kindLabel || catLabel);
     if (kind === 'match' && opponent) {
       return base ? `${base} vs ${opponent}` : `vs ${opponent}`;
     }
@@ -967,6 +967,7 @@ class MyScreen extends Screen {
     const descTags = this._parseDescTags(ev.description);
     const arrival  = descTags.arrival || '';
     const kickoff  = descTags.kickoff || '';
+    const notes    = descTags.notes || '';
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach).length;
     const coachesGoingCount = rsvps.filter(r => r && r.response === 'yes' && r.is_coach).length;
@@ -1008,6 +1009,7 @@ class MyScreen extends Screen {
             <div style="font-size:0.66rem; font-weight:600; line-height:1.25; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(title)}</div>
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
+            ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">

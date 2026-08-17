@@ -2,6 +2,9 @@
 
 #include "../core/Controller.h"
 
+#include <optional>
+#include <string>
+
 // CalendarController — read-only view over the fh_events + gcal_events
 // mirror populated by scripts/gcal-sync.js (Slice 2) and classified by
 // scripts/gcal-classify.js (Slice 3). See docs/calendar-design.md
@@ -83,6 +86,12 @@ public:
 private:
     Response handleGetUpcoming         (const Request& request);
     Response handlePostRsvp            (const Request& request);
+    // Live-lookup fallback for opponent crests (migration 289): queries
+    // TheSportsDb's public team search by name and caches the result
+    // (found or not) into opponent_logo_cache so we only ever hit the
+    // external API once per distinct opponent text. Returns the badge
+    // URL on success, nullopt on no-match or any failure.
+    std::optional<std::string> fetchAndCacheOpponentLogo(const std::string& opponentText);
     Response handleGetEventAttendance  (const Request& request);
     Response handlePostEventAttendance (const Request& request);
     Response handleDeleteEventAttendance(const Request& request);

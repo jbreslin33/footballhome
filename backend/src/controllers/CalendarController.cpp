@@ -1,6 +1,7 @@
 #include "CalendarController.h"
 
 #include "../core/Crypto.h"
+#include "../core/HttpClient.h"
 #include "../database/Database.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
@@ -10,6 +11,7 @@
 #include <exception>
 #include <iostream>
 #include <optional>
+#include <regex>
 #include <string>
 
 using nlohmann::json;
@@ -410,9 +412,12 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 -- verbatim. No fuzzy/substring matching: "Oaklyn United"
                 -- as typed is a substring/word-match against three
                 -- different scraped team rows, so guessing would risk
-                -- showing the wrong club's crest. NULL falls through to
-                -- the Lighthouse crest on the frontend. New opponents
-                -- just need one INSERT into gcal_opponent_aliases.
+                -- showing the wrong club's crest. Third: opponent_logo_cache
+                -- (migration 289) — a live TheSportsDb lookup the C++ layer
+                -- below performs and caches the first time it sees a new
+                -- opponent text; NULLIF collapses its '' ("looked, found
+                -- nothing") sentinel back to real NULL. Still-NULL falls
+                -- through to the Lighthouse crest on the frontend.
                 COALESCE(
                     (SELECT t.logo_url
                        FROM gcal_opponent_aliases goa
@@ -423,8 +428,21 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     (SELECT t.logo_url FROM teams t
                       WHERE fe.opponent IS NOT NULL
                         AND LOWER(BTRIM(t.name)) = LOWER(BTRIM(fe.opponent))
+                      LIMIT 1),
+                    (SELECT NULLIF(olc.logo_url, '') FROM opponent_logo_cache olc
+                      WHERE fe.opponent IS NOT NULL
+                        AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent))
                       LIMIT 1)
                 ) AS opponent_logo_url,
+                -- Have we ever attempted a live lookup for this opponent
+                -- text, success or not? Gates the C++ fallback below so we
+                -- hit the external API once per distinct opponent, not on
+                -- every request.
+                EXISTS (
+                    SELECT 1 FROM opponent_logo_cache olc
+                     WHERE fe.opponent IS NOT NULL
+                       AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent))
+                ) AS opponent_logo_checked,
                 fe.fh_notes,
                 CASE
                     WHEN fe.rsvps_open_at IS NULL THEN NULL
@@ -739,6 +757,16 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["match_id"]          = longLongOrNull(row, "match_id");
             ev["opponent"]          = textOrNull(row, "opponent");
             ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");
+            // No DB match (hand-seeded alias / exact teams.name / prior
+            // cache) — try a live lookup exactly once per distinct
+            // opponent text, then cache whatever we found (or didn't).
+            if (ev["opponent_logo_url"].is_null()
+                && !row["opponent"].is_null()
+                && std::string(row["kind"].c_str()) == "match"
+                && !row["opponent_logo_checked"].as<bool>()) {
+                auto found = fetchAndCacheOpponentLogo(row["opponent"].as<std::string>());
+                if (found) ev["opponent_logo_url"] = *found;
+            }
             ev["fh_notes"]          = textOrNull(row, "fh_notes");
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
@@ -821,6 +849,68 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
     }
 }
 
+std::optional<std::string> CalendarController::fetchAndCacheOpponentLogo(const std::string& opponentText) {
+    if (opponentText.empty()) return std::nullopt;
+
+    // Ops sometimes types the league right into the Opponent: tag itself
+    // ("Real Central NJ APSL", "German American Kickers Liga 1") to tell
+    // two same-week fixtures apart — real enough club-name text for a
+    // person reading the card, but it makes the opponent's actual name
+    // unsearchable verbatim. Strip one trailing league/division token
+    // before searching; the cache key stays the untouched original text
+    // so it still matches this exact Opponent: tag next time.
+    static const std::regex trailingLeague(
+        R"(\s+(APSL|Liga\s?1|Liga\s?2|Adult|Pickup|Practice)\s*$)",
+        std::regex::icase);
+    const std::string searchText = std::regex_replace(opponentText, trailingLeague, "");
+
+    std::string logoUrl;  // stays empty on any miss/failure — that's the cache's "checked, nothing found" sentinel
+    try {
+        HttpClient http;
+        // TheSportsDb's public test key ("3") — free tier, no account
+        // needed, standard for exactly this "look up a club crest by
+        // name" use case. Single best-effort attempt; any failure just
+        // falls through to caching an empty result.
+        const std::string url = "https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t="
+                               + HttpClient::urlEncode(searchText);
+        auto res = http.get(url);
+        if (res.ok()) {
+            auto body = json::parse(res.body, nullptr, false);
+            if (!body.is_discarded() && body.contains("teams") && body["teams"].is_array()
+                && !body["teams"].empty()) {
+                const auto& team = body["teams"][0];
+                // v1 searchteams.php calls the crest field strBadge (NOT
+                // strTeamBadge, which exists in the schema but is always
+                // null here) — strLogo as a fallback for the rare record
+                // that has a wordmark logo but no badge.
+                if (team.contains("strBadge") && team["strBadge"].is_string()
+                    && !team["strBadge"].get<std::string>().empty()) {
+                    logoUrl = team["strBadge"].get<std::string>();
+                } else if (team.contains("strLogo") && team["strLogo"].is_string()) {
+                    logoUrl = team["strLogo"].get<std::string>();
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::fetchAndCacheOpponentLogo(" << opponentText
+                  << "): " << e.what() << std::endl;
+    }
+
+    try {
+        Database::getInstance()->query(
+            "INSERT INTO opponent_logo_cache (opponent_text, logo_url, source) "
+            "VALUES ($1, $2, 'thesportsdb') "
+            "ON CONFLICT (LOWER(BTRIM(opponent_text))) "
+            "DO UPDATE SET logo_url = EXCLUDED.logo_url, fetched_at = now()",
+            {opponentText, logoUrl});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::fetchAndCacheOpponentLogo: cache write failed: "
+                  << e.what() << std::endl;
+    }
+
+    return logoUrl.empty() ? std::nullopt : std::optional<std::string>(logoUrl);
+}
+
 // POST /api/calendar/rsvp — Slice 6 write path (see design doc §6.5.2).
 //
 // Body: { fh_event_id:int, response:'yes'|'no'|'maybe', note?:string }
@@ -830,14 +920,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
 //   * fh_event_id must resolve to a live fh_events row whose parent
 //     gcal_events is NOT tombstoned/cancelled — otherwise 404.
 //   * If fh_events.rsvps_open_at IS NOT NULL AND now() < it, return
-//     409 with an explanatory body.  The standing-RSVP applier
-//     (§6.5.3) is the only writer allowed before the window opens,
-//     and it doesn't go through this endpoint.
+//     409 with an explanatory body.
 //   * Upsert one fh_event_rsvps row (fh_event_id, person_id) →
-//     (response, responded_at=now(), created_via='manual').  Any
-//     prior 'standing' row for the same (event, person) is
-//     overwritten and its created_via flips to 'manual' — the
-//     manual click is authoritative.
+//     (response, responded_at=now(), created_via='manual').
 Response CalendarController::handlePostRsvp(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
