@@ -1,0 +1,20 @@
+[Unit]
+Description=Football Home — refresh long-lived Instagram access token
+Documentation=file:///srv/footballhome/scripts/refresh-instagram-token.sh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Must run as jbreslin: rewrites INSTAGRAM_ACCESS_TOKEN= in
+# /srv/footballhome/env, which is mode 600 owned by jbreslin.
+User=jbreslin
+Group=footballhome
+WorkingDirectory=/srv/footballhome
+ExecStart=/bin/bash /srv/footballhome/scripts/refresh-instagram-token.sh
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60s
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=Football Home — daily database backup timer (3am local)
+Documentation=file:///srv/footballhome/scripts/backup-db.sh
+Requires=backup-db.service
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+# If the machine was off/rebooting at 3am, run as soon as it's back —
+# a missed daily backup shouldn't just be skipped until tomorrow.
+Persistent=true
+# Small jitter so this doesn't land at the exact same instant as any
+# other 3am job on the box (e2scrub, etc).
+RandomizedDelaySec=120s
+Unit=backup-db.service
+
+[Install]
+WantedBy=timers.target

@@ -2,10 +2,11 @@
 # Daily database backup with rotation
 # Keeps last 7 daily backups + last 4 weekly backups
 #
-# Install: crontab -e → add:
-#   0 3 * * * /home/jbreslin/sandbox/github/footballhome/scripts/backup-db.sh
+# Install: scripts/setup/setup-jobs.sh (systemd backup-db.timer, runs as
+# root — see that unit file for why: this box's rootful podman + the
+# root:footballhome backups/ dir ownership both need root, not jbreslin).
 #
-# Manual run: ./scripts/backup-db.sh
+# Manual run: sudo ./scripts/backup-db.sh
 
 set -euo pipefail
 
@@ -63,18 +64,24 @@ fi
 echo "Done. Daily: $DAILY_COUNT/$DAILY_KEEP, Weekly: $WEEKLY_COUNT/$WEEKLY_KEEP"
 
 # Push to backup git repo
-BACKUP_REPO="/home/jbreslin/sandbox/github/footballhome-backups"
+BACKUP_REPO="/srv/footballhome-backups"
 if [ -d "$BACKUP_REPO/.git" ]; then
     cp "$BACKUP_FILE" "$BACKUP_REPO/"
     # Also sync weekly if created
     if [ "$DAY_OF_WEEK" -eq 7 ]; then
         cp "$WEEKLY_FILE" "$BACKUP_REPO/"
     fi
-    # Remove old backups from repo that have been rotated out locally
-    cd "$BACKUP_REPO"
-    git add -A
-    git commit -m "backup $(date +%Y-%m-%d)" --allow-empty
-    git push origin main
+    chown jbreslin:footballhome "$BACKUP_REPO"/*.sql 2>/dev/null || true
+    # git commit/push need jbreslin's identity + stored GitHub credential
+    # (~/.git-credentials) — this script itself now runs as root (see
+    # backup-db.service), so hand the git steps off via sudo -u rather
+    # than duplicating jbreslin's credentials into root's home dir.
+    sudo -u jbreslin -H bash -c "
+        cd '$BACKUP_REPO' &&
+        git add -A &&
+        git commit -m 'backup $(date +%Y-%m-%d)' --allow-empty &&
+        git push origin main
+    "
     echo "Pushed to git backup repo"
 else
     echo "WARNING: Backup repo not found at $BACKUP_REPO, skipping git push"

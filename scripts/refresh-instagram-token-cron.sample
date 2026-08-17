@@ -1,7 +1,12 @@
+# DEPRECATED 2026-08-16 — replaced by the refresh-instagram-token.timer
+# systemd unit, installed via scripts/setup/setup-jobs.sh (same pattern
+# as gcal-sync.timer). A plain crontab entry had no matching setup
+# step, so it didn't survive a rebuild on a new box. Kept here only as
+# a reference for what the old cron line looked like.
+#
 # Instagram long-lived token — auto-refresh every 50 days
 #
-# Install:   crontab -l > /tmp/cron.cur && cat scripts/refresh-instagram-token-cron.sample >> /tmp/cron.cur && crontab /tmp/cron.cur
-# Verify:    crontab -l | grep refresh-instagram-token
+# Verify:    sudo systemctl list-timers | grep refresh-instagram
 # Manual:    bash scripts/refresh-instagram-token.sh
 # Log:       tail -f scripts/refresh-instagram-token.log
 #

@@ -1,0 +1,36 @@
+[Unit]
+Description=Football Home — daily database backup + rotation
+Documentation=file:///srv/footballhome/scripts/backup-db.sh
+After=network-online.target
+Wants=network-online.target
+# Don't fire while the DB is being started/restarted by podman.
+After=podman.service
+
+[Service]
+Type=oneshot
+# Runs as root: /srv/footballhome/backups is root:footballhome with no
+# group-write bit (the last backups made under the jbreslin user cron
+# silently failed for 25 days for exactly this reason — no writable
+# log path, so not even the failure got recorded). Root also means
+# plain `podman exec` works directly against the rootful socket, no
+# `sudo` needed inside backup-db.sh itself. The script's git-push step
+# hands off to `sudo -u jbreslin` internally for the commit/push, since
+# GitHub creds (~/.git-credentials) live in jbreslin's home, not
+# root's — root sudo-ing to another user never needs a password, so
+# that handoff is transparent here.
+User=root
+Group=root
+WorkingDirectory=/srv/footballhome
+ExecStart=/bin/bash /srv/footballhome/scripts/backup-db.sh
+StandardOutput=journal
+StandardError=journal
+# pg_dump of the full DB + git push to the backup repo should finish
+# in well under a minute at current DB size; generous ceiling in case
+# the DB grows a lot before anyone revisits this.
+TimeoutStartSec=600s
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target

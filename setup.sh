@@ -50,11 +50,11 @@ echo -e "${BLUE}Football Home - First-Time Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx -> gcal
+# Order matters: base -> age -> podman -> node -> chrome -> env -> scraper -> vendor -> sim -> vpn -> nginx -> gcal -> jobs
 # (age must precede vpn so scrape-vpn.conf.age is decrypted before vpn step reads it)
-# (gcal runs last — needs node deps + env decrypted + podman DB up so its unit files can be installed and fired once)
+# (gcal runs before jobs — both need node deps + env decrypted + podman DB up so their unit files can be installed and fired once)
 STEPS=(base age podman node chrome env scraper vendor sim)
-[ "$OS_TYPE" = "Linux" ] && STEPS+=(vpn nginx gcal)
+[ "$OS_TYPE" = "Linux" ] && STEPS+=(vpn nginx gcal jobs)
 
 step_enabled() {
   local s="$1"
