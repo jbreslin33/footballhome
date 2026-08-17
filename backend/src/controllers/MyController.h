@@ -6,9 +6,8 @@
 //
 // Post 2026-07-17 (pickup/practice moved onto gcal → fh_events →
 // fh_event_rsvps), most of this controller is chat-only.  RSVPs live in
-// the CalendarController surface (`/api/calendar/*`); standing
-// preferences live in `fh_recurring_rsvps` and are toggled via the same
-// calendar surface.  The one exception is push-remind (2026-08-10)
+// the CalendarController surface (`/api/calendar/*`).  The one
+// exception is push-remind (2026-08-10)
 // below — it's a write against WebPushService, not chat, but it's
 // small enough not to warrant its own controller.
 //

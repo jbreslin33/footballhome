@@ -7,11 +7,11 @@
 //     eligible for.  Rolling one-week window that flips over at
 //     Sunday 20:00 local — before the cutover the window ends on the
 //     upcoming Sunday, after the cutover it slides to the following
-//     Sunday (see _weekWindowEnd).  Each event has four buttons:
-//         Going / Not Going          → per-event override (fh_event_rsvps)
-//         Recurring Going / Not Going → standing pref     (fh_recurring_rsvps)
-//     The effective state is highlighted.  A per-event override always
-//     wins over the standing preference for that specific event.
+//     Sunday (see _weekWindowEnd).  Each event has Going / Not Going
+//     buttons (fh_event_rsvps) — no standing/recurring preference
+//     anymore (removed 2026-08-16, see docs/adr — it silently
+//     auto-marked people "going" on stale preferences with no way to
+//     see or change them from the UI).
 //
 // Backend surface (all already exist — no new endpoints needed):
 //   GET  /api/calendar/upcoming?days=7   → { events: [{fh_event_id, kind,
@@ -22,9 +22,6 @@
 //     so the player screen only sees the current week until Sunday 20:00,
 //     then flips to the next week at the cutover.
 //   POST /api/calendar/rsvp              → { fh_event_id, response }
-//   GET  /api/calendar/my-standing       → { prefs: [{kind, category,
-//                                                     response, active}] }
-//   POST /api/calendar/my-standing       → { kind, category, response, active }
 //   GET  /api/my/chat/messages           → { chat_id, viewer_user_id, messages }
 //   POST /api/my/chat/messages           → { message }
 //
@@ -33,11 +30,10 @@
 class MyScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
-    // Event + standing state (this-week section).
+    // Event state (this-week section).
     this.events         = null;          // Array<event> from /api/calendar/upcoming
-    this.standing       = null;          // Array<{kind, category, response, active}>
+    this.viewerIsMens   = false;         // viewer_is_mens from /api/calendar/upcoming
     this.eventSaving    = new Set();     // "fh_event_id:response" tokens in-flight
-    this.standingSaving = new Set();     // "kind::category::response" tokens in-flight
     this.dataError      = null;
     this.expandedEventId = null;         // toggled by the compact View button
     this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
@@ -100,6 +96,7 @@ class MyScreen extends Screen {
       </div>
       <div style="padding: 0 8px;">
         <section id="my-chat" style="margin-bottom: 6px;"></section>
+        <section id="my-mens-link"></section>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
@@ -122,15 +119,10 @@ class MyScreen extends Screen {
 
   async _bootstrap() {
     try {
-      const [upRes, standingRes] = await Promise.all([
-        this._fetch('/api/calendar/upcoming?days=7'),
-        this._fetch('/api/calendar/my-standing').catch((err) => {
-          console.warn('[my] my-standing load failed:', err.message);
-          return { prefs: [] };
-        }),
-      ]);
-      this.events   = upRes.events    || [];
-      this.standing = standingRes.prefs || [];
+      const upRes = await this._fetch('/api/calendar/upcoming?days=7');
+      this.events       = upRes.events    || [];
+      this.viewerIsMens = !!upRes.viewer_is_mens;
+      this._renderMensLink();
       this._renderEvents();
       this._renderChatShell();
       await this._loadChat(/*initial*/ true);
@@ -405,7 +397,26 @@ class MyScreen extends Screen {
     if (category === 'staff' || summary.includes('all staff meeting')) return false;
     if (kind === 'meeting') return false;
 
-    return ['pickup', 'practice', 'match'].includes(kind);
+    return ['pickup', 'practice', 'match', 'barn night'].includes(kind);
+  }
+
+  _renderMensLink() {
+    const box = this.find('#my-mens-link');
+    if (!box) return;
+    // Temporarily disabled — WhatsApp link hidden for now.
+    box.innerHTML = '';
+    return;
+    if (!this.viewerIsMens) { box.innerHTML = ''; return; }
+    box.innerHTML = `
+      <a href="https://chat.whatsapp.com/EtacJfoY7kXIvC5Lxn0x7e" target="_blank" rel="noopener"
+         class="btn btn-secondary"
+         style="display:inline-flex; align-items:center; gap: 6px; font-size: 0.78rem; padding: 5px 9px; margin-bottom: 6px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="#25D366" style="flex-shrink:0;">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2C6.478 2 2 6.478 2 12c0 1.876.51 3.632 1.396 5.145L2 22l4.976-1.304A9.94 9.94 0 0 0 12.001 22C17.523 22 22 17.523 22 12S17.523 2 12.001 2zm5.786 15.786A8.28 8.28 0 0 1 12 20.5a8.27 8.27 0 0 1-4.196-1.14l-.301-.178-3.11.816.827-3.03-.196-.313A8.276 8.276 0 0 1 3.5 12c0-4.687 3.814-8.5 8.5-8.5S20.5 7.313 20.5 12a8.469 8.469 0 0 1-2.713 5.786z"/>
+        </svg>
+        Join Mens WhatsApp Club Chat
+      </a>
+    `;
   }
 
   _renderEvents() {
@@ -577,19 +588,41 @@ class MyScreen extends Screen {
     box.innerHTML = rangeHtml + list.map(e => this._renderEventCard(e, /*isPast*/ true)).join('');
   }
 
+  // Ops tags the raw Google Calendar description with a small DSL —
+  // `Club:`, `Team:`, `Kind:`/`Type:` (inconsistent between event
+  // types — practice tends to use `Type:`, match/pickup use `Kind:`,
+  // so we check both), `Opponent:`, `Arrival:`, `Kickoff:`, `Notes:`.
+  // gcal *title* is admin-only and never shown to players — these
+  // description tags are the player-facing source of truth instead.
+  _parseDescTags(description) {
+    const tags = {};
+    if (!description) return tags;
+    for (const line of description.split(/\r?\n/)) {
+      const m = line.match(/^\s*(Club|Team|Kind|Type|Opponent|Arrival|Kickoff|Notes)\s*:\s*(.+?)\s*$/i);
+      if (m) tags[m[1].toLowerCase()] = m[2];
+    }
+    return tags;
+  }
+
   _eventTitle(ev) {
     const kind = ev.kind || '';
     const category = ev.category || '';
+    const tags = this._parseDescTags(ev.description);
 
     const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Game',
-                         meeting: 'Meeting', camp: 'Camp' };
+                         meeting: 'Meeting', camp: 'Camp', 'barn night': 'Barn Night' };
     const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls', staff: 'Staff' };
-    const kindLabel  = kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
-    const catLabel   = catLabels[category] || category || '';
+    // Prefer the raw tag value straight off the calendar description
+    // (handles multi-club tags like "Boys, Girls" and the real Kind:
+    // value like "Match" instead of our friendlier "Game" synonym);
+    // fall back to the backend's classified kind/category if untagged.
+    const kindLabel  = tags.kind || tags.type || kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
+    const catLabel   = tags.club || catLabels[category] || category || '';
+    const opponent   = ev.opponent || tags.opponent || '';
 
     const base = (kindLabel && catLabel) ? `${kindLabel} · ${catLabel}` : (kindLabel || catLabel);
-    if (kind === 'match' && ev.opponent) {
-      return base ? `${base} vs ${ev.opponent}` : `vs ${ev.opponent}`;
+    if (kind === 'match' && opponent) {
+      return base ? `${base} vs ${opponent}` : `vs ${opponent}`;
     }
     if (base) return base;
 
@@ -913,7 +946,6 @@ class MyScreen extends Screen {
 
   _renderEventCard(ev, isPast = false) {
     const kind      = ev.kind || '';
-    const category  = ev.category || '';
     const per       = ev.my_rsvp;              // 'yes' | 'no' | 'maybe' | null
     const windowOpen= ev.rsvps_open_now !== false;
     const eligibilityOk = ev.my_rsvp_eligible !== false;
@@ -928,16 +960,13 @@ class MyScreen extends Screen {
     const evYesSaving = this.eventSaving.has(evYesKey);
     const evNoSaving  = this.eventSaving.has(evNoKey);
 
-    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Game',
-                         meeting: 'Meeting', camp: 'Camp' };
-    const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls' };
-    const kindLabel  = kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : 'Event');
-    const catLabel   = catLabels[category] || category || '';
-
     const dateStr = this._eventDateStr(ev.starts_at);
     const timeStr = this._eventTimeStr(ev.starts_at);
     const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
+    const descTags = this._parseDescTags(ev.description);
+    const arrival  = descTags.arrival || '';
+    const kickoff  = descTags.kickoff || '';
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach).length;
     const coachesGoingCount = rsvps.filter(r => r && r.response === 'yes' && r.is_coach).length;
@@ -960,9 +989,11 @@ class MyScreen extends Screen {
            onerror="this.onerror=null; this.src='${LIGHTHOUSE_CREST}';">
     ` : '';
 
-    const compactTitle = `${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)} · ${this.escapeHtml((catLabel + ' ' + kindLabel).trim())}`;
     const compactMeta = `${playersGoingCount} players, ${coachesGoingCount} coaches going · ${notGoingCount} not going`;
-    const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · '), venue].filter(Boolean);
+    const arrivalKickoffLine = (arrival || kickoff)
+      ? [arrival ? `Arrival ${arrival}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
+      : '';
+    const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
 
     return `
       <div style="background: rgba(255,255,255,0.04);
@@ -973,8 +1004,11 @@ class MyScreen extends Screen {
         <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
           ${crestHtml}
           <div style="min-width:0; flex:1;">
-            <div style="font-weight:700; font-size:0.7rem; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${compactTitle}</div>
-            <div style="font-size:0.6rem; opacity:0.74; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(title)} · ${compactMeta}</div>
+            <div style="font-weight:700; font-size:0.7rem; line-height:1.2;">${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}</div>
+            <div style="font-size:0.66rem; font-weight:600; line-height:1.25; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(title)}</div>
+            ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
+            ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
+            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
@@ -997,7 +1031,6 @@ class MyScreen extends Screen {
         ${isExpanded ? `
           <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
             <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
-            ${venue ? `<div style="font-size:0.64rem; line-height:1.3; opacity:0.72;">${this.escapeHtml(venue)}</div>` : ''}
             ${this._eventRsvpHtml(ev, isPast)}
           </div>
         ` : ''}
@@ -1006,20 +1039,15 @@ class MyScreen extends Screen {
   }
 
   // Button renderer.  `semantic` is 'yes' | 'no' — drives colour.
-  // `style` is 'solid' (per-event override active) | 'outline' (recurring active).
   // `disabledMsg` non-empty disables the button and shows a tooltip.
   _btn(label, semantic, active, style, saving, attrs, disabledMsg, hintSuffix) {
     const disabled = !!disabledMsg || saving;
     const isYes = semantic === 'yes';
     let bg, fg, bd;
-    if (active && style === 'solid') {
+    if (active) {
       bg = isYes ? '#065f46' : '#7f1d1d';
       fg = '#ffffff';
       bd = bg;
-    } else if (active && style === 'outline') {
-      bg = 'transparent';
-      fg = isYes ? '#a7f3d0' : '#fecaca';
-      bd = isYes ? 'rgba(6,95,70,0.7)' : 'rgba(127,29,29,0.7)';
     } else {
       bg = 'transparent';
       fg = 'inherit';
@@ -1042,11 +1070,6 @@ class MyScreen extends Screen {
         ${this.escapeHtml(label)}${saving ? ' …' : ''}
       </button>
     `;
-  }
-
-  _findStanding(kind, category) {
-    return (this.standing || []).find(p =>
-      p.kind === kind && (p.category || '') === (category || ''));
   }
 
   _eventDateStr(iso) {
@@ -1095,37 +1118,6 @@ class MyScreen extends Screen {
       alert(`Could not save RSVP: ${err.message}`);
     } finally {
       this.eventSaving.delete(key);
-      this._renderEvents();
-    }
-  }
-
-  async _setStanding(kind, category, response) {
-    const key = `${kind}::${category || ''}::${response}`;
-    if (this.standingSaving.has(key)) return;
-    this.standingSaving.add(key);
-    this._renderEvents();
-    try {
-      const body = await this._fetch('/api/calendar/my-standing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind,
-          category: category || null,
-          response,
-          active: true,
-        }),
-      });
-      const saved = body && body.pref;
-      if (saved) {
-        this.standing = (this.standing || []).filter(p =>
-          !(p.kind === kind && (p.category || '') === (category || '')));
-        this.standing.push(saved);
-      }
-    } catch (err) {
-      console.error('[my] standing set failed:', err);
-      alert(`Could not save recurring preference: ${err.message}`);
-    } finally {
-      this.standingSaving.delete(key);
       this._renderEvents();
     }
   }
@@ -1415,17 +1407,13 @@ class MyScreen extends Screen {
   // view (_renderOldEvents) is left alone so it doesn't get yanked out from
   // under the player mid-scroll.
   async _refreshEvents() {
-    let upRes, standingRes;
+    let upRes;
     try {
-      [upRes, standingRes] = await Promise.all([
-        this._fetch('/api/calendar/upcoming?days=7'),
-        this._fetch('/api/calendar/my-standing').catch(() => ({ prefs: this.standing || [] })),
-      ]);
+      upRes = await this._fetch('/api/calendar/upcoming?days=7');
     } catch (err) {
       return;
     }
-    this.events   = upRes.events      || [];
-    this.standing = standingRes.prefs || this.standing || [];
+    this.events = upRes.events || [];
     if (this.eventsRange === 'current') {
       this._renderEvents();
     }

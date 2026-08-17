@@ -152,7 +152,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
                     JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
                     WHERE fet.team_id = ANY($2::int[])
-                      AND fe.kind IN ('practice', 'pickup')
+                      AND fe.kind IN ('practice', 'pickup', 'barn night')
                       AND ge.deleted_at IS NULL
                 ),
                 recent_practices AS (
@@ -194,14 +194,9 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                             AND fea.status IN ('present', 'late')) AS practices_attended,
                        (SELECT count(*) FROM upcoming_practices) AS upcoming_total,
                        (SELECT count(*) FROM upcoming_practices up
-                          WHERE COALESCE(
-                              (SELECT r.response FROM fh_event_rsvps r
-                                 WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id),
-                              (SELECT rr.response FROM fh_recurring_rsvps rr
-                                 WHERE rr.person_id = pe.id AND rr.active
-                                   AND rr.kind = up.kind
-                                   AND rr.category IS NOT DISTINCT FROM up.category)
-                          ) = 'yes') AS practices_projected,
+                          WHERE (SELECT r.response FROM fh_event_rsvps r
+                                   WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id
+                                ) = 'yes') AS practices_projected,
                        (SELECT r.response FROM fh_event_rsvps r, match_event me
                           WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
                        (SELECT json_agg(json_build_object(
@@ -209,16 +204,10 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                                   'future', pw.starts_at >= now(),
                                   'attended', CASE WHEN pw.starts_at >= now() THEN
                                       -- Hasn't happened yet: green if projected to go
-                                      -- (RSVP yes, falling back to standing preference
-                                      -- like practicesProjected above), red otherwise.
+                                      -- (explicit RSVP yes), red otherwise.
                                       COALESCE(
-                                          COALESCE(
-                                              (SELECT r.response FROM fh_event_rsvps r
-                                                 WHERE r.fh_event_id = pw.fh_event_id AND r.person_id = pe.id),
-                                              (SELECT rr.response FROM fh_recurring_rsvps rr
-                                                 WHERE rr.person_id = pe.id AND rr.active
-                                                   AND rr.kind = pw.kind
-                                                   AND rr.category IS NOT DISTINCT FROM pw.category)
+                                          (SELECT r.response FROM fh_event_rsvps r
+                                             WHERE r.fh_event_id = pw.fh_event_id AND r.person_id = pe.id
                                           ) = 'yes',
                                           false
                                       )

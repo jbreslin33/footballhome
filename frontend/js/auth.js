@@ -153,17 +153,13 @@ class Auth {
     // CalendarController::applyImpersonation).
     //
     // Honouring endpoints (all read-only):
-    //   /api/my/*                           — MyController
-    //   /api/calendar/upcoming              — CalendarController
-    //   /api/calendar/my-standing (GET only)— CalendarController
+    //   /api/my/*               — MyController
+    //   /api/calendar/upcoming  — CalendarController
     let effectivePath = path;
     const method = (options.method || 'GET').toUpperCase();
     const wantsImpersonation = this.viewAsPersonId && (
       path.startsWith('/api/my/') ||
-      (method === 'GET' && (
-        path.startsWith('/api/calendar/upcoming') ||
-        path.startsWith('/api/calendar/my-standing')
-      ))
+      (method === 'GET' && path.startsWith('/api/calendar/upcoming'))
     );
     if (wantsImpersonation) {
       const sep = path.includes('?') ? '&' : '?';

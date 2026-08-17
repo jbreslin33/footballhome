@@ -462,9 +462,7 @@ private:
         // fh_events surface.
         router_.useController("/api/match-series", match_series_controller_);
         // Signed-in-player self-service surface: men's chat only.
-        // RSVPs live on /api/calendar/* (fh_event_rsvps); standing
-        // preferences live in fh_recurring_rsvps and are toggled via
-        // the same calendar surface.
+        // RSVPs live on /api/calendar/* (fh_event_rsvps).
         router_.useController("/api/my", my_controller_);
         // Web Push opt-in: GET /api/push/vapid-public-key (public) +
         // POST/DELETE /api/my/push-subscriptions (session required).

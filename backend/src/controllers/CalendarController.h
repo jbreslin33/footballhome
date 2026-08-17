@@ -45,27 +45,6 @@
 //        under /api/calendar/* to mirror the read endpoint above
 //        and keep the two RSVP systems non-overlapping.
 //
-//   GET /api/calendar/my-standing     (Slice 6a — see §6.5.3)
-//        Session-gated.  Return the caller's fh_recurring_rsvps
-//        rows as JSON: { prefs: [{ kind, category, response,
-//        active }...] }.  Never returns rows for a different
-//        person_id.  Empty array is normal (new user, hasn't
-//        opted in yet).
-//
-//   POST /api/calendar/my-standing    (Slice 6a — see §6.5.3)
-//        Session-gated.  Body: { kind:string, category:string|null,
-//        response:'yes'|'no'|'maybe', active:bool }.  Upserts one
-//        row keyed on (person_id, kind, COALESCE(category,'')) — the
-//        functional unique index from migration 119.  Setting
-//        active=false leaves the row present (for audit) but the
-//        applier §6.5.3 will skip it on future events.
-//
-//        This endpoint does NOT retroactively apply the standing
-//        pref to past-window events — those already have an
-//        RSVP (or the applier ran with the pref absent).  The
-//        change takes effect for the NEXT event whose
-//        rsvps_open_at trips past now() while the row is active.
-//
 //   GET /api/calendar/events/:fhEventId/attendance
 //        Session-gated.  Returns the roster for the event — every
 //        player (fh_event_teams/team_persons) AND every coach
@@ -104,8 +83,6 @@ public:
 private:
     Response handleGetUpcoming         (const Request& request);
     Response handlePostRsvp            (const Request& request);
-    Response handleGetMyStanding       (const Request& request);
-    Response handlePostMyStanding      (const Request& request);
     Response handleGetEventAttendance  (const Request& request);
     Response handlePostEventAttendance (const Request& request);
     Response handleDeleteEventAttendance(const Request& request);

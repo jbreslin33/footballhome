@@ -1,17 +1,16 @@
 #!/bin/bash
-# scripts/setup/setup-gcal.sh — install the gcal-sync + apply-standing systemd timers
+# scripts/setup/setup-gcal.sh — install the gcal-sync systemd timer
 #
-# Installs (or reinstalls) systemd/gcal-sync.{service,timer} +
-# systemd/gcal-rsvp-apply-standing.{service,timer} into
-# /etc/systemd/system/ and enables both timers. Idempotent — safe to
-# re-run after editing any unit file.
+# Installs (or reinstalls) systemd/gcal-sync.{service,timer} into
+# /etc/systemd/system/ and enables it. Idempotent — safe to re-run
+# after editing the unit files.
 #
-# The two timers run independently:
-#   * gcal-sync              — every 5 min from OnBootSec=30s
-#   * gcal-rsvp-apply-standing — every 5 min from OnBootSec=60s
-# They touch different tables (gcal_events / fh_events / classifier
-# vs. fh_event_rsvps / standing_applied_at stamp) so parallel runs
-# are safe.
+# gcal-rsvp-apply-standing (the standing/recurring RSVP auto-applier)
+# was removed 2026-08-16 along with the rest of the standing-RSVP
+# feature — it silently auto-marked people "going" on stale
+# preferences with no way to see or change them from the UI. This
+# script now also cleans up that timer/service if a prior run of this
+# script installed them on this box.
 #
 # Prereqs (setup.sh handles these earlier in the run):
 #   * setup-node.sh    — node + npm deps (googleapis, pg, dotenv)
@@ -20,10 +19,9 @@
 #   * migrations 119 + 120 + 121 applied via `make migrate`
 #
 # After this step, verify with:
-#   sudo systemctl status gcal-sync.timer gcal-rsvp-apply-standing.timer
+#   sudo systemctl status gcal-sync.timer
 #   sudo systemctl list-timers | grep gcal
 #   sudo journalctl -u gcal-sync.service --since '10 min ago'
-#   sudo journalctl -u gcal-rsvp-apply-standing.service --since '10 min ago'
 #
 # Linux-only — this step is a no-op on macOS.
 
@@ -46,11 +44,6 @@ if [ ! -f "$SRC/gcal-sync.service" ] || [ ! -f "$SRC/gcal-sync.timer" ]; then
   print_error "setup-gcal: gcal-sync unit files missing in $SRC"
   exit 1
 fi
-if [ ! -f "$SRC/gcal-rsvp-apply-standing.service" ] || \
-   [ ! -f "$SRC/gcal-rsvp-apply-standing.timer" ]; then
-  print_error "setup-gcal: gcal-rsvp-apply-standing unit files missing in $SRC"
-  exit 1
-fi
 
 # Basic sanity: env must have GCAL_SA_JSON populated (setup-age.sh
 # should have decrypted it). If not, install units anyway so the user
@@ -63,28 +56,25 @@ print_status "Installing gcal-sync.service + gcal-sync.timer..."
 sudo install -m 0644 "$SRC/gcal-sync.service" /etc/systemd/system/gcal-sync.service
 sudo install -m 0644 "$SRC/gcal-sync.timer"   /etc/systemd/system/gcal-sync.timer
 
-print_status "Installing gcal-rsvp-apply-standing.service + timer..."
-sudo install -m 0644 "$SRC/gcal-rsvp-apply-standing.service" \
-     /etc/systemd/system/gcal-rsvp-apply-standing.service
-sudo install -m 0644 "$SRC/gcal-rsvp-apply-standing.timer" \
-     /etc/systemd/system/gcal-rsvp-apply-standing.timer
+# Retired unit cleanup — remove if a prior run installed it.
+if [ -f /etc/systemd/system/gcal-rsvp-apply-standing.timer ]; then
+  print_status "Removing retired gcal-rsvp-apply-standing.timer + service..."
+  sudo systemctl disable --now gcal-rsvp-apply-standing.timer 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/gcal-rsvp-apply-standing.service \
+             /etc/systemd/system/gcal-rsvp-apply-standing.timer
+fi
 
 print_status "Reloading systemd..."
 sudo systemctl daemon-reload
 
 print_status "Enabling + starting gcal-sync.timer..."
 sudo systemctl enable --now gcal-sync.timer
-print_status "Enabling + starting gcal-rsvp-apply-standing.timer..."
-sudo systemctl enable --now gcal-rsvp-apply-standing.timer
 
-# Kick off one sync + one apply-standing right now so the user sees
-# output; failures show up in the respective journalctl streams.
+# Kick off one sync right now so the user sees output; failures show
+# up in the journalctl stream.
 print_status "Firing one-shot sync now (async)..."
 sudo systemctl start --no-block gcal-sync.service
-print_status "Firing one-shot apply-standing now (async)..."
-sudo systemctl start --no-block gcal-rsvp-apply-standing.service
 
-print_success "gcal-sync + gcal-rsvp-apply-standing installed."
+print_success "gcal-sync installed."
 print_status  "Verify:  sudo systemctl list-timers | grep gcal"
 print_status  "Logs:    sudo journalctl -u gcal-sync.service --since '10 min ago'"
-print_status  "         sudo journalctl -u gcal-rsvp-apply-standing.service --since '10 min ago'"
