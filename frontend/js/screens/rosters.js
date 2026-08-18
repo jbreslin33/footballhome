@@ -72,9 +72,19 @@ class RostersScreen extends Screen {
     // owns its own DOM/fetch), never one shared between them.
     this._unassignedInstances = { mens: null, boys: null, girls: null };
     this._teamsInstances      = { mens: null, boys: null, girls: null };
-    // In-flight fetch generation for the Women's Club data (Teams panel
-    // only — Unassigned:Womens has no fetch, just a static placeholder).
+    // In-flight fetch generation for the Women's Club Teams-panel data
+    // (the team cards + rosters, see _mountWomensSection).
     this._womensFetchSeq = 0;
+    // Same, for the Unassigned:Womens list (see _loadWomensUnassignedList)
+    // — separate from _womensFetchSeq since the two panels can be
+    // in-flight independently (different pill, same gender).
+    this._womensUnassignedSeq = 0;
+    // Guards the "N registered, not yet on a team" note under the Teams
+    // panel (see _setTeamsUnassignedNote) — bumped on every
+    // _mountTeamsPanel call so a stale async count (from either a
+    // MensRosterScreen/BoysRosterScreen onDataLoaded callback, or the
+    // Womens la-pool fetch) can't land after a pill flip.
+    this._teamsNoteSeq = 0;
   }
 
   render() {
@@ -122,6 +132,7 @@ class RostersScreen extends Screen {
           <h2 class="rs-panel-title">👥 Teams</h2>
           <div id="rs-teams-pills" style="margin-bottom: var(--space-2);"></div>
           <div id="rs-teams-caption" style="font-size:0.75rem; opacity:0.6; margin-bottom:var(--space-2);"></div>
+          <div id="rs-teams-unassigned-note" style="margin-bottom:var(--space-2);"></div>
           <div id="rs-teams-body" style="min-height: 200px;">
             <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
           </div>
@@ -310,12 +321,7 @@ class RostersScreen extends Screen {
     if (caption) caption.textContent = this._captionForPill(this.unassignedPill);
 
     if (this.unassignedPill === 'womens') {
-      host.innerHTML = `
-        <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.85rem;">
-          No separate Unassigned pool for Women's Club yet — Tri County
-          Women's roster is managed directly from its Teams card.
-        </div>
-      `;
+      this._loadWomensUnassignedList(host);
       return;
     }
     const child = this._instanceForPanel(this._unassignedInstances, this.unassignedPill);
@@ -333,8 +339,12 @@ class RostersScreen extends Screen {
     const caption = this.find('#rs-teams-caption');
     if (caption) caption.textContent = this._captionForPill(this.teamsPill);
 
+    const seq = ++this._teamsNoteSeq;
+    this._setTeamsUnassignedNote(null);
+
     if (this.teamsPill === 'womens') {
       this._mountWomensSection(host);
+      this._loadWomensUnassignedNote(seq);
       return;
     }
     const child = this._instanceForPanel(this._teamsInstances, this.teamsPill);
@@ -346,7 +356,167 @@ class RostersScreen extends Screen {
     if (typeof child.setIncludeInactive === 'function') {
       child.includeInactive = this.teamsIncludeInactive;
     }
+    // Mens/Boys/Girls already compute an LA-driven Unassigned count
+    // server-side (data.unassignedCount) — mirror it here so the Teams
+    // panel shows the same "not yet on a team" signal Womens gets from
+    // the la-pool fetch below, instead of only Mens/Boys/Girls' own
+    // Unassigned column knowing about it.
+    child.onDataLoaded = (data) => {
+      if (seq !== this._teamsNoteSeq) return; // pill flipped since mount
+      this._setTeamsUnassignedNote(data?.unassignedCount, this.teamsPill);
+    };
     this._mountChildInto(host, child, `teams (${this.teamsPill})`);
+  }
+
+  // "N registered, not yet on a team" note under the Teams panel caption.
+  // `count == null` clears it (used while a fetch is in flight or on
+  // error). `pill` is optional — when given, the note becomes a button
+  // that jumps the Unassigned panel to the same category so admin can
+  // act on it immediately.
+  _setTeamsUnassignedNote(count, pill) {
+    const el = this.find('#rs-teams-unassigned-note');
+    if (!el) return;
+    if (count == null || count <= 0) {
+      el.innerHTML = '';
+      return;
+    }
+    const label = `⚠ ${count} registered, not yet on a team`;
+    if (!pill) {
+      el.innerHTML = `<span style="font-size:0.78rem; color:#facc15;">${this.escapeHtml(label)}</span>`;
+      return;
+    }
+    el.innerHTML = `<button type="button" data-jump-unassigned="${pill}"
+      style="font-size:0.78rem; color:#facc15; background:none; border:1px dashed #facc1588; border-radius:6px; padding:2px 8px; cursor:pointer;">
+      ${this.escapeHtml(label)} — see Unassigned →
+    </button>`;
+    el.querySelector('[data-jump-unassigned]')?.addEventListener('click', () => {
+      if (this.unassignedPill === pill) return;
+      this.unassignedPill = pill;
+      this._buildUnassignedPills();
+      this._mountUnassignedPanel();
+    });
+  }
+
+  // Womens has no board to reuse (see _mountWomensSection), so its
+  // "not yet on a team" count comes straight from the same LA-pool
+  // endpoint the Lineups screen already uses for the Womens gender
+  // toggle (GET /api/clubs/:id/la-pool?gender=womens) — a person counts
+  // as unassigned here when they're an active LA registrant with an
+  // empty onRosterOn (no active team_persons row on any club team).
+  async _loadWomensUnassignedNote(seq) {
+    try {
+      const res = await this.auth.fetch(`/api/clubs/${this.clubId}/la-pool?gender=womens`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      if (seq !== this._teamsNoteSeq) return; // stale after a pill flip
+      const persons = Array.isArray(body?.persons) ? body.persons : [];
+      const count = persons.filter((p) => Array.isArray(p.onRosterOn) && p.onRosterOn.length === 0).length;
+      this._setTeamsUnassignedNote(count, 'womens');
+    } catch (err) {
+      console.error('[rosters] womens la-pool count failed:', err);
+    }
+  }
+
+  // Unassigned:Womens — real list of active Women's Club LA registrants
+  // with no active team_persons row on any womens team, each with an
+  // "Add to <team>" action. Same source (`la-pool?gender=womens`) and
+  // same unassigned test (`onRosterOn` empty) as
+  // _loadWomensUnassignedNote's count, so the two always agree. `teams`
+  // comes from the same response (Section 1 of LaPool::run — every
+  // team_eligible_genders='womens' row), so a second womens team shows
+  // up here with no code change.
+  async _loadWomensUnassignedList(host) {
+    if (!host) return;
+    const seq = ++this._womensUnassignedSeq;
+    host.innerHTML = `<div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>`;
+    try {
+      const res = await this.auth.fetch(`/api/clubs/${this.clubId}/la-pool?gender=womens`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      if (seq !== this._womensUnassignedSeq) return; // stale after a pill flip
+
+      const teams = Array.isArray(body?.teams) ? body.teams : [];
+      const persons = (Array.isArray(body?.persons) ? body.persons : [])
+        .filter((p) => Array.isArray(p.onRosterOn) && p.onRosterOn.length === 0);
+
+      if (!persons.length) {
+        host.innerHTML = `
+          <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.85rem;">
+            No unassigned Women's Club registrants — everyone active is on a team.
+          </div>
+        `;
+        return;
+      }
+
+      const rowFor = (p) => {
+        const name = this.escapeHtml(`${p.firstName || ''} ${p.lastName || ''}`.trim() || '(no name)');
+        // `personId` is null when this LA registrant has no matching
+        // persons row yet (see LaPool.cpp `unmatched`) — nothing to
+        // POST a team_persons row against until that's linked.
+        if (p.personId == null || !teams.length) {
+          const reason = p.personId == null ? 'unmatched LA registrant, no linked profile' : 'no active Womens team to add to';
+          return `
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:8px; background:var(--bg-tertiary, #1f2937); border:1px solid var(--border-color, #374151); margin-bottom:6px;">
+              <span style="font-size:0.88rem;">${name}</span>
+              <span style="font-size:0.72rem; opacity:0.6;">${this.escapeHtml(reason)}</span>
+            </div>
+          `;
+        }
+        const buttons = teams.map((t) => `
+          <button type="button" class="btn btn-secondary" data-add-womens-person="${p.personId}" data-add-womens-team="${t.id}" style="font-size:0.78rem; padding:3px 10px;">
+            + ${this.escapeHtml(t.shortLabel || t.name || 'Team')}
+          </button>
+        `).join('');
+        return `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:8px; background:var(--bg-tertiary, #1f2937); border:1px solid var(--border-color, #374151); margin-bottom:6px;">
+            <span style="font-size:0.88rem;">${name}</span>
+            <span style="display:flex; gap:6px; flex-wrap:wrap;">${buttons}</span>
+          </div>
+        `;
+      };
+
+      host.innerHTML = `<div style="padding: var(--space-2) 0;">${persons.map(rowFor).join('')}</div>`;
+      host.querySelectorAll('[data-add-womens-person]').forEach((btn) => {
+        btn.addEventListener('click', () => this._addWomensToTeam(btn, host));
+      });
+    } catch (err) {
+      console.error('[rosters] womens unassigned list failed:', err);
+      if (seq !== this._womensUnassignedSeq) return;
+      host.innerHTML = `
+        <div style="padding: var(--space-4); color: var(--color-error);">
+          Could not load unassigned Women's Club registrants: ${this.escapeHtml(err && err.message ? err.message : String(err))}
+        </div>
+      `;
+    }
+  }
+
+  // Adds one Unassigned:Womens person to a team via the same generic
+  // team-roster endpoint TeamHubScreen/coach flows use — no womens-
+  // specific backend needed (see TeamRosterController::handleSetMembership).
+  // On success, re-fetches the Unassigned list (the person drops off)
+  // and, if the Teams panel is also showing Womens, refreshes it too so
+  // the new roster spot and the "N registered" note both update.
+  async _addWomensToTeam(btn, host) {
+    const personId = btn.dataset.addWomensPerson;
+    const teamId   = btn.dataset.addWomensTeam;
+    if (!personId || !teamId) return;
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    try {
+      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/${personId}`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'add' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this._loadWomensUnassignedList(host);
+      if (this.teamsPill === 'womens') this._mountTeamsPanel();
+    } catch (err) {
+      console.error('[rosters] add womens to team failed:', err);
+      btn.disabled = false;
+      btn.style.opacity = '';
+      alert(`Could not add player: ${err.message}`);
+    }
   }
 
   // Women's Club roster — the Teams panel's Womens pill. There's no LA

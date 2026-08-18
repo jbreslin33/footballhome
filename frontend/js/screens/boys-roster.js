@@ -170,6 +170,11 @@ class BoysRosterScreen extends RosterScreenBase {
       const data = await res.json();
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       this._data = data;
+      // Optional hook — RostersScreen (rosters.js) sets this so the
+      // Teams panel can surface data.unassignedCount without reaching
+      // into this screen's private DOM/state. Inherited by
+      // GirlsRosterScreen (girls-roster.js extends this class).
+      if (typeof this.onDataLoaded === 'function') this.onDataLoaded(data);
 
       if (loading) loading.style.display = 'none';
       if (list)    list.style.display    = '';
