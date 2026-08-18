@@ -42,11 +42,10 @@
 //             teams — this only differs from Boys in a header label,
 //             which gets stripped when embedded; see the caption text
 //             instead), columnScope='unassigned'|'teams'
-//   Womens → No LA program feeds women's teams, so there's no board to
-//             reuse. Teams:Womens reads GET /api/clubs/:id?gender=womens
-//             (see _mountWomensSection, migration 285) and links into
-//             TeamHubScreen for roster edits. Unassigned:Womens has no
-//             equivalent data source yet — shows an honest placeholder.
+//   Womens → WomensRosterScreen, columnScope='unassigned'|'teams' — a
+//             real peer of Mens/Boys/Girls now (WomensRoster.cpp backed
+//             by LEAGUEAPPS_WOMENS_PROGRAM_ID, same board-column
+//             machinery via teams.gender_category='womens').
 //
 // Deep-link
 // ─────────
@@ -70,20 +69,13 @@ class RostersScreen extends Screen {
     // Lazy-instantiated sub-screens, one cache per panel — a category
     // shown on both panels at once needs two separate instances (each
     // owns its own DOM/fetch), never one shared between them.
-    this._unassignedInstances = { mens: null, boys: null, girls: null };
-    this._teamsInstances      = { mens: null, boys: null, girls: null };
-    // In-flight fetch generation for the Women's Club Teams-panel data
-    // (the team cards + rosters, see _mountWomensSection).
-    this._womensFetchSeq = 0;
-    // Same, for the Unassigned:Womens list (see _loadWomensUnassignedList)
-    // — separate from _womensFetchSeq since the two panels can be
-    // in-flight independently (different pill, same gender).
-    this._womensUnassignedSeq = 0;
+    this._unassignedInstances = { mens: null, boys: null, girls: null, womens: null };
+    this._teamsInstances      = { mens: null, boys: null, girls: null, womens: null };
     // Guards the "N registered, not yet on a team" note under the Teams
     // panel (see _setTeamsUnassignedNote) — bumped on every
-    // _mountTeamsPanel call so a stale async count (from either a
-    // MensRosterScreen/BoysRosterScreen onDataLoaded callback, or the
-    // Womens la-pool fetch) can't land after a pill flip.
+    // _mountTeamsPanel call so a stale async onDataLoaded callback
+    // (Mens/Boys/Girls/Womens all wire the same hook) can't land after
+    // a pill flip.
     this._teamsNoteSeq = 0;
   }
 
@@ -253,9 +245,7 @@ class RostersScreen extends Screen {
       {
         // is_active is the source of truth for "does this team show" —
         // independent of the category pill above, so it's its own row
-        // (no `clears`). Scoped to the Teams panel only — Womens'
-        // ClubController fetch also accepts includeInactive, threaded
-        // through in _mountWomensSection.
+        // (no `clears`). Scoped to the Teams panel only.
         name:     'teams-status',
         chips: [
           { id: 'active',   label: 'Active' },
@@ -265,10 +255,6 @@ class RostersScreen extends Screen {
         onSelect: (id) => {
           if (id == null) return;
           this.teamsIncludeInactive = id === 'inactive';
-          if (this.teamsPill === 'womens') {
-            this._mountWomensSection(this.find('#rs-teams-body'));
-            return;
-          }
           for (const child of this._mountedChildren) {
             if (child && child.columnScope === 'teams' && typeof child.setIncludeInactive === 'function') {
               child.setIncludeInactive(this.teamsIncludeInactive);
@@ -298,6 +284,10 @@ class RostersScreen extends Screen {
       if (!cache.girls) cache.girls = new GirlsRosterScreen(this.navigation, this.auth);
       return cache.girls;
     }
+    if (pill === 'womens') {
+      if (!cache.womens) cache.womens = new WomensRosterScreen(this.navigation, this.auth);
+      return cache.womens;
+    }
     return null;
   }
 
@@ -308,7 +298,7 @@ class RostersScreen extends Screen {
   _captionForPill(pill) {
     return {
       mens:   'Lighthouse Mens Club — LeagueApps APSL + Liga 1',
-      womens: 'Tri County Women',
+      womens: "Lighthouse Women's Club — LeagueApps",
       boys:   'Boys + Girls Club — youth, LeagueApps',
       girls:  'Same roster as Boys — girls play on boys teams',
     }[pill] || '';
@@ -320,10 +310,6 @@ class RostersScreen extends Screen {
     const caption = this.find('#rs-unassigned-caption');
     if (caption) caption.textContent = this._captionForPill(this.unassignedPill);
 
-    if (this.unassignedPill === 'womens') {
-      this._loadWomensUnassignedList(host);
-      return;
-    }
     const child = this._instanceForPanel(this._unassignedInstances, this.unassignedPill);
     if (!child) {
       host.innerHTML = `<div style="padding: var(--space-3); color: var(--color-error);">Unknown category: ${this.unassignedPill}</div>`;
@@ -342,11 +328,6 @@ class RostersScreen extends Screen {
     const seq = ++this._teamsNoteSeq;
     this._setTeamsUnassignedNote(null);
 
-    if (this.teamsPill === 'womens') {
-      this._mountWomensSection(host);
-      this._loadWomensUnassignedNote(seq);
-      return;
-    }
     const child = this._instanceForPanel(this._teamsInstances, this.teamsPill);
     if (!child) {
       host.innerHTML = `<div style="padding: var(--space-3); color: var(--color-error);">Unknown category: ${this.teamsPill}</div>`;
@@ -356,11 +337,10 @@ class RostersScreen extends Screen {
     if (typeof child.setIncludeInactive === 'function') {
       child.includeInactive = this.teamsIncludeInactive;
     }
-    // Mens/Boys/Girls already compute an LA-driven Unassigned count
+    // Mens/Boys/Girls/Womens each compute an LA-driven Unassigned count
     // server-side (data.unassignedCount) — mirror it here so the Teams
-    // panel shows the same "not yet on a team" signal Womens gets from
-    // the la-pool fetch below, instead of only Mens/Boys/Girls' own
-    // Unassigned column knowing about it.
+    // panel shows a "not yet on a team" note without reaching into the
+    // child's own Unassigned column state.
     child.onDataLoaded = (data) => {
       if (seq !== this._teamsNoteSeq) return; // pill flipped since mount
       this._setTeamsUnassignedNote(data?.unassignedCount, this.teamsPill);
@@ -395,224 +375,6 @@ class RostersScreen extends Screen {
       this._buildUnassignedPills();
       this._mountUnassignedPanel();
     });
-  }
-
-  // Womens has no board to reuse (see _mountWomensSection), so its
-  // "not yet on a team" count comes straight from the same LA-pool
-  // endpoint the Lineups screen already uses for the Womens gender
-  // toggle (GET /api/clubs/:id/la-pool?gender=womens) — a person counts
-  // as unassigned here when they're an active LA registrant with an
-  // empty onRosterOn (no active team_persons row on any club team).
-  async _loadWomensUnassignedNote(seq) {
-    try {
-      const res = await this.auth.fetch(`/api/clubs/${this.clubId}/la-pool?gender=womens`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      if (seq !== this._teamsNoteSeq) return; // stale after a pill flip
-      const persons = Array.isArray(body?.persons) ? body.persons : [];
-      const count = persons.filter((p) => Array.isArray(p.onRosterOn) && p.onRosterOn.length === 0).length;
-      this._setTeamsUnassignedNote(count, 'womens');
-    } catch (err) {
-      console.error('[rosters] womens la-pool count failed:', err);
-    }
-  }
-
-  // Unassigned:Womens — real list of active Women's Club LA registrants
-  // with no active team_persons row on any womens team, each with an
-  // "Add to <team>" action. Same source (`la-pool?gender=womens`) and
-  // same unassigned test (`onRosterOn` empty) as
-  // _loadWomensUnassignedNote's count, so the two always agree. `teams`
-  // comes from the same response (Section 1 of LaPool::run — every
-  // team_eligible_genders='womens' row), so a second womens team shows
-  // up here with no code change.
-  async _loadWomensUnassignedList(host) {
-    if (!host) return;
-    const seq = ++this._womensUnassignedSeq;
-    host.innerHTML = `<div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>`;
-    try {
-      const res = await this.auth.fetch(`/api/clubs/${this.clubId}/la-pool?gender=womens`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      if (seq !== this._womensUnassignedSeq) return; // stale after a pill flip
-
-      const teams = Array.isArray(body?.teams) ? body.teams : [];
-      const persons = (Array.isArray(body?.persons) ? body.persons : [])
-        .filter((p) => Array.isArray(p.onRosterOn) && p.onRosterOn.length === 0);
-
-      if (!persons.length) {
-        host.innerHTML = `
-          <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.85rem;">
-            No unassigned Women's Club registrants — everyone active is on a team.
-          </div>
-        `;
-        return;
-      }
-
-      const rowFor = (p) => {
-        const name = this.escapeHtml(`${p.firstName || ''} ${p.lastName || ''}`.trim() || '(no name)');
-        // `personId` is null when this LA registrant has no matching
-        // persons row yet (see LaPool.cpp `unmatched`) — nothing to
-        // POST a team_persons row against until that's linked.
-        if (p.personId == null || !teams.length) {
-          const reason = p.personId == null ? 'unmatched LA registrant, no linked profile' : 'no active Womens team to add to';
-          return `
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:8px; background:var(--bg-tertiary, #1f2937); border:1px solid var(--border-color, #374151); margin-bottom:6px;">
-              <span style="font-size:0.88rem;">${name}</span>
-              <span style="font-size:0.72rem; opacity:0.6;">${this.escapeHtml(reason)}</span>
-            </div>
-          `;
-        }
-        const buttons = teams.map((t) => `
-          <button type="button" class="btn btn-secondary" data-add-womens-person="${p.personId}" data-add-womens-team="${t.id}" style="font-size:0.78rem; padding:3px 10px;">
-            + ${this.escapeHtml(t.shortLabel || t.name || 'Team')}
-          </button>
-        `).join('');
-        return `
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:8px; background:var(--bg-tertiary, #1f2937); border:1px solid var(--border-color, #374151); margin-bottom:6px;">
-            <span style="font-size:0.88rem;">${name}</span>
-            <span style="display:flex; gap:6px; flex-wrap:wrap;">${buttons}</span>
-          </div>
-        `;
-      };
-
-      host.innerHTML = `<div style="padding: var(--space-2) 0;">${persons.map(rowFor).join('')}</div>`;
-      host.querySelectorAll('[data-add-womens-person]').forEach((btn) => {
-        btn.addEventListener('click', () => this._addWomensToTeam(btn, host));
-      });
-    } catch (err) {
-      console.error('[rosters] womens unassigned list failed:', err);
-      if (seq !== this._womensUnassignedSeq) return;
-      host.innerHTML = `
-        <div style="padding: var(--space-4); color: var(--color-error);">
-          Could not load unassigned Women's Club registrants: ${this.escapeHtml(err && err.message ? err.message : String(err))}
-        </div>
-      `;
-    }
-  }
-
-  // Adds one Unassigned:Womens person to a team via the same generic
-  // team-roster endpoint TeamHubScreen/coach flows use — no womens-
-  // specific backend needed (see TeamRosterController::handleSetMembership).
-  // On success, re-fetches the Unassigned list (the person drops off)
-  // and, if the Teams panel is also showing Womens, refreshes it too so
-  // the new roster spot and the "N registered" note both update.
-  async _addWomensToTeam(btn, host) {
-    const personId = btn.dataset.addWomensPerson;
-    const teamId   = btn.dataset.addWomensTeam;
-    if (!personId || !teamId) return;
-    btn.disabled = true;
-    btn.style.opacity = '0.4';
-    try {
-      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/${personId}`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ action: 'add' }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      this._loadWomensUnassignedList(host);
-      if (this.teamsPill === 'womens') this._mountTeamsPanel();
-    } catch (err) {
-      console.error('[rosters] add womens to team failed:', err);
-      btn.disabled = false;
-      btn.style.opacity = '';
-      alert(`Could not add player: ${err.message}`);
-    }
-  }
-
-  // Women's Club roster — the Teams panel's Womens pill. There's no LA
-  // program feeding women's teams (Boys/Girls/Mens all sync from
-  // LeagueApps programs; women's teams are club-scoped only, managed by
-  // hand via team_persons), so this can't reuse the LA-backed board
-  // machinery those pills share. Instead it reads the same club-scoped
-  // team+roster data the admin Teams screen's Women's pill already
-  // serves (GET /api/clubs/:id?gender=womens — see
-  // ClubController::handleGetClubDetail, migration 285) and links each
-  // team into TeamHubScreen for actual roster edits, same as clicking a
-  // team card on that screen does.
-  async _mountWomensSection(host) {
-    if (!host) return;
-    // `host` (#rs-teams-body) persists across pill flips (only its
-    // children get wiped), so an isConnected check on it would never
-    // catch a stale response — use an explicit sequence counter instead.
-    const seq = ++this._womensFetchSeq;
-    host.innerHTML = `<div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading Women's Club…</div>`;
-    try {
-      const qs = this.teamsIncludeInactive ? '&includeInactive=1' : '';
-      const res = await this.auth.fetch(`/api/clubs/${this.clubId}?gender=womens${qs}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      const teams = (body && body.data && Array.isArray(body.data.teams)) ? body.data.teams : [];
-      if (seq !== this._womensFetchSeq) return; // stale response after a pill flip / unmount
-
-      if (!teams.length) {
-        host.innerHTML = `
-          <div style="padding: var(--space-4); opacity: 0.6; font-size: 0.9rem;">
-            No ${this.teamsIncludeInactive ? '' : 'active '}women's team yet.
-          </div>
-        `;
-        return;
-      }
-
-      // Multi-team badge — same idea as RosterScreenBase.
-      // renderActiveTeamsBadge on the Boys/Girls/Mens boards: flags a
-      // player who holds more than one active roster spot (e.g. someone
-      // also on a Boys/Mens team) so it's visually obvious here too.
-      // Excludes the team this card is already listed under.
-      const icon = { boys: '🧒', girls: '👧', mens: '🧔', womens: '👩' };
-      const activeTeamsBadge = (player, currentTeamId) => {
-        const others = (Array.isArray(player.active_teams) ? player.active_teams : [])
-          .filter((at) => at && at.teamId !== currentTeamId);
-        if (!others.length) return '';
-        return others.map((at) => `<span title="Also on ${this.escapeHtml(at.name || 'this team')}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(168,85,247,0.22); color:#c084fc; white-space:nowrap;">${icon[at.genderCategory] || '⚽'} ${this.escapeHtml(at.name || 'Team')}</span>`).join('');
-      };
-
-      const cards = teams.map((t) => {
-        const roster = Array.isArray(t.roster) ? t.roster : [];
-        const rosterHtml = roster.length
-          ? roster.map((p) => `
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; font-size:0.85rem; flex-wrap:wrap; row-gap:2px;">
-                <span>${this.escapeHtml(`${p.first_name || ''} ${p.last_name || ''}`.trim() || '(no name)')}</span>
-                <span style="display:flex; align-items:center; gap:4px;">
-                  ${activeTeamsBadge(p, t.id)}
-                  ${p.jersey_number ? `<span style="opacity:0.6;">#${this.escapeHtml(String(p.jersey_number))}</span>` : ''}
-                </span>
-              </div>
-            `).join('')
-          : `<div style="opacity:0.6; font-size:0.85rem; padding:4px 0;">No players on roster yet.</div>`;
-
-        return `
-          <div style="padding: var(--space-3); border-radius: 8px; background: var(--bg-tertiary, #1f2937); border: 1px solid var(--border-color, #374151);">
-            <div style="font-weight:700; font-size:1rem; margin-bottom:6px;">${this.escapeHtml(t.name || 'Team')}</div>
-            <div style="font-size:0.75rem; opacity:0.6; margin-bottom:10px;">${t.player_count ?? roster.length} player${(t.player_count ?? roster.length) === 1 ? '' : 's'}</div>
-            ${rosterHtml}
-            <button type="button" class="btn btn-secondary" data-womens-team-open="${t.id}" style="margin-top:10px; font-size:0.8rem;">Manage roster →</button>
-          </div>
-        `;
-      }).join('');
-
-      host.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap: var(--space-3);">${cards}</div>`;
-      host.querySelectorAll('[data-womens-team-open]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const teamId = parseInt(btn.dataset.womensTeamOpen, 10);
-          const team = teams.find((t) => t.id === teamId);
-          if (!team) return;
-          this.navigation.goTo('team-hub', {
-            teamId: team.id,
-            teamName: team.name,
-            clubId: this.clubId,
-            lineupTeamId: team.id,
-          });
-        });
-      });
-    } catch (err) {
-      console.error('[rosters] womens load failed:', err);
-      if (seq !== this._womensFetchSeq) return;
-      host.innerHTML = `
-        <div style="padding: var(--space-4); color: var(--color-error);">
-          Could not load Women's Club: ${this.escapeHtml(err && err.message ? err.message : String(err))}
-        </div>
-      `;
-    }
   }
 
   // Render a child screen into `wrap`, strip its outer .screen chrome

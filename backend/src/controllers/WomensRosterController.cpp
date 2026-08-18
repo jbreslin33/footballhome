@@ -1,0 +1,336 @@
+#include "WomensRosterController.h"
+
+#include <cctype>
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+#include <unordered_map>
+
+#include "../database/Database.h"
+#include "../models/MensTeamAssignments.h"
+#include "../models/MensTeamColumns.h"
+#include "../third_party/json.hpp"
+
+using nlohmann::json;
+
+namespace {
+
+// Tolerant int extractor: accepts number or numeric string from JSON body.
+bool readInt(const json& j, const char* key, long long& out) {
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null()) return false;
+    if (it->is_number_integer())  { out = it->get<long long>(); return true; }
+    if (it->is_number_unsigned()) { out = static_cast<long long>(it->get<unsigned long long>()); return true; }
+    if (it->is_number_float())    { out = static_cast<long long>(it->get<double>()); return true; }
+    if (it->is_string()) {
+        try { out = std::stoll(it->get<std::string>()); return true; }
+        catch (const std::exception&) { return false; }
+    }
+    return false;
+}
+
+bool readBool(const json& j, const char* key, bool fallback) {
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null()) return fallback;
+    if (it->is_boolean()) return it->get<bool>();
+    if (it->is_number())  return it->get<double>() != 0.0;
+    if (it->is_string()) {
+        const std::string s = it->get<std::string>();
+        return s == "true" || s == "1";
+    }
+    return fallback;
+}
+
+std::string readStr(const json& j, const char* key) {
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null() || !it->is_string()) return {};
+    return it->get<std::string>();
+}
+
+std::string jsonEscape(const std::string& s) {
+    return json(s).dump();
+}
+
+Response badRequest(const std::string& msg) {
+    std::ostringstream body;
+    body << "{\"error\":" << jsonEscape(msg) << "}";
+    return Response(HttpStatus::BAD_REQUEST, body.str());
+}
+Response notFound(const std::string& msg) {
+    std::ostringstream body;
+    body << "{\"error\":" << jsonEscape(msg) << "}";
+    return Response(HttpStatus::NOT_FOUND, body.str());
+}
+Response internalErr(const std::string& msg) {
+    std::ostringstream body;
+    body << "{\"error\":" << jsonEscape(msg) << "}";
+    return Response(HttpStatus::INTERNAL_SERVER_ERROR, body.str());
+}
+
+} // namespace
+
+WomensRosterController::WomensRosterController()
+    : model_      (std::make_unique<WomensRoster>()),
+      columns_    (std::make_unique<MensTeamColumns>("womens")),
+      assignments_(std::make_unique<MensTeamAssignments>("womens")) {}
+
+WomensRosterController::~WomensRosterController() = default;
+
+void WomensRosterController::registerRoutes(Router& router, const std::string& prefix) {
+    // STRICT rule (§ Membership Data Flow): every LA-derived response
+    // MUST run LaProgramSync on every feeding program BEFORE the
+    // handler. laGet(static) syncs the women's program, hands the
+    // resulting recs to the handler, which forwards them to the model.
+    laGet(router, prefix,
+          {model_->womensProgramId()},
+          [this](const Request& req, const LaSyncMap& sync) {
+              return this->handleGet(req, sync);
+          });
+    router.post(prefix + "/assign", [this](const Request& req) {
+        return this->handleAssign(req);
+    });
+    router.post(prefix + "/roster-status", [this](const Request& req) {
+        return this->handleRosterStatus(req);
+    });
+    router.post(prefix + "/reorder", [this](const Request& req) {
+        return this->handleReorder(req);
+    });
+    router.get(prefix + "/columns", [this](const Request& req) {
+        return this->handleColumns(req);
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/womens-roster/columns
+// ────────────────────────────────────────────────────────────────────────────
+Response WomensRosterController::handleColumns(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    try {
+        json out = json::array();
+        for (const auto& col : columns_->loadAll()) {
+            json c = json::object();
+            c["teamId"]     = col.teamId;
+            c["label"]      = col.label;
+            c["shortLabel"] = col.shortLabel;
+            c["color"]      = col.color;
+            c["mutexGroup"] = col.mutexGroup;
+            out.push_back(std::move(c));
+        }
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "WomensRosterController::handleColumns error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to load columns: ") + e.what());
+    }
+}
+
+Response WomensRosterController::handleGet(const Request& request, const LaSyncMap& sync) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    const bool includeAll = (request.getQueryParam("includeAll") == "1");
+    const bool refreshLa  = (request.getQueryParam("refreshLa")  == "1");
+    const bool includeInactive = (request.getQueryParam("includeInactive") == "1");
+    try {
+        // Recs already fetched + persons/aliases/memberships upserted
+        // by the framework's laGet wrapper. Model just reads.
+        static const std::vector<nlohmann::json> kEmpty;
+        const auto womensIt = sync.find(model_->womensProgramId());
+        const auto& recs = (womensIt != sync.end()) ? womensIt->second.recs : kEmpty;
+
+        std::unordered_map<std::string, long long> personIdByUserId;
+        if (womensIt != sync.end()) {
+            personIdByUserId.insert(womensIt->second.personIdByUserId.begin(),
+                                     womensIt->second.personIdByUserId.end());
+        }
+
+        auto result = model_->run(includeAll, refreshLa, recs, personIdByUserId, includeInactive);
+        if (result.noColumns) {
+            std::ostringstream body;
+            body << "{\"error\":" << jsonEscape(result.error) << "}";
+            return Response(HttpStatus::CONFLICT, body.str());
+        }
+        return Response(HttpStatus::OK, result.body.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "WomensRosterController::handleGet error: " << e.what() << std::endl;
+        std::ostringstream body;
+        body << "{\"error\":" << jsonEscape(std::string("Failed to fetch womens roster: ") + e.what()) << "}";
+        return Response(HttpStatus::BAD_GATEWAY, body.str());
+    }
+}
+
+Response WomensRosterController::handleAssign(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) { return badRequest("Invalid JSON body"); }
+
+    long long userId = 0;
+    long long teamIdLL = 0;
+    long long personId = 0;
+    readInt(body, "personId", personId);  // optional — see doc below
+    if (!readInt(body, "leagueAppsUserId", userId) ||
+        !readInt(body, "teamId",            teamIdLL) ||
+        userId <= 0 || teamIdLL <= 0) {
+        return badRequest("leagueAppsUserId, teamId, action(add|remove) required");
+    }
+    const int teamId = static_cast<int>(teamIdLL);
+
+    std::string action = readStr(body, "action");
+    for (auto& c : action) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (action != "add" && action != "remove") {
+        return badRequest("leagueAppsUserId, teamId, action(add|remove) required");
+    }
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+
+    try {
+        auto col = columns_->findByTeamId(teamId);
+        if (!col) {
+            // Women's domain has no pool teams — every valid target must
+            // be a configured column. Anything else is a stale UI.
+            return notFound("Team not configured as a womens column");
+        }
+        const std::string mutexGroup = col->mutexGroup;
+
+        // Prefer personId when the frontend sent one (attached to the
+        // row from LaProgramSync::Result::personIdByUserId at render
+        // time — see MensTeamAssignments.h). It's immune to LA's
+        // live-userId drift; leagueAppsUserId-only requests fall back
+        // to the old (drift-vulnerable) persons.la_user_id lookup.
+        std::vector<int> teamIds;
+        if (action == "remove") {
+            teamIds = personId > 0
+                ? assignments_->removeAssignmentForPerson(personId, teamId)
+                : assignments_->removeAssignment(userId, teamId);
+        } else {
+            teamIds = personId > 0
+                ? assignments_->addAssignmentForPerson(personId, teamId, mutexGroup)
+                : assignments_->addAssignment(userId, teamId, mutexGroup);
+        }
+
+        json out;
+        out["leagueAppsUserId"] = userId;
+        out["teamIds"]          = teamIds;
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "WomensRosterController::handleAssign error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to update assignment: ") + e.what());
+    }
+}
+
+Response WomensRosterController::handleRosterStatus(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) { return badRequest("Invalid JSON body"); }
+
+    long long userId = 0;
+    long long teamIdLL = 0;
+    if (!readInt(body, "leagueAppsUserId", userId) ||
+        !readInt(body, "teamId",            teamIdLL) ||
+        userId <= 0 || teamIdLL <= 0) {
+        return badRequest("leagueAppsUserId and teamId required");
+    }
+    const int  teamId   = static_cast<int>(teamIdLL);
+    const bool onRoster = readBool(body, "onRoster", false);
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+
+    try {
+        auto result = assignments_->setRosterStatus(userId, teamId, onRoster);
+        if (!result) return notFound("No assignment exists for that player on that team");
+        std::ostringstream out;
+        out << "{\"leagueAppsUserId\":" << userId
+            << ",\"teamId\":"          << teamId
+            << ",\"onRoster\":"        << (*result ? "true" : "false")
+            << "}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "WomensRosterController::handleRosterStatus error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to update roster status: ") + e.what());
+    }
+}
+
+Response WomensRosterController::handleReorder(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) { return badRequest("Invalid JSON body"); }
+
+    long long teamIdLL = 0;
+    if (!readInt(body, "teamId", teamIdLL) || teamIdLL <= 0) {
+        return badRequest("teamId (positive int) required");
+    }
+    const int teamId = static_cast<int>(teamIdLL);
+
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+
+    auto it = body.find("userIds");
+    if (it == body.end() || !it->is_array()) {
+        return badRequest("userIds (array of ints) required");
+    }
+    std::vector<long long> ordered;
+    ordered.reserve(it->size());
+    for (const auto& e : *it) {
+        long long v = 0;
+        if (e.is_number_integer())          v = e.get<long long>();
+        else if (e.is_number_unsigned())    v = static_cast<long long>(e.get<unsigned long long>());
+        else if (e.is_number_float())       v = static_cast<long long>(e.get<double>());
+        else if (e.is_string()) {
+            try { v = std::stoll(e.get<std::string>()); }
+            catch (const std::exception&) { return badRequest("userIds contains a non-numeric entry"); }
+        } else {
+            return badRequest("userIds entries must be integers");
+        }
+        if (v <= 0) return badRequest("userIds entries must be positive");
+        ordered.push_back(v);
+    }
+
+    // Optional personIds[] parallel array — immune to LA's live-userId
+    // drift (see MensTeamAssignments.h doc on the person_id-keyed write
+    // path / addAssignmentForPerson). When present and the same length
+    // as userIds, prefer it.
+    std::vector<long long> orderedPersonIds;
+    if (auto pit = body.find("personIds"); pit != body.end() && pit->is_array()
+        && pit->size() == ordered.size()) {
+        orderedPersonIds.reserve(pit->size());
+        for (const auto& e : *pit) {
+            long long v = 0;
+            if (e.is_number_integer())       v = e.get<long long>();
+            else if (e.is_number_unsigned()) v = static_cast<long long>(e.get<unsigned long long>());
+            if (v <= 0) { orderedPersonIds.clear(); break; }
+            orderedPersonIds.push_back(v);
+        }
+    }
+
+    try {
+        const long long touched = orderedPersonIds.size() == ordered.size()
+            ? assignments_->reorderTeamForPersons(teamId, orderedPersonIds)
+            : assignments_->reorderTeam(teamId, ordered);
+        std::ostringstream out;
+        out << "{\"teamId\":" << teamId
+            << ",\"touched\":" << touched
+            << "}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "WomensRosterController::handleReorder error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to reorder team: ") + e.what());
+    }
+}

@@ -49,6 +49,7 @@ set(SOURCES
     src/models/ActiveTeamBadges.cpp
     src/models/MensRoster.cpp
     src/models/BoysRoster.cpp
+    src/models/WomensRoster.cpp
     src/models/Lead.cpp
     src/models/LeadContact.cpp
     src/models/LeadForm.cpp
@@ -85,6 +86,7 @@ set(SOURCES
     src/controllers/YouthRosterController.cpp
     src/controllers/MensRosterController.cpp
     src/controllers/BoysRosterController.cpp
+    src/controllers/WomensRosterController.cpp
     src/controllers/PersonBillingController.cpp
     src/controllers/PayReminderLogController.cpp
     src/controllers/PaymentsController.cpp

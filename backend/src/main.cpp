@@ -36,6 +36,7 @@
 #include "controllers/YouthRosterController.h"
 #include "controllers/MensRosterController.h"
 #include "controllers/BoysRosterController.h"
+#include "controllers/WomensRosterController.h"
 #include "controllers/PersonBillingController.h"
 #include "controllers/PayReminderLogController.h"
 #include "controllers/PaymentsController.h"
@@ -93,6 +94,7 @@ private:
     std::shared_ptr<YouthRosterController> youth_roster_controller_;
     std::shared_ptr<MensRosterController> mens_roster_controller_;
     std::shared_ptr<BoysRosterController> boys_roster_controller_;
+    std::shared_ptr<WomensRosterController> womens_roster_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
@@ -164,6 +166,7 @@ public:
         youth_roster_controller_ = std::make_shared<YouthRosterController>();
         mens_roster_controller_  = std::make_shared<MensRosterController>();
         boys_roster_controller_  = std::make_shared<BoysRosterController>();
+        womens_roster_controller_ = std::make_shared<WomensRosterController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         payments_controller_ = std::make_shared<PaymentsController>();
@@ -425,6 +428,9 @@ private:
         // roster_columns / roster_assignments filtered to domain='boys'.
         // Pulls registrants from both Boys Club and Girls Club LA programs.
         router_.useController("/api/boys-roster", boys_roster_controller_);
+        // Women's roster — same shape as mens (single LA program), backed by
+        // `teams` filtered to gender_category='womens' (migration 250).
+        router_.useController("/api/womens-roster", womens_roster_controller_);
         // Phase 9 — person-billing (POST upsert + /mark-billed) ported to C++.
         router_.useController("/api/person-billing", person_billing_controller_);
 
