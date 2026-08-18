@@ -1452,38 +1452,38 @@ class LeadsScreen extends Screen {
     //   url          — public schedule page (optional; omit if no public URL)
     //   sourceOf     — label used inline so the lead knows what they're clicking
     //                  ("CASA league page", "season Google Sheet", etc.)
-    //   practice     — concrete practice day/time ("Wednesday & Friday 7–8:30pm"), optional
+    //   practice     — concrete practice day/time ("Wednesday, Thursday & Friday 7–8:30pm"), optional
     //   practiceNote — extra free-form line printed under Practice: (used for
     //                  Men funnels so the lead knows pickups count as a
-    //                  practice if Wed/Fri don't fit), optional
+    //                  practice if Wed/Thu/Fri don't fit), optional
     const SCHEDULES = {
       'Brazil Men': {
         day:          'Sundays',
         url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice. We do this so it's as easy as possible to make a practice during the week.",
+        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice. We do this so it's as easy as possible to make a practice during the week.",
       },
       'PR Men': {
         day:          'Sundays',
         url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
+        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       'U23 Men': {
         day:          'Sundays',
         url:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
         sourceOf:     'season Google Sheet',
-        practice:     'Wednesday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
+        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       'APSL / Liga 1': {
         day:          'Sundays',
         url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
         sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday & Thursday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
+        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
       // only.  Games on Sunday mornings to early afternoon + practice Mon/Wed.
@@ -2336,7 +2336,8 @@ class LeadsScreen extends Screen {
         //               practice Mon/Wed/Fri).  Using the shared pair
         //               avoids surfacing a Friday date that only applies
         //               to half the roster.
-        //   • adult M → Tue/Wed/Thu/Fri/Sat — all five weekly sessions;
+        //   • adult M → Tue/Wed/Thu/Fri/Sat — all five weekly sessions
+        //               (practice Wed/Thu/Fri + pickup Tue/Sat);
         //               8:30pm end hour + buffer means 21.
         //   • women's → skipped (no practice yet).
         let nextPracticeLine = '';

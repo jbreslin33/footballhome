@@ -63,12 +63,12 @@ window.LighthouseProgramInfo = (function () {
       gamesLine = 'Sundays, late morning to early afternoon — September through November, winter break, then resuming late March through June';
     } else {
       practiceBlockHtml =
-        `<li><strong>Practice:</strong> Wednesday &amp; Friday, 7:00&ndash;8:30pm</li>` +
-        `<li><strong>Pickup:</strong> Tuesday &amp; Thursday, 7:00&ndash;8:30pm; Saturday, 11:00am&ndash;12:30pm</li>` +
+        `<li><strong>Practice:</strong> Wednesday, Thursday &amp; Friday, 7:00&ndash;8:30pm</li>` +
+        `<li><strong>Pickup:</strong> Tuesday, 7:00&ndash;8:30pm; Saturday, 11:00am&ndash;12:30pm</li>` +
         `<li><strong>Purpose of 5 weekly sessions:</strong> Five sessions a week fit real work schedules &mdash; aim for any 2 of the 5 and you're a regular &mdash; and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments &mdash; not around a cone that can't defend. Together they cover the four pillars of player development: <strong>technical, tactical, physical, and psychological.</strong></li>`;
       practiceBlockText =
-        `  • Practice: Wednesday & Friday, 7:00–8:30pm\n` +
-        `  • Pickup: Tuesday & Thursday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n` +
+        `  • Practice: Wednesday, Thursday & Friday, 7:00–8:30pm\n` +
+        `  • Pickup: Tuesday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n` +
         `  • Purpose of 5 weekly sessions: Five sessions a week fit real work schedules — aim for any 2 of the 5 and you're a regular — and cover all the fitness a player needs. Practices focus on tactical concepts. Pickups focus on creativity and applying those tactical concepts. Both let players work their technical actions in real game environments — not around a cone that can't defend. Together they cover the four pillars of player development: technical, tactical, physical, and psychological.\n`;
       gamesLine = 'Sundays';
     }

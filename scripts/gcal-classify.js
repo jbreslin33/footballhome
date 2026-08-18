@@ -101,10 +101,10 @@ const DB = {
 // Sunday itself before 8pm rolls back to the *prior* Sunday.
 //
 // Applies to kind IN ('pickup','practice') — the weekly-cadence
-// events. Mens currently has 4 practices Tue/Wed/Thu/Fri and 1 pickup
-// Sat; the Sunday 20:00 rule opens the whole week together so players
-// commit to their week in one sitting. match/meeting/camp get NULL
-// until §6.5.4 specifies their windows.
+// events. Mens currently has 3 practices Wed/Thu/Fri and 2 pickups
+// Tue/Sat; the Sunday 20:00 rule opens the whole week together so
+// players commit to their week in one sitting. match/meeting/camp get
+// NULL until §6.5.4 specifies their windows.
 const RSVPS_OPEN_AT_SQL = `
   CASE WHEN $2 IN ('pickup','practice') THEN
     (
