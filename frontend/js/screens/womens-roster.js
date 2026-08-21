@@ -65,10 +65,17 @@ class WomensRosterScreen extends RosterScreenBase {
       if (e.target.closest('#wr-refresh')) return this.load({ refreshLa: true });
       const moveOpt = e.target.closest('.roster-move-option');
       if (moveOpt) return this.onMoveOptionClick(moveOpt);
+      const focusPill = e.target.closest('.wr-team-focus-pill');
+      if (focusPill) return this.onTeamFocusPillClick(focusPill);
       // 👤 PROFILE button is rendered by the shared PersonActions
       // component and routed globally by a delegated document-level
       // click handler installed once at app bootstrap — no per-screen
       // wiring needed here (see mens-roster.js/boys-roster.js).
+    });
+
+    this.element.addEventListener('change', e => {
+      const posSelect = e.target.closest('.roster-position-select');
+      if (posSelect) return this.onPositionSelectChange(posSelect);
     });
 
     // Drag-and-drop reorder — native HTML5 events wired via delegation
@@ -101,19 +108,25 @@ class WomensRosterScreen extends RosterScreenBase {
     return this.load();
   }
 
-  async load({ refreshLa = false } = {}) {
+  // quiet (2026-08-21): skips the loading-skeleton/banner flash — used
+  // after an optimistic local action (move/reorder) where the board
+  // already shows the new state and this is just background
+  // reconciliation with the server, not a first load.
+  async load({ refreshLa = false, quiet = false } = {}) {
     const loading = this.find('#wr-loading');
     const errEl   = this.find('#wr-error');
     const list    = this.find('#wr-list');
-    if (loading) loading.style.display = '';
-    if (errEl)   errEl.style.display   = 'none';
-    if (list)    list.style.display    = 'none';
-    this.setBanner({
-      icon: '⏳',
-      text: refreshLa
-        ? 'Pulling latest registrations from LeagueApps…'
-        : 'Reloading roster from cache…',
-    });
+    if (!quiet) {
+      if (loading) loading.style.display = '';
+      if (errEl)   errEl.style.display   = 'none';
+      if (list)    list.style.display    = 'none';
+      this.setBanner({
+        icon: '⏳',
+        text: refreshLa
+          ? 'Pulling latest registrations from LeagueApps…'
+          : 'Reloading roster from cache…',
+      });
+    }
 
     try {
       const t0  = performance.now();
@@ -173,25 +186,62 @@ class WomensRosterScreen extends RosterScreenBase {
         ? allCols.filter(c => !c.isUnassigned)
         : allCols;
 
+    // Team-focus pills (2026-08-21): click a team's chip to isolate its
+    // column; click again (or All) to bring every team back. Purely
+    // client-side filter over the already-loaded data — no re-fetch.
+    // Only offered on the Teams panel (columnScope==='unassigned' always
+    // has exactly one column, nothing to focus down to).
+    const showFocusPills = this.columnScope !== 'unassigned' && cols.length > 1;
+    if (this.teamFocusId && !cols.some(c => c.teamId === this.teamFocusId)) {
+      this.teamFocusId = null;
+    }
+    const visibleCols = this.teamFocusId ? cols.filter(c => c.teamId === this.teamFocusId) : cols;
+
     container.innerHTML = `
-      <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
+      <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
         <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Columns:</span>
+        ${showFocusPills ? `
+          <button type="button" class="wr-team-focus-pill" data-team-focus-id="0"
+                  style="font-size:0.8rem; font-weight:700; padding:2px 10px; border-radius:999px; cursor:pointer;
+                         border:1px solid ${this.teamFocusId ? 'var(--border-color)' : '#94a3b8'};
+                         background:${this.teamFocusId ? 'transparent' : '#94a3b8'};
+                         color:${this.teamFocusId ? 'inherit' : '#0f172a'};">All</button>
+        ` : ''}
         ${cols.map(c => {
           const count = c.isUnassigned ? c.count : ((data.buckets[String(c.teamId)] || []).length);
           const cap = c.maxRoster != null ? `(${count}/${c.maxRoster})` : `(${count})`;
+          const active = this.teamFocusId === c.teamId;
+          if (!showFocusPills) {
+            return `
+              <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:2px 8px; border-radius:4px; border-left:3px solid ${c.color};">
+                ${c.label} <span style="opacity:0.55;">${cap}</span>
+              </span>`;
+          }
           return `
-            <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:2px 8px; border-radius:4px; border-left:3px solid ${c.color};">
-              ${c.label} <span style="opacity:0.55;">${cap}</span>
-            </span>`;
+            <button type="button" class="wr-team-focus-pill" data-team-focus-id="${c.teamId}"
+                    title="${active ? `Showing only ${c.label} — click All to see every team` : `Show only ${c.label}`}"
+                    style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:${active ? 700 : 400}; padding:2px 8px; border-radius:999px; cursor:pointer;
+                           border:1px solid ${c.color}; border-left:3px solid ${c.color};
+                           background:${active ? c.color : 'transparent'}; color:${active ? '#fff' : 'inherit'};">
+              ${c.label} <span style="opacity:${active ? '0.85' : '0.55'};">${cap}</span>
+            </button>`;
         }).join('')}
       </div>
 
       <div style="padding: 0 var(--space-2) var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(cols.length)}, max-content)); gap:var(--space-2); align-items:start;">
-          ${cols.map(c => this.renderColumn(c, data)).join('')}
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(visibleCols.length)}, max-content)); gap:var(--space-2); align-items:start;">
+          ${visibleCols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>
     `;
+  }
+
+  // Purely client-side — re-renders from the already-loaded data, no
+  // network round-trip (see renderRoster's showFocusPills block).
+  onTeamFocusPillClick(btn) {
+    const id = parseInt(btn.dataset.teamFocusId, 10) || 0;
+    this.teamFocusId = id || null;
+    if (this._data) this.renderRoster(this._data);
   }
 
   // Feeds the wrapping grid's minmax() floor above — columns that don't
@@ -227,7 +277,7 @@ class WomensRosterScreen extends RosterScreenBase {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
-    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, col, i + 1)).join('');
+    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, col, i + 1, list.length)).join('');
 
     const body = players.length === 0
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
@@ -247,7 +297,7 @@ class WomensRosterScreen extends RosterScreenBase {
     `;
   }
 
-  renderPlayer(p, columns, col, position) {
+  renderPlayer(p, columns, col, position, totalInColumn = 0) {
     // Full DOB (e.g. "3/10/2008").
     const dobShort = this.formatDobShort(p.birthDate);
 
@@ -277,6 +327,7 @@ class WomensRosterScreen extends RosterScreenBase {
       player: p,
       col,
       position,
+      totalInColumn,
       cardClass: 'wr-card',
       cardId,
       dobShort,
@@ -399,10 +450,57 @@ class WomensRosterScreen extends RosterScreenBase {
         const text = await res.text();
         throw new Error(text.slice(0, 200));
       }
-      await this.load();
+      // Quiet reload so #N chips + backend sort come back authoritative
+      // without flashing the loading skeleton over an already-reordered board.
+      await this.load({ quiet: true });
     } catch (err) {
       alert(`Could not save order: ${err.message}`);
-      await this.load();
+      await this.load({ quiet: true });
+    }
+  }
+
+  // Slot picker (2026-08-21) — alternative to drag-reorder for coaches
+  // who find drag unreliable ("fails if you don't drag it just right").
+  // Same persistence path as onDrop (DOM-first reorder, then POST the
+  // rebuilt order to the reorder endpoint) — just triggered by a <select>
+  // change instead of a drag gesture.
+  async onPositionSelectChange(select) {
+    const teamId = parseInt(select.dataset.teamId, 10);
+    const targetPos = parseInt(select.value, 10);
+    if (!teamId || !targetPos) return;
+
+    const card = select.closest('.wr-card[draggable="true"]');
+    const zone = card && card.closest('.wr-drop-zone[data-drop-team-id]');
+    if (!card || !zone) return;
+
+    const cardEls = Array.from(zone.querySelectorAll('.wr-card[draggable="true"]'));
+    const fromIdx = cardEls.indexOf(card);
+    const toIdx   = targetPos - 1;
+    if (fromIdx === -1 || toIdx === fromIdx) return;
+
+    cardEls.splice(fromIdx, 1);
+    cardEls.splice(Math.max(0, Math.min(toIdx, cardEls.length)), 0, card);
+    cardEls.forEach(el => zone.appendChild(el));
+
+    const orderedIds = cardEls.map(el => parseInt(el.dataset.userId, 10)).filter(n => Number.isFinite(n));
+    if (orderedIds.length === 0) return;
+    const orderedPersonIds = cardEls.map(el => parseInt(el.dataset.personId, 10));
+    const personIds = orderedPersonIds.every(n => Number.isFinite(n)) ? orderedPersonIds : null;
+
+    try {
+      const res = await this.auth.fetch('/api/womens-roster/reorder', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ teamId, userIds: orderedIds, ...(personIds ? { personIds } : {}) }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      await this.load({ quiet: true });
+    } catch (err) {
+      alert(`Could not save order: ${err.message}`);
+      await this.load({ quiet: true });
     }
   }
 
@@ -421,12 +519,18 @@ class WomensRosterScreen extends RosterScreenBase {
     if (details) details.open = false;
     if (targetTeamId === currentTeamId) return;
 
+    // Instant feedback (2026-08-21): fade the whole card right away so
+    // the coach sees the move registered immediately, instead of waiting
+    // on the network + a full board reload to notice anything happened.
+    const card = btn.closest('.wr-card');
+    if (card) { card.style.opacity = '0.35'; card.style.pointerEvents = 'none'; }
+
     btn.disabled = true;
     btn.style.opacity = '0.4';
     try {
       let body;
       if (targetTeamId === 0) {
-        if (currentTeamId <= 0) { await this.load(); return; }
+        if (currentTeamId <= 0) { await this.load({ quiet: true }); return; }
         body = { leagueAppsUserId: userId, personId, teamId: currentTeamId, action: 'remove' };
       } else {
         body = { leagueAppsUserId: userId, personId, teamId: targetTeamId, action: 'add' };
@@ -440,8 +544,9 @@ class WomensRosterScreen extends RosterScreenBase {
         const text = await res.text();
         throw new Error(text.slice(0, 200));
       }
-      await this.load();
+      await this.load({ quiet: true });
     } catch (err) {
+      if (card) { card.style.opacity = ''; card.style.pointerEvents = ''; }
       btn.disabled = false;
       btn.style.opacity = '';
       alert(`Could not move player: ${err.message}`);

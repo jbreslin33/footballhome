@@ -267,6 +267,7 @@ class RosterScreenBase extends Screen {
     player,
     col,
     position,
+    totalInColumn = 0,
     cardClass,
     cardId,
     rosterSelectHtml = '',
@@ -279,6 +280,22 @@ class RosterScreenBase extends Screen {
     const posChip = position
       ? `<span style="font-size:0.72rem; line-height:1.2; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
       : '';
+    // Slot picker (2026-08-21) — alternative to drag-reorder ("drag sucks,
+    // it fails if you don't drag it just right" — user). Picking a number
+    // jumps this card to that slot; the reorder POST (same endpoint drag
+    // already uses) rewrites everyone else's rank around it. Real,
+    // coached columns only — same gate as drag (canMove + col.teamId) —
+    // and only worth showing once there's more than one card to reorder
+    // against.
+    const posControl = (canMove && col && col.teamId && position && totalInColumn > 1)
+      ? `<select class="roster-position-select" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"
+                 title="Move ${this.escape(player.firstName || 'player')} to a specific slot — everyone else shifts to make room"
+                 style="font-size:0.68rem; font-weight:800; letter-spacing:0.02em; padding:0 1px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
+           ${Array.from({ length: totalInColumn }, (_, i) => i + 1)
+             .map(n => `<option value="${n}" ${n === position ? 'selected' : ''}>#${n}</option>`)
+             .join('')}
+         </select>`
+      : posChip;
     // US-Soccer age group (U10, U23, ...) — every roster (youth AND adult,
     // ahead of future U19/U23/Over-30 division work on the mens/womens
     // side).
@@ -324,7 +341,7 @@ class RosterScreenBase extends Screen {
       <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
         <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:0;">
           <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-            ${posChip}
+            ${posControl}
             <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
           </div>
           <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px;">
