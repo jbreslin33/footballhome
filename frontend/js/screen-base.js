@@ -75,6 +75,17 @@ class Screen {
     }
   }
 
+  // sms: URI for "text" contact buttons, single or multi-recipient.
+  // Unlike buildGmailComposeHref, there's no bcc equivalent here — a
+  // multi-number sms: link opens ONE group thread where every recipient
+  // sees each other's number and any replies. Both Google Messages
+  // (Android default) and iOS Messages accept comma-separated recipients,
+  // so this can be used as a plain <a href> with no JS/user-agent branch.
+  buildSmsComposeHref({ to, body = '' } = {}) {
+    if (!to) return null;
+    return `sms:${to}${body ? `?body=${encodeURIComponent(body)}` : ''}`;
+  }
+
   resolveAssetUrl(url) {
     if (!url) return '';
 

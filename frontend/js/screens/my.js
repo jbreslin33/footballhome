@@ -748,6 +748,7 @@ class MyScreen extends Screen {
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
                   border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
+        ${this._bulkSmsAllBtnHtml(ev, isPast)}
         <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
           <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
           <div>${groupHtml('Coaches Going', coachesGoing, 'going', rowsHtml(coachesGoing))}</div>
@@ -778,6 +779,7 @@ class MyScreen extends Screen {
                           color:rgba(226,232,240,0.75);">
                 No Response (${noResponseTotal})
               </div>
+              ${this._bulkSmsNoResponseBtnHtml(ev, noResponsePlayers.concat(noResponseCoaches), isPast)}
               ${this._bulkEmailNoResponseBtnHtml(ev, noResponsePlayers.concat(noResponseCoaches), isPast)}
             </div>
             <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
@@ -787,6 +789,72 @@ class MyScreen extends Screen {
           </div>
         ` : ''}
       </div>`;
+  }
+
+  // Event-level "Text All" — everyone who can RSVP to this event (players
+  // + coaches, any response status), blank body so the coach writes a
+  // custom message live on their phone rather than a canned reminder.
+  //
+  // Carrier group-MMS limits are commonly ~10 recipients (AT&T/Verizon cap
+  // at 10, T-Mobile ~20) — iMessage-only threads can go higher but only
+  // work phone-to-phone between iPhones on wifi/data, which a mixed-device
+  // roster can't rely on. A single sms: link past that count can silently
+  // drop recipients with no warning, so split into multiple group texts of
+  // CHUNK_SIZE instead of gambling on one link reaching everyone.
+  _bulkSmsAllBtnHtml(ev, isPast) {
+    if (isPast) return '';
+    const CHUNK_SIZE = 10;
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const phones = [...new Set(rsvps.map(r => (r.phone || '').trim()).filter(Boolean))];
+    if (!phones.length) return '';
+
+    const chunks = [];
+    for (let i = 0; i < phones.length; i += CHUNK_SIZE) chunks.push(phones.slice(i, i + CHUNK_SIZE));
+
+    const buttonsHtml = chunks.map((chunk, i) => {
+      const href = this.buildSmsComposeHref({ to: chunk.join(',') });
+      const label = chunks.length > 1
+        ? `💬 Text All — Part ${i + 1}/${chunks.length} (${chunk.length})`
+        : `💬 Text All (${chunk.length})`;
+      return `<a href="${this.escapeHtml(href)}"
+                 title="Opens a blank group text to ${chunk.length} ${chunks.length > 1 ? `of ${phones.length} ` : ''}people who can RSVP to this event — write your own message. Everyone in the group will see each other's number."
+                 style="padding:3px 8px; border-radius:999px; text-decoration:none; display:inline-block; margin:0 4px 4px 0;
+                        background:#6366f1; color:#fff; font-size:0.66rem; font-weight:700;">
+                ${label}
+              </a>`;
+    }).join('');
+
+    return `
+      <div style="margin-bottom:8px;">
+        ${buttonsHtml}
+        ${chunks.length > 1 ? `
+          <div style="font-size:0.62rem; opacity:0.6; margin-top:2px;">
+            Split into ${chunks.length} group texts of ${CHUNK_SIZE} — carriers commonly cap group MMS around 10 people.
+          </div>` : ''}
+      </div>`;
+  }
+
+  // Bulk "Text N No Response" — one group sms: thread with everyone still
+  // showing no response for one event. Unlike the email bulk button (bcc,
+  // stays private) an sms: link with multiple recipients opens ONE group
+  // thread where everyone sees each other's number and replies — plain
+  // <a href>, no click handler needed (same as the individual per-row
+  // 💬 reminder links).
+  _bulkSmsNoResponseBtnHtml(ev, noResponseList, isPast) {
+    if (isPast) return '';
+    const phones = [...new Set(noResponseList.map(r => (r.phone || '').trim()).filter(Boolean))];
+    if (!phones.length) return '';
+    const eventTitle = this._eventTitle(ev);
+    const eventWhen = [this._eventDateStr(ev.starts_at), this._eventTimeStr(ev.starts_at)].filter(Boolean).join(' ');
+    const body = `Hi — you're currently showing as No Response for ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}. Please RSVP here: https://footballhome.org/#my`;
+    const href = this.buildSmsComposeHref({ to: phones.join(','), body });
+    return `
+      <a href="${this.escapeHtml(href)}"
+         title="Open a group text with all ${phones.length} No Response player${phones.length !== 1 ? 's' : ''} — everyone in the group will see each other's number"
+         style="padding:3px 8px; border-radius:999px; text-decoration:none; display:inline-block;
+                background:#0ea5e9; color:#fff; font-size:0.66rem; font-weight:700;">
+        💬 Text ${phones.length} No Response
+      </a>`;
   }
 
   _bulkEmailNoResponseBtnHtml(ev, noResponseList, isPast) {
