@@ -1024,6 +1024,11 @@ class BoysRosterScreen extends RosterScreenBase {
         throw new Error(text.slice(0, 200));
       }
       await this.load({ quiet: true });
+      // Tell the sibling Unassigned/Teams panel (if RostersScreen has
+      // wired one up) to quietly catch up too — this card's board just
+      // reloaded itself, but the OTHER panel's cached data still thinks
+      // this player is where they were before the move.
+      if (typeof this.onMembershipChanged === 'function') this.onMembershipChanged();
     } catch (err) {
       if (card) { card.style.opacity = ''; card.style.pointerEvents = ''; }
       btn.disabled = false;

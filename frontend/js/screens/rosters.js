@@ -271,23 +271,31 @@ class RostersScreen extends Screen {
   // two-cache doc in the constructor). Cached instances keep their own
   // DOM around when we unmount them — cheaper than a full rebuild on
   // every pill flip.
+  // Unassigned:X and Teams:X are two independent instances (own DOM, own
+  // fetch — see the two-cache doc in the constructor), so an assign/
+  // unassign that succeeds in one never touched the other's cached data.
+  // 2026-08-21 (owner report): "sent unassigned woman to Tri County,
+  // she did not appear [in Teams] — reload fixes it" — exactly that gap.
+  // Each instance gets an onMembershipChanged hook, wired once at
+  // construction, that quietly reloads the SAME-category instance in the
+  // OTHER cache (looked up lazily, so wiring order doesn't matter — the
+  // sibling may not exist yet when this one is created).
   _instanceForPanel(cache, pill) {
-    if (pill === 'mens') {
-      if (!cache.mens) cache.mens = new MensRosterScreen(this.navigation, this.auth);
-      return cache.mens;
-    }
-    if (pill === 'boys') {
-      if (!cache.boys) cache.boys = new BoysRosterScreen(this.navigation, this.auth);
-      return cache.boys;
-    }
-    if (pill === 'girls') {
-      if (!cache.girls) cache.girls = new GirlsRosterScreen(this.navigation, this.auth);
-      return cache.girls;
-    }
-    if (pill === 'womens') {
-      if (!cache.womens) cache.womens = new WomensRosterScreen(this.navigation, this.auth);
-      return cache.womens;
-    }
+    const otherCache = cache === this._unassignedInstances ? this._teamsInstances : this._unassignedInstances;
+    const makeAndWire = (ClassRef, key) => {
+      if (!cache[key]) {
+        cache[key] = new ClassRef(this.navigation, this.auth);
+        cache[key].onMembershipChanged = () => {
+          const sibling = otherCache[key];
+          if (sibling && typeof sibling.load === 'function') sibling.load({ quiet: true });
+        };
+      }
+      return cache[key];
+    };
+    if (pill === 'mens')   return makeAndWire(MensRosterScreen, 'mens');
+    if (pill === 'boys')   return makeAndWire(BoysRosterScreen, 'boys');
+    if (pill === 'girls')  return makeAndWire(GirlsRosterScreen, 'girls');
+    if (pill === 'womens') return makeAndWire(WomensRosterScreen, 'womens');
     return null;
   }
 
