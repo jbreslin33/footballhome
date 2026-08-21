@@ -305,7 +305,7 @@ class MensRosterScreen extends RosterScreenBase {
       </div>
 
       <div style="padding: 0 var(--space-2) var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(${this.colMinWidth(cols.length)}, max-content)); gap:var(--space-2); align-items:start;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(cols.length)}, max-content)); gap:var(--space-2); align-items:start;">
           ${cols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>
