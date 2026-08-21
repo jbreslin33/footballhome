@@ -9,6 +9,10 @@
 //   GET /api/public/teams/:slug/gameday     -> 18/20 man roster (or "hidden" placeholder)
 //   GET /api/public/teams/:slug/lineup      -> starters / bench / pitch (anonymized when hidden)
 //   GET /api/public/teams/:slug/schedule    -> full team schedule, marks live match
+//   GET /api/public/leagueapps-registration-links -> registration_url by
+//     category/variant (leagueapps_programs) — single source of truth for
+//     LeagueApps signup links, replacing the hardcoded copies that used to
+//     live in leads.js / program-info.js / ad scripts and drift out of sync.
 //
 // "Live match" resolution lives here in resolveLiveMatchId(): manually pinned
 // match wins, else earliest non-completed/cancelled match for the team, else
@@ -27,6 +31,7 @@ private:
     Response handleGetGameday(const Request& request);
     Response handleGetLineup(const Request& request);
     Response handleGetSchedule(const Request& request);
+    Response handleGetRegistrationLinks(const Request& request);
 
     // Resolver: returns matches.id for the team's "live" match, or 0 if none exists.
     int resolveLiveMatchId(int team_id);

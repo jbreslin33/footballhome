@@ -7,7 +7,9 @@
 class PublicProgramInfoScreen extends Screen {
   onEnter(params = {}) {
     this.audience = params.audience === 'adult' ? 'adult' : 'youth';
-    this.renderContent();
+    const root = this.find('#ppi-root');
+    if (root) root.innerHTML = `<div style="text-align:center;color:#fff;padding:60px 20px;opacity:0.7;">Loading…</div>`;
+    window.LighthouseProgramInfo.loadRegisterLinks().then(() => this.renderContent());
   }
 
   render() {

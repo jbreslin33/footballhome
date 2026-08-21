@@ -5,12 +5,45 @@
 // linked from flyer QR codes. Edit copy here — it propagates everywhere
 // that calls buildProgramDescription().
 window.LighthouseProgramInfo = (function () {
-  const REGISTER_LINKS = {
-    boys:   'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership',
-    girls:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-1893-girls-club-soccer-membership',
-    mens:   'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership',
-    womens: 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership',
-  };
+  // Registration links come from the DB (leagueapps_programs.registration_url
+  // via GET /api/public/leagueapps-registration-links), not hardcoded here —
+  // hardcoded copies of these URLs are what caused APSL Trials / LIGA 1
+  // Trials leads to get a bare, non-working link (2026-08-21). REGISTER_LINKS
+  // starts empty and is populated by loadRegisterLinks(); callers that need
+  // it before render must await that promise first.
+  let REGISTER_LINKS = {};
+  let registerLinksPromise = null;
+
+  // category ('men'/'women'/'boys'/'girls') -> REGISTER_LINKS key. Only
+  // 'active' variant rows are used here — the youth/adult recruiting copy
+  // always points at the regular membership, never the pickup tier.
+  const CATEGORY_KEY = { men: 'mens', women: 'womens', boys: 'boys', girls: 'girls' };
+
+  function loadRegisterLinks() {
+    if (!registerLinksPromise) {
+      registerLinksPromise = fetch('/api/public/leagueapps-registration-links')
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(payload => {
+          const rows = payload && payload.data ? payload.data : [];
+          const links = {};
+          for (const row of rows) {
+            if (row.variant !== 'active') continue;
+            const key = CATEGORY_KEY[row.category];
+            if (key) links[key] = row.registrationUrl;
+          }
+          REGISTER_LINKS = links;
+          return REGISTER_LINKS;
+        })
+        .catch(err => {
+          console.error('Failed to load LeagueApps registration links:', err);
+          return REGISTER_LINKS;
+        });
+    }
+    return registerLinksPromise;
+  }
 
   function escapeHtml(str) {
     return String(str == null ? '' : str)
@@ -209,5 +242,9 @@ window.LighthouseProgramInfo = (function () {
     return { html: laDescHtml, text: laDescText, monthly, feeShort, feeLabel };
   }
 
-  return { REGISTER_LINKS, buildProgramDescription };
+  return {
+    get REGISTER_LINKS() { return REGISTER_LINKS; },
+    loadRegisterLinks,
+    buildProgramDescription,
+  };
 })();

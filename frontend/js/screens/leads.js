@@ -151,6 +151,10 @@ class LeadsScreen extends Screen {
     // screen stays open (green → yellow → orange → red as time drifts).
     this._updateSyncPill();
     this._startSyncTicker();
+    // Kick off the registration-links fetch now so it's ready by the time
+    // funnelContext() needs it (message drafting happens after the coach
+    // reviews a lead, well after screen load).
+    window.LighthouseProgramInfo.loadRegisterLinks();
   }
 
   _updateFormStatusPills() {
@@ -503,6 +507,8 @@ class LeadsScreen extends Screen {
       "Men's Club":              '#1d4ed8',
       "Women's Club":            '#be185d',
       'APSL / Liga 1':           '#f59e0b',
+      'APSL Trials':             '#f59e0b',
+      'LIGA 1 Trials':           '#f59e0b',
       'Youth (Grades 1–6)':      '#c9a14a',
       'Boys Club (Grades 1–6)':  '#0e7490',
       'Boys Club (K-12)':        '#0e7490',
@@ -1389,28 +1395,39 @@ class LeadsScreen extends Screen {
   // template and the snippets.
 
   funnelContext(funnelLabel) {
-    // LeagueApps registration URLs ($1 to register; card on file → recurring).
-    const URL_MEN   = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership';
-    const URL_WOMEN = 'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership';
-    const URL_BOYS  = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-1893-boys-club-soccer-membership';
-    const URL_GIRLS = 'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-1893-girls-club-soccer-membership';
+    // LeagueApps registration URLs ($1 to register; card on file → recurring)
+    // come from the DB (leagueapps_programs.registration_url), fetched once
+    // in onEnter via window.LighthouseProgramInfo.loadRegisterLinks() and
+    // read live here — NOT hardcoded. Hardcoded copies of these URLs (here,
+    // in program-info.js, and in the ad scripts) are what let the
+    // 'APSL Trials' / 'LIGA 1 Trials' funnels (added 2026-07-04) fall
+    // through to a bare, non-working link for real leads (found 2026-08-21).
+    const REGISTER_LINKS = window.LighthouseProgramInfo.REGISTER_LINKS;
+    const URL_BOYS  = REGISTER_LINKS.boys  || '';
+    const URL_GIRLS = REGISTER_LINKS.girls || '';
 
-    const LINKS = {
-      'Brazil Men':                URL_MEN,
-      'PR Men':                    URL_MEN,
-      'U23 Men':                   URL_MEN,
-      'APSL / Liga 1':             URL_MEN,
-      "Men's Club":                URL_MEN,
-      'U23 Women':                 URL_WOMEN,
-      'Tri County Women':          URL_WOMEN,
-      "Women's Club":              URL_WOMEN,
-      'Boys Club (Grades 1–6)':    URL_BOYS,
-      'Boys Club (K-12)':          URL_BOYS,
-      'Boys Club (U11/U12)':       URL_BOYS,
-      'Girls Club (Grades 1–6)':   URL_GIRLS,
-      'Girls Club (K-12)':         URL_GIRLS,
-      'Girls Club (U11/U12)':      URL_GIRLS,
-      'Youth (Grades 1–6)':        URL_BOYS,   // legacy combined form
+    // Funnel label -> program category. This mapping (which ad funnel sells
+    // which club) is stable business logic, unlike the URLs themselves —
+    // safe to keep hardcoded. Add a new adult Men funnel here and its
+    // registration link resolves automatically from REGISTER_LINKS.
+    const FUNNEL_CATEGORY = {
+      'Brazil Men':                'mens',
+      'PR Men':                    'mens',
+      'U23 Men':                   'mens',
+      'APSL / Liga 1':             'mens',
+      'APSL Trials':               'mens',
+      'LIGA 1 Trials':             'mens',
+      "Men's Club":                'mens',
+      'U23 Women':                 'womens',
+      'Tri County Women':          'womens',
+      "Women's Club":              'womens',
+      'Boys Club (Grades 1–6)':    'boys',
+      'Boys Club (K-12)':          'boys',
+      'Boys Club (U11/U12)':       'boys',
+      'Girls Club (Grades 1–6)':   'girls',
+      'Girls Club (K-12)':         'girls',
+      'Girls Club (U11/U12)':      'girls',
+      'Youth (Grades 1–6)':        'boys',   // legacy combined form
     };
     const PROGRAM_NAMES = {
       'Youth (Grades 1–6)':        'youth soccer program (grades 1–6)',
@@ -1428,6 +1445,8 @@ class LeadsScreen extends Screen {
       'Tri County Women':          "Tri County Women's team",
       "Women's Club":              "Women's Club soccer team",
       'APSL / Liga 1':             'APSL / Liga 1 team',
+      'APSL Trials':               'APSL / Liga 1 team',
+      'LIGA 1 Trials':             'APSL / Liga 1 team',
     };
     // Qualifying question asked in the FIRST message.  Goal: one short answer
     // that lets the coach pick the right follow-up snippet.
@@ -1485,6 +1504,22 @@ class LeadsScreen extends Screen {
         practice:     'Wednesday, Thursday & Friday 7–8:30pm',
         practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
       },
+      // APSL Trials / LIGA 1 Trials — separate ad funnels (form ids added
+      // 2026-07-04) into the same APSL / Liga 1 team; mirror its config.
+      'APSL Trials': {
+        day:          'Sundays',
+        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf:     'CASA Philly Grassroots Cup',
+        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
+      },
+      'LIGA 1 Trials': {
+        day:          'Sundays',
+        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
+        sourceOf:     'CASA Philly Grassroots Cup',
+        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
+        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
+      },
       // Youth / Boys / Girls — no public schedule page yet; verbal summary
       // only.  Games on Sunday mornings to early afternoon + practice Mon/Wed.
       'Boys Club (Grades 1–6)': {
@@ -1536,6 +1571,8 @@ class LeadsScreen extends Screen {
       'PR Men':        MENS_HANDBOOK,
       'U23 Men':       MENS_HANDBOOK,
       'APSL / Liga 1': MENS_HANDBOOK,
+      'APSL Trials':   MENS_HANDBOOK,
+      'LIGA 1 Trials': MENS_HANDBOOK,
       "Men's Club":    MENS_HANDBOOK,
     };
 
@@ -1632,7 +1669,7 @@ class LeadsScreen extends Screen {
       :                  'glad you want to play for Lighthouse';
     return {
       program:       PROGRAM_NAMES[baseLabel] || 'program',
-      link:          LINKS[baseLabel] || 'https://lighthouse1893.leagueapps.com',
+      link:          REGISTER_LINKS[FUNNEL_CATEGORY[baseLabel]] || 'https://lighthouse1893.leagueapps.com',
       linkBoys:      URL_BOYS,
       linkGirls:     URL_GIRLS,
       handbookLink:  HANDBOOKS[baseLabel] || null,

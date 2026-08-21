@@ -37,12 +37,12 @@ const OUT_DIR = path.join(ROOT, 'frontend', 'images', 'posts', 'previews');
 const SPECS = {
   boys: {
     formId:  '1704106777282059',
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-boys-club-1897-soccer-membership',
     caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
   },
   girls: {
     formId:  '1571742281184926',
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-girls-club-1898-soccer-membership',
     caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nGrades 1–6 · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
   },
 };

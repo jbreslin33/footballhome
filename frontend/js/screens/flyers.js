@@ -46,6 +46,11 @@ class FlyersScreen extends Screen {
     this.currentFlyerKey = null;
     this.customFlyerConfig = null;
 
+    // Kick off the registration-links fetch now so it's ready by the time a
+    // preset is previewed (youthClubsFlyerHTML/adultClubsFlyerHTML read the
+    // cache synchronously).
+    window.LighthouseProgramInfo.loadRegisterLinks();
+
     this.renderFlyersList();
 
     this.element.addEventListener('click', e => {

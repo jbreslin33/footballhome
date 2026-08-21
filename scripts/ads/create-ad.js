@@ -191,7 +191,7 @@ const ADS = {
     // Spec kept as a template; if relaunched it will build as a TRUE lead-form ad.
     imageUrl: 'https://footballhome.org/images/posts/mens-club-ad.png',
     caption: `⚽ JOIN LIGHTHOUSE MENS CLUB — APSL / LIGA 1\n\nOpen-tryout adult men's team competing in APSL / Liga 1.\nAll skill levels welcome. Train with the squad, compete on weekends.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Liga1 #PhillySoccer #MensSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=mens-club',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039296-lighthouse-mens-club-1893-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=mens-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
     // no defaultDays — runs until manually cancelled
@@ -259,7 +259,7 @@ const ADS = {
     name:    'Lighthouse APSL Trials — Fall 2026',
     imageUrl: 'https://footballhome.org/images/posts/apsl-trials-ad.png',
     caption: `⚽ APSL TRYOUTS — FALL 2026 SEASON\n\nLighthouse 1893 is finalizing its roster for the fall APSL season.\nSemi-pro level, committed players only — regular training, real competition. Come earn one of the remaining spots.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Tryouts #PhillySoccer #MensSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=apsl-trials',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039296-lighthouse-mens-club-1893-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=apsl-trials',
     ctaType: 'SIGN_UP',
     defaultBudget: 14, // raised from 5 → 14 on 2026-08-13 to match mens-club-LEADS/youth-signup
     // no defaultDays — runs until manually cancelled
@@ -315,7 +315,7 @@ const ADS = {
     name:    'Lighthouse CASA Select Liga 1 Trials — Fall 2026',
     imageUrl: 'https://footballhome.org/images/posts/liga1-trials-ad.png',
     caption: `⚽ CASA SELECT LIGA 1 TRIALS — FALL 2026\n\nOpen tryouts this summer for Lighthouse 1893's Liga 1 select squad.\nTrain with the group, compete on weekends, earn a fall roster spot.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #Liga1 #Trials #PhillySoccer #MensSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039300-lighthouse-1893-mens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=liga1-trials',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039296-lighthouse-mens-club-1893-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=liga1-trials',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
     // no defaultDays — runs until manually cancelled
@@ -380,7 +380,7 @@ const ADS = {
     // only the tone changed, not the audience.
     imageUrl: 'https://footballhome.org/images/posts/womens-club-ad.png',
     caption: `⚽ JOIN LIGHTHOUSE WOMEN'S CLUB 1895\n\nAdult women's 11v11 soccer, open to everyone — all skill levels, all backgrounds, no experience required.\nTrain with the squad, play in the Tri County Womens League this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #TriCountyWomensLeague #PhillySoccer #WomensSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-1893-womens-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_leads_2026&utm_content=womens-club',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer-(outdoor)/5039340-lighthouse-womens-club-1895-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_leads_2026&utm_content=womens-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 14,
     // no defaultDays — runs until manually cancelled (matches mens-club-LEADS)
@@ -437,7 +437,7 @@ const ADS = {
     // Boys (Grades 1–6) + Boys U11/U12 + U23 Mens cover the active age bands.
     imageUrl: 'https://footballhome.org/images/posts/boys-club-k12-ad.png',
     caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-club',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-boys-club-1897-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
     // no defaultDays — runs until manually cancelled
@@ -503,7 +503,7 @@ const ADS = {
     // Girls (Grades 1–6) + Girls U11/U12 cover the active age bands.
     imageUrl: 'https://footballhome.org/images/posts/girls-club-k12-ad.png',
     caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-club',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-girls-club-1898-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-club',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
     // no defaultDays — runs until manually cancelled
@@ -568,7 +568,7 @@ const ADS = {
     // Parents submit name/email/phone + child grade in-app; a coach follows up.
     imageUrl: 'https://footballhome.org/images/posts/boys-u11u12-travel-ad.png',
     caption: `⚽ LIGHTHOUSE BOYS U11/U12 — TRAVEL TEAM\n\nMaking the jump from rec to travel?\nWe're forming our U11 and U12 boys travel squads for the 2026-27 season.\n\n🏆 Philadelphia League — Boys (USSF-affiliated city pyramid)\n📅 Summer training begins June · Fall placement\n🎯 All skill levels welcome — current club & first-time travel players\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub #U11 #U12 #TravelSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039252-lighthouse-1893-boys-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-u11u12-travel',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039252-lighthouse-boys-club-1897-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-u11u12-travel',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
     // no defaultDays — runs until manually cancelled
@@ -625,7 +625,7 @@ const ADS = {
     // Parents submit name/email/phone + child grade in-app; a coach follows up.
     imageUrl: 'https://footballhome.org/images/posts/girls-u11u12-travel-ad.png',
     caption: `⚽ LIGHTHOUSE GIRLS U11/U12 — TRAVEL TEAM\n\nMaking the jump from rec to travel?\nWe're forming our U11 and U12 girls travel squads for the 2026-27 season.\n\nℹ️ Heads up: for Fall 2026 the U11/U12 girls will play on a co-ed travel team alongside the boys in the boys division. Girls-only roster planned as numbers grow.\n\n🏆 Philadelphia League · USSF-affiliated city pyramid\n📅 Summer training begins June · Fall placement\n🎯 All skill levels welcome — current club & first-time travel players\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub #U11 #U12 #TravelSoccer`,
-    ctaUrl:  'https://lighthouse1893soccerclub.leagueapps.com/memberships/5039357-lighthouse-1893-girls-club-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-u11u12-travel',
+    ctaUrl:  'https://lighthouse1893.leagueapps.com/leagues/soccer/5039357-lighthouse-girls-club-1898-soccer-membership?utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-u11u12-travel',
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
     leadForm: {

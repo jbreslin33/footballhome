@@ -13,6 +13,44 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/teams/:slug/gameday",  [this](const Request& r) { return handleGetGameday(r); });
     router.get(prefix + "/teams/:slug/lineup",   [this](const Request& r) { return handleGetLineup(r); });
     router.get(prefix + "/teams/:slug/schedule", [this](const Request& r) { return handleGetSchedule(r); });
+    router.get(prefix + "/leagueapps-registration-links", [this](const Request& r) { return handleGetRegistrationLinks(r); });
+}
+
+// ─── LeagueApps registration links ──────────────────────────────────────────
+// Unauthenticated: these are public signup links by design (they're meant to
+// be handed to leads/members), so no auth gate is needed here. Only rows
+// with a non-null registration_url are returned — inactive-variant programs
+// intentionally have none (no "register again" CTA for members already
+// demoted to inactive).
+Response PublicController::handleGetRegistrationLinks(const Request& request) {
+    try {
+        pqxx::result result = db_->query(
+            "SELECT category, variant, registration_url "
+            "FROM leagueapps_programs "
+            "WHERE registration_url IS NOT NULL "
+            "ORDER BY category, variant");
+
+        std::ostringstream data;
+        data << "[";
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) data << ",";
+            first = false;
+            data << "{"
+                 << "\"category\":\"" << escapeJson(row["category"].as<std::string>()) << "\","
+                 << "\"variant\":\"" << escapeJson(row["variant"].as<std::string>()) << "\","
+                 << "\"registrationUrl\":\"" << escapeJson(row["registration_url"].as<std::string>()) << "\""
+                 << "}";
+        }
+        data << "]";
+
+        return Response(HttpStatus::OK,
+                        createJSONResponse(true, "Registration links retrieved", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetRegistrationLinks: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Database error"));
+    }
 }
 
 // ─── Live match resolution ──────────────────────────────────────────────────
