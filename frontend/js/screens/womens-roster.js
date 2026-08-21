@@ -186,14 +186,19 @@ class WomensRosterScreen extends RosterScreenBase {
         }).join('')}
       </div>
 
-      <div style="overflow-x:auto; padding: 0 var(--space-2) var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(${cols.length}, max-content); gap:var(--space-2); align-items:start;">
+      <div style="padding: 0 var(--space-2) var(--space-2);">
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(${this.colMinWidth(cols.length)}, max-content)); gap:var(--space-2); align-items:start;">
           ${cols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>
     `;
   }
 
+  // Feeds the wrapping grid's minmax() floor above — columns that don't
+  // fit on one row wrap to the next instead of needing overflow-x scroll,
+  // which used to clip the move dropdown popover open below a card near
+  // the bottom of a column (overflow-x:auto forces overflow-y to auto
+  // too — a CSS quirk, not a real height shortage — found 2026-08-21).
   colMinWidth(n) {
     if (n <= 4) return '150px';
     if (n <= 6) return '130px';
