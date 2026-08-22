@@ -251,27 +251,32 @@ class GameLineupScreen extends Screen {
       return;
     }
 
-    // Unassigned default sort: Going first (not going / no response after —
-    // maybe counts as no response, same "yes or it didn't happen" read as
-    // the practice pills), then Starter Eligible within each RSVP tier.
-    const rsvpRank = (playerId) => {
+    // Unassigned split into RSVP groups (2026-08-22, owner directive) —
+    // same three-way Going/Not Going/No Response partition the older
+    // lineups.js multi-team board uses, so a coach can jump straight to
+    // "who's actually coming" instead of scanning one long sorted list.
+    const rsvpGroup = (playerId) => {
       const rsvp = this.stats.get(playerId)?.gameRsvp;
-      if (rsvp === 'yes') return 0;
-      if (rsvp === 'no') return 1;
-      return 2;
+      if (rsvp === 'yes') return 'going';
+      if (rsvp === 'no') return 'notGoing';
+      return 'noResponse';
     };
     const starterEligibleRank = (p) => p.lineupRole === 'starter' ? 0 : 1;
+    const byStarterRank = (a, b) => starterEligibleRank(a) - starterEligibleRank(b);
 
     const byZone = { starter: [], bench: [], alternate: [] };
-    const unassigned = [];
+    const unassignedGoing = [], unassignedNotGoing = [], unassignedNoResponse = [];
     for (const p of this.roster) {
       const z = this.zones.get(p.id);
-      if (z && byZone[z]) byZone[z].push(p);
-      else unassigned.push(p);
+      if (z && byZone[z]) { byZone[z].push(p); continue; }
+      const group = rsvpGroup(p.id);
+      if (group === 'going') unassignedGoing.push(p);
+      else if (group === 'notGoing') unassignedNotGoing.push(p);
+      else unassignedNoResponse.push(p);
     }
-    unassigned.sort((a, b) =>
-      (rsvpRank(a.id) - rsvpRank(b.id)) || (starterEligibleRank(a) - starterEligibleRank(b))
-    );
+    unassignedGoing.sort(byStarterRank);
+    unassignedNotGoing.sort(byStarterRank);
+    unassignedNoResponse.sort(byStarterRank);
 
     if (!this.isCoach && byZone.starter.length === 0) {
       box.innerHTML = `
@@ -373,7 +378,9 @@ class GameLineupScreen extends Screen {
       section('Starting', byZone.starter),
       section('Bench', byZone.bench),
       section('Alternates', byZone.alternate),
-      this.isCoach ? section('Unassigned', unassigned) : '',
+      this.isCoach ? section('✓ Going', unassignedGoing) : '',
+      this.isCoach ? section('✗ Not Going', unassignedNotGoing) : '',
+      this.isCoach ? section('– No Response', unassignedNoResponse) : '',
     ].join('');
   }
 }
