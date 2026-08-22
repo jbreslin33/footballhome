@@ -56,12 +56,14 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     // collapsing/tie-break is needed.
     const auto rows = db_->query(
         "SELECT p.la_user_id AS leagueapps_user_id, "
-        "       tp.team_id, tp.on_roster, tp.coach_sort_order, lr.name AS lineup_role "
+        "       tp.team_id, tp.on_roster, tp.coach_sort_order, lr.name AS lineup_role, "
+        "       rs.code AS roster_status "
         "  FROM team_persons tp "
         "  JOIN teams t ON t.id = tp.team_id "
         "   AND t.gender_category = $1 "
         "  JOIN persons p ON p.id = tp.person_id "
         "  LEFT JOIN lineup_roles lr ON lr.id = tp.lineup_role_id "
+        "  LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id "
         " WHERE tp.removed_at IS NULL",
         {domain_}
     );
@@ -77,6 +79,9 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
         if (!row["lineup_role"].is_null()) {
             c.lineupRole = row["lineup_role"].c_str();
         }
+        if (!row["roster_status"].is_null()) {
+            c.rosterStatus = row["roster_status"].c_str();
+        }
         out[uid].push_back(c);
     }
     return out;
@@ -85,11 +90,13 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
 std::vector<MensTeamAssignments::Cell> MensTeamAssignments::cellsForPerson(long long personId) {
     std::vector<Cell> out;
     const auto rows = db_->query(
-        "SELECT tp.team_id, tp.on_roster, tp.coach_sort_order, lr.name AS lineup_role "
+        "SELECT tp.team_id, tp.on_roster, tp.coach_sort_order, lr.name AS lineup_role, "
+        "       rs.code AS roster_status "
         "  FROM team_persons tp "
         "  JOIN teams t ON t.id = tp.team_id "
         "   AND t.gender_category = $1 "
         "  LEFT JOIN lineup_roles lr ON lr.id = tp.lineup_role_id "
+        "  LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id "
         " WHERE tp.person_id = $2 "
         "   AND tp.removed_at IS NULL",
         {domain_, std::to_string(personId)}
@@ -105,6 +112,9 @@ std::vector<MensTeamAssignments::Cell> MensTeamAssignments::cellsForPerson(long 
         }
         if (!row["lineup_role"].is_null()) {
             c.lineupRole = row["lineup_role"].c_str();
+        }
+        if (!row["roster_status"].is_null()) {
+            c.rosterStatus = row["roster_status"].c_str();
         }
         out.push_back(c);
     }

@@ -126,6 +126,8 @@ class MensRosterScreen extends RosterScreenBase {
       if (posSelect) return this.onPositionSelectChange(posSelect);
       const roleSelect = e.target.closest('.mr-role-select');
       if (roleSelect) return this.onLineupRoleSelectChange(roleSelect);
+      const statusSelect = e.target.closest('.mr-status-select');
+      if (statusSelect) return this.onRosterStatusSelectChange(statusSelect);
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -533,6 +535,27 @@ class MensRosterScreen extends RosterScreenBase {
          </select>`
       : '';
 
+    // ---- Official Roster Status dropdown (2026-08-22) ------------------
+    //
+    // Tracks whether this player has actually been submitted/approved on
+    // the official league roster (as opposed to just being on our own
+    // internal team_persons board) — migration 294/295. Applies to any
+    // real team column, not just APSL/Liga 1 (unlike the Roster Role
+    // select above, which is specific to the starter/bench/reserve
+    // selection pool). Keyed by personId — see
+    // TeamController::handleSetRosterStatusForPerson.
+    const statusSelect = (canMove && col && col.teamId && p.personId)
+      ? `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${p.personId}"
+                 title="Official league roster status"
+                 style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
+           <option value=""                  ${!p.rosterStatus ? 'selected' : ''}>Status: —</option>
+           <option value="not_on_roster"     ${p.rosterStatus === 'not_on_roster'     ? 'selected' : ''}>Not on Roster</option>
+           <option value="awaiting_approval" ${p.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
+           <option value="on_roster"         ${p.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>
+           <option value="suspended"         ${p.rosterStatus === 'suspended'         ? 'selected' : ''}>Suspended</option>
+         </select>`
+      : '';
+
     // Reserve/On-Roster toggle removed 2026-07-04 (pm) per user directive:
     // column membership is the whole game.  Match-day roster selection
     // lives on a separate lineups screen.
@@ -864,6 +887,7 @@ class MensRosterScreen extends RosterScreenBase {
       duesLabel,
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
+      statusSelectHtml: statusSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
       canMove,
@@ -1139,6 +1163,36 @@ class MensRosterScreen extends RosterScreenBase {
     } catch (err) {
       select.value = prevValue;
       alert(`Could not save Roster Role: ${err.message}`);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  // Official Roster Status dropdown (2026-08-22) — same optimistic
+  // single-select pattern as onLineupRoleSelectChange above, just a
+  // different endpoint/field.
+  async onRosterStatusSelectChange(select) {
+    const teamId = parseInt(select.dataset.teamId, 10);
+    const personId = parseInt(select.dataset.personId, 10);
+    const rosterStatus = select.value || null;
+    if (!teamId || !personId) return;
+
+    const prevValue = Array.from(select.options).find(o => o.defaultSelected)?.value ?? '';
+    select.disabled = true;
+    try {
+      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/person/${personId}/roster-status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rosterStatus }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
+    } catch (err) {
+      select.value = prevValue;
+      alert(`Could not save Roster Status: ${err.message}`);
     } finally {
       select.disabled = false;
     }

@@ -55,6 +55,17 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
         return this->handleSetLineupRoleForPerson(request);
     });
 
+    // Official league roster submission status (migration 294/295) —
+    // Not on Roster / Awaiting Approval / On Roster / Suspended.
+    // Keyed by person_id, same rationale as the lineup-role route above.
+    // The code is validated by joining against roster_statuses.code in
+    // the UPDATE itself (see handler) rather than a hardcoded regex, so
+    // adding future statuses needs no controller change.
+    //   body: { "rosterStatus": "not_on_roster" | "awaiting_approval" | "on_roster" | "suspended" | null }
+    router.put(prefix + "/:teamId/roster/person/:personId/roster-status", [this](const Request& request) {
+        return this->handleSetRosterStatusForPerson(request);
+    });
+
     // Get team accolades
     router.get(prefix + "/:teamId/accolades", [this](const Request& request) {
         return this->handleGetTeamAccolades(request);
@@ -157,6 +168,18 @@ std::string TeamController::extractPlayerIdFromPath(const std::string& path) {
 std::string TeamController::extractPersonIdFromRosterPath(const std::string& path) {
     // Extract person ID from path like "/api/teams/team-id/roster/person/person-id/lineup-role"
     std::regex id_regex(R"(/api/teams/[^/]+/roster/person/([^/]+)/lineup-role)");
+    std::smatch match;
+
+    if (std::regex_search(path, match, id_regex)) {
+        return match[1].str();
+    }
+
+    return "";
+}
+
+std::string TeamController::extractPersonIdFromRosterStatusPath(const std::string& path) {
+    // Extract person ID from path like "/api/teams/team-id/roster/person/person-id/roster-status"
+    std::regex id_regex(R"(/api/teams/[^/]+/roster/person/([^/]+)/roster-status)");
     std::smatch match;
 
     if (std::regex_search(path, match, id_regex)) {
@@ -370,6 +393,66 @@ Response TeamController::handleSetLineupRoleForPerson(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ handleSetLineupRoleForPerson: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update lineup role"));
+    }
+}
+
+Response TeamController::handleSetRosterStatusForPerson(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        std::string person_id = extractPersonIdFromRosterStatusPath(request.getPath());
+        if (team_id.empty() || person_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid team ID or person ID"));
+        }
+
+        std::string userId = extractUserIdFromToken(request);
+        if (userId.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Authentication required"));
+        }
+
+        pqxx::result authRows = db_->query(
+            "SELECT ("
+            "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.id = $1::int)"
+            "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+            "             JOIN coaches co ON co.id = tc.coach_id "
+            "             JOIN users u ON u.person_id = co.person_id "
+            "             WHERE tc.team_id = $2::int AND tc.ended_at IS NULL AND u.id = $1::int)"
+            ") AS is_coach",
+            {userId, team_id});
+        bool isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
+        if (!isCoach) {
+            return Response(HttpStatus::FORBIDDEN, createJSONResponse(false, "Not authorized to edit this team's roster"));
+        }
+
+        std::string body = request.getBody();
+        std::string code;
+        std::regex codeRegex(R"rx("rosterStatus"\s*:\s*"([a-z_]+)")rx");
+        std::smatch m;
+        bool hasCode = std::regex_search(body, m, codeRegex);
+        if (hasCode) code = m[1].str();
+        // Absence of a matched value (including explicit null) clears the status.
+        // The subquery below only matches an active roster_statuses.code, so an
+        // unrecognized string silently clears rather than storing garbage.
+
+        pqxx::result result = db_->query(
+            "UPDATE team_persons SET roster_status_id = "
+            "  (SELECT id FROM roster_statuses WHERE code = NULLIF($1, '') AND is_active) "
+            "WHERE team_id = $2::int "
+            "  AND person_id = $3::int "
+            "  AND removed_at IS NULL "
+            "RETURNING id",
+            {hasCode ? code : std::string(), team_id, person_id}
+        );
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Roster entry not found"));
+        }
+
+        std::string data = "{\"personId\":" + person_id + ",\"rosterStatus\":" +
+            (hasCode ? "\"" + code + "\"" : "null") + "}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "Roster status updated", data));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleSetRosterStatusForPerson: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update roster status"));
     }
 }
 

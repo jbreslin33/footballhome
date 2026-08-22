@@ -1115,6 +1115,9 @@ MensRoster::Result MensRoster::run(bool includeAll,
                 row["lineupRole"] = (cell && cell->lineupRole)
                     ? json(*cell->lineupRole)
                     : json(nullptr);
+                row["rosterStatus"] = (cell && cell->rosterStatus)
+                    ? json(*cell->rosterStatus)
+                    : json(nullptr);
                 row["nextBillDate"]  = bill.nextBillDate.empty() ? json(nullptr) : json(bill.nextBillDate);
                 row["nextBillAmount"] = jsNumber(bill.nextBillAmount);
                 row["isDefault"]     = bill.isDefault;

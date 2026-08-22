@@ -44,6 +44,11 @@ public:
         // (migration 283/293). Independent per team, so the same person
         // can carry a different role on APSL vs Liga 1.
         std::optional<std::string> lineupRole;
+        // Official league roster submission status code for this
+        // team_persons row — 'not_on_roster' | 'awaiting_approval' |
+        // 'on_roster' | 'suspended' | nullopt (unset). See roster_statuses
+        // (migration 294/295).
+        std::optional<std::string> rosterStatus;
     };
 
     using ByUser = std::unordered_map<std::string, std::vector<Cell>>;

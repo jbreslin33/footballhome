@@ -272,6 +272,7 @@ class RosterScreenBase extends Screen {
     cardId,
     rosterSelectHtml = '',
     roleSelectHtml = '',
+    statusSelectHtml = '',
     viewButtonHtml = '',
     duesLabel = '',
     dobShort = '',
@@ -352,9 +353,10 @@ class RosterScreenBase extends Screen {
             ${activeTeamsBadge}
           </div>
         </div>
-        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px;">
+        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px; flex-wrap:wrap; justify-content:flex-end; align-self:flex-start;">
           ${rosterSelectHtml}
           ${roleSelectHtml}
+          ${statusSelectHtml}
           ${viewButtonHtml}
         </div>
       </div>
