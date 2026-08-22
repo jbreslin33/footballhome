@@ -591,14 +591,19 @@ class MyScreen extends Screen {
   // Ops tags the raw Google Calendar description with a small DSL —
   // `Club:`, `Team:`, `Kind:`/`Type:` (inconsistent between event
   // types — practice tends to use `Type:`, match/pickup use `Kind:`,
-  // so we check both), `Opponent:`, `Arrival:`, `Kickoff:`, `Notes:`.
-  // gcal *title* is admin-only and never shown to players — these
-  // description tags are the player-facing source of truth instead.
+  // so we check both), `Opponent:`, `Arrival:`, `Warmup:`, `Kickoff:`,
+  // `Notes:`. gcal *title* is admin-only and never shown to players —
+  // these description tags are the player-facing source of truth
+  // instead. Same DSL tags migration 271 stores as fh_events.arrival_at/
+  // warmup_at/kickoff_at — parsed here straight off the raw description
+  // instead of those columns since no backend controller selects them
+  // yet (see my.js's ev.description already being on the wire either
+  // way for the other tags).
   _parseDescTags(description) {
     const tags = {};
     if (!description) return tags;
     for (const line of description.split(/\r?\n/)) {
-      const m = line.match(/^\s*(Club|Team|Kind|Type|Opponent|Arrival|Kickoff|Notes)\s*:\s*(.+?)\s*$/i);
+      const m = line.match(/^\s*(Club|Team|Kind|Type|Opponent|Arrival|Warmup|Kickoff|Notes)\s*:\s*(.+?)\s*$/i);
       if (m) tags[m[1].toLowerCase()] = m[2];
     }
     return tags;
@@ -1034,6 +1039,7 @@ class MyScreen extends Screen {
     const venue   = ev.location || '';
     const descTags = this._parseDescTags(ev.description);
     const arrival  = descTags.arrival || '';
+    const warmup   = descTags.warmup || '';
     const kickoff  = descTags.kickoff || '';
     const notes    = descTags.notes || '';
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
@@ -1059,8 +1065,8 @@ class MyScreen extends Screen {
     ` : '';
 
     const compactMeta = `${playersGoingCount} players, ${coachesGoingCount} coaches going · ${notGoingCount} not going`;
-    const arrivalKickoffLine = (arrival || kickoff)
-      ? [arrival ? `Arrival ${arrival}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
+    const arrivalKickoffLine = (arrival || warmup || kickoff)
+      ? [arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
       : '';
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
 
