@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: .docker/postgres/Dockerfile
     container_name: footballhome_db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: footballhome
       POSTGRES_USER: footballhome_user
@@ -44,7 +44,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: footballhome_backend
-    restart: unless-stopped
+    restart: always
     env_file: ./env
     environment:
       POSTGRES_PASSWORD: footballhome_pass
@@ -121,7 +121,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: footballhome_frontend
-    restart: unless-stopped
+    restart: always
     ports:
       - "3000:80"
     volumes:
@@ -209,7 +209,7 @@ services:
         # task 7. Falls back to "unknown" if the env var isn't set.
         FH_SIM_GIT_DESCRIBE: "${FH_SIM_GIT_DESCRIBE:-unknown}"
     container_name: footballhome_sim
-    restart: unless-stopped
+    restart: always
     env_file: ./env
     environment:
       SIM_BIND_ADDRESS: 0.0.0.0
