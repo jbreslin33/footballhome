@@ -452,6 +452,12 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
                 row["coachSortOrder"] = (cell && cell->coachSortOrder)
                     ? json(*cell->coachSortOrder)
                     : json(nullptr);
+                row["lineupRole"] = (cell && cell->lineupRole)
+                    ? json(*cell->lineupRole)
+                    : json(nullptr);
+                row["rosterStatus"] = (cell && cell->rosterStatus)
+                    ? json(*cell->rosterStatus)
+                    : json(nullptr);
                 row["personId"]        = personIdJson;
                 row["fhLastActivityAt"] = fhLastActivity;
                 row["activeTeams"]      = activeTeamsJson;

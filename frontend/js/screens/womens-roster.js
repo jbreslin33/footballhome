@@ -76,6 +76,10 @@ class WomensRosterScreen extends RosterScreenBase {
     this.element.addEventListener('change', e => {
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
+      const roleSelect = e.target.closest('.mr-role-select');
+      if (roleSelect) return this.onLineupRoleSelectChange(roleSelect);
+      const statusSelect = e.target.closest('.mr-status-select');
+      if (statusSelect) return this.onRosterStatusSelectChange(statusSelect);
     });
 
     // Drag-and-drop reorder — native HTML5 events wired via delegation
@@ -308,6 +312,11 @@ class WomensRosterScreen extends RosterScreenBase {
     // identical to Mens/Boys/Girls — it lives once in RosterScreenBase.
     const { rosterSelectHtml: moveSelect, canMove } = this._teamCardCapabilities(p, columns, col);
 
+    // Roster Role + Official Roster Status dropdowns (2026-08-22) — see
+    // RosterScreenBase.renderRoleSelect / renderStatusSelect for the doc.
+    const roleSelect   = this.renderRoleSelect(p, col, canMove);
+    const statusSelect = this.renderStatusSelect(p, col, canMove);
+
     // 👤 VIEW button — dedicated drill-down into the universal
     // PersonScreen, same shared component every other roster uses.
     const profileBtn = this.renderPersonActions(p, {
@@ -333,6 +342,8 @@ class WomensRosterScreen extends RosterScreenBase {
       dobShort,
       duesLabel,
       rosterSelectHtml: moveSelect,
+      roleSelectHtml: roleSelect,
+      statusSelectHtml: statusSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
       canMove,

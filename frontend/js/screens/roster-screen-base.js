@@ -77,6 +77,106 @@ class RosterScreenBase extends Screen {
     };
   }
 
+  // ── Roster Role + Official Roster Status dropdowns (2026-08-22) ──────
+  //
+  // Shared by every roster board (Mens/Boys/Girls/Womens) — "make all
+  // pills same since it's generic" (owner directive, after the labels
+  // were renamed from "APSL ..." to "1st Team ..." specifically so this
+  // could roll out past mens without misleading wording). Both are plain
+  // per-(team, person) team_persons designations, independent of which
+  // domain/column they're rendered on:
+  //   • lineup_role_id  — coach-set "1st Team Starter/Bench/Reserve"
+  //     (migration 279/283/293), originally the game-lineup screen's
+  //     "Elig: Start/Bench" toggle before it moved to the Teams page.
+  //   • roster_status_id — official league roster submission status
+  //     (migration 294/295): Not on Roster / Awaiting Approval /
+  //     On Roster / Suspended.
+  // Keyed by personId (not leagueAppsUserId) — same LA-userId-drift
+  // immunity as the reorder/move endpoints; see
+  // TeamController::handleSetLineupRoleForPerson /
+  // handleSetRosterStatusForPerson.
+  renderRoleSelect(player, col, canMove) {
+    if (!(canMove && col && col.teamId && player.personId)) return '';
+    return `<select class="mr-role-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
+               title="Roster Role — 1st Team Starter/Bench, or 1st Team Reserve for a call-up"
+               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
+         <option value=""        ${!player.lineupRole ? 'selected' : ''}>Role: —</option>
+         <option value="starter" ${player.lineupRole === 'starter' ? 'selected' : ''}>1st Team Starter</option>
+         <option value="bench"   ${player.lineupRole === 'bench'   ? 'selected' : ''}>1st Team Bench</option>
+         <option value="reserve" ${player.lineupRole === 'reserve' ? 'selected' : ''}>1st Team Reserve</option>
+       </select>`;
+  }
+
+  renderStatusSelect(player, col, canMove) {
+    if (!(canMove && col && col.teamId && player.personId)) return '';
+    return `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
+               title="Official league roster status"
+               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
+         <option value=""                  ${!player.rosterStatus ? 'selected' : ''}>Status: —</option>
+         <option value="not_on_roster"     ${player.rosterStatus === 'not_on_roster'     ? 'selected' : ''}>Not on Roster</option>
+         <option value="awaiting_approval" ${player.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
+         <option value="on_roster"         ${player.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>
+         <option value="suspended"         ${player.rosterStatus === 'suspended'         ? 'selected' : ''}>Suspended</option>
+       </select>`;
+  }
+
+  // Optimistic: flip the select's own state immediately, roll back only
+  // on a failed save — no full-board reload needed since neither of
+  // these moves the card between columns.
+  async onLineupRoleSelectChange(select) {
+    const teamId = parseInt(select.dataset.teamId, 10);
+    const personId = parseInt(select.dataset.personId, 10);
+    const lineupRole = select.value || null;
+    if (!teamId || !personId) return;
+
+    const prevValue = Array.from(select.options).find(o => o.defaultSelected)?.value ?? '';
+    select.disabled = true;
+    try {
+      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/person/${personId}/lineup-role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineupRole }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
+    } catch (err) {
+      select.value = prevValue;
+      alert(`Could not save Roster Role: ${err.message}`);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  async onRosterStatusSelectChange(select) {
+    const teamId = parseInt(select.dataset.teamId, 10);
+    const personId = parseInt(select.dataset.personId, 10);
+    const rosterStatus = select.value || null;
+    if (!teamId || !personId) return;
+
+    const prevValue = Array.from(select.options).find(o => o.defaultSelected)?.value ?? '';
+    select.disabled = true;
+    try {
+      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/person/${personId}/roster-status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rosterStatus }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
+    } catch (err) {
+      select.value = prevValue;
+      alert(`Could not save Roster Status: ${err.message}`);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
   formatDobShort(value) {
     if (!value) return '';
     const d = new Date(`${value}T00:00:00Z`);

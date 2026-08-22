@@ -104,6 +104,10 @@ class BoysRosterScreen extends RosterScreenBase {
     this.element.addEventListener('change', e => {
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
+      const roleSelect = e.target.closest('.mr-role-select');
+      if (roleSelect) return this.onLineupRoleSelectChange(roleSelect);
+      const statusSelect = e.target.closest('.mr-status-select');
+      if (statusSelect) return this.onRosterStatusSelectChange(statusSelect);
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -439,6 +443,11 @@ class BoysRosterScreen extends RosterScreenBase {
     // contact, payments pill) share this base so they align.
     const btnBase = 'padding:0 5px; font-size:0.66rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.35; white-space:nowrap;';
 
+    // Roster Role + Official Roster Status dropdowns (2026-08-22) — see
+    // RosterScreenBase.renderRoleSelect / renderStatusSelect for the doc.
+    const roleSelect   = this.renderRoleSelect(p, col, canMove);
+    const statusSelect = this.renderStatusSelect(p, col, canMove);
+
     // Reserve/On-Roster toggle removed 2026-07-04 (pm) per user directive:
     // column membership is the whole game.  Match-day roster selection
     // lives on a separate lineups screen.
@@ -697,6 +706,8 @@ class BoysRosterScreen extends RosterScreenBase {
       dobShort,
       duesLabel,
       rosterSelectHtml: moveSelect,
+      roleSelectHtml: roleSelect,
+      statusSelectHtml: statusSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
       canMove,

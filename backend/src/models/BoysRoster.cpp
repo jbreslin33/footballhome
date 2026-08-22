@@ -628,6 +628,12 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
                 row["coachSortOrder"] = (cell && cell->coachSortOrder)
                     ? json(*cell->coachSortOrder)
                     : json(nullptr);
+                row["lineupRole"] = (cell && cell->lineupRole)
+                    ? json(*cell->lineupRole)
+                    : json(nullptr);
+                row["rosterStatus"] = (cell && cell->rosterStatus)
+                    ? json(*cell->rosterStatus)
+                    : json(nullptr);
                 attachPayments(row);
                 row["lastPayReminder"] = lastPayReminderJson(uid);
                 buckets[std::to_string(tid)].push_back(std::move(row));

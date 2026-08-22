@@ -297,7 +297,7 @@ class GameLineupScreen extends Screen {
     // dropdown, PUT /api/teams/:teamId/roster/person/:personId/lineup-role),
     // not from this per-match screen. Still shown here so a coach building
     // a lineup can see it without leaving the page.
-    const ROLE_LABEL = { starter: 'APSL Starter', bench: 'APSL Bench', reserve: 'APSL Reserve' };
+    const ROLE_LABEL = { starter: '1st Team Starter', bench: '1st Team Bench', reserve: '1st Team Reserve' };
     const roleButtons = (p) => {
       const label = ROLE_LABEL[p.lineupRole];
       if (!label) return '';
