@@ -3,9 +3,16 @@
 // v1 scope (2026-08-13): tap-to-assign zones only, no pitch/drag — see
 // scoping note in the implementation plan. A coach taps a player card's
 // Starter/Bench/Alt button to assign them (tap the active one again to
-// clear back to unassigned); players see the same grouped lists read-only.
-// Reuses the exact debounce/save pattern from lineups.js's _scheduleSave/
-// _saveLineup, just scoped to one match/team instead of a multi-team map.
+// clear back to unassigned). Reuses the exact debounce/save pattern from
+// lineups.js's _scheduleSave/_saveLineup, just scoped to one match/team
+// instead of a multi-team map.
+//
+// Player view (2026-08-22, owner directive): players get a plain
+// read-only "team sheet" (_renderPlayerView) — numbered by jersey,
+// Starting XI / Bench / Alternates, none of the coach's stats/RSVP/
+// controls. A coach reaches the identical view via the "👀 Player
+// Lineup View" toggle on this same screen (this.viewMode) rather than a
+// separate route, so there's only ever one "Lineup" entry point.
 //
 // Backend surface:
 //   GET /api/eligibility/lineup/:matchId → { success, data: {
@@ -53,7 +60,13 @@ class GameLineupScreen extends Screen {
     this.teamId    = null;
     this.matchStartsAt = null; // naive UTC-string date of this match, for the trailing "game" pill
     this.isCoach   = false;
-    this.roster    = [];   // [{id:Number, name, lineupRole}] — PLAYER rows only
+    // Coach-only toggle (2026-08-22, owner directive: "only need 1 Lineup
+    // button on screen") between the editable coach view and a read-only
+    // preview of exactly what players see. Players always get the player
+    // view regardless of this flag — see the effectiveIsPlayerView check
+    // in _render().
+    this.viewMode  = 'coach'; // 'coach' | 'player'
+    this.roster    = [];   // [{id:Number, name, lineupRole, jerseyNumber}] — PLAYER rows only
     this.zones     = new Map(); // playerId:Number -> 'starter'|'bench'|'alternate'
     this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
@@ -95,6 +108,12 @@ class GameLineupScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
+        return;
+      }
+      const viewToggle = e.target.closest('#gl-view-toggle');
+      if (viewToggle && this.isCoach) {
+        this.viewMode = this.viewMode === 'player' ? 'coach' : 'player';
+        this._render();
         return;
       }
       const zoneBtn = e.target.closest('[data-lineup-zone-btn]');
@@ -155,7 +174,7 @@ class GameLineupScreen extends Screen {
           if (p.roleType !== 'PLAYER') continue;
           const pid = Number(p.id);
           if (byId.has(pid)) continue; // already merged from an earlier team
-          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lineupRole: p.lineupRole || null, teamId: fromTeamId });
+          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null });
         }
       }
       this.roster = [...byId.values()];
@@ -278,11 +297,21 @@ class GameLineupScreen extends Screen {
     unassignedNotGoing.sort(byStarterRank);
     unassignedNoResponse.sort(byStarterRank);
 
-    if (!this.isCoach && byZone.starter.length === 0) {
-      box.innerHTML = `
-        <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
-          🔒 Lineup not yet published
-        </div>`;
+    // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
+    // 1 Lineup button on screen" — coach previews the exact same read-only
+    // team-sheet a player would see, via a link on this same page, instead
+    // of a separate screen/route). Players always get the player view.
+    const effectiveIsPlayerView = !this.isCoach || this.viewMode === 'player';
+    const viewToggleHtml = this.isCoach
+      ? `<div style="text-align:right; margin-bottom:8px;">
+           <button id="gl-view-toggle" type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px;">
+             ${effectiveIsPlayerView ? '✏️ Coach View' : '👀 Player Lineup View'}
+           </button>
+         </div>`
+      : '';
+
+    if (effectiveIsPlayerView) {
+      box.innerHTML = viewToggleHtml + this._renderPlayerView(byZone);
       return;
     }
 
@@ -374,7 +403,7 @@ class GameLineupScreen extends Screen {
         : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`}
     `;
 
-    box.innerHTML = [
+    box.innerHTML = viewToggleHtml + [
       section('Starting', byZone.starter),
       section('Bench', byZone.bench),
       section('Alternates', byZone.alternate),
@@ -382,5 +411,48 @@ class GameLineupScreen extends Screen {
       this.isCoach ? section('✗ Not Going', unassignedNotGoing) : '',
       this.isCoach ? section('– No Response', unassignedNoResponse) : '',
     ].join('');
+  }
+
+  // Read-only "traditional team sheet" (2026-08-22, owner directive) —
+  // what players actually see, and what a coach sees via the "👀 Player
+  // Lineup View" toggle above. Deliberately plain: numbered by jersey
+  // (falls back to "–" when unset, e.g. FH-only squad adds with no LA
+  // registration), no stats/RSVP/coach controls. Same "not published
+  // yet" gate the old player-only branch used (byZone.starter.length===0
+  // is the only signal we have — there's no explicit publish flag).
+  _renderPlayerView(byZone) {
+    if (byZone.starter.length === 0) {
+      return `
+        <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
+          🔒 Lineup not yet published
+        </div>`;
+    }
+
+    const byJerseyThenName = (list) => [...list].sort((a, b) => {
+      const an = a.jerseyNumber != null ? Number(a.jerseyNumber) : Infinity;
+      const bn = b.jerseyNumber != null ? Number(b.jerseyNumber) : Infinity;
+      if (an !== bn) return an - bn;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    const row = (p) => `
+      <div style="display:flex; align-items:center; gap:12px; padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
+        <span style="min-width:26px; text-align:right; font-weight:700; opacity:0.7; font-variant-numeric:tabular-nums;">${p.jerseyNumber != null ? p.jerseyNumber : '–'}</span>
+        <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
+      </div>`;
+
+    const section = (label, list) => list.length ? `
+      <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${label}</h2>
+      <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
+        ${byJerseyThenName(list).map(row).join('')}
+      </div>
+    ` : '';
+
+    return `
+      <div style="max-width:440px; margin:0 auto;">
+        ${section('⚽ Starting XI', byZone.starter)}
+        ${section('Bench', byZone.bench)}
+        ${section('Alternates', byZone.alternate)}
+      </div>`;
   }
 }
