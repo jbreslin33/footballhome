@@ -40,12 +40,21 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
         return this->handleRemoveRosterMember(request);
     });
 
-    // Set/clear a player's starter/bench-eligible designation for this team
-    //   body: { "lineupRole": "starter" | "bench" | null }
+    // Set/clear a player's Roster Role designation for this team
+    //   body: { "lineupRole": "starter" | "bench" | "reserve" | null }
     router.put(prefix + "/:teamId/roster/:playerId/lineup-role", [this](const Request& request) {
         return this->handleSetLineupRole(request);
     });
-    
+
+    // Same write, keyed by person_id instead of players.id — immune to
+    // LA userId drift and to the separate `players` table id space the
+    // route above requires. Used by the Teams roster board
+    // (mens-roster.js), which already carries personId on every row.
+    //   body: { "lineupRole": "starter" | "bench" | "reserve" | null }
+    router.put(prefix + "/:teamId/roster/person/:personId/lineup-role", [this](const Request& request) {
+        return this->handleSetLineupRoleForPerson(request);
+    });
+
     // Get team accolades
     router.get(prefix + "/:teamId/accolades", [this](const Request& request) {
         return this->handleGetTeamAccolades(request);
@@ -142,6 +151,18 @@ std::string TeamController::extractPlayerIdFromPath(const std::string& path) {
         return match[1].str();
     }
     
+    return "";
+}
+
+std::string TeamController::extractPersonIdFromRosterPath(const std::string& path) {
+    // Extract person ID from path like "/api/teams/team-id/roster/person/person-id/lineup-role"
+    std::regex id_regex(R"(/api/teams/[^/]+/roster/person/([^/]+)/lineup-role)");
+    std::smatch match;
+
+    if (std::regex_search(path, match, id_regex)) {
+        return match[1].str();
+    }
+
     return "";
 }
 
@@ -265,7 +286,7 @@ Response TeamController::handleSetLineupRole(const Request& request) {
 
         std::string body = request.getBody();
         std::string lineupRole;
-        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"(starter|bench)")rx");
+        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"(starter|bench|reserve)")rx");
         std::smatch m;
         bool hasRole = std::regex_search(body, m, roleRegex);
         if (hasRole) lineupRole = m[1].str();
@@ -290,6 +311,64 @@ Response TeamController::handleSetLineupRole(const Request& request) {
 
     } catch (const std::exception& e) {
         std::cerr << "❌ handleSetLineupRole: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update lineup role"));
+    }
+}
+
+Response TeamController::handleSetLineupRoleForPerson(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        std::string person_id = extractPersonIdFromRosterPath(request.getPath());
+        if (team_id.empty() || person_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid team ID or person ID"));
+        }
+
+        std::string userId = extractUserIdFromToken(request);
+        if (userId.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Authentication required"));
+        }
+
+        pqxx::result authRows = db_->query(
+            "SELECT ("
+            "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.id = $1::int)"
+            "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+            "             JOIN coaches co ON co.id = tc.coach_id "
+            "             JOIN users u ON u.person_id = co.person_id "
+            "             WHERE tc.team_id = $2::int AND tc.ended_at IS NULL AND u.id = $1::int)"
+            ") AS is_coach",
+            {userId, team_id});
+        bool isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
+        if (!isCoach) {
+            return Response(HttpStatus::FORBIDDEN, createJSONResponse(false, "Not authorized to edit this team's roster"));
+        }
+
+        std::string body = request.getBody();
+        std::string lineupRole;
+        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"(starter|bench|reserve)")rx");
+        std::smatch m;
+        bool hasRole = std::regex_search(body, m, roleRegex);
+        if (hasRole) lineupRole = m[1].str();
+        // Absence of a matched value (including explicit null) clears the flag.
+
+        pqxx::result result = db_->query(
+            "UPDATE team_persons SET lineup_role_id = "
+            "  (SELECT id FROM lineup_roles WHERE name = NULLIF($1, '')) "
+            "WHERE team_id = $2::int "
+            "  AND person_id = $3::int "
+            "  AND removed_at IS NULL "
+            "RETURNING id",
+            {hasRole ? lineupRole : std::string(), team_id, person_id}
+        );
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Roster entry not found"));
+        }
+
+        std::string data = "{\"personId\":" + person_id + ",\"lineupRole\":" +
+            (hasRole ? "\"" + lineupRole + "\"" : "null") + "}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "Lineup role updated", data));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleSetLineupRoleForPerson: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update lineup role"));
     }
 }

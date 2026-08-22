@@ -29,11 +29,11 @@
 //   GET /api/teams/:teamId/roster        → { success, data: [{id, name,
 //     roleType, lineupRole}, ...] }
 //   PUT /api/eligibility/lineup/:matchId → same shape lineups.js already writes
-//   PUT /api/teams/:teamId/roster/:playerId/lineup-role → { lineupRole: 'starter'|'bench'|null }
-//     coach/admin-only manual starter/bench-eligible designation (migration 279)
-//     — :teamId must be one of the teams that specific player actually
-//     rosters on (see roster merge below), not necessarily the match's
-//     primary team.
+//
+// lineupRole ('starter'|'bench'|'reserve'|null, migration 279/283/293) is a
+// coach-set Roster Role designation shown here read-only (see roleButtons
+// below). It's edited from the Teams roster board (mens-roster.js), not
+// from this per-match screen — moved there 2026-08-22 per owner directive.
 //
 // Reached via navigation.goTo('game-lineup', { matchId, title, when }) —
 // title/when are optional, already-sanitized display strings (never pass a
@@ -103,12 +103,6 @@ class GameLineupScreen extends Screen {
         const zone = zoneBtn.getAttribute('data-lineup-zone-btn');
         this._toggleZone(playerId, zone);
         return;
-      }
-      const roleBtn = e.target.closest('[data-lineup-role-btn]');
-      if (roleBtn && this.isCoach) {
-        const playerId = Number(roleBtn.getAttribute('data-player-id'));
-        const role = roleBtn.getAttribute('data-lineup-role-btn');
-        this._setLineupRole(playerId, role);
       }
     });
   }
@@ -244,31 +238,6 @@ class GameLineupScreen extends Screen {
     }
   }
 
-  // Coach-set "starter eligible" / "bench eligible" designation — a plain
-  // manual flag on team_persons (migration 279), separate from this
-  // match's zone assignment. Tapping the active role again clears it.
-  async _setLineupRole(playerId, role) {
-    const player = this.roster.find(p => p.id === playerId);
-    if (!player || !player.teamId) return;
-    const nextRole = player.lineupRole === role ? null : role;
-    const prevRole = player.lineupRole;
-    player.lineupRole = nextRole;
-    this._render();
-    try {
-      const res = await this.auth.fetch(`/api/teams/${player.teamId}/roster/${playerId}/lineup-role`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineupRole: nextRole }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Save failed');
-    } catch (err) {
-      console.error('[game-lineup] lineup-role save failed:', err);
-      player.lineupRole = prevRole;
-      this._render();
-    }
-  }
-
   _render() {
     const box = this.find('#gl-body');
     if (!box) return;
@@ -323,16 +292,18 @@ class GameLineupScreen extends Screen {
         }).join('')}
       </div>`;
 
-    const roleButtons = (p) => `
-      <div style="display:flex; gap:4px;">
-        ${['starter', 'bench'].map(r => {
-          const active = p.lineupRole === r;
-          const label = r === 'starter' ? 'Elig: Start' : 'Elig: Bench';
-          return `<button type="button" data-lineup-role-btn="${r}" data-player-id="${p.id}"
-            class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}"
-            style="padding:1px 6px; font-size:0.68rem; opacity:${active ? '1' : '0.7'};">${label}</button>`;
-        }).join('')}
-      </div>`;
+    // Read-only Roster Role chip (2026-08-22) — this designation is now
+    // set from the Teams roster board (mens-roster.js's Roster Role
+    // dropdown, PUT /api/teams/:teamId/roster/person/:personId/lineup-role),
+    // not from this per-match screen. Still shown here so a coach building
+    // a lineup can see it without leaving the page.
+    const ROLE_LABEL = { starter: 'APSL Starter', bench: 'APSL Bench', reserve: 'APSL Reserve' };
+    const roleButtons = (p) => {
+      const label = ROLE_LABEL[p.lineupRole];
+      if (!label) return '';
+      return `<span title="Roster Role — set on the Teams page"
+        style="padding:1px 6px; font-size:0.68rem; font-weight:700; border-radius:3px; background:#334155; color:#e2e8f0; white-space:nowrap;">${label}</span>`;
+    };
 
     const rsvpBadge = (rsvp) => {
       if (rsvp === 'yes') return '<span title="RSVP: Going" style="color:#22c55e;">✓</span>';

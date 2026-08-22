@@ -21,6 +21,7 @@ private:
     Response handleUpdateRosterMember(const Request& request);
     Response handleRemoveRosterMember(const Request& request);
     Response handleSetLineupRole(const Request& request);
+    Response handleSetLineupRoleForPerson(const Request& request);
     Response handleGetTeamAccolades(const Request& request);
     Response handleSetLiveMatch(const Request& request);
     Response handleGetShareInfo(const Request& request);
@@ -28,6 +29,7 @@ private:
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractPlayerIdFromPath(const std::string& path);
+    std::string extractPersonIdFromRosterPath(const std::string& path);
     std::string extractTeamIdGeneric(const std::string& path);
     std::string extractTeamIdForLiveMatch(const std::string& path);
     bool hasBearerToken(const Request& request);

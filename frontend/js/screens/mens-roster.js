@@ -124,6 +124,8 @@ class MensRosterScreen extends RosterScreenBase {
     this.element.addEventListener('change', e => {
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
+      const roleSelect = e.target.closest('.mr-role-select');
+      if (roleSelect) return this.onLineupRoleSelectChange(roleSelect);
     });
 
     // Drag-and-drop reorder (2026-07-04 pm).  Native HTML5 events wired
@@ -505,6 +507,32 @@ class MensRosterScreen extends RosterScreenBase {
     // contact, payments pill) share this base so they align.
     const btnBase = 'padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap;';
 
+    // ---- Roster Role dropdown (2026-08-22) -----------------------------
+    //
+    // Coach-set "starter/bench eligible for APSL" designation, formerly a
+    // two-button "Elig: Start" / "Elig: Bench" toggle on the per-match
+    // game-lineup screen (migration 279/283) — moved here per owner
+    // directive ("this can all be put on the Teams page") and given a
+    // third state, "reserve" (migration 293), for Liga 1 players held as
+    // the APSL call-up pool. A <select> reads as one line instead of two
+    // buttons, so it's the compact option for a card this dense.
+    // team_persons.lineup_role_id is independent per team row, so this
+    // only makes sense on the two teams it was designed for (APSL 35,
+    // Liga 1 120) — Liga 2 / Lighthouse Adult don't get the control.
+    // Keyed by personId (not leagueAppsUserId) — see
+    // TeamController::handleSetLineupRoleForPerson doc, same LA-userId-
+    // drift immunity as the reorder/move endpoints.
+    const roleSelect = (canMove && col && (col.teamId === 35 || col.teamId === 120) && p.personId)
+      ? `<select class="mr-role-select" data-team-id="${col.teamId}" data-person-id="${p.personId}"
+                 title="Roster Role — APSL Starter/Bench, or APSL Reserve for a Liga 1 call-up"
+                 style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
+           <option value=""        ${!p.lineupRole ? 'selected' : ''}>Role: —</option>
+           <option value="starter" ${p.lineupRole === 'starter' ? 'selected' : ''}>APSL Starter</option>
+           <option value="bench"   ${p.lineupRole === 'bench'   ? 'selected' : ''}>APSL Bench</option>
+           <option value="reserve" ${p.lineupRole === 'reserve' ? 'selected' : ''}>APSL Reserve</option>
+         </select>`
+      : '';
+
     // Reserve/On-Roster toggle removed 2026-07-04 (pm) per user directive:
     // column membership is the whole game.  Match-day roster selection
     // lives on a separate lineups screen.
@@ -835,6 +863,7 @@ class MensRosterScreen extends RosterScreenBase {
       dobShort,
       duesLabel,
       rosterSelectHtml: moveSelect,
+      roleSelectHtml: roleSelect,
       viewButtonHtml: profileBtn,
       borderColor: cardBorder,
       canMove,
@@ -1080,6 +1109,38 @@ class MensRosterScreen extends RosterScreenBase {
     } catch (err) {
       alert(`Could not save order: ${err.message}`);
       await this.load({ quiet: true });
+    }
+  }
+
+  // Roster Role dropdown (2026-08-22) — coach-set APSL Starter/Bench/
+  // Reserve designation, independent per team row (see roleSelect doc in
+  // renderPlayer). Optimistic: flip the select's own state immediately,
+  // roll back only on a failed save — no full-board reload needed since
+  // this doesn't move the card between columns.
+  async onLineupRoleSelectChange(select) {
+    const teamId = parseInt(select.dataset.teamId, 10);
+    const personId = parseInt(select.dataset.personId, 10);
+    const lineupRole = select.value || null;
+    if (!teamId || !personId) return;
+
+    const prevValue = Array.from(select.options).find(o => o.defaultSelected)?.value ?? '';
+    select.disabled = true;
+    try {
+      const res = await this.auth.fetch(`/api/teams/${teamId}/roster/person/${personId}/lineup-role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineupRole }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
+    } catch (err) {
+      select.value = prevValue;
+      alert(`Could not save Roster Role: ${err.message}`);
+    } finally {
+      select.disabled = false;
     }
   }
 

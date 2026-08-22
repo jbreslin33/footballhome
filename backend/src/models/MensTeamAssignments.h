@@ -39,6 +39,11 @@ public:
         // `reorderTeam()` as a dense sequence so we never have to deal
         // with gaps.  Added migration 089 (2026-07-04 pm).
         std::optional<int> coachSortOrder;
+        // Coach-set Roster Role for this team_persons row — 'starter' |
+        // 'bench' | 'reserve' | nullopt (unset). See lineup_roles
+        // (migration 283/293). Independent per team, so the same person
+        // can carry a different role on APSL vs Liga 1.
+        std::optional<std::string> lineupRole;
     };
 
     using ByUser = std::unordered_map<std::string, std::vector<Cell>>;

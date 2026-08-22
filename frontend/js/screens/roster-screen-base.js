@@ -271,6 +271,7 @@ class RosterScreenBase extends Screen {
     cardClass,
     cardId,
     rosterSelectHtml = '',
+    roleSelectHtml = '',
     viewButtonHtml = '',
     duesLabel = '',
     dobShort = '',
@@ -353,6 +354,7 @@ class RosterScreenBase extends Screen {
         </div>
         <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px;">
           ${rosterSelectHtml}
+          ${roleSelectHtml}
           ${viewButtonHtml}
         </div>
       </div>
