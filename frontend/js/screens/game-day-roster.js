@@ -11,6 +11,7 @@ class GameDayRosterScreen extends Screen {
     this.filterText = '';
     this.filterRsvp = 'all';
     this.listFilter = 'all';
+    this._pendingPostType = null;
   }
 
   render() {
@@ -31,8 +32,37 @@ class GameDayRosterScreen extends Screen {
         </div>
         
         <div id="roster-content" style="display: none;">
-          <!-- Match Card (Instagram-style, shareable) -->
-          <div id="match-card-share" class="gdr-match-card">
+          <!-- Post-type pills + the ONE preview image, which changes per
+               pill (owner, 2026-08-22: "the image on insta post screen
+               should be at top and not under 1 image should change at
+               top depending on pill selection... don't need multiple
+               images on that screen its confusing" -- replaces the old
+               static "MATCH DAY" card that always showed a live SQUAD
+               list regardless of which post type was selected, which is
+               also what looked like players showing up on the Game
+               Announcement post even though that post type itself never
+               included a roster). -->
+          <div class="gdr-social-row">
+            <div class="gdr-social-buttons">
+              <button class="gdr-social-btn" data-post-type="game_day" style="--btn-accent:#f59e0b;">⚽ Game<br>Announcement</button>
+              <button class="gdr-social-btn" data-post-type="lineup" style="--btn-accent:#8b5cf6;">📋 20-Man<br>Squad</button>
+              <button class="gdr-social-btn" data-post-type="pre_match_announcement" style="--btn-accent:#3b82f6;">⚔️ Starters<br>& Bench</button>
+              <button class="gdr-social-btn" data-post-type="post_game" style="--btn-accent:#22c55e;">🏆 Match<br>Result</button>
+            </div>
+            <div class="gdr-lineup-links">
+              <button id="set-starters-btn" class="btn btn-secondary btn-sm" style="font-size:0.75em;padding:2px 8px;">✏️ Edit Lineup</button>
+            </div>
+          </div>
+
+          <!-- Inline social post preview (shown when a social button is clicked) -->
+          <div id="social-preview-container"></div>
+
+          <!-- Old static match card kept in the DOM (hidden) -- several
+               call sites still populate it (renderMatchCard(),
+               updateCardRoster()) and shareAsImage()/copyAsText() still
+               read it. Hiding instead of deleting avoids guarding every
+               one of those against a missing element. -->
+          <div id="match-card-share" class="gdr-match-card" style="display:none;">
             <div class="gdr-card-inner" id="gdr-card-inner">
               <div class="gdr-card-accent"></div>
               <div class="gdr-card-header">MATCH DAY</div>
@@ -51,9 +81,9 @@ class GameDayRosterScreen extends Screen {
               </div>
               <div class="gdr-card-divider"></div>
               <div class="gdr-card-details">
-                <div class="gdr-detail" id="gdr-date">\ud83d\udcc5 \u2014</div>
-                <div class="gdr-detail" id="gdr-time">\ud83d\udd50 \u2014</div>
-                <div class="gdr-detail" id="gdr-venue">\ud83d\udccd \u2014</div>
+                <div class="gdr-detail" id="gdr-date">📅 —</div>
+                <div class="gdr-detail" id="gdr-time">🕐 —</div>
+                <div class="gdr-detail" id="gdr-venue">📍 —</div>
               </div>
               <div class="gdr-card-roster" id="gdr-card-roster" style="display:none;">
                 <div class="gdr-card-divider"></div>
@@ -61,38 +91,23 @@ class GameDayRosterScreen extends Screen {
                 <div class="gdr-roster-grid" id="gdr-roster-names"></div>
               </div>
               <div class="gdr-card-footer">
-                <span class="gdr-card-brand" id="gdr-card-brand">\u26bd Philadelphia</span>
+                <span class="gdr-card-brand" id="gdr-card-brand">⚽ Philadelphia</span>
               </div>
             </div>
             <div class="gdr-share-actions">
-              <button id="share-card-btn" class="btn btn-secondary btn-sm">\ud83d\udcf8 Share Image</button>
-              <button id="copy-text-btn" class="btn btn-secondary btn-sm">\ud83d\udccb Copy Text</button>
+              <button id="share-card-btn" class="btn btn-secondary btn-sm">📸 Share Image</button>
+              <button id="copy-text-btn" class="btn btn-secondary btn-sm">📋 Copy Text</button>
             </div>
-
-            <!-- Social post buttons -->
-            <div class="gdr-social-row">
-              <div class="gdr-social-buttons">
-                <button class="gdr-social-btn" data-post-type="game_day" style="--btn-accent:#f59e0b;">⚽ Game<br>Announcement</button>
-                <button class="gdr-social-btn" data-post-type="lineup" style="--btn-accent:#8b5cf6;">📋 20-Man<br>Squad</button>
-                <button class="gdr-social-btn" data-post-type="pre_match_announcement" style="--btn-accent:#3b82f6;">⚔️ Starters<br>& Bench</button>
-                <button class="gdr-social-btn" data-post-type="post_game" style="--btn-accent:#22c55e;">🏆 Match<br>Result</button>
-              </div>
-              <div class="gdr-lineup-links">
-                <span style="font-size:0.75em;opacity:0.5;">Set lineups:</span>
-                <button id="set-20man-btn" class="btn btn-secondary btn-sm" style="font-size:0.75em;padding:2px 8px;">20-Man Roster</button>
-                <button id="set-starters-btn" class="btn btn-secondary btn-sm" style="font-size:0.75em;padding:2px 8px;">Starters & Bench</button>
-              </div>
-            </div>
-
-            <!-- Inline social post preview (shown when a social button is clicked) -->
-            <div id="social-preview-container"></div>
-
           </div>
 
-          <!-- Selection header with add button -->
+          <!-- Read-only view of whoever the Lineup screen currently has as
+               starter/bench (owner: "the 20 man is a view") — RSVP status,
+               jersey numbers, and practice attendance stay editable here,
+               but who's actually on the game roster is set on the Lineup
+               screen only. -->
           <div class="gdr-selection-header">
-            <div id="selected-count" class="gdr-count-badge">0 / 20 selected</div>
-            <button id="open-overlay-btn" class="btn btn-primary btn-sm">+ Add / Edit Players</button>
+            <div id="selected-count" class="gdr-count-badge">0 on lineup</div>
+            <button id="open-overlay-btn" class="btn btn-primary btn-sm">👥 RSVP & Player Details</button>
           </div>
 
           <!-- Selected players (game day roster) -->
@@ -124,9 +139,6 @@ class GameDayRosterScreen extends Screen {
               </optgroup>
             </select>
           </div>
-          <div class="gdr-overlay-actions-bar">
-            <button id="select-all-attending-btn" class="btn btn-secondary btn-sm">\u2713 Select All Attending</button>
-          </div>
           <div id="overlay-player-list" class="gdr-overlay-list"></div>
         </div>
       </div>
@@ -136,9 +148,14 @@ class GameDayRosterScreen extends Screen {
   }
   
   onEnter(params) {
+    // Deep-link from game-lineup.js's "📸 Post to Instagram" button — auto-
+    // opens the matching social-post tab once loadData() below resolves,
+    // instead of making the admin click a tab that's already implied by
+    // which lineup sub-view they were just looking at.
+    this._pendingPostType = (params && params.postType) || null;
     if (this._listenersAttached) return;
     this._listenersAttached = true;
-    
+
     this.loadData();
     
     this.element.addEventListener('click', (e) => {
@@ -148,14 +165,8 @@ class GameDayRosterScreen extends Screen {
       if (id === 'back-btn') { this.navigation.goBack(); return; }
       if (id === 'open-overlay-btn') { this.openOverlay(); return; }
       if (id === 'close-overlay-btn') { this.closeOverlay(); return; }
-      if (id === 'select-all-attending-btn') { this.selectAllAttending(); return; }
       if (id === 'share-card-btn') { this.shareAsImage(); return; }
       if (id === 'copy-text-btn') { this.copyAsText(); return; }
-      if (id === 'set-20man-btn') {
-        // Already on this page — scroll to roster
-        this.find('#open-overlay-btn')?.scrollIntoView({ behavior: 'smooth' });
-        return;
-      }
       if (id === 'set-starters-btn') {
         const matchId = this.navigation.context.match?.id;
         if (matchId) this.navigation.goTo('game-lineup', { matchId });
@@ -171,39 +182,6 @@ class GameDayRosterScreen extends Screen {
         this.element.querySelectorAll('.gdr-social-btn').forEach(b => b.classList.remove('active'));
         socialBtn.classList.add('active');
         return;
-      }
-      
-      // Toggle player selection in overlay
-      // Only toggle selection when clicking the checkbox itself or its label area
-      const checkbox = target.closest('.gdr-select-cb');
-      if (checkbox) {
-        const playerRow = target.closest('.gdr-overlay-row');
-        if (playerRow) {
-          const pid = parseInt(playerRow.dataset.playerId);
-          if (this.selectedPlayerIds.has(pid)) {
-            this.selectedPlayerIds.delete(pid);
-            this.toggleLineup(pid, false);
-          } else {
-            this.selectedPlayerIds.add(pid);
-            this.toggleLineup(pid, true);
-          }
-          this.renderOverlayList();
-          this.renderSelectedPlayers();
-          this.updateSelectedCount();
-          this.updateCardRoster();
-        }
-      }
-
-      // Remove from selected list
-      const removeBtn = target.closest('.gdr-remove-btn');
-      if (removeBtn) {
-        const pid = parseInt(removeBtn.dataset.playerId);
-        this.selectedPlayerIds.delete(pid);
-        this.toggleLineup(pid, false);
-        this.renderSelectedPlayers();
-        this.renderOverlayList();
-        this.updateSelectedCount();
-        this.updateCardRoster();
       }
     });
 
@@ -292,11 +270,12 @@ class GameDayRosterScreen extends Screen {
       // (chat sync removed — RSVP data comes straight from event_rsvps)
       const teamId = this.resolveActiveTeamId();
 
-      const [matchRes, playersRes] = await Promise.all([
+      const [matchRes, playersRes, lineupRes] = await Promise.all([
         this.auth.fetch(`/api/matches/${matchId}`),
-        this.auth.fetch(`/api/matches/${matchId}/roster-players?teamId=${teamId}`)
+        this.auth.fetch(`/api/matches/${matchId}/roster-players?teamId=${teamId}`),
+        this.auth.fetch(`/api/eligibility/lineup/${matchId}`)
       ]);
-      const [matchData, playersData] = await Promise.all([matchRes.json(), playersRes.json()]);
+      const [matchData, playersData, lineupData] = await Promise.all([matchRes.json(), playersRes.json(), lineupRes.json()]);
 
       if (matchData.success) {
         this.matchDetails = matchData.data;
@@ -306,10 +285,48 @@ class GameDayRosterScreen extends Screen {
       if (playersData.success) {
         this.players = playersData.data || [];
         this.trainingEvents = playersData.trainingEvents || [];
-        // Pre-select players already on game roster
-        this.selectedPlayerIds = new Set(
-          this.players.filter(p => p.onGameRoster).map(p => p.playerId)
-        );
+      }
+
+      // Who's "on the roster" here is a VIEW of game-lineup.js's own
+      // starter/bench zones (owner, 2026-08-22: "it does not need set
+      // lineup for 20 man and starters and bench. just one unified set
+      // lineup then you glean the post from that... the 20 man is a
+      // view. right?") — NOT a separately toggleable flag on this screen.
+      // The old flat p.onGameRoster check (any match_lineups row at all,
+      // regardless of zone) came from this same screen's own
+      // "+Add/Edit Players" checkbox, which wrote zone-less rows via
+      // POST /api/matches/:matchId/lineup/:playerId — orphaned from
+      // whatever the coach actually set as starters/bench/alt, which is
+      // exactly what showed up here as extra/wrong players on the post.
+      this.selectedPlayerIds = new Set();
+      if (lineupData && lineupData.success) {
+        // this.players (roster-players?teamId=X) is scoped to ONE of the
+        // match's tagged teams — for a dual-tagged event ("Team: APSL,
+        // Liga 1") that leaves starter/bench players from the OTHER team
+        // missing jersey/isKeeper/etc, which is exactly how a coach's
+        // full 20-man lineup turned into a partial "extra/wrong players"
+        // squad list on the post. The eligibility endpoint already does
+        // the proper multi-team roster merge (see its own rosterTeamIds
+        // comment) and returns firstName/lastName/position per row, so
+        // fall back to that for anyone this.players doesn't have.
+        const byId = new Map((this.players || []).map(p => [String(p.playerId), p]));
+        for (const row of (lineupData.data.lineup || [])) {
+          if (row.zone !== 'starter' && row.zone !== 'bench') continue;
+          const pid = String(row.playerId);
+          this.selectedPlayerIds.add(pid);
+          if (!byId.has(pid)) {
+            const fallback = {
+              playerId: pid,
+              firstName: row.firstName || '',
+              lastName: row.lastName || '',
+              position: row.position || '',
+              jerseyNumber: '',
+              isKeeper: row.position === 'GK',
+            };
+            byId.set(pid, fallback);
+            this.players.push(fallback);
+          }
+        }
       }
 
       this.find('#roster-loading').style.display = 'none';
@@ -317,7 +334,18 @@ class GameDayRosterScreen extends Screen {
       this.renderSelectedPlayers();
       this.updateSelectedCount();
       this.updateCardRoster();
-      
+
+      if (this._pendingPostType) {
+        const postType = this._pendingPostType;
+        this._pendingPostType = null;
+        this.showSocialPreview(postType);
+        const activeBtn = this.element.querySelector(`.gdr-social-btn[data-post-type="${postType}"]`);
+        if (activeBtn) {
+          this.element.querySelectorAll('.gdr-social-btn').forEach(b => b.classList.remove('active'));
+          activeBtn.classList.add('active');
+          activeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
 
     } catch (error) {
       console.error('Error loading:', error);
@@ -355,8 +383,13 @@ class GameDayRosterScreen extends Screen {
         this.find('#gdr-time').textContent = '\ud83d\udd50 ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
     }
-    if (m.venue_name) {
-      this.find('#gdr-venue').textContent = '\ud83d\udccd ' + this.titleCase(m.venue_name);
+    // Prefer the full street address (owner: "on all views show address
+    // of game") \u2014 venue_location is the gcal event's free-text location,
+    // the same source the My page already shows; venue_name is just the
+    // structured `venues` table row, usually empty for scraped matches.
+    const venueText = m.venue_location || m.venue_name;
+    if (venueText) {
+      this.find('#gdr-venue').textContent = '\ud83d\udccd ' + (m.venue_location ? venueText : this.titleCase(venueText));
     }
 
     // Dynamic league brand in footer
@@ -382,7 +415,7 @@ class GameDayRosterScreen extends Screen {
     const selected = this.players.filter(p => this.selectedPlayerIds.has(p.playerId));
     
     if (selected.length === 0) {
-      container.innerHTML = '<div class="gdr-empty">No players selected. Tap "+ Add / Edit Players" to build the roster.</div>';
+      container.innerHTML = '<div class="gdr-empty">No one on the lineup yet. Tap "✏️ Edit Lineup" to set starters &amp; bench.</div>';
       return;
     }
 
@@ -419,7 +452,6 @@ class GameDayRosterScreen extends Screen {
           </div>
           <div class="gdr-sel-practice">${pracDots}</div>
           <span class="gdr-rsvp-dot ${rsvpClass}" title="RSVP: ${rsvpLabel}"></span>
-          <button class="gdr-remove-btn" data-player-id="${p.playerId}">\u2715</button>
         </div>`;
     }).join('');
   }
@@ -488,7 +520,7 @@ class GameDayRosterScreen extends Screen {
       <table class="gdr-overlay-table">
         <thead>
           <tr>
-            <th class="gdr-th-cb" title="Game Day Roster">GDR</th>
+            <th class="gdr-th-cb" title="On the lineup (starter or bench) — set in the Lineup screen">Lineup</th>
             <th>Player</th>
             <th>#</th>
             <th>Pos</th>
@@ -534,7 +566,7 @@ class GameDayRosterScreen extends Screen {
     
     return `
       <tr class="gdr-overlay-row ${selected ? 'gdr-row-selected' : ''}" data-player-id="${p.playerId}">
-        <td><input type="checkbox" class="gdr-select-cb" ${selected ? 'checked' : ''}></td>
+        <td class="gdr-cell-center" title="Set in the Lineup screen — starter or bench">${selected ? '&check;' : ''}</td>
         <td class="gdr-cell-name">
           <strong>${p.firstName} ${p.lastName}</strong>
         </td>
@@ -642,27 +674,13 @@ class GameDayRosterScreen extends Screen {
     }
   }
 
-  selectAllAttending() {
-    const matchId = this.navigation.context.match?.id;
-    this.players.filter(p => p.rsvpStatus === 'yes').forEach(p => {
-      if (!this.selectedPlayerIds.has(p.playerId)) {
-        this.selectedPlayerIds.add(p.playerId);
-        this.toggleLineup(p.playerId, true);
-      }
-    });
-    this.renderOverlayList();
-    this.renderSelectedPlayers();
-    this.updateSelectedCount();
-    this.updateCardRoster();
-  }
-
   updateSelectedCount() {
     const countEl = this.find('#selected-count');
     const selected = this.players.filter(p => this.selectedPlayerIds.has(p.playerId));
     const count = selected.length;
     const gk = selected.filter(p => p.isKeeper).length;
     const field = count - gk;
-    countEl.textContent = `${count} selected (${field} field, ${gk} GK)`;
+    countEl.textContent = `${count} on lineup (${field} field, ${gk} GK)`;
     countEl.className = 'gdr-count-badge' + (count > 20 ? ' gdr-count-over' : count >= 16 ? ' gdr-count-good' : '');
   }
 
@@ -732,20 +750,6 @@ class GameDayRosterScreen extends Screen {
       document.body.removeChild(ta);
       alert('\u2713 Copied to clipboard!');
     });
-  }
-
-  async toggleLineup(playerId, add) {
-    const matchId = this.navigation.context.match?.id;
-    if (!matchId) return;
-    try {
-      if (add) {
-        await this.auth.fetch(`/api/matches/${matchId}/lineup/${playerId}`, { method: 'POST' });
-      } else {
-        await this.auth.fetch(`/api/matches/${matchId}/lineup/${playerId}`, { method: 'DELETE' });
-      }
-    } catch (err) {
-      console.error('Failed to toggle lineup:', err);
-    }
   }
 
   titleCase(str) {

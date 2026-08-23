@@ -2587,11 +2587,32 @@ Response SocialController::handleLogoProxy(const Request& request) {
                 createJSONResponse(false, "Missing url parameter"));
         }
 
-        // Restrict proxying to trusted SportsEngine team logo host only.
-        const std::string allowedPrefix = "https://se-team-service-production.s3.amazonaws.com/";
-        if (url.rfind(allowedPrefix, 0) != 0) {
+        // Restrict proxying to a small allowlist of trusted team-logo
+        // hosts (2026-08-22: added apslsoccer.com — Lighthouse's own crest
+        // lives there — and r2.thesportsdb.com, the opponent_logo_cache
+        // auto-lookup host, e.g. Real Central NJ). Without proxying,
+        // html2canvas's cross-origin <img> fetch has no CORS headers to
+        // work with, so it either renders as a blank box or hangs the
+        // whole image-generation step waiting on a server that never
+        // sends an Access-Control-Allow-Origin header — this is every
+        // host actually present in teams.logo_url / opponent_logo_cache
+        // today (verified via DB query), so this closes the gap
+        // completely, not just for one opponent. Never widen this to
+        // arbitrary caller-supplied URLs — this is an admin-authenticated
+        // endpoint that fetches server-side, so an open allowlist would
+        // be an SSRF hole.
+        static const std::vector<std::string> allowedPrefixes = {
+            "https://se-team-service-production.s3.amazonaws.com/",
+            "https://www.apslsoccer.com/",
+            "https://r2.thesportsdb.com/",
+        };
+        bool allowed = false;
+        for (const auto& prefix : allowedPrefixes) {
+            if (url.rfind(prefix, 0) == 0) { allowed = true; break; }
+        }
+        if (!allowed) {
             return Response(HttpStatus::FORBIDDEN,
-                createJSONResponse(false, "Only SportsEngine team logos are allowed"));
+                createJSONResponse(false, "This logo host is not on the trusted allowlist"));
         }
 
         HttpClient client;

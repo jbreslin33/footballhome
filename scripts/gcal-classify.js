@@ -275,7 +275,7 @@ function parseDsl(description) {
   const out = {
     teams: [], clubs: [], kind: null, isHome: null, opponent: null, notes: null,
     startTime: null, endTime: null, arrivalTime: null, warmupTime: null,
-    kickoffTime: null, gameEndTime: null,
+    kickoffTime: null, gameEndTime: null, league: null,
   };
   if (!description) return out;
 
@@ -331,6 +331,14 @@ function parseDsl(description) {
       }
       case 'opponent':
         out.opponent = out.opponent == null ? val : (out.opponent + ' ' + val);
+        break;
+      // Free-form league label (2026-08-22, migration 297) — e.g. "CASA
+      // Select Liga 1" or "APSL Delaware River" — the authoritative
+      // signal for which league/division badge a match's social post
+      // graphic should show, instead of guessing from the opponent's
+      // scraped team name. Preserved verbatim like Opponent:/Notes:.
+      case 'league':
+        out.league = out.league == null ? val : (out.league + ' ' + val);
         break;
       case 'notes':
         // Preserve exact user text — no normalize. Multiple `Notes:`
@@ -482,11 +490,11 @@ async function classifyDsl(pg) {
         WITH upsert AS (
           INSERT INTO fh_events (
             gcal_event_id, kind, category, is_home, opponent, fh_notes, rsvps_open_at,
-            start_at, end_at, arrival_at, warmup_at, kickoff_at, game_end_at
+            start_at, end_at, arrival_at, warmup_at, kickoff_at, game_end_at, league
           )
           SELECT $1, $2, $3, $4, $5, $6, ${RSVPS_OPEN_AT_SQL},
                  ${scheduleTagSql('$7')}, ${scheduleTagSql('$8')}, ${scheduleTagSql('$9')},
-                 ${scheduleTagSql('$10')}, ${scheduleTagSql('$11')}, ${scheduleTagSql('$12')}
+                 ${scheduleTagSql('$10')}, ${scheduleTagSql('$11')}, ${scheduleTagSql('$12')}, $13
           FROM   gcal_events ge
           WHERE  ge.id = $1
           ON CONFLICT (gcal_event_id) DO UPDATE SET
@@ -502,6 +510,7 @@ async function classifyDsl(pg) {
             warmup_at     = EXCLUDED.warmup_at,
             kickoff_at    = EXCLUDED.kickoff_at,
             game_end_at   = EXCLUDED.game_end_at,
+            league        = EXCLUDED.league,
             updated_at    = now()
           WHERE fh_events.kind          IS DISTINCT FROM EXCLUDED.kind
              OR fh_events.category      IS DISTINCT FROM EXCLUDED.category
@@ -515,6 +524,7 @@ async function classifyDsl(pg) {
              OR fh_events.warmup_at     IS DISTINCT FROM EXCLUDED.warmup_at
              OR fh_events.kickoff_at    IS DISTINCT FROM EXCLUDED.kickoff_at
              OR fh_events.game_end_at   IS DISTINCT FROM EXCLUDED.game_end_at
+             OR fh_events.league        IS DISTINCT FROM EXCLUDED.league
           RETURNING id
         )
         SELECT COALESCE((SELECT id FROM upsert),
@@ -526,6 +536,7 @@ async function classifyDsl(pg) {
         [
           ev.id, kind, category, dsl.isHome, dsl.opponent, dsl.notes,
           dsl.startTime, dsl.endTime, dsl.arrivalTime, dsl.warmupTime, dsl.kickoffTime, dsl.gameEndTime,
+          dsl.league,
         ],
       );
       if (upRow.wrote) stats.upserted += 1;

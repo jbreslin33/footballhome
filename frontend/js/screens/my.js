@@ -228,7 +228,13 @@ class MyScreen extends Screen {
         const matchId = socialBtn.getAttribute('data-social-match-id');
         if (matchId) {
           this.navigation.context.match = { id: matchId, title: socialBtn.getAttribute('data-social-title') || '' };
-          this.navigation.goTo('game-day-roster');
+          // Owner directive (2026-08-22): "post to insta functionality
+          // should take us to that particular place we clicked it from"
+          // — clicked from the main schedule (games/practices/pickups),
+          // so default to the Game Announcement tab; all 4 post-type
+          // pills (game day/lineup/starters/result) stay available to
+          // switch to from there, same as game-lineup.js's own button.
+          this.navigation.goTo('game-day-roster', { postType: 'game_day' });
         }
         return;
       }
@@ -1097,9 +1103,9 @@ class MyScreen extends Screen {
                   border-radius: 6px;
                   padding: 5px 6px;
                   margin-bottom: 4px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
           ${crestHtml}
-          <div style="min-width:0; flex:1;">
+          <div style="min-width:160px; flex:1 1 160px;">
             <div style="font-weight:700; font-size:0.7rem; line-height:1.2;">${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}</div>
             <div style="font-size:0.66rem; font-weight:600; line-height:1.25; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(title)}</div>
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
@@ -1107,7 +1113,7 @@ class MyScreen extends Screen {
             ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
-          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:3px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">
             ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                        `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
             ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
@@ -1116,13 +1122,6 @@ class MyScreen extends Screen {
               ${this.escapeHtml(viewLabel)}
             </button>
             ${kind === 'match' && ev.match_id ? `
-              <button type="button" data-lineup-match-id="${ev.match_id}"
-                      data-lineup-title="${this.escapeHtml(title)}"
-                      data-lineup-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
-                      data-lineup-mode="gameday"
-                      style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
-                📋 Game Day Roster
-              </button>
               <button type="button" data-lineup-match-id="${ev.match_id}"
                       data-lineup-title="${this.escapeHtml(title)}"
                       data-lineup-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"

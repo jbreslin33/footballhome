@@ -742,7 +742,23 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "to_char(m.match_time, 'HH24:MI') as match_time, ";
         query << "m.series_id, ";
         query << "m.manual_override, ";
-        query << "m.cancelled_at IS NOT NULL as is_cancelled ";
+        query << "m.cancelled_at IS NOT NULL as is_cancelled, ";
+        // Full street address (2026-08-22, owner: "on all views show
+        // address of game") — the `venues` table row this match links to
+        // (if any) is almost always empty for scraped/informal matches,
+        // same gap as the opponent crest above. The real address these
+        // games actually have lives on the linked Google Calendar event's
+        // free-text location field instead — exactly what the My page
+        // already displays via CalendarController's `ev.location`. Prefer
+        // that; fall back to the structured venues columns when present.
+        query << "COALESCE(NULLIF(ge.location,''), NULLIF(BTRIM(CONCAT_WS(', ', v.address, v.city, v.state)), '')) as venue_location, ";
+        // League: gcal tag (2026-08-22, migration 297, owner: "apsl
+        // should be apsl delaware river... unless we need a league: var
+        // in desc for gcal which i think we do") — the authoritative
+        // league/division label for the Instagram post graphic, instead
+        // of SocialPostCard.js guessing CASA vs APSL from the opponent's
+        // scraped team name.
+        query << "fe.league as league_tag ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
@@ -751,6 +767,7 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "LEFT JOIN fh_events fe ON fe.match_id = m.id ";
+        query << "LEFT JOIN gcal_events ge ON ge.id = fe.gcal_event_id ";
         query << "LEFT JOIN LATERAL (SELECT image_url FROM chat_events WHERE match_id = m.id LIMIT 1) ce ON true ";
         query << "WHERE m.id = '" << match_id << "'";
         
@@ -848,7 +865,13 @@ Response EventController::handleGetMatch(const Request& request) {
         if (result.columns() > 30 && !result[0][30].is_null()) {
             match_json << ",\"is_cancelled\":" << (result[0][30].as<bool>() ? "true" : "false");
         }
-        
+        if (result.columns() > 31 && !result[0][31].is_null() && result[0][31].c_str()[0] != '\0') {
+            match_json << ",\"venue_location\":\"" << escapeJSON(result[0][31].c_str()) << "\"";
+        }
+        if (result.columns() > 32 && !result[0][32].is_null() && result[0][32].c_str()[0] != '\0') {
+            match_json << ",\"league_tag\":\"" << escapeJSON(result[0][32].c_str()) << "\"";
+        }
+
         match_json << "}";
         
         std::string json = createJSONResponse(true, "Match retrieved successfully", match_json.str());

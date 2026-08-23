@@ -29,12 +29,65 @@ class SocialPostCard {
     const trimmed = String(url).trim();
     if (!trimmed) return '';
 
-    if (/^https:\/\/se-team-service-production\.s3\.amazonaws\.com\//i.test(trimmed)) {
+    // Route known external logo hosts through our own proxy (2026-08-22:
+    // apslsoccer.com — Lighthouse's own crest — and r2.thesportsdb.com —
+    // e.g. Real Central NJ, via opponent_logo_cache) so html2canvas's
+    // cross-origin <img> fetch always gets CORS headers instead of either
+    // rendering as a blank box or hanging the whole image-generation step
+    // waiting on a server that never sends Access-Control-Allow-Origin.
+    // Keep this list in sync with SocialController::handleLogoProxy's
+    // allowlist — covers every host actually in teams.logo_url /
+    // opponent_logo_cache today (verified via DB query).
+    if (/^https:\/\/(se-team-service-production\.s3\.amazonaws\.com|www\.apslsoccer\.com|r2\.thesportsdb\.com)\//i.test(trimmed)) {
       return `/api/social/logo-proxy?url=${trimmed}`;
     }
 
     if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
     return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
+  }
+
+  // Pre-fetch a proxied logo as an authenticated blob and hand back a
+  // blob: URL (2026-08-22, owner: "still getting image generation
+  // failed. still has all these white slots for no reason") — the real
+  // bug behind BOTH complaints: /api/social/logo-proxy requires a Bearer
+  // token (SocialController::requireAdminLevel), but a plain <img src>
+  // can never send one, so every proxied crest (apslsoccer.com,
+  // thesportsdb.com) has always 401'd inside html2canvas's clone and
+  // silently fallen back to the placeholder icon — that's the blank/
+  // wrong-looking "white slot" box. Fetching with this.auth.fetch()
+  // (which does attach the header) sidesteps that entirely. Only
+  // proxy-eligible hosts need this — everything else still resolves
+  // synchronously via resolveAssetUrl.
+  async resolveImageForCanvas(url) {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    if (/^https:\/\/(se-team-service-production\.s3\.amazonaws\.com|www\.apslsoccer\.com|r2\.thesportsdb\.com)\//i.test(trimmed)) {
+      // Hard timeout (2026-08-22, owner: "image gen failed again") — this
+      // fetch has no built-in timeout of its own, and it runs BEFORE
+      // generateImage()'s existing html2canvas timeout even starts, so a
+      // stalled outbound request to the external logo host (our own
+      // server's fetch, not the browser's) would otherwise hang the whole
+      // generation with no escape. Falling back to the placeholder icon
+      // beats hanging forever.
+      const withTimeout = (promise, ms) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Logo proxy fetch timed out')), ms)),
+      ]);
+      try {
+        const res = await withTimeout(
+          this.auth.fetch(`/api/social/logo-proxy?url=${encodeURIComponent(trimmed)}`),
+          8000
+        );
+        if (!res.ok) return '';
+        const blob = await withTimeout(res.blob(), 8000);
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        console.error('Logo proxy fetch failed:', e);
+        return '';
+      }
+    }
+    return this.resolveAssetUrl(trimmed);
   }
 
   buildLogoInnerHtml(url, fallback = '⚽') {
@@ -227,8 +280,13 @@ class SocialPostCard {
       }
     }
     const venue = this.buildVenueString(m) || this.titleCase(m.venue_name || 'TBD');
-    // source_name is empty for calendar-synced (women's) matches — no APSL/CASA default
-    const league = m.competition_name || (m.source_name ? 'APSL' : '');
+    // Prefer the authoritative League: gcal tag (migration 297) — see
+    // generateImage()'s matching hasLeagueTag branch — over
+    // competition_name, which is often just the source system's raw
+    // name (e.g. "INTERNAL" for scraped/manual matches, not a real
+    // league label). source_name is empty for calendar-synced (women's)
+    // matches — no APSL/CASA default there.
+    const league = (m.league_tag && m.league_tag.trim()) || m.competition_name || (m.source_name ? 'APSL' : '');
     const isCASA = /casa/i.test(league);
     const leagueTag = league ? (isCASA ? '#CASA' : '#APSL') : '';
     const leagueLine = league ? `\n${league} ⚽` : '';
@@ -334,6 +392,14 @@ class SocialPostCard {
     } else if (this.baseImage) {
       // Animated canvas will be inserted here
       imageHtml = `<div class="spc-image" id="spc-image-area"></div>`;
+    } else if (this.imageError) {
+      imageHtml = `
+        <div class="spc-image spc-image-placeholder" id="spc-image-area">
+          <div class="spc-image-placeholder-inner">
+            <span style="font-size:1.5em;">⚠️</span>
+            <span>Image generation failed — tap Regenerate below</span>
+          </div>
+        </div>`;
     } else {
       imageHtml = `
         <div class="spc-image spc-image-placeholder" id="spc-image-area">
@@ -409,9 +475,9 @@ class SocialPostCard {
       awayName = this.titleCase(m.title.split(/ vs /i)[1]?.trim() || '');
     }
     awayName = awayName || 'Away';
-    const homeLogo = this.resolveAssetUrl(m.home_team_logo || '');
+    const homeLogo = await this.resolveImageForCanvas(m.home_team_logo || '');
     // For calendar-synced matches (no source system, no linked away team): fall back to Tri County Women's league logo
-    const awayLogo = this.resolveAssetUrl(m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : ''));
+    const awayLogo = await this.resolveImageForCanvas(m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : ''));
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
     if (rawDate) {
@@ -422,8 +488,18 @@ class SocialPostCard {
       }
     }
     const venueStr = this.buildVenueString(m);
-    const competitionText = `${m.competition_name || ''} ${m.division_name || ''}`;
-    const isCasa = (m.source_name === 'casa') || /casa|liga\s*[12]/i.test(competitionText);
+    // League detection (2026-08-22, owner: "apsl should be apsl delaware
+    // river... unless we need a league: var in desc for gcal which i
+    // think we do lol. that would inform a lot of things!") — m.league_tag
+    // is the authoritative `League:` gcal tag (migration 297), set once by
+    // ops on the calendar event and read verbatim here instead of guessed.
+    // Falls back to the old team-name/competition scan only for matches
+    // nobody has tagged yet.
+    const hasLeagueTag = !!(m.league_tag && m.league_tag.trim());
+    const competitionText = `${m.competition_name || ''} ${m.division_name || ''} ${m.home_team_name || ''} ${m.away_team_name || ''}`;
+    const isCasa = hasLeagueTag
+      ? /casa|liga\s*[12]/i.test(m.league_tag)
+      : ((m.source_name === 'casa') || /casa|liga\s*[12]/i.test(competitionText));
     const isCustomMatch = !m.source_name; // calendar-synced or manually created (no source system)
 
     // Fetch accolades for both teams
@@ -448,10 +524,12 @@ class SocialPostCard {
       const ourTaglines = (ourRes.data || []).filter(a => a.type === 'tagline');
       if (ourTaglines.length) this.teamTagline = ourTaglines[0].accolade;
     } catch (e) { /* accolades are optional */ }
-    // Determine league display name
+    // Determine league display name — trust ops' own wording when tagged.
     let league;
-    if (isCasa) {
-      const div = `${m.division_name || ''} ${m.competition_name || ''}`;
+    if (hasLeagueTag) {
+      league = m.league_tag.trim();
+    } else if (isCasa) {
+      const div = `${m.division_name || ''} ${m.competition_name || ''} ${m.home_team_name || ''} ${m.away_team_name || ''}`;
       const isLiga2 = String(m.home_team_id) === '121' || String(m.away_team_id) === '121' || /liga\s*2/i.test(div);
       if (isLiga2) league = 'Philadelphia CASA Select Liga 2';
       else league = 'Philadelphia CASA Select Liga 1';
@@ -594,8 +672,25 @@ class SocialPostCard {
 
     document.body.appendChild(wrapper);
 
+    // Hard timeout (2026-08-22, owner: "the generate image is frozen...
+    // it needs to work!") — html2canvas awaits every <img> in the card
+    // loading, and a cross-origin logo host with no CORS headers (or one
+    // that's just slow) can leave that wait hanging with no error and no
+    // built-in timeout, stranding the "Generating image..." placeholder
+    // forever. This can't fully replace fixing the actual host (see
+    // resolveAssetUrl's logo-proxy allowlist above), but it guarantees
+    // the UI always recovers to a visible error + Regenerate instead of
+    // hanging silently for any host we haven't allowlisted yet.
+    const withTimeout = (promise, ms) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`Image generation timed out after ${ms / 1000}s`)), ms)),
+    ]);
+
     try {
-      const canvas = await html2canvas(wrapper.firstElementChild, { backgroundColor: null, scale: 2, useCORS: true });
+      const canvas = await withTimeout(
+        html2canvas(wrapper.firstElementChild, { backgroundColor: null, scale: 2, useCORS: true }),
+        15000
+      );
       // Store base image (card without beam)
       this.cardWidth = 540;
       this.cardHeight = cardHeight;
@@ -604,10 +699,13 @@ class SocialPostCard {
       await new Promise(resolve => { baseImg.onload = resolve; });
       this.baseImage = baseImg;
       this.generatedImageUrl = baseImg.src; // fallback
+      this.imageError = false;
       // Start animated preview
       this.startAnimatedPreview();
     } catch (err) {
       console.error('Image generation failed:', err);
+      this.imageError = true;
+      this.render();
     } finally {
       document.body.removeChild(wrapper);
     }
@@ -1096,6 +1194,14 @@ class SocialPostCard {
   }
 
   buildVenueString(m) {
+    // Full street address (owner: "on all views show address of game") —
+    // venue_location is EventController's free-text fallback (the linked
+    // Google Calendar event's location, same source the My page already
+    // shows) for matches with no structured `venues` table row, which is
+    // most scraped/informal league games. Prefer it outright: it's
+    // already a complete address, so appending the structured fields
+    // below would just duplicate it.
+    if (m.venue_location) return m.venue_location;
     const parts = [];
     if (m.venue_name) parts.push(this.titleCase(m.venue_name));
     if (m.venue_address) parts.push(this.titleCase(m.venue_address));

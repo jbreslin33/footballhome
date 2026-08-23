@@ -142,13 +142,57 @@ class GameLineupScreen extends Screen {
     // slots (in sortOrder) into rows sized by the template counts (GK
     // row first) so the graphic reads as a real formation shape on a
     // pitch, purely for the TV-style visual.
-    this.lineupGraphicMode = false;
+    // Defaults on (2026-08-22, owner: "make coach view like player view
+    // so current lineup looks like insta on coach view too") — the coach
+    // still gets a "📋 List View" toggle back to the plain grid for dense
+    // editing; assignment itself always happens via the position pills in
+    // the roster cards below, unaffected by this flag either way.
+    this.lineupGraphicMode = true;
     this.formation = '4-4-2';
+    // Lineup / Game Day toggle (2026-08-22, owner directive: "too
+    // confusing... just lineup is fine, then toggle inside that") —
+    // replaces the old separate "Game Day Roster" button+entry point on
+    // my.js. Visible to everyone (coach and player), independent of the
+    // coach-only viewMode toggle above. Default 'lineup' = the normal
+    // starters/bench/alt team-sheet; 'gameday' = the standing Roster Role
+    // pool (_renderGameDayRoster).
+    this.subView = 'lineup'; // 'lineup' | 'gameday'
     this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
     this.error     = null;
     this._saveTimer = null;
     this._wired    = false;
+    this.matchDetails = null; // {home_team_name, home_team_logo, away_team_name, away_team_logo, ...} — see _renderMatchHeader
+  }
+
+  // Compact "MATCH DAY" header (2026-08-22, owner directive: "the player
+  // view for both needs to look like an insta post... with logos") — home
+  // vs away crest, same data source and buildTeamLogoMarkup helper (see
+  // screen-base.js) game-day-roster.js's own MATCH DAY card uses, so this
+  // screen and the Instagram preview it deep-links to read as one brand
+  // instead of a bare pitch diagram with no opponent identity. Shown above
+  // every sub-view (Lineup and Game Day, coach and player).
+  _renderMatchHeader() {
+    const m = this.matchDetails;
+    if (!m) return '';
+    const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { className: 'team-logo', alt: 'Home', placeholder: '🏠' });
+    const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { className: 'team-logo', alt: 'Away', placeholder: '🏟️' });
+    return `
+      <div style="background:linear-gradient(180deg,#1e3a8a,#1e40af); border:1px solid rgba(250,204,21,0.5); border-radius:10px; padding:14px; margin-bottom:12px; text-align:center;">
+        <div style="display:flex; align-items:flex-start; justify-content:center; gap:20px;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:0; max-width:140px;">
+            ${homeLogo}
+            <div style="font-size:0.62rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word;">${this.escapeHtml(m.home_team_name || 'Home')}</div>
+          </div>
+          <div style="font-size:0.7rem; font-weight:700; color:#facc15; opacity:0.85; margin-top:14px;">VS</div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:0; max-width:140px;">
+            ${awayLogo}
+            <div style="font-size:0.62rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word;">${this.escapeHtml(m.away_team_name || 'Away')}</div>
+          </div>
+        </div>
+        ${this.when ? `<div style="margin-top:10px; font-size:0.66rem; color:#dbeafe; opacity:0.85;">📅 ${this.escapeHtml(this.when)}</div>` : ''}
+        ${m.venue_location ? `<div style="margin-top:2px; font-size:0.62rem; color:#dbeafe; opacity:0.75; overflow-wrap:break-word;">📍 ${this.escapeHtml(m.venue_location)}</div>` : ''}
+      </div>`;
   }
 
   render() {
@@ -179,19 +223,26 @@ class GameLineupScreen extends Screen {
     this.matchId = params.matchId != null ? Number(params.matchId) : null;
     this.title   = params.title || '';
     this.when    = params.when || '';
-    // Game Day Roster (2026-08-22, owner directive) — a separate entry
-    // point (my.js's "Game Day Roster" button) into the SAME screen/data
-    // load, just a different render mode: the standing "1st Team
-    // Starter/Bench" Roster Role list (lineupRole, set on the Teams
-    // page), alpha by last name — not this match's per-match zones at
-    // all. Coach-only edit stays the default when reached via "Lineup".
-    this.viewMode = params.mode === 'gameday' ? 'gameday' : 'coach';
+    this.viewMode = 'coach';
+    this.subView  = 'lineup';
     this._wire();
     this._bootstrap();
   }
 
   onExit() {
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
+  }
+
+  // Same admin-only gate my.js uses for the "Post to Instagram" button on
+  // the schedule card (SocialController.cpp's requireAdminLevel({"club",
+  // "super","marketing"}) is the real backend rule this mirrors), plus
+  // the same "view as <player>" suppression — this screen is reachable
+  // by players directly, and impersonation only rewrites data fetches,
+  // never navigation.context.user.role.
+  _canPostSocial() {
+    if (this.auth && this.auth.viewAsPersonId) return false;
+    const role = (this.navigation?.context?.user?.role || '').toString().toLowerCase();
+    return ['club', 'super', 'marketing'].includes(role);
   }
 
   _wire() {
@@ -204,11 +255,28 @@ class GameLineupScreen extends Screen {
       }
       const viewToggle = e.target.closest('#gl-view-toggle');
       if (viewToggle && this.isCoach) {
-        // From 'coach' → preview the player view; from 'player' OR
-        // 'gameday' (reached directly via my.js's own button) → back to
-        // the editable coach view.
         this.viewMode = this.viewMode === 'coach' ? 'player' : 'coach';
         this._render();
+        return;
+      }
+      const subViewBtn = e.target.closest('[data-lineup-subview]');
+      if (subViewBtn) {
+        this.subView = subViewBtn.getAttribute('data-lineup-subview') === 'gameday' ? 'gameday' : 'lineup';
+        this._render();
+        return;
+      }
+      const postInstaBtn = e.target.closest('#gl-post-instagram');
+      if (postInstaBtn) {
+        // Deep-links into game-day-roster.js's existing SocialPostCard
+        // flow, pre-selecting the tab matching whichever sub-view is
+        // active here — reuses that screen's image-generation/preview/
+        // publish machinery as-is instead of duplicating it.
+        if (this.matchId) {
+          this.navigation.context.match = { id: this.matchId, title: this.title };
+          this.navigation.goTo('game-day-roster', {
+            postType: this.subView === 'gameday' ? 'lineup' : 'pre_match_announcement',
+          });
+        }
         return;
       }
       const zoneBtn = e.target.closest('[data-lineup-zone-btn]');
@@ -289,9 +357,10 @@ class GameLineupScreen extends Screen {
     if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
 
     try {
-      const [lineupRes, positionsRes] = await Promise.all([
+      const [lineupRes, positionsRes, matchRes] = await Promise.all([
         this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`),
         this.auth.fetch('/api/eligibility/positions'),
+        this.auth.fetch(`/api/matches/${this.matchId}`),
       ]);
       const lineupData = await lineupRes.json();
       if (!lineupData.success) throw new Error(lineupData.message || 'Failed to load lineup');
@@ -299,10 +368,25 @@ class GameLineupScreen extends Screen {
       this.positionList = (positionsData && positionsData.success && Array.isArray(positionsData.data))
         ? positionsData.data
         : [];
+      // Match-day header (2026-08-22, owner directive: "the player view
+      // for both needs to look like an insta post") — home/away crests +
+      // date/venue, same data source game-day-roster.js's MATCH DAY card
+      // uses, so the two screens read as one cohesive brand instead of a
+      // bare pitch diagram with no opponent identity.
+      const matchData = await matchRes.json().catch(() => null);
+      this.matchDetails = (matchData && matchData.success) ? matchData.data : null;
 
       this.teamId  = lineupData.data.teamId || null;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
-      this.isCoach = !!lineupData.data.isCoach;
+      // isCoach comes from EligibilityController checking the REAL logged-in
+      // account's admin/coach status — it never looks at the "view as
+      // <player>" impersonation the READ request may be carrying, so an
+      // admin using view-as still gets isCoach:true from their own account.
+      // Force it off here whenever view-as is active (owner, 2026-08-22:
+      // "players dont need player lineup view lol... there view is default
+      // player") so view-as always renders exactly what the impersonated
+      // player would see — no coach toggle, no edit tools, default view.
+      this.isCoach = !!lineupData.data.isCoach && !(this.auth && this.auth.viewAsPersonId);
       this.zones = new Map();
       this.positions = new Map();
       this.benchOrder = new Map();
@@ -540,12 +624,10 @@ class GameLineupScreen extends Screen {
     unassignedNotGoing.sort(byStarterRank);
     unassignedNoResponse.sort(byStarterRank);
 
-    // Coach ↔ Player ↔ Game Day Roster view toggle (2026-08-22, owner
-    // directive: "only need 1 Lineup button on screen" — coach previews
-    // exactly what players see via a link on this same page instead of a
-    // separate screen/route). Players always get the player view; Game
-    // Day Roster is reached directly (my.js's own button, params.mode)
-    // but shares the same "✏️ Coach View" way back.
+    // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
+    // 1 Lineup button on screen" — coach previews exactly what players
+    // see via a link on this same page instead of a separate screen/
+    // route). Players always get the player view.
     const effectiveIsPlayerView = !this.isCoach || this.viewMode === 'player';
     const viewToggleHtml = this.isCoach
       ? `<div style="text-align:right; margin-bottom:8px;">
@@ -555,13 +637,26 @@ class GameLineupScreen extends Screen {
          </div>`
       : '';
 
-    if (this.viewMode === 'gameday') {
-      box.innerHTML = viewToggleHtml + this._renderGameDayRoster();
+    // Lineup ↔ Game Day toggle — visible to everyone, replaces the old
+    // separate "Game Day Roster" button on my.js (owner: "too confusing
+    // to see game day roster and lineup buttons... just lineup is fine,
+    // then toggle inside that"). Default is 'lineup'.
+    const subViewToggleHtml = `
+      <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <button type="button" data-lineup-subview="lineup" class="btn ${this.subView === 'lineup' ? 'btn-primary' : 'btn-secondary'}" style="flex:1; font-size:0.8rem; padding:6px 10px;">⚽ Lineup</button>
+        <button type="button" data-lineup-subview="gameday" class="btn ${this.subView === 'gameday' ? 'btn-primary' : 'btn-secondary'}" style="flex:1; font-size:0.8rem; padding:6px 10px;">📋 Game Day</button>
+        ${this._canPostSocial() ? `
+          <button type="button" id="gl-post-instagram" class="btn btn-secondary" style="font-size:0.8rem; padding:6px 10px; white-space:nowrap;">📸 Post to Instagram</button>
+        ` : ''}
+      </div>`;
+
+    if (this.subView === 'gameday') {
+      box.innerHTML = this._renderMatchHeader() + subViewToggleHtml + viewToggleHtml + this._renderGameDayRoster();
       return;
     }
 
     if (effectiveIsPlayerView) {
-      box.innerHTML = viewToggleHtml + this._renderPlayerView(byZone);
+      box.innerHTML = this._renderMatchHeader() + subViewToggleHtml + viewToggleHtml + this._renderPlayerView(byZone);
       return;
     }
 
@@ -810,7 +905,7 @@ class GameLineupScreen extends Screen {
       </details>
     `;
 
-    box.innerHTML = viewToggleHtml + summaryHtml + [
+    box.innerHTML = this._renderMatchHeader() + subViewToggleHtml + viewToggleHtml + summaryHtml + [
       gridSection('Alternates', byZone.alternate),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
