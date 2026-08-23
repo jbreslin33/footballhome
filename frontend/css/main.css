@@ -1328,6 +1328,15 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     object-fit: contain;
 }
 
+/* Full-size Insta-post-frame crest (2026-08-22, owner: "full insta post
+   view... corect ratio") — same markup/onerror fallback as .team-logo,
+   just scaled to match the bigger unified card frame. */
+.team-logo-lg {
+    width: 76px;
+    height: 76px;
+    object-fit: contain;
+}
+
 .team-logo-placeholder {
     width: 48px;
     height: 48px;
@@ -1858,3 +1867,4 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
         padding: 8px 12px;
     }
 }
+

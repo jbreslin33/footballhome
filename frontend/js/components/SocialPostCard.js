@@ -17,8 +17,10 @@ class SocialPostCard {
     this.generatedImageUrl = null;
     this.baseImage = null;       // base card without beam (Image object)
     this.animCanvas = null;      // live animated canvas
-    this.animFrameId = null;     // requestAnimationFrame ID
+    this._stopLighthouseAnim = null; // stop fn from LighthouseBeam.animate()
     this.animStartTime = null;   // persisted start time so beam angle survives re-renders
+    this.imageError = false;
+    this.imageErrorMessage = null; // actual err.message shown on screen when generation fails
     this.cardWidth = 540;
     this.cardHeight = 540;
   }
@@ -81,11 +83,38 @@ class SocialPostCard {
         );
         if (!res.ok) return '';
         const blob = await withTimeout(res.blob(), 8000);
-        return URL.createObjectURL(blob);
+        // data: URI, not a blob: object URL (2026-08-23, owner: "failed
+        // to execute create pattern on canvas etc") — that's the actual
+        // browser exception this was throwing: html2canvas's internal
+        // image-ready check doesn't reliably wait for blob: URLs to
+        // finish loading/decoding the way it does for normal URLs and
+        // data: URIs, so it could hand a still-zero-size <img> to
+        // ctx.createPattern(), which throws exactly that error. A data:
+        // URI is available synchronously once this promise resolves —
+        // no separate async decode step for html2canvas to race with.
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Failed to read logo blob'));
+          reader.readAsDataURL(blob);
+        });
       } catch (e) {
         console.error('Logo proxy fetch failed:', e);
         return '';
       }
+    }
+    // Any OTHER external (cross-origin) URL must never reach html2canvas
+    // directly (2026-08-23, owner: "same" — the createPattern error was
+    // still happening after fixing the known 3 proxy hosts) — the
+    // allowlist above only covers hosts seen in the DB at the time it
+    // was written; a newly-scraped opponent_logo_cache row can point
+    // anywhere. An un-proxied cross-origin <img> taints/breaks inside
+    // html2canvas's capture the exact same way the original apslsoccer.com
+    // gap did, throwing that same createPattern exception. Fall back to
+    // the placeholder icon instead of ever risking that — a missing crest
+    // beats a broken whole-image generation.
+    if (/^https?:\/\//i.test(trimmed) && !trimmed.startsWith(location.origin + '/')) {
+      return '';
     }
     return this.resolveAssetUrl(trimmed);
   }
@@ -398,6 +427,7 @@ class SocialPostCard {
           <div class="spc-image-placeholder-inner">
             <span style="font-size:1.5em;">⚠️</span>
             <span>Image generation failed — tap Regenerate below</span>
+            ${this.imageErrorMessage ? `<span style="font-size:0.75em; opacity:0.8; font-family:monospace;">${this.escapeHtml(this.imageErrorMessage)}</span>` : ''}
           </div>
         </div>`;
     } else {
@@ -453,8 +483,22 @@ class SocialPostCard {
 
     this.attachListeners();
 
-    // If we already have the base image, restart animation on the new canvas element
-    if (this.baseImage && !hasContent) {
+    // Re-attach the animated canvas to the fresh #spc-image-area div this
+    // render() call just created (2026-08-22, owner: "image gen failed
+    // again" — reproduced live: after Schedule/Save, the preview that had
+    // been rendering fine goes completely blank). render() always rebuilds
+    // the DOM from a string, which discards whatever <canvas> a prior
+    // startAnimatedPreview() call inserted — this.animCanvas/this.baseImage
+    // (the JS objects) survive fine, but nothing ever re-mounts the canvas
+    // element unless this runs again. The old `!hasContent` guard was
+    // backwards: hasContent just means a draft post ROW exists in the DB
+    // (true almost immediately after load, well before any image is
+    // actually uploaded), so it skipped the remount in nearly every real
+    // case. Condition now mirrors the imageHtml branch above exactly:
+    // remount whenever we're showing the generated-but-not-yet-uploaded
+    // image (this.baseImage set, and NOT already displaying a real
+    // uploaded p.image_url).
+    if (this.baseImage && !(hasContent && p.image_url)) {
       this.startAnimatedPreview();
     }
 
@@ -464,7 +508,34 @@ class SocialPostCard {
     }
   }
 
+  // Retries once before ever showing the user a stuck error state
+  // (2026-08-23, owner: repeated "image gen failed" on both matches
+  // that I could never once reproduce myself despite exhaustive
+  // testing — genuinely intermittent, so a silent retry is the
+  // pragmatic mitigation while the real root cause stays unconfirmed).
+  // _generateImageOnce() does the actual work and re-throws on failure
+  // instead of setting error state itself, so this wrapper decides
+  // whether to retry or finally give up.
   async generateImage() {
+    const maxAttempts = 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this._generateImageOnce();
+        return;
+      } catch (err) {
+        console.error(`Image generation failed (attempt ${attempt}/${maxAttempts}):`, err);
+        if (attempt >= maxAttempts) {
+          this.imageError = true;
+          this.imageErrorMessage = (err && err.message) ? String(err.message) : 'Unknown error';
+          this.render();
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+    }
+  }
+
+  async _generateImageOnce() {
     if (typeof html2canvas === 'undefined') return;
 
     const m = this.matchContext;
@@ -475,9 +546,18 @@ class SocialPostCard {
       awayName = this.titleCase(m.title.split(/ vs /i)[1]?.trim() || '');
     }
     awayName = awayName || 'Away';
-    const homeLogo = await this.resolveImageForCanvas(m.home_team_logo || '');
-    // For calendar-synced matches (no source system, no linked away team): fall back to Tri County Women's league logo
-    const awayLogo = await this.resolveImageForCanvas(m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : ''));
+    // Parallel, not sequential — each proxied logo fetch can take up to
+    // its own 8s timeout on a slow connection (owner, 2026-08-23: "it
+    // fails to show image on the post to insta from main"), and
+    // awaiting them one after another nearly doubles the worst-case wait
+    // before generateImage() either succeeds or times out — exactly the
+    // kind of real-world mobile-network delay that's hard to reproduce
+    // on a fast connection but very plausible on-site at a game.
+    const [homeLogo, awayLogo] = await Promise.all([
+      this.resolveImageForCanvas(m.home_team_logo || ''),
+      // For calendar-synced matches (no source system, no linked away team): fall back to Tri County Women's league logo
+      this.resolveImageForCanvas(m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : '')),
+    ]);
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
     if (rawDate) {
@@ -502,7 +582,15 @@ class SocialPostCard {
       : ((m.source_name === 'casa') || /casa|liga\s*[12]/i.test(competitionText));
     const isCustomMatch = !m.source_name; // calendar-synced or manually created (no source system)
 
-    // Fetch accolades for both teams
+    // Fetch accolades for both teams — optional, so a hard timeout here
+    // too (owner, 2026-08-23: "it fails to show image on the post to
+    // insta from main") rather than letting a slow/stalled request block
+    // the whole generation before it even reaches the logo/html2canvas
+    // steps that already have their own timeouts.
+    const withTimeoutMs = (promise, ms) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Accolades fetch timed out')), ms)),
+    ]);
     const homeTeamId = m.home_team_id || null;
     const awayTeamId = m.away_team_id || null;
     let homeAccolades = [], awayAccolades = [];
@@ -512,7 +600,7 @@ class SocialPostCard {
       else fetches.push(Promise.resolve({ data: [] }));
       if (awayTeamId) fetches.push(this.auth.fetch(`/api/teams/${awayTeamId}/accolades`).then(r => r.json()));
       else fetches.push(Promise.resolve({ data: [] }));
-      const [homeRes, awayRes] = await Promise.all(fetches);
+      const [homeRes, awayRes] = await withTimeoutMs(Promise.all(fetches), 8000);
       homeAccolades = (homeRes.data || []).filter(a => a.type === 'achievement');
       awayAccolades = (awayRes.data || []).filter(a => a.type === 'achievement');
       // Grab our tagline
@@ -700,19 +788,20 @@ class SocialPostCard {
       this.baseImage = baseImg;
       this.generatedImageUrl = baseImg.src; // fallback
       this.imageError = false;
+      this.imageErrorMessage = null;
       // Start animated preview
       this.startAnimatedPreview();
     } catch (err) {
-      console.error('Image generation failed:', err);
-      this.imageError = true;
-      this.render();
+      // Re-thrown to the generateImage() retry wrapper above — it
+      // decides whether to try again or finally surface the error.
+      throw err;
     } finally {
       document.body.removeChild(wrapper);
     }
   }
 
   startAnimatedPreview() {
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    if (this._stopLighthouseAnim) this._stopLighthouseAnim();
     const imageArea = this.container.querySelector('#spc-image-area');
     if (!imageArea) return;
 
@@ -732,338 +821,32 @@ class SocialPostCard {
     imageArea.innerHTML = '';
     imageArea.appendChild(cvs);
 
-    const ctx = cvs.getContext('2d');
-    const w = cvs.width;
-    const h = cvs.height;
-    // Lighthouse position (bottom-right corner of card, in 2x coords)
-    const lhX = w - 100;  // lantern X
-    const lhY = h - 340; // lantern Y (near top of lighthouse)
-    const beamLen = Math.max(w, h) * 1.2;
-    const beamSpread = 0.18; // half-angle of beam in radians (~10 degrees)
-    const rotPeriod = 30; // seconds for one full 360° sweep
-    const rotSpeed = (2 * Math.PI) / rotPeriod; // radians per second
-    // Preserve startTime across re-renders so the beam angle never jumps
+    // Preserve startTime across re-renders so the beam angle never jumps.
     if (!this.animStartTime) this.animStartTime = performance.now();
-    const startTime = this.animStartTime;
 
-    const drawFrame = (now) => {
-      const elapsed = (now - startTime) / 1000;
-      const angle = (elapsed * rotSpeed) % (Math.PI * 2);
-      ctx.clearRect(0, 0, w, h);
-
-      // Draw base card image
-      if (this.baseImage) {
-        ctx.drawImage(this.baseImage, 0, 0, w, h);
-      }
-
-      // Save context for beam clipping to card area
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, w, h);
-      ctx.clip();
-
-      // Draw light beam (rotating cone)
-      // Start beam pointing down-right (off-screen) so loop seam is invisible
-      const beamAngle = angle + Math.PI * 0.25; // offset: starts at ~45° down-right (off canvas)
-      const a1 = beamAngle - beamSpread;
-      const a2 = beamAngle + beamSpread;
-      const tipX1 = lhX + Math.cos(a1) * beamLen;
-      const tipY1 = lhY + Math.sin(a1) * beamLen;
-      const tipX2 = lhX + Math.cos(a2) * beamLen;
-      const tipY2 = lhY + Math.sin(a2) * beamLen;
-
-      // Outer glow
-      const grad = ctx.createRadialGradient(lhX, lhY, 10, lhX, lhY, beamLen * 0.7);
-      grad.addColorStop(0, 'rgba(255, 230, 0, 0.55)');
-      grad.addColorStop(0.3, 'rgba(255, 223, 0, 0.25)');
-      grad.addColorStop(1, 'rgba(255, 223, 0, 0)');
-
-      ctx.beginPath();
-      ctx.moveTo(lhX, lhY);
-      ctx.lineTo(tipX1, tipY1);
-      ctx.lineTo(tipX2, tipY2);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      // Bright core (narrower)
-      const ca1 = beamAngle - beamSpread * 0.4;
-      const ca2 = beamAngle + beamSpread * 0.4;
-      const coreLen = beamLen * 0.6;
-      ctx.beginPath();
-      ctx.moveTo(lhX, lhY);
-      ctx.lineTo(lhX + Math.cos(ca1) * coreLen, lhY + Math.sin(ca1) * coreLen);
-      ctx.lineTo(lhX + Math.cos(ca2) * coreLen, lhY + Math.sin(ca2) * coreLen);
-      ctx.closePath();
-      const coreGrad = ctx.createRadialGradient(lhX, lhY, 5, lhX, lhY, coreLen * 0.5);
-      coreGrad.addColorStop(0, 'rgba(255, 240, 50, 0.5)');
-      coreGrad.addColorStop(1, 'rgba(255, 240, 50, 0)');
-      ctx.fillStyle = coreGrad;
-      ctx.fill();
-
-      ctx.restore();
-
-      // Draw lighthouse on top
-      this.drawLighthouse(ctx, lhX, lhY);
-
-      this.animFrameId = requestAnimationFrame(drawFrame);
-    };
-    this.animFrameId = requestAnimationFrame(drawFrame);
+    // Shared lighthouse-with-rotating-beam artwork (2026-08-22, owner:
+    // "use the one from the socials section of site. its better") — same
+    // module game-lineup.js's live views now use, so there's exactly one
+    // drawing of this graphic instead of two drifting copies.
+    this._stopLighthouseAnim = window.LighthouseBeam.animate(cvs, {
+      startTime: this.animStartTime,
+      // owner, 2026-08-22: "you need to time the beam so the post time
+      // shown matches the 360 arc of beam to it matches" — the actual
+      // posted clip (see postNow() below) records exactly 5000ms via
+      // MediaRecorder, so the beam needs one full clean 360° sweep in
+      // that same 5s or the posted video either barely moves (period too
+      // long) or visibly resets mid-clip (period too short and not a
+      // clean divisor of the recording length). Slowing it down in
+      // isolation, like the previous 40s pass, made this worse, not
+      // better — the fix is matching the real recording duration, not
+      // picking an arbitrary speed.
+      rotPeriodSec: 5,
+      onFrame: (ctx, w, h) => {
+        if (this.baseImage) ctx.drawImage(this.baseImage, 0, 0, w, h);
+      },
+    }).stop;
   }
 
-  drawLighthouse(ctx, lhX, lhY) {
-    // lhX, lhY = lantern center position
-    const s = 2; // scale factor (we're on 2x canvas)
-    ctx.save();
-
-    // === DIMENSIONS ===
-    const topW = 26 * s, botW = 38 * s, towerH = 150 * s;
-    const topY = lhY + 8 * s;
-    const botY = lhY + towerH;
-
-    // Helper: tower trapezoid clip path
-    const towerPath = () => {
-      ctx.beginPath();
-      ctx.moveTo(lhX - topW / 2, topY);
-      ctx.lineTo(lhX + topW / 2, topY);
-      ctx.lineTo(lhX + botW / 2, botY);
-      ctx.lineTo(lhX - botW / 2, botY);
-      ctx.closePath();
-    };
-
-    // === TOWER BODY (white) ===
-    towerPath();
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-
-    // 4 royal blue bands with gold "1893" digits (spread out, last band just above door)
-    const digits = ['1', '8', '9', '3'];
-    const bandH = 18 * s;
-    const bandZone = towerH * 0.82; // bands occupy top 82% of tower
-    const bandGap = (bandZone - bandH * 4) / 5;
-    for (let i = 0; i < 4; i++) {
-      const bandY = topY + bandGap * (i + 1) + bandH * i;
-      const fracTop = (bandY - topY) / towerH;
-      const fracBot = (bandY + bandH - topY) / towerH;
-      const wTop = topW + (botW - topW) * fracTop;
-      const wBot = topW + (botW - topW) * fracBot;
-
-      ctx.save();
-      towerPath();
-      ctx.clip();
-      ctx.beginPath();
-      ctx.moveTo(lhX - wTop / 2, bandY);
-      ctx.lineTo(lhX + wTop / 2, bandY);
-      ctx.lineTo(lhX + wBot / 2, bandY + bandH);
-      ctx.lineTo(lhX - wBot / 2, bandY + bandH);
-      ctx.closePath();
-      ctx.fillStyle = '#0033a0';
-      ctx.fill();
-
-      // Gold digit
-      const fontSize = Math.round(14 * s);
-      ctx.font = `900 ${fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#f5d442';
-      ctx.fillText(digits[i], lhX, bandY + bandH / 2);
-      ctx.restore();
-    }
-
-    // Thin outline on tower
-    towerPath();
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-    ctx.lineWidth = 1.5 * s;
-    ctx.stroke();
-
-    // === GALLERY PLATFORM ===
-    const platW = topW + 12 * s;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(lhX - platW / 2, topY - 3 * s, platW, 6 * s);
-    ctx.strokeStyle = '#0033a0';
-    ctx.lineWidth = 1 * s;
-    ctx.strokeRect(lhX - platW / 2, topY - 3 * s, platW, 6 * s);
-
-    // Gallery railing posts
-    const railH = 10 * s;
-    const railY = topY - 3 * s - railH;
-    const numPosts = 7;
-    for (let i = 0; i < numPosts; i++) {
-      const px = lhX - platW / 2 + 3 * s + i * ((platW - 6 * s) / (numPosts - 1));
-      ctx.beginPath();
-      ctx.moveTo(px, topY - 3 * s);
-      ctx.lineTo(px, railY);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1 * s;
-      ctx.stroke();
-    }
-    // Top rail
-    ctx.beginPath();
-    ctx.moveTo(lhX - platW / 2 + 2 * s, railY);
-    ctx.lineTo(lhX + platW / 2 - 2 * s, railY);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5 * s;
-    ctx.stroke();
-
-    // === LANTERN ROOM ===
-    const lanternW = 20 * s, lanternH = 16 * s;
-    const lanternTop = railY - lanternH;
-
-    // Glass panes (gold)
-    ctx.fillStyle = '#f5d442';
-    ctx.fillRect(lhX - lanternW / 2, lanternTop, lanternW, lanternH);
-    // Muntin bars
-    ctx.strokeStyle = '#0033a0';
-    ctx.lineWidth = 1.5 * s;
-    ctx.beginPath();
-    ctx.moveTo(lhX, lanternTop);
-    ctx.lineTo(lhX, lanternTop + lanternH);
-    ctx.moveTo(lhX - lanternW / 2, lanternTop + lanternH / 2);
-    ctx.lineTo(lhX + lanternW / 2, lanternTop + lanternH / 2);
-    ctx.stroke();
-    // Lantern frame
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2 * s;
-    ctx.strokeRect(lhX - lanternW / 2, lanternTop, lanternW, lanternH);
-
-    // === DOME ===
-    const domeW = lanternW + 4 * s;
-    ctx.beginPath();
-    ctx.moveTo(lhX - domeW / 2, lanternTop);
-    ctx.quadraticCurveTo(lhX, lanternTop - 22 * s, lhX + domeW / 2, lanternTop);
-    ctx.closePath();
-    ctx.fillStyle = '#0033a0';
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5 * s;
-    ctx.stroke();
-
-    // Finial (gold ball + spike)
-    ctx.beginPath();
-    ctx.arc(lhX, lanternTop - 18 * s, 3 * s, 0, Math.PI * 2);
-    ctx.fillStyle = '#f5d442';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(lhX, lanternTop - 21 * s);
-    ctx.lineTo(lhX, lanternTop - 28 * s);
-    ctx.strokeStyle = '#f5d442';
-    ctx.lineWidth = 2 * s;
-    ctx.stroke();
-
-    // === LANTERN GLOW ===
-    const glowCY = lanternTop + lanternH / 2;
-    const glowGrad = ctx.createRadialGradient(lhX, glowCY, 0, lhX, glowCY, 24 * s);
-    glowGrad.addColorStop(0, 'rgba(255, 230, 0, 0.7)');
-    glowGrad.addColorStop(0.4, 'rgba(255, 223, 0, 0.2)');
-    glowGrad.addColorStop(1, 'rgba(255, 223, 0, 0)');
-    ctx.beginPath();
-    ctx.arc(lhX, glowCY, 24 * s, 0, Math.PI * 2);
-    ctx.fillStyle = glowGrad;
-    ctx.fill();
-
-    // === DOOR ===
-    ctx.beginPath();
-    ctx.arc(lhX, botY - 16 * s, 7 * s, Math.PI, 0);
-    ctx.lineTo(lhX + 7 * s, botY);
-    ctx.lineTo(lhX - 7 * s, botY);
-    ctx.closePath();
-    ctx.fillStyle = '#0033a0';
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5 * s;
-    ctx.stroke();
-
-    // === ROCKY CLIFF ===
-    const rockY = botY + 2 * s;
-    const rockW = 50 * s;
-    const rockH = 28 * s;
-
-    // Main cliff shape (dark craggy rock)
-    ctx.beginPath();
-    ctx.moveTo(lhX - rockW, rockY + rockH);
-    ctx.lineTo(lhX - rockW, rockY + 6 * s);
-    ctx.quadraticCurveTo(lhX - rockW * 0.7, rockY - 4 * s, lhX - rockW * 0.4, rockY + 2 * s);
-    ctx.lineTo(lhX - rockW * 0.2, rockY - 2 * s);
-    ctx.lineTo(lhX, rockY);
-    ctx.lineTo(lhX + rockW * 0.15, rockY - 3 * s);
-    ctx.lineTo(lhX + rockW * 0.35, rockY + 1 * s);
-    ctx.quadraticCurveTo(lhX + rockW * 0.6, rockY - 2 * s, lhX + rockW * 0.8, rockY + 4 * s);
-    ctx.lineTo(lhX + rockW, rockY + 8 * s);
-    ctx.lineTo(lhX + rockW, rockY + rockH);
-    ctx.closePath();
-    ctx.fillStyle = '#2c2c2c';
-    ctx.fill();
-
-    // Rock highlights
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    const rockShapes = [
-      { x: lhX - 20 * s, y: rockY + 6 * s, rx: 10 * s, ry: 5 * s },
-      { x: lhX + 15 * s, y: rockY + 8 * s, rx: 8 * s, ry: 4 * s },
-      { x: lhX - 5 * s, y: rockY + 14 * s, rx: 12 * s, ry: 5 * s },
-      { x: lhX + 30 * s, y: rockY + 12 * s, rx: 9 * s, ry: 5 * s },
-      { x: lhX - 35 * s, y: rockY + 12 * s, rx: 11 * s, ry: 4 * s },
-    ];
-    for (const r of rockShapes) {
-      ctx.beginPath();
-      ctx.ellipse(r.x, r.y, r.rx, r.ry, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#444444';
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // Rock edge highlight (top edge lighter)
-    ctx.beginPath();
-    ctx.moveTo(lhX - rockW, rockY + 6 * s);
-    ctx.quadraticCurveTo(lhX - rockW * 0.7, rockY - 4 * s, lhX - rockW * 0.4, rockY + 2 * s);
-    ctx.lineTo(lhX - rockW * 0.2, rockY - 2 * s);
-    ctx.lineTo(lhX, rockY);
-    ctx.lineTo(lhX + rockW * 0.15, rockY - 3 * s);
-    ctx.lineTo(lhX + rockW * 0.35, rockY + 1 * s);
-    ctx.quadraticCurveTo(lhX + rockW * 0.6, rockY - 2 * s, lhX + rockW * 0.8, rockY + 4 * s);
-    ctx.lineTo(lhX + rockW, rockY + 8 * s);
-    ctx.strokeStyle = '#666666';
-    ctx.lineWidth = 1.5 * s;
-    ctx.stroke();
-
-    // === OCEAN WAVES ===
-    const oceanY = rockY + rockH - 4 * s;
-    const oceanW = 60 * s;
-
-    // Ocean background
-    const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, oceanY + 20 * s);
-    oceanGrad.addColorStop(0, '#1a6baa');
-    oceanGrad.addColorStop(1, '#0d4a7a');
-    ctx.fillStyle = oceanGrad;
-    ctx.fillRect(lhX - oceanW, oceanY, oceanW * 2, 22 * s);
-
-    // Wave lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.lineWidth = 1.5 * s;
-    for (let row = 0; row < 3; row++) {
-      const wy = oceanY + 4 * s + row * 6 * s;
-      ctx.beginPath();
-      for (let x = lhX - oceanW; x < lhX + oceanW; x += 12 * s) {
-        const amp = 2 * s;
-        ctx.moveTo(x, wy);
-        ctx.quadraticCurveTo(x + 3 * s, wy - amp, x + 6 * s, wy);
-        ctx.quadraticCurveTo(x + 9 * s, wy + amp, x + 12 * s, wy);
-      }
-      ctx.stroke();
-    }
-
-    // Foam at rock base
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.lineWidth = 2 * s;
-    ctx.beginPath();
-    for (let x = lhX - rockW; x < lhX + rockW; x += 8 * s) {
-      ctx.moveTo(x, oceanY + 1 * s);
-      ctx.quadraticCurveTo(x + 2 * s, oceanY - 2 * s, x + 4 * s, oceanY + 1 * s);
-    }
-    ctx.stroke();
-
-    ctx.restore();
-  }
 
   async downloadVideo() {
     if (!this.animCanvas) return;

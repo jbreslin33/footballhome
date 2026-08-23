@@ -142,12 +142,6 @@ class GameLineupScreen extends Screen {
     // slots (in sortOrder) into rows sized by the template counts (GK
     // row first) so the graphic reads as a real formation shape on a
     // pitch, purely for the TV-style visual.
-    // Defaults on (2026-08-22, owner: "make coach view like player view
-    // so current lineup looks like insta on coach view too") — the coach
-    // still gets a "📋 List View" toggle back to the plain grid for dense
-    // editing; assignment itself always happens via the position pills in
-    // the roster cards below, unaffected by this flag either way.
-    this.lineupGraphicMode = true;
     this.formation = '4-4-2';
     // Lineup / Game Day toggle (2026-08-22, owner directive: "too
     // confusing... just lineup is fine, then toggle inside that") —
@@ -163,6 +157,8 @@ class GameLineupScreen extends Screen {
     this._saveTimer = null;
     this._wired    = false;
     this.matchDetails = null; // {home_team_name, home_team_logo, away_team_name, away_team_logo, ...} — see _renderMatchHeader
+    this._stopLighthouseAnim = null; // stop fn from LighthouseBeam.animate() — see _mountLighthouseCanvas
+    this._lighthouseStartTime = null; // persisted so the beam angle never jumps across re-renders
   }
 
   // Compact "MATCH DAY" header (2026-08-22, owner directive: "the player
@@ -172,26 +168,93 @@ class GameLineupScreen extends Screen {
   // screen and the Instagram preview it deep-links to read as one brand
   // instead of a bare pitch diagram with no opponent identity. Shown above
   // every sub-view (Lineup and Game Day, coach and player).
-  _renderMatchHeader() {
+  // Real lighthouse-with-rotating-beam artwork (2026-08-22, owner: "the
+  // lh with beam is weeak. use the one from the socials seciont of
+  // site. its better. its gotta be good!") — the same LighthouseBeam
+  // canvas drawing SocialPostCard.js uses for the actual Instagram post
+  // (gold "1893" bands, lantern, rocky cliff, ocean), not a flat CSS
+  // approximation. _mountLighthouseCanvas() below starts the animation
+  // once this canvas is actually in the live DOM.
+  _lighthouseCanvasHtml() {
+    return `<canvas id="gl-lighthouse-canvas" style="position:absolute; right:-4px; top:-2px; width:70px; height:160px; pointer-events:none; z-index:0;"></canvas>`;
+  }
+
+  // Scheduled via setTimeout(0) from _renderMatchHeader() so it runs
+  // after the box.innerHTML assignment that actually mounts the canvas
+  // (all three render() branches funnel through _renderMatchHeader, so
+  // hooking here covers Lineup, Game Day, and the coach's own view alike
+  // without touching each call site).
+  _mountLighthouseCanvas() {
+    if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
+    const canvas = this.element && this.element.querySelector('#gl-lighthouse-canvas');
+    if (!canvas || typeof window.LighthouseBeam === 'undefined') return;
+    const dpr = 2;
+    const cssW = 70, cssH = 160;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    // Geometry math (from lighthouseBeam.js's draw()): topmost point is
+    // lhY - 49*s (finial spike), bottommost is lhY + 198*s (ocean base),
+    // total span 247*s. At s=1.1 that's ~272 canvas-px tall and ~121
+    // wide (rocks span 110*s each side of lhX) — sized to fit fully
+    // inside this canvas with margin, both top/bottom AND left/right, so
+    // nothing (rocks, ocean, "1893" digits) gets clipped off-canvas like
+    // the first pass did.
+    const s = 1.1;
+    if (!this._lighthouseStartTime) this._lighthouseStartTime = performance.now();
+    this._stopLighthouseAnim = window.LighthouseBeam.animate(canvas, {
+      startTime: this._lighthouseStartTime,
+      scale: s,
+      lhX: canvas.width / 2,
+      lhY: 75 * dpr,
+      // Matches the actual posted video's exact 5s recording length (see
+      // SocialPostCard.js's postNow()) for consistency across every view
+      // (owner, 2026-08-22: "time the beam so the post time shown
+      // matches the 360 arc of beam"). No fixed clip length applies to
+      // this live decorative canvas specifically, but one shared period
+      // everywhere beats guessing a different arbitrary speed per view.
+      rotPeriodSec: 5,
+      beamSpread: 0.16,
+    }).stop;
+  }
+
+  // Full-size unified frame (2026-08-22, owner: "when i click lineup from
+  // main screen it should be full insta post view not tiny one. corect
+  // ratio and proper lighthouse with rotating ray light! for all") — one
+  // continuous card (crests/VS/date/venue + whatever content is passed
+  // in) at real Instagram-post proportions, always with the rotating
+  // lighthouse beam, instead of a small compact header strip sitting
+  // above a separately-styled content box below it.
+  _renderMatchHeader(innerHtml = '') {
     const m = this.matchDetails;
-    if (!m) return '';
-    const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { className: 'team-logo', alt: 'Home', placeholder: '🏠' });
-    const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { className: 'team-logo', alt: 'Away', placeholder: '🏟️' });
+    if (!m) return innerHtml;
+    const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { className: 'team-logo-lg', alt: 'Home', placeholder: '🏠' });
+    const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { className: 'team-logo-lg', alt: 'Away', placeholder: '🏟️' });
+    // setTimeout(0) queues _mountLighthouseCanvas() to run right after
+    // this string gets assigned to box.innerHTML elsewhere in the same
+    // synchronous call — the canvas doesn't exist in the live DOM yet
+    // at this point in the function, so the animation can't start here.
+    setTimeout(() => this._mountLighthouseCanvas(), 0);
     return `
-      <div style="background:linear-gradient(180deg,#1e3a8a,#1e40af); border:1px solid rgba(250,204,21,0.5); border-radius:10px; padding:14px; margin-bottom:12px; text-align:center;">
-        <div style="display:flex; align-items:flex-start; justify-content:center; gap:20px;">
-          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:0; max-width:140px;">
-            ${homeLogo}
-            <div style="font-size:0.62rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word;">${this.escapeHtml(m.home_team_name || 'Home')}</div>
+      <div style="position:relative; overflow:hidden; max-width:480px; margin:0 auto 12px; background:linear-gradient(180deg,#1e3a8a,#1e40af); border:2px solid rgba(250,204,21,0.6); border-radius:16px; padding:18px 16px 20px; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
+        ${this._lighthouseCanvasHtml()}
+        <div style="position:relative; z-index:1; text-align:center;">
+          <div style="display:flex; align-items:flex-start; justify-content:center; gap:26px;">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; max-width:170px;">
+              ${homeLogo}
+              <div style="font-size:0.78rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word; line-height:1.2;">${this.escapeHtml(m.home_team_name || 'Home')}</div>
+            </div>
+            <div style="font-size:0.9rem; font-weight:700; color:#facc15; opacity:0.9; margin-top:26px;">VS</div>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; max-width:170px;">
+              ${awayLogo}
+              <div style="font-size:0.78rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word; line-height:1.2;">${this.escapeHtml(m.away_team_name || 'Away')}</div>
+            </div>
           </div>
-          <div style="font-size:0.7rem; font-weight:700; color:#facc15; opacity:0.85; margin-top:14px;">VS</div>
-          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:0; max-width:140px;">
-            ${awayLogo}
-            <div style="font-size:0.62rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word;">${this.escapeHtml(m.away_team_name || 'Away')}</div>
-          </div>
+          ${this.when ? `<div style="margin-top:12px; font-size:0.74rem; color:#dbeafe; opacity:0.9;">📅 ${this.escapeHtml(this.when)}</div>` : ''}
+          ${m.venue_location ? `<div style="margin-top:2px; font-size:0.68rem; color:#dbeafe; opacity:0.75; overflow-wrap:break-word;">📍 ${this.escapeHtml(m.venue_location)}</div>` : ''}
         </div>
-        ${this.when ? `<div style="margin-top:10px; font-size:0.66rem; color:#dbeafe; opacity:0.85;">📅 ${this.escapeHtml(this.when)}</div>` : ''}
-        ${m.venue_location ? `<div style="margin-top:2px; font-size:0.62rem; color:#dbeafe; opacity:0.75; overflow-wrap:break-word;">📍 ${this.escapeHtml(m.venue_location)}</div>` : ''}
+        <div style="position:relative; z-index:1; margin-top:16px;">
+          ${innerHtml}
+        </div>
       </div>`;
   }
 
@@ -289,12 +352,6 @@ class GameLineupScreen extends Screen {
       const statsToggle = e.target.closest('#gl-stats-toggle');
       if (statsToggle && this.isCoach) {
         this.showLineupStats = !this.showLineupStats;
-        this._render();
-        return;
-      }
-      const graphicToggle = e.target.closest('#gl-graphic-toggle');
-      if (graphicToggle && this.isCoach) {
-        this.lineupGraphicMode = !this.lineupGraphicMode;
         this._render();
         return;
       }
@@ -651,12 +708,12 @@ class GameLineupScreen extends Screen {
       </div>`;
 
     if (this.subView === 'gameday') {
-      box.innerHTML = this._renderMatchHeader() + subViewToggleHtml + viewToggleHtml + this._renderGameDayRoster();
+      box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(this._renderGameDayRoster(byZone));
       return;
     }
 
     if (effectiveIsPlayerView) {
-      box.innerHTML = this._renderMatchHeader() + subViewToggleHtml + viewToggleHtml + this._renderPlayerView(byZone);
+      box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(this._renderPlayerView(byZone));
       return;
     }
 
@@ -671,80 +728,36 @@ class GameLineupScreen extends Screen {
     const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
 
     // Top summary graphic (2026-08-22, owner directive: "show at top the
-    // lineup and totals in a graphic form like on tv" / "we don't need
-    // 'Starting' section and bench section as it should be in the
-    // Current Lineup"). Starting XI + Bench both live here now instead
-    // of their own separate card-grid sections below — Alternates keeps
-    // its own section since that wasn't part of the directive. Every
-    // filled slot/bench row is a button: click it to unassign that
-    // player (same as tapping their own active pill would have). RSVP
-    // pills are opt-in (this.showLineupStats) via the toggle button.
-    const startingListHtml = `
-        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:4px;">
-          ${startingPositions.map(pos => {
-            const occupantId = slotToPlayerId.get(pos.id);
-            const occupant = occupantId != null ? rosterById.get(occupantId) : null;
-            // Name is never truncated (owner: "toggling availability can't
-            // make name not show all the way") — it wraps onto its own
-            // line instead of sharing a row with the RSVP pill, so adding
-            // the pill can never squeeze it into an ellipsis.
-            const inner = `
-              <div style="display:flex; align-items:baseline; gap:6px;">
-                <span style="font-weight:800; opacity:0.75; white-space:nowrap;">${pos.sortOrder} ${pos.abbreviation}</span>
-                <span style="flex:1; min-width:0; overflow-wrap:break-word; white-space:normal; text-align:left; ${occupant ? '' : 'opacity:0.4;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
-              </div>
-              ${occupant && this.showLineupStats ? `<div style="margin-top:2px;">${this._rsvpStatusPill(occupant.id)}</div>` : ''}`;
-            const cellStyle = 'display:flex; flex-direction:column; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none; text-align:left;' +
-              `background:${occupant ? 'rgba(34,197,94,0.14)' : 'rgba(255,255,255,0.04)'};`;
-            return occupant
-              ? `<button type="button" data-lineup-remove-starter="${occupant.id}" title="Remove ${this.escapeHtml(occupant.name)} from ${pos.name}" style="${cellStyle} cursor:pointer; color:inherit; font:inherit;">${inner}</button>`
-              : `<div style="${cellStyle}">${inner}</div>`;
-          }).join('')}
-        </div>`;
-
-    const formationSelectHtml = this.lineupGraphicMode
-      ? `<select data-lineup-formation-select title="Formation (visual layout only)"
-                  style="font-size:0.68rem; font-weight:700; padding:2px 4px; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
-           ${Object.keys(FORMATIONS).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
-         </select>`
-      : '';
+    // lineup and totals in a graphic form like on tv"). List View removed
+    // for now (owner, 2026-08-22: "take out list view for now at least so
+    // we don't gunk up things. all insta grade ratio view") — the
+    // formation pitch is the only Current Lineup display; assignment
+    // itself still happens via the position pills in the roster cards
+    // below, unaffected either way. No outer card here — this renders
+    // INSIDE _renderMatchHeader()'s frame now.
+    // Editing controls (formation dropdown, availability toggle) live
+    // OUTSIDE the graphic frame now (owner, 2026-08-22: "don't have
+    // options on the insta post like drop downs. that should be under
+    // it. to change it on the fly.") — summaryHtml itself is pure post
+    // content (pitch + bench) with nothing but the graphic inside the
+    // frame; lineupControlsHtml renders as a normal toolbar below it.
+    const lineupControlsHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 12px; flex-wrap:wrap; gap:8px;">
+        <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/11 · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <select data-lineup-formation-select title="Formation (visual layout only)"
+                  style="font-size:0.72rem; font-weight:700; padding:4px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
+            ${Object.keys(FORMATIONS).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>
+          <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 10px;">
+            ${this.showLineupStats ? 'Hide' : 'Show'} Availability
+          </button>
+        </div>
+      </div>`;
 
     const summaryHtml = `
-      <div style="background:var(--bg-secondary, #111827); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
-          <strong style="font-size:0.85rem;">⚽ Current Lineup</strong>
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/11 · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
-            ${formationSelectHtml}
-            <button type="button" id="gl-graphic-toggle" class="btn btn-secondary" style="font-size:0.68rem; padding:2px 8px;">
-              ${this.lineupGraphicMode ? '📋 List View' : '📐 Formation View'}
-            </button>
-            <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.68rem; padding:2px 8px;">
-              ${this.showLineupStats ? 'Hide' : 'Show'} Availability
-            </button>
-          </div>
-        </div>
-        ${this.lineupGraphicMode ? this._renderFormationPitch(byZone, { readOnly: false }) : startingListHtml}
-        ${this.lineupGraphicMode ? this._renderBenchGraphic(byZone.bench) : `
-          <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border-color);">
-            <div style="font-size:0.72rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH${byZone.bench.length ? '' : ' (0)'}</div>
-            ${byZone.bench.length ? `
-              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:4px;">
-                ${byZone.bench.map((p, i) => `
-                  <button type="button" data-lineup-remove-bench="${p.id}" title="Remove ${this.escapeHtml(p.name)} from Bench"
-                          style="display:flex; flex-direction:column; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none; background:rgba(255,255,255,0.04); cursor:pointer; color:inherit; font:inherit; text-align:left;">
-                    <div style="display:flex; align-items:baseline; gap:6px;">
-                      <span style="font-weight:800; opacity:0.75; white-space:nowrap;">#${this.benchOrder.get(p.id) || (i + 1)}</span>
-                      <span style="flex:1; min-width:0; overflow-wrap:break-word; white-space:normal; text-align:left;">${this.escapeHtml(p.name)}</span>
-                    </div>
-                    ${this.showLineupStats ? `<div style="margin-top:2px;">${this._rsvpStatusPill(p.id)}</div>` : ''}
-                  </button>
-                `).join('')}
-              </div>
-            ` : `<div style="opacity:0.5; font-size:0.72rem;">None yet</div>`}
-          </div>
-        `}
-      </div>`;
+      ${this._renderFormationPitch(byZone, { readOnly: false })}
+      ${this._renderBenchGraphic(byZone.bench)}`;
 
     // Bench/Alt only now — Starting XI goes through the 1-11 position
     // pills below instead of a "Start" button (owner directive).
@@ -905,7 +918,7 @@ class GameLineupScreen extends Screen {
       </details>
     `;
 
-    box.innerHTML = this._renderMatchHeader() + subViewToggleHtml + viewToggleHtml + summaryHtml + [
+    box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(summaryHtml) + lineupControlsHtml + [
       gridSection('Alternates', byZone.alternate),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
@@ -983,7 +996,7 @@ class GameLineupScreen extends Screen {
     // as an actual pitch, not a plain green rectangle. Portrait,
     // compact (owner: "smaller pitch and closer together").
     return `
-      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); border-radius:10px; padding:12px 8px; max-width:300px; margin:0 auto; min-height:400px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
+      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); border-radius:10px; padding:14px 8px; max-width:420px; margin:0 auto; min-height:440px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
         <div style="position:absolute; inset:6px; border:2px solid rgba(255,255,255,0.35); border-radius:4px;"></div>
         <div style="position:absolute; left:6px; right:6px; top:50%; border-top:2px solid rgba(255,255,255,0.35);"></div>
         <div style="position:absolute; left:50%; top:50%; width:64px; height:64px; margin-left:-32px; margin-top:-32px; border:2px solid rgba(255,255,255,0.35); border-radius:50%;"></div>
@@ -1062,29 +1075,52 @@ class GameLineupScreen extends Screen {
   // dropdown), alpha by last name. Deliberately per-match-zone-agnostic:
   // this is "who's in the 1st team pool", not "who's starting THIS game"
   // — that's the Lineup button/_renderPlayerView above.
-  _renderGameDayRoster() {
-    const list = this.roster.filter(p => p.lineupRole === 'starter' || p.lineupRole === 'bench');
+  // Redesigned (2026-08-22, owner: "game day view is still list view...
+  // make it insta grade everywhere") from a plain bordered text list into
+  // a chip card matching the same blue/gold card language as
+  // _renderMatchHeader/_renderFormationPitch, so Lineup and Game Day read
+  // as one consistent, graphic-first screen instead of a form-like list
+  // for one sub-view and a polished graphic for the other.
+  // Reads from THIS MATCH's own zones (owner, 2026-08-22: "game day
+  // roster has guys not even going. use source of truth for all. what i
+  // selected") — previously read the standing season-long Roster Role
+  // from the Teams page instead of the actual per-match starter/bench
+  // the coach set on the Lineup sub-view, so it could show people who
+  // aren't even part of this game (or miss people who are). byZone is
+  // the exact same object the pitch graphic renders from.
+  _renderGameDayRoster(byZone) {
+    const byLastName = (list) => [...list].sort((a, b) =>
+      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
+    );
+    const starters = byLastName(byZone.starter);
+    const bench = byLastName(byZone.bench);
+    const list = [...starters, ...bench];
     if (list.length === 0) {
       return `
         <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
-          No 1st Team Starter/Bench set yet — set Roster Role on the Teams page.
+          Lineup not set yet — set starters &amp; bench on the Lineup tab.
         </div>`;
     }
-    list.sort((a, b) =>
-      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
-    );
-    const ROLE_LABEL = { starter: '1st Team Starter', bench: '1st Team Bench' };
-    const row = (p) => `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
-        <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
-        <span style="font-size:0.62rem; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; opacity:0.65; white-space:nowrap;">${ROLE_LABEL[p.lineupRole]}</span>
+    const chip = (p) => `
+      <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:999px; padding:5px 12px 5px 6px;">
+        <span style="width:8px; height:8px; border-radius:50%; background:#facc15; flex-shrink:0;"></span>
+        <span style="font-size:0.78rem; font-weight:600; color:#fff; overflow-wrap:break-word;">${this.escapeHtml(p.name)}</span>
       </div>`;
-    return `
-      <div style="max-width:440px; margin:0 auto;">
-        <h2 style="margin: var(--space-3) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">📋 Game Day Roster (${list.length})</h2>
-        <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
-          ${list.map(row).join('')}
+    const section = (title, players) => players.length ? `
+      <div style="margin-top:14px;">
+        <div style="font-size:0.66rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#facc15; margin-bottom:6px;">${title} (${players.length})</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${players.map(chip).join('')}
         </div>
+      </div>` : '';
+    // No card/lighthouse of its own — this renders INSIDE
+    // _renderMatchHeader()'s frame now, which already supplies both.
+    return `
+      <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:12px;">
+        <div style="font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#fff; text-align:center; margin-bottom:2px;">📋 Game Day Squad</div>
+        <div style="font-size:0.62rem; color:#dbeafe; opacity:0.8; text-align:center;">${list.length} on the roster for this match</div>
+        ${section('Starters', starters)}
+        ${section('Bench', bench)}
       </div>`;
   }
 }
