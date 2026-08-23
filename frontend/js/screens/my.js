@@ -212,6 +212,26 @@ class MyScreen extends Screen {
         }
         return;
       }
+      // "📸 Post to Instagram" (2026-08-22, owner directive: "we already
+      // have that ability i just want it from my screen for schedule").
+      // Reuses game-day-roster.js's existing social-post flow as-is —
+      // that screen already has the game_day/lineup/pre_match_
+      // announcement/post_game preview+publish buttons (SocialPostCard).
+      // It reads the match from navigation.context.match (team-
+      // dashboard.js's own entry point does the same, see its
+      // "📋 Game Day" button) rather than nav params, and falls back to
+      // the match's home team if navigation.context.team isn't set —
+      // see game-day-roster.js's resolveActiveTeamId().
+      const socialBtn = target.closest('[data-social-match-id]');
+      if (socialBtn) {
+        e.stopPropagation();
+        const matchId = socialBtn.getAttribute('data-social-match-id');
+        if (matchId) {
+          this.navigation.context.match = { id: matchId, title: socialBtn.getAttribute('data-social-title') || '' };
+          this.navigation.goTo('game-day-roster');
+        }
+        return;
+      }
       // Attendance status button (coach/admin only — server re-checks).
       // Tapping the already-active status clears the mark instead of
       // re-sending the same status — that's the only way to undo a
@@ -1109,6 +1129,13 @@ class MyScreen extends Screen {
                       style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
                 ⚽ Lineup
               </button>
+              ${this._canPostSocial() ? `
+                <button type="button" data-social-match-id="${ev.match_id}"
+                        data-social-title="${this.escapeHtml(title)}"
+                        style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
+                  📸 Post to Instagram
+                </button>
+              ` : ''}
             ` : ''}
           </div>
         </div>
@@ -1120,6 +1147,25 @@ class MyScreen extends Screen {
         ` : ''}
       </div>
     `;
+  }
+
+  // "📸 Post to Instagram" button gate (2026-08-22, owner directive:
+  // "only allow admin to do it" / "use existing plumbing") — client-side
+  // convenience mirroring the REAL authorization rule exactly
+  // (SocialController's publish/create endpoints all gate on
+  // requireAdminLevel(request, {"club","super","marketing"}) — see e.g.
+  // SocialController.cpp:843), not a broader/different admin list, so
+  // this never shows the button to someone the backend would 403.
+  // NOT navigation.context.role — this screen is reached exclusively
+  // through the Player-role path (role-selection.js forces
+  // context.role = 'player' every time before landing on 'my', even for
+  // an account that's also a club admin), so that field is always
+  // 'player' here regardless of who's actually logged in. The real
+  // account-level role lives on context.user instead (see
+  // role-selection.js's own _maybeAutoSkipToMy isAdmin check).
+  _canPostSocial() {
+    const role = (this.navigation?.context?.user?.role || '').toString().toLowerCase();
+    return ['club', 'super', 'marketing'].includes(role);
   }
 
   // Button renderer.  `semantic` is 'yes' | 'no' — drives colour.
