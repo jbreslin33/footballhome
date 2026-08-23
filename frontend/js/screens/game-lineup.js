@@ -78,6 +78,18 @@
 // unlimited.
 const ZONE_CAPS = { starter: 11, bench: 9 };
 
+// Formation pitch graphic row-count templates (2026-08-22, owner
+// directive) — GK row first, count(GK)=1 always. Purely a visual
+// row-count template: it chunks the same 11 fixed-role slots (already
+// sorted 1-11) into rows of these sizes, it does not change what role
+// slot N actually is. "1442 counting keeper" = [1,4,4,2].
+const FORMATIONS = {
+  '4-4-2':   [1, 4, 4, 2],
+  '4-3-3':   [1, 4, 3, 3],
+  '3-5-2':   [1, 3, 5, 2],
+  '4-2-3-1': [1, 4, 2, 3, 1],
+};
+
 class GameLineupScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -116,6 +128,16 @@ class GameLineupScreen extends Screen {
     // availability and attendance... at top for current lineup and
     // bench") — off by default to keep the summary compact.
     this.showLineupStats = false;
+    // Formation pitch graphic (2026-08-22, owner directive: "show lineup
+    // in graphic form as diff formations. default to 442" — "1442
+    // counting keeper lol"). This is a pure VISUAL row-count template —
+    // it does NOT reassign anyone's actual position/slot (those stay the
+    // 11 fixed named roles the pills use). It just chunks the same 11
+    // slots (in sortOrder) into rows sized by the template counts (GK
+    // row first) so the graphic reads as a real formation shape on a
+    // pitch, purely for the TV-style visual.
+    this.lineupGraphicMode = false;
+    this.formation = '4-4-2';
     this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
     this.error     = null;
@@ -135,6 +157,15 @@ class GameLineupScreen extends Screen {
       <div id="gl-body" style="padding: var(--space-3) var(--space-4) var(--space-6);"></div>
     `;
     this.element = el;
+    // Screen instances are reused across navigations (e.g. my.js's
+    // "Lineup" and "Game Day Roster" buttons both land here) — every
+    // render() call creates a brand-new element, but _wire()'s
+    // this._wired guard only ever attaches once. Without this reset,
+    // the second+ visit's listener is still attached to the FIRST
+    // visit's now-detached element, so nothing on the fresh screen
+    // (including Back) responds to clicks. Reset here so _wire() (called
+    // from onEnter right after render()) re-attaches to the current one.
+    this._wired = false;
     return el;
   }
 
@@ -187,6 +218,12 @@ class GameLineupScreen extends Screen {
         this._render();
         return;
       }
+      const graphicToggle = e.target.closest('#gl-graphic-toggle');
+      if (graphicToggle && this.isCoach) {
+        this.lineupGraphicMode = !this.lineupGraphicMode;
+        this._render();
+        return;
+      }
       // Current Lineup card (2026-08-22, owner directive) — Starting XI
       // and Bench no longer have their own sections below, so removing
       // someone happens right from the summary graphic: click their
@@ -225,6 +262,12 @@ class GameLineupScreen extends Screen {
         const playerId = Number(benchSelect.getAttribute('data-player-id'));
         const order = Number(benchSelect.value);
         this._setBenchOrder(playerId, order);
+        return;
+      }
+      const formationSelect = e.target.closest('[data-lineup-formation-select]');
+      if (formationSelect && this.isCoach) {
+        this.formation = formationSelect.value;
+        this._render();
       }
     });
   }
@@ -524,21 +567,7 @@ class GameLineupScreen extends Screen {
     // rosterById/slotToPlayerId computed once per render (not per row) —
     // shared by both the top summary graphic and the position pills
     // below it, so every row/cell reflects current global occupancy.
-    const rosterById = new Map(this.roster.map(r => [r.id, r]));
-    const slotToPlayerId = new Map();
-    for (const [pid, posId] of this.positions.entries()) slotToPlayerId.set(posId, pid);
-    const startingPositions = this.positionList.filter(pos => pos.sortOrder <= 11);
-
-    const RSVP_PILL = {
-      yes:   { label: 'Going',     bg: '#166534', fg: '#bbf7d0' },
-      no:    { label: 'Not Going', bg: '#7f1d1d', fg: '#fecaca' },
-      maybe: { label: 'Maybe',     bg: '#78350f', fg: '#fde68a' },
-    };
-    const rsvpStatusPill = (playerId) => {
-      const rsvp = this.stats.get(playerId)?.gameRsvp;
-      const v = RSVP_PILL[rsvp] || { label: 'No RSVP', bg: '#374151', fg: '#d1d5db' };
-      return `<span title="RSVP for this game" style="font-size:0.6rem; font-weight:700; padding:1px 6px; border-radius:999px; background:${v.bg}; color:${v.fg}; white-space:nowrap;">${v.label}</span>`;
-    };
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
 
     // Top summary graphic (2026-08-22, owner directive: "show at top the
     // lineup and totals in a graphic form like on tv" / "we don't need
@@ -549,47 +578,71 @@ class GameLineupScreen extends Screen {
     // filled slot/bench row is a button: click it to unassign that
     // player (same as tapping their own active pill would have). RSVP
     // pills are opt-in (this.showLineupStats) via the toggle button.
-    const summaryHtml = `
-      <div style="background:var(--bg-secondary, #111827); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
-          <strong style="font-size:0.85rem;">⚽ Current Lineup</strong>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/11 · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
-            <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.68rem; padding:2px 8px;">
-              ${this.showLineupStats ? 'Hide' : 'Show'} Availability
-            </button>
-          </div>
-        </div>
+    const startingListHtml = `
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:4px;">
           ${startingPositions.map(pos => {
             const occupantId = slotToPlayerId.get(pos.id);
             const occupant = occupantId != null ? rosterById.get(occupantId) : null;
+            // Name is never truncated (owner: "toggling availability can't
+            // make name not show all the way") — it wraps onto its own
+            // line instead of sharing a row with the RSVP pill, so adding
+            // the pill can never squeeze it into an ellipsis.
             const inner = `
-              <span style="font-weight:800; opacity:0.75; white-space:nowrap;">${pos.sortOrder} ${pos.abbreviation}</span>
-              <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; ${occupant ? '' : 'opacity:0.4;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
-              ${occupant && this.showLineupStats ? rsvpStatusPill(occupant.id) : ''}`;
-            const cellStyle = 'display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none;' +
+              <div style="display:flex; align-items:baseline; gap:6px;">
+                <span style="font-weight:800; opacity:0.75; white-space:nowrap;">${pos.sortOrder} ${pos.abbreviation}</span>
+                <span style="flex:1; min-width:0; overflow-wrap:break-word; white-space:normal; text-align:left; ${occupant ? '' : 'opacity:0.4;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
+              </div>
+              ${occupant && this.showLineupStats ? `<div style="margin-top:2px;">${this._rsvpStatusPill(occupant.id)}</div>` : ''}`;
+            const cellStyle = 'display:flex; flex-direction:column; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none; text-align:left;' +
               `background:${occupant ? 'rgba(34,197,94,0.14)' : 'rgba(255,255,255,0.04)'};`;
             return occupant
               ? `<button type="button" data-lineup-remove-starter="${occupant.id}" title="Remove ${this.escapeHtml(occupant.name)} from ${pos.name}" style="${cellStyle} cursor:pointer; color:inherit; font:inherit;">${inner}</button>`
               : `<div style="${cellStyle}">${inner}</div>`;
           }).join('')}
-        </div>
-        ${byZone.bench.length ? `
-          <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border-color);">
-            <div style="font-size:0.72rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH</div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:4px;">
-              ${byZone.bench.map((p, i) => `
-                <button type="button" data-lineup-remove-bench="${p.id}" title="Remove ${this.escapeHtml(p.name)} from Bench"
-                        style="display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none; background:rgba(255,255,255,0.04); cursor:pointer; color:inherit; font:inherit;">
-                  <span style="font-weight:800; opacity:0.75; white-space:nowrap;">#${this.benchOrder.get(p.id) || (i + 1)}</span>
-                  <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left;">${this.escapeHtml(p.name)}</span>
-                  ${this.showLineupStats ? rsvpStatusPill(p.id) : ''}
-                </button>
-              `).join('')}
-            </div>
+        </div>`;
+
+    const formationSelectHtml = this.lineupGraphicMode
+      ? `<select data-lineup-formation-select title="Formation (visual layout only)"
+                  style="font-size:0.68rem; font-weight:700; padding:2px 4px; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
+           ${Object.keys(FORMATIONS).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
+         </select>`
+      : '';
+
+    const summaryHtml = `
+      <div style="background:var(--bg-secondary, #111827); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
+          <strong style="font-size:0.85rem;">⚽ Current Lineup</strong>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/11 · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
+            ${formationSelectHtml}
+            <button type="button" id="gl-graphic-toggle" class="btn btn-secondary" style="font-size:0.68rem; padding:2px 8px;">
+              ${this.lineupGraphicMode ? '📋 List View' : '📐 Formation View'}
+            </button>
+            <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.68rem; padding:2px 8px;">
+              ${this.showLineupStats ? 'Hide' : 'Show'} Availability
+            </button>
           </div>
-        ` : ''}
+        </div>
+        ${this.lineupGraphicMode ? this._renderFormationPitch(byZone, { readOnly: false }) : startingListHtml}
+        ${this.lineupGraphicMode ? this._renderBenchGraphic(byZone.bench) : `
+          <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border-color);">
+            <div style="font-size:0.72rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH${byZone.bench.length ? '' : ' (0)'}</div>
+            ${byZone.bench.length ? `
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:4px;">
+                ${byZone.bench.map((p, i) => `
+                  <button type="button" data-lineup-remove-bench="${p.id}" title="Remove ${this.escapeHtml(p.name)} from Bench"
+                          style="display:flex; flex-direction:column; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none; background:rgba(255,255,255,0.04); cursor:pointer; color:inherit; font:inherit; text-align:left;">
+                    <div style="display:flex; align-items:baseline; gap:6px;">
+                      <span style="font-weight:800; opacity:0.75; white-space:nowrap;">#${this.benchOrder.get(p.id) || (i + 1)}</span>
+                      <span style="flex:1; min-width:0; overflow-wrap:break-word; white-space:normal; text-align:left;">${this.escapeHtml(p.name)}</span>
+                    </div>
+                    ${this.showLineupStats ? `<div style="margin-top:2px;">${this._rsvpStatusPill(p.id)}</div>` : ''}
+                  </button>
+                `).join('')}
+              </div>
+            ` : `<div style="opacity:0.5; font-size:0.72rem;">None yet</div>`}
+          </div>
+        `}
       </div>`;
 
     // Bench/Alt only now — Starting XI goes through the 1-11 position
@@ -706,9 +759,9 @@ class GameLineupScreen extends Screen {
     const playerRow = (p) => `
       <div style="padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0;">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(p.name)}</span>
-            ${this.isCoach ? rsvpStatusPill(p.id) : ''}
+          <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
+            <span style="overflow-wrap:break-word; white-space:normal;">${this.escapeHtml(p.name)}</span>
+            ${this.isCoach ? this._rsvpStatusPill(p.id) : ''}
           </span>
           <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
             ${this.isCoach && this.zones.get(p.id) === 'bench' ? benchOrderControl(p) : ''}
@@ -759,19 +812,107 @@ class GameLineupScreen extends Screen {
     ].join('');
   }
 
-  // Read-only "traditional team sheet" (2026-08-22, owner directive) —
-  // what players actually see, and what a coach sees via the "👀 Player
-  // Lineup View" toggle above. No stats/RSVP/coach controls. Same "not
-  // published yet" gate the old player-only branch used
+  // rosterById/slotToPlayerId/startingPositions — pure lookups from
+  // instance state, shared by the coach's Current Lineup card, the
+  // position pills, and the Player Lineup View's formation graphic.
+  _slotMaps() {
+    const rosterById = new Map(this.roster.map(r => [r.id, r]));
+    const slotToPlayerId = new Map();
+    for (const [pid, posId] of this.positions.entries()) slotToPlayerId.set(posId, pid);
+    const startingPositions = this.positionList.filter(pos => pos.sortOrder <= 11);
+    return { rosterById, slotToPlayerId, startingPositions };
+  }
+
+  _rsvpStatusPill(playerId) {
+    const RSVP_PILL = {
+      yes:   { label: 'Going',     bg: '#166534', fg: '#bbf7d0' },
+      no:    { label: 'Not Going', bg: '#7f1d1d', fg: '#fecaca' },
+      maybe: { label: 'Maybe',     bg: '#78350f', fg: '#fde68a' },
+    };
+    const rsvp = this.stats.get(playerId)?.gameRsvp;
+    const v = RSVP_PILL[rsvp] || { label: 'No RSVP', bg: '#374151', fg: '#d1d5db' };
+    return `<span title="RSVP for this game" style="font-size:0.6rem; font-weight:700; padding:1px 6px; border-radius:999px; background:${v.bg}; color:${v.fg}; white-space:nowrap;">${v.label}</span>`;
+  }
+
+  // Formation pitch graphic (2026-08-22) — shared by the coach's
+  // Current Lineup card (readOnly:false, click a filled slot to
+  // unassign) and the Player Lineup View (readOnly:true, "this all will
+  // be the player view for lineup" — owner directive). Lighthouse blue
+  // chip with a white outline and yellow number (owner: "make chips our
+  // lh colors blue and white" / "blue inside white outline" / "yellow
+  // number"). Names never truncate — wrap instead of ellipsis (owner:
+  // "don't hide names with ...").
+  _renderFormationPitch(byZone, { readOnly = false } = {}) {
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+    const counts = FORMATIONS[this.formation] || FORMATIONS['4-4-2'];
+    const rows = [];
+    let idx = 0;
+    for (const count of counts) {
+      rows.push(startingPositions.slice(idx, idx + count));
+      idx += count;
+    }
+    rows.reverse(); // attack at top, keeper at bottom
+    const token = (pos) => {
+      const occupantId = slotToPlayerId.get(pos.id);
+      const occupant = occupantId != null ? rosterById.get(occupantId) : null;
+      const clickable = !readOnly && occupant;
+      const title = occupant ? (readOnly ? occupant.name : `Remove ${occupant.name} from ${pos.name}`) : pos.name;
+      return `
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; max-width:78px; position:relative; z-index:1;">
+          <button type="button" ${clickable ? `data-lineup-remove-starter="${occupant.id}"` : ''}
+                  title="${this.escapeHtml(title)}"
+                  style="width:30px; height:30px; border-radius:50%; border:2px solid #fff; flex-shrink:0;
+                         background:${occupant ? '#1d4ed8' : 'rgba(255,255,255,0.3)'}; color:${occupant ? '#facc15' : '#fff'};
+                         font-weight:800; font-size:0.72rem; cursor:${clickable ? 'pointer' : 'default'}; box-shadow:0 1px 3px rgba(0,0,0,0.3);">
+            ${pos.sortOrder}
+          </button>
+          <span style="font-size:0.58rem; color:#fff; text-align:center; overflow-wrap:break-word; white-space:normal; max-width:78px; text-shadow:0 1px 2px rgba(0,0,0,0.6); ${occupant ? '' : 'opacity:0.7;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
+          ${occupant && this.showLineupStats ? this._rsvpStatusPill(occupant.id) : ''}
+        </div>`;
+    };
+    // Real pitch markings — outline, halfway line, center circle, goal
+    // box — layered behind the rows with position:absolute so it reads
+    // as an actual pitch, not a plain green rectangle. Portrait,
+    // compact (owner: "smaller pitch and closer together").
+    return `
+      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); border-radius:10px; padding:12px 8px; max-width:300px; margin:0 auto; min-height:400px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
+        <div style="position:absolute; inset:6px; border:2px solid rgba(255,255,255,0.35); border-radius:4px;"></div>
+        <div style="position:absolute; left:6px; right:6px; top:50%; border-top:2px solid rgba(255,255,255,0.35);"></div>
+        <div style="position:absolute; left:50%; top:50%; width:64px; height:64px; margin-left:-32px; margin-top:-32px; border:2px solid rgba(255,255,255,0.35); border-radius:50%;"></div>
+        <div style="position:absolute; left:50%; bottom:6px; width:100px; height:32px; margin-left:-50px; border:2px solid rgba(255,255,255,0.35); border-bottom:none;"></div>
+        ${rows.map(row => `<div style="display:flex; justify-content:center; align-items:flex-start; gap:10px; position:relative; z-index:1;">${row.map(token).join('')}</div>`).join('')}
+      </div>`;
+  }
+
+  // Bench, attached under the pitch graphic (owner: "show bench in
+  // graphic") — simplified to a plain comma-separated name list rather
+  // than individual chips (owner: "you can put bench at bottom without
+  // chips but list names in full csv"). `bench` is whatever order the
+  // caller wants shown (coach's benchOrder vs player's always-
+  // alphabetical — see _renderPlayerView).
+  _renderBenchGraphic(bench) {
+    return `
+      <div style="max-width:300px; margin:10px auto 0; text-align:center;">
+        <div style="font-size:0.72rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH${bench.length ? '' : ' (0)'}</div>
+        <div style="font-size:0.75rem; color:var(--text-primary, #fff); line-height:1.4;">${bench.length ? bench.map(p => this.escapeHtml(p.name)).join(', ') : 'None yet'}</div>
+      </div>`;
+  }
+
+  // Read-only formation graphic (2026-08-22, owner directive: "this all
+  // will be the player view for lineup") — what players actually see,
+  // and what a coach sees via the "👀 Player Lineup View" toggle above.
+  // Same pitch + bench graphic as the coach's Current Lineup card
+  // (_renderFormationPitch/_renderBenchGraphic), just readOnly:true (no
+  // remove-on-click) and no stats/formation toggles. Same "not
+  // published yet" gate the old text-list view used
   // (byZone.starter.length===0 is the only signal we have — there's no
   // explicit publish flag).
   //
-  // Starting XI is ordered 1-11 by position slot ("1 is keeper, 2 is
-  // right back" — owner directive) using the same position picked via
-  // the coach's pills (this.positions/positionList). Bench and
-  // Alternates are always strict alphabetical by last name — "so no one
-  // gets mad" (owner directive) — deliberately NOT position/jersey
-  // ordered, since there's no fairness case for ranking the bench.
+  // Bench is always alphabetical by last name here — "so no one gets
+  // mad" (owner directive) — deliberately NOT the coach's bench order,
+  // since there's no fairness case for ranking the bench for players.
+  // Alternates stays a plain list below the graphic (not part of a
+  // real formation/bench concept).
   _renderPlayerView(byZone) {
     if (byZone.starter.length === 0) {
       return `
@@ -780,41 +921,28 @@ class GameLineupScreen extends Screen {
         </div>`;
     }
 
-    const positionById = new Map(this.positionList.map(pos => [pos.id, pos]));
     const byLastName = (list) => [...list].sort((a, b) =>
       (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
     );
-    const byPositionSlot = (list) => [...list].sort((a, b) => {
-      const ap = positionById.get(this.positions.get(a.id))?.sortOrder ?? 999;
-      const bp = positionById.get(this.positions.get(b.id))?.sortOrder ?? 999;
-      return ap - bp;
-    });
+    const benchAlpha = byLastName(byZone.bench);
+    const alternatesAlpha = byLastName(byZone.alternate);
 
-    const starterRow = (p) => {
-      const pos = positionById.get(this.positions.get(p.id));
-      return `
-      <div style="display:flex; align-items:center; gap:12px; padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
-        <span style="min-width:40px; text-align:right; font-weight:700; opacity:0.85; font-variant-numeric:tabular-nums;">${pos ? `${pos.sortOrder} ${pos.abbreviation}` : '–'}</span>
-        <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
-      </div>`;
-    };
     const plainRow = (p) => `
       <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
         <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
       </div>`;
-
-    const section = (label, list, rowFn, sortFn) => list.length ? `
-      <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${label}</h2>
+    const altSection = alternatesAlpha.length ? `
+      <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">Alternates</h2>
       <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
-        ${sortFn(list).map(rowFn).join('')}
+        ${alternatesAlpha.map(plainRow).join('')}
       </div>
     ` : '';
 
     return `
       <div style="max-width:440px; margin:0 auto;">
-        ${section('⚽ Starting XI', byZone.starter, starterRow, byPositionSlot)}
-        ${section('Bench', byZone.bench, plainRow, byLastName)}
-        ${section('Alternates', byZone.alternate, plainRow, byLastName)}
+        ${this._renderFormationPitch(byZone, { readOnly: true })}
+        ${this._renderBenchGraphic(benchAlpha)}
+        ${altSection}
       </div>`;
   }
 
