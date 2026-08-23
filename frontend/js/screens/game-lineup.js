@@ -78,16 +78,22 @@
 // unlimited.
 const ZONE_CAPS = { starter: 11, bench: 9 };
 
-// Formation pitch graphic row-count templates (2026-08-22, owner
-// directive) — GK row first, count(GK)=1 always. Purely a visual
-// row-count template: it chunks the same 11 fixed-role slots (already
-// sorted 1-11) into rows of these sizes, it does not change what role
-// slot N actually is. "1442 counting keeper" = [1,4,4,2].
+// Formation pitch graphic row templates (2026-08-22, owner directive) —
+// GK row first (bottom of the pitch; _renderFormationPitch reverses the
+// array so attack ends up on top). Purely a visual layout — it doesn't
+// change what role position id N actually is (see migration 296's
+// 4-4-2 shirt-number scheme), just how the 11 dots are arranged and, for
+// `rows`, their exact left-to-right order within each row.
+//
+// `rows`: explicit position-id order per row (owner directive: "front
+// row: 10,9. midfield: 11,8,6,7. backline: 3,5,4,2. keeper at bottom").
+// `counts`: no owner-specified order for these yet, so slots just fill
+// left-to-right in id order, `count` at a time.
 const FORMATIONS = {
-  '4-4-2':   [1, 4, 4, 2],
-  '4-3-3':   [1, 4, 3, 3],
-  '3-5-2':   [1, 3, 5, 2],
-  '4-2-3-1': [1, 4, 2, 3, 1],
+  '4-4-2':   { rows: [[1], [3, 5, 4, 2], [11, 8, 6, 7], [10, 9]] },
+  '4-3-3':   { counts: [1, 4, 3, 3] },
+  '3-5-2':   { counts: [1, 3, 5, 2] },
+  '4-2-3-1': { counts: [1, 4, 2, 3, 1] },
 };
 
 class GameLineupScreen extends Screen {
@@ -844,12 +850,19 @@ class GameLineupScreen extends Screen {
   // "don't hide names with ...").
   _renderFormationPitch(byZone, { readOnly = false } = {}) {
     const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
-    const counts = FORMATIONS[this.formation] || FORMATIONS['4-4-2'];
-    const rows = [];
-    let idx = 0;
-    for (const count of counts) {
-      rows.push(startingPositions.slice(idx, idx + count));
-      idx += count;
+    const template = FORMATIONS[this.formation] || FORMATIONS['4-4-2'];
+    const positionById = new Map(startingPositions.map(pos => [pos.id, pos]));
+    let rows;
+    if (template.rows) {
+      // Explicit left-to-right id order per row (see FORMATIONS doc).
+      rows = template.rows.map(idRow => idRow.map(id => positionById.get(id)).filter(Boolean));
+    } else {
+      rows = [];
+      let idx = 0;
+      for (const count of template.counts) {
+        rows.push(startingPositions.slice(idx, idx + count));
+        idx += count;
+      }
     }
     rows.reverse(); // attack at top, keeper at bottom
     const token = (pos) => {
