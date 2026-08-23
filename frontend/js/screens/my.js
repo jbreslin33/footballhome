@@ -1164,6 +1164,10 @@ class MyScreen extends Screen {
   // account-level role lives on context.user instead (see
   // role-selection.js's own _maybeAutoSkipToMy isAdmin check).
   _canPostSocial() {
+    // Suppress while an admin is using "view as <player>" — that mode is
+    // meant to preview exactly what the impersonated player sees, so an
+    // admin-only action button showing up there is a leak, not a feature.
+    if (this.auth && this.auth.viewAsPersonId) return false;
     const role = (this.navigation?.context?.user?.role || '').toString().toLowerCase();
     return ['club', 'super', 'marketing'].includes(role);
   }

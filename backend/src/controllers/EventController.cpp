@@ -709,7 +709,7 @@ Response EventController::handleGetMatch(const Request& request) {
         // Query single match with all details
         // matches extends events via matches.id = events.id FK
         std::ostringstream query;
-        query << "SELECT m.id, COALESCE(NULLIF(m.title,''), CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name,'TBD'))) as title, ";
+        query << "SELECT m.id, COALESCE(NULLIF(m.title,''), CONCAT(COALESCE(ht.name,'TBD'),' vs ',COALESCE(awt.name, fe.opponent, 'TBD'))) as title, ";
         query << "(m.match_date + COALESCE(m.match_time, '00:00'::time))::text as event_date, ";
         query << "90 as duration_minutes, m.venue_id, ";
         query << "m.home_team_id, m.away_team_id, UPPER(COALESCE(ss.name, '')) as competition_name, ";
@@ -717,8 +717,21 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "m.home_score, m.away_score, ";
         query << "m.description as notes, ";
         query << "v.name as venue_name, ";
-        query << "ht.name as home_team_name, awt.name as away_team_name, ";
-        query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo, ";
+        query << "ht.name as home_team_name, COALESCE(awt.name, fe.opponent) as away_team_name, ";
+        query << "ht.logo_url as home_team_logo, ";
+        // Away crest for opponents without a formal `teams` row (scraped/
+        // informal league matches): same 3-tier fallback CalendarController
+        // already uses for the My page — gcal_opponent_aliases hand-seeded
+        // mapping, then exact teams.name match, then opponent_logo_cache
+        // (migration 289) — keyed off fh_events.opponent free-text tag.
+        query << "COALESCE(awt.logo_url, "
+                 "(SELECT t.logo_url FROM gcal_opponent_aliases goa JOIN teams t ON t.id = goa.team_id "
+                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(goa.alias)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
+                 "(SELECT t.logo_url FROM teams t "
+                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(t.name)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
+                 "(SELECT NULLIF(olc.logo_url,'') FROM opponent_logo_cache olc "
+                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent)) LIMIT 1)"
+                 ") as away_team_logo, ";
         query << "COALESCE(ss.name, '') as source_name, ";
         query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, '' as venue_zip, ";
         query << "mt.name as division_name, ";
@@ -737,6 +750,7 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "LEFT JOIN venues v ON v.id = m.venue_id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
+        query << "LEFT JOIN fh_events fe ON fe.match_id = m.id ";
         query << "LEFT JOIN LATERAL (SELECT image_url FROM chat_events WHERE match_id = m.id LIMIT 1) ce ON true ";
         query << "WHERE m.id = '" << match_id << "'";
         
